@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="UTF-8" />
+      <title>LEO 2.0</title>
+      <link rel="stylesheet" href="styles.css" />
+   </head>
+   <body>
+      <div id="controls">
+         <button id="toggleBtn" style="background: #27ae60">START</button>
+         <button id="newBtn">New</button>
+         <button id="saveBtn">Save</button>
+         <button id="loadBtn">Load</button>
+         <input
+            type="file"
+            id="fileInput"
+            accept=".json"
+            style="display: none"
+         />
+      </div>
+
+      <div class="progress-bar" id="progressBar"></div>
+      <div id="lesson-container"></div>
+
+      <div id="editor-sidebar" class="sidebar hidden">
+         <div class="sidebar-section">
+            <h4>Add Block</h4>
+            <button class="add-btn yellow" id="addCommentBtn">+</button>
+            <button class="add-btn white" id="addCodeBtn">+</button>
+            <button class="remove-btn" id="removeBlockBtn">-</button>
+         </div>
+         <div class="sidebar-section">
+            <h4>Special Keys</h4>
+            <div id="special-keys-container"></div>
+         </div>
+      </div>
+
+      <script src="renderer.js"></script>
+   </body>
+</html>
