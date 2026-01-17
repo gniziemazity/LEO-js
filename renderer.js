@@ -78,7 +78,7 @@ function setupKeyboardShortcuts() {
 
 async function createNewLesson() {
    const filePath = await ipcRenderer.invoke("show-save-dialog");
-   
+
    if (!filePath) {
       return; // user cancelled
    }
@@ -99,7 +99,7 @@ async function createNewLesson() {
          currentFilePath = "";
          return;
       }
-      
+
       localStorage.setItem("lastLessonPath", currentFilePath);
       hasUnsavedChanges = false;
       renderLesson();
@@ -108,7 +108,7 @@ async function createNewLesson() {
 
 async function loadLesson() {
    const filePath = await ipcRenderer.invoke("show-open-dialog");
-   
+
    if (filePath) {
       loadFilePath(filePath, 0);
    }
@@ -159,7 +159,7 @@ function loadFilePath(path, savedIndex = 0) {
          alert("Failed to load file: " + err);
          return;
       }
-      
+
       try {
          lessonData = JSON.parse(data);
          localStorage.setItem("lastLessonPath", path);
@@ -211,7 +211,7 @@ function renderLesson() {
       if (selectedBlockIndex === blockIdx) {
          blockDiv.classList.add("selected");
       }
-      
+
       blockDiv.onclick = (e) => {
          if (!isTypingActive) {
             if (selectedBlockIndex === blockIdx) return;
@@ -237,9 +237,11 @@ function renderLesson() {
 
       if (block.type === "comment") {
          blockDiv.contentEditable = !isTypingActive;
-         blockDiv.textContent = block.text;
+         // Use innerText to properly handle newlines
+         blockDiv.innerText = block.text;
          blockDiv.oninput = () => {
-            block.text = blockDiv.textContent;
+            // Use innerText to preserve newlines when saving
+            block.text = blockDiv.innerText;
             markAsChanged();
          };
 
