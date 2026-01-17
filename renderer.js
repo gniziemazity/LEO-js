@@ -53,6 +53,7 @@ function setupEventListeners() {
    document.getElementById("loadBtn").onclick = loadLesson;
    document.getElementById("saveBtn").onclick = saveLesson;
    document.getElementById("toggleBtn").onclick = toggleActive;
+   document.getElementById("toggleBtn").title = "Start Auto-typing";
 
    document.getElementById("addCommentBtn").onclick = () => addBlock("comment");
    document.getElementById("addCodeBtn").onclick = () => addBlock("code");
@@ -368,10 +369,12 @@ function toggleActive() {
 
    if (isCurrentlyInactive) {
       btn.textContent = "STOP";
+      btn.title = "Stop Auto-typing";
       btn.style.background = "#e74c3c";
       ipcRenderer.send("set-active", true);
    } else {
       btn.textContent = "START";
+      btn.title = "Start Auto-typing";
       btn.style.background = "#27ae60";
       ipcRenderer.send("set-active", false);
    }

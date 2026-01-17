@@ -57,11 +57,6 @@ body {
     margin-left: auto;
 }
 
-.timer-clock-btn {
-    font-size: 18px;
-    padding: 5px 10px;
-}
-
 .timer-controls {
     display: none;
     align-items: center;
@@ -69,16 +64,9 @@ body {
 }
 
 .timer-adjust-btn {
-    padding: 5px 12px;
+    padding: 5px 10px;
+    line-height: 1;
     font-weight: bold;
-}
-
-.timer-adjust-btn.minus {
-    background: #e74c3c;
-}
-
-.timer-adjust-btn.plus {
-    background: #27ae60;
 }
 
 .timer-display {
