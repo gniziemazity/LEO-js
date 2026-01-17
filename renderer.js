@@ -78,7 +78,7 @@ function setupKeyboardShortcuts() {
 
 async function createNewLesson() {
    const filePath = await ipcRenderer.invoke("show-save-dialog");
-
+   
    if (!filePath) {
       return; // user cancelled
    }
@@ -99,7 +99,7 @@ async function createNewLesson() {
          currentFilePath = "";
          return;
       }
-
+      
       localStorage.setItem("lastLessonPath", currentFilePath);
       hasUnsavedChanges = false;
       renderLesson();
@@ -108,7 +108,7 @@ async function createNewLesson() {
 
 async function loadLesson() {
    const filePath = await ipcRenderer.invoke("show-open-dialog");
-
+   
    if (filePath) {
       loadFilePath(filePath, 0);
    }
@@ -159,7 +159,7 @@ function loadFilePath(path, savedIndex = 0) {
          alert("Failed to load file: " + err);
          return;
       }
-
+      
       try {
          lessonData = JSON.parse(data);
          localStorage.setItem("lastLessonPath", path);
@@ -200,6 +200,13 @@ function renderLesson() {
    const isTypingActive =
       document.getElementById("toggleBtn").textContent === "STOP";
 
+   // Show sidebar when not in typing mode
+   if (!isTypingActive) {
+      sidebar.classList.remove("hidden");
+   } else {
+      sidebar.classList.add("hidden");
+   }
+
    container.innerHTML = "";
    executionSteps = [];
    let globalStepCounter = 0;
@@ -211,13 +218,36 @@ function renderLesson() {
       if (selectedBlockIndex === blockIdx) {
          blockDiv.classList.add("selected");
       }
-
+      
       blockDiv.onclick = (e) => {
          if (!isTypingActive) {
+            // If already selected, don't re-render (to preserve cursor position)
             if (selectedBlockIndex === blockIdx) return;
+            
+            // Store the click position before re-rendering
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+            
             selectedBlockIndex = blockIdx;
             sidebar.classList.remove("hidden");
             renderLesson();
+            
+            // Focus and restore cursor position after render
+            setTimeout(() => {
+               const blocks = document.querySelectorAll(".block");
+               const targetBlock = blocks[blockIdx];
+               if (targetBlock) {
+                  targetBlock.focus();
+                  
+                  // Try to place cursor at the clicked position
+                  const range = document.caretRangeFromPoint(clickX, clickY);
+                  if (range) {
+                     const selection = window.getSelection();
+                     selection.removeAllRanges();
+                     selection.addRange(range);
+                  }
+               }
+            }, 0);
          } else {
             if (block.type === "code") {
                const clickedSpan = e.target.closest(".char");
