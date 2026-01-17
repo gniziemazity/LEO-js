@@ -1,3 +1,5 @@
+[Trying to create a prompt teaching an LLM to make a lesson plan from a given code]
+
 Create a JSON-formatted lesson plan for an auto-typing live coding tool based on provided source code.
 
 1. Special Key Mapping: Use these symbols to represent keyboard actions:
@@ -33,5 +35,7 @@ If necessary, use the => <old code> syntax in a comment block to indicate to the
 If necessary, use the => <file name> syntax (e.g., => main.js) to indicate switching files (in the comment type block).
 
 Logic Flow: For web projects, start with HTML boilerplate, move to CSS for visibility, then basic JS, then complex logic.
+
+When creating a new file, link it first (in HTML), then add a comment block asking to Ctrl + Click so VS Code automatically creates it and moves into the new file.
 
 4. JSON Format: Output a list of objects: {"type": "comment", "text": "..."} or {"type": "code", "text": "..."}.
