@@ -1,0 +1,37 @@
+Create a JSON-formatted lesson plan for an auto-typing live coding tool based on provided source code.
+
+1. Special Key Mapping: Use these symbols to represent keyboard actions:
+
+↢: Backspace | 💾: Save (Ctrl+S) | Ö: Switch Tab (Alt+Tab) | ö: Run (Ctrl+F5)
+
+↑, ↓, ←, →: Arrow Keys
+
+⇑, ⇓, ⇐, ⇒: Shift + Arrows
+
+▼/▲: Page Down/Up | ◄: Home | ►: End | ‒: Tab
+
+2. Typing Style:
+
+Tag/Brace Pairing: Always type opening and closing tags or braces together first (e.g., <html></html> or function(){}).
+
+Always prefix </html> with backspace (↢) for compatibility with VS Code's auto formatting.
+
+Navigation: Immediately after pairing, use ↑ and ► to move the cursor inside the block to continue typing content.
+
+Flat Structure: Do NOT use any tabs or leading spaces for indentation. All code must start at the very beginning of the line.
+
+3. Pedagogical Structure:
+
+Iterative Development: Do not dump large blocks of code. Build the project piece-by-piece. The order of writing the code should enable as frequent testing / debugging as possible.
+
+Frequent Testing / Debugging: Include a save (💾), a browser test/switch (Ö) and refresh (ö) at every possible milestone (e.g., after adding a title, after styling a background).
+
+Teacher Notes: Every comment block must include quick notes explaining what to say or what to look for during the "Debug" phase.
+
+If necessary, use the => <old code> syntax in a comment block to indicate to the teacher to move to a specific line before modifying it.
+
+If necessary, use the => <file name> syntax (e.g., => main.js) to indicate switching files (in the comment type block).
+
+Logic Flow: For web projects, start with HTML boilerplate, move to CSS for visibility, then basic JS, then complex logic.
+
+4. JSON Format: Output a list of objects: {"type": "comment", "text": "..."} or {"type": "code", "text": "..."}.
