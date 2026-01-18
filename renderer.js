@@ -66,8 +66,6 @@ function setupEventListeners() {
 
 function setupKeyboardShortcuts() {
    document.addEventListener("keydown", (e) => {
-      logKeyPress(e);
-
       if (e.ctrlKey && e.code === "KeyP") {
          e.preventDefault();
          toggleActive();
@@ -413,24 +411,13 @@ function advanceCursor() {
    if (currentStep.type === "char") {
       currentStep.element.classList.add("consumed");
       
-      // log the character being typed BEFORE sending it
-      if (sessionStartTime) {
-         const logEntry = {
-            timestamp: Date.now(),
-            relativeTime: Date.now() - sessionStartTime,
-            char: currentStep.char,
-            isTypingActive: true,
-            source: "auto-typed",
-            stepIndex: currentStepIndex,
-            blockIndex: currentStep.blockIndex
-         };
-         keyPressLog.push(logEntry);
-         
-         // save every 10 keypresses to avoid too many writes
-         if (keyPressLog.length % 10 === 0) {
-            saveKeyPressLog();
-         }
-      }
+      // Log the auto-typed character
+      addToKeyPressLog({
+         char: currentStep.char,
+         source: "auto-typed",
+         stepIndex: currentStepIndex,
+         blockIndex: currentStep.blockIndex
+      });
       
       ipcRenderer.send("type-character", currentStep.char);
       currentStepIndex++;
@@ -560,20 +547,15 @@ function initializeKeyPressLog() {
    saveKeyPressLog();
 }
 
-function logKeyPress(event) {
+// Centralized function to add entries to the log
+function addToKeyPressLog(entry) {
    if (!sessionStartTime) return;
    
    const logEntry = {
       timestamp: Date.now(),
       relativeTime: Date.now() - sessionStartTime,
-      key: event.key,
-      code: event.code,
-      ctrlKey: event.ctrlKey,
-      shiftKey: event.shiftKey,
-      altKey: event.altKey,
-      metaKey: event.metaKey,
       isTypingActive: document.getElementById("toggleBtn").textContent === "STOP",
-      source: "app-focused"
+      ...entry
    };
    
    keyPressLog.push(logEntry);
