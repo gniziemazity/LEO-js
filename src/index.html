@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="UTF-8" />
+      <title>LEO 2.0</title>
+      <link rel="stylesheet" href="./shared/styles.css" />
+   </head>
+   <body>
+      <div id="controls">
+         <button id="toggleBtn" title="Start Auto-typing" style="background: #27ae60">START</button>
+         <button id="newBtn" title="New Plan">➕</button>
+         <button id="saveBtn" title="Save Plan">💾</button>
+         <button id="loadBtn" title="Load Plan">📥</button>
+         
+         <div id="timerSection">
+            <button id="timerStartBtn" title="Start Timer">⏱️</button>
+            <div id="timerControls" class="timer-controls">
+               <button id="timerMinusBtn" title="Decrease Timer">-</button>
+               <span id="timerDisplay" class="timer-display">10:00</span>
+               <button id="timerPlusBtn" title="Increase Timer">+</button>
+            </div>
+         </div>
+         
+         <input
+            type="file"
+            id="fileInput"
+            accept=".json"
+            style="display: none"
+         />
+      </div>
+
+      <div class="progress-bar" id="progressBar"></div>
+      <div id="lesson-container"></div>
+
+      <div id="editor-sidebar" class="sidebar hidden">
+         <div class="sidebar-section">
+            <h4>Add Block</h4>
+            <button class="add-btn yellow" id="addCommentBtn">+</button>
+            <button class="add-btn white" id="addCodeBtn">+</button>
+            <button class="remove-btn" id="removeBlockBtn">-</button>
+         </div>
+         <div class="sidebar-section">
+            <h4>Special Keys</h4>
+            <div id="special-keys-container"></div>
+         </div>
+      </div>
+
+      <script src="./renderer/renderer.js"></script>
+   </body>
+</html>

@@ -47,29 +47,6 @@
             text-align: right !important;
          }
 
-         .progress-container {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-         }
-
-         /* overriding .progress-bar from styles.css to be relative to this header */
-         #progressBar {
-            position: relative !important;
-            top: 0 !important;
-            height: 100% !important;
-            background: #e74c3c !important;
-            width: 0%;
-            transition: width 0.3s ease;
-         }
-
-         #lesson-container {
-            margin: 15px auto;
-            width: 95%;
-            max-width: none;
-         }
-
          .block.active-comment,
          .char.cursor {
             scroll-margin-top: 80px;
@@ -82,9 +59,7 @@
             <div id="lessonName">Not Connected</div>
             <div id="timerDisplay">--:--</div>
          </div>
-         <div class="progress-container">
-            <div id="progressBar"></div>
-         </div>
+         <div class="progress-bar" id="progressBar"></div>
       </div>
 
       <div id="lesson-container">

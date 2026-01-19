@@ -24,11 +24,11 @@ class LEOBroadcastServer {
 
    start() {
       this.app.get('/', (req, res) => {
-         res.sendFile(path.join(__dirname, 'client-viewer.html'));
+         res.sendFile(path.join(__dirname, '../client-viewer.html'));
       });
 
       // serve other static files (like styles.css)
-      this.app.use(express.static(__dirname));
+      this.app.use(express.static(__dirname + '/../shared/'));
 
       // setup WebSocket on the same server
       this.wss = new WebSocket.Server({ server: this.server });

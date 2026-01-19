@@ -1,4 +1,4 @@
-const { TIMER_CONFIG } = require("./constants");
+const { TIMER_CONFIG } = require("../shared/constants");
 
 class TimerManager {
    constructor() {

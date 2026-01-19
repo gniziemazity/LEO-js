@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { TIMER_CONFIG } = require("./constants");
+const { TIMER_CONFIG } = require("../shared/constants");
 
 class LogManager {
    constructor() {
