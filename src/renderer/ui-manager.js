@@ -14,6 +14,7 @@ class UIManager {
          addCommentBtn: document.getElementById("addCommentBtn"),
          addCodeBtn: document.getElementById("addCodeBtn"),
          removeBlockBtn: document.getElementById("removeBlockBtn"),
+         formatBlockBtn: document.getElementById("formatBlockBtn"),
          timerStartBtn: document.getElementById("timerStartBtn"),
          timerPlusBtn: document.getElementById("timerPlusBtn"),
          timerMinusBtn: document.getElementById("timerMinusBtn"),

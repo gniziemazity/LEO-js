@@ -66,6 +66,7 @@ function setupEventListeners() {
    uiManager.getElement("addCommentBtn").onclick = () => addBlock("comment");
    uiManager.getElement("addCodeBtn").onclick = () => addBlock("code");
    uiManager.getElement("removeBlockBtn").onclick = removeBlock;
+   uiManager.getElement("formatBlockBtn").onclick = formatBlock;
 
    uiManager.getElement("timerStartBtn").onclick = startTimer;
    uiManager.getElement("timerPlusBtn").onclick = () => adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
@@ -397,6 +398,44 @@ function removeBlock() {
    lessonManager.removeBlock(selectedBlockIndex);
    uiManager.deselectBlock();
    renderLesson();
+}
+
+function formatBlock() {
+   const selectedBlockIndex = uiManager.getSelectedBlockIndex();
+   if (selectedBlockIndex === null) return;
+   
+   const block = lessonManager.getBlock(selectedBlockIndex);
+   if (!block || block.type !== "code") return;
+   
+   const formatted = formatCodeForAutoTyping(block.text);
+   lessonManager.updateBlock(selectedBlockIndex, formatted);
+   renderLesson();
+}
+
+function formatCodeForAutoTyping(code) {
+   let text = code;
+   
+   text = text.split('\n').map(line => line.trimStart()).join('\n');
+   text = text.replace(/↑►/g, '');
+   
+   const tags = ["html", "head", "body", "script", "div"];
+   tags.forEach(tag => {
+      const closingRegex = new RegExp(`</${tag}>`, 'g');
+      text = text.replace(closingRegex, '↓');
+      
+      const openingRegex = new RegExp(`<${tag}>`, 'g');
+      text = text.replace(openingRegex, `<${tag}>\n</${tag}>↑►`);
+   });
+   
+   text = text.replace(/ +/g, ' ');
+   text = text.replace(/\n /g, '\n');
+   text = text.replace(/\n}/g, '↓');
+   text = text.replace(/{\n/g, '{\n}↑►\n');
+   text = text.replace(/\n↓/g, '↓');
+   text = text.replace(/↓💾/g, '💾');
+   text = text.replace(/↑►↓/g, '↑►');
+   
+   return text;
 }
 
 function setInitialStateToInactive() {

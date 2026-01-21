@@ -205,7 +205,8 @@ body {
 
 .add-btn,
 .remove-btn,
-.key-btn {
+.key-btn,
+.format-btn {
    width: 35px;
    height: 35px;
    border: none;
@@ -230,6 +231,10 @@ body {
    background: #e74c3c;
    color: #fff;
 }
+.format-btn {
+   background: #3498db;
+   color: #fff;
+}
 
 .key-btn {
    background: #7f8c8d;
@@ -240,4 +245,7 @@ body {
 
 .key-btn:hover {
    background: #95a5a6;
+}
+.format-btn:hover {
+   background: #2980b9;
 }
