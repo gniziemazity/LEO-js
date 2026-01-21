@@ -249,6 +249,12 @@ function renderCommentBlock(blockDiv, block, blockIdx, isTypingActive, globalSte
    blockDiv.oninput = () => {
       lessonManager.updateBlock(blockIdx, blockDiv.innerText);
    };
+   
+   blockDiv.onpaste = (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+   };
 
    executionSteps.push({
       type: "block",
@@ -270,6 +276,13 @@ function renderCodeBlock(blockDiv, block, blockIdx, isTypingActive, globalStepCo
       blockDiv.oninput = () => {
          lessonManager.updateBlock(blockIdx, blockDiv.innerText);
       };
+      
+      blockDiv.onpaste = (e) => {
+         e.preventDefault();
+         const text = e.clipboardData.getData('text/plain');
+         document.execCommand('insertText', false, text);
+      };
+      
       return globalStepCounter;
    } else {
       blockDiv.contentEditable = "false";
