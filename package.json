@@ -1,5 +1,5 @@
 {
-   "name": "LEO-js",
+   "name": "LEO",
    "version": "1.0.0",
    "description": "Live-coding Assistant for Teachers",
    "main": "src/main/main.js",

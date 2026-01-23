@@ -4,6 +4,7 @@
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>LEO Client</title>
+      <link rel="icon" href="icon.ico" type="image/x-icon" />
       <link rel="stylesheet" href="styles.css" />
       <style>
          /* MOBILE UI OVERRIDES */
@@ -32,7 +33,7 @@
          #lessonName {
             font-size: 1.1rem;
             font-weight: bold;
-            color: #f1c40f;
+            color: #ecf0f1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -56,6 +57,7 @@
    <body>
       <div id="mobile-header">
          <div class="header-main-row">
+            <img src="icon.ico" alt="LEO Logo" style="height: 30px; width: 30px; margin-right: 10px;" />
             <div id="lessonName">Not Connected</div>
             <div id="timerDisplay">--:--</div>
          </div>
@@ -241,7 +243,8 @@
          }
 
          function updateLessonName(lessonName) {
-            elements.lessonName.textContent = lessonName || "No lesson loaded";
+            document.title = lessonName ? `LEO - ${lessonName}` : "LEO";
+            elements.lessonName.textContent = lessonName;
          }
 
          setTimeout(connect, 500);

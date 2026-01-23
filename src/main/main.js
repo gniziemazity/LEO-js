@@ -18,7 +18,7 @@ function createWindow() {
    const config = {
       ...WINDOW_CONFIG,
       autoHideMenuBar: false,
-      icon: path.join(__dirname, "../../build/icon.ico"),
+      icon: path.join(__dirname, "../shared/icon.ico"),
    };
    state.mainWindow = new BrowserWindow(config);
 
@@ -140,6 +140,18 @@ ipcMain.handle("show-open-dialog", async () => {
       properties: ["openFile"],
    });
    return result.filePaths[0];
+});
+
+ipcMain.on('update-window-title', (event, fileName) => {
+  if (!state.mainWindow) return;
+  
+  const baseTitle = 'LEO';
+  if (fileName && fileName.trim() !== '') {
+    const displayName = fileName.replace(/\.json$/i, '');
+    state.mainWindow.setTitle(`${baseTitle} - ${displayName}`);
+  } else {
+    state.mainWindow.setTitle(baseTitle);
+  }
 });
 
 ipcMain.on("broadcast-lesson-data", (event, data) => {

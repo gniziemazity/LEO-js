@@ -13,6 +13,7 @@ const uiManager = new UIManager();
 let currentStepIndex = 0;
 let executionSteps = [];
 let currentSettings = null;
+let currentFileName = "";
 
 window.addEventListener("DOMContentLoaded", () => {
    uiManager.cacheElements();
@@ -22,6 +23,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
    if (lastFile) {
       loadFilePath(lastFile, lastIndex ? parseInt(lastIndex) : 0);
+
+      const fileName = lastFile.split(/[\\/]/).pop();
+      currentFileName = fileName;
+      updateWindowTitle(fileName);
    } else {
       logManager.initialize();
    }
@@ -273,6 +278,10 @@ async function createNewLesson() {
          alert("Failed to create file: " + err);
          return;
       }
+      
+      const fileName = filePath.split(/[\\/]/).pop();
+      currentFileName = fileName;
+      updateWindowTitle(fileName);
 
       localStorage.setItem("lastLessonPath", filePath);
       logManager.initialize(filePath);
@@ -285,6 +294,9 @@ async function loadLesson() {
    const filePath = await ipcRenderer.invoke("show-open-dialog");
 
    if (filePath) {
+      const fileName = filePath.split(/[\\/]/).pop();
+      currentFileName = fileName;
+      updateWindowTitle(fileName);
       loadFilePath(filePath, 0);
    }
 }
@@ -316,29 +328,6 @@ function saveLesson() {
          alert("Save failed: " + err);
       }
    });
-}
-
-function navigateBlocks(direction) {
-   const blockCount = lessonManager.getBlockCount();
-   if (!blockCount) return;
-
-   let currentBlockIdx = 0;
-   if (currentStepIndex < executionSteps.length) {
-      currentBlockIdx = executionSteps[currentStepIndex].blockIndex;
-   } else {
-      currentBlockIdx = blockCount - 1;
-   }
-
-   let newBlockIdx = currentBlockIdx + direction;
-   newBlockIdx = Math.max(0, Math.min(newBlockIdx, blockCount - 1));
-
-   const targetStep = executionSteps.find(
-      (step) => step.blockIndex === newBlockIdx,
-   );
-
-   if (targetStep) {
-      jumpTo(targetStep.globalIndex);
-   }
 }
 
 function resetProgress() {
@@ -680,6 +669,20 @@ function broadcastLessonData() {
          char: step.char,
       })),
    });
+}
+
+function updateWindowTitle(fileName = "") {
+   currentFileName = fileName;
+   ipcRenderer.send("update-window-title", fileName);
+
+   // also update document.title for consistency
+   const baseTitle = "LEO";
+   if (fileName && fileName.trim() !== "") {
+      const displayName = fileName.replace(/\.json$/i, "");
+      document.title = `${baseTitle} - ${displayName}`;
+   } else {
+      document.title = baseTitle;
+   }
 }
 
 window.addEventListener("beforeunload", () => {
