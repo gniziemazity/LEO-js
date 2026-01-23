@@ -5,6 +5,7 @@ const HotkeyManager = require("./hotkey-manager");
 const KeyboardHandler = require("./keyboard-handler");
 const LEOBroadcastServer = require("./websocket-server");
 const SettingsManager = require("./settings-manager");
+const { Menu } = require("electron");
 
 const settingsManager = new SettingsManager();
 const broadcastServer = new LEOBroadcastServer(8080);
@@ -12,13 +13,17 @@ const hotkeyManager = new HotkeyManager(settingsManager);
 const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
 function createWindow() {
+   const path = require("path");
+
    const config = {
       ...WINDOW_CONFIG,
-      autoHideMenuBar: true, // hide menu bar
+      autoHideMenuBar: false,
+      icon: path.join(__dirname, "../../build/icon.ico"),
    };
    state.mainWindow = new BrowserWindow(config);
-   state.mainWindow.setMenuBarVisibility(false); // remove menu bar completely
-   const path = require("path");
+
+   createApplicationMenu();
+
    state.mainWindow.loadFile(path.join(__dirname, "../index.html"));
 
    broadcastServer.start();
@@ -38,6 +43,56 @@ function createWindow() {
 function cleanup() {
    hotkeyManager.unregisterTypingHotkeys();
    state.reset();
+}
+
+function createApplicationMenu() {
+   const template = [
+      {
+         label: "File",
+         submenu: [
+            {
+               label: "New Plan",
+               accelerator: "CmdOrCtrl+N",
+               click: () => {
+                  state.mainWindow.webContents.send("new-plan");
+               },
+            },
+            {
+               label: "Save Plan",
+               accelerator: "CmdOrCtrl+S",
+               click: () => {
+                  state.mainWindow.webContents.send("save-plan");
+               },
+            },
+            {
+               label: "Load Plan",
+               accelerator: "CmdOrCtrl+O",
+               click: () => {
+                  state.mainWindow.webContents.send("load-plan");
+               },
+            },
+            { type: "separator" },
+            {
+               label: "Settings",
+               accelerator: "CmdOrCtrl+,",
+               click: () => {
+                  state.mainWindow.webContents.send("open-settings");
+               },
+            },
+            { type: "separator" },
+            {
+               label: "Exit",
+               accelerator: "CmdOrCtrl+Q",
+               click: () => {
+                  app.quit();
+               },
+            },
+         ],
+      },
+   ];
+
+   const menu = Menu.buildFromTemplate(template);
+   Menu.setApplicationMenu(menu);
 }
 
 ipcMain.on("set-active", (event, isActive) => {

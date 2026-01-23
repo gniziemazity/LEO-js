@@ -8,9 +8,6 @@ class UIManager {
    cacheElements() {
       this.elements = {
          toggleBtn: document.getElementById("toggleBtn"),
-         newBtn: document.getElementById("newBtn"),
-         saveBtn: document.getElementById("saveBtn"),
-         loadBtn: document.getElementById("loadBtn"),
          addCommentBtn: document.getElementById("addCommentBtn"),
          addCodeBtn: document.getElementById("addCodeBtn"),
          removeBlockBtn: document.getElementById("removeBlockBtn"),

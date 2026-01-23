@@ -16,7 +16,7 @@ let currentSettings = null;
 
 window.addEventListener("DOMContentLoaded", () => {
    uiManager.cacheElements();
-   
+
    const lastFile = localStorage.getItem("lastLessonPath");
    const lastIndex = localStorage.getItem("lastStepIndex");
 
@@ -25,7 +25,7 @@ window.addEventListener("DOMContentLoaded", () => {
    } else {
       logManager.initialize();
    }
-   
+
    setupManagers();
    setupEventListeners();
    setupKeyboardShortcuts();
@@ -60,35 +60,46 @@ function setupGlobalIpcListeners() {
    ipcRenderer.on("toggle-transparency-event", () => {
       ipcRenderer.send("toggle-transparency");
    });
-   
+
    ipcRenderer.on("settings-loaded", (event, settings) => {
       currentSettings = settings;
       applySettings(settings);
    });
-   
+
    ipcRenderer.on("settings-saved", (event, settings) => {
       currentSettings = settings;
       applySettings(settings);
       closeSettingsModal();
    });
+
+   ipcRenderer.on("new-plan", () => {
+      createNewLesson();
+   });
+
+   ipcRenderer.on("save-plan", () => {
+      saveLesson();
+   });
+
+   ipcRenderer.on("load-plan", () => {
+      loadLesson();
+   });
+
+   ipcRenderer.on("open-settings", () => {
+      openSettingsModal();
+   });
 }
 
 function setupSettingsListeners() {
-   const settingsBtn = document.getElementById("settingsBtn");
-   if (settingsBtn) {
-      settingsBtn.onclick = openSettingsModal;
-   }
-   
    const closeSettings = document.getElementById("closeSettings");
    if (closeSettings) {
       closeSettings.onclick = closeSettingsModal;
    }
-   
+
    const saveSettings = document.getElementById("saveSettings");
    if (saveSettings) {
       saveSettings.onclick = saveSettingsFromModal;
    }
-   
+
    const resetSettings = document.getElementById("resetSettings");
    if (resetSettings) {
       resetSettings.onclick = async () => {
@@ -101,7 +112,7 @@ function setupSettingsListeners() {
          }
       };
    }
-   
+
    const modal = document.getElementById("settingsModal");
    if (modal) {
       modal.onclick = (e) => {
@@ -115,28 +126,39 @@ function setupSettingsListeners() {
 async function openSettingsModal() {
    const settings = await ipcRenderer.invoke("get-settings");
    currentSettings = settings;
-   
+
    loadSettingsIntoModal(settings);
-   
+
    document.getElementById("settingsModal").classList.add("active");
 }
 
 function loadSettingsIntoModal(settings) {
-   document.getElementById("typingHotkeys").value = settings.hotkeys.typing.join("");
-   document.getElementById("toggleActiveKey").value = settings.hotkeys.toggleActive;
-   document.getElementById("stepBackwardKey").value = settings.hotkeys.stepBackward;
-   document.getElementById("stepForwardKey").value = settings.hotkeys.stepForward;
-   document.getElementById("alwaysOnTopKey").value = settings.hotkeys.alwaysOnTop;
-   document.getElementById("toggleTransparencyKey").value = settings.hotkeys.toggleTransparency;
-   
-   document.getElementById("commentNormalColor").value = settings.colors.commentNormal;
-   document.getElementById("commentActiveColor").value = settings.colors.commentActive;
-   document.getElementById("commentSelectedColor").value = settings.colors.commentSelected;
-   document.getElementById("commentActiveTextColor").value = settings.colors.commentActiveText;
+   document.getElementById("typingHotkeys").value =
+      settings.hotkeys.typing.join("");
+   document.getElementById("toggleActiveKey").value =
+      settings.hotkeys.toggleActive;
+   document.getElementById("stepBackwardKey").value =
+      settings.hotkeys.stepBackward;
+   document.getElementById("stepForwardKey").value =
+      settings.hotkeys.stepForward;
+   document.getElementById("alwaysOnTopKey").value =
+      settings.hotkeys.alwaysOnTop;
+   document.getElementById("toggleTransparencyKey").value =
+      settings.hotkeys.toggleTransparency;
+
+   document.getElementById("commentNormalColor").value =
+      settings.colors.commentNormal;
+   document.getElementById("commentActiveColor").value =
+      settings.colors.commentActive;
+   document.getElementById("commentSelectedColor").value =
+      settings.colors.commentSelected;
+   document.getElementById("commentActiveTextColor").value =
+      settings.colors.commentActiveText;
    document.getElementById("cursorColor").value = settings.colors.cursor;
-   document.getElementById("selectedBorderColor").value = settings.colors.selectedBorder;
+   document.getElementById("selectedBorderColor").value =
+      settings.colors.selectedBorder;
    document.getElementById("textColor").value = settings.colors.textColor;
-   
+
    document.getElementById("fontSize").value = settings.fontSize;
 }
 
@@ -146,8 +168,8 @@ function closeSettingsModal() {
 
 function saveSettingsFromModal() {
    const typingHotkeysStr = document.getElementById("typingHotkeys").value;
-   const typingHotkeys = typingHotkeysStr.split("").filter(c => c.trim());
-   
+   const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
+
    const settings = {
       hotkeys: {
          typing: typingHotkeys,
@@ -155,35 +177,37 @@ function saveSettingsFromModal() {
          stepBackward: document.getElementById("stepBackwardKey").value,
          stepForward: document.getElementById("stepForwardKey").value,
          alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
-         toggleTransparency: document.getElementById("toggleTransparencyKey").value
+         toggleTransparency: document.getElementById("toggleTransparencyKey")
+            .value,
       },
       colors: {
          commentNormal: document.getElementById("commentNormalColor").value,
          commentActive: document.getElementById("commentActiveColor").value,
          commentSelected: document.getElementById("commentSelectedColor").value,
-         commentActiveText: document.getElementById("commentActiveTextColor").value,
+         commentActiveText: document.getElementById("commentActiveTextColor")
+            .value,
          cursor: document.getElementById("cursorColor").value,
          selectedBorder: document.getElementById("selectedBorderColor").value,
-         textColor: document.getElementById("textColor").value
+         textColor: document.getElementById("textColor").value,
       },
-      fontSize: parseInt(document.getElementById("fontSize").value)
+      fontSize: parseInt(document.getElementById("fontSize").value),
    };
-   
+
    ipcRenderer.send("save-settings", settings);
 }
 
 function applySettings(settings) {
    if (!settings) return;
-   
+
    const styleId = "dynamic-settings-styles";
    let styleEl = document.getElementById(styleId);
-   
+
    if (!styleEl) {
       styleEl = document.createElement("style");
       styleEl.id = styleId;
       document.head.appendChild(styleEl);
    }
-   
+
    styleEl.textContent = `
       body {
          font-size: ${settings.fontSize}px;
@@ -215,9 +239,6 @@ function applySettings(settings) {
 }
 
 function setupEventListeners() {
-   uiManager.getElement("newBtn").onclick = createNewLesson;
-   uiManager.getElement("loadBtn").onclick = loadLesson;
-   uiManager.getElement("saveBtn").onclick = saveLesson;
    uiManager.getElement("toggleBtn").onclick = toggleActive;
 
    uiManager.getElement("addCommentBtn").onclick = () => addBlock("comment");
@@ -226,8 +247,10 @@ function setupEventListeners() {
    uiManager.getElement("formatBlockBtn").onclick = formatBlock;
 
    uiManager.getElement("timerStartBtn").onclick = startTimer;
-   uiManager.getElement("timerPlusBtn").onclick = () => adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
-   uiManager.getElement("timerMinusBtn").onclick = () => adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
+   uiManager.getElement("timerPlusBtn").onclick = () =>
+      adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
+   uiManager.getElement("timerMinusBtn").onclick = () =>
+      adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
 }
 
 function setupKeyboardShortcuts() {
@@ -240,7 +263,7 @@ function setupKeyboardShortcuts() {
 
 async function createNewLesson() {
    const filePath = await ipcRenderer.invoke("show-save-dialog");
-   
+
    if (!filePath) {
       return;
    }
@@ -250,7 +273,7 @@ async function createNewLesson() {
          alert("Failed to create file: " + err);
          return;
       }
-      
+
       localStorage.setItem("lastLessonPath", filePath);
       logManager.initialize(filePath);
       resetProgress();
@@ -260,7 +283,7 @@ async function createNewLesson() {
 
 async function loadLesson() {
    const filePath = await ipcRenderer.invoke("show-open-dialog");
-   
+
    if (filePath) {
       loadFilePath(filePath, 0);
    }
@@ -272,7 +295,7 @@ function loadFilePath(filePath, savedIndex = 0) {
          alert("Failed to load file: " + err);
          return;
       }
-      
+
       localStorage.setItem("lastLessonPath", filePath);
       currentStepIndex = savedIndex;
 
@@ -281,8 +304,8 @@ function loadFilePath(filePath, savedIndex = 0) {
       renderLesson();
       setInitialStateToInactive();
 
-      const path = require('path');
-      const lessonName = path.basename(filePath, '.json');
+      const path = require("path");
+      const lessonName = path.basename(filePath, ".json");
       ipcRenderer.send("broadcast-lesson", lessonName);
    });
 }
@@ -310,7 +333,7 @@ function navigateBlocks(direction) {
    newBlockIdx = Math.max(0, Math.min(newBlockIdx, blockCount - 1));
 
    const targetStep = executionSteps.find(
-      (step) => step.blockIndex === newBlockIdx
+      (step) => step.blockIndex === newBlockIdx,
    );
 
    if (targetStep) {
@@ -332,17 +355,29 @@ function renderLesson() {
    let globalStepCounter = 0;
 
    const blocks = lessonManager.getAllBlocks();
-   
+
    blocks.forEach((block, blockIdx) => {
       const blockDiv = uiManager.createBlockElement(block, blockIdx);
       blockDiv.onclick = (e) => handleBlockClick(e, block, blockIdx);
-      
+
       if (block.type === "comment") {
-         globalStepCounter = renderCommentBlock(blockDiv, block, blockIdx, isTypingActive, globalStepCounter);
+         globalStepCounter = renderCommentBlock(
+            blockDiv,
+            block,
+            blockIdx,
+            isTypingActive,
+            globalStepCounter,
+         );
       } else if (block.type === "code") {
-         globalStepCounter = renderCodeBlock(blockDiv, block, blockIdx, isTypingActive, globalStepCounter);
+         globalStepCounter = renderCodeBlock(
+            blockDiv,
+            block,
+            blockIdx,
+            isTypingActive,
+            globalStepCounter,
+         );
       }
-      
+
       uiManager.appendToLessonContainer(blockDiv);
    });
 
@@ -355,13 +390,13 @@ function renderLesson() {
 
 function handleBlockClick(e, block, blockIdx) {
    const isTypingActive = uiManager.isActive();
-   
+
    if (!isTypingActive) {
       if (uiManager.getSelectedBlockIndex() === blockIdx) return;
-      
+
       const clickX = e.clientX;
       const clickY = e.clientY;
-      
+
       uiManager.selectBlock(blockIdx);
       renderLesson();
       uiManager.focusBlock(blockIdx, clickX, clickY);
@@ -372,9 +407,7 @@ function handleBlockClick(e, block, blockIdx) {
             jumpTo(parseInt(clickedSpan.dataset.stepIndex));
          }
       } else {
-         const step = executionSteps.find(
-            (s) => s.blockIndex === blockIdx
-         );
+         const step = executionSteps.find((s) => s.blockIndex === blockIdx);
          if (step) {
             jumpTo(step.globalIndex);
          }
@@ -382,17 +415,23 @@ function handleBlockClick(e, block, blockIdx) {
    }
 }
 
-function renderCommentBlock(blockDiv, block, blockIdx, isTypingActive, globalStepCounter) {
+function renderCommentBlock(
+   blockDiv,
+   block,
+   blockIdx,
+   isTypingActive,
+   globalStepCounter,
+) {
    blockDiv.contentEditable = !isTypingActive;
    blockDiv.innerText = block.text;
    blockDiv.oninput = () => {
       lessonManager.updateBlock(blockIdx, blockDiv.innerText);
    };
-   
+
    blockDiv.onpaste = (e) => {
       e.preventDefault();
-      const text = e.clipboardData.getData('text/plain');
-      document.execCommand('insertText', false, text);
+      const text = e.clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
    };
 
    executionSteps.push({
@@ -406,22 +445,28 @@ function renderCommentBlock(blockDiv, block, blockIdx, isTypingActive, globalSte
    return globalStepCounter + 1;
 }
 
-function renderCodeBlock(blockDiv, block, blockIdx, isTypingActive, globalStepCounter) {
+function renderCodeBlock(
+   blockDiv,
+   block,
+   blockIdx,
+   isTypingActive,
+   globalStepCounter,
+) {
    const selectedBlockIndex = uiManager.getSelectedBlockIndex();
-   
+
    if (selectedBlockIndex === blockIdx && !isTypingActive) {
       blockDiv.contentEditable = "true";
       blockDiv.innerText = block.text;
       blockDiv.oninput = () => {
          lessonManager.updateBlock(blockIdx, blockDiv.innerText);
       };
-      
+
       blockDiv.onpaste = (e) => {
          e.preventDefault();
-         const text = e.clipboardData.getData('text/plain');
-         document.execCommand('insertText', false, text);
+         const text = e.clipboardData.getData("text/plain");
+         document.execCommand("insertText", false, text);
       };
-      
+
       return globalStepCounter;
    } else {
       blockDiv.contentEditable = "false";
@@ -476,7 +521,7 @@ function toggleActive() {
    ipcRenderer.send("broadcast-active", isCurrentlyInactive);
 
    renderLesson();
-   
+
    if (isCurrentlyInactive && currentStepIndex > 0) {
       // give the DOM time to render
       setTimeout(() => {
@@ -511,7 +556,7 @@ function updateCursor() {
    ipcRenderer.send("broadcast-cursor", currentStepIndex);
    ipcRenderer.send("broadcast-progress", {
       currentStep: currentStepIndex,
-      totalSteps: executionSteps.length
+      totalSteps: executionSteps.length,
    });
 }
 
@@ -522,11 +567,11 @@ function advanceCursor() {
 
    if (currentStep.type === "char") {
       currentStep.element.classList.add("consumed");
-      
+
       logManager.addEntry({
-         char: currentStep.char
+         char: currentStep.char,
       });
-      
+
       ipcRenderer.send("type-character", currentStep.char);
       currentStepIndex++;
    } else if (currentStep.type === "block") {
@@ -541,13 +586,14 @@ function advanceCursor() {
 
 function populateSpecialKeys() {
    const keys = ["↢", "►", "💾", "↑", "↓", "←", "→", "‒"];
-   
+
    uiManager.populateSpecialKeys(keys, (char) => {
       document.execCommand("insertText", false, char);
       const selectedBlockIndex = uiManager.getSelectedBlockIndex();
-      
+
       if (selectedBlockIndex !== null) {
-         const activeDiv = document.querySelectorAll(".block")[selectedBlockIndex];
+         const activeDiv =
+            document.querySelectorAll(".block")[selectedBlockIndex];
          lessonManager.updateBlock(selectedBlockIndex, activeDiv.innerText);
       }
    });
@@ -562,7 +608,7 @@ function addBlock(type) {
 function removeBlock() {
    const selectedBlockIndex = uiManager.getSelectedBlockIndex();
    if (selectedBlockIndex === null) return;
-   
+
    lessonManager.removeBlock(selectedBlockIndex);
    uiManager.deselectBlock();
    renderLesson();
@@ -571,10 +617,10 @@ function removeBlock() {
 function formatBlock() {
    const selectedBlockIndex = uiManager.getSelectedBlockIndex();
    if (selectedBlockIndex === null) return;
-   
+
    const block = lessonManager.getBlock(selectedBlockIndex);
    if (!block || block.type !== "code") return;
-   
+
    const formatted = formatCodeForAutoTyping(block.text);
    lessonManager.updateBlock(selectedBlockIndex, formatted);
    renderLesson();
@@ -582,27 +628,30 @@ function formatBlock() {
 
 function formatCodeForAutoTyping(code) {
    let text = code;
-   
-   text = text.split('\n').map(line => line.trimStart()).join('\n');
-   text = text.replace(/↑►/g, '');
-   
+
+   text = text
+      .split("\n")
+      .map((line) => line.trimStart())
+      .join("\n");
+   text = text.replace(/↑►/g, "");
+
    const tags = ["html", "head", "body", "script", "div"];
-   tags.forEach(tag => {
-      const closingRegex = new RegExp(`</${tag}>`, 'g');
-      text = text.replace(closingRegex, '↓');
-      
-      const openingRegex = new RegExp(`<${tag}>`, 'g');
+   tags.forEach((tag) => {
+      const closingRegex = new RegExp(`</${tag}>`, "g");
+      text = text.replace(closingRegex, "↓");
+
+      const openingRegex = new RegExp(`<${tag}>`, "g");
       text = text.replace(openingRegex, `<${tag}>\n</${tag}>↑►`);
    });
-   
-   text = text.replace(/ +/g, ' ');
-   text = text.replace(/\n /g, '\n');
-   text = text.replace(/\n}/g, '↓');
-   text = text.replace(/{\n/g, '{\n}↑►\n');
-   text = text.replace(/\n↓/g, '↓');
-   text = text.replace(/↓💾/g, '💾');
-   text = text.replace(/↑►↓/g, '↑►');
-   
+
+   text = text.replace(/ +/g, " ");
+   text = text.replace(/\n /g, "\n");
+   text = text.replace(/\n}/g, "↓");
+   text = text.replace(/{\n/g, "{\n}↑►\n");
+   text = text.replace(/\n↓/g, "↓");
+   text = text.replace(/↓💾/g, "💾");
+   text = text.replace(/↑►↓/g, "↑►");
+
    return text;
 }
 
@@ -621,15 +670,15 @@ function adjustTimer(minutes) {
 
 function broadcastLessonData() {
    const blocks = lessonManager.getAllBlocks();
-   
+
    ipcRenderer.send("broadcast-lesson-data", {
       blocks: blocks,
-      executionSteps: executionSteps.map(step => ({
+      executionSteps: executionSteps.map((step) => ({
          type: step.type,
          blockIndex: step.blockIndex,
          globalIndex: step.globalIndex,
-         char: step.char
-      }))
+         char: step.char,
+      })),
    });
 }
 

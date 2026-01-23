@@ -17,8 +17,8 @@ class HotkeyManager {
    }
 
    registerSystemShortcuts() {
-      const shortcuts = this.settingsManager.get('hotkeys');
-      
+      const shortcuts = this.settingsManager.get("hotkeys");
+
       globalShortcut.register(shortcuts.toggleActive, () => {
          state.mainWindow.webContents.send("global-toggle-active");
       });
@@ -42,12 +42,12 @@ class HotkeyManager {
    }
 
    registerTypingHotkeys() {
-      const hotkeys = this.settingsManager.get('hotkeys.typing');
+      const hotkeys = this.settingsManager.get("hotkeys.typing");
       hotkeys.forEach((letter) => this.registerKey(letter));
    }
 
    unregisterTypingHotkeys() {
-      const hotkeys = this.settingsManager.get('hotkeys.typing');
+      const hotkeys = this.settingsManager.get("hotkeys.typing");
       hotkeys.forEach((letter) => globalShortcut.unregister(letter));
    }
 
