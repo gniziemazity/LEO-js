@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { TIMER_CONFIG } = require("../shared/constants");
+const { LOG_CONFIG } = require("../shared/constants");
 
 class LogManager {
    constructor() {
@@ -9,7 +9,7 @@ class LogManager {
       this.sessionStartTime = null;
       this.logFilePath = null;
       this.currentLessonPath = null;
-      this.saveInterval = TIMER_CONFIG.SAVE_INTERVAL;
+      this.saveInterval = LOG_CONFIG.SAVE_INTERVAL;
    }
 
    initialize(lessonFilePath = null) {
@@ -36,7 +36,7 @@ class LogManager {
       } else {
          // fallback to temp directory
          return {
-            logsDir: path.join(os.tmpdir(), 'logs'),
+            logsDir: path.join(os.tmpdir(), 'leo-logs'),
             basename: 'unnamed_lesson'
          };
       }

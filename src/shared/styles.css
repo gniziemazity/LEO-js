@@ -65,12 +65,6 @@ body {
    gap: 5px;
 }
 
-.timer-adjust-btn {
-   padding: 5px 10px;
-   line-height: 1;
-   font-weight: bold;
-}
-
 .timer-display {
    color: #ecf0f1;
    font-size: 16px;
@@ -223,17 +217,36 @@ body {
    background: #f1c40f;
    color: #000;
 }
+
+.add-btn.yellow:hover {
+   background: #f39c12;
+}
+
 .add-btn.white {
    background: #ecf0f1;
    color: #000;
 }
+
+.add-btn.white:hover {
+   background: #bdc3c7;
+}
+
 .remove-btn {
    background: #e74c3c;
    color: #fff;
 }
+
+.remove-btn:hover {
+   background: #c0392b;
+}
+
 .format-btn {
    background: #3498db;
    color: #fff;
+}
+
+.format-btn:hover {
+   background: #2980b9;
 }
 
 .key-btn {
@@ -245,9 +258,6 @@ body {
 
 .key-btn:hover {
    background: #95a5a6;
-}
-.format-btn:hover {
-   background: #2980b9;
 }
 
 .modal {

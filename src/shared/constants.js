@@ -1,17 +1,28 @@
 const { Key } = require("@computer-use/nut-js");
 
 const NUTJS_KEY_MAPPING = {
-   "↢": { key: Key.Backspace },
-   "►": { key: Key.End },
-   "💾": { modifier: Key.LeftControl, key: Key.S },
-   "↑": { key: Key.Up },
-   "↓": { key: Key.Down },
    "←": { key: Key.Left },
    "→": { key: Key.Right },
+   "↑": { key: Key.Up },
+   "↓": { key: Key.Down },
+   "◄": { key: Key.Home },
+   "►": { key: Key.End },
+   "▲": { key: Key.PageUp },
+   "▼": { key: Key.PageDown },
+
+   // editing
+   "↢": { key: Key.Backspace },
+   "‒": { key: Key.Tab },
+
+   // navigation with Shift
    "⇑": { shift: true, key: Key.Up },
    "⇓": { shift: true, key: Key.Down },
    "⇐": { shift: true, key: Key.Left },
    "⇒": { shift: true, key: Key.Right },
+
+   // advanced functions
+   "💾": { modifier: Key.LeftControl, key: Key.S },
+   "🔁": { modifier: Key.LeftAlt, key: Key.Tab },
    Ö: { modifier: Key.LeftAlt, key: Key.Tab },
    ö: { modifier: Key.LeftControl, key: Key.F5 },
    Ș: { modifier: Key.LeftControl, key: Key.Tab },
@@ -19,13 +30,9 @@ const NUTJS_KEY_MAPPING = {
    ω: { modifier: Key.LeftControl, key: Key.W },
    é: { key: Key.Escape },
    Ț: { modifier: Key.LeftControl, key: Key.F },
-   "▼": { key: Key.PageDown },
-   "▲": { key: Key.PageUp },
-   "◄": { key: Key.Home },
-   "‒": { key: Key.Tab },
 };
 
-const HOTKEYS = "abcdefghijklmnopqrstuvwxyz".split(""); // TO-DO: Interface for choosing hotkeys
+const HOTKEYS = "abcdefghijklmnopqrstuvwxyz".split("");
 
 const WINDOW_CONFIG = {
    width: 450,
@@ -44,7 +51,7 @@ const TIMER_CONFIG = {
 };
 
 const LOG_CONFIG = {
-   SAVE_INTERVAL: 10,
+   SAVE_INTERVAL: 10, // save log every N key presses
 };
 
 module.exports = {
