@@ -1,19 +1,19 @@
 # LEO: Auto-typing Tool for Teaching Coding
 
-**LEO** is an Electron-based auto-typing application designed for live coding demonstrations, programming tutorials, and technical presentations. It allows instructors to prepare lessons in advance and "type" them out smoothly during presentations, ensuring error-free demonstrations while maintaining the authentic feel of live coding.
+**LEO** is an Electron-based auto-typing application designed for live coding demonstrations, programming tutorials, and technical presentations. It allows instructors to prepare lessons in advance and "type" them out smoothly during presentations, ensuring stress-free demonstrations while maintaining the authentic feel of live coding.
 
-LEO was originally made to help in programming tutorials and was developed in [Python](https://github.com/gniziemazity/LEO). This Electron version adds new features useful for in-class demos.
+**LEO** was originally developed in [Python](https://github.com/gniziemazity/LEO) and created to help with making programming tutorials. This Electron version adds new features specifically tailored for in-class demos.
 
-To best understand how it works, please check the [Video Tutorial](https://youtu.be/hHYjqfI19r0) and read the [Paper](https://dl.acm.org/doi/10.1145/3769994.3770055).
+To best understand how **LEO** works, please check the [Video Tutorial](https://youtu.be/hHYjqfI19r0) and read the [Paper](https://dl.acm.org/doi/10.1145/3769994.3770055).
 
 ## ✨ Features
 
 ### 🎯 Core Features
-- **Auto-Typing Mode**: Press any letter key to advance through pre-written code character by character
-- **Comment Blocks**: Display explanatory text that appears all at once
-- **Code Blocks**: Character-by-character typing simulation for code snippets
+- **Auto-Typing Mode**: Press any hotkey to advance through pre-written code character by character
+- **Comment Blocks**: Brief explanations for the teacher
+- **Code Blocks**: Character-by-character auto-typed code snippets
 - **Visual Progress**: Real-time progress bar and cursor highlighting
-- **Timer Integration**: Built-in presentation timer with adjustable duration
+- **Timer Integration**: Presentation timer with adjustable duration
 - **Remote Viewing**: Mobile-friendly client viewer via WebSocket connection
 
 ### ⚙️ Advanced Features
@@ -23,7 +23,7 @@ To best understand how it works, please check the [Video Tutorial](https://youtu
 - **Special Characters**: Easy insertion of navigation keys (←, →, ↑, ↓) and shortcuts (💾, 🔁)
 - **Keystroke Logging**: Automatic session logging for performance analysis
 - **Customizable Styling**: Configure colors, fonts, and appearance
-- **Code Formatting**: Auto-format code for optimal typing flow
+- **Code Formatting**: Auto-format code (f)
 
 ## 📋 Prerequisites
 
@@ -65,7 +65,7 @@ npm start
    - `Ctrl+Right`: Step forward
    - Click on any character to jump to that position
 
-### 🔧 VS Code Setup (Optional)
+### VS Code Setup (Optional)
 
 If you don't have a preferred code editor, I recommend [VS Code](https://code.visualstudio.com)
 It comes with advanced features that help experienced coders. These (may) interfere with LEO lesson plans.
@@ -99,7 +99,6 @@ You can disable them by loading the VS Code settings provided in the settings fo
 | Save Plan | `Ctrl+S` |
 | Load Plan | `Ctrl+O` |
 | Settings | `Ctrl+,` |
-| Resize Window | `Ctrl+Shift+S` |
 
 ### Typing Hotkeys
 By default, **any letter key (a-z)** advances the cursor when in typing mode.
@@ -134,12 +133,12 @@ Lessons are stored as JSON files:
 
 ### Block Types
 
-- **`comment`**: Informative text for explanations (not auto-typed)
+- **`comment`**: Brief explanations for the teacher (not auto-typed)
 - **`code`**: Text typed character-by-character (for controlled pacing)
 
 ## ⚙️ Configuration
 
-Access settings via `Ctrl+,` or File → Settings.
+Access settings via File → Settings (`Ctrl+,`).
 
 ### Customizable Settings
 
