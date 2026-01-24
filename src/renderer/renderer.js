@@ -29,7 +29,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
    setupManagers();
    setupEventListeners();
-   setupKeyboardShortcuts();
    setupGlobalIpcListeners();
    setupSettingsListeners();
    populateSpecialKeys();
@@ -56,14 +55,6 @@ function setupEventListeners() {
       adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
    uiManager.getElement("timerMinusBtn").onclick = () =>
       adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
-}
-
-function setupKeyboardShortcuts() {
-   document.addEventListener("keydown", (e) => {
-      if (e.ctrlKey && e.shiftKey && e.code === "KeyS") {
-         ipcRenderer.send("resize-window");
-      }
-   });
 }
 
 function setupGlobalIpcListeners() {

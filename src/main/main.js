@@ -118,14 +118,6 @@ ipcMain.on("toggle-transparency", () => {
    state.mainWindow.setOpacity(current < 0.9 ? 1.0 : 0.5);
 });
 
-ipcMain.on("resize-window", () => {
-   if (!state.mainWindow) return;
-   const display = screen.getPrimaryDisplay();
-   const { width, height } = display.workAreaSize;
-   state.mainWindow.setSize(width - 100, height);
-   state.mainWindow.setPosition(50, 0);
-});
-
 ipcMain.handle("show-save-dialog", async () => {
    const result = await dialog.showSaveDialog(state.mainWindow, {
       filters: [{ name: "JSON", extensions: ["json"] }],

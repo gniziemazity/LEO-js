@@ -74,10 +74,6 @@ class KeyboardHandler {
          state.unlock();
       }
    }
-
-   delay(ms) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
-   }
 }
 
 module.exports = KeyboardHandler;

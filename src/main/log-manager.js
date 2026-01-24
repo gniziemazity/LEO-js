@@ -90,33 +90,6 @@ class LogManager {
          }
       });
    }
-
-   reset() {
-      this.keyPressLog = [];
-      this.sessionStartTime = null;
-      this.logFilePath = null;
-      this.currentLessonPath = null;
-   }
-
-   setSaveInterval(interval) {
-      this.saveInterval = interval;
-   }
-
-   getStats() {
-      if (!this.sessionStartTime) {
-         return null;
-      }
-
-      const sessionDuration = Date.now() - this.sessionStartTime;
-      const totalKeys = this.keyPressLog.length;
-      const keysPerMinute = totalKeys / (sessionDuration / 60000);
-
-      return {
-         sessionDuration,
-         totalKeys,
-         keysPerMinute: keysPerMinute.toFixed(2)
-      };
-   }
 }
 
 module.exports = LogManager;
