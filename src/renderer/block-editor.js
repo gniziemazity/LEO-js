@@ -8,6 +8,7 @@ class BlockEditor {
    addBlock(type) {
       const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
       this.lessonManager.addBlock(type, selectedBlockIndex);
+      this.uiManager.selectBlock(selectedBlockIndex + 1);
       this.lessonRenderer.render();
    }
 
@@ -17,6 +18,7 @@ class BlockEditor {
 
       this.lessonManager.removeBlock(selectedBlockIndex);
       this.uiManager.deselectBlock();
+      this.uiManager.selectBlock(selectedBlockIndex - 1);
       this.lessonRenderer.render();
    }
 
