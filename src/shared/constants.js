@@ -35,7 +35,7 @@ const NUTJS_KEY_MAPPING = {
 const HOTKEYS = "abcdefghijklmnopqrstuvwxyz".split("");
 
 const WINDOW_CONFIG = {
-   width: 450,
+   width: 650,
    height: 900,
    webPreferences: {
       nodeIntegration: true,
