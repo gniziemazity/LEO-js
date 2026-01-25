@@ -98,6 +98,9 @@ function setupGlobalIpcListeners() {
    ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
    ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
    ipcRenderer.on("open-settings", () => settingsUI.open());
+   ipcRenderer.on('client-jump-to', (event, stepIndex) => {
+      cursorManager.jumpTo(stepIndex);
+   });
 }
 
 function startTimer() {

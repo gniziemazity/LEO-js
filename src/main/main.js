@@ -12,6 +12,14 @@ const broadcastServer = new LEOBroadcastServer(8080);
 const hotkeyManager = new HotkeyManager(settingsManager);
 const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
+broadcastServer.on('client-toggle-active', () => {
+   state.mainWindow.webContents.send('global-toggle-active');
+});
+
+broadcastServer.on('client-jump-to', (stepIndex) => {
+   state.mainWindow.webContents.send('client-jump-to', stepIndex);
+});
+
 function createWindow() {
    const path = require("path");
 

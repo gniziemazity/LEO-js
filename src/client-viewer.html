@@ -40,6 +40,16 @@
             max-width: 65%;
          }
 
+         #toggleBtn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+         }
+
          #timerDisplay {
             font-size: 1.4rem !important;
             color: #ecf0f1 !important;
@@ -57,7 +67,7 @@
    <body>
       <div id="mobile-header">
          <div class="header-main-row">
-            <img src="icon.ico" alt="LEO Logo" style="height: 30px; width: 30px; margin-right: 10px;" />
+            <button id="toggleBtn" onclick="toggleActive()">START</button>
             <div id="lessonName">Not Connected</div>
             <div id="timerDisplay">--:--</div>
          </div>
@@ -71,12 +81,14 @@
       <script>
          let ws = null;
          let currentSettings = null;
+         let isActive = false;
 
          const elements = {
             lessonName: document.getElementById("lessonName"),
             timerDisplay: document.getElementById("timerDisplay"),
             progressBar: document.getElementById("progressBar"),
             lessonContainer: document.getElementById("lesson-container"),
+            toggleBtn: document.getElementById("toggleBtn"),
          };
 
          function connect() {
@@ -125,6 +137,9 @@
                case "settings":
                   applySettings(data);
                   break;
+               case "active":
+                  updateActiveState(data.isActive);
+                  break;
             }
          }
 
@@ -132,6 +147,9 @@
             updateProgress(state);
             updateTimer(state.timeRemaining);
             updateLessonName(state.lessonName);
+            if (state.isActive !== undefined) {
+               updateActiveState(state.isActive);
+            }
             if (state.settings) {
                applySettings(state.settings);
             }
@@ -143,18 +161,29 @@
             }
          }
 
+         function updateActiveState(active) {
+            isActive = active;
+            if (active) {
+               elements.toggleBtn.textContent = "STOP";
+               elements.toggleBtn.style.background = "#e74c3c";
+            } else {
+               elements.toggleBtn.textContent = "START";
+               elements.toggleBtn.style.background = "#27ae60";
+            }
+         }
+
          function applySettings(settings) {
             currentSettings = settings;
-            
+
             const styleId = "dynamic-settings-styles";
             let styleEl = document.getElementById(styleId);
-            
+
             if (!styleEl) {
                styleEl = document.createElement("style");
                styleEl.id = styleId;
                document.head.appendChild(styleEl);
             }
-            
+
             styleEl.textContent = `
                body {
                   font-size: ${settings.fontSize}px;
@@ -195,17 +224,21 @@
                if (block.type === "comment") {
                   blockDiv.innerText = block.text;
                   blockDiv.dataset.stepIndex = globalStepCounter++;
+
+                  blockDiv.onclick = handleBlockClick;
                } else if (block.type === "code") {
                   for (const char of block.text) {
-                     const span = document.createElement("span");
-                     span.className = "char";
-                     if (char === "\n") span.style.display = "block";
-                     else if (char === " ") span.innerHTML = "&nbsp;";
-                     else span.textContent = char;
+                     let el = document.createElement("span");
+                     el.className = "char";
+                     if (char === "\n") el = document.createElement("br");
+                     else if (char === " ") el.innerHTML = "&nbsp;";
+                     else el.textContent = char;
 
-                     span.dataset.stepIndex = globalStepCounter++;
-                     blockDiv.appendChild(span);
+                     el.dataset.stepIndex = globalStepCounter++;
+                     blockDiv.appendChild(el);
                   }
+
+                  blockDiv.onclick = handleCodeClick;
                }
                elements.lessonContainer.appendChild(blockDiv);
             });
@@ -245,6 +278,32 @@
          function updateLessonName(lessonName) {
             document.title = lessonName ? `LEO - ${lessonName}` : "LEO";
             elements.lessonName.textContent = lessonName;
+         }
+
+         function sendMessage(type, data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+               ws.send(JSON.stringify({ type, data }));
+            }
+         }
+
+         function handleCodeClick(e) {
+            const clickedSpan = e.target.closest(".char");
+            if (clickedSpan) {
+               const stepIndex = parseInt(clickedSpan.dataset.stepIndex);
+               sendMessage("jump-to", { stepIndex });
+            }
+         }
+
+         function handleBlockClick(e) {
+            const blockDiv = e.target.closest(".block");
+            if (blockDiv && blockDiv.dataset.stepIndex) {
+               const stepIndex = parseInt(blockDiv.dataset.stepIndex);
+               sendMessage("jump-to", { stepIndex });
+            }
+         }
+
+         function toggleActive() {
+            sendMessage("toggle-active", {});
          }
 
          setTimeout(connect, 500);

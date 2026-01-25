@@ -4,9 +4,11 @@ const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
 const qrcode = require("qrcode-terminal");
+const EventEmitter = require('events');
 
-class LEOBroadcastServer {
+class LEOBroadcastServer extends EventEmitter {
    constructor(port = 8080) {
+      super();
       this.port = port;
       this.app = express();
       this.server = http.createServer(this.app);
@@ -37,6 +39,15 @@ class LEOBroadcastServer {
       this.wss.on("connection", (ws) => {
          console.log("Client connected: " + ws._socket.remoteAddress);
          ws.send(JSON.stringify({ type: "state", data: this.currentState }));
+         
+         ws.on('message', (message) => {
+            try {
+               const data = JSON.parse(message);
+               this.handleClientMessage(data);
+            } catch (err) {
+               console.error('Error parsing client message:', err);
+            }
+         });
       });
 
       this.server.listen(this.port, () => {
@@ -137,6 +148,16 @@ class LEOBroadcastServer {
          type: "settings",
          data: settings,
       });
+   }
+
+   handleClientMessage(message) {
+      const { type, data } = message;
+      
+      if (type === 'toggle-active') {
+         this.emit('client-toggle-active');
+      } else if (type === 'jump-to') {
+         this.emit('client-jump-to', data.stepIndex);
+      }
    }
 }
 
