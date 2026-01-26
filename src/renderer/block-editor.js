@@ -35,30 +35,32 @@ class BlockEditor {
    }
 
    formatCodeForAutoTyping(code) {
-      let text = code;
+      let text = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-      text = text
-         .split("\n")
-         .map((line) => line.trimStart())
-         .join("\n");
-      text = text.replace(/→►/g, "");
+      text = text.replace(/↑►/g, "");
 
       const tags = ["html", "head", "body", "script", "div"];
-      tags.forEach((tag) => {
-         const closingRegex = new RegExp(`</${tag}>`, "g");
-         text = text.replace(closingRegex, "↢");
 
-         const openingRegex = new RegExp(`<${tag}>`, "g");
-         text = text.replace(openingRegex, `<${tag}>\n</${tag}>→►`);
+      tags.forEach((tag) => {
+         const closingTagRegex = new RegExp("</" + tag + ">", "g");
+         text = text.replace(closingTagRegex, "↓►");
+
+         const openingTagRegex = new RegExp("<" + tag + ">", "g");
+         text = text.replace(openingTagRegex, `<${tag}>\n</${tag}>↑►`);
       });
 
       text = text.replace(/ +/g, " ");
       text = text.replace(/\n /g, "\n");
-      text = text.replace(/\n}/g, "↢");
-      text = text.replace(/{\n/g, "{\n}→►\n");
-      text = text.replace(/\n↢/g, "↢");
-      text = text.replace(/↢💾/g, "💾");
-      text = text.replace(/→►↢/g, "→►");
+      text = text.replace(/\n}/g, "↓►");
+      text = text.replace(/{\n/g, "{\n}↑►\n");
+      text = text.replace(/\n↓►/g, "↓►");
+      text = text.replace(/↓💾/g, "💾");
+      text = text.replace(/↑►↓/g, "↑►");
+
+      text = text.replace(/<\/html>/g, "↢</html>");
+      text = text.replace(/<\/script>/g, "↢</script>");
+
+      text = text.replace(/(?:↓►)+$/, "");
 
       return text;
    }
