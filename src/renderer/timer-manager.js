@@ -14,6 +14,7 @@ class TimerManager {
          clearInterval(this.interval);
          this.interval = null;
       }
+      this.endTime = null;
       this.seconds = 0;
       this.isRunning = false;
    }
@@ -36,12 +37,14 @@ class TimerManager {
          this.stop();
       }
 
-      this.seconds = minutes * 60;
       this.isRunning = true;
+      const totalSeconds = minutes * 60;
+      this.endTime = Date.now() + totalSeconds * 1000;
 
-      this.interval = setInterval(() => {
-         this.seconds--;
-         
+      const tick = () => {
+         const remainingMs = this.endTime - Date.now();
+         this.seconds = Math.max(0, Math.floor(remainingMs / 1000));
+
          const timeString = this.getFormattedTime();
 
          if (this.onTickCallback) {
@@ -49,36 +52,33 @@ class TimerManager {
          }
 
          if (typeof require !== "undefined") {
-            const { ipcRenderer } = require("electron");
-            ipcRenderer.send("broadcast-timer", timeString);
+            require("electron").ipcRenderer.send("broadcast-timer", timeString);
          }
 
          if (this.seconds <= 0) {
             this.complete();
          }
-      }, 1000);
+      };
 
-      const initialTime = this.getFormattedTime();
-      if (this.onTickCallback) this.onTickCallback(initialTime);
-      if (typeof require !== "undefined") {
-         require("electron").ipcRenderer.send("broadcast-timer", initialTime);
-      }
+      tick();
+
+      this.interval = setInterval(tick, 1000);
    }
 
    adjust(minutes) {
-      this.seconds += minutes * 60;
+      if (!this.isRunning || !this.endTime) return;
+
+      this.endTime += minutes * 60 * 1000;
+
+      const remainingMs = this.endTime - Date.now();
+      this.seconds = Math.max(0, Math.floor(remainingMs / 1000));
 
       if (this.seconds <= 0) {
          this.complete();
       } else {
          const timeString = this.getFormattedTime();
-         if (this.onTickCallback) {
-            this.onTickCallback(timeString);
-         }
-         // so the phone updates when you click +/-
-         if (typeof require !== "undefined") {
-            require("electron").ipcRenderer.send("broadcast-timer", timeString);
-         }
+         if (this.onTickCallback) this.onTickCallback(timeString);
+         require("electron").ipcRenderer.send("broadcast-timer", timeString);
       }
    }
 

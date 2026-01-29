@@ -288,19 +288,19 @@
 
          function handleCodeClick(e) {
             if (!isActive) return;
-            const clickedSpan = e.target.closest('.char');
+            const clickedSpan = e.target.closest(".char");
             if (clickedSpan) {
                const stepIndex = parseInt(clickedSpan.dataset.stepIndex);
-               sendMessage('jump-to', { stepIndex });
+               sendMessage("jump-to", { stepIndex });
             }
          }
 
          function handleBlockClick(e) {
             if (!isActive) return;
-            const blockDiv = e.target.closest('.block');
+            const blockDiv = e.target.closest(".block");
             if (blockDiv && blockDiv.dataset.stepIndex) {
                const stepIndex = parseInt(blockDiv.dataset.stepIndex);
-               sendMessage('jump-to', { stepIndex });
+               sendMessage("jump-to", { stepIndex });
             }
          }
 
