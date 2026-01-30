@@ -16,6 +16,7 @@ class SpecialKeys {
          "▼": "Page Down",
          "💾": "Save File",
          "🔁": "Alt Tab",
+         "↩": "Enter",
          "↢": "Backspace",
          "‒": "Tab",
          "⇑": "Shift + Arrow Up",

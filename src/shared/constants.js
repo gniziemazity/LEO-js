@@ -23,6 +23,7 @@ const NUTJS_KEY_MAPPING = {
    // advanced functions
    "💾": { modifier: Key.LeftControl, key: Key.S },
    "🔁": { modifier: Key.LeftAlt, key: Key.Tab },
+   "↩": { key: Key.Enter },
    Ö: { modifier: Key.LeftAlt, key: Key.Tab },
    ö: { modifier: Key.LeftControl, key: Key.F5 },
    Ș: { modifier: Key.LeftControl, key: Key.Tab },
