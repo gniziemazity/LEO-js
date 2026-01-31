@@ -202,7 +202,7 @@ button:hover {
 .key-btn,
 .format-btn {
    width: 35px;
-   height: 35px;
+   height: 30px;
    border: none;
    cursor: pointer;
    font-weight: bold;

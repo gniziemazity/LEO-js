@@ -42,7 +42,7 @@ const WINDOW_CONFIG = {
       nodeIntegration: true,
       contextIsolation: false,
    },
-   alwaysOnTop: true,
+   alwaysOnTop: false,
    frame: true,
 };
 

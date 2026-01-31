@@ -83,6 +83,17 @@ function createApplicationMenu() {
             },
             { type: "separator" },
             {
+               label: "Exit",
+               accelerator: "CmdOrCtrl+Q",
+               click: () => {
+                  app.quit();
+               },
+            },
+         ],
+      },{
+         label: "Edit",
+         submenu: [
+             {
                label: "Settings",
                accelerator: "CmdOrCtrl+,",
                click: () => {
@@ -91,14 +102,14 @@ function createApplicationMenu() {
             },
             { type: "separator" },
             {
-               label: "Exit",
-               accelerator: "CmdOrCtrl+Q",
+               label: "Toggle Developer Tools",
+               accelerator: "CmdOrCtrl+I",
                click: () => {
-                  app.quit();
+                  state.mainWindow.webContents.toggleDevTools();
                },
             },
          ],
-      },
+      }
    ];
 
    const menu = Menu.buildFromTemplate(template);
