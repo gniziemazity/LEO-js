@@ -74,6 +74,16 @@ class CursorManager {
          this.currentStepIndex++;
       } else if (currentStep.type === "block") {
          currentStep.element.classList.add("consumed");
+         
+         // check if this is a question block (starts with ❓)
+         const blockText = currentStep.element.innerText.trim();
+         if (blockText.startsWith("❓")) {
+            const question = blockText.substring(1).trim();
+            this.logManager.addEntry({
+               question: question
+            });
+         }
+         
          this.currentStepIndex++;
          ipcRenderer.send("input-complete");
       }

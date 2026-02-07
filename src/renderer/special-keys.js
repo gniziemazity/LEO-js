@@ -19,12 +19,11 @@ class SpecialKeys {
          "↩": "Enter",
          "↢": "Backspace",
          "―": "Tab",
+         "🕛": "Pause (500ms)",
          "⇑": "Shift + Arrow Up",
          "⇓": "Shift + Arrow Down",
          "⇐": "Shift + Arrow Left",
          "⇒": "Shift + Arrow Right",
-         "🕛": "Pause (500ms)",
-         "🆕": "New File"
       };
 
       this.uiManager.populateSpecialKeys(keys, (char) => {
