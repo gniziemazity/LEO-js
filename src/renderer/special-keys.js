@@ -24,6 +24,7 @@ class SpecialKeys {
          "⇐": "Shift + Arrow Left",
          "⇒": "Shift + Arrow Right",
          "🕛": "Pause (500ms)",
+         "🆕": "New File"
       };
 
       this.uiManager.populateSpecialKeys(keys, (char) => {
