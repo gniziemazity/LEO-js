@@ -80,6 +80,11 @@ button:hover {
    transition: all 0.2s;
 }
 
+.dark-emoji {
+   filter: brightness(0.8) contrast(2)
+
+}
+
 .interaction-btn:active {
    transform: scale(0.95);
 }

@@ -1,159 +1,164 @@
 const { ipcRenderer } = require("electron");
 
 class SettingsUI {
-   constructor() {
-      this.currentSettings = null;
-      this.modal = null;
-   }
+	constructor() {
+		this.currentSettings = null;
+		this.modal = null;
+	}
 
-   initialize() {
-      this.modal = document.getElementById("settingsModal");
-      this.setupEventListeners();
-   }
+	initialize() {
+		this.modal = document.getElementById("settingsModal");
+		this.setupEventListeners();
+	}
 
-   setupEventListeners() {
-      const closeSettings = document.getElementById("closeSettings");
-      const saveSettings = document.getElementById("saveSettings");
-      const resetSettings = document.getElementById("resetSettings");
+	setupEventListeners() {
+		const closeSettings = document.getElementById("closeSettings");
+		const saveSettings = document.getElementById("saveSettings");
+		const resetSettings = document.getElementById("resetSettings");
 
-      if (closeSettings) closeSettings.onclick = () => this.close();
-      if (saveSettings) saveSettings.onclick = () => this.save();
+		if (closeSettings) closeSettings.onclick = () => this.close();
+		if (saveSettings) saveSettings.onclick = () => this.save();
 
-      if (resetSettings) {
-         resetSettings.onclick = async () => {
-            if (confirm("Reset all settings to default values?")) {
-               ipcRenderer.send("reset-settings");
-               ipcRenderer.once("settings-loaded", (event, settings) => {
-                  this.loadIntoModal(settings);
-               });
-            }
-         };
-      }
+		if (resetSettings) {
+			resetSettings.onclick = async () => {
+				if (confirm("Reset all settings to default values?")) {
+					ipcRenderer.send("reset-settings");
+					ipcRenderer.once("settings-loaded", (event, settings) => {
+						this.loadIntoModal(settings);
+					});
+				}
+			};
+		}
 
-      if (this.modal) {
-         this.modal.onclick = (e) => {
-            if (e.target === this.modal) this.close();
-         };
-      }
-      
-      const typingModeSelect = document.getElementById("typingMode");
-      if (typingModeSelect) {
-         typingModeSelect.addEventListener("change", (e) => {
-            this.updateSpeedVisibility(e.target.value);
-         });
-      }
-      
-      const speedSlider = document.getElementById("autoTypingSpeed");
-      if (speedSlider) {
-         speedSlider.addEventListener("input", (e) => {
-            document.getElementById("speedValue").textContent = e.target.value;
-         });
-      }
-   }
+		if (this.modal) {
+			this.modal.onclick = (e) => {
+				if (e.target === this.modal) this.close();
+			};
+		}
 
-   async open() {
-      const settings = await ipcRenderer.invoke("get-settings");
-      this.currentSettings = settings;
-      this.loadIntoModal(settings);
-      this.modal.classList.add("active");
-   }
+		const hotkeyModeSelect = document.getElementById("hotkeyMode");
+		if (hotkeyModeSelect) {
+			hotkeyModeSelect.addEventListener("change", (e) => {
+				this.updateSpeedVisibility(e.target.value);
+			});
+		}
 
-   close() {
-      this.modal.classList.remove("active");
-   }
+		const speedSlider = document.getElementById("autoTypingSpeed");
+		if (speedSlider) {
+			speedSlider.addEventListener("input", (e) => {
+				document.getElementById("speedValue").textContent = e.target.value;
+			});
+		}
+	}
 
-   loadIntoModal(settings) {
-      document.getElementById("typingHotkeys").value =
-         settings.hotkeys.typing.join("");
-      document.getElementById("toggleActiveKey").value =
-         settings.hotkeys.toggleActive;
-      document.getElementById("stepBackwardKey").value =
-         settings.hotkeys.stepBackward;
-      document.getElementById("stepForwardKey").value =
-         settings.hotkeys.stepForward;
-      document.getElementById("alwaysOnTopKey").value =
-         settings.hotkeys.alwaysOnTop;
-      document.getElementById("toggleTransparencyKey").value =
-         settings.hotkeys.toggleTransparency;
+	async open() {
+		const settings = await ipcRenderer.invoke("get-settings");
+		this.currentSettings = settings;
+		this.loadIntoModal(settings);
+		this.modal.classList.add("active");
+	}
 
-      document.getElementById("commentNormalColor").value =
-         settings.colors.commentNormal;
-      document.getElementById("commentActiveColor").value =
-         settings.colors.commentActive;
-      document.getElementById("commentSelectedColor").value =
-         settings.colors.commentSelected;
-      document.getElementById("commentActiveTextColor").value =
-         settings.colors.commentActiveText;
-      document.getElementById("cursorColor").value = settings.colors.cursor;
-      document.getElementById("selectedBorderColor").value =
-         settings.colors.selectedBorder;
-      document.getElementById("textColor").value = settings.colors.textColor;
+	close() {
+		this.modal.classList.remove("active");
+	}
 
-      document.getElementById("fontSize").value = settings.fontSize;
-      
-      document.getElementById("typingMode").value = settings.typingMode || "key-by-key";
-      document.getElementById("autoTypingSpeed").value = settings.autoTypingSpeed || 100;
-      document.getElementById("speedValue").textContent = settings.autoTypingSpeed || 100;
-      
-      this.updateSpeedVisibility(settings.typingMode || "key-by-key");
-   }
+	loadIntoModal(settings) {
+		document.getElementById("typingHotkeys").value =
+			settings.hotkeys.typing.join("");
+		document.getElementById("toggleActiveKey").value =
+			settings.hotkeys.toggleActive;
+		document.getElementById("stepBackwardKey").value =
+			settings.hotkeys.stepBackward;
+		document.getElementById("stepForwardKey").value =
+			settings.hotkeys.stepForward;
+		document.getElementById("alwaysOnTopKey").value =
+			settings.hotkeys.alwaysOnTop;
+		document.getElementById("toggleTransparencyKey").value =
+			settings.hotkeys.toggleTransparency;
 
-   updateSpeedVisibility(mode) {
-      const speedContainer = document.getElementById("speedSettingContainer");
-      if (speedContainer) {
-         speedContainer.style.display = mode === "auto-run" ? "block" : "none";
-      }
-   }
+		document.getElementById("commentNormalColor").value =
+			settings.colors.commentNormal;
+		document.getElementById("commentActiveColor").value =
+			settings.colors.commentActive;
+		document.getElementById("commentSelectedColor").value =
+			settings.colors.commentSelected;
+		document.getElementById("commentActiveTextColor").value =
+			settings.colors.commentActiveText;
+		document.getElementById("cursorColor").value = settings.colors.cursor;
+		document.getElementById("selectedBorderColor").value =
+			settings.colors.selectedBorder;
+		document.getElementById("textColor").value = settings.colors.textColor;
 
-   save() {
-      const typingHotkeysStr = document.getElementById("typingHotkeys").value;
-      const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
+		document.getElementById("fontSize").value = settings.fontSize;
 
-      const settings = {
-         hotkeys: {
-            typing: typingHotkeys,
-            toggleActive: document.getElementById("toggleActiveKey").value,
-            stepBackward: document.getElementById("stepBackwardKey").value,
-            stepForward: document.getElementById("stepForwardKey").value,
-            alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
-            toggleTransparency: document.getElementById("toggleTransparencyKey")
-               .value,
-         },
-         colors: {
-            commentNormal: document.getElementById("commentNormalColor").value,
-            commentActive: document.getElementById("commentActiveColor").value,
-            commentSelected: document.getElementById("commentSelectedColor")
-               .value,
-            commentActiveText: document.getElementById("commentActiveTextColor")
-               .value,
-            cursor: document.getElementById("cursorColor").value,
-            selectedBorder: document.getElementById("selectedBorderColor")
-               .value,
-            textColor: document.getElementById("textColor").value,
-         },
-         fontSize: parseInt(document.getElementById("fontSize").value),
-         typingMode: document.getElementById("typingMode").value,
-         autoTypingSpeed: parseInt(document.getElementById("autoTypingSpeed").value),
-      };
+		document.getElementById("hotkeyMode").value =
+			settings.hotkeyMode || "single-key";
+		document.getElementById("autoTypingSpeed").value =
+			settings.autoTypingSpeed;
+		document.getElementById("speedValue").textContent =
+			settings.autoTypingSpeed;
 
-      ipcRenderer.send("save-settings", settings);
-   }
+		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
+	}
 
-   applySettings(settings) {
-      if (!settings) return;
+	updateSpeedVisibility(mode) {
+		const speedContainer = document.getElementById("speedSettingContainer");
+		if (speedContainer) {
+			speedContainer.style.display = mode === "auto-run" ? "block" : "none";
+		}
+	}
 
-      this.currentSettings = settings;
+	save() {
+		const typingHotkeysStr = document.getElementById("typingHotkeys").value;
+		const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
 
-      const styleId = "dynamic-settings-styles";
-      let styleEl = document.getElementById(styleId);
+		const settings = {
+			hotkeys: {
+				typing: typingHotkeys,
+				toggleActive: document.getElementById("toggleActiveKey").value,
+				stepBackward: document.getElementById("stepBackwardKey").value,
+				stepForward: document.getElementById("stepForwardKey").value,
+				alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
+				toggleTransparency: document.getElementById("toggleTransparencyKey")
+					.value,
+			},
+			colors: {
+				commentNormal: document.getElementById("commentNormalColor").value,
+				commentActive: document.getElementById("commentActiveColor").value,
+				commentSelected: document.getElementById("commentSelectedColor")
+					.value,
+				commentActiveText: document.getElementById("commentActiveTextColor")
+					.value,
+				cursor: document.getElementById("cursorColor").value,
+				selectedBorder: document.getElementById("selectedBorderColor")
+					.value,
+				textColor: document.getElementById("textColor").value,
+			},
+			fontSize: parseInt(document.getElementById("fontSize").value),
+			hotkeyMode: document.getElementById("hotkeyMode").value,
+			autoTypingSpeed: parseInt(
+				document.getElementById("autoTypingSpeed").value,
+			),
+		};
 
-      if (!styleEl) {
-         styleEl = document.createElement("style");
-         styleEl.id = styleId;
-         document.head.appendChild(styleEl);
-      }
+		ipcRenderer.send("save-settings", settings);
+	}
 
-      styleEl.textContent = `
+	applySettings(settings) {
+		if (!settings) return;
+
+		this.currentSettings = settings;
+
+		const styleId = "dynamic-settings-styles";
+		let styleEl = document.getElementById(styleId);
+
+		if (!styleEl) {
+			styleEl = document.createElement("style");
+			styleEl.id = styleId;
+			document.head.appendChild(styleEl);
+		}
+
+		styleEl.textContent = `
          body {
             font-size: ${settings.fontSize}px;
          }
@@ -182,7 +187,7 @@ class SettingsUI {
          }
          
          #speedSettingContainer {
-            display: ${settings.typingMode === "auto-run" ? "block" : "none"};
+            display: ${settings.hotkeyMode === "auto-run" ? "block" : "none"};
          }
          
          .speed-labels {
@@ -193,7 +198,7 @@ class SettingsUI {
             margin-top: 5px;
          }
       `;
-   }
+	}
 }
 
 module.exports = SettingsUI;

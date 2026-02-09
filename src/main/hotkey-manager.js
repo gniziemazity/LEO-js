@@ -2,98 +2,98 @@ const { globalShortcut } = require("electron");
 const state = require("./state");
 
 class HotkeyManager {
-   constructor(settingsManager) {
-      this.settingsManager = settingsManager;
-   }
+	constructor(settingsManager) {
+		this.settingsManager = settingsManager;
+	}
 
-   handleKey(letter) {
-      if (!state.isActive) return;
-      if (state.isPaused) {
-         return;
-      }
-      
-      const typingMode = this.settingsManager.get("typingMode");
-      
-      if (typingMode === "auto-run") {
-         if (state.isAutoTyping) {
-            return;
-         }
-         
-         state.lock();
-         state.startAutoTyping();
-         this.registerEscapeForAutoTyping();
-         state.mainWindow.webContents.send("start-auto-typing");
-      } else {
-         if (state.isLocked) {
-            state.queueKey(letter);
-         } else {
-            state.lock();
-            state.mainWindow.webContents.send("advance-cursor");
-         }
-      }
-   }
+	handleKey(letter) {
+		if (!state.isActive) return;
+		if (state.isPaused) {
+			return;
+		}
 
-   registerSystemShortcuts() {
-      const shortcuts = this.settingsManager.get("hotkeys");
+		const hotkeyMode = this.settingsManager.get("hotkeyMode");
 
-      globalShortcut.register(shortcuts.toggleActive, () => {
-         state.mainWindow.webContents.send("global-toggle-active");
-      });
+		if (hotkeyMode === "auto-run") {
+			if (state.isAutoTyping) {
+				return;
+			}
 
-      globalShortcut.register(shortcuts.stepBackward, () => {
-         state.mainWindow.webContents.send("global-step-backward");
-      });
+			state.lock();
+			state.startAutoTyping();
+			this.registerEscapeForAutoTyping();
+			state.mainWindow.webContents.send("start-auto-typing");
+		} else {
+			if (state.isLocked) {
+				state.queueKey(letter);
+			} else {
+				state.lock();
+				state.mainWindow.webContents.send("advance-cursor");
+			}
+		}
+	}
 
-      globalShortcut.register(shortcuts.stepForward, () => {
-         state.mainWindow.webContents.send("global-step-forward");
-      });
+	registerSystemShortcuts() {
+		const shortcuts = this.settingsManager.get("hotkeys");
 
-      globalShortcut.register(shortcuts.alwaysOnTop, () => {
-         const isTop = state.mainWindow.isAlwaysOnTop();
-         state.mainWindow.setAlwaysOnTop(!isTop);
-      });
+		globalShortcut.register(shortcuts.toggleActive, () => {
+			state.mainWindow.webContents.send("global-toggle-active");
+		});
 
-      globalShortcut.register(shortcuts.toggleTransparency, () => {
-         state.mainWindow.webContents.send("toggle-transparency-event");
-      });
-   }
+		globalShortcut.register(shortcuts.stepBackward, () => {
+			state.mainWindow.webContents.send("global-step-backward");
+		});
 
-   registerTypingHotkeys() {
-      const hotkeys = this.settingsManager.get("hotkeys.typing");
-      hotkeys.forEach((letter) => this.registerKey(letter));
-   }
+		globalShortcut.register(shortcuts.stepForward, () => {
+			state.mainWindow.webContents.send("global-step-forward");
+		});
 
-   unregisterTypingHotkeys() {
-      const hotkeys = this.settingsManager.get("hotkeys.typing");
-      hotkeys.forEach((letter) => globalShortcut.unregister(letter));
-   }
+		globalShortcut.register(shortcuts.alwaysOnTop, () => {
+			const isTop = state.mainWindow.isAlwaysOnTop();
+			state.mainWindow.setAlwaysOnTop(!isTop);
+		});
 
-   registerKey(letter) {
-      if (globalShortcut.isRegistered(letter)) return;
-      globalShortcut.register(letter, () => this.handleKey(letter));
-   }
+		globalShortcut.register(shortcuts.toggleTransparency, () => {
+			state.mainWindow.webContents.send("toggle-transparency-event");
+		});
+	}
 
-   registerEscapeForAutoTyping() {
-      if (!globalShortcut.isRegistered("Escape")) {
-         globalShortcut.register("Escape", () => {
-            state.mainWindow.webContents.send("stop-auto-typing");
-         });
-      }
-   }
+	registerTypingHotkeys() {
+		const hotkeys = this.settingsManager.get("hotkeys.typing");
+		hotkeys.forEach((letter) => this.registerKey(letter));
+	}
 
-   unregisterEscape() {
-      if (globalShortcut.isRegistered("Escape")) {
-         globalShortcut.unregister("Escape");
-      }
-   }
+	unregisterTypingHotkeys() {
+		const hotkeys = this.settingsManager.get("hotkeys.typing");
+		hotkeys.forEach((letter) => globalShortcut.unregister(letter));
+	}
 
-   unregisterKey(letter) {
-      globalShortcut.unregister(letter);
-   }
+	registerKey(letter) {
+		if (globalShortcut.isRegistered(letter)) return;
+		globalShortcut.register(letter, () => this.handleKey(letter));
+	}
 
-   unregisterAll() {
-      globalShortcut.unregisterAll();
-   }
+	registerEscapeForAutoTyping() {
+		if (!globalShortcut.isRegistered("Escape")) {
+			globalShortcut.register("Escape", () => {
+				state.mainWindow.webContents.send("stop-auto-typing");
+			});
+		}
+	}
+
+	unregisterEscape() {
+		if (globalShortcut.isRegistered("Escape")) {
+			globalShortcut.unregister("Escape");
+		}
+	}
+
+	unregisterKey(letter) {
+		globalShortcut.unregister(letter);
+	}
+
+	unregisterAll() {
+		globalShortcut.unregisterAll();
+	}
 }
 
 module.exports = HotkeyManager;

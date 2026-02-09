@@ -18,118 +18,118 @@ const lessonManager = new LessonManager();
 const uiManager = new UIManager();
 const cursorManager = new CursorManager(uiManager, logManager);
 const lessonRenderer = new LessonRenderer(
-   lessonManager,
-   uiManager,
-   cursorManager,
+	lessonManager,
+	uiManager,
+	cursorManager,
 );
 const blockEditor = new BlockEditor(lessonManager, uiManager, lessonRenderer);
 const fileOperations = new FileOperations(
-   lessonManager,
-   logManager,
-   cursorManager,
-   lessonRenderer,
+	lessonManager,
+	logManager,
+	cursorManager,
+	lessonRenderer,
 );
 const settingsUI = new SettingsUI();
 const specialKeys = new SpecialKeys(uiManager, blockEditor);
 const typingController = new TypingController(
-   uiManager,
-   lessonRenderer,
-   cursorManager,
+	uiManager,
+	lessonRenderer,
+	cursorManager,
 );
 
 window.addEventListener("DOMContentLoaded", () => {
-   uiManager.cacheElements();
-   settingsUI.initialize();
-   specialKeys.initialize();
+	uiManager.cacheElements();
+	settingsUI.initialize();
+	specialKeys.initialize();
 
-   fileOperations.loadLastLesson();
+	fileOperations.loadLastLesson();
 
-   setupManagers();
-   setupEventListeners();
-   setupGlobalIpcListeners();
+	setupManagers();
+	setupEventListeners();
+	setupGlobalIpcListeners();
 });
 
 function setupManagers() {
-   timerManager.onTick((formattedTime) => {
-      uiManager.updateTimerDisplay(formattedTime);
-   });
+	timerManager.onTick((formattedTime) => {
+		uiManager.updateTimerDisplay(formattedTime);
+	});
 
-   timerManager.onComplete(() => {
-      uiManager.hideTimerControls();
-   });
+	timerManager.onComplete(() => {
+		uiManager.hideTimerControls();
+	});
 }
 
 function setupEventListeners() {
-   uiManager.getElement("toggleBtn").onclick = () =>
-      typingController.toggleActive();
-   uiManager.getElement("addCommentBtn").onclick = () =>
-      blockEditor.addBlock("comment");
-   uiManager.getElement("addCodeBtn").onclick = () =>
-      blockEditor.addBlock("code");
-   uiManager.getElement("removeBlockBtn").onclick = () =>
-      blockEditor.removeBlock();
-   uiManager.getElement("formatBlockBtn").onclick = () =>
-      blockEditor.formatBlock();
-   uiManager.getElement("timerStartBtn").onclick = () => startTimer();
-   uiManager.getElement("timerPlusBtn").onclick = () =>
-      adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
-   uiManager.getElement("timerMinusBtn").onclick = () =>
-      adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
-   uiManager.getElement("askQuestionBtn").onclick = () =>
-      logInteraction("ask-question");
-   uiManager.getElement("helpBtn").onclick = () =>
-      logInteraction("help");
+	uiManager.getElement("toggleBtn").onclick = () =>
+		typingController.toggleActive();
+	uiManager.getElement("addCommentBtn").onclick = () =>
+		blockEditor.addBlock("comment");
+	uiManager.getElement("addCodeBtn").onclick = () =>
+		blockEditor.addBlock("code");
+	uiManager.getElement("removeBlockBtn").onclick = () =>
+		blockEditor.removeBlock();
+	uiManager.getElement("formatBlockBtn").onclick = () =>
+		blockEditor.formatBlock();
+	uiManager.getElement("timerStartBtn").onclick = () => startTimer();
+	uiManager.getElement("timerPlusBtn").onclick = () =>
+		adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
+	uiManager.getElement("timerMinusBtn").onclick = () =>
+		adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
+	uiManager.getElement("askQuestionBtn").onclick = () =>
+		logInteraction("student-question");
+	uiManager.getElement("helpBtn").onclick = () =>
+		logInteraction("providing-help");
 }
 
 function setupGlobalIpcListeners() {
-   ipcRenderer.on("global-toggle-active", () =>
-      typingController.toggleActive(),
-   );
-   ipcRenderer.on("global-step-backward", () => cursorManager.stepBackward());
-   ipcRenderer.on("global-step-forward", () => cursorManager.stepForward());
-   ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
-   ipcRenderer.on("toggle-transparency-event", () => {
-      ipcRenderer.send("toggle-transparency");
-   });
-   ipcRenderer.on("settings-loaded", (event, settings) => {
-      settingsUI.applySettings(settings);
-   });
-   ipcRenderer.on("settings-saved", (event, settings) => {
-      settingsUI.applySettings(settings);
-      settingsUI.close();
-   });
-   ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
-   ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
-   ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
-   ipcRenderer.on("open-settings", () => settingsUI.open());
-   ipcRenderer.on('client-jump-to', (event, stepIndex) => {
-      cursorManager.jumpTo(stepIndex);
-   });
-   ipcRenderer.on('log-interaction', (event, interactionType) => {
-      logInteraction(interactionType);
-   });
-   ipcRenderer.on("start-auto-typing", () => {
-      cursorManager.startAutoTyping();
-   });
-   ipcRenderer.on("stop-auto-typing", () => {
-      cursorManager.stopAutoTyping();
-   });
+	ipcRenderer.on("global-toggle-active", () =>
+		typingController.toggleActive(),
+	);
+	ipcRenderer.on("global-step-backward", () => cursorManager.stepBackward());
+	ipcRenderer.on("global-step-forward", () => cursorManager.stepForward());
+	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
+	ipcRenderer.on("toggle-transparency-event", () => {
+		ipcRenderer.send("toggle-transparency");
+	});
+	ipcRenderer.on("settings-loaded", (event, settings) => {
+		settingsUI.applySettings(settings);
+	});
+	ipcRenderer.on("settings-saved", (event, settings) => {
+		settingsUI.applySettings(settings);
+		settingsUI.close();
+	});
+	ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
+	ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
+	ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
+	ipcRenderer.on("open-settings", () => settingsUI.open());
+	ipcRenderer.on("client-jump-to", (event, stepIndex) => {
+		cursorManager.jumpTo(stepIndex);
+	});
+	ipcRenderer.on("log-interaction", (event, interactionType) => {
+		logInteraction(interactionType);
+	});
+	ipcRenderer.on("start-auto-typing", () => {
+		cursorManager.startAutoTyping();
+	});
+	ipcRenderer.on("stop-auto-typing", () => {
+		cursorManager.stopAutoTyping();
+	});
 }
 
 function logInteraction(interactionType) {
-   logManager.addInteraction(interactionType);
+	logManager.addInteraction(interactionType);
 }
 
 function startTimer() {
-   timerManager.start(TIMER_CONFIG.DEFAULT_MINUTES);
-   uiManager.showTimerControls();
+	timerManager.start(TIMER_CONFIG.DEFAULT_MINUTES);
+	uiManager.showTimerControls();
 }
 
 function adjustTimer(minutes) {
-   timerManager.adjust(minutes);
+	timerManager.adjust(minutes);
 }
 
 window.addEventListener("beforeunload", () => {
-   logManager.save();
-   timerManager.reset();
+	logManager.save();
+	timerManager.reset();
 });
