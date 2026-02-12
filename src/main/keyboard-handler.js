@@ -49,6 +49,11 @@ class KeyboardHandler {
 		this.hotkeyManager = hotkeyManager;
 		this.settingsManager = settingsManager;
 		this.isProcessing = false;
+		
+		// Debounce tracking to prevent double letters
+		this.lastTypedChar = null;
+		this.lastTypedTime = 0;
+		this.debounceMs = 30; // Ignore same char within 30ms (key bounce)
 
 		// Set delay based on platform
 		this.updatePlatformSettings();
@@ -70,12 +75,23 @@ class KeyboardHandler {
 	}
 
 	async typeCharacter(char) {
-		if (this.isProcessing) {
-			console.log("Already processing, skipping:", char);
+		if (state.isPaused) {
 			return;
 		}
 
-		if (state.isPaused) {
+		// Debounce: ignore same character if it comes in too fast (key bounce)
+		const now = Date.now();
+		if (char === this.lastTypedChar && (now - this.lastTypedTime) < this.debounceMs) {
+			console.log("Debounced duplicate char:", char);
+			return;
+		}
+		this.lastTypedChar = char;
+		this.lastTypedTime = now;
+
+		// Queue the character if we're already processing
+		if (this.isProcessing) {
+			console.log("Queueing character:", char);
+			state.queueKey(char);
 			return;
 		}
 
@@ -104,11 +120,12 @@ class KeyboardHandler {
 				this.hotkeyManager.registerKey(charLower);
 			}
 
-			this.processQueue();
-
 			if (state.mainWindow) {
 				state.mainWindow.webContents.send("character-typed");
 			}
+
+			// Process any queued characters
+			this.processQueue();
 		} catch (error) {
 			console.error("Error typing character:", error);
 
@@ -119,6 +136,12 @@ class KeyboardHandler {
 			state.clearQueue();
 		} finally {
 			this.isProcessing = false;
+			
+			// Check if more characters were queued while we were finishing up
+			if (state.hasQueuedKeys()) {
+				const nextChar = state.dequeueKey();
+				this.typeCharacter(nextChar);
+			}
 		}
 	}
 
