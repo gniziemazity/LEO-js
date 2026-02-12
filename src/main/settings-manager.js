@@ -2,16 +2,14 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-// Auto-detect platform
-const detectedPlatform = process.platform === "darwin" ? "macos" : "windows";
-
 class SettingsManager {
 	constructor() {
 		this.settingsPath = path.join(os.homedir(), ".leo-settings.json");
 		this.defaultSettings = {
 			// Platform setting: "windows" or "macos"
-			// Defaults to auto-detected platform
-			platform: detectedPlatform,
+			// Defaults to Windows for backward compatibility
+			// macOS users should manually select "macos" in Settings
+			platform: "windows",
 			hotkeys: {
 				typing: "abcdefghijklmnopqrstuvwxyz".split(""),
 				toggleActive: "CommandOrControl+P",
@@ -41,14 +39,7 @@ class SettingsManager {
 		try {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
-				const loaded = JSON.parse(data);
-				// Merge with defaults, but keep platform auto-detection if not set
-				const merged = { ...this.defaultSettings, ...loaded };
-				// If platform wasn't saved before, use auto-detected
-				if (!loaded.platform) {
-					merged.platform = detectedPlatform;
-				}
-				return merged;
+				return { ...this.defaultSettings, ...JSON.parse(data) };
 			}
 		} catch (error) {
 			console.error("Failed to load settings:", error);
