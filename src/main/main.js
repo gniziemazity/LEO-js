@@ -253,6 +253,9 @@ ipcMain.on("save-settings", (event, settings) => {
 		hotkeyManager.registerTypingHotkeys();
 	}
 
+	// update keyboard handler platform settings
+	keyboardHandler.updatePlatformSettings();
+
 	// broadcast settings to clients
 	broadcastServer.updateSettings(settings);
 
@@ -268,6 +271,9 @@ ipcMain.on("reset-settings", (event) => {
 	if (state.isActive) {
 		hotkeyManager.registerTypingHotkeys();
 	}
+
+	// update keyboard handler platform settings
+	keyboardHandler.updatePlatformSettings();
 
 	event.reply("settings-loaded", settingsManager.getAll());
 });
