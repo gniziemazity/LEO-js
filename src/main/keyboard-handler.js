@@ -50,8 +50,23 @@ class KeyboardHandler {
 		this.settingsManager = settingsManager;
 		this.isProcessing = false;
 
-		// Increased delay for macOS compatibility
-		keyboard.config.autoDelayMs = 50;
+		// Set delay based on platform
+		this.updatePlatformSettings();
+	}
+
+	updatePlatformSettings() {
+		const platform = this.settingsManager.get("platform") || "windows";
+		if (platform === "macos") {
+			// macOS needs more delay for reliable typing
+			keyboard.config.autoDelayMs = 50;
+		} else {
+			// Windows works fine with no delay
+			keyboard.config.autoDelayMs = 0;
+		}
+	}
+
+	isMacOS() {
+		return this.settingsManager.get("platform") === "macos";
 	}
 
 	async typeCharacter(char) {
@@ -74,15 +89,18 @@ class KeyboardHandler {
 			if (isInterceptorKey) {
 				this.hotkeyManager.unregisterKey(charLower);
 				// macOS fix: wait for unregister to take effect
-				await sleep(20);
+				if (this.isMacOS()) {
+					await sleep(20);
+				}
 			}
 
-			console.log(`[KeyboardHandler] Typing char: "${char}" (isInterceptorKey: ${isInterceptorKey})`);
 			await this.typeWithNutJs(char);
 
 			if (isInterceptorKey) {
 				// macOS fix: wait before re-registering
-				await sleep(20);
+				if (this.isMacOS()) {
+					await sleep(20);
+				}
 				this.hotkeyManager.registerKey(charLower);
 			}
 
@@ -122,15 +140,18 @@ class KeyboardHandler {
 					if (isInterceptorKey) {
 						this.hotkeyManager.unregisterKey(charLower);
 						// macOS fix: wait for unregister to take effect
-						await sleep(20);
+						if (this.isMacOS()) {
+							await sleep(20);
+						}
 					}
 
-					console.log(`[AutoType] Typing char: "${char}"`);
 					await this.typeWithNutJs(char);
 
 					if (isInterceptorKey) {
 						// macOS fix: wait before re-registering
-						await sleep(20);
+						if (this.isMacOS()) {
+							await sleep(20);
+						}
 						this.hotkeyManager.registerKey(charLower);
 					}
 
@@ -188,13 +209,24 @@ class KeyboardHandler {
 			return;
 		}
 
+		// Platform-specific typing
+		if (this.isMacOS()) {
+			// macOS: Use Key constants instead of string characters
+			// (keyboard.type("string") is unreliable on macOS)
+			await this.typeWithKeyConstants(char);
+		} else {
+			// Windows: Use string typing (works reliably)
+			await keyboard.type(char);
+		}
+	}
+
+	async typeWithKeyConstants(char) {
 		// macOS fix: Use Key constants instead of string characters
 		const charLower = char.toLowerCase();
+		
 		if (CHAR_TO_KEY[charLower]) {
 			const keyToType = CHAR_TO_KEY[charLower];
 			const isUpperCase = char !== charLower && /[A-Z]/.test(char);
-			
-			console.log(`[typeWithNutJs] char="${char}" keyToType=${keyToType} isUpperCase=${isUpperCase}`);
 			
 			if (isUpperCase) {
 				await keyboard.type(Key.LeftShift, keyToType);
@@ -206,13 +238,12 @@ class KeyboardHandler {
 
 		// Check if it's a shifted character (like ! @ # etc)
 		if (SHIFTED_CHARS[char]) {
-			console.log(`[typeWithNutJs] shifted char="${char}"`);
 			await keyboard.type(Key.LeftShift, SHIFTED_CHARS[char]);
 			return;
 		}
 
-		// Fallback: try the original string method (may not work on macOS)
-		console.log(`[typeWithNutJs] FALLBACK for char="${char}" code=${char.charCodeAt(0)}`);
+		// Fallback: try the original string method
+		console.log(`[typeWithKeyConstants] Fallback for char="${char}" code=${char.charCodeAt(0)}`);
 		await keyboard.type(char);
 	}
 
