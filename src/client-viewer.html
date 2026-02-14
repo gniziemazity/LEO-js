@@ -97,7 +97,7 @@
                <button class="interaction-btn" onclick="logInteraction('student-question')" title="Student Question"><span class="dark-emoji">❓</span></button>
                <button class="interaction-btn" onclick="logInteraction('providing-help')" title="Providing Help"><span class="dark-emoji">🤝</span></button>
             </div>
-            <div id="timerDisplay">--:--:--</div>
+            <div id="timerDisplay"></div>
          </div>
          <div class="progress-bar" id="progressBar"></div>
       </div>
@@ -226,6 +226,10 @@
                   background: ${settings.colors.commentNormal};
                }
                
+               .comment-block.question-comment {
+                  background: ${settings.colors.questionCommentColor};
+               }
+               
                .comment-block.active-comment {
                   background: ${settings.colors.commentActive};
                   color: ${settings.colors.commentActiveText};
@@ -251,6 +255,11 @@
 
                if (block.type === "comment") {
                   blockDiv.innerText = block.text;
+                  
+                  if (block.text.trim().startsWith("❓")) {
+                     blockDiv.classList.add("question-comment");
+                  }
+                  
                   blockDiv.dataset.stepIndex = globalStepCounter++;
 
                   blockDiv.onclick = handleBlockClick;
@@ -303,7 +312,7 @@
          }
 
          function updateTimer(timeRemaining) {
-            elements.timerDisplay.textContent = timeRemaining || "--:--:--";
+            elements.timerDisplay.textContent = timeRemaining || "";
          }
 
          function updateLessonName(lessonName) {

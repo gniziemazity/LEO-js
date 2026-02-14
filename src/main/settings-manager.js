@@ -22,6 +22,7 @@ class SettingsManager {
 				cursor: "#e74c3c",
 				selectedBorder: "#3498db",
 				textColor: "#333333",
+				questionCommentColor: "#ffcdd2",
 			},
 			fontSize: 14,
 			hotkeyMode: "single-key", // "single-key" or "auto-run"

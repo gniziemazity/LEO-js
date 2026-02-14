@@ -121,6 +121,11 @@ button:hover {
    border-bottom: 1px solid #ddd;
    position: relative;
    border-left: 5px solid transparent;
+   outline: none;
+}
+
+.block[contenteditable="true"]:focus {
+   outline: none;
 }
 
 .block.selected {
@@ -135,6 +140,10 @@ button:hover {
    font-style: italic;
    white-space: pre-wrap;
    transition: all 0.2s ease;
+}
+
+.comment-block.question-comment {
+   background: #ffcdd2; /* Light red background for question comments */
 }
 
 .comment-block.active-comment {

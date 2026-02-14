@@ -78,6 +78,8 @@ class SettingsUI {
 
 		document.getElementById("commentNormalColor").value =
 			settings.colors.commentNormal;
+		document.getElementById("questionCommentColor").value =
+			settings.colors.questionCommentColor;
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -124,6 +126,7 @@ class SettingsUI {
 			},
 			colors: {
 				commentNormal: document.getElementById("commentNormalColor").value,
+				questionCommentColor: document.getElementById("questionCommentColor").value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,
@@ -170,6 +173,10 @@ class SettingsUI {
          
          .comment-block {
             background: ${settings.colors.commentNormal};
+         }
+         
+         .comment-block.question-comment {
+            background: ${settings.colors.questionCommentColor};
          }
          
          .comment-block.active-comment {
