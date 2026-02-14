@@ -99,6 +99,21 @@ function createApplicationMenu() {
 			label: "Edit",
 			submenu: [
 				{
+					label: "Undo",
+					accelerator: "CmdOrCtrl+Z",
+					click: () => {
+						state.mainWindow.webContents.send("undo");
+					},
+				},
+				{
+					label: "Redo",
+					accelerator: "CmdOrCtrl+Shift+Z",
+					click: () => {
+						state.mainWindow.webContents.send("redo");
+					},
+				},
+				{ type: "separator" },
+				{
 					label: "Settings",
 					accelerator: "CmdOrCtrl+,",
 					click: () => {

@@ -1,10 +1,41 @@
 const { ipcRenderer } = require("electron");
 
 class LessonRenderer {
-	constructor(lessonManager, uiManager, cursorManager) {
+	constructor(lessonManager, uiManager, cursorManager, undoManager = null) {
 		this.lessonManager = lessonManager;
 		this.uiManager = uiManager;
 		this.cursorManager = cursorManager;
+		this.undoManager = undoManager;
+		this.editDebounceTimer = null;
+		this.lastEditedBlockIndex = null;
+		this.lastEditedContent = null;
+	}
+
+	setUndoManager(undoManager) {
+		this.undoManager = undoManager;
+	}
+
+	saveEditState(blockIndex, content) {
+		if (!this.undoManager) return;
+
+		if (this.lastEditedBlockIndex !== blockIndex) {
+			if (this.editDebounceTimer) {
+				clearTimeout(this.editDebounceTimer);
+			}
+			this.undoManager.saveState("edit-block");
+			this.lastEditedBlockIndex = blockIndex;
+			this.lastEditedContent = content;
+			return;
+		}
+
+		if (this.editDebounceTimer) {
+			clearTimeout(this.editDebounceTimer);
+		}
+
+		this.editDebounceTimer = setTimeout(() => {
+			this.undoManager.saveState("edit-block");
+			this.lastEditedContent = content;
+		}, 1000);
 	}
 
 	render() {
@@ -69,6 +100,7 @@ class LessonRenderer {
 		}
 
 		blockDiv.oninput = () => {
+			this.saveEditState(blockIdx, blockDiv.innerText);
 			this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
 		};
 
@@ -110,6 +142,7 @@ class LessonRenderer {
 			blockDiv.contentEditable = "true";
 			blockDiv.innerText = block.text;
 			blockDiv.oninput = () => {
+				this.saveEditState(blockIdx, blockDiv.innerText);
 				this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
 			};
 
@@ -215,6 +248,7 @@ class LessonRenderer {
 					blocks[blockIdx].contentEditable = "true";
 					blocks[blockIdx].innerText = block.text;
 					blocks[blockIdx].oninput = () => {
+						this.saveEditState(blockIdx, blocks[blockIdx].innerText);
 						this.lessonManager.updateBlock(
 							blockIdx,
 							blocks[blockIdx].innerText,

@@ -6,6 +6,7 @@ const UIManager = require("./renderer/ui-manager");
 const CursorManager = require("./renderer/cursor-manager");
 const LessonRenderer = require("./renderer/lesson-renderer");
 const BlockEditor = require("./renderer/block-editor");
+const UndoManager = require("./renderer/undo-manager");
 const FileOperations = require("./renderer/file-operations");
 const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
@@ -15,19 +16,27 @@ const { TIMER_CONFIG } = require("./shared/constants");
 const logManager = new LogManager();
 const timerManager = new TimerManager();
 const lessonManager = new LessonManager();
+const undoManager = new UndoManager(lessonManager);
 const uiManager = new UIManager();
 const cursorManager = new CursorManager(uiManager, logManager);
 const lessonRenderer = new LessonRenderer(
 	lessonManager,
 	uiManager,
 	cursorManager,
+	undoManager,
 );
-const blockEditor = new BlockEditor(lessonManager, uiManager, lessonRenderer);
+const blockEditor = new BlockEditor(
+	lessonManager,
+	uiManager,
+	lessonRenderer,
+	undoManager,
+);
 const fileOperations = new FileOperations(
 	lessonManager,
 	logManager,
 	cursorManager,
 	lessonRenderer,
+	undoManager,
 );
 const settingsUI = new SettingsUI();
 const specialKeys = new SpecialKeys(uiManager, blockEditor);
@@ -47,6 +56,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	setupManagers();
 	setupEventListeners();
 	setupGlobalIpcListeners();
+	setupUndoRedoShortcuts();
 });
 
 function setupManagers() {
@@ -114,6 +124,22 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("stop-auto-typing", () => {
 		cursorManager.stopAutoTyping();
 	});
+	ipcRenderer.on("undo", () => {
+		if (!uiManager.isActive()) {
+			const success = undoManager.undo();
+			if (success) {
+				lessonRenderer.render();
+			}
+		}
+	});
+	ipcRenderer.on("redo", () => {
+		if (!uiManager.isActive()) {
+			const success = undoManager.redo();
+			if (success) {
+				lessonRenderer.render();
+			}
+		}
+	});
 }
 
 function logInteraction(interactionType) {
@@ -127,6 +153,45 @@ function startTimer() {
 
 function adjustTimer(minutes) {
 	timerManager.adjust(minutes);
+}
+
+function setupUndoRedoShortcuts() {
+	document.addEventListener("keydown", (e) => {
+		if (uiManager.isActive()) {
+			return;
+		}
+
+		const activeElement = document.activeElement;
+		const isEditingBlock =
+			activeElement &&
+			activeElement.contentEditable === "true" &&
+			activeElement.classList.contains("block");
+
+		if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+			if (isEditingBlock) {
+				return;
+			}
+			e.preventDefault();
+			const success = undoManager.undo();
+			if (success) {
+				lessonRenderer.render();
+				console.log("Undo performed");
+			}
+		} else if (
+			((e.ctrlKey || e.metaKey) && e.key === "y") ||
+			((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+		) {
+			if (isEditingBlock) {
+				return;
+			}
+			e.preventDefault();
+			const success = undoManager.redo();
+			if (success) {
+				lessonRenderer.render();
+				console.log("Redo performed");
+			}
+		}
+	});
 }
 
 window.addEventListener("beforeunload", () => {

@@ -2,99 +2,116 @@ const { ipcRenderer } = require("electron");
 const path = require("path");
 
 class FileOperations {
-   constructor(lessonManager, logManager, cursorManager, lessonRenderer) {
-      this.lessonManager = lessonManager;
-      this.logManager = logManager;
-      this.cursorManager = cursorManager;
-      this.lessonRenderer = lessonRenderer;
-   }
+	constructor(
+		lessonManager,
+		logManager,
+		cursorManager,
+		lessonRenderer,
+		undoManager = null,
+	) {
+		this.lessonManager = lessonManager;
+		this.logManager = logManager;
+		this.cursorManager = cursorManager;
+		this.lessonRenderer = lessonRenderer;
+		this.undoManager = undoManager;
+	}
 
-   async createNewLesson() {
-      const filePath = await ipcRenderer.invoke("show-save-dialog");
-      if (!filePath) return;
+	async createNewLesson() {
+		const filePath = await ipcRenderer.invoke("show-save-dialog");
+		if (!filePath) return;
 
-      this.lessonManager.create(filePath, (err) => {
-         if (err) {
-            console.error("Failed to create file:", err);
-            alert("Failed to create file: " + err);
-            return;
-         }
+		this.lessonManager.create(filePath, (err) => {
+			if (err) {
+				console.error("Failed to create file:", err);
+				alert("Failed to create file: " + err);
+				return;
+			}
 
-         const fileName = filePath.split(/[\\/]/).pop();
-         this.updateWindowTitle(fileName);
-         localStorage.setItem("lastLessonPath", filePath);
-         this.logManager.initialize(filePath);
-         this.cursorManager.resetProgress();
-         this.lessonRenderer.render();
-      });
-   }
+			const fileName = filePath.split(/[\\/]/).pop();
+			this.updateWindowTitle(fileName);
+			localStorage.setItem("lastLessonPath", filePath);
+			this.logManager.initialize(filePath);
+			this.cursorManager.resetProgress();
 
-   async loadLesson() {
-      const filePath = await ipcRenderer.invoke("show-open-dialog");
-      if (!filePath) return;
+			if (this.undoManager) {
+				this.undoManager.clear();
+			}
 
-      const fileName = filePath.split(/[\\/]/).pop();
-      this.updateWindowTitle(fileName);
-      this.loadFilePath(filePath, 0);
-   }
+			this.lessonRenderer.render();
+		});
+	}
 
-   loadFilePath(filePath, savedIndex = 0) {
-      this.lessonManager.load(filePath, (err, data) => {
-         if (err) {
-            console.error("Failed to load file:", err);
-            alert("Failed to load file: " + err);
-            return;
-         }
+	async loadLesson() {
+		const filePath = await ipcRenderer.invoke("show-open-dialog");
+		if (!filePath) return;
 
-         localStorage.setItem("lastLessonPath", filePath);
-         this.cursorManager.currentStepIndex = savedIndex;
+		const fileName = filePath.split(/[\\/]/).pop();
+		this.updateWindowTitle(fileName);
+		this.loadFilePath(filePath, 0);
+	}
 
-         this.cursorManager.resetProgress();
-         this.logManager.initialize(filePath);
-         this.lessonRenderer.render();
-         this.setInitialStateToInactive();
+	loadFilePath(filePath, savedIndex = 0) {
+		this.lessonManager.load(filePath, (err, data) => {
+			if (err) {
+				console.error("Failed to load file:", err);
+				alert("Failed to load file: " + err);
+				return;
+			}
 
-         const lessonName = path.basename(filePath, ".json");
-         ipcRenderer.send("broadcast-lesson", lessonName);
-      });
-   }
+			localStorage.setItem("lastLessonPath", filePath);
+			this.cursorManager.currentStepIndex = savedIndex;
 
-   saveLesson() {
-      this.lessonManager.save((err) => {
-         if (err) {
-            console.error("Save failed:", err);
-            alert("Save failed: " + err);
-         }
-      });
-   }
+			this.cursorManager.resetProgress();
+			this.logManager.initialize(filePath);
 
-   loadLastLesson() {
-      const lastFile = localStorage.getItem("lastLessonPath");
-      const lastIndex = localStorage.getItem("lastStepIndex");
+			if (this.undoManager) {
+				this.undoManager.clear();
+			}
 
-      if (lastFile) {
-         this.loadFilePath(lastFile, lastIndex ? parseInt(lastIndex) : 0);
-         this.updateWindowTitle(lastFile.split(/[\\/]/).pop());
-      } else {
-         this.logManager.initialize();
-      }
-   }
+			this.lessonRenderer.render();
+			this.setInitialStateToInactive();
 
-   updateWindowTitle(fileName = "") {
-      ipcRenderer.send("update-window-title", fileName);
+			const lessonName = path.basename(filePath, ".json");
+			ipcRenderer.send("broadcast-lesson", lessonName);
+		});
+	}
 
-      const baseTitle = "LEO";
-      if (fileName && fileName.trim() !== "") {
-         const displayName = fileName.replace(/\.json$/i, "");
-         document.title = `${baseTitle} - ${displayName}`;
-      } else {
-         document.title = baseTitle;
-      }
-   }
+	saveLesson() {
+		this.lessonManager.save((err) => {
+			if (err) {
+				console.error("Save failed:", err);
+				alert("Save failed: " + err);
+			}
+		});
+	}
 
-   setInitialStateToInactive() {
-      ipcRenderer.send("set-active", false);
-   }
+	loadLastLesson() {
+		const lastFile = localStorage.getItem("lastLessonPath");
+		const lastIndex = localStorage.getItem("lastStepIndex");
+
+		if (lastFile) {
+			this.loadFilePath(lastFile, lastIndex ? parseInt(lastIndex) : 0);
+			this.updateWindowTitle(lastFile.split(/[\\/]/).pop());
+		} else {
+			this.logManager.initialize();
+		}
+	}
+
+	updateWindowTitle(fileName = "") {
+		ipcRenderer.send("update-window-title", fileName);
+
+		const baseTitle = "LEO";
+		if (fileName && fileName.trim() !== "") {
+			const displayName = fileName.replace(/\.json$/i, "");
+			document.title = `${baseTitle} - ${displayName}`;
+		} else {
+			document.title = baseTitle;
+		}
+	}
+
+	setInitialStateToInactive() {
+		ipcRenderer.send("set-active", false);
+	}
 }
 
 module.exports = FileOperations;

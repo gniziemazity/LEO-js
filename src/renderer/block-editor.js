@@ -1,11 +1,20 @@
 class BlockEditor {
-   constructor(lessonManager, uiManager, lessonRenderer) {
+   constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
       this.lessonManager = lessonManager;
       this.uiManager = uiManager;
       this.lessonRenderer = lessonRenderer;
+      this.undoManager = undoManager;
+   }
+
+   setUndoManager(undoManager) {
+      this.undoManager = undoManager;
    }
 
    addBlock(type) {
+      if (this.undoManager) {
+         this.undoManager.saveState(`add-${type}-block`);
+      }
+      
       const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
       this.lessonManager.addBlock(type, selectedBlockIndex);
       this.uiManager.selectBlock(selectedBlockIndex + 1);
@@ -15,6 +24,10 @@ class BlockEditor {
    removeBlock() {
       const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
       if (selectedBlockIndex === null) return;
+
+      if (this.undoManager) {
+         this.undoManager.saveState('remove-block');
+      }
 
       this.lessonManager.removeBlock(selectedBlockIndex);
       this.uiManager.deselectBlock();
@@ -28,6 +41,10 @@ class BlockEditor {
 
       const block = this.lessonManager.getBlock(selectedBlockIndex);
       if (!block || block.type !== "code") return;
+
+      if (this.undoManager) {
+         this.undoManager.saveState('format-block');
+      }
 
       const formatted = this.formatCodeForAutoTyping(block.text);
       this.lessonManager.updateBlock(selectedBlockIndex, formatted);
