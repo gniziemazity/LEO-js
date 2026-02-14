@@ -50,7 +50,8 @@ class LessonRenderer {
 		blocks.forEach((block, blockIdx) => {
 			const blockDiv = this.uiManager.createBlockElement(block, blockIdx);
 
-			blockDiv.onmouseup = (e) => this.handleBlockClick(e, block, blockIdx);
+			blockDiv.onmousedown = (e) =>
+				this.handleBlockClick(e, block, blockIdx);
 
 			if (block.type === "comment") {
 				globalStepCounter = this.renderCommentBlock(
@@ -211,7 +212,33 @@ class LessonRenderer {
 				}
 				if (blocks[blockIdx]) {
 					blocks[blockIdx].classList.add("selected");
+
+					if (block.type === "code") {
+						blocks[blockIdx].contentEditable = "true";
+						blocks[blockIdx].innerText = block.text;
+						blocks[blockIdx].oninput = () => {
+							this.saveEditState(blockIdx, blocks[blockIdx].innerText);
+							this.lessonManager.updateBlock(
+								blockIdx,
+								blocks[blockIdx].innerText,
+							);
+						};
+						blocks[blockIdx].onpaste = (e) => {
+							e.preventDefault();
+							const text = e.clipboardData.getData("text/plain");
+							document.execCommand("insertText", false, text);
+						};
+						blocks[blockIdx].onkeydown = (e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								document.execCommand("insertText", false, "\n");
+							}
+						};
+					}
+
+					blocks[blockIdx].focus();
 				}
+
 				return;
 			}
 
