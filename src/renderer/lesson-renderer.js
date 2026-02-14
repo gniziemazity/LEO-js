@@ -103,6 +103,12 @@ class LessonRenderer {
 		blockDiv.oninput = () => {
 			this.saveEditState(blockIdx, blockDiv.innerText);
 			this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
+
+			if (blockDiv.innerText.trim().startsWith("❓")) {
+				blockDiv.classList.add("question-comment");
+			} else {
+				blockDiv.classList.remove("question-comment");
+			}
 		};
 
 		blockDiv.onpaste = (e) => {

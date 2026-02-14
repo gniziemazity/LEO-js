@@ -199,7 +199,19 @@ ipcMain.on("update-window-title", (event, fileName) => {
 
 	const baseTitle = "LEO";
 	if (fileName && fileName.trim() !== "") {
-		const displayName = fileName.replace(/\.json$/i, "");
+		const hasUnsaved = fileName.endsWith(" *");
+		let displayName = fileName;
+
+		if (hasUnsaved) {
+			displayName = fileName.slice(0, -2);
+		}
+
+		displayName = displayName.replace(/\.json$/i, "");
+
+		if (hasUnsaved) {
+			displayName = `${displayName} *`;
+		}
+
 		state.mainWindow.setTitle(`${baseTitle} - ${displayName}`);
 	} else {
 		state.mainWindow.setTitle(baseTitle);

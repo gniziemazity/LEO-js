@@ -14,6 +14,10 @@ class FileOperations {
 		this.cursorManager = cursorManager;
 		this.lessonRenderer = lessonRenderer;
 		this.undoManager = undoManager;
+
+		this.lessonManager.onChange(() => {
+			this.updateWindowTitleWithUnsavedIndicator();
+		});
 	}
 
 	async createNewLesson() {
@@ -81,6 +85,8 @@ class FileOperations {
 			if (err) {
 				console.error("Save failed:", err);
 				alert("Save failed: " + err);
+			} else {
+				this.updateWindowTitleWithUnsavedIndicator();
 			}
 		});
 	}
@@ -107,6 +113,26 @@ class FileOperations {
 		} else {
 			document.title = baseTitle;
 		}
+	}
+
+	updateWindowTitleWithUnsavedIndicator() {
+		const filePath = this.lessonManager.getCurrentFilePath();
+		if (!filePath) return;
+
+		const fileName = filePath.split(/[\\/]/).pop();
+		const displayName = fileName.replace(/\.json$/i, "");
+		const baseTitle = "LEO";
+		const hasUnsaved = this.lessonManager.hasChanges();
+
+		const title = hasUnsaved
+			? `${baseTitle} - ${displayName} *`
+			: `${baseTitle} - ${displayName}`;
+
+		document.title = title;
+		ipcRenderer.send(
+			"update-window-title",
+			hasUnsaved ? `${fileName} *` : fileName,
+		);
 	}
 
 	setInitialStateToInactive() {
