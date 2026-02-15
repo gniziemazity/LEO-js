@@ -105,10 +105,10 @@ button:hover {
 
 #main-layout {
    display: flex;
-   max-width: 900px;
    gap: 0;
    background: white;
    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+   overflow-x: hidden;
 }
 
 #lesson-container {
