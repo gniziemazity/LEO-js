@@ -21,7 +21,7 @@ class QRModalManager {
 		});
 
 		document.addEventListener("keydown", (e) => {
-			if (e.key === "Escape" && this.modal.style.display === "flex") {
+			if (e.key === "Escape" && this.modal.classList.contains("active")) {
 				this.hideModal();
 			}
 		});
