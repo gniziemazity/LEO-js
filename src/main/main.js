@@ -267,6 +267,10 @@ ipcMain.handle("get-settings", () => {
 	return settingsManager.getAll();
 });
 
+ipcMain.handle("get-server-info", async () => {
+	return await broadcastServer.getServerInfo();
+});
+
 ipcMain.on("save-settings", (event, settings) => {
 	Object.keys(settings).forEach((key) => {
 		settingsManager.settings[key] = settings[key];

@@ -4,163 +4,195 @@ const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
 const qrcode = require("qrcode-terminal");
-const EventEmitter = require('events');
+const QRCode = require("qrcode");
+const EventEmitter = require("events");
 
 class LEOBroadcastServer extends EventEmitter {
-   constructor(port = 8080) {
-      super();
-      this.port = port;
-      this.app = express();
-      this.server = http.createServer(this.app);
-      this.wss = null;
-      this.currentState = {
-         progress: 0,
-         timeRemaining: null,
-         isActive: false,
-         totalSteps: 0,
-         currentStep: 0,
-         lessonName: "No lesson loaded",
-         lessonData: null,
-         settings: null,
-      };
-   }
+	constructor(port = 8080) {
+		super();
+		this.port = port;
+		this.app = express();
+		this.server = http.createServer(this.app);
+		this.wss = null;
+		this.currentState = {
+			progress: 0,
+			timeRemaining: null,
+			isActive: false,
+			totalSteps: 0,
+			currentStep: 0,
+			lessonName: "No lesson loaded",
+			lessonData: null,
+			settings: null,
+		};
+	}
 
-   start() {
-      this.app.get("/", (req, res) => {
-         res.sendFile(path.join(__dirname, "../client-viewer.html"));
-      });
+	start() {
+		this.app.get("/", (req, res) => {
+			res.sendFile(path.join(__dirname, "../client-viewer.html"));
+		});
 
-      // serve other static files (like styles.css)
-      this.app.use(express.static(__dirname + "/../shared/"));
+		// serve other static files (like styles.css)
+		this.app.use(express.static(__dirname + "/../shared/"));
 
-      // setup WebSocket on the same server
-      this.wss = new WebSocket.Server({ server: this.server });
+		// setup WebSocket on the same server
+		this.wss = new WebSocket.Server({ server: this.server });
 
-      this.wss.on("connection", (ws) => {
-         console.log("Client connected: " + ws._socket.remoteAddress);
-         ws.send(JSON.stringify({ type: "state", data: this.currentState }));
-         
-         ws.on('message', (message) => {
-            try {
-               const data = JSON.parse(message);
-               this.handleClientMessage(data);
-            } catch (err) {
-               console.error('Error parsing client message:', err);
-            }
-         });
-      });
+		this.wss.on("connection", (ws) => {
+			console.log("Client connected: " + ws._socket.remoteAddress);
+			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
 
-      this.server.listen(this.port, () => {
-         console.log("LEO Server Started");
-         this.printLocalIPs();
-      });
-   }
+			ws.on("message", (message) => {
+				try {
+					const data = JSON.parse(message);
+					this.handleClientMessage(data);
+				} catch (err) {
+					console.error("Error parsing client message:", err);
+				}
+			});
+		});
 
-   printLocalIPs() {
-      const interfaces = os.networkInterfaces();
+		this.server.listen(this.port, () => {
+			console.log("LEO Server Started");
+			this.printLocalIPs();
+		});
+	}
 
-      Object.keys(interfaces).forEach((ifname) => {
-         interfaces[ifname].forEach((iface) => {
-            if (iface.family === "IPv4" && !iface.internal) {
-               const url = `http://${iface.address}:${this.port}`;
-               console.log(`Client Viewer URL: ${url}`);
-               qrcode.generate(url);
-            }
-         });
-      });
-   }
+	printLocalIPs() {
+		const interfaces = os.networkInterfaces();
 
-   broadcast(data) {
-      if (!this.wss) return;
-      const message = JSON.stringify(data);
-      this.wss.clients.forEach((client) => {
-         if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-         }
-      });
-   }
+		Object.keys(interfaces).forEach((ifname) => {
+			interfaces[ifname].forEach((iface) => {
+				if (iface.family === "IPv4" && !iface.internal) {
+					const url = `http://${iface.address}:${this.port}`;
+					console.log(`Client Viewer URL: ${url}`);
+					qrcode.generate(url);
+				}
+			});
+		});
+	}
 
-   updateLessonData(lessonData) {
-      this.currentState.lessonData = lessonData;
+	broadcast(data) {
+		if (!this.wss) return;
+		const message = JSON.stringify(data);
+		this.wss.clients.forEach((client) => {
+			if (client.readyState === WebSocket.OPEN) {
+				client.send(message);
+			}
+		});
+	}
 
-      this.broadcast({
-         type: "lesson-data",
-         data: lessonData,
-      });
-   }
+	updateLessonData(lessonData) {
+		this.currentState.lessonData = lessonData;
 
-   updateCursor(currentStep) {
-      this.currentState.currentStep = currentStep;
+		this.broadcast({
+			type: "lesson-data",
+			data: lessonData,
+		});
+	}
 
-      this.broadcast({
-         type: "cursor",
-         data: { currentStep },
-      });
-   }
+	updateCursor(currentStep) {
+		this.currentState.currentStep = currentStep;
 
-   updateProgress(currentStep, totalSteps) {
-      this.currentState.currentStep = currentStep;
-      this.currentState.totalSteps = totalSteps;
-      this.currentState.progress =
-         totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+		this.broadcast({
+			type: "cursor",
+			data: { currentStep },
+		});
+	}
 
-      this.broadcast({
-         type: "progress",
-         data: {
-            progress: this.currentState.progress,
-            currentStep,
-            totalSteps,
-         },
-      });
-   }
+	updateProgress(currentStep, totalSteps) {
+		this.currentState.currentStep = currentStep;
+		this.currentState.totalSteps = totalSteps;
+		this.currentState.progress =
+			totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
 
-   updateTimer(timeRemaining) {
-      this.currentState.timeRemaining = timeRemaining;
+		this.broadcast({
+			type: "progress",
+			data: {
+				progress: this.currentState.progress,
+				currentStep,
+				totalSteps,
+			},
+		});
+	}
 
-      this.broadcast({
-         type: "timer",
-         data: { timeRemaining },
-      });
-   }
+	updateTimer(timeRemaining) {
+		this.currentState.timeRemaining = timeRemaining;
 
-   updateActiveState(isActive) {
-      this.currentState.isActive = isActive;
+		this.broadcast({
+			type: "timer",
+			data: { timeRemaining },
+		});
+	}
 
-      this.broadcast({
-         type: "active",
-         data: { isActive },
-      });
-   }
+	updateActiveState(isActive) {
+		this.currentState.isActive = isActive;
 
-   updateLessonName(lessonName) {
-      this.currentState.lessonName = lessonName;
+		this.broadcast({
+			type: "active",
+			data: { isActive },
+		});
+	}
 
-      this.broadcast({
-         type: "lesson",
-         data: { lessonName },
-      });
-   }
+	updateLessonName(lessonName) {
+		this.currentState.lessonName = lessonName;
 
-   updateSettings(settings) {
-      this.currentState.settings = settings;
+		this.broadcast({
+			type: "lesson",
+			data: { lessonName },
+		});
+	}
 
-      this.broadcast({
-         type: "settings",
-         data: settings,
-      });
-   }
+	updateSettings(settings) {
+		this.currentState.settings = settings;
 
-   handleClientMessage(message) {
-      const { type, data } = message;
-      
-      if (type === 'toggle-active') {
-         this.emit('client-toggle-active');
-      } else if (type === 'jump-to') {
-         this.emit('client-jump-to', data.stepIndex);
-      } else if (type === 'interaction') {
-         this.emit('client-interaction', data.interactionType);
-      }
-   }
+		this.broadcast({
+			type: "settings",
+			data: settings,
+		});
+	}
+
+	handleClientMessage(message) {
+		const { type, data } = message;
+
+		if (type === "toggle-active") {
+			this.emit("client-toggle-active");
+		} else if (type === "jump-to") {
+			this.emit("client-jump-to", data.stepIndex);
+		} else if (type === "interaction") {
+			this.emit("client-interaction", data.interactionType);
+		}
+	}
+
+	async getServerInfo() {
+		const interfaces = os.networkInterfaces();
+		const serverInfos = [];
+
+		for (const ifname of Object.keys(interfaces)) {
+			for (const iface of interfaces[ifname]) {
+				if (iface.family === "IPv4" && !iface.internal) {
+					const url = `http://${iface.address}:${this.port}`;
+					try {
+						const qrCodeDataUrl = await QRCode.toDataURL(url, {
+							width: 300,
+							margin: 2,
+							color: {
+								dark: "#000000",
+								light: "#ffffff",
+							},
+						});
+						serverInfos.push({
+							url,
+							qrCodeDataUrl,
+						});
+					} catch (err) {
+						console.error("Error generating QR code:", err);
+					}
+				}
+			}
+		}
+
+		return serverInfos;
+	}
 }
 
 module.exports = LEOBroadcastServer;

@@ -11,6 +11,7 @@ const FileOperations = require("./renderer/file-operations");
 const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
+const QRModalManager = require("./renderer/qr-modal");
 const { TIMER_CONFIG } = require("./shared/constants");
 
 const logManager = new LogManager();
@@ -45,6 +46,7 @@ const typingController = new TypingController(
 	lessonRenderer,
 	cursorManager,
 );
+const qrModalManager = new QRModalManager();
 
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();

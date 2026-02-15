@@ -23,6 +23,7 @@
    "dependencies": {
       "@computer-use/nut-js": "^4.2.0",
       "express": "^5.2.1",
+      "qrcode": "^1.5.4",
       "qrcode-terminal": "^0.12.0",
       "ws": "^8.19.0"
    },

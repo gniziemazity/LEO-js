@@ -240,7 +240,8 @@ button:hover {
 .add-btn,
 .remove-btn,
 .key-btn,
-.format-btn {
+.format-btn,
+.qr-btn {
    width: 35px;
    height: 30px;
    border: none;
@@ -252,9 +253,11 @@ button:hover {
    justify-content: center;
 }
 
-.timer-btn {
+.timer-btn,
+.qr-btn {
    height: 35px;
 }
+
 
 .add-btn.yellow {
    background: #f1c40f;
@@ -447,4 +450,55 @@ button:hover {
 
 .btn-secondary:hover {
    background: #7f8c8d;
+}
+
+.qr-modal-body {
+   padding: 30px;
+   text-align: center;
+}
+
+#qrCodeContainer {
+   display: flex;
+   flex-direction: column;
+   gap: 30px;
+   align-items: center;
+}
+
+.qr-info-item {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 20px;
+   padding: 20px;
+   background: #f8f9fa;
+   border-radius: 8px;
+   width: 100%;
+}
+
+.qr-code-image {
+   width: 300px;
+   height: 300px;
+   border: 2px solid #ddd;
+   border-radius: 8px;
+   background: white;
+}
+
+.qr-url {
+   width: 100%;
+   display: flex;
+   flex-direction: column;
+   gap: 10px;
+   align-items: center;
+}
+
+.qr-url-text {
+   font-family: "Consolas", "Monaco", monospace;
+   font-size: 16px;
+   color: #2c3e50;
+   padding: 12px 20px;
+   background: white;
+   border: 1px solid #ddd;
+   border-radius: 4px;
+   word-break: break-all;
+   width: 100%;
 }

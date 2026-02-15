@@ -22,6 +22,8 @@
                <button id="timerPlusBtn" class="timer-btn" class="timer-btn" title="Increase Timer">+</button>
             </div>
          </div>
+
+         <button id="showQrBtn" class="qr-btn" title="Show QR Code"><span style="background-color:black;">𖣯</span></button>
       </div>
 
       <div class="progress-bar" id="progressBar"></div>
@@ -160,6 +162,18 @@
             <div class="modal-footer">
                <button id="resetSettings" class="btn-secondary">Reset to Defaults</button>
                <button id="saveSettings" class="btn-primary">Save</button>
+            </div>
+         </div>
+      </div>
+
+      <div id="qrModal" class="modal">
+         <div class="modal-content">
+            <div class="modal-header">
+               <button id="closeQrModal" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-body qr-modal-body">
+               <div id="qrCodeContainer"></div>
             </div>
          </div>
       </div>
