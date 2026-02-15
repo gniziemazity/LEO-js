@@ -6,92 +6,11 @@
       <title>LEO Client</title>
       <link rel="icon" href="icon.ico" type="image/x-icon" />
       <link rel="stylesheet" href="styles.css" />
-      <style>
-         /* MOBILE UI OVERRIDES */
-         body {
-            padding-top: 0;
-            background: #f5f5f5;
-         }
-
-         #mobile-header {
-            position: sticky;
-            top: 0;
-            background: #2c3e50;
-            color: white;
-            z-index: 2000;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            width: 100%;
-         }
-
-         .header-main-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 15px;
-            gap: 10px;
-         }
-
-         #lessonName {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #ecf0f1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-         }
-
-         #interactionButtons {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-         }
-
-         .interaction-btn {
-            width: 32px !important;
-            height: 32px !important;
-            padding: 4px !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 4px !important;
-            cursor: pointer !important;
-            font-size: 16px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            transition: all 0.2s !important;
-         }
-
-         .interaction-btn:active {
-            transform: scale(0.95) !important;
-         }
-
-         #toggleBtn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-         }
-
-         #timerDisplay {
-            font-size: 1.4rem !important;
-            color: #ecf0f1 !important;
-            font-family: "Consolas", monospace;
-            margin: 0 !important;
-            text-align: right !important;
-         }
-
-         .block.active-comment,
-         .char.cursor {
-            scroll-margin-top: 80px;
-         }
-      </style>
    </head>
-   <body>
+   <body class="mobile-view">
       <div id="mobile-header">
          <div class="header-main-row">
-            <button id="toggleBtn" onclick="toggleActive()">START</button>
+            <button id="toggleBtn" class="btn-start" onclick="toggleActive()">START</button>
             <div id="lessonName">Not Connected</div>
             <div id="interactionButtons">
                <button class="interaction-btn" onclick="logInteraction('student-question')" title="Student Question"><span class="dark-emoji">❓</span></button>
@@ -193,10 +112,12 @@
             isActive = active;
             if (active) {
                elements.toggleBtn.textContent = "STOP";
-               elements.toggleBtn.style.background = "#e74c3c";
+               elements.toggleBtn.classList.remove("btn-start");
+               elements.toggleBtn.classList.add("btn-stop");
             } else {
                elements.toggleBtn.textContent = "START";
-               elements.toggleBtn.style.background = "#27ae60";
+               elements.toggleBtn.classList.remove("btn-stop");
+               elements.toggleBtn.classList.add("btn-start");
             }
          }
 

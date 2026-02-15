@@ -39,6 +39,18 @@ button:hover {
    background: #2980b9;
 }
 
+#toggleBtn.btn-start {
+   background: #27ae60;
+}
+
+#toggleBtn.btn-stop {
+   background: #e74c3c;
+}
+
+.qr-icon {
+   background-color: black;
+}
+
 #controls input {
    flex: 1;
    padding: 5px;
@@ -51,13 +63,7 @@ button:hover {
    font-size: 12px;
 }
 
-#timerSection {
-   display: flex;
-   align-items: center;
-   gap: 5px;
-   margin-left: auto;
-}
-
+#timerSection,
 #interactionSection {
    display: flex;
    align-items: center;
@@ -81,8 +87,7 @@ button:hover {
 }
 
 .dark-emoji {
-   filter: brightness(0.8) contrast(2)
-
+   filter: brightness(0.8) contrast(2);
 }
 
 .interaction-btn:active {
@@ -93,6 +98,14 @@ button:hover {
    display: none;
    align-items: center;
    gap: 5px;
+}
+
+.timer-controls.show {
+   display: flex;
+}
+
+.hidden {
+   display: none;
 }
 
 .timer-display {
@@ -257,8 +270,6 @@ button:hover {
 .qr-btn {
    height: 35px;
 }
-
-
 .add-btn.yellow {
    background: #f1c40f;
    color: #000;
@@ -501,4 +512,60 @@ button:hover {
    border-radius: 4px;
    word-break: break-all;
    width: 100%;
+}
+
+.mobile-view body {
+   padding-top: 0;
+}
+
+#mobile-header {
+   position: sticky;
+   top: 0;
+   background: #2c3e50;
+   color: white;
+   z-index: 2000;
+   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+   width: 100%;
+}
+
+.header-main-row {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 12px 15px;
+   gap: 10px;
+}
+
+#lessonName {
+   font-size: 1.1rem;
+   font-weight: bold;
+   color: #ecf0f1;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+}
+
+#interactionButtons {
+   display: flex;
+   gap: 5px;
+   align-items: center;
+}
+
+.mobile-view .interaction-btn {
+   width: 32px;
+   height: 32px;
+   padding: 4px;
+}
+
+.mobile-view #timerDisplay {
+   font-size: 1.4rem;
+   color: #ecf0f1;
+   font-family: "Consolas", monospace;
+   margin: 0;
+   text-align: right;
+}
+
+.mobile-view .block.active-comment,
+.mobile-view .char.cursor {
+   scroll-margin-top: 80px;
 }
