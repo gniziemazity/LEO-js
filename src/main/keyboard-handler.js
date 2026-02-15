@@ -28,16 +28,7 @@ class KeyboardHandler {
 		const isInterceptorKey = typingHotkeys.includes(charLower);
 
 		try {
-			if (isInterceptorKey) {
-				this.hotkeyManager.unregisterKey(charLower);
-			}
-
-			await this.typeWithNutJs(char);
-
-			if (isInterceptorKey) {
-				this.hotkeyManager.registerKey(charLower);
-			}
-
+			await this.typeCharWithHotkeyManagement(char, charLower, isInterceptorKey);
 			this.processQueue();
 
 			if (state.mainWindow) {
@@ -45,14 +36,29 @@ class KeyboardHandler {
 			}
 		} catch (error) {
 			console.error("Error typing character:", error);
-
-			if (isInterceptorKey) {
-				this.hotkeyManager.registerKey(charLower);
-			}
+			this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 			state.unlock();
 			state.clearQueue();
 		} finally {
 			this.isProcessing = false;
+		}
+	}
+
+	async typeCharWithHotkeyManagement(char, charLower, isInterceptorKey) {
+		if (isInterceptorKey) {
+			this.hotkeyManager.unregisterKey(charLower);
+		}
+
+		await this.typeWithNutJs(char);
+
+		if (isInterceptorKey) {
+			this.hotkeyManager.registerKey(charLower);
+		}
+	}
+
+	ensureHotkeyRegistered(charLower, isInterceptorKey) {
+		if (isInterceptorKey) {
+			this.hotkeyManager.registerKey(charLower);
 		}
 	}
 
@@ -71,15 +77,7 @@ class KeyboardHandler {
 				const isInterceptorKey = typingHotkeys.includes(charLower);
 
 				try {
-					if (isInterceptorKey) {
-						this.hotkeyManager.unregisterKey(charLower);
-					}
-
-					await this.typeWithNutJs(char);
-
-					if (isInterceptorKey) {
-						this.hotkeyManager.registerKey(charLower);
-					}
+					await this.typeCharWithHotkeyManagement(char, charLower, isInterceptorKey);
 
 					if (state.mainWindow) {
 						state.mainWindow.webContents.send(
@@ -91,10 +89,7 @@ class KeyboardHandler {
 					await new Promise((resolve) => setTimeout(resolve, speed));
 				} catch (error) {
 					console.error("Error typing character during auto-type:", error);
-
-					if (isInterceptorKey) {
-						this.hotkeyManager.registerKey(charLower);
-					}
+					this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 					break;
 				}
 			}

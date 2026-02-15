@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, screen, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, dialog, Menu } = require("electron");
+const path = require("path");
 const { WINDOW_CONFIG } = require("../shared/constants");
 const state = require("./state");
 const HotkeyManager = require("./hotkey-manager");
@@ -6,7 +7,6 @@ const KeyboardHandler = require("./keyboard-handler");
 const LEOBroadcastServer = require("./websocket-server");
 const SettingsManager = require("./settings-manager");
 const MainProcessTimer = require("./main-timer");
-const { Menu } = require("electron");
 
 const settingsManager = new SettingsManager();
 const broadcastServer = new LEOBroadcastServer(8080);
@@ -27,8 +27,6 @@ broadcastServer.on("client-interaction", (interactionType) => {
 });
 
 function createWindow() {
-	const path = require("path");
-
 	const config = {
 		...WINDOW_CONFIG,
 		autoHideMenuBar: false,
@@ -57,6 +55,12 @@ function createWindow() {
 function cleanup() {
 	hotkeyManager.unregisterTypingHotkeys();
 	state.reset();
+}
+
+function cleanupAutoTyping() {
+	state.stopAutoTyping();
+	state.unlock();
+	hotkeyManager.unregisterEscape();
 }
 
 function createApplicationMenu() {
@@ -154,18 +158,14 @@ ipcMain.on("input-complete", () => {
 });
 
 ipcMain.on("auto-typing-complete", () => {
-	state.stopAutoTyping();
-	state.unlock();
-	hotkeyManager.unregisterEscape();
+	cleanupAutoTyping();
 });
 
 ipcMain.on(
 	"start-auto-type-block",
 	async (event, { steps, startIndex, speed }) => {
 		await keyboardHandler.autoTypeBlock(steps, startIndex, speed);
-		state.stopAutoTyping();
-		state.unlock();
-		hotkeyManager.unregisterEscape();
+		cleanupAutoTyping();
 		if (state.mainWindow) {
 			state.mainWindow.webContents.send("auto-typing-finished");
 		}

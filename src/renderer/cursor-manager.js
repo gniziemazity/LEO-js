@@ -21,9 +21,21 @@ class CursorManager {
 		return this.currentStepIndex;
 	}
 
+	handleQuestionBlock(element) {
+		const blockText = element.innerText.trim();
+		if (blockText.startsWith("❓")) {
+			const question = blockText.substring(1).trim();
+			this.logManager.addInteraction("teacher-question", question);
+		}
+	}
+
+	updateLastStepIndex() {
+		localStorage.setItem("lastStepIndex", this.currentStepIndex);
+	}
+
 	resetProgress() {
 		this.currentStepIndex = 0;
-		localStorage.setItem("lastStepIndex", 0);
+		this.updateLastStepIndex();
 		this.uiManager.updateProgressBar(0);
 	}
 
@@ -75,7 +87,7 @@ class CursorManager {
 				return new Promise((resolve) => {
 					ipcRenderer.once("character-typed", () => {
 						this.currentStepIndex++;
-						localStorage.setItem("lastStepIndex", this.currentStepIndex);
+						this.updateLastStepIndex();
 						this.updateCursor();
 						resolve();
 					});
@@ -87,20 +99,13 @@ class CursorManager {
 			}
 		} else if (currentStep.type === "block") {
 			currentStep.element.classList.add("consumed");
-
-			// check if this is a question block (starts with ❓)
-			const blockText = currentStep.element.innerText.trim();
-			if (blockText.startsWith("❓")) {
-				const question = blockText.substring(1).trim();
-				this.logManager.addInteraction("teacher-question", question);
-			}
-
+			this.handleQuestionBlock(currentStep.element);
 			this.currentStepIndex++;
 			ipcRenderer.send("input-complete");
 		}
 
 		if (!waitForCompletion || currentStep.type === "block") {
-			localStorage.setItem("lastStepIndex", this.currentStepIndex);
+			this.updateLastStepIndex();
 			this.updateCursor();
 		}
 	}
@@ -146,7 +151,7 @@ class CursorManager {
 					this.logManager.addEntry({ char: step.char });
 				}
 				this.currentStepIndex = stepIndex + 1;
-				localStorage.setItem("lastStepIndex", this.currentStepIndex);
+				this.updateLastStepIndex();
 				this.updateCursor();
 			}
 		};
@@ -158,21 +163,14 @@ class CursorManager {
 			);
 			ipcRenderer.removeListener("auto-typing-finished", finishHandler);
 			this.autoTypingActive = false;
-			debugger;
 
 			if (this.currentStepIndex < this.executionSteps.length) {
 				this.currentStepIndex++;
 				const currentStep = this.executionSteps[this.currentStepIndex];
 				if (currentStep.type === "block") {
 					currentStep.element.classList.add("consumed");
-
-					const blockText = currentStep.element.innerText.trim();
-					if (blockText.startsWith("❓")) {
-						const question = blockText.substring(1).trim();
-						this.logManager.addInteraction("teacher-question", question);
-					}
-
-					localStorage.setItem("lastStepIndex", this.currentStepIndex);
+					this.handleQuestionBlock(currentStep.element);
+					this.updateLastStepIndex();
 					this.updateCursor();
 					ipcRenderer.send("input-complete");
 				}
@@ -213,7 +211,7 @@ class CursorManager {
 			}
 		});
 
-		localStorage.setItem("lastStepIndex", this.currentStepIndex);
+		this.updateLastStepIndex();
 		this.updateCursor();
 
 		ipcRenderer.send("broadcast-cursor", this.currentStepIndex);
