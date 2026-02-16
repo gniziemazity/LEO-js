@@ -12,6 +12,13 @@ body {
    overflow-y: scroll;
 }
 
+body.typing-active .block {
+   user-select: none;
+   -webkit-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+}
+
 #controls {
    position: sticky;
    top: 0;

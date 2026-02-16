@@ -1,4 +1,12 @@
-const { app, BrowserWindow, ipcMain, screen, dialog, Menu } = require("electron");
+const {
+	app,
+	BrowserWindow,
+	ipcMain,
+	dialog,
+	Menu,
+	Tray,
+	nativeImage,
+} = require("electron");
 const path = require("path");
 const { WINDOW_CONFIG } = require("../shared/constants");
 const state = require("./state");
@@ -13,6 +21,8 @@ const broadcastServer = new LEOBroadcastServer(8080);
 const hotkeyManager = new HotkeyManager(settingsManager);
 const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 const mainTimer = new MainProcessTimer();
+
+let tray = null;
 
 broadcastServer.on("client-toggle-active", () => {
 	state.mainWindow.webContents.send("global-toggle-active");
@@ -50,6 +60,43 @@ function createWindow() {
 			settingsManager.getAll(),
 		);
 	});
+
+	state.mainWindow.on("close", (event) => {
+		if (!app.isQuitting) {
+			event.preventDefault();
+			state.mainWindow.hide();
+		}
+	});
+}
+
+function createTray() {
+	const iconPath = path.join(__dirname, "../shared/icon.ico");
+	const trayIcon = nativeImage.createFromPath(iconPath);
+
+	tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
+
+	tray.setToolTip("LEO");
+
+	tray.on("click", () => {
+		if (state.mainWindow.isVisible()) {
+			state.mainWindow.hide();
+		} else {
+			state.mainWindow.show();
+			state.mainWindow.focus();
+		}
+	});
+
+	const contextMenu = Menu.buildFromTemplate([
+		{
+			label: "Quit",
+			click: () => {
+				app.isQuitting = true;
+				app.quit();
+			},
+		},
+	]);
+
+	tray.setContextMenu(contextMenu);
 }
 
 function cleanup() {
@@ -94,7 +141,22 @@ function createApplicationMenu() {
 					label: "Exit",
 					accelerator: "CmdOrCtrl+Q",
 					click: () => {
+						app.isQuitting = true;
 						app.quit();
+					},
+				},
+			],
+		},
+		{
+			label: "View",
+			submenu: [
+				{
+					label: "Show Window",
+					click: () => {
+						if (state.mainWindow) {
+							state.mainWindow.show();
+							state.mainWindow.focus();
+						}
 					},
 				},
 			],
@@ -303,15 +365,22 @@ ipcMain.on("reset-settings", (event) => {
 	event.reply("settings-loaded", settingsManager.getAll());
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+	createWindow();
+	createTray();
+});
 
 app.on("window-all-closed", () => {
-	cleanup();
-	if (process.platform !== "darwin") app.quit();
+	// don't quit the app, keep it running in the tray
 });
 
 app.on("activate", () => {
 	if (state.mainWindow === null) createWindow();
 });
 
-app.on("will-quit", cleanup);
+app.on("will-quit", () => {
+	cleanup();
+	if (tray) {
+		tray.destroy();
+	}
+});

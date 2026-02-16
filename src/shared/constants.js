@@ -1,75 +1,76 @@
 const { Key } = require("@computer-use/nut-js");
 
 const NUTJS_KEY_MAPPING = {
-   "←": { key: Key.Left },
-   "→": { key: Key.Right },
-   "↑": { key: Key.Up },
-   "↓": { key: Key.Down },
-   "◄": { key: Key.Home },
-   "►": { key: Key.End },
-   "▲": { key: Key.PageUp },
-   "▼": { key: Key.PageDown },
+	"←": { key: Key.Left },
+	"→": { key: Key.Right },
+	"↑": { key: Key.Up },
+	"↓": { key: Key.Down },
+	"◄": { key: Key.Home },
+	"►": { key: Key.End },
+	"▲": { key: Key.PageUp },
+	"▼": { key: Key.PageDown },
 
-   // editing
-   "↢": { key: Key.Backspace },
-   "―": { key: Key.Tab },
+	// editing
+	"↢": { key: Key.Backspace },
+	"―": { key: Key.Tab },
 
-   // navigation with Shift
-   "⇑": { shift: true, key: Key.Up },
-   "⇓": { shift: true, key: Key.Down },
-   "⇐": { shift: true, key: Key.Home },
-   "⇒": { shift: true, key: Key.End },
+	// navigation with Shift
+	"⇑": { shift: true, key: Key.Up },
+	"⇓": { shift: true, key: Key.Down },
+	"⇐": { shift: true, key: Key.Home },
+	"⇒": { shift: true, key: Key.End },
 
-   // advanced functions
-   "💾": { modifier: Key.LeftControl, key: Key.S },
-   "🔁": { modifier: Key.LeftAlt, key: Key.Tab },
-   Ö: { modifier: Key.LeftAlt, key: Key.Tab },
-   ö: { modifier: Key.LeftControl, key: Key.F5 },
-   Ș: { modifier: Key.LeftControl, key: Key.Tab },
-   ñ: { modifier: Key.LeftControl, key: Key.N },
-   "🆕": { modifier: Key.LeftControl, key: Key.N },
-   ω: { modifier: Key.LeftControl, key: Key.W },
-   "↩": { key: Key.Enter },
-   é: { key: Key.Escape },
-   Ț: { modifier: Key.LeftControl, key: Key.F },
-   
-   // special pause symbol - no key action
-   "🕛": { pause: 1000 },
+	// advanced functions
+	"💾": { modifier: Key.LeftControl, key: Key.S },
+	"🔁": { modifier: Key.LeftAlt, key: Key.Tab },
+	Ö: { modifier: Key.LeftAlt, key: Key.Tab },
+	ö: { modifier: Key.LeftControl, key: Key.F5 },
+	Ș: { modifier: Key.LeftControl, key: Key.Tab },
+	ñ: { modifier: Key.LeftControl, key: Key.N },
+	"🆕": { modifier: Key.LeftControl, key: Key.N },
+	ω: { modifier: Key.LeftControl, key: Key.W },
+	"↩": { key: Key.Enter },
+	é: { key: Key.Escape },
+	Ț: { modifier: Key.LeftControl, key: Key.F },
+
+	// special pause symbol - no key action
+	"🕛": { pause: 1000 },
 };
 
 const HOTKEYS = "abcdefghijklmnopqrstuvwxyz".split("");
 
 const WINDOW_CONFIG = {
-   width: 650,
-   height: 900,
-   webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-   },
-   alwaysOnTop: false,
-   frame: true,
+	width: 650,
+	height: 900,
+	webPreferences: {
+		nodeIntegration: true,
+		contextIsolation: false,
+	},
+	alwaysOnTop: false,
+	frame: true,
+	skipTaskbar: true,
 };
 
 const TIMER_CONFIG = {
-   DEFAULT_MINUTES: 90,
-   ADJUSTMENT_MINUTES: 10,
+	DEFAULT_MINUTES: 90,
+	ADJUSTMENT_MINUTES: 10,
 };
 
 const LOG_CONFIG = {
-   SAVE_INTERVAL: 10, // save log every N key presses
+	SAVE_INTERVAL: 10, // save log every N key presses
 };
 
 const TYPING_CONFIG = {
-   DEFAULT_SPEED_MS: 50,
-   MIN_SPEED_MS: 10,
-   MAX_SPEED_MS: 200,
+	DEFAULT_SPEED_MS: 50,
+	MIN_SPEED_MS: 10,
+	MAX_SPEED_MS: 200,
 };
 
 module.exports = {
-   NUTJS_KEY_MAPPING,
-   HOTKEYS,
-   WINDOW_CONFIG,
-   TIMER_CONFIG,
-   LOG_CONFIG,
-   TYPING_CONFIG,
+	NUTJS_KEY_MAPPING,
+	HOTKEYS,
+	WINDOW_CONFIG,
+	TIMER_CONFIG,
+	LOG_CONFIG,
+	TYPING_CONFIG,
 };

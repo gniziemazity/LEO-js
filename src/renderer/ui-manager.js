@@ -37,12 +37,14 @@ class UIManager {
 			this.elements.toggleBtn.classList.remove("btn-start");
 			this.elements.toggleBtn.classList.add("btn-stop");
 			this.elements.editorSidebar.classList.add("hidden");
+			document.body.classList.add("typing-active");
 		} else {
 			this.elements.toggleBtn.textContent = "START";
 			this.elements.toggleBtn.title = "Start Auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-stop");
 			this.elements.toggleBtn.classList.add("btn-start");
 			this.elements.editorSidebar.classList.remove("hidden");
+			document.body.classList.remove("typing-active");
 		}
 	}
 

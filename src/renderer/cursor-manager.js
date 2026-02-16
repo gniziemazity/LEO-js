@@ -57,6 +57,7 @@ class CursorManager {
 					behavior: "smooth",
 					block: "center",
 				});
+				this.handleQuestionBlock(step.element);
 			}
 		}
 
@@ -99,7 +100,6 @@ class CursorManager {
 			}
 		} else if (currentStep.type === "block") {
 			currentStep.element.classList.add("consumed");
-			this.handleQuestionBlock(currentStep.element);
 			this.currentStepIndex++;
 			ipcRenderer.send("input-complete");
 		}
@@ -167,9 +167,8 @@ class CursorManager {
 			if (this.currentStepIndex < this.executionSteps.length) {
 				this.currentStepIndex++;
 				const currentStep = this.executionSteps[this.currentStepIndex];
-				if (currentStep.type === "block") {
+				if (currentStep && currentStep.type === "block") {
 					currentStep.element.classList.add("consumed");
-					this.handleQuestionBlock(currentStep.element);
 					this.updateLastStepIndex();
 					this.updateCursor();
 					ipcRenderer.send("input-complete");
