@@ -46,7 +46,7 @@ class Config:
     QUESTION_ANSWERED_COLOR = 'blue'
     QUESTION_UNANSWERED_COLOR = 'red'
     QUESTION_STUDENT_COLOR = 'orange'
-    QUESTION_HELP_COLOR = 'blue'
+    QUESTION_HELP_COLOR = 'green'
     QUESTION_ALPHA = 0.3
     QUESTION_LINE_WIDTH = 3
     QUESTION_LINE_ALPHA = 0.6
@@ -411,20 +411,33 @@ def create_visualizations(data, student_data=None):
             })
 
     for q in interactions['student-question']:
-        ax2.axvline(
+        color = Config.QUESTION_ANSWERED_COLOR if q['answered_by'] else Config.QUESTION_UNANSWERED_COLOR
+        line = ax2.axvline(
             datetime.fromtimestamp(q['timestamp']),
-            color=Config.QUESTION_STUDENT_COLOR,
+            color=color,
             linewidth=Config.QUESTION_LINE_WIDTH,
-            alpha=Config.QUESTION_LINE_ALPHA
+            alpha=Config.QUESTION_LINE_ALPHA,
+            linestyle='--'
         )
+        question_artists.append({
+            'line': line,
+            'data': q,
+            'x': datetime.fromtimestamp(q['timestamp'])
+        })
     
     for q in interactions['providing-help']:
-        ax2.axvline(
+        line = ax2.axvline(
             datetime.fromtimestamp(q['timestamp']),
             color=Config.QUESTION_HELP_COLOR,
             linewidth=Config.QUESTION_LINE_WIDTH,
-            alpha=Config.QUESTION_LINE_ALPHA
+            alpha=Config.QUESTION_LINE_ALPHA,
+            linestyle='--'
         )
+        question_artists.append({
+            'line': line,
+            'data': q,
+            'x': datetime.fromtimestamp(q['timestamp'])
+        })
 
     ax2.set_ylabel('Total Key Presses', fontsize=11)
     ax2.grid(True, alpha=0.3)
