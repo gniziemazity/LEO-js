@@ -73,6 +73,23 @@ broadcastServer.on("client-mouse-click", async (button) => {
 		else await mouse.leftClick();
 	} catch (e) { /* ignore */ }
 });
+broadcastServer.on("client-mouse-scroll", async (dy) => {
+	try {
+		const amount = Math.abs(Math.round(dy));
+		if (dy > 0) await mouse.scrollDown(amount);
+		else await mouse.scrollUp(amount);
+	} catch (e) { /* ignore */ }
+});
+broadcastServer.on("client-mouse-drag-start", async () => {
+	try {
+		await mouse.pressButton(Button.LEFT);
+	} catch (e) { /* ignore */ }
+});
+broadcastServer.on("client-mouse-drag-end", async () => {
+	try {
+		await mouse.releaseButton(Button.LEFT);
+	} catch (e) { /* ignore */ }
+});
 
 const MainProcessTimer = require("./main-timer");
 const timer = new MainProcessTimer();

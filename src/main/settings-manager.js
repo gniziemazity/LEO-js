@@ -29,6 +29,7 @@ class SettingsManager {
 			fontSize: 14,
 			hotkeyMode: "single-key", // "single-key" or "auto-run"
 			autoTypingSpeed: 50,
+			touchpadSensitivity: 3,
 		};
 
 		this.settings = this.load();

@@ -87,9 +87,7 @@
 				<button class="touchpad-click-btn" data-button="left">
 					Left Click
 				</button>
-				<button class="touchpad-click-btn right" data-button="right">
-					Right Click
-				</button>
+				<button class="touchpad-click-btn drag" id="dragBtn">Drag</button>
 			</div>
 		</div>
 
@@ -133,13 +131,30 @@
 			let pendingInteraction = null;
 			let autoCloseTimer = null;
 
-			// Touchpad state
+			document.addEventListener("click", function goFS() {
+				const el = document.documentElement;
+				const rfs =
+					el.requestFullscreen ||
+					el.webkitRequestFullscreen ||
+					el.msRequestFullscreen;
+				if (rfs) rfs.call(el).catch(() => {});
+				document.removeEventListener("click", goFS);
+			});
+
 			let touchpadActive = false;
 			let touchStartX = 0;
 			let touchStartY = 0;
 			let lastSendTime = 0;
-			const MOUSE_SENSITIVITY = 1.8;
+			let MOUSE_SENSITIVITY = 3;
+			let SCROLL_SENSITIVITY = 2;
 			const SEND_THROTTLE_MS = 30;
+			let isDragging = false;
+			let oneFingerMoved = false;
+			let tapTime = 0;
+			let tapTimeout = null;
+			let twoFingerStartY = 0;
+			let twoFingerTapStart = 0;
+			let twoFingerMoved = false;
 
 			// Wake Lock
 			let wakeLock = null;
@@ -235,23 +250,56 @@
 					"btn-touchpad-active",
 					touchpadActive,
 				);
-			}
-
-			function handleTouchpadClick(button) {
-				sendMessage("mouse-click", { button });
+				if (!touchpadActive && isDragging) {
+					isDragging = false;
+					sendMessage("mouse-drag-end", {});
+					elements.touchpadOverlay.classList.remove("dragging");
+				}
 			}
 
 			(function setupTouchpad() {
 				const overlay = document.getElementById("touchpadOverlay");
+				const TAP_MAX_MS = 200;
+				const DOUBLE_TAP_GAP_MS = 300;
+				const MOVE_THRESHOLD = 8;
+				let touchDownTime = 0;
+				let touchDownX = 0;
+				let touchDownY = 0;
 
 				overlay.addEventListener(
 					"touchstart",
 					(e) => {
-						if (e.target.closest(".touchpad-click-btn")) return;
 						e.preventDefault();
+
+						if (e.touches.length === 2) {
+							const midY =
+								(e.touches[0].clientY + e.touches[1].clientY) / 2;
+							twoFingerStartY = midY;
+							twoFingerTapStart = Date.now();
+							twoFingerMoved = false;
+							return;
+						}
+
 						const t = e.touches[0];
 						touchStartX = t.clientX;
 						touchStartY = t.clientY;
+						touchDownX = t.clientX;
+						touchDownY = t.clientY;
+						touchDownTime = Date.now();
+						oneFingerMoved = false;
+
+						// Double-tap-hold: start drag
+						const gap = touchDownTime - tapTime;
+						if (tapTime > 0 && gap < DOUBLE_TAP_GAP_MS) {
+							if (tapTimeout) {
+								clearTimeout(tapTimeout);
+								tapTimeout = null;
+							}
+							isDragging = true;
+							sendMessage("mouse-drag-start", {});
+							overlay.classList.add("dragging");
+							tapTime = 0;
+						}
 					},
 					{ passive: false },
 				);
@@ -259,40 +307,78 @@
 				overlay.addEventListener(
 					"touchmove",
 					(e) => {
-						if (e.target.closest(".touchpad-click-btn")) return;
 						e.preventDefault();
 						const now = Date.now();
 						if (now - lastSendTime < SEND_THROTTLE_MS) return;
 						lastSendTime = now;
-						const t = e.touches[0];
-						const dx = (t.clientX - touchStartX) * MOUSE_SENSITIVITY;
-						const dy = (t.clientY - touchStartY) * MOUSE_SENSITIVITY;
-						touchStartX = t.clientX;
-						touchStartY = t.clientY;
-						if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-							sendMessage("mouse-move", {
-								dx: Math.round(dx),
-								dy: Math.round(dy),
-							});
+
+						if (e.touches.length === 2) {
+							const midY =
+								(e.touches[0].clientY + e.touches[1].clientY) / 2;
+							const dy = (midY - twoFingerStartY) * SCROLL_SENSITIVITY;
+							twoFingerStartY = midY;
+							if (Math.abs(dy) > 1) {
+								twoFingerMoved = true;
+								sendMessage("mouse-scroll", { dy: Math.round(dy) });
+							}
+						} else if (e.touches.length === 1) {
+							const t = e.touches[0];
+							const totalDx = Math.abs(t.clientX - touchDownX);
+							const totalDy = Math.abs(t.clientY - touchDownY);
+							if (totalDx > MOVE_THRESHOLD || totalDy > MOVE_THRESHOLD) {
+								oneFingerMoved = true;
+							}
+							const dx = (t.clientX - touchStartX) * MOUSE_SENSITIVITY;
+							const dy = (t.clientY - touchStartY) * MOUSE_SENSITIVITY;
+							touchStartX = t.clientX;
+							touchStartY = t.clientY;
+							if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+								sendMessage("mouse-move", {
+									dx: Math.round(dx),
+									dy: Math.round(dy),
+								});
+							}
 						}
 					},
 					{ passive: false },
 				);
 
-				// Handle touchpad button clicks (prevent double-fire on touch)
-				document.querySelectorAll(".touchpad-click-btn").forEach((btn) => {
-					btn.addEventListener(
-						"touchstart",
-						(e) => {
-							e.preventDefault();
-							handleTouchpadClick(btn.dataset.button);
-						},
-						{ passive: false },
-					);
-				});
-			})();
+				overlay.addEventListener(
+					"touchend",
+					(e) => {
+						e.preventDefault();
 
-			// ── Wake Lock ──
+						if (e.touches.length === 0 && twoFingerTapStart > 0) {
+							const elapsed = Date.now() - twoFingerTapStart;
+							if (!twoFingerMoved && elapsed < 300) {
+								sendMessage("mouse-click", { button: "right" });
+							}
+							twoFingerTapStart = 0;
+							return;
+						}
+
+						if (e.touches.length > 0) return;
+
+						if (isDragging) {
+							isDragging = false;
+							sendMessage("mouse-drag-end", {});
+							overlay.classList.remove("dragging");
+							return;
+						}
+
+						const elapsed = Date.now() - touchDownTime;
+						if (!oneFingerMoved && elapsed < TAP_MAX_MS) {
+							tapTime = Date.now();
+							tapTimeout = setTimeout(() => {
+								sendMessage("mouse-click", { button: "left" });
+								tapTime = 0;
+								tapTimeout = null;
+							}, DOUBLE_TAP_GAP_MS);
+						}
+					},
+					{ passive: false },
+				);
+			})();
 
 			async function requestWakeLock() {
 				try {
@@ -314,8 +400,6 @@
 					if (!ws || ws.readyState !== WebSocket.OPEN) connect();
 				}
 			});
-
-			// ── WebSocket ──
 
 			function connect() {
 				const host = window.location.host;
@@ -415,6 +499,11 @@
 					document.head.appendChild(s);
 				}
 				s.textContent = buildSettingsCSS(settings);
+
+				if (settings.touchpadSensitivity != null) {
+					MOUSE_SENSITIVITY = settings.touchpadSensitivity;
+					SCROLL_SENSITIVITY = settings.touchpadSensitivity * 0.67;
+				}
 			}
 
 			function updateLessonData(data) {

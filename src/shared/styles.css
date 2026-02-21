@@ -632,31 +632,8 @@ button:hover {
 .touchpad-overlay.active {
    display: flex;
 }
-.touchpad-buttons {
-   margin-top: auto;
-   display: flex;
-   gap: 0;
-   width: 100%;
-}
-.touchpad-click-btn {
-   flex: 1;
-   padding: 18px;
-   font-size: 1rem;
-   font-weight: 600;
-   border: none;
-   cursor: pointer;
-   background: #2c3e50;
-   color: #ecf0f1;
-   touch-action: manipulation;
-   border-top: 1px solid #444;
-   user-select: none;
-   -webkit-user-select: none;
-}
-.touchpad-click-btn:active {
-   background: #3498db;
-}
-.touchpad-click-btn.right {
-   border-left: 1px solid #444;
+.touchpad-overlay.dragging {
+   background: rgba(231, 76, 60, 0.25);
 }
 
 .comment-block.image-comment {

@@ -170,6 +170,12 @@ class LEOBroadcastServer extends EventEmitter {
 			this.emit("client-mouse-move", data.dx, data.dy);
 		} else if (type === "mouse-click") {
 			this.emit("client-mouse-click", data.button);
+		} else if (type === "mouse-scroll") {
+			this.emit("client-mouse-scroll", data.dy);
+		} else if (type === "mouse-drag-start") {
+			this.emit("client-mouse-drag-start");
+		} else if (type === "mouse-drag-end") {
+			this.emit("client-mouse-drag-end");
 		} else if (type === "timer-start") {
 			this.emit("client-timer-start");
 		} else if (type === "timer-stop") {

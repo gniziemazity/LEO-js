@@ -50,6 +50,14 @@ class SettingsUI {
 				document.getElementById("speedValue").textContent = e.target.value;
 			});
 		}
+
+		const sensitivitySlider = document.getElementById("touchpadSensitivity");
+		if (sensitivitySlider) {
+			sensitivitySlider.addEventListener("input", (e) => {
+				document.getElementById("sensitivityValue").textContent =
+					parseFloat(e.target.value).toFixed(1);
+			});
+		}
 	}
 
 	async open() {
@@ -105,6 +113,11 @@ class SettingsUI {
 		document.getElementById("speedValue").textContent =
 			settings.autoTypingSpeed;
 
+		document.getElementById("touchpadSensitivity").value =
+			settings.touchpadSensitivity || 3;
+		document.getElementById("sensitivityValue").textContent =
+			parseFloat(settings.touchpadSensitivity || 3).toFixed(1);
+
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
 	}
 
@@ -150,6 +163,9 @@ class SettingsUI {
 			hotkeyMode: document.getElementById("hotkeyMode").value,
 			autoTypingSpeed: parseInt(
 				document.getElementById("autoTypingSpeed").value,
+			),
+			touchpadSensitivity: parseFloat(
+				document.getElementById("touchpadSensitivity").value,
 			),
 		};
 
