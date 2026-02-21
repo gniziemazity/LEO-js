@@ -39,7 +39,7 @@ const NUTJS_KEY_MAPPING = {
 
 const WINDOW_CONFIG = {
 	width: 650,
-	height: 900,
+	height: 950,
 	webPreferences: {
 		nodeIntegration: true,
 		contextIsolation: false,

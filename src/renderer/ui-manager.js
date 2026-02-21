@@ -27,17 +27,19 @@ class UIManager {
 		this.isTypingActive = active;
 
 		if (active) {
-			this.elements.toggleBtn.textContent = "⏸";
+			this.elements.toggleBtn.textContent = "❚❚";
 			this.elements.toggleBtn.title = "Stop Auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-start");
 			this.elements.toggleBtn.classList.add("btn-stop");
+			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.add("hidden");
 			document.body.classList.add("typing-active");
 		} else {
-			this.elements.toggleBtn.textContent = "▶";
+			this.elements.toggleBtn.textContent = "▶︎";
 			this.elements.toggleBtn.title = "Start Auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-stop");
 			this.elements.toggleBtn.classList.add("btn-start");
+			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}

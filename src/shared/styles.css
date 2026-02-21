@@ -50,12 +50,18 @@ button:hover {
    background: #2980b9;
 }
 
-#toggleBtn.btn-start {
+.interaction-btn.btn-start {
    background: #27ae60;
 }
+.interaction-btn.btn-start:hover {
+   background: #1e8449;
+}
 
-#toggleBtn.btn-stop {
+.interaction-btn.btn-stop {
    background: #e74c3c;
+}
+.interaction-btn.btn-stop:hover {
+   background: #c0392b;
 }
 
 .qr-icon {
@@ -237,7 +243,7 @@ button:hover {
 .sidebar {
    width: 55px;
    min-width: 50px;
-   background: #34495e;
+   background: black;
    padding: 10px;
    display: flex;
    flex-direction: column;
@@ -553,8 +559,8 @@ button:hover {
    display: flex;
    justify-content: space-between;
    align-items: center;
-   padding: 12px 15px;
-   gap: 10px;
+   padding: 10px 12px;
+   gap: 14px;
 }
 
 #lessonName {
@@ -568,14 +574,23 @@ button:hover {
 
 #interactionButtons {
    display: flex;
-   gap: 5px;
+   gap: 2px;
    align-items: center;
 }
 
 .mobile-view .interaction-btn {
-   width: 32px;
-   height: 32px;
+   width: 38px;
+   height: 38px;
    padding: 4px;
+   font-size: 18px;
+}
+
+.mobile-view .timer-btn {
+   width: 38px;
+   height: 38px;
+   padding: 4px;
+   font-size: 16px;
+   border-radius: 4px;
 }
 
 .mobile-view #timerDisplay {
