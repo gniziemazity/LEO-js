@@ -443,7 +443,9 @@ app.whenReady().then(() => {
 	createWindow();
 	createTray();
 });
-app.on("window-all-closed", () => {});
+app.on("window-all-closed", () => {
+	app.quit();
+});
 app.on("activate", () => {
 	if (state.mainWindow === null) createWindow();
 });

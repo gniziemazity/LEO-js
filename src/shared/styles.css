@@ -685,14 +685,6 @@ button:hover {
    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
-.q-label {
-   font-size: 0.78rem;
-   color: #f1c40f;
-   letter-spacing: 0.13em;
-   text-transform: uppercase;
-   margin-bottom: 8px;
-}
-
 .q-question-text {
    font-size: 1.2rem;
    font-weight: 600;
@@ -949,14 +941,6 @@ body.question-view {
    font-size: 3.5rem;
    margin-bottom: 10px;
    line-height: 1;
-}
-
-.question-label {
-   font-size: 0.85rem;
-   color: rgba(0, 0, 0, 0.45);
-   letter-spacing: 0.16em;
-   text-transform: uppercase;
-   margin-bottom: 18px;
 }
 
 .question-text {
