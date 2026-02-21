@@ -74,17 +74,10 @@ class LogManager {
 		}
 	}
 
-	addInteraction(interactionType, info = null) {
-		if (info) {
-			this.addEntry({
-				interaction: interactionType,
-				info: info,
-			});
-		} else {
-			this.addEntry({
-				interaction: interactionType,
-			});
-		}
+	addInteraction(interactionType, extraFields = null) {
+		const entry = { interaction: interactionType };
+		if (extraFields) Object.assign(entry, extraFields);
+		this.addEntry(entry);
 		this.save();
 	}
 

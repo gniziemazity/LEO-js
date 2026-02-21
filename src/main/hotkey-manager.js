@@ -8,16 +8,12 @@ class HotkeyManager {
 
 	handleKey(letter) {
 		if (!state.isActive) return;
-		if (state.isPaused) {
-			return;
-		}
+		if (state.isPaused) return;
 
 		const hotkeyMode = this.settingsManager.get("hotkeyMode");
 
 		if (hotkeyMode === "auto-run") {
-			if (state.isAutoTyping) {
-				return;
-			}
+			if (state.isAutoTyping) return;
 
 			state.lock();
 			state.startAutoTyping();
@@ -55,6 +51,11 @@ class HotkeyManager {
 
 		globalShortcut.register(shortcuts.toggleTransparency, () => {
 			state.mainWindow.webContents.send("toggle-transparency-event");
+		});
+
+		const toggleWindowKey = shortcuts.toggleWindow;
+		globalShortcut.register(toggleWindowKey, () => {
+			if (state.onToggleWindow) state.onToggleWindow();
 		});
 	}
 

@@ -1,4 +1,5 @@
 const { ipcRenderer } = require("electron");
+const { buildSettingsCSS } = require("../shared/constants");
 
 class SettingsUI {
 	constructor() {
@@ -75,11 +76,15 @@ class SettingsUI {
 			settings.hotkeys.alwaysOnTop;
 		document.getElementById("toggleTransparencyKey").value =
 			settings.hotkeys.toggleTransparency;
+		document.getElementById("toggleWindowKey").value =
+			settings.hotkeys.toggleWindow;
 
 		document.getElementById("commentNormalColor").value =
 			settings.colors.commentNormal;
 		document.getElementById("questionCommentColor").value =
 			settings.colors.questionCommentColor;
+		document.getElementById("imageBlockColor").value =
+			settings.colors.imageBlockColor;
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -123,10 +128,14 @@ class SettingsUI {
 				alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
 				toggleTransparency: document.getElementById("toggleTransparencyKey")
 					.value,
+				toggleWindow: document.getElementById("toggleWindowKey").value,
 			},
 			colors: {
 				commentNormal: document.getElementById("commentNormalColor").value,
-				questionCommentColor: document.getElementById("questionCommentColor").value,
+				questionCommentColor: document.getElementById(
+					"questionCommentColor",
+				).value,
+				imageBlockColor: document.getElementById("imageBlockColor").value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,
@@ -161,38 +170,9 @@ class SettingsUI {
 			document.head.appendChild(styleEl);
 		}
 
-		styleEl.textContent = `
-         body {
-            font-size: ${settings.fontSize}px;
-         }
-         
-         .comment-block,
-         .code-block {
-            color: ${settings.colors.textColor};
-         }
-         
-         .comment-block {
-            background: ${settings.colors.commentNormal};
-         }
-         
-         .comment-block.question-comment {
-            background: ${settings.colors.questionCommentColor};
-         }
-         
-         .comment-block.active-comment {
-            background: ${settings.colors.commentActive};
-            color: ${settings.colors.commentActiveText};
-         }
-         
-         .block.selected {
-            background-color: ${settings.colors.commentSelected};
-            border-left-color: ${settings.colors.selectedBorder};
-         }
-         
-         .char.cursor {
-            background: ${settings.colors.cursor};
-         }
-         
+		styleEl.textContent =
+			buildSettingsCSS(settings) +
+			`
          #speedSettingContainer {
             display: ${settings.hotkeyMode === "auto-run" ? "block" : "none"};
          }

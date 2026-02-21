@@ -1,5 +1,6 @@
 const { ipcRenderer } = require("electron");
 const path = require("path");
+const { buildWindowTitle } = require("../shared/constants");
 
 class FileOperations {
 	constructor(
@@ -14,6 +15,8 @@ class FileOperations {
 		this.cursorManager = cursorManager;
 		this.lessonRenderer = lessonRenderer;
 		this.undoManager = undoManager;
+		this.students = [];
+		this.onStudentsLoaded = null;
 
 		this.lessonManager.onChange(() => {
 			this.updateWindowTitleWithUnsavedIndicator();
@@ -24,7 +27,7 @@ class FileOperations {
 		const filePath = await ipcRenderer.invoke("show-save-dialog");
 		if (!filePath) return;
 
-		this.lessonManager.create(filePath, (err) => {
+		this.lessonManager.create(filePath, async (err) => {
 			if (err) {
 				console.error("Failed to create file:", err);
 				alert("Failed to create file: " + err);
@@ -32,6 +35,7 @@ class FileOperations {
 			}
 
 			const fileName = filePath.split(/[\\/]/).pop();
+			await this._loadStudents(filePath);
 			this.updateWindowTitle(fileName);
 			localStorage.setItem("lastLessonPath", filePath);
 			this.logManager.initialize(filePath);
@@ -50,11 +54,15 @@ class FileOperations {
 		if (!filePath) return;
 
 		const fileName = filePath.split(/[\\/]/).pop();
+		await this._loadStudents(filePath);
 		this.updateWindowTitle(fileName);
 		this.loadFilePath(filePath, 0);
 	}
 
-	loadFilePath(filePath, savedIndex = 0) {
+	async loadFilePath(filePath, savedIndex = 0) {
+		await this._loadStudents(filePath);
+		this.updateWindowTitle(filePath.split(/[\\/]/).pop());
+
 		this.lessonManager.load(filePath, (err, data) => {
 			if (err) {
 				console.error("Failed to load file:", err);
@@ -80,6 +88,18 @@ class FileOperations {
 		});
 	}
 
+	async _loadStudents(filePath) {
+		const students = await ipcRenderer.invoke("load-students-file", filePath);
+		this.students = students;
+		if (this.onStudentsLoaded) {
+			this.onStudentsLoaded(students);
+		}
+	}
+
+	getStudents() {
+		return this.students;
+	}
+
 	saveLesson() {
 		this.lessonManager.save((err) => {
 			if (err) {
@@ -97,22 +117,16 @@ class FileOperations {
 
 		if (lastFile) {
 			this.loadFilePath(lastFile, lastIndex ? parseInt(lastIndex) : 0);
-			this.updateWindowTitle(lastFile.split(/[\\/]/).pop());
 		} else {
 			this.logManager.initialize();
 		}
 	}
 
 	updateWindowTitle(fileName = "") {
-		ipcRenderer.send("update-window-title", fileName);
-
-		const baseTitle = "LEO";
-		if (fileName && fileName.trim() !== "") {
-			const displayName = fileName.replace(/\.json$/i, "");
-			document.title = `${baseTitle} - ${displayName}`;
-		} else {
-			document.title = baseTitle;
-		}
+		const studentCount =
+			this.students.length > 0 ? this.students.length : null;
+		ipcRenderer.send("update-window-title", { fileName, studentCount });
+		document.title = buildWindowTitle(fileName, studentCount, false);
 	}
 
 	updateWindowTitleWithUnsavedIndicator() {
@@ -120,19 +134,17 @@ class FileOperations {
 		if (!filePath) return;
 
 		const fileName = filePath.split(/[\\/]/).pop();
-		const displayName = fileName.replace(/\.json$/i, "");
-		const baseTitle = "LEO";
 		const hasUnsaved = this.lessonManager.hasChanges();
+		const studentCount =
+			this.students.length > 0 ? this.students.length : null;
 
-		const title = hasUnsaved
-			? `${baseTitle} - ${displayName} *`
-			: `${baseTitle} - ${displayName}`;
+		document.title = buildWindowTitle(fileName, studentCount, hasUnsaved);
 
-		document.title = title;
-		ipcRenderer.send(
-			"update-window-title",
-			hasUnsaved ? `${fileName} *` : fileName,
-		);
+		const titleFileName = hasUnsaved ? `${fileName} *` : fileName;
+		ipcRenderer.send("update-window-title", {
+			fileName: titleFileName,
+			studentCount,
+		});
 	}
 
 	setInitialStateToInactive() {

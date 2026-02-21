@@ -157,6 +157,12 @@ def load_student_data(csv_path, total_keypresses):
         return []
     return students
 
+def normalize_answered_by(value):
+    if not value:
+        return []
+    parts = [p.strip() for p in str(value).split(',') if p.strip()]
+    return parts
+
 def extract_interactions(key_presses):
     interactions = {
         'teacher-question': [],
@@ -167,11 +173,15 @@ def extract_interactions(key_presses):
         if 'interaction' in kp:
             itype = kp['interaction']
             if itype in interactions:
-                interactions[itype].append({
+                entry = {
                     'timestamp': kp['timestamp'] / 1000,
                     'info': kp.get('info', ''),
-                    'answered_by': kp.get('answered_by', None)
-                })
+                    'asked_by': kp.get('asked_by', ''),
+                    'answered_by': normalize_answered_by(kp.get('answered_by', None)),
+                    'student': kp.get('student', ''),
+                    'closed_at': kp.get('closed_at', None),
+                }
+                interactions[itype].append(entry)
     return interactions
 
 def calculate_intervals(key_presses):
@@ -319,8 +329,10 @@ def create_visualizations(data, student_data=None):
 
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
     
-    cum_dates = [datetime.fromtimestamp(kp['timestamp']/1000) for kp in key_presses]
-    cum_keys = list(range(1, len(key_presses) + 1))
+    char_indices = [i for i, kp in enumerate(key_presses) if 'char' in kp]
+    cum_dates = [datetime.fromtimestamp(key_presses[i]['timestamp']/1000) for i in char_indices]
+    cum_keys = list(range(1, len(char_indices) + 1))
+    orig_to_cum = {orig: ci for ci, orig in enumerate(char_indices)}
     
     burst_groups = []
     current_burst = []
@@ -331,13 +343,13 @@ def create_visualizations(data, student_data=None):
             current_burst.append(i + 1)
         else:
             if len(current_burst) > 1:
-                filtered = [idx for idx in current_burst if 'char' in key_presses[idx]]
+                filtered = [idx for idx in current_burst if idx in orig_to_cum]
                 if len(filtered) > 1:
                     burst_groups.append(filtered)
             current_burst = []
     
     if len(current_burst) > 1:
-        filtered = [idx for idx in current_burst if 'char' in key_presses[idx]]
+        filtered = [idx for idx in current_burst if idx in orig_to_cum]
         if len(filtered) > 1:
             burst_groups.append(filtered)
             
@@ -356,8 +368,8 @@ def create_visualizations(data, student_data=None):
     
     burst_artists = []
     for b_indices in burst_groups:
-        b_times = [cum_dates[i] for i in b_indices]
-        b_counts = [cum_keys[i] for i in b_indices]
+        b_times = [cum_dates[orig_to_cum[i]] for i in b_indices]
+        b_counts = [cum_keys[orig_to_cum[i]] for i in b_indices]
         scatter = ax2.scatter(
             b_times, b_counts,
             color=Config.BURST_MARKER_COLOR,
@@ -375,23 +387,26 @@ def create_visualizations(data, student_data=None):
             })
 
     question_artists = []
-    for q in interactions['teacher-question']:
+
+    def make_interaction_block(q, color, itype, key_presses):
         q_ts = q['timestamp']
-        next_kp_ts = None
-        for kp in key_presses:
-            if kp['timestamp']/1000 > q_ts:
-                next_kp_ts = kp['timestamp']/1000
-                break
-        
-        color = Config.QUESTION_ANSWERED_COLOR if q['answered_by'] else Config.QUESTION_UNANSWERED_COLOR
-        
-        if next_kp_ts:
+        closed_at = q.get('closed_at', None)
+        if closed_at:
+            end_ts = closed_at / 1000
+        else:
+            end_ts = None
+            for kp in key_presses:
+                if kp['timestamp']/1000 > q_ts:
+                    end_ts = kp['timestamp']/1000
+                    break
+
+        if end_ts:
             start = datetime.fromtimestamp(q_ts)
-            end = datetime.fromtimestamp(next_kp_ts)
+            end = datetime.fromtimestamp(end_ts)
             rect = ax2.axvspan(start, end, color=color, alpha=Config.QUESTION_ALPHA, zorder=4)
-            
             question_artists.append({
                 'rect': rect,
+                'type': itype,
                 'data': q,
                 'start': start,
                 'end': end,
@@ -406,44 +421,26 @@ def create_visualizations(data, student_data=None):
             )
             question_artists.append({
                 'line': line,
+                'type': itype,
                 'data': q,
                 'x': datetime.fromtimestamp(q_ts)
             })
 
-    for q in interactions['student-question']:
+    for q in interactions['teacher-question']:
         color = Config.QUESTION_ANSWERED_COLOR if q['answered_by'] else Config.QUESTION_UNANSWERED_COLOR
-        line = ax2.axvline(
-            datetime.fromtimestamp(q['timestamp']),
-            color=color,
-            linewidth=Config.QUESTION_LINE_WIDTH,
-            alpha=Config.QUESTION_LINE_ALPHA,
-            linestyle='--'
-        )
-        question_artists.append({
-            'line': line,
-            'data': q,
-            'x': datetime.fromtimestamp(q['timestamp'])
-        })
-    
+        make_interaction_block(q, color, 'teacher-question', key_presses)
+
+    for q in interactions['student-question']:
+        make_interaction_block(q, Config.QUESTION_STUDENT_COLOR, 'student-question', key_presses)
+
     for q in interactions['providing-help']:
-        line = ax2.axvline(
-            datetime.fromtimestamp(q['timestamp']),
-            color=Config.QUESTION_HELP_COLOR,
-            linewidth=Config.QUESTION_LINE_WIDTH,
-            alpha=Config.QUESTION_LINE_ALPHA,
-            linestyle='--'
-        )
-        question_artists.append({
-            'line': line,
-            'data': q,
-            'x': datetime.fromtimestamp(q['timestamp'])
-        })
+        make_interaction_block(q, Config.QUESTION_HELP_COLOR, 'providing-help', key_presses)
 
     ax2.set_ylabel('Total Key Presses', fontsize=11)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
     plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
-    
+ 
     ax2.text(
         0.006, 0.96, f'Total: {char_count}',
         transform=ax2.transAxes,
@@ -460,8 +457,7 @@ def create_visualizations(data, student_data=None):
         
         students_answering = {}
         for q in interactions['teacher-question']:
-            if q['answered_by']:
-                name = str(q['answered_by'])
+            for name in q['answered_by']:
                 if name not in students_answering:
                     students_answering[name] = []
                 students_answering[name].append(q.get('info', 'Question'))
@@ -757,10 +753,27 @@ def create_visualizations(data, student_data=None):
             
             if closest_q:
                 q = closest_q['data']
-                if q.get('answered_by'):
-                    txt = f"{q.get('info','')}\nAnswered by: {q.get('answered_by')}"
-                else:
-                    txt = q.get('info','')
+                qtype = closest_q.get('type', 'teacher-question')
+                if qtype == 'teacher-question':
+                    info = q.get('info', '').strip()
+                    answerers = q.get('answered_by', [])
+                    txt = f"Q: {info}" if info else "Q: (teacher question)"
+                    if answerers:
+                        names = "\n".join(f"  • {name}" for name in answerers)
+                        txt += f"\n\nAnswered by:\n{names}"
+                    else:
+                        txt += "\n\n(unanswered)"
+                elif qtype == 'student-question':
+                    asked_by = q.get('asked_by', '').strip()
+                    question_text = q.get('info', '').strip()
+                    txt = f"Q: {question_text}" if question_text else "Q: (student question)"
+                    if asked_by:
+                        txt += f"\n\nAsked by:\n  • {asked_by}"
+                elif qtype == 'providing-help':
+                    student_name = q.get('student', '').strip()
+                    txt = "Q: Providing help"
+                    if student_name:
+                        txt += f"\n\nStudent:\n  • {student_name}"
                 y_pos = ax2.transData.inverted().transform((0, event.y))[1]
                 ann = ax2.annotate(
                     txt,
@@ -793,7 +806,8 @@ def create_visualizations(data, student_data=None):
                 d = closest_s['data']
                 lbl = f"{d['name']} ({d.get('follow_score',0):.0f}%, {d.get('char_hist',0):.1f}%)"
                 if closest_s['answered']:
-                    lbl += "\n\nAnswered:\n" + "\n".join([f"- {x}" for x in closest_s['answered']])
+                    ans_lines = "\n".join(f"  • {x}" for x in closest_s['answered'])
+                    lbl += f"\n\nAnswered ({len(closest_s['answered'])}):\n{ans_lines}"
                 ann = ax3.annotate(
                     lbl,
                     xy=(closest_s['x'], closest_s['y']),

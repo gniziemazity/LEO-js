@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Question</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="question-view">
+		<div class="question-emoji">❓</div>
+		<div class="question-label">Question</div>
+		<div class="question-text" id="questionText"></div>
+		<div class="dots" id="dots">
+			<div class="dot"></div>
+			<div class="dot"></div>
+			<div class="dot"></div>
+		</div>
+		<div class="answered-banner" id="answeredBanner"></div>
+
+		<script>
+			const { ipcRenderer } = require("electron");
+
+			ipcRenderer.on("set-question", (event, { question, bgColor }) => {
+				document.getElementById("questionText").textContent = question;
+				if (bgColor) {
+					document.documentElement.style.setProperty("--bg", bgColor);
+				}
+				document.getElementById("answeredBanner").style.display = "none";
+				document.getElementById("dots").style.display = "flex";
+			});
+
+			const AUTO_CLOSE_MS = 3000;
+
+			ipcRenderer.on("set-answered", (event, studentName) => {
+				document.getElementById("dots").style.display = "none";
+				const banner = document.getElementById("answeredBanner");
+				banner.textContent = studentName
+					? `✅ Answered by ${studentName}`
+					: "✅ Answered";
+				banner.style.display = "block";
+				setTimeout(() => {
+					window.close();
+				}, AUTO_CLOSE_MS);
+			});
+		</script>
+	</body>
+</html>

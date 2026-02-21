@@ -1,5 +1,7 @@
 const { ipcRenderer } = require("electron");
 
+const { getBlockSubtype } = require("../shared/constants");
+
 class LessonRenderer {
 	constructor(lessonManager, uiManager, cursorManager, undoManager = null) {
 		this.lessonManager = lessonManager;
@@ -9,6 +11,30 @@ class LessonRenderer {
 		this.editDebounceTimer = null;
 		this.lastEditedBlockIndex = null;
 		this.lastEditedContent = null;
+	}
+
+	attachEditHandlers(element) {
+		element.onpaste = (e) => {
+			e.preventDefault();
+			const text = e.clipboardData.getData("text/plain");
+			document.execCommand("insertText", false, text);
+		};
+		element.onkeydown = (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				document.execCommand("insertText", false, "\n");
+			}
+		};
+	}
+
+	makeCodeBlockEditable(element, block, blockIdx) {
+		element.contentEditable = "true";
+		element.innerText = block.text;
+		element.oninput = () => {
+			this.saveEditState(blockIdx, element.innerText);
+			this.lessonManager.updateBlock(blockIdx, element.innerText);
+		};
+		this.attachEditHandlers(element);
 	}
 
 	setUndoManager(undoManager) {
@@ -96,33 +122,19 @@ class LessonRenderer {
 		blockDiv.contentEditable = !isTypingActive;
 		blockDiv.innerText = block.text;
 
-		if (block.text.trim().startsWith("❓")) {
-			blockDiv.classList.add("question-comment");
-		}
+		const subtype = getBlockSubtype(block.text);
+		if (subtype) blockDiv.classList.add(subtype);
 
 		blockDiv.oninput = () => {
 			this.saveEditState(blockIdx, blockDiv.innerText);
 			this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
 
-			if (blockDiv.innerText.trim().startsWith("❓")) {
-				blockDiv.classList.add("question-comment");
-			} else {
-				blockDiv.classList.remove("question-comment");
-			}
+			blockDiv.classList.remove("question-comment", "image-comment");
+			const sub = getBlockSubtype(blockDiv.innerText);
+			if (sub) blockDiv.classList.add(sub);
 		};
 
-		blockDiv.onpaste = (e) => {
-			e.preventDefault();
-			const text = e.clipboardData.getData("text/plain");
-			document.execCommand("insertText", false, text);
-		};
-
-		blockDiv.onkeydown = (e) => {
-			if (e.key === "Enter") {
-				e.preventDefault();
-				document.execCommand("insertText", false, "\n");
-			}
-		};
+		this.attachEditHandlers(blockDiv);
 
 		executionSteps.push({
 			type: "block",
@@ -146,26 +158,7 @@ class LessonRenderer {
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 
 		if (selectedBlockIndex === blockIdx && !isTypingActive) {
-			blockDiv.contentEditable = "true";
-			blockDiv.innerText = block.text;
-			blockDiv.oninput = () => {
-				this.saveEditState(blockIdx, blockDiv.innerText);
-				this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
-			};
-
-			blockDiv.onpaste = (e) => {
-				e.preventDefault();
-				const text = e.clipboardData.getData("text/plain");
-				document.execCommand("insertText", false, text);
-			};
-
-			blockDiv.onkeydown = (e) => {
-				if (e.key === "Enter") {
-					e.preventDefault();
-					document.execCommand("insertText", false, "\n");
-				}
-			};
-
+			this.makeCodeBlockEditable(blockDiv, block, blockIdx);
 			return globalStepCounter;
 		} else {
 			blockDiv.contentEditable = "false";
@@ -220,26 +213,7 @@ class LessonRenderer {
 					blocks[blockIdx].classList.add("selected");
 
 					if (block.type === "code") {
-						blocks[blockIdx].contentEditable = "true";
-						blocks[blockIdx].innerText = block.text;
-						blocks[blockIdx].oninput = () => {
-							this.saveEditState(blockIdx, blocks[blockIdx].innerText);
-							this.lessonManager.updateBlock(
-								blockIdx,
-								blocks[blockIdx].innerText,
-							);
-						};
-						blocks[blockIdx].onpaste = (e) => {
-							e.preventDefault();
-							const text = e.clipboardData.getData("text/plain");
-							document.execCommand("insertText", false, text);
-						};
-						blocks[blockIdx].onkeydown = (e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								document.execCommand("insertText", false, "\n");
-							}
-						};
+						this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
 					}
 
 					blocks[blockIdx].focus();
@@ -278,26 +252,7 @@ class LessonRenderer {
 				blocks[blockIdx].classList.add("selected");
 
 				if (block.type === "code") {
-					blocks[blockIdx].contentEditable = "true";
-					blocks[blockIdx].innerText = block.text;
-					blocks[blockIdx].oninput = () => {
-						this.saveEditState(blockIdx, blocks[blockIdx].innerText);
-						this.lessonManager.updateBlock(
-							blockIdx,
-							blocks[blockIdx].innerText,
-						);
-					};
-					blocks[blockIdx].onpaste = (e) => {
-						e.preventDefault();
-						const text = e.clipboardData.getData("text/plain");
-						document.execCommand("insertText", false, text);
-					};
-					blocks[blockIdx].onkeydown = (e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							document.execCommand("insertText", false, "\n");
-						}
-					};
+					this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
 				}
 			}
 

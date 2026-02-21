@@ -1,280 +1,490 @@
 <!doctype html>
 <html lang="en">
-   <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>LEO Client</title>
-      <link rel="icon" href="icon.ico" type="image/x-icon" />
-      <link rel="stylesheet" href="styles.css" />
-   </head>
-   <body class="mobile-view">
-      <div id="mobile-header">
-         <div class="header-main-row">
-            <button id="toggleBtn" class="btn-start" onclick="toggleActive()">START</button>
-            <div id="lessonName">Not Connected</div>
-            <div id="interactionButtons">
-               <button class="interaction-btn" onclick="logInteraction('student-question')" title="Student Question"><span class="dark-emoji">❓</span></button>
-               <button class="interaction-btn" onclick="logInteraction('providing-help')" title="Providing Help"><span class="dark-emoji">🤝</span></button>
-            </div>
-            <div id="timerDisplay"></div>
-         </div>
-         <div class="progress-bar" id="progressBar"></div>
-      </div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>LEO Client</title>
+		<link rel="icon" href="icon.ico" type="image/x-icon" />
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body class="mobile-view">
+		<div id="mobile-header">
+			<div class="header-main-row">
+				<button id="toggleBtn" class="btn-start" onclick="toggleActive()">
+					START
+				</button>
+				<div id="lessonName">Not Connected</div>
+				<div id="interactionButtons">
+					<button
+						class="interaction-btn btn-student-question"
+						onclick="handleInteractionBtn('student-question')"
+						title="Student Question"
+					>
+						<span class="dark-emoji">❓</span>
+					</button>
+					<button
+						class="interaction-btn btn-help"
+						onclick="handleInteractionBtn('providing-help')"
+						title="Providing Help"
+					>
+						<span class="dark-emoji">🤝</span>
+					</button>
+				</div>
+				<div id="timerDisplay"></div>
+			</div>
+			<div class="progress-bar" id="progressBar"></div>
+		</div>
 
-      <div id="lesson-container">
-         <div class="empty-state">Connecting to LEO...</div>
-      </div>
+		<div id="lesson-container">
+			<div class="empty-state">Connecting to LEO...</div>
+		</div>
 
-      <script>
-         let ws = null;
-         let currentSettings = null;
-         let isActive = false;
+		<div id="questionOverlay" class="overlay">
+			<div class="q-modal">
+				<div class="q-label">❓ Question</div>
+				<div class="q-question-text" id="qText"></div>
+				<div class="q-subtitle" id="qSubtitle">Who answered?</div>
+				<div class="q-grid" id="qGrid"></div>
+				<div class="q-answered-row" id="qAnsweredRow">
+					<span id="qAnsweredText"></span>
+					<div class="q-close-bar">
+						<div class="q-close-bar-fill" id="qCloseBarFill"></div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-         const elements = {
-            lessonName: document.getElementById("lessonName"),
-            timerDisplay: document.getElementById("timerDisplay"),
-            progressBar: document.getElementById("progressBar"),
-            lessonContainer: document.getElementById("lesson-container"),
-            toggleBtn: document.getElementById("toggleBtn"),
-         };
+		<!-- Student interaction overlay (student-question / providing-help) -->
+		<div id="interactionOverlay" class="overlay">
+			<div class="i-modal" id="iModal">
+				<div class="i-title" id="iTitle">Select student</div>
+				<input
+					type="text"
+					class="i-question-input"
+					id="iQuestionInput"
+					placeholder="Type the question here..."
+					style="display: none"
+				/>
+				<div class="i-grid" id="iGrid"></div>
+				<button class="i-cancel-btn" onclick="closeInteractionOverlay()">
+					Cancel
+				</button>
+			</div>
+		</div>
 
-         function connect() {
-            const host = window.location.host;
-            const protocol =
-               window.location.protocol === "https:" ? "wss:" : "ws:";
-            const wsUrl = `${protocol}//${host}`;
+		<script>
+			let ws = null;
+			let currentSettings = null;
+			let isActive = false;
+			let currentStudents = [];
+			let pendingInteraction = null;
+			let autoCloseTimer = null;
 
-            console.log("Connecting to:", wsUrl);
+			const AUTO_CLOSE_MS = 3000;
 
-            if (ws) ws.close();
-            ws = new WebSocket(wsUrl);
+			function getBlockSubtype(text) {
+				const t = text.trim();
+				if (t.startsWith("❓")) return "question-comment";
+				if (t.startsWith("🖼️")) return "image-comment";
+				return null;
+			}
 
-            ws.onmessage = (event) => {
-               const message = JSON.parse(event.data);
-               handleMessage(message);
-            };
+			function buildSettingsCSS(settings) {
+				return `
+					body { font-size: ${settings.fontSize}px; }
+					.comment-block, .code-block { color: ${settings.colors.textColor}; }
+					.comment-block { background: ${settings.colors.commentNormal}; }
+					.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
+					.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
+					.comment-block.active-comment {
+						background: ${settings.colors.commentActive};
+						color: ${settings.colors.commentActiveText};
+					}
+					.char.cursor { background: ${settings.colors.cursor}; }
+				`;
+			}
 
-            ws.onclose = () => {
-               ws = null;
-               setTimeout(connect, 2000); // auto-reconnect
-            };
-         }
+			function formatAnsweredText(name) {
+				return name ? `✅ Answered by ${name}` : "✅ Answered";
+			}
 
-         function handleMessage(message) {
-            const { type, data } = message;
-            switch (type) {
-               case "state":
-                  updateAllState(data);
-                  break;
-               case "lesson-data":
-                  updateLessonData(data);
-                  break;
-               case "cursor":
-                  updateCursor(data);
-                  break;
-               case "progress":
-                  updateProgress(data);
-                  break;
-               case "timer":
-                  updateTimer(data.timeRemaining);
-                  break;
-               case "lesson":
-                  updateLessonName(data.lessonName);
-                  break;
-               case "settings":
-                  applySettings(data);
-                  break;
-               case "active":
-                  updateActiveState(data.isActive);
-                  break;
-            }
-         }
+			function createCharSpan(char, stepIndex) {
+				let el = document.createElement("span");
+				el.className = "char";
+				if (char === "\n") el = document.createElement("br");
+				else if (char === " ") el.innerHTML = "&nbsp;";
+				else el.textContent = char;
+				el.dataset.stepIndex = stepIndex;
+				return el;
+			}
 
-         function updateAllState(state) {
-            updateProgress(state);
-            updateTimer(state.timeRemaining);
-            updateLessonName(state.lessonName);
-            if (state.isActive !== undefined) {
-               updateActiveState(state.isActive);
-            }
-            if (state.settings) {
-               applySettings(state.settings);
-            }
-            if (state.lessonData) {
-               updateLessonData(state.lessonData);
-            }
-            if (state.currentStep !== undefined) {
-               updateCursor({ currentStep: state.currentStep });
-            }
-         }
+			const elements = {
+				lessonName: document.getElementById("lessonName"),
+				timerDisplay: document.getElementById("timerDisplay"),
+				progressBar: document.getElementById("progressBar"),
+				lessonContainer: document.getElementById("lesson-container"),
+				toggleBtn: document.getElementById("toggleBtn"),
+			};
 
-         function updateActiveState(active) {
-            isActive = active;
-            if (active) {
-               elements.toggleBtn.textContent = "STOP";
-               elements.toggleBtn.classList.remove("btn-start");
-               elements.toggleBtn.classList.add("btn-stop");
-            } else {
-               elements.toggleBtn.textContent = "START";
-               elements.toggleBtn.classList.remove("btn-stop");
-               elements.toggleBtn.classList.add("btn-start");
-            }
-         }
+			function connect() {
+				const host = window.location.host;
+				const protocol =
+					window.location.protocol === "https:" ? "wss:" : "ws:";
+				if (ws) ws.close();
+				ws = new WebSocket(`${protocol}//${host}`);
+				ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
+				ws.onclose = () => {
+					ws = null;
+					setTimeout(connect, 2000);
+				};
+			}
 
-         function applySettings(settings) {
-            currentSettings = settings;
+			function handleMessage(message) {
+				const { type, data } = message;
+				switch (type) {
+					case "state":
+						updateAllState(data);
+						break;
+					case "lesson-data":
+						updateLessonData(data);
+						break;
+					case "cursor":
+						updateCursor(data);
+						break;
+					case "progress":
+						updateProgress(data);
+						break;
+					case "timer":
+						updateTimer(data.timeRemaining);
+						break;
+					case "lesson":
+						updateLessonName(data.lessonName);
+						break;
+					case "settings":
+						applySettings(data);
+						break;
+					case "active":
+						updateActiveState(data.isActive);
+						break;
+					case "students":
+						currentStudents = data.students || [];
+						break;
+					case "question-started":
+						showQuestionOverlay(
+							data.question,
+							data.students,
+							data.bgColor,
+						);
+						break;
+					case "question-ended":
+						hideQuestionOverlay();
+						break;
+				}
+			}
 
-            const styleId = "dynamic-settings-styles";
-            let styleEl = document.getElementById(styleId);
+			function updateAllState(state) {
+				updateProgress(state);
+				updateTimer(state.timeRemaining);
+				updateLessonName(state.lessonName);
+				if (state.isActive !== undefined) updateActiveState(state.isActive);
+				if (state.settings) applySettings(state.settings);
+				if (state.lessonData) updateLessonData(state.lessonData);
+				if (state.currentStep !== undefined)
+					updateCursor({ currentStep: state.currentStep });
+				if (state.students) currentStudents = state.students;
+				if (state.activeQuestion)
+					showQuestionOverlay(
+						state.activeQuestion,
+						state.students || [],
+						null,
+					);
+			}
 
-            if (!styleEl) {
-               styleEl = document.createElement("style");
-               styleEl.id = styleId;
-               document.head.appendChild(styleEl);
-            }
+			function updateActiveState(active) {
+				isActive = active;
+				elements.toggleBtn.textContent = active ? "STOP" : "START";
+				elements.toggleBtn.classList.toggle("btn-stop", active);
+				elements.toggleBtn.classList.toggle("btn-start", !active);
+			}
 
-            styleEl.textContent = `
-               body {
-                  font-size: ${settings.fontSize}px;
-               }
-               
-               .comment-block,
-               .code-block {
-                  color: ${settings.colors.textColor};
-               }
-               
-               .comment-block {
-                  background: ${settings.colors.commentNormal};
-               }
-               
-               .comment-block.question-comment {
-                  background: ${settings.colors.questionCommentColor};
-               }
-               
-               .comment-block.active-comment {
-                  background: ${settings.colors.commentActive};
-                  color: ${settings.colors.commentActiveText};
-               }
-               
-               .char.cursor {
-                  background: ${settings.colors.cursor};
-               }
-            `;
-         }
+			function applySettings(settings) {
+				currentSettings = settings;
+				const id = "dynamic-settings-styles";
+				let s = document.getElementById(id);
+				if (!s) {
+					s = document.createElement("style");
+					s.id = id;
+					document.head.appendChild(s);
+				}
+				s.textContent = buildSettingsCSS(settings);
+			}
 
-         function updateLessonData(data) {
-            const { blocks } = data;
-            elements.lessonContainer.innerHTML = "";
-            if (!blocks || blocks.length === 0) {
-               return;
-            }
+			function updateLessonData(data) {
+				const { blocks } = data;
+				elements.lessonContainer.innerHTML = "";
+				if (!blocks || !blocks.length) return;
+				let ctr = 0;
+				blocks.forEach((block) => {
+					const div = document.createElement("div");
+					div.className = `block ${block.type}-block`;
+					if (block.type === "comment") {
+						div.innerText = block.text;
+						const subtype = getBlockSubtype(block.text);
+						if (subtype) div.classList.add(subtype);
+						div.dataset.stepIndex = ctr++;
+						div.onclick = handleBlockClick;
+					} else if (block.type === "code") {
+						for (const char of block.text) {
+							div.appendChild(createCharSpan(char, ctr++));
+						}
+						div.dataset.stepIndex = ctr++;
+						div.onclick = handleCodeClick;
+					}
+					elements.lessonContainer.appendChild(div);
+				});
+			}
 
-            let globalStepCounter = 0;
-            blocks.forEach((block) => {
-               const blockDiv = document.createElement("div");
-               blockDiv.className = `block ${block.type}-block`;
+			function updateCursor(data) {
+				const { currentStep } = data;
+				document
+					.querySelectorAll(".cursor, .consumed, .active-comment")
+					.forEach((el) => {
+						el.classList.remove("cursor", "consumed", "active-comment");
+					});
+				document.querySelectorAll("[data-step-index]").forEach((el) => {
+					const idx = parseInt(el.dataset.stepIndex);
+					if (idx < currentStep) {
+						el.classList.add("consumed");
+					} else if (idx === currentStep) {
+						el.classList.add(
+							el.classList.contains("char")
+								? "cursor"
+								: "active-comment",
+						);
+						el.scrollIntoView({ behavior: "smooth", block: "center" });
+					}
+				});
+			}
 
-               if (block.type === "comment") {
-                  blockDiv.innerText = block.text;
-                  
-                  if (block.text.trim().startsWith("❓")) {
-                     blockDiv.classList.add("question-comment");
-                  }
-                  
-                  blockDiv.dataset.stepIndex = globalStepCounter++;
+			function updateProgress(data) {
+				if (data.progress !== undefined)
+					elements.progressBar.style.width = `${data.progress}%`;
+			}
+			function updateTimer(t) {
+				elements.timerDisplay.textContent = t || "";
+			}
+			function updateLessonName(name) {
+				document.title = name ? `LEO - ${name}` : "LEO";
+				elements.lessonName.textContent = name;
+			}
 
-                  blockDiv.onclick = handleBlockClick;
-               } else if (block.type === "code") {
-                  for (const char of block.text) {
-                     let el = document.createElement("span");
-                     el.className = "char";
-                     if (char === "\n") el = document.createElement("br");
-                     else if (char === " ") el.innerHTML = "&nbsp;";
-                     else el.textContent = char;
+			function showQuestionOverlay(question, students, bgColor) {
+				clearAutoCloseTimer();
 
-                     el.dataset.stepIndex = globalStepCounter++;
-                     blockDiv.appendChild(el);
-                  }
+				document.getElementById("qText").textContent = question;
 
-                  // Add block step after all characters (matches main app behavior)
-                  blockDiv.dataset.stepIndex = globalStepCounter++;
+				const overlay = document.getElementById("questionOverlay");
+				overlay.style.background = bgColor
+					? hexToRgba(bgColor, 0.94)
+					: "rgba(0,0,0,0.78)";
 
-                  blockDiv.onclick = handleCodeClick;
-               }
-               elements.lessonContainer.appendChild(blockDiv);
-            });
-         }
+				const grid = document.getElementById("qGrid");
+				const subtitle = document.getElementById("qSubtitle");
+				const answered = document.getElementById("qAnsweredRow");
+				grid.innerHTML = "";
+				grid.style.display = "flex";
+				subtitle.style.display = "";
+				answered.style.display = "none";
+				document.getElementById("qCloseBarFill").style.transition = "none";
+				document.getElementById("qCloseBarFill").style.width = "0%";
 
-         function updateCursor(data) {
-            const { currentStep } = data;
-            document
-               .querySelectorAll(".cursor, .consumed, .active-comment")
-               .forEach((el) => {
-                  el.classList.remove("cursor", "consumed", "active-comment");
-               });
+				const list = students && students.length ? students : null;
 
-            const allSteps = document.querySelectorAll("[data-step-index]");
-            allSteps.forEach((el) => {
-               const stepIndex = parseInt(el.dataset.stepIndex);
-               if (stepIndex < currentStep) {
-                  el.classList.add("consumed");
-               } else if (stepIndex === currentStep) {
-                  const isChar = el.classList.contains("char");
-                  el.classList.add(isChar ? "cursor" : "active-comment");
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-               }
-            });
-         }
+				if (list) {
+					subtitle.textContent = "Who answered?";
+					list.forEach((name) => {
+						const btn = document.createElement("button");
+						btn.className = "q-student-btn";
+						btn.textContent = name;
+						btn.onclick = () => onStudentAnswered(name);
+						grid.appendChild(btn);
+					});
+				} else {
+					subtitle.textContent = "";
+					const btn = document.createElement("button");
+					btn.className = "q-student-btn";
+					btn.style.cssText = "width:100%;margin-bottom:4px";
+					btn.textContent = "✅ Answered";
+					btn.onclick = () => onStudentAnswered(null);
+					grid.appendChild(btn);
+				}
 
-         function updateProgress(data) {
-            if (data.progress !== undefined) {
-               elements.progressBar.style.width = `${data.progress}%`;
-            }
-         }
+				overlay.classList.add("active");
+			}
 
-         function updateTimer(timeRemaining) {
-            elements.timerDisplay.textContent = timeRemaining || "";
-         }
+			function onStudentAnswered(name) {
+				sendMessage("student-answered", { studentName: name });
 
-         function updateLessonName(lessonName) {
-            document.title = lessonName ? `LEO - ${lessonName}` : "LEO";
-            elements.lessonName.textContent = lessonName;
-         }
+				document.getElementById("qGrid").style.display = "none";
+				document.getElementById("qSubtitle").style.display = "none";
 
-         function sendMessage(type, data) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-               ws.send(JSON.stringify({ type, data }));
-            }
-         }
+				const answeredRow = document.getElementById("qAnsweredRow");
+				const answeredText = document.getElementById("qAnsweredText");
+				answeredText.textContent = formatAnsweredText(name);
+				answeredRow.style.display = "flex";
 
-         function handleCodeClick(e) {
-            if (!isActive) return;
-            const clickedSpan = e.target.closest(".char");
-            if (clickedSpan) {
-               const stepIndex = parseInt(clickedSpan.dataset.stepIndex);
-               sendMessage("jump-to", { stepIndex });
-            }
-         }
+				const fill = document.getElementById("qCloseBarFill");
+				fill.style.transition = "none";
+				fill.style.width = "0%";
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						fill.style.transition = `width ${AUTO_CLOSE_MS}ms linear`;
+						fill.style.width = "100%";
+					});
+				});
 
-         function handleBlockClick(e) {
-            if (!isActive) return;
-            const blockDiv = e.target.closest(".block");
-            if (blockDiv && blockDiv.dataset.stepIndex) {
-               const stepIndex = parseInt(blockDiv.dataset.stepIndex);
-               sendMessage("jump-to", { stepIndex });
-            }
-         }
+				autoCloseTimer = setTimeout(
+					() => hideQuestionOverlay(),
+					AUTO_CLOSE_MS,
+				);
+			}
 
-         function toggleActive() {
-            sendMessage("toggle-active", {});
-         }
+			function hideQuestionOverlay() {
+				clearAutoCloseTimer();
+				document
+					.getElementById("questionOverlay")
+					.classList.remove("active");
+			}
 
-         function logInteraction(interactionType) {
-            sendMessage("interaction", { interactionType });
-            console.log(`Interaction logged: ${interactionType}`);
-         }
+			function clearAutoCloseTimer() {
+				if (autoCloseTimer) {
+					clearTimeout(autoCloseTimer);
+					autoCloseTimer = null;
+				}
+			}
 
-         setTimeout(connect, 500);
-      </script>
-   </body>
+			let wasActiveBeforeInteraction = false;
+			let interactionOpenedAt = null;
+
+			function handleInteractionBtn(interactionType) {
+				if (currentStudents.length > 0) {
+					pendingInteraction = interactionType;
+					interactionOpenedAt = Date.now();
+					const isQuestion = interactionType === "student-question";
+					const title = isQuestion
+						? "❓ Who asked a question?"
+						: "🤝 Who needs help?";
+					if (isQuestion && isActive) {
+						wasActiveBeforeInteraction = true;
+						sendMessage("toggle-active", {});
+					} else {
+						wasActiveBeforeInteraction = false;
+					}
+					showInteractionOverlay(title, currentStudents, interactionType);
+				} else {
+					sendMessage("interaction", { interactionType });
+				}
+			}
+
+			function showInteractionOverlay(title, students, type) {
+				const modal = document.getElementById("iModal");
+				modal.className = "i-modal";
+				if (type === "student-question") {
+					modal.classList.add("type-student-question");
+					document.getElementById("interactionOverlay").style.background =
+						"rgba(120,50,0,0.82)";
+				} else {
+					modal.classList.add("type-providing-help");
+					document.getElementById("interactionOverlay").style.background =
+						"rgba(0,80,30,0.82)";
+				}
+
+				document.getElementById("iTitle").textContent = title;
+
+				const questionInput = document.getElementById("iQuestionInput");
+				if (type === "student-question") {
+					questionInput.style.display = "block";
+					questionInput.value = "";
+					setTimeout(() => questionInput.focus(), 100);
+				} else {
+					questionInput.style.display = "none";
+				}
+
+				const grid = document.getElementById("iGrid");
+				grid.innerHTML = "";
+				students.forEach((name) => {
+					const btn = document.createElement("button");
+					btn.className = "i-student-btn";
+					btn.textContent = name;
+					btn.onclick = () => {
+						const qText =
+							type === "student-question"
+								? questionInput.value.trim()
+								: null;
+						const msgData = {
+							interactionType: pendingInteraction,
+							studentName: name,
+							openedAt: interactionOpenedAt,
+							closedAt: Date.now(),
+						};
+						if (qText) msgData.questionText = qText;
+						sendMessage("student-interaction", msgData);
+						closeInteractionOverlay();
+					};
+					grid.appendChild(btn);
+				});
+				document
+					.getElementById("interactionOverlay")
+					.classList.add("active");
+			}
+
+			function closeInteractionOverlay() {
+				document
+					.getElementById("interactionOverlay")
+					.classList.remove("active");
+				document.getElementById("iQuestionInput").style.display = "none";
+				pendingInteraction = null;
+				if (wasActiveBeforeInteraction) {
+					sendMessage("toggle-active", {});
+					wasActiveBeforeInteraction = false;
+				}
+			}
+
+			function hexToRgba(hex, alpha) {
+				const r = parseInt(hex.slice(1, 3), 16);
+				const g = parseInt(hex.slice(3, 5), 16);
+				const b = parseInt(hex.slice(5, 7), 16);
+				return `rgba(${r},${g},${b},${alpha})`;
+			}
+
+			function sendMessage(type, data) {
+				if (ws && ws.readyState === WebSocket.OPEN)
+					ws.send(JSON.stringify({ type, data }));
+			}
+
+			function handleCodeClick(e) {
+				if (!isActive) return;
+				const span = e.target.closest(".char");
+				if (span)
+					sendMessage("jump-to", {
+						stepIndex: parseInt(span.dataset.stepIndex),
+					});
+			}
+
+			function handleBlockClick(e) {
+				if (!isActive) return;
+				const div = e.target.closest(".block");
+				if (div && div.dataset.stepIndex)
+					sendMessage("jump-to", {
+						stepIndex: parseInt(div.dataset.stepIndex),
+					});
+			}
+
+			function toggleActive() {
+				sendMessage("toggle-active", {});
+			}
+
+			setTimeout(connect, 500);
+		</script>
+	</body>
 </html>

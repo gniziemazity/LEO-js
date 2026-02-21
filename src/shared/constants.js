@@ -37,8 +37,6 @@ const NUTJS_KEY_MAPPING = {
 	"🕛": { pause: 1000 },
 };
 
-const HOTKEYS = "abcdefghijklmnopqrstuvwxyz".split("");
-
 const WINDOW_CONFIG = {
 	width: 650,
 	height: 900,
@@ -60,17 +58,57 @@ const LOG_CONFIG = {
 	SAVE_INTERVAL: 10, // save log every N key presses
 };
 
-const TYPING_CONFIG = {
-	DEFAULT_SPEED_MS: 50,
-	MIN_SPEED_MS: 10,
-	MAX_SPEED_MS: 200,
-};
+const AUTO_CLOSE_MS = 3000;
+
+function getBlockSubtype(text) {
+	const t = text.trim();
+	if (t.startsWith("❓")) return "question-comment";
+	if (t.startsWith("🖼️")) return "image-comment";
+	return null;
+}
+
+function buildWindowTitle(fileName, studentCount, hasUnsaved) {
+	const baseTitle = "LEO";
+	if (!fileName || fileName.trim() === "") return baseTitle;
+	const displayName = fileName.replace(/\.json$/i, "");
+	let title = `${baseTitle} - ${displayName}`;
+	if (studentCount !== null && studentCount !== undefined)
+		title += ` [${studentCount} students]`;
+	if (hasUnsaved) title += " *";
+	return title;
+}
+
+function buildSettingsCSS(settings) {
+	return `
+		body { font-size: ${settings.fontSize}px; }
+		.comment-block, .code-block { color: ${settings.colors.textColor}; }
+		.comment-block { background: ${settings.colors.commentNormal}; }
+		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
+		.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
+		.comment-block.active-comment {
+			background: ${settings.colors.commentActive};
+			color: ${settings.colors.commentActiveText};
+		}
+		.block.selected {
+			background-color: ${settings.colors.commentSelected};
+			border-left-color: ${settings.colors.selectedBorder};
+		}
+		.char.cursor { background: ${settings.colors.cursor}; }
+	`;
+}
+
+function formatAnsweredText(studentName) {
+	return studentName ? `✅ Answered by ${studentName}` : "✅ Answered";
+}
 
 module.exports = {
 	NUTJS_KEY_MAPPING,
-	HOTKEYS,
 	WINDOW_CONFIG,
 	TIMER_CONFIG,
 	LOG_CONFIG,
-	TYPING_CONFIG,
+	AUTO_CLOSE_MS,
+	getBlockSubtype,
+	buildWindowTitle,
+	buildSettingsCSS,
+	formatAnsweredText,
 };

@@ -1,184 +1,269 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-   <head>
-      <meta charset="UTF-8" />
-      <title>LEO</title>
-      <link rel="stylesheet" href="./shared/styles.css" />
-   </head>
-   <body>
-      <div id="controls">
-         <button id="toggleBtn" title="Start Auto-typing" class="btn-start">START</button>
+	<head>
+		<meta charset="UTF-8" />
+		<title>LEO</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body>
+		<div id="controls">
+			<button id="toggleBtn" title="Start Auto-typing" class="btn-start">
+				START
+			</button>
 
-         <div id="interactionSection">
-            <button id="askQuestionBtn" class="interaction-btn" title="Student Question"><span class="dark-emoji">❓</span></button>
-            <button id="helpBtn" class="interaction-btn" title="Providing Help"><span class="dark-emoji">🤝</span></button>
-         </div>
+			<div id="timerSection">
+				<button id="timerStartBtn" class="timer-btn" title="Start Timer">
+					⏱️
+				</button>
+				<div id="timerControls" class="timer-controls">
+					<button
+						id="timerMinusBtn"
+						class="timer-btn"
+						title="Decrease Timer"
+					>
+						–
+					</button>
+					<span id="timerDisplay" class="timer-display">10:00</span>
+					<button
+						id="timerPlusBtn"
+						class="timer-btn"
+						title="Increase Timer"
+					>
+						+
+					</button>
+				</div>
+			</div>
 
-         <div id="timerSection">
-            <button id="timerStartBtn" class="timer-btn" title="Start Timer">⏱️</button>
-            <div id="timerControls" class="timer-controls">
-               <button id="timerMinusBtn" class="timer-btn" title="Decrease Timer">–</button>
-               <span id="timerDisplay" class="timer-display">10:00</span>
-               <button id="timerPlusBtn" class="timer-btn" title="Increase Timer">+</button>
-            </div>
-         </div>
+			<button id="showQrBtn" class="qr-btn" title="Show QR Code">
+				<span class="qr-icon">𖣯</span>
+			</button>
+		</div>
 
-         <button id="showQrBtn" class="qr-btn" title="Show QR Code"><span class="qr-icon">𖣯</span></button>
-      </div>
+		<div class="progress-bar" id="progressBar"></div>
+		<div id="main-layout">
+			<div id="lesson-container"></div>
 
-      <div class="progress-bar" id="progressBar"></div>
-      <div id="main-layout">
-         <div id="lesson-container"></div>
+			<div id="editor-sidebar" class="sidebar">
+				<div class="sidebar-section">
+					<button
+						class="add-btn yellow"
+						id="addCommentBtn"
+						title="Add Comment Block"
+					>
+						+
+					</button>
+					<button
+						class="add-btn white"
+						id="addCodeBtn"
+						title="Add Code Block"
+					>
+						+
+					</button>
+					<button
+						class="remove-btn"
+						id="removeBlockBtn"
+						title="Remove Block"
+					>
+						–
+					</button>
+					<button
+						class="format-btn"
+						id="formatBlockBtn"
+						title="Format Block"
+					>
+						✨
+					</button>
+				</div>
+				<div id="special-keys-container" class="sidebar-section"></div>
+			</div>
+		</div>
 
-         <div id="editor-sidebar" class="sidebar">
-            <div class="sidebar-section">
-               <button class="add-btn yellow" id="addCommentBtn" title="Add Comment Block">+</button>
-               <button class="add-btn white" id="addCodeBtn" title="Add Code Block">+</button>
-               <button class="remove-btn" id="removeBlockBtn" title="Remove Block">–</button>
-               <button class="format-btn" id="formatBlockBtn" title="Format Block">✨</button>
-            </div>
-            <div id="special-keys-container" class="sidebar-section">
-            </div>
-         </div>
-      </div>
+		<div id="settingsModal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2>Settings</h2>
+					<button id="closeSettings" class="close-btn">&times;</button>
+				</div>
 
-      <div id="settingsModal" class="modal">
-         <div class="modal-content">
-            <div class="modal-header">
-               <h2>Settings</h2>
-               <button id="closeSettings" class="close-btn">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-               <div class="settings-section">
-                  <h3>Keyboard Shortcuts</h3>
-                  
-                  <div class="setting-item">
-                     <label>Auto-Typing Hotkeys:</label>
-                     <input type="text" id="typingHotkeys" placeholder="abcdefghijklmnopqrstuvwxyz" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Toggle Auto-Typing:</label>
-                     <input type="text" id="toggleActiveKey" placeholder="CommandOrControl+P" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Step Backward:</label>
-                     <input type="text" id="stepBackwardKey" placeholder="CommandOrControl+Left" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Step Forward:</label>
-                     <input type="text" id="stepForwardKey" placeholder="CommandOrControl+Right" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Always On Top:</label>
-                     <input type="text" id="alwaysOnTopKey" placeholder="CommandOrControl+Shift+Space" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Toggle Transparency:</label>
-                     <input type="text" id="toggleTransparencyKey" placeholder="CommandOrControl+Shift+T" />
-                  </div>
-               </div>
+				<div class="modal-body">
+					<div class="settings-section">
+						<h3>Keyboard Shortcuts</h3>
 
-               <div class="settings-section">
-                  <h3>Colors</h3>
-                  
-                  <div class="setting-item">
-                     <label>Comment Block (Normal):</label>
-                     <input type="color" id="commentNormalColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Question Comment Block (❓):</label>
-                     <input type="color" id="questionCommentColor" />
-                     <small>Background color for comments starting with ❓</small>
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Comment Block (Active):</label>
-                     <input type="color" id="commentActiveColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Comment Block (Selected):</label>
-                     <input type="color" id="commentSelectedColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Active Comment Text:</label>
-                     <input type="color" id="commentActiveTextColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Cursor Color:</label>
-                     <input type="color" id="cursorColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Selected Border:</label>
-                     <input type="color" id="selectedBorderColor" />
-                  </div>
-                  
-                  <div class="setting-item">
-                     <label>Text Color:</label>
-                     <input type="color" id="textColor" />
-                  </div>
-               </div>
+						<div class="setting-item">
+							<label>Auto-Typing Hotkeys:</label>
+							<input
+								type="text"
+								id="typingHotkeys"
+								placeholder="abcdefghijklmnopqrstuvwxyz"
+							/>
+						</div>
 
-               <div class="settings-section">
-                  <h3>Appearance</h3>
-                  
-                  <div class="setting-item">
-                     <label>Font Size:</label>
-                     <input type="number" id="fontSize" min="10" max="24" />
-                  </div>
-               </div>
+						<div class="setting-item">
+							<label>Toggle Auto-Typing:</label>
+							<input
+								type="text"
+								id="toggleActiveKey"
+								placeholder="CommandOrControl+P"
+							/>
+						</div>
 
-               <div class="settings-section">
-                  <h3>Hotkey Behavior</h3>
-                  
-                  <div class="setting-item">
-                     <select id="hotkeyMode">
-                        <option value="single-key">Single Key</option>
-                        <option value="auto-run">Entire Block</option>
-                     </select>
-                  </div>
-                  
-                  <div class="setting-item" id="speedSettingContainer">
-                     <label>Auto-Run Speed: <span id="speedValue">50</span>ms</label>
-                     <input type="range" id="autoTypingSpeed" min="10" max="200" step="5" value="50" />
-                     <div class="speed-labels">
-                        <span>Fast (10ms)</span>
-                        <span>Slow (200ms)</span>
-                     </div>
-                  </div>
-               </div>
-            </div>
-            
-            <div class="modal-footer">
-               <button id="resetSettings" class="btn-secondary">Reset to Defaults</button>
-               <button id="saveSettings" class="btn-primary">Save</button>
-            </div>
-         </div>
-      </div>
+						<div class="setting-item">
+							<label>Step Backward:</label>
+							<input
+								type="text"
+								id="stepBackwardKey"
+								placeholder="CommandOrControl+Left"
+							/>
+						</div>
 
-      <div id="qrModal" class="modal">
-         <div class="modal-content">
-            <div class="modal-header">
-               <h2>QR Code</h2>
-               <button id="closeQrModal" class="close-btn">&times;</button>
-            </div>
-            
-            <div class="modal-body qr-modal-body">
-               <div id="qrCodeContainer"></div>
-            </div>
-         </div>
-      </div>
+						<div class="setting-item">
+							<label>Step Forward:</label>
+							<input
+								type="text"
+								id="stepForwardKey"
+								placeholder="CommandOrControl+Right"
+							/>
+						</div>
 
-      <script src="./renderer/renderer.js"></script>
-   </body>
+						<div class="setting-item">
+							<label>Always On Top:</label>
+							<input
+								type="text"
+								id="alwaysOnTopKey"
+								placeholder="CommandOrControl+Shift+Space"
+							/>
+						</div>
+
+						<div class="setting-item">
+							<label>Toggle Transparency:</label>
+							<input
+								type="text"
+								id="toggleTransparencyKey"
+								placeholder="CommandOrControl+Shift+T"
+							/>
+						</div>
+
+						<div class="setting-item">
+							<label>Toggle Window (Show/Hide):</label>
+							<input
+								type="text"
+								id="toggleWindowKey"
+								placeholder="CommandOrControl+L"
+							/>
+						</div>
+					</div>
+
+					<div class="settings-section">
+						<h3>Colors</h3>
+
+						<div class="setting-item">
+							<label>Comment Block (Normal):</label>
+							<input type="color" id="commentNormalColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Question Comment Block (❓):</label>
+							<input type="color" id="questionCommentColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Image Block (🖼️):</label>
+							<input type="color" id="imageBlockColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Comment Block (Active):</label>
+							<input type="color" id="commentActiveColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Comment Block (Selected):</label>
+							<input type="color" id="commentSelectedColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Active Comment Text:</label>
+							<input type="color" id="commentActiveTextColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Cursor Color:</label>
+							<input type="color" id="cursorColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Selected Border:</label>
+							<input type="color" id="selectedBorderColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Text Color:</label>
+							<input type="color" id="textColor" />
+						</div>
+					</div>
+
+					<div class="settings-section">
+						<h3>Appearance</h3>
+
+						<div class="setting-item">
+							<label>Font Size:</label>
+							<input type="number" id="fontSize" min="10" max="24" />
+						</div>
+					</div>
+
+					<div class="settings-section">
+						<h3>Hotkey Behavior</h3>
+
+						<div class="setting-item">
+							<select id="hotkeyMode">
+								<option value="single-key">Single Key</option>
+								<option value="auto-run">Entire Block</option>
+							</select>
+						</div>
+
+						<div class="setting-item" id="speedSettingContainer">
+							<label
+								>Auto-Run Speed:
+								<span id="speedValue">50</span>ms</label
+							>
+							<input
+								type="range"
+								id="autoTypingSpeed"
+								min="10"
+								max="200"
+								step="5"
+								value="50"
+							/>
+							<div class="speed-labels">
+								<span>Fast (10ms)</span>
+								<span>Slow (200ms)</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal-footer">
+					<button id="resetSettings" class="btn-secondary">
+						Reset to Defaults
+					</button>
+					<button id="saveSettings" class="btn-primary">Save</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="qrModal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2>QR Code</h2>
+					<button id="closeQrModal" class="close-btn">&times;</button>
+				</div>
+
+				<div class="modal-body qr-modal-body">
+					<div id="qrCodeContainer"></div>
+				</div>
+			</div>
+		</div>
+
+		<script src="./renderer/renderer.js"></script>
+	</body>
 </html>

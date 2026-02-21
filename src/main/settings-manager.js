@@ -13,6 +13,7 @@ class SettingsManager {
 				stepForward: "CommandOrControl+Right",
 				alwaysOnTop: "CommandOrControl+Shift+Space",
 				toggleTransparency: "CommandOrControl+Shift+T",
+				toggleWindow: "CommandOrControl+L",
 			},
 			colors: {
 				commentNormal: "#fff9c4",
@@ -23,6 +24,7 @@ class SettingsManager {
 				selectedBorder: "#3498db",
 				textColor: "#333333",
 				questionCommentColor: "#ffcdd2",
+				imageBlockColor: "#bbdefb",
 			},
 			fontSize: 14,
 			hotkeyMode: "single-key", // "single-key" or "auto-run"

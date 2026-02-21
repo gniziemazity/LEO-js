@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Image</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="image-view">
+		<button id="pinBtn" data-tip="Pin — keep open">📌</button>
+		<img id="imageDisplay" alt="Lesson image" />
+		<div id="errorMsg">Image could not be loaded.</div>
+
+		<script>
+			const { ipcRenderer } = require("electron");
+			let pinned = false;
+
+			const pinBtn = document.getElementById("pinBtn");
+
+			pinBtn.addEventListener("click", () => {
+				if (pinned) return;
+				pinned = true;
+				pinBtn.classList.add("pinned");
+				pinBtn.setAttribute("data-tip", "Pinned");
+				ipcRenderer.send("pin-image-window", true);
+			});
+
+			ipcRenderer.on("set-image", (event, { imagePath, bgColor }) => {
+				if (bgColor)
+					document.documentElement.style.setProperty("--bg", bgColor);
+
+				const img = document.getElementById("imageDisplay");
+				const err = document.getElementById("errorMsg");
+				err.style.display = "none";
+				img.style.display = "none";
+
+				img.onload = () => {
+					img.style.display = "block";
+					const w = Math.max(img.naturalWidth + 32, 200);
+					const h = Math.max(img.naturalHeight + 32, 120);
+					ipcRenderer.send("resize-image-window", { width: w, height: h });
+				};
+				img.onerror = () => {
+					img.style.display = "none";
+					err.style.display = "block";
+				};
+				img.src = "file://" + imagePath;
+			});
+		</script>
+	</body>
+</html>

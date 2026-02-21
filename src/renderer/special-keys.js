@@ -20,7 +20,7 @@ class SpecialKeys {
 			"↢": "Backspace",
 			"―": "Tab",
 			"❓": "Question (for comment blocks)",
-			"🕛": "Pause (1000ms)",
+			"🖼️": "Image (for comment blocks)",
 			"⇑": "Shift + Arrow Up",
 			"⇓": "Shift + Arrow Down",
 			"⇐": "Shift + Arrow Left",
