@@ -11,7 +11,7 @@
 		<div id="mobile-header">
 			<div class="header-main-row">
 				<button id="toggleBtn" class="btn-start" onclick="toggleActive()">
-					START
+					▶
 				</button>
 				<div id="interactionButtons">
 					<button
@@ -27,6 +27,14 @@
 						title="Providing Help"
 					>
 						<span class="dark-emoji">🤝</span>
+					</button>
+					<button
+						id="touchpadBtn"
+						class="interaction-btn btn-touchpad"
+						onclick="toggleTouchpad()"
+						title="Toggle Touchpad"
+					>
+						<span class="dark-emoji">🖱️</span>
 					</button>
 				</div>
 				<div id="timerSection">
@@ -69,6 +77,18 @@
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
 
+		<!-- Touchpad overlay -->
+		<div id="touchpadOverlay" class="touchpad-overlay">
+			<div class="touchpad-buttons">
+				<button class="touchpad-click-btn" data-button="left">
+					Left Click
+				</button>
+				<button class="touchpad-click-btn right" data-button="right">
+					Right Click
+				</button>
+			</div>
+		</div>
+
 		<div id="questionOverlay" class="overlay">
 			<div class="q-modal">
 				<div class="q-question-text" id="qText"></div>
@@ -109,12 +129,18 @@
 			let pendingInteraction = null;
 			let autoCloseTimer = null;
 
-			// Timer state
-			let timerInterval = null;
-			let timerEndTime = null;
+			// Touchpad state
+			let touchpadActive = false;
+			let touchStartX = 0;
+			let touchStartY = 0;
+			let lastSendTime = 0;
+			const MOUSE_SENSITIVITY = 1.8;
+			const SEND_THROTTLE_MS = 30;
+
+			// Wake Lock
+			let wakeLock = null;
 
 			const AUTO_CLOSE_MS = 3000;
-			const DEFAULT_TIMER_MINUTES = 90;
 
 			function getBlockSubtype(text) {
 				const t = text.trim();
@@ -154,52 +180,33 @@
 
 			const elements = {
 				timerDisplay: document.getElementById("timerDisplay"),
+				timerSection: document.getElementById("timerSection"),
 				timerStartBtn: document.getElementById("timerStartBtn"),
 				timerControls: document.getElementById("timerControls"),
 				progressBar: document.getElementById("progressBar"),
 				lessonContainer: document.getElementById("lesson-container"),
 				toggleBtn: document.getElementById("toggleBtn"),
+				touchpadBtn: document.getElementById("touchpadBtn"),
+				touchpadOverlay: document.getElementById("touchpadOverlay"),
 			};
 
 			// ── Timer ──
 
 			function startTimer() {
-				stopTimer();
-				timerEndTime = Date.now() + DEFAULT_TIMER_MINUTES * 60 * 1000;
-				elements.timerStartBtn.classList.add("hidden");
-				elements.timerControls.classList.add("show");
-				tickTimer();
-				timerInterval = setInterval(tickTimer, 1000);
+				sendMessage("timer-start", {});
 			}
 
 			function stopTimer() {
-				if (timerInterval) {
-					clearInterval(timerInterval);
-					timerInterval = null;
-				}
-				timerEndTime = null;
-				elements.timerDisplay.textContent = "";
-				elements.timerStartBtn.classList.remove("hidden");
-				elements.timerControls.classList.remove("show");
+				sendMessage("timer-stop", {});
 			}
 
 			function adjustTimer(minutes) {
-				if (!timerEndTime) return;
-				timerEndTime += minutes * 60 * 1000;
-				if (timerEndTime - Date.now() <= 0) {
-					stopTimer();
-				} else {
-					tickTimer();
-				}
+				sendMessage("timer-adjust", { minutes });
 			}
 
-			function tickTimer() {
-				const remaining = Math.max(0, timerEndTime - Date.now());
-				const totalSecs = Math.floor(remaining / 1000);
-				if (totalSecs <= 0) {
-					stopTimer();
-					return;
-				}
+			function showTimerRunning(totalSecs) {
+				elements.timerStartBtn.classList.add("hidden");
+				elements.timerControls.classList.add("show");
 				const h = Math.floor(totalSecs / 3600);
 				const m = Math.floor((totalSecs % 3600) / 60);
 				const s = totalSecs % 60;
@@ -209,14 +216,114 @@
 						: `${m}:${s.toString().padStart(2, "0")}`;
 			}
 
+			function showTimerStopped() {
+				elements.timerDisplay.textContent = "";
+				elements.timerControls.classList.remove("show");
+				elements.timerStartBtn.classList.remove("hidden");
+			}
+
+			// ── Touchpad ──
+
+			function toggleTouchpad() {
+				touchpadActive = !touchpadActive;
+				elements.touchpadOverlay.classList.toggle("active", touchpadActive);
+				elements.touchpadBtn.classList.toggle(
+					"btn-touchpad-active",
+					touchpadActive,
+				);
+			}
+
+			function handleTouchpadClick(button) {
+				sendMessage("mouse-click", { button });
+			}
+
+			(function setupTouchpad() {
+				const overlay = document.getElementById("touchpadOverlay");
+
+				overlay.addEventListener(
+					"touchstart",
+					(e) => {
+						if (e.target.closest(".touchpad-click-btn")) return;
+						e.preventDefault();
+						const t = e.touches[0];
+						touchStartX = t.clientX;
+						touchStartY = t.clientY;
+					},
+					{ passive: false },
+				);
+
+				overlay.addEventListener(
+					"touchmove",
+					(e) => {
+						if (e.target.closest(".touchpad-click-btn")) return;
+						e.preventDefault();
+						const now = Date.now();
+						if (now - lastSendTime < SEND_THROTTLE_MS) return;
+						lastSendTime = now;
+						const t = e.touches[0];
+						const dx = (t.clientX - touchStartX) * MOUSE_SENSITIVITY;
+						const dy = (t.clientY - touchStartY) * MOUSE_SENSITIVITY;
+						touchStartX = t.clientX;
+						touchStartY = t.clientY;
+						if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+							sendMessage("mouse-move", {
+								dx: Math.round(dx),
+								dy: Math.round(dy),
+							});
+						}
+					},
+					{ passive: false },
+				);
+
+				// Handle touchpad button clicks (prevent double-fire on touch)
+				document.querySelectorAll(".touchpad-click-btn").forEach((btn) => {
+					btn.addEventListener(
+						"touchstart",
+						(e) => {
+							e.preventDefault();
+							handleTouchpadClick(btn.dataset.button);
+						},
+						{ passive: false },
+					);
+				});
+			})();
+
+			// ── Wake Lock ──
+
+			async function requestWakeLock() {
+				try {
+					if ("wakeLock" in navigator) {
+						wakeLock = await navigator.wakeLock.request("screen");
+						wakeLock.addEventListener("release", () => {
+							wakeLock = null;
+						});
+					}
+				} catch (e) {
+					/* wake lock not supported or denied */
+				}
+			}
+
+			document.addEventListener("visibilitychange", () => {
+				if (document.visibilityState === "visible") {
+					requestWakeLock();
+					// reconnect immediately if ws is closed
+					if (!ws || ws.readyState !== WebSocket.OPEN) connect();
+				}
+			});
+
 			// ── WebSocket ──
 
 			function connect() {
 				const host = window.location.host;
 				const protocol =
 					window.location.protocol === "https:" ? "wss:" : "ws:";
-				if (ws) ws.close();
+				if (ws) {
+					try {
+						ws.close();
+					} catch (e) {}
+				}
 				ws = new WebSocket(`${protocol}//${host}`);
+				ws.onopen = () => requestWakeLock();
 				ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
 				ws.onclose = () => {
 					ws = null;
@@ -258,6 +365,12 @@
 					case "question-ended":
 						hideQuestionOverlay();
 						break;
+					case "timer-tick":
+						showTimerRunning(data.timeRemaining);
+						break;
+					case "timer-stopped":
+						showTimerStopped();
+						break;
 				}
 			}
 
@@ -275,11 +388,14 @@
 						state.students || [],
 						null,
 					);
+				if (state.timeRemaining != null)
+					showTimerRunning(state.timeRemaining);
+				else showTimerStopped();
 			}
 
 			function updateActiveState(active) {
 				isActive = active;
-				elements.toggleBtn.textContent = active ? "STOP" : "START";
+				elements.toggleBtn.textContent = active ? "⏸" : "▶";
 				elements.toggleBtn.classList.toggle("btn-stop", active);
 				elements.toggleBtn.classList.toggle("btn-start", !active);
 			}

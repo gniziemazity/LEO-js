@@ -57,6 +57,43 @@ broadcastServer.on(
 	},
 );
 
+const { mouse, Button, Point } = require("@computer-use/nut-js");
+mouse.config.autoDelayMs = 0;
+mouse.config.mouseSpeed = 2000;
+
+broadcastServer.on("client-mouse-move", async (dx, dy) => {
+	try {
+		const pos = await mouse.getPosition();
+		await mouse.setPosition(new Point(pos.x + dx, pos.y + dy));
+	} catch (e) { /* ignore */ }
+});
+broadcastServer.on("client-mouse-click", async (button) => {
+	try {
+		if (button === "right") await mouse.rightClick();
+		else await mouse.leftClick();
+	} catch (e) { /* ignore */ }
+});
+
+const MainProcessTimer = require("./main-timer");
+const timer = new MainProcessTimer();
+
+timer.on("tick", (remaining) => {
+	broadcastServer.updateTimer(remaining);
+});
+timer.on("stopped", () => {
+	broadcastServer.clearTimer();
+});
+
+broadcastServer.on("client-timer-start", () => {
+	timer.start();
+});
+broadcastServer.on("client-timer-stop", () => {
+	timer.stop();
+});
+broadcastServer.on("client-timer-adjust", (minutes) => {
+	timer.adjust(minutes);
+});
+
 function createWindow() {
 	const config = {
 		...WINDOW_CONFIG,

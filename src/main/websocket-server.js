@@ -24,6 +24,7 @@ class LEOBroadcastServer extends EventEmitter {
 			settings: null,
 			activeQuestion: null,
 			students: [],
+			timeRemaining: null,
 		};
 	}
 
@@ -136,6 +137,16 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "question-ended", data: {} });
 	}
 
+	updateTimer(timeRemaining) {
+		this.currentState.timeRemaining = timeRemaining;
+		this.broadcast({ type: "timer-tick", data: { timeRemaining } });
+	}
+
+	clearTimer() {
+		this.currentState.timeRemaining = null;
+		this.broadcast({ type: "timer-stopped", data: {} });
+	}
+
 	handleClientMessage(message) {
 		const { type, data } = message;
 		if (type === "toggle-active") {
@@ -155,6 +166,16 @@ class LEOBroadcastServer extends EventEmitter {
 				data.openedAt || null,
 				data.closedAt || null,
 			);
+		} else if (type === "mouse-move") {
+			this.emit("client-mouse-move", data.dx, data.dy);
+		} else if (type === "mouse-click") {
+			this.emit("client-mouse-click", data.button);
+		} else if (type === "timer-start") {
+			this.emit("client-timer-start");
+		} else if (type === "timer-stop") {
+			this.emit("client-timer-stop");
+		} else if (type === "timer-adjust") {
+			this.emit("client-timer-adjust", data.minutes);
 		}
 	}
 

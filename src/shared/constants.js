@@ -53,6 +53,11 @@ const LOG_CONFIG = {
 	SAVE_INTERVAL: 10, // save log every N key presses
 };
 
+const TIMER_CONFIG = {
+	DEFAULT_MINUTES: 90,
+	ADJUSTMENT_MINUTES: 10,
+};
+
 const AUTO_CLOSE_MS = 3000;
 
 function getBlockSubtype(text) {
@@ -98,6 +103,7 @@ function formatAnsweredText(studentName) {
 
 module.exports = {
 	NUTJS_KEY_MAPPING,
+	TIMER_CONFIG,
 	WINDOW_CONFIG,
 	LOG_CONFIG,
 	AUTO_CLOSE_MS,

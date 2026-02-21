@@ -126,7 +126,7 @@ button:hover {
 }
 
 .hidden {
-   display: none;
+   display: none !important;
 }
 
 .timer-display {
@@ -591,6 +591,58 @@ button:hover {
    scroll-margin-top: 80px;
 }
 
+.btn-touchpad {
+   background: #3498db;
+}
+.btn-touchpad:hover { background: #2980b9; }
+.btn-touchpad-active {
+   background: #8e44ad !important;
+}
+.btn-touchpad-active:hover {
+   background: #732d91 !important;
+}
+
+.touchpad-overlay {
+   display: none;
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   z-index: 1500;
+   background: rgba(52,152,219,0.3);
+   touch-action: none;
+   flex-direction: column;
+}
+.touchpad-overlay.active {
+   display: flex;
+}
+.touchpad-buttons {
+   margin-top: auto;
+   display: flex;
+   gap: 0;
+   width: 100%;
+}
+.touchpad-click-btn {
+   flex: 1;
+   padding: 18px;
+   font-size: 1rem;
+   font-weight: 600;
+   border: none;
+   cursor: pointer;
+   background: #2c3e50;
+   color: #ecf0f1;
+   touch-action: manipulation;
+   border-top: 1px solid #444;
+   user-select: none;
+   -webkit-user-select: none;
+}
+.touchpad-click-btn:active {
+   background: #3498db;
+}
+.touchpad-click-btn.right {
+   border-left: 1px solid #444;
+}
 
 .comment-block.image-comment {
    background: #bbdefb;
