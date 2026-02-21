@@ -12,11 +12,6 @@ class UIManager {
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),
 			formatBlockBtn: document.getElementById("formatBlockBtn"),
-			timerStartBtn: document.getElementById("timerStartBtn"),
-			timerPlusBtn: document.getElementById("timerPlusBtn"),
-			timerMinusBtn: document.getElementById("timerMinusBtn"),
-			timerDisplay: document.getElementById("timerDisplay"),
-			timerControls: document.getElementById("timerControls"),
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
@@ -46,20 +41,6 @@ class UIManager {
 			this.elements.editorSidebar.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}
-	}
-
-	showTimerControls() {
-		this.elements.timerStartBtn.classList.add("hidden");
-		this.elements.timerControls.classList.add("show");
-	}
-
-	hideTimerControls() {
-		this.elements.timerStartBtn.classList.remove("hidden");
-		this.elements.timerControls.classList.remove("show");
-	}
-
-	updateTimerDisplay(formattedTime) {
-		this.elements.timerDisplay.textContent = formattedTime;
 	}
 
 	updateProgressBar(percentage) {

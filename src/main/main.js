@@ -15,13 +15,10 @@ const HotkeyManager = require("./hotkey-manager");
 const KeyboardHandler = require("./keyboard-handler");
 const LEOBroadcastServer = require("./websocket-server");
 const SettingsManager = require("./settings-manager");
-const MainProcessTimer = require("./main-timer");
-
 const settingsManager = new SettingsManager();
 const broadcastServer = new LEOBroadcastServer(8080);
 const hotkeyManager = new HotkeyManager(settingsManager);
 const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
-const mainTimer = new MainProcessTimer();
 
 let tray = null;
 let questionWindow = null;
@@ -399,23 +396,8 @@ ipcMain.on("broadcast-cursor", (e, s) => broadcastServer.updateCursor(s));
 ipcMain.on("broadcast-progress", (e, d) =>
 	broadcastServer.updateProgress(d.currentStep, d.totalSteps),
 );
-ipcMain.on("broadcast-timer", (e, t) => broadcastServer.updateTimer(t));
 ipcMain.on("broadcast-active", (e, a) => broadcastServer.updateActiveState(a));
 ipcMain.on("broadcast-lesson", (e, n) => broadcastServer.updateLessonName(n));
-
-ipcMain.on("timer-start", (event, minutes) => {
-	mainTimer.start(minutes, (timeString) => {
-		if (state.mainWindow)
-			state.mainWindow.webContents.send("timer-tick", timeString);
-		broadcastServer.updateTimer(timeString);
-	});
-});
-ipcMain.on("timer-adjust", (event, minutes) => mainTimer.adjust(minutes));
-ipcMain.on("timer-stop", () => {
-	mainTimer.stop();
-	if (state.mainWindow) state.mainWindow.webContents.send("timer-tick", null);
-	broadcastServer.updateTimer(null);
-});
 
 ipcMain.handle("get-settings", () => settingsManager.getAll());
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());

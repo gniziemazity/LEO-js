@@ -46,12 +46,7 @@ const WINDOW_CONFIG = {
 	},
 	alwaysOnTop: false,
 	frame: true,
-	skipTaskbar: true,
-};
-
-const TIMER_CONFIG = {
-	DEFAULT_MINUTES: 90,
-	ADJUSTMENT_MINUTES: 10,
+	skipTaskbar: false,
 };
 
 const LOG_CONFIG = {
@@ -104,7 +99,6 @@ function formatAnsweredText(studentName) {
 module.exports = {
 	NUTJS_KEY_MAPPING,
 	WINDOW_CONFIG,
-	TIMER_CONFIG,
 	LOG_CONFIG,
 	AUTO_CLOSE_MS,
 	getBlockSubtype,

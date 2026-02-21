@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>LEO Client</title>
+		<title>LEO Remote</title>
 		<link rel="icon" href="icon.ico" type="image/x-icon" />
 		<link rel="stylesheet" href="styles.css" />
 	</head>
@@ -13,7 +13,6 @@
 				<button id="toggleBtn" class="btn-start" onclick="toggleActive()">
 					START
 				</button>
-				<div id="lessonName">Not Connected</div>
 				<div id="interactionButtons">
 					<button
 						class="interaction-btn btn-student-question"
@@ -30,7 +29,38 @@
 						<span class="dark-emoji">🤝</span>
 					</button>
 				</div>
-				<div id="timerDisplay"></div>
+				<div id="timerSection">
+					<button
+						id="timerStartBtn"
+						class="timer-btn"
+						onclick="startTimer()"
+						title="Start Timer"
+					>
+						⏱️
+					</button>
+					<div id="timerControls" class="timer-controls">
+						<button
+							class="timer-btn"
+							onclick="adjustTimer(-10)"
+							title="-10 min"
+						>
+							–
+						</button>
+						<span
+							id="timerDisplay"
+							class="timer-display"
+							onclick="stopTimer()"
+							title="Click to stop"
+						></span>
+						<button
+							class="timer-btn"
+							onclick="adjustTimer(10)"
+							title="+10 min"
+						>
+							+
+						</button>
+					</div>
+				</div>
 			</div>
 			<div class="progress-bar" id="progressBar"></div>
 		</div>
@@ -79,7 +109,12 @@
 			let pendingInteraction = null;
 			let autoCloseTimer = null;
 
+			// Timer state
+			let timerInterval = null;
+			let timerEndTime = null;
+
 			const AUTO_CLOSE_MS = 3000;
+			const DEFAULT_TIMER_MINUTES = 90;
 
 			function getBlockSubtype(text) {
 				const t = text.trim();
@@ -118,12 +153,63 @@
 			}
 
 			const elements = {
-				lessonName: document.getElementById("lessonName"),
 				timerDisplay: document.getElementById("timerDisplay"),
+				timerStartBtn: document.getElementById("timerStartBtn"),
+				timerControls: document.getElementById("timerControls"),
 				progressBar: document.getElementById("progressBar"),
 				lessonContainer: document.getElementById("lesson-container"),
 				toggleBtn: document.getElementById("toggleBtn"),
 			};
+
+			// ── Timer ──
+
+			function startTimer() {
+				stopTimer();
+				timerEndTime = Date.now() + DEFAULT_TIMER_MINUTES * 60 * 1000;
+				elements.timerStartBtn.classList.add("hidden");
+				elements.timerControls.classList.add("show");
+				tickTimer();
+				timerInterval = setInterval(tickTimer, 1000);
+			}
+
+			function stopTimer() {
+				if (timerInterval) {
+					clearInterval(timerInterval);
+					timerInterval = null;
+				}
+				timerEndTime = null;
+				elements.timerDisplay.textContent = "";
+				elements.timerStartBtn.classList.remove("hidden");
+				elements.timerControls.classList.remove("show");
+			}
+
+			function adjustTimer(minutes) {
+				if (!timerEndTime) return;
+				timerEndTime += minutes * 60 * 1000;
+				if (timerEndTime - Date.now() <= 0) {
+					stopTimer();
+				} else {
+					tickTimer();
+				}
+			}
+
+			function tickTimer() {
+				const remaining = Math.max(0, timerEndTime - Date.now());
+				const totalSecs = Math.floor(remaining / 1000);
+				if (totalSecs <= 0) {
+					stopTimer();
+					return;
+				}
+				const h = Math.floor(totalSecs / 3600);
+				const m = Math.floor((totalSecs % 3600) / 60);
+				const s = totalSecs % 60;
+				elements.timerDisplay.textContent =
+					h > 0
+						? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+						: `${m}:${s.toString().padStart(2, "0")}`;
+			}
+
+			// ── WebSocket ──
 
 			function connect() {
 				const host = window.location.host;
@@ -153,12 +239,6 @@
 					case "progress":
 						updateProgress(data);
 						break;
-					case "timer":
-						updateTimer(data.timeRemaining);
-						break;
-					case "lesson":
-						updateLessonName(data.lessonName);
-						break;
 					case "settings":
 						applySettings(data);
 						break;
@@ -183,8 +263,6 @@
 
 			function updateAllState(state) {
 				updateProgress(state);
-				updateTimer(state.timeRemaining);
-				updateLessonName(state.lessonName);
 				if (state.isActive !== undefined) updateActiveState(state.isActive);
 				if (state.settings) applySettings(state.settings);
 				if (state.lessonData) updateLessonData(state.lessonData);
@@ -268,13 +346,6 @@
 			function updateProgress(data) {
 				if (data.progress !== undefined)
 					elements.progressBar.style.width = `${data.progress}%`;
-			}
-			function updateTimer(t) {
-				elements.timerDisplay.textContent = t || "";
-			}
-			function updateLessonName(name) {
-				document.title = name ? `LEO - ${name}` : "LEO";
-				elements.lessonName.textContent = name;
 			}
 
 			function showQuestionOverlay(question, students, bgColor) {
@@ -362,7 +433,6 @@
 				}
 			}
 
-			let wasActiveBeforeInteraction = false;
 			let interactionOpenedAt = null;
 
 			function handleInteractionBtn(interactionType) {
@@ -373,12 +443,6 @@
 					const title = isQuestion
 						? "❓ Who asked a question?"
 						: "🤝 Who needs help?";
-					if (isQuestion && isActive) {
-						wasActiveBeforeInteraction = true;
-						sendMessage("toggle-active", {});
-					} else {
-						wasActiveBeforeInteraction = false;
-					}
 					showInteractionOverlay(title, currentStudents, interactionType);
 				} else {
 					sendMessage("interaction", { interactionType });
@@ -443,10 +507,6 @@
 					.classList.remove("active");
 				document.getElementById("iQuestionInput").style.display = "none";
 				pendingInteraction = null;
-				if (wasActiveBeforeInteraction) {
-					sendMessage("toggle-active", {});
-					wasActiveBeforeInteraction = false;
-				}
 			}
 
 			function hexToRgba(hex, alpha) {

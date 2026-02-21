@@ -16,7 +16,6 @@ class LEOBroadcastServer extends EventEmitter {
 		this.wss = null;
 		this.currentState = {
 			progress: 0,
-			timeRemaining: null,
 			isActive: false,
 			totalSteps: 0,
 			currentStep: 0,
@@ -30,7 +29,7 @@ class LEOBroadcastServer extends EventEmitter {
 
 	start() {
 		this.app.get("/", (req, res) => {
-			res.sendFile(path.join(__dirname, "../client-viewer.html"));
+			res.sendFile(path.join(__dirname, "../remote.html"));
 		});
 		this.app.use(express.static(__dirname + "/../shared/"));
 
@@ -98,11 +97,6 @@ class LEOBroadcastServer extends EventEmitter {
 				totalSteps,
 			},
 		});
-	}
-
-	updateTimer(timeRemaining) {
-		this.currentState.timeRemaining = timeRemaining;
-		this.broadcast({ type: "timer", data: { timeRemaining } });
 	}
 
 	updateActiveState(isActive) {

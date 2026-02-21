@@ -1,6 +1,5 @@
 const { ipcRenderer } = require("electron");
 const LogManager = require("./main/log-manager");
-const TimerManager = require("./renderer/timer-manager");
 const LessonManager = require("./renderer/lesson-manager");
 const UIManager = require("./renderer/ui-manager");
 const CursorManager = require("./renderer/cursor-manager");
@@ -12,10 +11,8 @@ const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
-const { TIMER_CONFIG } = require("./shared/constants");
 
 const logManager = new LogManager();
-const timerManager = new TimerManager();
 const lessonManager = new LessonManager();
 const undoManager = new UndoManager(lessonManager);
 const uiManager = new UIManager();
@@ -98,16 +95,10 @@ window.addEventListener("DOMContentLoaded", () => {
 	settingsUI.initialize();
 	specialKeys.initialize();
 	fileOperations.loadLastLesson();
-	setupManagers();
 	setupEventListeners();
 	setupGlobalIpcListeners();
 	setupUndoRedoShortcuts();
 });
-
-function setupManagers() {
-	timerManager.onTick((t) => uiManager.updateTimerDisplay(t));
-	timerManager.onComplete(() => uiManager.hideTimerControls());
-}
 
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
@@ -120,11 +111,6 @@ function setupEventListeners() {
 		blockEditor.removeBlock();
 	uiManager.getElement("formatBlockBtn").onclick = () =>
 		blockEditor.formatBlock();
-	uiManager.getElement("timerStartBtn").onclick = () => startTimer();
-	uiManager.getElement("timerPlusBtn").onclick = () =>
-		adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
-	uiManager.getElement("timerMinusBtn").onclick = () =>
-		adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
 }
 
 function setupGlobalIpcListeners() {
@@ -199,14 +185,6 @@ function performRedo() {
 	}
 }
 
-function startTimer() {
-	timerManager.start(TIMER_CONFIG.DEFAULT_MINUTES);
-	uiManager.showTimerControls();
-}
-function adjustTimer(minutes) {
-	timerManager.adjust(minutes);
-}
-
 function setupUndoRedoShortcuts() {
 	document.addEventListener("keydown", (e) => {
 		if (uiManager.isActive()) return;
@@ -233,5 +211,4 @@ function setupUndoRedoShortcuts() {
 
 window.addEventListener("beforeunload", () => {
 	logManager.save();
-	timerManager.reset();
 });
