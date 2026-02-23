@@ -673,7 +673,7 @@ button:hover {
 }
 .touchpad-tb-btn .tb-emoji {
    display: inline-block;
-   writing-mode: horizontal-tb;
+   transform: rotate(90deg);
 }
 .touchpad-tb-btn:active {
    background: rgba(0,0,0,0.75);
