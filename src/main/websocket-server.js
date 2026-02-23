@@ -182,6 +182,8 @@ class LEOBroadcastServer extends EventEmitter {
 			this.emit("client-timer-stop");
 		} else if (type === "timer-adjust") {
 			this.emit("client-timer-adjust", data.minutes);
+		} else if (type === "remote-key-press") {
+			this.emit("client-remote-key-press");
 		}
 	}
 

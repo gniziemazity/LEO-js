@@ -65,30 +65,43 @@ broadcastServer.on("client-mouse-move", async (dx, dy) => {
 	try {
 		const pos = await mouse.getPosition();
 		await mouse.setPosition(new Point(pos.x + dx, pos.y + dy));
-	} catch (e) { /* ignore */ }
+	} catch (e) {
+		/* ignore */
+	}
 });
 broadcastServer.on("client-mouse-click", async (button) => {
 	try {
 		if (button === "right") await mouse.rightClick();
 		else await mouse.leftClick();
-	} catch (e) { /* ignore */ }
+	} catch (e) {
+		/* ignore */
+	}
 });
 broadcastServer.on("client-mouse-scroll", async (dy) => {
 	try {
 		const amount = Math.abs(Math.round(dy));
 		if (dy > 0) await mouse.scrollDown(amount);
 		else await mouse.scrollUp(amount);
-	} catch (e) { /* ignore */ }
+	} catch (e) {
+		/* ignore */
+	}
 });
 broadcastServer.on("client-mouse-drag-start", async () => {
 	try {
 		await mouse.pressButton(Button.LEFT);
-	} catch (e) { /* ignore */ }
+	} catch (e) {
+		/* ignore */
+	}
 });
 broadcastServer.on("client-mouse-drag-end", async () => {
 	try {
 		await mouse.releaseButton(Button.LEFT);
-	} catch (e) { /* ignore */ }
+	} catch (e) {
+		/* ignore */
+	}
+});
+broadcastServer.on("client-remote-key-press", () => {
+	hotkeyManager.handleKey("remote");
 });
 
 const MainProcessTimer = require("./main-timer");
