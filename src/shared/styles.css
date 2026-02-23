@@ -642,7 +642,7 @@ button:hover {
    background: rgba(231, 76, 60, 0.4);
 }
 .touchpad-overlay.keyboard-mode {
-   background: rgba(231, 76, 60, 0.35);
+   background: rgba(0, 0, 0, 0.45);
 }
 
 .touchpad-toolbar {
@@ -670,6 +670,10 @@ button:hover {
    writing-mode: vertical-rl;
    text-orientation: mixed;
    white-space: nowrap;
+}
+.touchpad-tb-btn .tb-emoji {
+   display: inline-block;
+   writing-mode: horizontal-tb;
 }
 .touchpad-tb-btn:active {
    background: rgba(0,0,0,0.75);

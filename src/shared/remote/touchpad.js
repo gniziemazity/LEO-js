@@ -78,11 +78,11 @@ function toggleTouchpadMode() {
 	const overlay = document.getElementById("touchpadOverlay");
 	if (touchpadMode === "mouse") {
 		touchpadMode = "keyboard";
-		modeBtn.textContent = "⌨️ Keyboard";
+		modeBtn.innerHTML = '<span class="tb-emoji">⌨️</span> Keyboard';
 		overlay.classList.add("keyboard-mode");
 	} else {
 		touchpadMode = "mouse";
-		modeBtn.textContent = "🖱️ Mouse";
+		modeBtn.innerHTML = '<span class="tb-emoji">🖱️</span> Mouse';
 		overlay.classList.remove("keyboard-mode");
 	}
 }

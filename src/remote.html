@@ -81,7 +81,6 @@
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
 
-		<!-- Touchpad overlay -->
 		<div id="touchpadOverlay" class="touchpad-overlay">
 			<div class="touchpad-toolbar">
 				<button
@@ -89,7 +88,7 @@
 					class="touchpad-tb-btn"
 					onclick="toggleTouchpadMode()"
 				>
-					🖱️ Mouse
+					<span class="tb-emoji">🖱️</span> Mouse
 				</button>
 				<button
 					class="touchpad-tb-btn touchpad-close-btn"
@@ -131,11 +130,11 @@
 			</div>
 		</div>
 
-		<script src="remote/remote-connection.js"></script>
-		<script src="remote/remote-touchpad.js"></script>
-		<script src="remote/remote-timer.js"></script>
-		<script src="remote/remote-lesson.js"></script>
-		<script src="remote/remote-overlays.js"></script>
+		<script src="remote/connection.js"></script>
+		<script src="remote/touchpad.js"></script>
+		<script src="remote/timer.js"></script>
+		<script src="remote/lesson.js"></script>
+		<script src="remote/overlays.js"></script>
 
 		<script>
 			function handleMessage(message) {
