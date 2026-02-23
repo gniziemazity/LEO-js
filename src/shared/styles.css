@@ -553,6 +553,12 @@ button:hover {
    z-index: 2000;
    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
    width: 100%;
+   transition: transform 0.2s ease;
+}
+
+#mobile-header.hidden {
+   transform: translateY(-100%);
+   pointer-events: none;
 }
 
 .header-main-row {
@@ -752,7 +758,7 @@ button:hover {
    display: none;
    position: fixed;
    inset: 0;
-   z-index: 1000;
+   z-index: 2500;
    flex-direction: column;
    align-items: center;
    justify-content: center;
