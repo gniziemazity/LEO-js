@@ -652,24 +652,23 @@ body.typing-active #editor-toolbar {
    background: #3498db;
 }
 .btn-touchpad:hover { background: #2980b9; }
-.btn-touchpad-active {
-   background: #8e44ad !important;
-}
-.btn-touchpad-active:hover {
-   background: #732d91 !important;
-}
-
-.touchpad-side-btn {
+.mode-side-btns {
    position: fixed;
    right: 10px;
    top: 50%;
    transform: translateY(-50%);
    z-index: 1600;
-   background: rgba(52, 152, 219, 0.85);
+   display: flex;
+   flex-direction: column;
+   gap: 4px;
+}
+.mode-side-btn {
+   background: rgba(60, 60, 60, 0.82);
    color: #fff;
    border: none;
+   outline: none;
    border-radius: 8px;
-   padding: 16px 8px;
+   padding: 14px 8px;
    font-size: 0;
    cursor: pointer;
    touch-action: manipulation;
@@ -679,37 +678,63 @@ body.typing-active #editor-toolbar {
    display: flex;
    align-items: center;
    justify-content: center;
+   -webkit-tap-highlight-color: transparent;
 }
-.touchpad-side-btn .side-btn-emoji {
+.mode-side-btn .side-btn-emoji {
    font-size: 22px;
    display: inline-block;
    transform: rotate(90deg);
 }
-.touchpad-side-btn:active,
-.touchpad-side-btn.btn-touchpad-active {
-   background: rgba(142, 68, 173, 0.9) !important;
+.mode-side-btn:active {
+   background: rgba(30, 30, 30, 0.95);
 }
-
-.touchpad-overlay.active ~ .touchpad-side-btn {
-   opacity: 0;
+#modeBtnMouse.mode-active {
+   background: rgba(52, 152, 219, 0.9);
+}
+#modeBtnKeyboard.mode-active {
+   background: rgba(230, 126, 34, 0.9);
+}
+#modeBtnKeyboard.kb-disabled {
+   opacity: 0.15;
    pointer-events: none;
 }
-
-body.side-left .touchpad-side-btn {
+#modeBtnIronMan.mode-active {
+   background: rgba(39, 174, 96, 0.9);
+}
+#modeSideBtns.has-active .mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(.mode-side-btn-help) {
+   opacity: 0.5;
+   pointer-events: none;
+}
+.mode-side-btn-question {
+   background: rgba(180, 70, 0, 0.75);
+}
+.mode-side-btn-question:active {
+   background: rgba(180, 70, 0, 0.95);
+}
+.mode-side-btn-help {
+   background: rgba(30, 120, 60, 0.75);
+}
+.mode-side-btn-help:active {
+   background: rgba(30, 120, 60, 0.95);
+}
+.mode-side-divider {
+   height: 6px;
+}
+body.side-left .mode-side-btns {
    right: auto;
    left: 10px;
-   border-radius: 8px;
 }
-body.side-left .touchpad-side-btn .side-btn-emoji {
+body.side-left .mode-side-btn .side-btn-emoji {
    transform: rotate(-90deg);
-}
-body.side-left .touchpad-toolbar {
-   right: auto;
-   left: 10px;
 }
 
 body.side-left .touchpad-tb-btn {
    transform: rotate(180deg);
+}
+
+body.side-left .touchpad-toolbar {
+   right: auto;
+   left: 10px;
 }
 
 body.side-left .touchpad-tb-btn .tb-emoji {
@@ -736,6 +761,9 @@ body.side-left .touchpad-tb-btn .tb-emoji {
 }
 .touchpad-overlay.keyboard-mode {
    background: rgba(0, 0, 0, 0.45);
+}
+.touchpad-overlay.iron-man-mode {
+   background: rgba(27, 94, 32, 0.40);
 }
 .touchpad-overlay.accel-mode {
    background: rgba(46, 204, 113, 0.32);
@@ -774,6 +802,9 @@ body.side-left .touchpad-tb-btn .tb-emoji {
 .touchpad-tb-btn:active {
    background: rgba(0,0,0,0.75);
 }
+.touchpad-tb-btn.accel-active {
+   background: rgba(41, 128, 185, 0.85);
+}
 .touchpad-close-btn {
    background: rgba(192, 57, 43, 0.7);
    padding: 14px 10px;
@@ -784,23 +815,40 @@ body.side-left .touchpad-tb-btn .tb-emoji {
    background: rgba(192, 57, 43, 0.9);
 }
 
-body.side-right .q-modal,
-body.side-right .i-modal {
-   transform: rotate(90deg);
-   transform-origin: center center;
-   width: 80vh;
-   max-width: 80vh;
-   max-height: 90vw;
+body.side-right .overlay,
+body.side-left .overlay {
+   top: calc((100dvh - 100dvw) / 2);
+   right: auto;
+   bottom: auto;
+   left: calc((100dvw - 100dvh) / 2);
+   width: 100dvh;
+   height: 100dvw;
    overflow: hidden;
+   align-items: stretch;
+   justify-content: flex-start;
+   padding: 14px;
+   box-sizing: border-box;
 }
+body.side-right .overlay {
+   transform: rotate(90deg);
+   transform-origin: center;
+}
+body.side-left .overlay {
+   transform: rotate(-90deg);
+   transform-origin: center;
+}
+body.side-right .q-modal,
+body.side-right .i-modal,
 body.side-left .q-modal,
 body.side-left .i-modal {
-   transform: rotate(-90deg);
-   transform-origin: center center;
-   width: 80vh;
-   max-width: 80vh;
-   max-height: 90vw;
-   overflow: hidden;
+   transform: none;
+   width: 100%;
+   max-width: none;
+   max-height: none;
+   border-radius: 8px;
+   overflow-y: auto;
+   flex-shrink: 1;
+   flex: 1;
 }
 
 .comment-block.image-comment {
@@ -879,9 +927,10 @@ body.side-left .i-modal {
    inset: 0;
    z-index: 2500;
    flex-direction: column;
-   align-items: center;
-   justify-content: center;
-   padding: 20px;
+   align-items: stretch;
+   justify-content: flex-start;
+   padding: 0;
+   overflow-y: auto;
 }
 .overlay.active {
    display: flex;
@@ -890,11 +939,13 @@ body.side-left .i-modal {
 .q-modal {
    position: relative;
    background: #1e1e2e;
-   border-radius: 14px;
+   border-radius: 0;
    padding: 26px 28px;
-   max-width: 540px;
+   flex: 1;
    width: 100%;
-   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+   max-width: none;
+   box-shadow: none;
+   overflow-y: auto;
 }
 
 .q-question-text {
@@ -916,6 +967,7 @@ body.side-left .i-modal {
    display: flex;
    flex-wrap: wrap;
    gap: 8px;
+   justify-content: center;
    max-height: 240px;
    overflow-y: auto;
    margin-bottom: 14px;
@@ -968,11 +1020,13 @@ body.side-left .i-modal {
 
 .i-modal {
    position: relative;
-   border-radius: 14px;
+   border-radius: 0;
    padding: 26px 28px;
-   max-width: 540px;
+   flex: 1;
    width: 100%;
-   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+   max-width: none;
+   box-shadow: none;
+   overflow-y: auto;
 }
 
 .i-modal.type-student-question {
@@ -993,6 +1047,7 @@ body.side-left .i-modal {
    display: flex;
    flex-wrap: wrap;
    gap: 8px;
+   justify-content: center;
    max-height: 320px;
    overflow-y: auto;
    margin-bottom: 0;
@@ -1171,29 +1226,23 @@ body.question-view {
    word-break: break-word;
 }
 
-.answered-banner {
-   display: none;
-   margin-top: 32px;
-   padding: 10px 22px;
-   background: rgba(0, 0, 0, 0.12);
-   border-radius: 30px;
-   font-size: 1.3rem;
-   font-weight: 600;
-   color: rgba(0, 0, 0, 0.75);
-   animation: popIn 0.3s ease;
-}
-
-.student-label {
+.student-banner {
    display: none;
    position: fixed;
    bottom: 28px;
    left: 0;
    right: 0;
    text-align: center;
+   padding: 5px 5px;
    font-size: 1.4rem;
    font-weight: 700;
    color: rgba(0, 0, 0, 0.75);
    letter-spacing: 0.03em;
+   animation: popIn 0.3s ease;
+}
+
+.student-banner.visible {
+   display: block;
 }
 
 @keyframes popIn {
@@ -1208,7 +1257,7 @@ body.question-view {
 }
 
 .dots {
-   margin-top: 32px;
+   margin-top: 10px;
    display: flex;
    gap: 8px;
 }

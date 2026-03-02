@@ -69,35 +69,80 @@ function setTouchpadSide(side) {
 	touchpadSide = side || "right";
 }
 
-function toggleTouchpad() {
-	touchpadActive = !touchpadActive;
+function updateModeBtns(activeMode) {
+	const ids = {
+		mouse: "modeBtnMouse",
+		keyboard: "modeBtnKeyboard",
+		"iron-man": "modeBtnIronMan",
+	};
+	for (const [m, id] of Object.entries(ids)) {
+		const btn = document.getElementById(id);
+		if (btn) btn.classList.toggle("mode-active", m === activeMode);
+	}
+	const container = document.getElementById("modeSideBtns");
+	if (container) container.classList.toggle("has-active", !!activeMode);
+}
+
+function closeTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
-	const sideBtn = document.getElementById("touchpadSideBtn");
 	const header = document.getElementById("mobile-header");
-
-	overlay.classList.toggle("active", touchpadActive);
-	if (sideBtn) sideBtn.classList.toggle("btn-touchpad-active", touchpadActive);
-	header.classList.toggle("hidden", touchpadActive);
-
-	if (!touchpadActive && isDragging) {
+	touchpadActive = false;
+	overlay.classList.remove("active", "keyboard-mode", "iron-man-mode");
+	header.classList.remove("hidden");
+	if (isDragging) {
 		isDragging = false;
 		sendMessage("mouse-drag-end", {});
 		overlay.classList.remove("dragging");
 	}
+	if (ironManActive) ironManActive = false;
+	updateModeBtns(null);
 }
 
-function toggleTouchpadMode() {
-	const modeBtn = document.getElementById("modeBtn");
+async function setTouchpadMode(mode) {
+	if (mode === "keyboard" && !autoTypingActive) return;
 	const overlay = document.getElementById("touchpadOverlay");
-	if (touchpadMode === "mouse") {
-		touchpadMode = "keyboard";
-		modeBtn.innerHTML = '<span class="tb-emoji">⌨️</span> Keyboard';
-		overlay.classList.add("keyboard-mode");
-	} else {
-		touchpadMode = "mouse";
-		modeBtn.innerHTML = '<span class="tb-emoji">🖱️</span> Mouse';
-		overlay.classList.remove("keyboard-mode");
+	const header = document.getElementById("mobile-header");
+
+	const alreadyActive =
+		(mode === "iron-man" && ironManActive) ||
+		(mode !== "iron-man" && touchpadActive && touchpadMode === mode);
+
+	if (touchpadActive) {
+		touchpadActive = false;
+		overlay.classList.remove("active", "keyboard-mode");
+		header.classList.remove("hidden");
+		if (isDragging) {
+			isDragging = false;
+			sendMessage("mouse-drag-end", {});
+			overlay.classList.remove("dragging");
+		}
 	}
+	if (ironManActive) ironManActive = false;
+
+	if (alreadyActive) {
+		updateModeBtns(null);
+		return;
+	}
+
+	if (mode === "iron-man") {
+		if (!ironManGranted) await requestOrientationPermission();
+		ironManActive = true;
+		baseAlpha = null;
+		baseBeta = null;
+		baseGamma = null;
+		touchpadActive = true;
+		overlay.classList.add("active", "iron-man-mode");
+		header.classList.add("hidden");
+		initIronMan();
+	} else {
+		touchpadActive = true;
+		touchpadMode = mode;
+		overlay.classList.add("active");
+		overlay.classList.toggle("keyboard-mode", mode === "keyboard");
+		header.classList.add("hidden");
+	}
+
+	updateModeBtns(mode);
 }
 
 function setTouchpadSensitivity(sensitivity) {
@@ -105,52 +150,112 @@ function setTouchpadSensitivity(sensitivity) {
 	SCROLL_SENSITIVITY = sensitivity * 0.67;
 }
 
-let threeFingerActive = false;
-let accelGranted = false;
-let velX = 0;
-let velY = 0;
-const VEL_DECAY = 0.75; // friction: velocity decays to 0 when phone stops moving
+let autoTypingActive = false;
 
-async function requestMotionPermission() {
+function setAutoTypingActive(active) {
+	autoTypingActive = !!active;
+	const btn = document.getElementById("modeBtnKeyboard");
+	if (btn) btn.classList.toggle("kb-disabled", !autoTypingActive);
+}
+
+let ironManActive = false;
+let ironManGranted = false;
+let ironManInitialized = false;
+let ironManDragId = null;
+let ironManFingerCount = 0;
+let baseAlpha = null;
+let baseBeta = null;
+let baseGamma = null;
+let prevBeta = 0;
+let prevGamma = 0;
+let pinchStartDist = null;
+let lastDebugTime = 0;
+
+async function requestOrientationPermission() {
 	if (
-		typeof DeviceMotionEvent !== "undefined" &&
-		typeof DeviceMotionEvent.requestPermission === "function"
+		typeof DeviceOrientationEvent !== "undefined" &&
+		typeof DeviceOrientationEvent.requestPermission === "function"
 	) {
 		try {
-			const perm = await DeviceMotionEvent.requestPermission();
-			accelGranted = perm === "granted";
+			const perm = await DeviceOrientationEvent.requestPermission();
+			ironManGranted = perm === "granted";
 		} catch (err) {
-			accelGranted = false;
+			ironManGranted = false;
 		}
 	} else {
-		accelGranted = true;
+		ironManGranted = true;
 	}
 }
 
-function initAccelerometer() {
+function initIronMan() {
+	if (ironManInitialized) return;
+	ironManInitialized = true;
+
 	const handler = (e) => {
-		if (!threeFingerActive) return;
-		const a = e.acceleration; // without gravity — pure translation
-		if (!a) return;
+		if (!ironManActive) return;
 
-		const ax = a.x ?? 0;
-		const ay = a.y ?? 0;
+		const alpha = e.alpha ?? 0;
+		const beta = e.beta ?? 0;
+		const gamma = e.gamma ?? 0;
 
-		// Integrate acceleration into velocity, then apply decay
-		// Phone flat in portrait: x = left/right, y = top/bottom of phone
-		// Negate ay so sliding phone away from you moves cursor up
-		velX = (velX + ax * MOUSE_SENSITIVITY * 0.4) * VEL_DECAY;
-		velY = (velY - ay * MOUSE_SENSITIVITY * 0.4) * VEL_DECAY;
+		if (baseAlpha === null) {
+			baseAlpha = alpha;
+			baseBeta = beta;
+			baseGamma = gamma;
+			prevBeta = beta;
+			prevGamma = gamma;
+			return;
+		}
 
-		const dx = Math.round(velX);
-		const dy = Math.round(velY);
+		let dAlpha = alpha - baseAlpha;
+		if (dAlpha > 180) dAlpha -= 360;
+		if (dAlpha < -180) dAlpha += 360;
+		const dBeta = beta - baseBeta;
+		const dGamma = gamma - baseGamma;
 
-		if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
-			sendMessage("mouse-move", { dx, dy });
+		const now = Date.now();
+		if (now - lastDebugTime > 200) {
+			lastDebugTime = now;
+			sendMessage("iron-man-debug", {
+				dAlpha: Math.round(dAlpha * 10) / 10,
+				dBeta: Math.round(dBeta * 10) / 10,
+				dGamma: Math.round(dGamma * 10) / 10,
+			});
+		}
+
+		let frameDGamma = gamma - prevGamma;
+		let frameDeBeta = beta - prevBeta;
+		if (frameDGamma > 90) frameDGamma -= 180;
+		if (frameDGamma < -90) frameDGamma += 180;
+		if (frameDeBeta > 180) frameDeBeta -= 360;
+		if (frameDeBeta < -180) frameDeBeta += 360;
+		prevGamma = gamma;
+		prevBeta = beta;
+
+		const dx = -frameDGamma * MOUSE_SENSITIVITY * 2.5;
+		const dy = -frameDeBeta * MOUSE_SENSITIVITY * 2.5;
+
+		if (Math.abs(dx) > 0.15 || Math.abs(dy) > 0.15) {
+			if (ironManFingerCount === 1) {
+				sendMessage("window-drag", {
+					dx: Math.round(dx),
+					dy: Math.round(dy),
+				});
+			} else if (ironManFingerCount === 0) {
+				sendMessage("mouse-move", {
+					dx: Math.round(dx),
+					dy: Math.round(dy),
+				});
+			}
 		}
 	};
 
-	window.addEventListener("devicemotion", handler);
+	window.addEventListener("deviceorientation", handler);
+	window.addEventListener("deviceorientationabsolute", handler);
+}
+
+async function toggleIronMan() {
+	setTouchpadMode("iron-man");
 }
 
 function initTouchpad() {
@@ -162,7 +267,7 @@ function initTouchpad() {
 	let touchDownX = 0;
 	let touchDownY = 0;
 
-	initAccelerometer();
+	initIronMan();
 
 	overlay.addEventListener(
 		"touchstart",
@@ -175,13 +280,17 @@ function initTouchpad() {
 				return;
 			}
 
-			// Three-finger: activate accelerometer steering
-			if (e.touches.length === 3) {
-				threeFingerActive = true;
-				velX = 0;
-				velY = 0;
-				overlay.classList.add("accel-mode");
-				if (!accelGranted) requestMotionPermission();
+			if (ironManActive) {
+				ironManFingerCount = e.touches.length;
+				if (e.touches.length === 2) {
+					ironManDragId = null;
+					pinchStartDist = Math.hypot(
+						e.touches[1].clientX - e.touches[0].clientX,
+						e.touches[1].clientY - e.touches[0].clientY,
+					);
+				} else {
+					pinchStartDist = null;
+				}
 				return;
 			}
 
@@ -224,7 +333,30 @@ function initTouchpad() {
 		(e) => {
 			e.preventDefault();
 			if (touchpadMode === "keyboard") return;
-			if (threeFingerActive) return; // accelerometer handles movement
+
+			if (ironManActive) {
+				ironManFingerCount = e.touches.length;
+				if (
+					e.touches.length >= 2 &&
+					pinchStartDist !== null &&
+					pinchStartDist > 0
+				) {
+					const dist = Math.hypot(
+						e.touches[1].clientX - e.touches[0].clientX,
+						e.touches[1].clientY - e.touches[0].clientY,
+					);
+					const now = Date.now();
+					if (now - lastSendTime >= SEND_THROTTLE_MS) {
+						lastSendTime = now;
+						sendMessage("window-resize", {
+							scale: dist / pinchStartDist,
+						});
+					}
+					pinchStartDist = dist;
+				}
+				return;
+			}
+
 			const now = Date.now();
 			if (now - lastSendTime < SEND_THROTTLE_MS) return;
 			lastSendTime = now;
@@ -240,8 +372,6 @@ function initTouchpad() {
 				if (!anchor) return;
 				const dx = (anchor.clientX - twoFingerStartX) * SCROLL_SENSITIVITY;
 				twoFingerStartX = anchor.clientX;
-				// For right-side (CCW rotation): moving finger up = rightward on screen = +dx → scroll up = -dx
-				// For left-side (CW rotation): moving finger up = leftward on screen = -dx → scroll up = +dx
 				const scrollDy = touchpadSide === "left" ? dx : -dx;
 				scrollAccum += scrollDy;
 				scrollVelocity =
@@ -286,13 +416,14 @@ function initTouchpad() {
 
 			if (touchpadMode === "keyboard") return;
 
-			// Release three-finger mode when all fingers lift
-			if (threeFingerActive) {
-				if (e.touches.length < 3) {
-					threeFingerActive = false;
-					velX = 0;
-					velY = 0;
-					overlay.classList.remove("accel-mode");
+			if (ironManActive) {
+				ironManFingerCount = e.touches.length;
+				if (e.touches.length < 2) pinchStartDist = null;
+				if (e.touches.length === 2) {
+					pinchStartDist = Math.hypot(
+						e.touches[1].clientX - e.touches[0].clientX,
+						e.touches[1].clientY - e.touches[0].clientY,
+					);
 				}
 				return;
 			}

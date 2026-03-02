@@ -194,6 +194,14 @@ class LEOBroadcastServer extends EventEmitter {
 			);
 		} else if (type === "mouse-move") {
 			this.emit("client-mouse-move", data.dx, data.dy);
+		} else if (type === "window-drag") {
+			this.emit("client-window-drag", data.dx, data.dy);
+		} else if (type === "window-resize") {
+			this.emit("client-window-resize", data.scale);
+		} else if (type === "iron-man-debug") {
+			console.log(
+				`[iron-man] dAlpha=${data.dAlpha}° dBeta=${data.dBeta}° dGamma=${data.dGamma}°`,
+			);
 		} else if (type === "mouse-click") {
 			this.emit("client-mouse-click", data.button);
 		} else if (type === "mouse-scroll") {

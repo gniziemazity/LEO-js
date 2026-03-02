@@ -23,8 +23,10 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 let tray = null;
 let questionWindow = null;
 let questionWindowIsTeacher = false; // true when opened for a teacher question
+let questionWindowSize = { w: 900, h: 480 };
 let imageWindow = null;
 let imageWindowPinned = false;
+let imageWindowSize = { w: 900, h: 650 };
 
 broadcastServer.on("client-toggle-active", () => {
 	state.mainWindow.webContents.send("global-toggle-active");
@@ -133,6 +135,36 @@ broadcastServer.on("client-mouse-drag-end", async () => {
 		await mouse.releaseButton(Button.LEFT);
 	} catch (e) {
 		/* ignore */
+	}
+});
+
+function getActiveFloatingWindow() {
+	if (questionWindow && !questionWindow.isDestroyed()) return questionWindow;
+	if (imageWindow && !imageWindow.isDestroyed()) return imageWindow;
+	return null;
+}
+broadcastServer.on("client-window-drag", (dx, dy) => {
+	const win = getActiveFloatingWindow();
+	if (win) {
+		const [x, y] = win.getPosition();
+		win.setPosition(x + dx, y + dy);
+	}
+});
+broadcastServer.on("client-window-resize", (scale) => {
+	const win = getActiveFloatingWindow();
+	if (win) {
+		const sizeRef =
+			win === questionWindow ? questionWindowSize : imageWindowSize;
+		const newW = Math.max(200, Math.round(sizeRef.w * scale));
+		const newH = Math.max(150, Math.round(sizeRef.h * scale));
+		const [x, y] = win.getPosition();
+		win.setPosition(
+			Math.round(x - (newW - sizeRef.w) / 2),
+			Math.round(y - (newH - sizeRef.h) / 2),
+		);
+		win.setSize(newW, newH);
+		sizeRef.w = newW;
+		sizeRef.h = newH;
 	}
 });
 broadcastServer.on("client-remote-key-press", () => {
@@ -338,12 +370,14 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			width: 900,
 			height: 480,
 			frame: true,
+			resizable: false,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
 			title: "Question",
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
+		questionWindowSize = { w: 900, h: 480 };
 		questionWindow.setMenu(null);
 		questionWindow.loadFile(path.join(__dirname, "../question-window.html"));
 		questionWindow.webContents.on("did-finish-load", () => {
@@ -399,12 +433,14 @@ ipcMain.on(
 			width: 900,
 			height: 650,
 			frame: true,
+			resizable: false,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
 			title: "Image",
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
+		imageWindowSize = { w: 900, h: 650 };
 		imageWindow.setMenu(null);
 		imageWindow.loadFile(path.join(__dirname, "../image-window.html"));
 		imageWindow.webContents.on("did-finish-load", () => {
@@ -427,7 +463,10 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	const display = screen.getPrimaryDisplay();
 	const maxW = Math.floor(display.workAreaSize.width * 0.95);
 	const maxH = Math.floor(display.workAreaSize.height * 0.95);
-	imageWindow.setSize(Math.min(width, maxW), Math.min(height, maxH));
+	const newW = Math.min(width, maxW);
+	const newH = Math.min(height, maxH);
+	imageWindow.setSize(newW, newH);
+	imageWindowSize = { w: newW, h: newH };
 	imageWindow.center();
 });
 

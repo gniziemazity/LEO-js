@@ -13,8 +13,7 @@
 			<div class="dot"></div>
 			<div class="dot"></div>
 		</div>
-		<div class="answered-banner" id="answeredBanner"></div>
-		<div class="student-label" id="studentLabel"></div>
+		<div class="student-banner" id="studentBanner"></div>
 
 		<script>
 			const { ipcRenderer } = require("electron");
@@ -25,19 +24,20 @@
 					document.getElementById("questionText").textContent = question;
 					document.getElementById("questionEmoji").textContent =
 						emoji || "❓";
-					const label = document.getElementById("studentLabel");
+					document.getElementById("dots").style.display = "flex";
+					const banner = document.getElementById("studentBanner");
 					if (studentName) {
-						label.textContent = studentName;
-						label.style.display = "block";
-						document.getElementById("dots").style.display = "none";
+						banner.textContent = studentName;
+						banner.className = "student-banner visible";
 					} else {
-						label.style.display = "none";
-						document.getElementById("dots").style.display = "flex";
+						banner.textContent = "";
+						banner.className = "student-banner";
 					}
 					if (bgColor) {
-						document.documentElement.style.setProperty("--bg", bgColor);
+						document.body.style.background = bgColor;
+					} else {
+						document.body.style.background = "";
 					}
-					document.getElementById("answeredBanner").style.display = "none";
 				},
 			);
 
@@ -45,11 +45,11 @@
 
 			ipcRenderer.on("set-answered", (event, studentName) => {
 				document.getElementById("dots").style.display = "none";
-				const banner = document.getElementById("answeredBanner");
+				const banner = document.getElementById("studentBanner");
 				banner.textContent = studentName
 					? `✅ Answered by ${studentName}`
 					: "✅ Answered";
-				banner.style.display = "block";
+				banner.className = "student-banner visible";
 				launchFireworks();
 				setTimeout(() => {
 					window.close();

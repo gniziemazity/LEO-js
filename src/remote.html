@@ -17,22 +17,6 @@
 				>
 					▶︎
 				</button>
-				<div id="interactionButtons">
-					<button
-						class="interaction-btn btn-student-question"
-						onclick="handleInteractionBtn('student-question')"
-						title="Student Question"
-					>
-						<span class="dark-emoji">❓</span>
-					</button>
-					<button
-						class="interaction-btn btn-help"
-						onclick="handleInteractionBtn('providing-help')"
-						title="Providing Help"
-					>
-						<span class="dark-emoji">🤝</span>
-					</button>
-				</div>
 				<div id="timerSection">
 					<button
 						id="timerStartBtn"
@@ -73,32 +57,49 @@
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
 
-		<div id="touchpadOverlay" class="touchpad-overlay">
-			<div class="touchpad-toolbar">
-				<button
-					id="modeBtn"
-					class="touchpad-tb-btn"
-					onclick="toggleTouchpadMode()"
-				>
-					<span class="tb-emoji">🖱️</span> Mouse
-				</button>
-				<button
-					class="touchpad-tb-btn touchpad-close-btn"
-					onclick="toggleTouchpad()"
-				>
-					✕
-				</button>
-			</div>
-		</div>
+		<div id="touchpadOverlay" class="touchpad-overlay"></div>
 
-		<button
-			id="touchpadSideBtn"
-			class="touchpad-side-btn"
-			onclick="toggleTouchpad()"
-			title="Toggle Touchpad"
-		>
-			<span class="side-btn-emoji">🖱️</span>
-		</button>
+		<div id="modeSideBtns" class="mode-side-btns">
+			<button
+				id="modeBtnMouse"
+				class="mode-side-btn"
+				onclick="setTouchpadMode('mouse')"
+				title="Mouse"
+			>
+				<span class="side-btn-emoji">🖱️</span>
+			</button>
+			<button
+				id="modeBtnKeyboard"
+				class="mode-side-btn kb-disabled"
+				onclick="setTouchpadMode('keyboard')"
+				title="Keyboard"
+			>
+				<span class="side-btn-emoji">⌨️</span>
+			</button>
+			<button
+				id="modeBtnIronMan"
+				class="mode-side-btn"
+				onclick="setTouchpadMode('iron-man')"
+				title="Iron Man Mode"
+			>
+				<span class="side-btn-emoji">🦾</span>
+			</button>
+			<div class="mode-side-divider"></div>
+			<button
+				class="mode-side-btn mode-side-btn-question"
+				onclick="handleInteractionBtn('student-question')"
+				title="Student Question"
+			>
+				<span class="side-btn-emoji">❓</span>
+			</button>
+			<button
+				class="mode-side-btn mode-side-btn-help"
+				onclick="handleInteractionBtn('providing-help')"
+				title="Providing Help"
+			>
+				<span class="side-btn-emoji">🤝</span>
+			</button>
+		</div>
 
 		<div id="questionOverlay" class="overlay">
 			<div class="q-modal">
@@ -164,6 +165,7 @@
 						break;
 					case "active":
 						updateActiveState(data.isActive);
+						setAutoTypingActive(data.isActive);
 						break;
 					case "students":
 						setStudents(data.students);
@@ -189,7 +191,10 @@
 
 			function updateAllState(state) {
 				updateProgress(state);
-				if (state.isActive !== undefined) updateActiveState(state.isActive);
+				if (state.isActive !== undefined) {
+					updateActiveState(state.isActive);
+					setAutoTypingActive(state.isActive);
+				}
 				if (state.settings) applySettings(state.settings);
 				if (state.lessonData) updateLessonData(state.lessonData);
 				if (state.currentStep !== undefined)
