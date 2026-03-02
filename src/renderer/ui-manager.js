@@ -9,12 +9,17 @@ class UIManager {
 		this.elements = {
 			toggleBtn: document.getElementById("toggleBtn"),
 			addCommentBtn: document.getElementById("addCommentBtn"),
+			addQuestionCommentBtn: document.getElementById(
+				"addQuestionCommentBtn",
+			),
+			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),
 			formatBlockBtn: document.getElementById("formatBlockBtn"),
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
+			editorToolbar: document.getElementById("editor-toolbar"),
 			specialKeysContainer: document.getElementById(
 				"special-keys-container",
 			),

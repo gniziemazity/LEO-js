@@ -6,7 +6,7 @@
 		<link rel="stylesheet" href="./shared/styles.css" />
 	</head>
 	<body class="question-view">
-		<div class="question-emoji">❓</div>
+		<div class="question-emoji" id="questionEmoji">❓</div>
 		<div class="question-text" id="questionText"></div>
 		<div class="dots" id="dots">
 			<div class="dot"></div>
@@ -14,18 +14,32 @@
 			<div class="dot"></div>
 		</div>
 		<div class="answered-banner" id="answeredBanner"></div>
+		<div class="student-label" id="studentLabel"></div>
 
 		<script>
 			const { ipcRenderer } = require("electron");
 
-			ipcRenderer.on("set-question", (event, { question, bgColor }) => {
-				document.getElementById("questionText").textContent = question;
-				if (bgColor) {
-					document.documentElement.style.setProperty("--bg", bgColor);
-				}
-				document.getElementById("answeredBanner").style.display = "none";
-				document.getElementById("dots").style.display = "flex";
-			});
+			ipcRenderer.on(
+				"set-question",
+				(event, { question, bgColor, emoji, studentName }) => {
+					document.getElementById("questionText").textContent = question;
+					document.getElementById("questionEmoji").textContent =
+						emoji || "❓";
+					const label = document.getElementById("studentLabel");
+					if (studentName) {
+						label.textContent = studentName;
+						label.style.display = "block";
+						document.getElementById("dots").style.display = "none";
+					} else {
+						label.style.display = "none";
+						document.getElementById("dots").style.display = "flex";
+					}
+					if (bgColor) {
+						document.documentElement.style.setProperty("--bg", bgColor);
+					}
+					document.getElementById("answeredBanner").style.display = "none";
+				},
+			);
 
 			const AUTO_CLOSE_MS = 3000;
 
@@ -36,10 +50,82 @@
 					? `✅ Answered by ${studentName}`
 					: "✅ Answered";
 				banner.style.display = "block";
+				launchFireworks();
 				setTimeout(() => {
 					window.close();
 				}, AUTO_CLOSE_MS);
 			});
+
+			function launchFireworks() {
+				const canvas = document.createElement("canvas");
+				canvas.style.cssText =
+					"position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:999;";
+				document.body.appendChild(canvas);
+				canvas.width = window.innerWidth;
+				canvas.height = window.innerHeight;
+				const ctx = canvas.getContext("2d");
+				const COLORS = [
+					"#ff4444",
+					"#ff8800",
+					"#ffdd00",
+					"#44ff44",
+					"#44aaff",
+					"#ff44ff",
+					"#ffffff",
+					"#88ffdd",
+				];
+				const particles = [];
+
+				function burst() {
+					const x = canvas.width * (0.15 + Math.random() * 0.7);
+					const y = canvas.height * (0.1 + Math.random() * 0.45);
+					const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+					for (let i = 0; i < 80; i++) {
+						const angle = Math.random() * Math.PI * 2;
+						const speed = 1.5 + Math.random() * 7;
+						particles.push({
+							x,
+							y,
+							vx: Math.cos(angle) * speed,
+							vy: Math.sin(angle) * speed,
+							color,
+							life: 1,
+							decay: 0.011 + Math.random() * 0.014,
+							r: 2 + Math.random() * 2.5,
+						});
+					}
+				}
+
+				let burstsDone = 0;
+				burst();
+				const iv = setInterval(() => {
+					burst();
+					if (++burstsDone >= 6) clearInterval(iv);
+				}, 380);
+
+				function animate() {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					let alive = false;
+					for (const p of particles) {
+						if (p.life <= 0) continue;
+						alive = true;
+						p.x += p.vx;
+						p.y += p.vy;
+						p.vy += 0.13;
+						p.vx *= 0.99;
+						p.life -= p.decay;
+						ctx.globalAlpha = Math.max(0, p.life);
+						ctx.fillStyle = p.color;
+						ctx.beginPath();
+						ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+						ctx.fill();
+					}
+					ctx.globalAlpha = 1;
+					if (alive || burstsDone < 6) requestAnimationFrame(animate);
+					else canvas.remove();
+				}
+				animate();
+			}
 		</script>
 	</body>
 </html>

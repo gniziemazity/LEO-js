@@ -1,18 +1,19 @@
 const express = require("express");
-const http = require("http");
+const https = require("https");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const EventEmitter = require("events");
+const selfsigned = require("selfsigned");
 
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
 		super();
 		this.port = port;
 		this.app = express();
-		this.server = http.createServer(this.app);
+		this.server = null;
 		this.wss = null;
 		this.currentState = {
 			progress: 0,
@@ -28,7 +29,15 @@ class LEOBroadcastServer extends EventEmitter {
 		};
 	}
 
-	start() {
+	async start() {
+		const pems = await selfsigned.generate(
+			[{ name: "commonName", value: "leo-local" }],
+			{ days: 3650, keyType: "ec", curve: "P-256" },
+		);
+		this.server = https.createServer(
+			{ key: pems.private, cert: pems.cert },
+			this.app,
+		);
 		this.app.get("/", (req, res) => {
 			res.sendFile(path.join(__dirname, "../remote.html"));
 		});
@@ -59,7 +68,7 @@ class LEOBroadcastServer extends EventEmitter {
 		Object.keys(interfaces).forEach((ifname) => {
 			interfaces[ifname].forEach((iface) => {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `http://${iface.address}:${this.port}`;
+					const url = `https://${iface.address}:${this.port}`;
 					console.log(`Client Viewer URL: ${url}`);
 					qrcode.generate(url);
 				}
@@ -166,6 +175,23 @@ class LEOBroadcastServer extends EventEmitter {
 				data.openedAt || null,
 				data.closedAt || null,
 			);
+		} else if (type === "show-student-interaction") {
+			this.emit(
+				"client-show-student-interaction",
+				data.interactionType,
+				data.studentName,
+				data.questionText || null,
+				data.openedAt || null,
+			);
+		} else if (type === "close-student-interaction") {
+			this.emit(
+				"client-close-student-interaction",
+				data.interactionType,
+				data.studentName,
+				data.questionText || null,
+				data.openedAt || null,
+				data.closedAt || null,
+			);
 		} else if (type === "mouse-move") {
 			this.emit("client-mouse-move", data.dx, data.dy);
 		} else if (type === "mouse-click") {
@@ -193,7 +219,7 @@ class LEOBroadcastServer extends EventEmitter {
 		for (const ifname of Object.keys(interfaces)) {
 			for (const iface of interfaces[ifname]) {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `http://${iface.address}:${this.port}`;
+					const url = `https://${iface.address}:${this.port}`;
 					try {
 						const qrCodeDataUrl = await QRCode.toDataURL(url, {
 							width: 300,

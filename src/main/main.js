@@ -22,6 +22,7 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
 let tray = null;
 let questionWindow = null;
+let questionWindowIsTeacher = false; // true when opened for a teacher question
 let imageWindow = null;
 let imageWindowPinned = false;
 
@@ -45,6 +46,40 @@ broadcastServer.on("client-student-answered", (studentName) => {
 broadcastServer.on(
 	"client-student-interaction",
 	(interactionType, studentName, questionText, openedAt, closedAt) => {
+		if (state.mainWindow) {
+			state.mainWindow.webContents.send("log-student-interaction", {
+				interactionType,
+				studentName,
+				questionText,
+				openedAt,
+				closedAt,
+			});
+		}
+	},
+);
+
+broadcastServer.on(
+	"client-show-student-interaction",
+	(interactionType, studentName, questionText, openedAt) => {
+		const isQuestion = interactionType === "student-question";
+		const displayText = isQuestion
+			? questionText || "(no question text)"
+			: `Providing help`;
+		const emoji = isQuestion ? "❓" : "🤝";
+		const bgColor = isQuestion ? "#f57c00" : "#388e3c";
+		openQuestionWindow(displayText, bgColor, emoji, studentName);
+	},
+);
+
+broadcastServer.on(
+	"client-close-student-interaction",
+	(interactionType, studentName, questionText, openedAt, closedAt) => {
+		questionWindowIsTeacher = false;
+		if (questionWindow && !questionWindow.isDestroyed()) {
+			questionWindow.close();
+			questionWindow = null;
+		}
+		broadcastServer.broadcastQuestionEnded();
 		if (state.mainWindow) {
 			state.mainWindow.webContents.send("log-student-interaction", {
 				interactionType,
@@ -124,7 +159,7 @@ broadcastServer.on("client-timer-adjust", (minutes) => {
 	timer.adjust(minutes);
 });
 
-function createWindow() {
+async function createWindow() {
 	const config = {
 		...WINDOW_CONFIG,
 		autoHideMenuBar: false,
@@ -133,7 +168,7 @@ function createWindow() {
 	state.mainWindow = new BrowserWindow(config);
 	createApplicationMenu();
 	state.mainWindow.loadFile(path.join(__dirname, "../index.html"));
-	broadcastServer.start();
+	await broadcastServer.start();
 	state.broadcastServer = broadcastServer;
 	hotkeyManager.registerSystemShortcuts();
 	state.mainWindow.webContents.on("did-finish-load", () => {
@@ -288,40 +323,45 @@ ipcMain.on("broadcast-students", (event, students) => {
 
 ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
 	broadcastServer.broadcastQuestionStarted(question, students, bgColor);
-
-	const openOrUpdate = () => {
-		if (questionWindow && !questionWindow.isDestroyed()) {
-			questionWindow.webContents.send("set-question", { question, bgColor });
-			questionWindow.show();
-			questionWindow.focus();
-		} else {
-			questionWindow = new BrowserWindow({
-				width: 900,
-				height: 480,
-				frame: true,
-				autoHideMenuBar: true,
-				alwaysOnTop: true,
-				title: "Question",
-				icon: path.join(__dirname, "../shared/icon.ico"),
-				webPreferences: { nodeIntegration: true, contextIsolation: false },
-			});
-			questionWindow.setMenu(null);
-			questionWindow.loadFile(
-				path.join(__dirname, "../question-window.html"),
-			);
-			questionWindow.webContents.on("did-finish-load", () => {
-				questionWindow.webContents.send("set-question", {
-					question,
-					bgColor,
-				});
-			});
-			questionWindow.on("closed", () => {
-				questionWindow = null;
-			});
-		}
-	};
-	openOrUpdate();
+	openQuestionWindow(question, bgColor);
 });
+
+function openQuestionWindow(question, bgColor, emoji, studentName) {
+	const payload = { question, bgColor, emoji, studentName };
+	questionWindowIsTeacher = !studentName;
+	if (questionWindow && !questionWindow.isDestroyed()) {
+		questionWindow.webContents.send("set-question", payload);
+		questionWindow.show();
+		questionWindow.focus();
+	} else {
+		questionWindow = new BrowserWindow({
+			width: 900,
+			height: 480,
+			frame: true,
+			autoHideMenuBar: true,
+			alwaysOnTop: true,
+			title: "Question",
+			icon: path.join(__dirname, "../shared/icon.ico"),
+			webPreferences: { nodeIntegration: true, contextIsolation: false },
+		});
+		questionWindow.setMenu(null);
+		questionWindow.loadFile(path.join(__dirname, "../question-window.html"));
+		questionWindow.webContents.on("did-finish-load", () => {
+			questionWindow.webContents.send("set-question", payload);
+		});
+		questionWindow.on("closed", () => {
+			if (questionWindowIsTeacher) {
+				broadcastServer.broadcastQuestionEnded();
+				if (state.mainWindow) {
+					state.mainWindow.webContents.send("question-answered", {
+						studentName: null,
+					});
+				}
+			}
+			questionWindow = null;
+		});
+	}
+}
 
 ipcMain.on("close-question-window", () => {
 	if (questionWindow && !questionWindow.isDestroyed()) {
@@ -401,8 +441,15 @@ ipcMain.on("close-image-window", () => {
 
 ipcMain.on("set-active", (event, isActive) => {
 	state.isActive = isActive;
-	if (isActive) hotkeyManager.registerTypingHotkeys();
-	else hotkeyManager.unregisterTypingHotkeys();
+	if (isActive) {
+		cleanupAutoTyping();
+		state.clearQueue();
+		if (state.mainWindow)
+			state.mainWindow.webContents.send("stop-auto-typing");
+		hotkeyManager.registerTypingHotkeys();
+	} else {
+		hotkeyManager.unregisterTypingHotkeys();
+	}
 });
 ipcMain.on("type-character", (event, char) =>
 	keyboardHandler.typeCharacter(char),

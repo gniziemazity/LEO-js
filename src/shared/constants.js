@@ -34,7 +34,7 @@ const NUTJS_KEY_MAPPING = {
 	Ț: { modifier: Key.LeftControl, key: Key.F },
 
 	// special pause symbol - no key action
-	"🕛": { pause: 1000 },
+	"🕛": { pause: 500 },
 };
 
 const WINDOW_CONFIG = {
@@ -94,6 +94,8 @@ function buildSettingsCSS(settings) {
 			border-left-color: ${settings.colors.selectedBorder};
 		}
 		.char.cursor { background: ${settings.colors.cursor}; }
+		#addQuestionCommentBtn { background: ${settings.colors.questionCommentColor}; }
+		#addImageCommentBtn { background: ${settings.colors.imageBlockColor}; }
 	`;
 }
 

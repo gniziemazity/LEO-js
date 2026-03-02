@@ -115,8 +115,12 @@ class SettingsUI {
 
 		document.getElementById("touchpadSensitivity").value =
 			settings.touchpadSensitivity || 3;
-		document.getElementById("sensitivityValue").textContent =
-			parseFloat(settings.touchpadSensitivity || 3).toFixed(1);
+		document.getElementById("sensitivityValue").textContent = parseFloat(
+			settings.touchpadSensitivity || 3,
+		).toFixed(1);
+
+		document.getElementById("touchpadSide").value =
+			settings.touchpadSide || "right";
 
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
 	}
@@ -167,6 +171,7 @@ class SettingsUI {
 			touchpadSensitivity: parseFloat(
 				document.getElementById("touchpadSensitivity").value,
 			),
+			touchpadSide: document.getElementById("touchpadSide").value,
 		};
 
 		ipcRenderer.send("save-settings", settings);

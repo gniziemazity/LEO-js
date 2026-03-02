@@ -7,7 +7,7 @@
 		<link rel="icon" href="icon.ico" type="image/x-icon" />
 		<link rel="stylesheet" href="styles.css" />
 	</head>
-	<body class="mobile-view">
+	<body class="mobile-view side-right">
 		<div id="mobile-header">
 			<div class="header-main-row">
 				<button
@@ -31,14 +31,6 @@
 						title="Providing Help"
 					>
 						<span class="dark-emoji">🤝</span>
-					</button>
-					<button
-						id="touchpadBtn"
-						class="interaction-btn btn-touchpad"
-						onclick="toggleTouchpad()"
-						title="Toggle Touchpad"
-					>
-						<span class="dark-emoji">🖱️</span>
 					</button>
 				</div>
 				<div id="timerSection">
@@ -99,8 +91,20 @@
 			</div>
 		</div>
 
+		<button
+			id="touchpadSideBtn"
+			class="touchpad-side-btn"
+			onclick="toggleTouchpad()"
+			title="Toggle Touchpad"
+		>
+			<span class="side-btn-emoji">🖱️</span>
+		</button>
+
 		<div id="questionOverlay" class="overlay">
 			<div class="q-modal">
+				<button class="overlay-close-btn" onclick="hideQuestionOverlay()">
+					✕
+				</button>
 				<div class="q-question-text" id="qText"></div>
 				<div class="q-subtitle" id="qSubtitle">Who answered?</div>
 				<div class="q-grid" id="qGrid"></div>
@@ -115,6 +119,12 @@
 
 		<div id="interactionOverlay" class="overlay">
 			<div class="i-modal" id="iModal">
+				<button
+					class="overlay-close-btn"
+					onclick="closeInteractionOverlay()"
+				>
+					✕
+				</button>
 				<div class="i-title" id="iTitle">Select student</div>
 				<input
 					type="text"
@@ -124,9 +134,6 @@
 					style="display: none"
 				/>
 				<div class="i-grid" id="iGrid"></div>
-				<button class="i-cancel-btn" onclick="closeInteractionOverlay()">
-					Cancel
-				</button>
 			</div>
 		</div>
 

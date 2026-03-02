@@ -14,6 +14,7 @@ let twoFingerTapStart = 0;
 let twoFingerMoved = false;
 let wasTwoFinger = false;
 let touchpadMode = "mouse"; // "mouse" or "keyboard"
+let touchpadSide = "right"; // "right" or "left"
 let scrollAnchorId = null;
 let scrollAccum = 0;
 
@@ -56,14 +57,26 @@ function rotateCCW(dx, dy) {
 	return { dx: dy, dy: -dx };
 }
 
+function rotateCW(dx, dy) {
+	return { dx: -dy, dy: dx };
+}
+
+function rotateForSide(dx, dy) {
+	return touchpadSide === "left" ? rotateCW(dx, dy) : rotateCCW(dx, dy);
+}
+
+function setTouchpadSide(side) {
+	touchpadSide = side || "right";
+}
+
 function toggleTouchpad() {
 	touchpadActive = !touchpadActive;
 	const overlay = document.getElementById("touchpadOverlay");
-	const btn = document.getElementById("touchpadBtn");
+	const sideBtn = document.getElementById("touchpadSideBtn");
 	const header = document.getElementById("mobile-header");
 
 	overlay.classList.toggle("active", touchpadActive);
-	btn.classList.toggle("btn-touchpad-active", touchpadActive);
+	if (sideBtn) sideBtn.classList.toggle("btn-touchpad-active", touchpadActive);
 	header.classList.toggle("hidden", touchpadActive);
 
 	if (!touchpadActive && isDragging) {
@@ -92,6 +105,54 @@ function setTouchpadSensitivity(sensitivity) {
 	SCROLL_SENSITIVITY = sensitivity * 0.67;
 }
 
+let threeFingerActive = false;
+let accelGranted = false;
+let velX = 0;
+let velY = 0;
+const VEL_DECAY = 0.75; // friction: velocity decays to 0 when phone stops moving
+
+async function requestMotionPermission() {
+	if (
+		typeof DeviceMotionEvent !== "undefined" &&
+		typeof DeviceMotionEvent.requestPermission === "function"
+	) {
+		try {
+			const perm = await DeviceMotionEvent.requestPermission();
+			accelGranted = perm === "granted";
+		} catch (err) {
+			accelGranted = false;
+		}
+	} else {
+		accelGranted = true;
+	}
+}
+
+function initAccelerometer() {
+	const handler = (e) => {
+		if (!threeFingerActive) return;
+		const a = e.acceleration; // without gravity — pure translation
+		if (!a) return;
+
+		const ax = a.x ?? 0;
+		const ay = a.y ?? 0;
+
+		// Integrate acceleration into velocity, then apply decay
+		// Phone flat in portrait: x = left/right, y = top/bottom of phone
+		// Negate ay so sliding phone away from you moves cursor up
+		velX = (velX + ax * MOUSE_SENSITIVITY * 0.4) * VEL_DECAY;
+		velY = (velY - ay * MOUSE_SENSITIVITY * 0.4) * VEL_DECAY;
+
+		const dx = Math.round(velX);
+		const dy = Math.round(velY);
+
+		if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+			sendMessage("mouse-move", { dx, dy });
+		}
+	};
+
+	window.addEventListener("devicemotion", handler);
+}
+
 function initTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const TAP_MAX_MS = 200;
@@ -101,6 +162,8 @@ function initTouchpad() {
 	let touchDownX = 0;
 	let touchDownY = 0;
 
+	initAccelerometer();
+
 	overlay.addEventListener(
 		"touchstart",
 		(e) => {
@@ -109,6 +172,16 @@ function initTouchpad() {
 
 			if (touchpadMode === "keyboard") {
 				sendMessage("remote-key-press", {});
+				return;
+			}
+
+			// Three-finger: activate accelerometer steering
+			if (e.touches.length === 3) {
+				threeFingerActive = true;
+				velX = 0;
+				velY = 0;
+				overlay.classList.add("accel-mode");
+				if (!accelGranted) requestMotionPermission();
 				return;
 			}
 
@@ -151,6 +224,7 @@ function initTouchpad() {
 		(e) => {
 			e.preventDefault();
 			if (touchpadMode === "keyboard") return;
+			if (threeFingerActive) return; // accelerometer handles movement
 			const now = Date.now();
 			if (now - lastSendTime < SEND_THROTTLE_MS) return;
 			lastSendTime = now;
@@ -166,7 +240,9 @@ function initTouchpad() {
 				if (!anchor) return;
 				const dx = (anchor.clientX - twoFingerStartX) * SCROLL_SENSITIVITY;
 				twoFingerStartX = anchor.clientX;
-				const scrollDy = -dx;
+				// For right-side (CCW rotation): moving finger up = rightward on screen = +dx → scroll up = -dx
+				// For left-side (CW rotation): moving finger up = leftward on screen = -dx → scroll up = +dx
+				const scrollDy = touchpadSide === "left" ? dx : -dx;
 				scrollAccum += scrollDy;
 				scrollVelocity =
 					scrollVelocity * (1 - VELOCITY_SMOOTHING) +
@@ -190,7 +266,7 @@ function initTouchpad() {
 				const screenDy = (t.clientY - touchStartY) * MOUSE_SENSITIVITY;
 				touchStartX = t.clientX;
 				touchStartY = t.clientY;
-				const rotated = rotateCCW(screenDx, screenDy);
+				const rotated = rotateForSide(screenDx, screenDy);
 				if (Math.abs(rotated.dx) > 0.5 || Math.abs(rotated.dy) > 0.5) {
 					sendMessage("mouse-move", {
 						dx: Math.round(rotated.dx),
@@ -209,6 +285,17 @@ function initTouchpad() {
 			e.preventDefault();
 
 			if (touchpadMode === "keyboard") return;
+
+			// Release three-finger mode when all fingers lift
+			if (threeFingerActive) {
+				if (e.touches.length < 3) {
+					threeFingerActive = false;
+					velX = 0;
+					velY = 0;
+					overlay.classList.remove("accel-mode");
+				}
+				return;
+			}
 
 			if (e.touches.length === 0 && twoFingerTapStart > 0) {
 				const elapsed = Date.now() - twoFingerTapStart;

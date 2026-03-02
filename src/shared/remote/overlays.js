@@ -2,6 +2,8 @@ let currentStudents = [];
 let pendingInteraction = null;
 let autoCloseTimer = null;
 let interactionOpenedAt = null;
+let interactionWaiting = false;
+let pendingWaitingData = null;
 
 const AUTO_CLOSE_MS = 3000;
 
@@ -147,22 +149,52 @@ function showInteractionOverlay(title, students, type) {
 		btn.onclick = () => {
 			const qText =
 				type === "student-question" ? questionInput.value.trim() : null;
-			const msgData = {
-				interactionType: pendingInteraction,
-				studentName: name,
-				openedAt: interactionOpenedAt,
-				closedAt: Date.now(),
-			};
-			if (qText) msgData.questionText = qText;
-			sendMessage("student-interaction", msgData);
-			closeInteractionOverlay();
+			onStudentSelected(name, type, qText);
 		};
 		grid.appendChild(btn);
 	});
 	document.getElementById("interactionOverlay").classList.add("active");
 }
 
+function onStudentSelected(name, type, questionText) {
+	const msgData = {
+		interactionType: type,
+		studentName: name,
+		questionText: questionText || null,
+		openedAt: interactionOpenedAt,
+	};
+	sendMessage("show-student-interaction", msgData);
+
+	interactionWaiting = true;
+	pendingWaitingData = msgData;
+
+	const isQuestion = type === "student-question";
+	document.getElementById("iQuestionInput").style.display = "none";
+	document.getElementById("iTitle").textContent = isQuestion
+		? `❓ ${name}${questionText ? ": " + questionText : ""}`
+		: `🤝 Helping ${name}`;
+
+	const grid = document.getElementById("iGrid");
+	grid.innerHTML = "";
+	const doneBtn = document.createElement("button");
+	doneBtn.className = "i-student-btn";
+	doneBtn.style.cssText =
+		"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
+		"background:rgba(231,76,60,0.35);border-color:rgba(231,76,60,0.7);";
+	doneBtn.textContent = "✓ Done — close";
+	doneBtn.onclick = () => closeInteractionOverlay();
+	grid.appendChild(doneBtn);
+}
+
 function closeInteractionOverlay() {
+	if (interactionWaiting && pendingWaitingData) {
+		sendMessage("close-student-interaction", {
+			...pendingWaitingData,
+			closedAt: Date.now(),
+		});
+	}
+	interactionWaiting = false;
+	pendingWaitingData = null;
 	document.getElementById("interactionOverlay").classList.remove("active");
 	document.getElementById("iQuestionInput").style.display = "none";
 	pendingInteraction = null;

@@ -56,6 +56,11 @@ function applySettings(settings) {
 	if (settings.touchpadSensitivity != null) {
 		setTouchpadSensitivity(settings.touchpadSensitivity);
 	}
+
+	const side = settings.touchpadSide || "right";
+	document.body.classList.remove("side-left", "side-right");
+	document.body.classList.add("side-" + side);
+	if (typeof setTouchpadSide === "function") setTouchpadSide(side);
 }
 
 function updateLessonData(data) {

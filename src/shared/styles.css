@@ -276,6 +276,42 @@ button:hover {
    text-align: center;
 }
 
+#editor-toolbar {
+   display: flex;
+   align-items: center;
+   gap: 5px;
+   margin: 0 auto;
+}
+
+body.typing-active #editor-toolbar {
+   display: none;
+}
+
+.tb-emoji-btn {
+   width: 35px;
+   height: 30px;
+   border: none;
+   border-radius: 4px;
+   cursor: pointer;
+   font-size: 15px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background: #3d5166;
+   padding: 0;
+}
+
+.tb-emoji-btn:hover {
+   background: #4d6680;
+}
+
+.tb-sep {
+   width: 1px;
+   height: 22px;
+   background: rgba(255, 255, 255, 0.2);
+   margin: 0 2px;
+}
+
 .timer-btn,
 .add-btn,
 .remove-btn,
@@ -623,6 +659,63 @@ button:hover {
    background: #732d91 !important;
 }
 
+.touchpad-side-btn {
+   position: fixed;
+   right: 10px;
+   top: 50%;
+   transform: translateY(-50%);
+   z-index: 1600;
+   background: rgba(52, 152, 219, 0.85);
+   color: #fff;
+   border: none;
+   border-radius: 8px;
+   padding: 16px 8px;
+   font-size: 0;
+   cursor: pointer;
+   touch-action: manipulation;
+   writing-mode: vertical-rl;
+   text-orientation: mixed;
+   transition: background 0.15s;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+}
+.touchpad-side-btn .side-btn-emoji {
+   font-size: 22px;
+   display: inline-block;
+   transform: rotate(90deg);
+}
+.touchpad-side-btn:active,
+.touchpad-side-btn.btn-touchpad-active {
+   background: rgba(142, 68, 173, 0.9) !important;
+}
+
+.touchpad-overlay.active ~ .touchpad-side-btn {
+   opacity: 0;
+   pointer-events: none;
+}
+
+body.side-left .touchpad-side-btn {
+   right: auto;
+   left: 10px;
+   border-radius: 8px;
+}
+body.side-left .touchpad-side-btn .side-btn-emoji {
+   transform: rotate(-90deg);
+}
+body.side-left .touchpad-toolbar {
+   right: auto;
+   left: 10px;
+}
+
+body.side-left .touchpad-tb-btn {
+   transform: rotate(180deg);
+}
+
+body.side-left .touchpad-tb-btn .tb-emoji {
+   transform: rotate(-90deg);
+}
+
 .touchpad-overlay {
    display: none;
    position: fixed;
@@ -643,6 +736,9 @@ button:hover {
 }
 .touchpad-overlay.keyboard-mode {
    background: rgba(0, 0, 0, 0.45);
+}
+.touchpad-overlay.accel-mode {
+   background: rgba(46, 204, 113, 0.32);
 }
 
 .touchpad-toolbar {
@@ -686,6 +782,25 @@ button:hover {
 }
 .touchpad-close-btn:active {
    background: rgba(192, 57, 43, 0.9);
+}
+
+body.side-right .q-modal,
+body.side-right .i-modal {
+   transform: rotate(90deg);
+   transform-origin: center center;
+   width: 80vh;
+   max-width: 80vh;
+   max-height: 90vw;
+   overflow: hidden;
+}
+body.side-left .q-modal,
+body.side-left .i-modal {
+   transform: rotate(-90deg);
+   transform-origin: center center;
+   width: 80vh;
+   max-width: 80vh;
+   max-height: 90vw;
+   overflow: hidden;
 }
 
 .comment-block.image-comment {
@@ -773,6 +888,7 @@ button:hover {
 }
 
 .q-modal {
+   position: relative;
    background: #1e1e2e;
    border-radius: 14px;
    padding: 26px 28px;
@@ -851,6 +967,7 @@ button:hover {
 }
 
 .i-modal {
+   position: relative;
    border-radius: 14px;
    padding: 26px 28px;
    max-width: 540px;
@@ -876,9 +993,9 @@ button:hover {
    display: flex;
    flex-wrap: wrap;
    gap: 8px;
-   max-height: 260px;
+   max-height: 320px;
    overflow-y: auto;
-   margin-bottom: 14px;
+   margin-bottom: 0;
 }
 
 .i-student-btn {
@@ -898,20 +1015,25 @@ button:hover {
    border-color: rgba(255, 255, 255, 0.5);
 }
 
-.i-cancel-btn {
-   width: 100%;
-   background: rgba(0, 0, 0, 0.25);
-   border: 1px solid rgba(255, 255, 255, 0.2);
-   border-radius: 8px;
-   padding: 10px;
-   color: rgba(255, 255, 255, 0.6);
-   font-size: 0.88rem;
+.overlay-close-btn {
+   position: absolute;
+   top: 10px;
+   right: 12px;
+   background: rgba(255, 255, 255, 0.08);
+   border: none;
+   color: rgba(255, 255, 255, 0.55);
+   font-size: 20px;
+   line-height: 1;
+   padding: 4px 8px;
+   border-radius: 6px;
    cursor: pointer;
-   transition: background 0.13s;
    touch-action: manipulation;
+   transition: background 0.13s, color 0.13s;
+   z-index: 1;
 }
-.i-cancel-btn:hover {
-   background: rgba(0, 0, 0, 0.4);
+.overlay-close-btn:hover,
+.overlay-close-btn:active {
+   background: rgba(255, 255, 255, 0.2);
    color: #fff;
 }
 
@@ -1059,6 +1181,19 @@ body.question-view {
    font-weight: 600;
    color: rgba(0, 0, 0, 0.75);
    animation: popIn 0.3s ease;
+}
+
+.student-label {
+   display: none;
+   position: fixed;
+   bottom: 28px;
+   left: 0;
+   right: 0;
+   text-align: center;
+   font-size: 1.4rem;
+   font-weight: 700;
+   color: rgba(0, 0, 0, 0.75);
+   letter-spacing: 0.03em;
 }
 
 @keyframes popIn {
