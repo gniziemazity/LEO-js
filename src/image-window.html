@@ -24,6 +24,17 @@
 				ipcRenderer.send("pin-image-window", true);
 			});
 
+			// Tap anywhere on the image to toggle pin
+			document
+				.getElementById("imageDisplay")
+				.addEventListener("click", () => {
+					if (pinned) return;
+					pinned = true;
+					pinBtn.classList.add("pinned");
+					pinBtn.setAttribute("data-tip", "Pinned");
+					ipcRenderer.send("pin-image-window", true);
+				});
+
 			ipcRenderer.on("set-image", (event, { imagePath, bgColor }) => {
 				if (bgColor)
 					document.documentElement.style.setProperty("--bg", bgColor);

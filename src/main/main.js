@@ -22,7 +22,7 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
 let tray = null;
 let questionWindow = null;
-let questionWindowIsTeacher = false; // true when opened for a teacher question
+let questionWindowIsTeacher = false;
 let questionWindowRect = null;
 let imageWindow = null;
 let imageWindowPinned = false;
@@ -154,8 +154,8 @@ broadcastServer.on("client-window-drag", (dx, dy) => {
 		win.setBounds({
 			x: Math.floor(rect.x),
 			y: Math.floor(rect.y),
-			width: rect.w - 1 - (Math.random() < 0.3 ? 1 : 0), // workaround for occasional Electron bug where window gets stuck during move
-			height: rect.h - 1 - (Math.random() < 0.3 ? 1 : 0),
+			width: rect.w - 1 - (Math.random() < 0.3 ? 1 : 0),
+			height: rect.h - 1 - (Math.random() < 0.4 ? 1 : 0),
 		});
 	}
 });
@@ -390,6 +390,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
+		broadcastServer.broadcastFloatingWindowOpened();
 		questionWindowRect = {
 			x: questionWindow.getBounds().x,
 			y: questionWindow.getBounds().y,
@@ -410,6 +411,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 					});
 				}
 			}
+			broadcastServer.broadcastFloatingWindowClosed();
 			questionWindow = null;
 			questionWindowRect = null;
 		});
@@ -444,6 +446,30 @@ ipcMain.on("close-question-window", () => {
 		questionWindow = null;
 	}
 	broadcastServer.broadcastQuestionEnded();
+});
+
+broadcastServer.on("client-dismiss-question", () => {
+	if (
+		questionWindowIsTeacher &&
+		questionWindow &&
+		!questionWindow.isDestroyed()
+	) {
+		questionWindow.close();
+		questionWindow = null;
+	}
+	if (state.mainWindow) {
+		state.mainWindow.webContents.send("question-answered", {
+			studentName: null,
+		});
+	}
+});
+
+broadcastServer.on("client-close-answered-question", () => {
+	questionWindowIsTeacher = false;
+	if (questionWindow && !questionWindow.isDestroyed()) {
+		questionWindow.close();
+		questionWindow = null;
+	}
 });
 
 ipcMain.on(
@@ -481,6 +507,7 @@ ipcMain.on(
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
+		broadcastServer.broadcastFloatingWindowOpened();
 		imageWindowRect = {
 			x: imageWindow.getBounds().x,
 			y: imageWindow.getBounds().y,
@@ -493,6 +520,7 @@ ipcMain.on(
 			imageWindow.webContents.send("set-image", { imagePath, bgColor });
 		});
 		imageWindow.on("closed", () => {
+			broadcastServer.broadcastFloatingWindowClosed();
 			imageWindow = null;
 			imageWindowPinned = false;
 			imageWindowRect = null;

@@ -8,6 +8,8 @@ const QRCode = require("qrcode");
 const EventEmitter = require("events");
 const selfsigned = require("selfsigned");
 
+const IRON_MAN_DEBUG = true;
+
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
 		super();
@@ -26,6 +28,7 @@ class LEOBroadcastServer extends EventEmitter {
 			activeQuestion: null,
 			students: [],
 			timeRemaining: null,
+			floatingWindowCount: 0,
 		};
 	}
 
@@ -156,6 +159,24 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "timer-stopped", data: {} });
 	}
 
+	broadcastFloatingWindowOpened() {
+		this.currentState.floatingWindowCount =
+			(this.currentState.floatingWindowCount || 0) + 1;
+		if (this.currentState.floatingWindowCount === 1) {
+			this.broadcast({ type: "floating-window-opened", data: {} });
+		}
+	}
+
+	broadcastFloatingWindowClosed() {
+		this.currentState.floatingWindowCount = Math.max(
+			0,
+			(this.currentState.floatingWindowCount || 0) - 1,
+		);
+		if (this.currentState.floatingWindowCount === 0) {
+			this.broadcast({ type: "floating-window-closed", data: {} });
+		}
+	}
+
 	handleClientMessage(message) {
 		const { type, data } = message;
 		if (type === "toggle-active") {
@@ -199,7 +220,7 @@ class LEOBroadcastServer extends EventEmitter {
 		} else if (type === "window-resize") {
 			this.emit("client-window-resize", data.scale);
 		} else if (type === "iron-man-debug") {
-			console.log(`[iron-man] dx=${data.dx} dy=${data.dy}`);
+			if (IRON_MAN_DEBUG) console.log(`[iron-man]`, JSON.stringify(data));
 		} else if (type === "mouse-click") {
 			this.emit("client-mouse-click", data.button);
 		} else if (type === "mouse-scroll") {
@@ -216,6 +237,10 @@ class LEOBroadcastServer extends EventEmitter {
 			this.emit("client-timer-adjust", data.minutes);
 		} else if (type === "remote-key-press") {
 			this.emit("client-remote-key-press");
+		} else if (type === "dismiss-question") {
+			this.emit("client-dismiss-question");
+		} else if (type === "close-answered-question") {
+			this.emit("client-close-answered-question");
 		}
 	}
 

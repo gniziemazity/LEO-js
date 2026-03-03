@@ -183,7 +183,7 @@ button:hover {
 }
 
 .comment-block.question-comment {
-   background: #ffcdd2; /* Light red background for question comments */
+   background: #ffcdd2;
 }
 
 .comment-block.active-comment {
@@ -648,16 +648,12 @@ body.typing-active #editor-toolbar {
    scroll-margin-top: 80px;
 }
 
-.btn-touchpad {
-   background: #3498db;
-}
-.btn-touchpad:hover { background: #2980b9; }
 .mode-side-btns {
    position: fixed;
    right: 10px;
    top: 50%;
    transform: translateY(-50%);
-   z-index: 1600;
+   z-index: 2560;
    display: flex;
    flex-direction: column;
    gap: 4px;
@@ -692,14 +688,14 @@ body.typing-active #editor-toolbar {
    background: rgba(52, 152, 219, 0.9);
 }
 #modeBtnKeyboard.mode-active {
-   background: rgba(230, 126, 34, 0.9);
+   background: rgba(39, 174, 96, 0.9);
 }
 #modeBtnKeyboard.kb-disabled {
    opacity: 0.15;
    pointer-events: none;
 }
 #modeBtnIronMan.mode-active {
-   background: rgba(39, 174, 96, 0.9);
+   background: rgba(231, 76, 60, 0.9);
 }
 #modeSideBtns.has-active .mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(.mode-side-btn-help) {
    opacity: 0.5;
@@ -728,19 +724,6 @@ body.side-left .mode-side-btn .side-btn-emoji {
    transform: rotate(-90deg);
 }
 
-body.side-left .touchpad-tb-btn {
-   transform: rotate(180deg);
-}
-
-body.side-left .touchpad-toolbar {
-   right: auto;
-   left: 10px;
-}
-
-body.side-left .touchpad-tb-btn .tb-emoji {
-   transform: rotate(-90deg);
-}
-
 .touchpad-overlay {
    display: none;
    position: fixed;
@@ -756,63 +739,33 @@ body.side-left .touchpad-tb-btn .tb-emoji {
 .touchpad-overlay.active {
    display: flex;
 }
-.touchpad-overlay.dragging {
-   background: rgba(231, 76, 60, 0.4);
-}
 .touchpad-overlay.keyboard-mode {
-   background: rgba(0, 0, 0, 0.45);
-}
-.touchpad-overlay.iron-man-mode {
    background: rgba(27, 94, 32, 0.40);
 }
-.touchpad-overlay.accel-mode {
-   background: rgba(46, 204, 113, 0.32);
+.touchpad-overlay.iron-man-mode {
+   background: rgba(231, 76, 60, 0.35);
+   z-index: 2550;
+}
+.touchpad-overlay.iron-man-mode ~ .mode-side-btns .mode-side-btn:not(#modeBtnIronMan) {
+   display: none;
 }
 
-.touchpad-toolbar {
-   position: absolute;
-   right: 10px;
-   top: 50%;
-   transform: translateY(-50%);
-   display: flex;
-   flex-direction: column;
-   gap: 12px;
-   pointer-events: auto;
-   touch-action: manipulation;
-   z-index: 1501;
-}
-
-.touchpad-tb-btn {
-   background: rgba(0,0,0,0.55);
-   color: #fff;
-   border: none;
-   border-radius: 8px;
-   padding: 12px 10px;
-   font-size: 14px;
-   cursor: pointer;
-   touch-action: manipulation;
-   writing-mode: vertical-rl;
-   text-orientation: mixed;
-   white-space: nowrap;
-}
-.touchpad-tb-btn .tb-emoji {
-   display: inline-block;
-   transform: rotate(90deg);
-}
-.touchpad-tb-btn:active {
-   background: rgba(0,0,0,0.75);
-}
-.touchpad-tb-btn.accel-active {
-   background: rgba(41, 128, 185, 0.85);
-}
-.touchpad-close-btn {
-   background: rgba(192, 57, 43, 0.7);
-   padding: 14px 10px;
-   font-size: 18px;
-   font-weight: bold;
-}
-.touchpad-close-btn:active {
-   background: rgba(192, 57, 43, 0.9);
+.iron-man-countdown {
+   display: none;
+   position: fixed;
+   top: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+   justify-content: center;
+   align-items: center;
+   font-size: 8rem;
+   font-weight: 700;
+   color: rgba(255, 255, 255, 0.85);
+   text-shadow: 0 0 30px rgba(27, 94, 32, 0.8);
+   z-index: 2600;
+   pointer-events: none;
+   user-select: none;
 }
 
 body.side-right .overlay,

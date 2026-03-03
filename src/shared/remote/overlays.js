@@ -28,9 +28,7 @@ function showQuestionOverlay(question, students, bgColor) {
 	document.getElementById("qText").textContent = question;
 
 	const overlay = document.getElementById("questionOverlay");
-	overlay.style.background = bgColor
-		? hexToRgba(bgColor, 0.94)
-		: "rgba(255,235,238,0.94)";
+	overlay.style.background = bgColor ? bgColor : "rgb(255,235,238)";
 
 	const grid = document.getElementById("qGrid");
 	const answered = document.getElementById("qAnsweredRow");
@@ -82,11 +80,16 @@ function onStudentAnswered(name) {
 		});
 	});
 
-	autoCloseTimer = setTimeout(() => hideQuestionOverlay(), AUTO_CLOSE_MS);
+	autoCloseTimer = setTimeout(() => {
+		clearAutoCloseTimer();
+		sendMessage("close-answered-question", {});
+		document.getElementById("questionOverlay").classList.remove("active");
+	}, AUTO_CLOSE_MS);
 }
 
 function hideQuestionOverlay() {
 	clearAutoCloseTimer();
+	sendMessage("dismiss-question", {});
 	document.getElementById("questionOverlay").classList.remove("active");
 }
 

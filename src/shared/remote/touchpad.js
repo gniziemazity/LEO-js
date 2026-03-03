@@ -83,56 +83,59 @@ function updateModeBtns(activeMode) {
 	if (container) container.classList.toggle("has-active", !!activeMode);
 }
 
-function closeTouchpad() {
+function stopDragIfActive() {
+	if (isDragging) {
+		isDragging = false;
+		sendMessage("mouse-drag-end", {});
+		const overlay = document.getElementById("touchpadOverlay");
+		if (overlay) overlay.classList.remove("dragging");
+	}
+}
+
+function deactivateTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 	touchpadActive = false;
 	overlay.classList.remove("active", "keyboard-mode", "iron-man-mode");
 	header.classList.remove("hidden");
-	if (isDragging) {
-		isDragging = false;
-		sendMessage("mouse-drag-end", {});
-		overlay.classList.remove("dragging");
+	stopDragIfActive();
+	if (ironManActive) {
+		stopCalibration();
+		ironManActive = false;
 	}
-	if (ironManActive) ironManActive = false;
+}
+
+function closeTouchpad() {
+	deactivateTouchpad();
 	updateModeBtns(null);
 }
 
 async function setTouchpadMode(mode) {
 	if (mode === "keyboard" && !autoTypingActive) return;
-	const overlay = document.getElementById("touchpadOverlay");
-	const header = document.getElementById("mobile-header");
 
 	const alreadyActive =
 		(mode === "iron-man" && ironManActive) ||
 		(mode !== "iron-man" && touchpadActive && touchpadMode === mode);
 
-	if (touchpadActive) {
-		touchpadActive = false;
-		overlay.classList.remove("active", "keyboard-mode");
-		header.classList.remove("hidden");
-		if (isDragging) {
-			isDragging = false;
-			sendMessage("mouse-drag-end", {});
-			overlay.classList.remove("dragging");
-		}
-	}
-	if (ironManActive) ironManActive = false;
+	deactivateTouchpad();
 
 	if (alreadyActive) {
 		updateModeBtns(null);
 		return;
 	}
 
+	const overlay = document.getElementById("touchpadOverlay");
+	const header = document.getElementById("mobile-header");
+
 	if (mode === "iron-man") {
 		if (!ironManGranted) await requestOrientationPermission();
 		ironManActive = true;
-		baseAccelX = null;
-		baseAccelY = null;
+		resetIronManState();
 		touchpadActive = true;
 		overlay.classList.add("active", "iron-man-mode");
 		header.classList.add("hidden");
 		initIronMan();
+		startCalibration();
 	} else {
 		touchpadActive = true;
 		touchpadMode = mode;
@@ -155,143 +158,6 @@ function setAutoTypingActive(active) {
 	autoTypingActive = !!active;
 	const btn = document.getElementById("modeBtnKeyboard");
 	if (btn) btn.classList.toggle("kb-disabled", !autoTypingActive);
-}
-
-let ironManActive = false;
-let ironManGranted = false;
-let ironManInitialized = false;
-let ironManDragId = null;
-let ironManFingerCount = 0;
-let pinchStartDist = null;
-let ironManPinchCenterX = null;
-let ironManPinchCenterY = null;
-let lastDebugTime = 0;
-let baseAccelX = null;
-let baseAccelY = null;
-let prevDeltaX = 0;
-let prevDeltaY = 0;
-let smoothDeltaX = 0;
-let smoothDeltaY = 0;
-let velX = 0;
-let velY = 0;
-let forceX = 0;
-let forceY = 0;
-let ironManRAF = null;
-const FORCE_GAIN = 14.0; // how strongly change-in-tilt accelerates cursor
-const FRICTION = 0.9; // velocity decay per frame (higher = glides longer)
-const FORCE_DEAD_ZONE = 0.12; // ignore jitter in tilt-change below this
-const FORCE_CAP = 0.6; // clamp force so big jolts don't overshoot
-const VEL_CUTOFF = 0.2; // snap velocity to zero when this low
-const SMOOTH = 0.4; // low-pass filter for accel input (lower = smoother)
-
-async function requestOrientationPermission() {
-	if (
-		typeof DeviceMotionEvent !== "undefined" &&
-		typeof DeviceMotionEvent.requestPermission === "function"
-	) {
-		try {
-			const perm = await DeviceMotionEvent.requestPermission();
-			ironManGranted = perm === "granted";
-		} catch (err) {
-			ironManGranted = false;
-		}
-	} else {
-		ironManGranted = true;
-	}
-}
-
-function initIronMan() {
-	if (ironManInitialized) return;
-	ironManInitialized = true;
-
-	const handler = (e) => {
-		if (!ironManActive) return;
-		if (ironManFingerCount >= 2) return; // 2-finger touch handles movement
-
-		const acc = e.accelerationIncludingGravity;
-		if (!acc) return;
-
-		const rawX = acc.x ?? 0;
-		const rawY = acc.y ?? 0;
-
-		if (baseAccelX === null) {
-			baseAccelX = rawX;
-			baseAccelY = rawY;
-			prevDeltaX = 0;
-			prevDeltaY = 0;
-			smoothDeltaX = 0;
-			smoothDeltaY = 0;
-			velX = 0;
-			velY = 0;
-			forceX = 0;
-			forceY = 0;
-			return;
-		}
-
-		const deltaX = rawX - baseAccelX;
-		const deltaY = rawY - baseAccelY;
-
-		smoothDeltaX += SMOOTH * (deltaX - smoothDeltaX);
-		smoothDeltaY += SMOOTH * (deltaY - smoothDeltaY);
-
-		const ddx = smoothDeltaX - prevDeltaX;
-		const ddy = smoothDeltaY - prevDeltaY;
-		prevDeltaX = smoothDeltaX;
-		prevDeltaY = smoothDeltaY;
-
-		const clamp = (v) =>
-			Math.abs(v) < FORCE_DEAD_ZONE
-				? 0
-				: Math.sign(v) * Math.min(Math.abs(v), FORCE_CAP);
-		forceX = clamp(ddx);
-		forceY = clamp(ddy);
-
-		const now = Date.now();
-		if (now - lastDebugTime > 200) {
-			lastDebugTime = now;
-			sendMessage("iron-man-debug", {
-				dx: Math.round(forceX * 100) / 100,
-				dy: Math.round(forceY * 100) / 100,
-			});
-		}
-	};
-
-	function physicsTick() {
-		ironManRAF = requestAnimationFrame(physicsTick);
-		if (!ironManActive) return;
-
-		velX += forceX * FORCE_GAIN;
-		velY += -forceY * FORCE_GAIN;
-
-		forceX = 0;
-		forceY = 0;
-
-		velX *= FRICTION;
-		velY *= FRICTION;
-
-		if (Math.abs(velX) < VEL_CUTOFF && Math.abs(velY) < VEL_CUTOFF) {
-			velX = 0;
-			velY = 0;
-			return;
-		}
-
-		const dx = Math.round(velX);
-		const dy = Math.round(velY);
-		if (dx === 0 && dy === 0) return;
-
-		if (ironManFingerCount === 1) {
-			sendMessage("mouse-move", { dx, dy });
-		} else if (ironManFingerCount === 0) {
-			sendMessage("window-drag", { dx, dy });
-		}
-	}
-
-	ironManRAF = requestAnimationFrame(physicsTick);
-	window.addEventListener("devicemotion", handler);
-}
-
-async function toggleIronMan() {
-	setTouchpadMode("iron-man");
 }
 
 function initTouchpad() {
@@ -317,22 +183,7 @@ function initTouchpad() {
 			}
 
 			if (ironManActive) {
-				ironManFingerCount = e.touches.length;
-				if (e.touches.length === 2) {
-					ironManDragId = null;
-					pinchStartDist = Math.hypot(
-						e.touches[1].clientX - e.touches[0].clientX,
-						e.touches[1].clientY - e.touches[0].clientY,
-					);
-					ironManPinchCenterX =
-						(e.touches[0].clientX + e.touches[1].clientX) / 2;
-					ironManPinchCenterY =
-						(e.touches[0].clientY + e.touches[1].clientY) / 2;
-				} else {
-					pinchStartDist = null;
-					ironManPinchCenterX = null;
-					ironManPinchCenterY = null;
-				}
+				ironManTouchStart(e);
 				return;
 			}
 
@@ -377,48 +228,7 @@ function initTouchpad() {
 			if (touchpadMode === "keyboard") return;
 
 			if (ironManActive) {
-				ironManFingerCount = e.touches.length;
-				if (
-					e.touches.length >= 2 &&
-					pinchStartDist !== null &&
-					pinchStartDist > 0
-				) {
-					const dist = Math.hypot(
-						e.touches[1].clientX - e.touches[0].clientX,
-						e.touches[1].clientY - e.touches[0].clientY,
-					);
-					const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-					const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-					const now = Date.now();
-					if (now - lastSendTime >= SEND_THROTTLE_MS) {
-						lastSendTime = now;
-						sendMessage("window-resize", {
-							scale: dist / pinchStartDist,
-						});
-						if (
-							ironManPinchCenterX !== null &&
-							ironManPinchCenterY !== null
-						) {
-							const dragDx =
-								(cx - ironManPinchCenterX) * MOUSE_SENSITIVITY;
-							const dragDy =
-								(cy - ironManPinchCenterY) * MOUSE_SENSITIVITY;
-							const rotated = rotateForSide(dragDx, dragDy);
-							if (
-								Math.abs(rotated.dx) > 0.5 ||
-								Math.abs(rotated.dy) > 0.5
-							) {
-								sendMessage("window-drag", {
-									dx: Math.round(rotated.dx),
-									dy: Math.round(rotated.dy),
-								});
-							}
-						}
-					}
-					pinchStartDist = dist;
-					ironManPinchCenterX = cx;
-					ironManPinchCenterY = cy;
-				}
+				ironManTouchMove(e);
 				return;
 			}
 
@@ -482,18 +292,7 @@ function initTouchpad() {
 			if (touchpadMode === "keyboard") return;
 
 			if (ironManActive) {
-				ironManFingerCount = e.touches.length;
-				if (e.touches.length < 2) {
-					pinchStartDist = null;
-					ironManPinchCenterX = null;
-					ironManPinchCenterY = null;
-				}
-				if (e.touches.length === 2) {
-					pinchStartDist = Math.hypot(
-						e.touches[1].clientX - e.touches[0].clientX,
-						e.touches[1].clientY - e.touches[0].clientY,
-					);
-				}
+				ironManTouchEnd(e);
 				return;
 			}
 
