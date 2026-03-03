@@ -167,6 +167,10 @@ class LEOBroadcastServer extends EventEmitter {
 		}
 	}
 
+	signalFloatingWindowOpen() {
+		this.broadcast({ type: "floating-window-opened", data: {} });
+	}
+
 	broadcastFloatingWindowClosed() {
 		this.currentState.floatingWindowCount = Math.max(
 			0,

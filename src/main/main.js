@@ -66,7 +66,7 @@ broadcastServer.on(
 		const isQuestion = interactionType === "student-question";
 		const displayText = isQuestion
 			? questionText || "(no question text)"
-			: `Providing help`;
+			: `Helping`;
 		const emoji = isQuestion ? "❓" : "🤝";
 		const bgColor = isQuestion ? "#ffe0b2" : "#c8e6c9";
 		openQuestionWindow(displayText, bgColor, emoji, studentName);
@@ -375,6 +375,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 	const payload = { question, bgColor, emoji, studentName };
 	questionWindowIsTeacher = !studentName;
 	if (questionWindow && !questionWindow.isDestroyed()) {
+		broadcastServer.signalFloatingWindowOpen();
 		questionWindow.webContents.send("set-question", payload);
 		questionWindow.show();
 		questionWindow.focus();

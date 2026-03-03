@@ -7,6 +7,12 @@ let pendingWaitingData = null;
 
 const AUTO_CLOSE_MS = 3000;
 
+function setInteractionBtnsVisible(visible) {
+	document
+		.querySelectorAll(".mode-side-btn-question, .mode-side-btn-help")
+		.forEach((btn) => (btn.style.display = visible ? "" : "none"));
+}
+
 function formatAnsweredText(name) {
 	return name ? `✅ Answered by ${name}` : "✅ Answered";
 }
@@ -58,6 +64,7 @@ function showQuestionOverlay(question, students, bgColor) {
 	}
 
 	overlay.classList.add("active");
+	setInteractionBtnsVisible(false);
 }
 
 function onStudentAnswered(name) {
@@ -84,6 +91,7 @@ function onStudentAnswered(name) {
 		clearAutoCloseTimer();
 		sendMessage("close-answered-question", {});
 		document.getElementById("questionOverlay").classList.remove("active");
+		setInteractionBtnsVisible(true);
 	}, AUTO_CLOSE_MS);
 }
 
@@ -91,6 +99,7 @@ function hideQuestionOverlay() {
 	clearAutoCloseTimer();
 	sendMessage("dismiss-question", {});
 	document.getElementById("questionOverlay").classList.remove("active");
+	setInteractionBtnsVisible(true);
 }
 
 function clearAutoCloseTimer() {
@@ -150,6 +159,7 @@ function showInteractionOverlay(title, students, type) {
 		grid.appendChild(btn);
 	});
 	document.getElementById("interactionOverlay").classList.add("active");
+	setInteractionBtnsVisible(false);
 }
 
 function onStudentSelected(name, type, questionText) {
@@ -192,6 +202,7 @@ function closeInteractionOverlay() {
 	interactionWaiting = false;
 	pendingWaitingData = null;
 	document.getElementById("interactionOverlay").classList.remove("active");
+	setInteractionBtnsVisible(true);
 	document.getElementById("iQuestionInput").style.display = "none";
 	pendingInteraction = null;
 }

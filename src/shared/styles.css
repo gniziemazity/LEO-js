@@ -762,7 +762,7 @@ body.side-left .mode-side-btn .side-btn-emoji {
    font-size: 8rem;
    font-weight: 700;
    color: rgba(255, 255, 255, 0.85);
-   text-shadow: 0 0 30px rgba(27, 94, 32, 0.8);
+   text-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
    z-index: 2600;
    pointer-events: none;
    user-select: none;

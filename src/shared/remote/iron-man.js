@@ -6,8 +6,8 @@ let ironManFingerCount = 0;
 let pinchStartDist = null;
 let ironManPinchCenterX = null;
 let ironManPinchCenterY = null;
-let baseAccelX = null;
-let baseAccelY = null;
+let gestureBaseY = null;
+const GESTURE_ADAPT_RATE = 0.02;
 let prevDeltaX = 0;
 let prevDeltaY = 0;
 let smoothDeltaX = 0;
@@ -31,7 +31,7 @@ let imMaxFingers = 0;
 
 const IM_PINCH_DRAG_SENSITIVITY = 2.5;
 
-const IRON_MAN_DEBUG = true;
+const IRON_MAN_DEBUG = false;
 let lastDebugTime = 0;
 
 const MOVE_BUFFER_MS = 200;
@@ -45,8 +45,8 @@ const FORCE_CAP = 0.6;
 const VEL_CUTOFF = 0.2;
 const SMOOTH = 0.3;
 
-const GESTURE_THRESHOLD_DOWN = 6.0;
-const GESTURE_THRESHOLD_UP = 7.5;
+const GESTURE_THRESHOLD_DOWN = 6;
+const GESTURE_THRESHOLD_UP = 6;
 
 const CAL_DURATION_MS = 3000;
 
@@ -77,8 +77,7 @@ function clampForce(v) {
 }
 
 function resetIronManState() {
-	baseAccelX = null;
-	baseAccelY = null;
+	gestureBaseY = null;
 	prevDeltaX = 0;
 	prevDeltaY = 0;
 	smoothDeltaX = 0;
@@ -106,13 +105,12 @@ function initIronMan() {
 		const rawX = acc.x ?? 0;
 		const rawY = acc.y ?? 0;
 
-		if (baseAccelX === null) {
-			baseAccelX = rawX;
-			baseAccelY = rawY;
-			prevDeltaX = 0;
-			prevDeltaY = 0;
-			smoothDeltaX = 0;
-			smoothDeltaY = 0;
+		if (gestureBaseY === null) {
+			gestureBaseY = rawY;
+			prevDeltaX = rawX;
+			prevDeltaY = rawY;
+			smoothDeltaX = rawX;
+			smoothDeltaY = rawY;
 			velX = 0;
 			velY = 0;
 			forceX = 0;
@@ -120,15 +118,19 @@ function initIronMan() {
 			return;
 		}
 
-		const deltaX = rawX - baseAccelX;
-		const deltaY = rawY - baseAccelY;
+		gestureBaseY += GESTURE_ADAPT_RATE * (rawY - gestureBaseY);
+		const gestDeltaY = rawY - gestureBaseY;
 
 		if (ironManCalibrating) {
-			if (deltaY < -GESTURE_THRESHOLD_DOWN) {
+			if (gestDeltaY < -GESTURE_THRESHOLD_DOWN) {
 				stopCalibration();
-				resetIronManState();
+				gestureBaseY = null;
+				velX = 0;
+				velY = 0;
+				forceX = 0;
+				forceY = 0;
+				moveBuffer.length = 0;
 				ironManActivatedAt = Date.now();
-				setTimeout(() => resetIronManState(), IRON_MAN_GRACE_MS);
 				if (IRON_MAN_DEBUG) {
 					sendMessage("iron-man-debug", { gesture: "ENABLE" });
 				}
@@ -140,7 +142,7 @@ function initIronMan() {
 					lastDebugTime = now;
 					sendMessage("iron-man-debug", {
 						cal: true,
-						dy: Math.round(deltaY * 100) / 100,
+						dy: Math.round(gestDeltaY * 100) / 100,
 					});
 				}
 			}
@@ -149,7 +151,7 @@ function initIronMan() {
 
 		if (
 			Date.now() - ironManActivatedAt >= IRON_MAN_GRACE_MS &&
-			deltaY > GESTURE_THRESHOLD_UP
+			gestDeltaY > GESTURE_THRESHOLD_UP
 		) {
 			if (IRON_MAN_DEBUG) {
 				sendMessage("iron-man-debug", { gesture: "DISABLE" });
@@ -159,8 +161,8 @@ function initIronMan() {
 			return;
 		}
 
-		smoothDeltaX += SMOOTH * (deltaX - smoothDeltaX);
-		smoothDeltaY += SMOOTH * (deltaY - smoothDeltaY);
+		smoothDeltaX += SMOOTH * (rawX - smoothDeltaX);
+		smoothDeltaY += SMOOTH * (rawY - smoothDeltaY);
 
 		const ddx = smoothDeltaX - prevDeltaX;
 		const ddy = smoothDeltaY - prevDeltaY;
@@ -312,8 +314,6 @@ function ironManTouchEnd(e) {
 		pinchStartDist = null;
 		ironManPinchCenterX = null;
 		ironManPinchCenterY = null;
-		baseAccelX = null;
-		baseAccelY = null;
 	}
 	if (e.touches.length === 2) {
 		pinchStartDist = Math.hypot(
