@@ -30,14 +30,12 @@ function showQuestionOverlay(question, students, bgColor) {
 	const overlay = document.getElementById("questionOverlay");
 	overlay.style.background = bgColor
 		? hexToRgba(bgColor, 0.94)
-		: "rgba(0,0,0,0.78)";
+		: "rgba(255,235,238,0.94)";
 
 	const grid = document.getElementById("qGrid");
-	const subtitle = document.getElementById("qSubtitle");
 	const answered = document.getElementById("qAnsweredRow");
 	grid.innerHTML = "";
 	grid.style.display = "flex";
-	subtitle.style.display = "";
 	answered.style.display = "none";
 	document.getElementById("qCloseBarFill").style.transition = "none";
 	document.getElementById("qCloseBarFill").style.width = "0%";
@@ -45,7 +43,6 @@ function showQuestionOverlay(question, students, bgColor) {
 	const list = students && students.length ? students : null;
 
 	if (list) {
-		subtitle.textContent = "Who answered?";
 		list.forEach((name) => {
 			const btn = document.createElement("button");
 			btn.className = "q-student-btn";
@@ -54,7 +51,6 @@ function showQuestionOverlay(question, students, bgColor) {
 			grid.appendChild(btn);
 		});
 	} else {
-		subtitle.textContent = "";
 		const btn = document.createElement("button");
 		btn.className = "q-student-btn";
 		btn.style.cssText = "width:100%;margin-bottom:4px";
@@ -70,7 +66,6 @@ function onStudentAnswered(name) {
 	sendMessage("student-answered", { studentName: name });
 
 	document.getElementById("qGrid").style.display = "none";
-	document.getElementById("qSubtitle").style.display = "none";
 
 	const answeredRow = document.getElementById("qAnsweredRow");
 	const answeredText = document.getElementById("qAnsweredText");
@@ -120,13 +115,11 @@ function showInteractionOverlay(title, students, type) {
 	const modal = document.getElementById("iModal");
 	modal.className = "i-modal";
 	if (type === "student-question") {
-		modal.classList.add("type-student-question");
 		document.getElementById("interactionOverlay").style.background =
-			"rgba(120,50,0,0.82)";
+			"rgb(255,224,178)";
 	} else {
-		modal.classList.add("type-providing-help");
 		document.getElementById("interactionOverlay").style.background =
-			"rgba(0,80,30,0.82)";
+			"rgb(200,230,201)";
 	}
 
 	document.getElementById("iTitle").textContent = title;
@@ -180,7 +173,7 @@ function onStudentSelected(name, type, questionText) {
 	doneBtn.className = "i-student-btn";
 	doneBtn.style.cssText =
 		"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
-		"background:rgba(231,76,60,0.35);border-color:rgba(231,76,60,0.7);";
+		"background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:rgba(0,0,0,0.75);";
 	doneBtn.textContent = "✓ Done — close";
 	doneBtn.onclick = () => closeInteractionOverlay();
 	grid.appendChild(doneBtn);

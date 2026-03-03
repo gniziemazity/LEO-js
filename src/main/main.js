@@ -23,10 +23,10 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 let tray = null;
 let questionWindow = null;
 let questionWindowIsTeacher = false; // true when opened for a teacher question
-let questionWindowSize = { w: 900, h: 480 };
+let questionWindowRect = null;
 let imageWindow = null;
 let imageWindowPinned = false;
-let imageWindowSize = { w: 900, h: 650 };
+let imageWindowRect = null;
 
 broadcastServer.on("client-toggle-active", () => {
 	state.mainWindow.webContents.send("global-toggle-active");
@@ -68,7 +68,7 @@ broadcastServer.on(
 			? questionText || "(no question text)"
 			: `Providing help`;
 		const emoji = isQuestion ? "❓" : "🤝";
-		const bgColor = isQuestion ? "#f57c00" : "#388e3c";
+		const bgColor = isQuestion ? "#ffe0b2" : "#c8e6c9";
 		openQuestionWindow(displayText, bgColor, emoji, studentName);
 	},
 );
@@ -146,25 +146,38 @@ function getActiveFloatingWindow() {
 broadcastServer.on("client-window-drag", (dx, dy) => {
 	const win = getActiveFloatingWindow();
 	if (win) {
-		const [x, y] = win.getPosition();
-		win.setPosition(x + dx, y + dy);
+		const rect =
+			win === questionWindow ? questionWindowRect : imageWindowRect;
+		if (!rect) return;
+		rect.x += dx;
+		rect.y += dy;
+		win.setBounds({
+			x: Math.floor(rect.x),
+			y: Math.floor(rect.y),
+			width: rect.w - 1 - (Math.random() < 0.3 ? 1 : 0), // workaround for occasional Electron bug where window gets stuck during move
+			height: rect.h - 1 - (Math.random() < 0.3 ? 1 : 0),
+		});
 	}
 });
 broadcastServer.on("client-window-resize", (scale) => {
 	const win = getActiveFloatingWindow();
 	if (win) {
-		const sizeRef =
-			win === questionWindow ? questionWindowSize : imageWindowSize;
-		const newW = Math.max(200, Math.round(sizeRef.w * scale));
-		const newH = Math.max(150, Math.round(sizeRef.h * scale));
-		const [x, y] = win.getPosition();
-		win.setPosition(
-			Math.round(x - (newW - sizeRef.w) / 2),
-			Math.round(y - (newH - sizeRef.h) / 2),
-		);
-		win.setSize(newW, newH);
-		sizeRef.w = newW;
-		sizeRef.h = newH;
+		const rect =
+			win === questionWindow ? questionWindowRect : imageWindowRect;
+		if (!rect) return;
+		const newW = Math.max(200, Math.floor(rect.w * scale));
+		const newH = Math.max(150, Math.floor(rect.h * scale));
+		if (newW === rect.w && newH === rect.h) return;
+		rect.x -= (newW - rect.w) / 2;
+		rect.y -= (newH - rect.h) / 2;
+		rect.w = newW;
+		rect.h = newH;
+		win.setBounds({
+			x: Math.floor(rect.x),
+			y: Math.floor(rect.y),
+			width: rect.w,
+			height: rect.h,
+		});
 	}
 });
 broadcastServer.on("client-remote-key-press", () => {
@@ -370,14 +383,19 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			width: 900,
 			height: 480,
 			frame: true,
-			resizable: false,
+			resizable: true,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
 			title: "Question",
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
-		questionWindowSize = { w: 900, h: 480 };
+		questionWindowRect = {
+			x: questionWindow.getBounds().x,
+			y: questionWindow.getBounds().y,
+			w: questionWindow.getBounds().width,
+			h: questionWindow.getBounds().height,
+		};
 		questionWindow.setMenu(null);
 		questionWindow.loadFile(path.join(__dirname, "../question-window.html"));
 		questionWindow.webContents.on("did-finish-load", () => {
@@ -393,6 +411,29 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 				}
 			}
 			questionWindow = null;
+			questionWindowRect = null;
+		});
+		questionWindow.on("move", () => {
+			if (
+				questionWindow &&
+				!questionWindow.isDestroyed() &&
+				questionWindowRect
+			) {
+				const b = questionWindow.getBounds();
+				questionWindowRect.x = b.x;
+				questionWindowRect.y = b.y;
+			}
+		});
+		questionWindow.on("resize", () => {
+			if (
+				questionWindow &&
+				!questionWindow.isDestroyed() &&
+				questionWindowRect
+			) {
+				const b = questionWindow.getBounds();
+				questionWindowRect.w = b.width;
+				questionWindowRect.h = b.height;
+			}
 		});
 	}
 }
@@ -433,14 +474,19 @@ ipcMain.on(
 			width: 900,
 			height: 650,
 			frame: true,
-			resizable: false,
+			resizable: true,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
 			title: "Image",
 			icon: path.join(__dirname, "../shared/icon.ico"),
 			webPreferences: { nodeIntegration: true, contextIsolation: false },
 		});
-		imageWindowSize = { w: 900, h: 650 };
+		imageWindowRect = {
+			x: imageWindow.getBounds().x,
+			y: imageWindow.getBounds().y,
+			w: imageWindow.getBounds().width,
+			h: imageWindow.getBounds().height,
+		};
 		imageWindow.setMenu(null);
 		imageWindow.loadFile(path.join(__dirname, "../image-window.html"));
 		imageWindow.webContents.on("did-finish-load", () => {
@@ -449,6 +495,21 @@ ipcMain.on(
 		imageWindow.on("closed", () => {
 			imageWindow = null;
 			imageWindowPinned = false;
+			imageWindowRect = null;
+		});
+		imageWindow.on("move", () => {
+			if (imageWindow && !imageWindow.isDestroyed() && imageWindowRect) {
+				const b = imageWindow.getBounds();
+				imageWindowRect.x = b.x;
+				imageWindowRect.y = b.y;
+			}
+		});
+		imageWindow.on("resize", () => {
+			if (imageWindow && !imageWindow.isDestroyed() && imageWindowRect) {
+				const b = imageWindow.getBounds();
+				imageWindowRect.w = b.width;
+				imageWindowRect.h = b.height;
+			}
 		});
 	},
 );
@@ -466,8 +527,14 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	const newW = Math.min(width, maxW);
 	const newH = Math.min(height, maxH);
 	imageWindow.setSize(newW, newH);
-	imageWindowSize = { w: newW, h: newH };
 	imageWindow.center();
+	const b = imageWindow.getBounds();
+	imageWindowRect = {
+		x: b.x,
+		y: b.y,
+		w: b.width,
+		h: b.height,
+	};
 });
 
 ipcMain.on("close-image-window", () => {

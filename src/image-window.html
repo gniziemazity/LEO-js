@@ -35,9 +35,6 @@
 
 				img.onload = () => {
 					img.style.display = "block";
-					const w = Math.max(img.naturalWidth + 32, 200);
-					const h = Math.max(img.naturalHeight + 32, 120);
-					ipcRenderer.send("resize-image-window", { width: w, height: h });
 				};
 				img.onerror = () => {
 					img.style.display = "none";

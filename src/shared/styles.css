@@ -706,19 +706,19 @@ body.typing-active #editor-toolbar {
    pointer-events: none;
 }
 .mode-side-btn-question {
-   background: rgba(180, 70, 0, 0.75);
+   background: rgba(255, 224, 178, 0.85);
 }
 .mode-side-btn-question:active {
-   background: rgba(180, 70, 0, 0.95);
+   background: rgba(255, 200, 130, 0.95);
 }
 .mode-side-btn-help {
-   background: rgba(30, 120, 60, 0.75);
+   background: rgba(200, 230, 201, 0.85);
 }
 .mode-side-btn-help:active {
-   background: rgba(30, 120, 60, 0.95);
+   background: rgba(160, 210, 165, 0.95);
 }
 .mode-side-divider {
-   height: 6px;
+   height: 24px;
 }
 body.side-left .mode-side-btns {
    right: auto;
@@ -846,7 +846,7 @@ body.side-left .i-modal {
    max-width: none;
    max-height: none;
    border-radius: 8px;
-   overflow-y: auto;
+   overflow: hidden;
    flex-shrink: 1;
    flex: 1;
 }
@@ -930,7 +930,7 @@ body.side-left .i-modal {
    align-items: stretch;
    justify-content: flex-start;
    padding: 0;
-   overflow-y: auto;
+   overflow: hidden;
 }
 .overlay.active {
    display: flex;
@@ -938,29 +938,24 @@ body.side-left .i-modal {
 
 .q-modal {
    position: relative;
-   background: #1e1e2e;
    border-radius: 0;
    padding: 26px 28px;
    flex: 1;
    width: 100%;
    max-width: none;
    box-shadow: none;
-   overflow-y: auto;
+   overflow: hidden;
+   display: flex;
+   flex-direction: column;
 }
 
 .q-question-text {
    font-size: 1.2rem;
    font-weight: 600;
-   color: #fff;
+   color: rgba(0, 0, 0, 0.82);
    margin-bottom: 20px;
    line-height: 1.45;
    word-break: break-word;
-}
-
-.q-subtitle {
-   font-size: 0.82rem;
-   color: #aaa;
-   margin-bottom: 12px;
 }
 
 .q-grid {
@@ -968,17 +963,18 @@ body.side-left .i-modal {
    flex-wrap: wrap;
    gap: 8px;
    justify-content: center;
-   max-height: 240px;
+   flex: 1;
    overflow-y: auto;
    margin-bottom: 14px;
+   align-content: flex-start;
 }
 
 .q-student-btn {
-   background: #2d2d44;
-   border: 1px solid #444;
+   background: rgba(0, 0, 0, 0.07);
+   border: 1px solid rgba(0, 0, 0, 0.18);
    border-radius: 8px;
    padding: 9px 15px;
-   color: #eee;
+   color: rgba(0, 0, 0, 0.8);
    font-size: 0.92rem;
    cursor: pointer;
    transition: background 0.13s, border-color 0.13s;
@@ -986,9 +982,9 @@ body.side-left .i-modal {
 }
 .q-student-btn:hover,
 .q-student-btn:active {
-   background: #3498db;
-   border-color: #2980b9;
-   color: #fff;
+   background: rgba(0, 0, 0, 0.14);
+   border-color: rgba(0, 0, 0, 0.35);
+   color: rgba(0, 0, 0, 0.9);
 }
 
 .q-answered-row {
@@ -996,10 +992,10 @@ body.side-left .i-modal {
    align-items: center;
    gap: 10px;
    padding: 10px 14px;
-   background: rgba(46, 204, 113, 0.18);
-   border: 1px solid #27ae60;
+   background: rgba(46, 204, 113, 0.15);
+   border: 1px solid rgba(39, 174, 96, 0.4);
    border-radius: 8px;
-   color: #2ecc71;
+   color: #1b7a3d;
    font-size: 1rem;
    font-weight: 600;
    margin-top: 4px;
@@ -1026,20 +1022,15 @@ body.side-left .i-modal {
    width: 100%;
    max-width: none;
    box-shadow: none;
-   overflow-y: auto;
-}
-
-.i-modal.type-student-question {
-   background: #7d3a0a;
-}
-.i-modal.type-providing-help {
-   background: #0e4024;
+   overflow: hidden;
+   display: flex;
+   flex-direction: column;
 }
 
 .i-title {
    font-size: 1.05rem;
    font-weight: 600;
-   color: #fff;
+   color: rgba(0, 0, 0, 0.82);
    margin-bottom: 16px;
 }
 
@@ -1048,17 +1039,18 @@ body.side-left .i-modal {
    flex-wrap: wrap;
    gap: 8px;
    justify-content: center;
-   max-height: 320px;
+   flex: 1;
    overflow-y: auto;
    margin-bottom: 0;
+   align-content: flex-start;
 }
 
 .i-student-btn {
-   background: rgba(255, 255, 255, 0.12);
-   border: 1px solid rgba(255, 255, 255, 0.25);
+   background: rgba(0, 0, 0, 0.07);
+   border: 1px solid rgba(0, 0, 0, 0.18);
    border-radius: 8px;
    padding: 9px 15px;
-   color: #fff;
+   color: rgba(0, 0, 0, 0.8);
    font-size: 0.92rem;
    cursor: pointer;
    transition: background 0.13s, border-color 0.13s;
@@ -1066,17 +1058,16 @@ body.side-left .i-modal {
 }
 .i-student-btn:hover,
 .i-student-btn:active {
-   background: rgba(255, 255, 255, 0.28);
-   border-color: rgba(255, 255, 255, 0.5);
+   background: rgba(0, 0, 0, 0.14);
+   border-color: rgba(0, 0, 0, 0.35);
 }
 
 .overlay-close-btn {
    position: absolute;
-   top: 10px;
-   right: 12px;
-   background: rgba(255, 255, 255, 0.08);
+   right: 28px;
+   background: rgba(0, 0, 0, 0.06);
    border: none;
-   color: rgba(255, 255, 255, 0.55);
+   color: rgba(0, 0, 0, 0.45);
    font-size: 20px;
    line-height: 1;
    padding: 4px 8px;
@@ -1088,28 +1079,28 @@ body.side-left .i-modal {
 }
 .overlay-close-btn:hover,
 .overlay-close-btn:active {
-   background: rgba(255, 255, 255, 0.2);
-   color: #fff;
+   background: rgba(0, 0, 0, 0.12);
+   color: rgba(0, 0, 0, 0.75);
 }
 
 .i-question-input {
    width: 100%;
    padding: 10px 14px;
    font-size: 1rem;
-   border: 1px solid rgba(255, 255, 255, 0.25);
+   border: 1px solid rgba(0, 0, 0, 0.18);
    border-radius: 8px;
    margin-bottom: 14px;
    box-sizing: border-box;
-   background: rgba(255, 255, 255, 0.1);
-   color: #fff;
+   background: rgba(255, 255, 255, 0.35);
+   color: rgba(0, 0, 0, 0.82);
    outline: none;
 }
 .i-question-input:focus {
-   border-color: rgba(255, 255, 255, 0.5);
-   background: rgba(255, 255, 255, 0.18);
+   border-color: rgba(0, 0, 0, 0.35);
+   background: rgba(255, 255, 255, 0.5);
 }
 .i-question-input::placeholder {
-   color: rgba(255, 255, 255, 0.4);
+   color: rgba(0, 0, 0, 0.35);
 }
 
 /* ── image window ── */
@@ -1228,12 +1219,9 @@ body.question-view {
 
 .student-banner {
    display: none;
-   position: fixed;
-   bottom: 28px;
-   left: 0;
-   right: 0;
    text-align: center;
    padding: 5px 5px;
+   margin-top: 8px;
    font-size: 1.4rem;
    font-weight: 700;
    color: rgba(0, 0, 0, 0.75);
