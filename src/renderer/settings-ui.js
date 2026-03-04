@@ -89,6 +89,8 @@ class SettingsUI {
 
 		document.getElementById("commentNormalColor").value =
 			settings.colors.commentNormal;
+		document.getElementById("codeBlockColor").value =
+			settings.colors.codeBlockColor || "#ffffff";
 		document.getElementById("questionCommentColor").value =
 			settings.colors.questionCommentColor;
 		document.getElementById("imageBlockColor").value =
@@ -151,6 +153,7 @@ class SettingsUI {
 			},
 			colors: {
 				commentNormal: document.getElementById("commentNormalColor").value,
+				codeBlockColor: document.getElementById("codeBlockColor").value,
 				questionCommentColor: document.getElementById(
 					"questionCommentColor",
 				).value,

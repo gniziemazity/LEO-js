@@ -7,7 +7,7 @@ const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const EventEmitter = require("events");
 
-const IRON_MAN_DEBUG = true;
+const JEDI_DEBUG = true;
 
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
@@ -214,9 +214,20 @@ class LEOBroadcastServer extends EventEmitter {
 		} else if (type === "window-drag") {
 			this.emit("client-window-drag", data.dx, data.dy);
 		} else if (type === "window-resize") {
-			this.emit("client-window-resize", data.scale);
-		} else if (type === "iron-man-debug") {
-			if (IRON_MAN_DEBUG) console.log(`[iron-man]`, JSON.stringify(data));
+			this.emit(
+				"client-window-resize",
+				data.scaleX ?? data.scale ?? 1,
+				data.scaleY ?? data.scale ?? 1,
+			);
+		} else if (type === "window-pinch") {
+			this.emit(
+				"client-window-pinch",
+				data.scale ?? 1,
+				data.dx ?? 0,
+				data.dy ?? 0,
+			);
+		} else if (type === "jedi-debug") {
+			if (JEDI_DEBUG) console.log(`[jedi]`, JSON.stringify(data));
 		} else if (type === "mouse-click") {
 			this.emit("client-mouse-click", data.button);
 		} else if (type === "mouse-scroll") {

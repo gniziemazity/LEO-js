@@ -22,6 +22,13 @@
 				>
 					+
 				</button>
+				<button
+					class="tb-emoji-btn"
+					id="addGhostCodeBlockBtn"
+					title="Add Ghost Code Block"
+				>
+					👾
+				</button>
 				<span class="tb-sep"></span>
 				<button
 					class="add-btn yellow"
@@ -46,10 +53,10 @@
 				</button>
 				<button
 					class="tb-emoji-btn"
-					id="addGhostCodeBlockBtn"
-					title="Add Ghost Code Block"
+					id="addWebCommentBtn"
+					title="Add Web URL Block"
 				>
-					👾
+					🌐
 				</button>
 				<span class="tb-sep"></span>
 				<button class="remove-btn" id="removeBlockBtn" title="Remove Block">
@@ -157,6 +164,11 @@
 						<h3>Colors</h3>
 
 						<div class="setting-item">
+							<label>Code Block:</label>
+							<input type="color" id="codeBlockColor" />
+						</div>
+
+						<div class="setting-item">
 							<label>Comment Block (Normal):</label>
 							<input type="color" id="commentNormalColor" />
 						</div>
@@ -171,10 +183,14 @@
 							<input type="color" id="imageBlockColor" />
 						</div>
 
-					<div class="setting-item">
-						<label>Ghost Code Block (👾):</label>
-						<input type="color" id="ghostCodeBlockColor" />
-					</div>
+						<div class="setting-item">
+							<label>Ghost Code Block (👾):</label>
+							<input type="color" id="ghostCodeBlockColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Active Comment Background:</label>
+							<input type="color" id="commentActiveColor" />
 						</div>
 
 						<div class="setting-item">

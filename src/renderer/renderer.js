@@ -67,14 +67,20 @@ cursorManager.onLeaveQuestionBlock = () => {
 	}
 };
 
-cursorManager.onImageBlock = (imageName) => {
+cursorManager.onImageBlock = (imageName, shouldPin) => {
 	const lessonFilePath = lessonManager.getCurrentFilePath();
 	const bgColor = getColor("imageBlockColor", null);
 	ipcRenderer.send("open-image-window", {
 		imageName,
 		lessonFilePath,
 		bgColor,
+		shouldPin,
 	});
+};
+
+cursorManager.onWebBlock = (url, shouldPin) => {
+	const bgColor = getColor("imageBlockColor", null);
+	ipcRenderer.send("open-web-window", { url, bgColor, shouldPin });
 };
 
 function getColor(key, fallback) {
@@ -109,6 +115,8 @@ function setupEventListeners() {
 		blockEditor.addBlock("comment", "❓ ");
 	uiManager.getElement("addImageCommentBtn").onclick = () =>
 		blockEditor.addBlock("comment", "🖼️ ");
+	uiManager.getElement("addWebCommentBtn").onclick = () =>
+		blockEditor.addBlock("comment", "🌐 ");
 	uiManager.getElement("addGhostCodeBlockBtn").onclick = () =>
 		blockEditor.addBlock("comment", "👾 ");
 	uiManager.getElement("addCodeBtn").onclick = () =>

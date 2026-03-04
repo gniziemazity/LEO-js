@@ -1,14 +1,16 @@
 /* For Motion sensors:
 chrome://flags/#unsafely-treat-insecure-origin-as-secure */
 
-let ironManActive = false;
-let ironManGranted = false;
-let ironManInitialized = false;
-let ironManDragId = null;
-let ironManFingerCount = 0;
+let jediActive = false;
+let jediGranted = false;
+let jediInitialized = false;
+let jediDragId = null;
+let jediFingerCount = 0;
 let pinchStartDist = null;
-let ironManPinchCenterX = null;
-let ironManPinchCenterY = null;
+let pinchStartSpanX = null;
+let pinchStartSpanY = null;
+let jediPinchCenterX = null;
+let jediPinchCenterY = null;
 let gestureBaseY = null;
 const GESTURE_ADAPT_RATE = 0.02;
 let prevDeltaX = 0;
@@ -19,10 +21,10 @@ let velX = 0;
 let velY = 0;
 let forceX = 0;
 let forceY = 0;
-let ironManRAF = null;
-let ironManAutoEnabled = false;
-let ironManActivatedAt = 0;
-const IRON_MAN_GRACE_MS = 500;
+let jediRAF = null;
+let jediAutoEnabled = false;
+let jediActivatedAt = 0;
+const JEDI_GRACE_MS = 500;
 
 const IM_TAP_MAX_MS = 200;
 const IM_MOVE_THRESHOLD = 8;
@@ -34,7 +36,7 @@ let imMaxFingers = 0;
 
 const IM_PINCH_DRAG_SENSITIVITY = 2.5;
 
-const IRON_MAN_DEBUG = false;
+const JEDI_DEBUG = false;
 let lastDebugTime = 0;
 
 const MOVE_BUFFER_MS = 200;
@@ -43,7 +45,7 @@ let lastBufferFingerCount = 0;
 
 const FORCE_GAIN = 14.0;
 const FRICTION = 0.9;
-const FORCE_DEAD_ZONE = 0.12;
+const FORCE_DEAD_ZONE = 0.03;
 const FORCE_CAP = 0.6;
 const VEL_CUTOFF = 0.2;
 const SMOOTH = 0.3;
@@ -53,7 +55,7 @@ const GESTURE_THRESHOLD_UP = 6;
 
 const CAL_DURATION_MS = 3000;
 
-let ironManCalibrating = false;
+let jediCalibrating = false;
 let calStartTime = 0;
 let calTimer = null;
 let calCountdownInterval = null;
@@ -65,12 +67,12 @@ async function requestOrientationPermission() {
 	) {
 		try {
 			const perm = await DeviceMotionEvent.requestPermission();
-			ironManGranted = perm === "granted";
+			jediGranted = perm === "granted";
 		} catch (err) {
-			ironManGranted = false;
+			jediGranted = false;
 		}
 	} else {
-		ironManGranted = true;
+		jediGranted = true;
 	}
 }
 
@@ -79,7 +81,7 @@ function clampForce(v) {
 	return Math.sign(v) * Math.min(Math.abs(v), FORCE_CAP);
 }
 
-function resetIronManState() {
+function resetJediState() {
 	gestureBaseY = null;
 	prevDeltaX = 0;
 	prevDeltaY = 0;
@@ -90,17 +92,19 @@ function resetIronManState() {
 	forceX = 0;
 	forceY = 0;
 	pinchStartDist = null;
-	ironManPinchCenterX = null;
-	ironManPinchCenterY = null;
+	pinchStartSpanX = null;
+	pinchStartSpanY = null;
+	jediPinchCenterX = null;
+	jediPinchCenterY = null;
 	moveBuffer.length = 0;
 }
 
-function initIronMan() {
-	if (ironManInitialized) return;
-	ironManInitialized = true;
+function initJedi() {
+	if (jediInitialized) return;
+	jediInitialized = true;
 
 	window.addEventListener("devicemotion", (e) => {
-		if (!ironManActive || ironManFingerCount >= 2) return;
+		if (!jediActive || jediFingerCount >= 2) return;
 
 		const acc = e.accelerationIncludingGravity;
 		if (!acc) return;
@@ -124,8 +128,8 @@ function initIronMan() {
 		gestureBaseY += GESTURE_ADAPT_RATE * (rawY - gestureBaseY);
 		const gestDeltaY = rawY - gestureBaseY;
 
-		if (ironManCalibrating) {
-			if (gestDeltaY < -GESTURE_THRESHOLD_DOWN) {
+		if (jediCalibrating) {
+			if (gestDeltaY > GESTURE_THRESHOLD_DOWN) {
 				stopCalibration();
 				gestureBaseY = null;
 				velX = 0;
@@ -133,17 +137,17 @@ function initIronMan() {
 				forceX = 0;
 				forceY = 0;
 				moveBuffer.length = 0;
-				ironManActivatedAt = Date.now();
-				if (IRON_MAN_DEBUG) {
-					sendMessage("iron-man-debug", { gesture: "ENABLE" });
+				jediActivatedAt = Date.now();
+				if (JEDI_DEBUG) {
+					sendMessage("jedi-debug", { gesture: "ENABLE" });
 				}
 				return;
 			}
-			if (IRON_MAN_DEBUG) {
+			if (JEDI_DEBUG) {
 				const now = Date.now();
 				if (now - lastDebugTime > 200) {
 					lastDebugTime = now;
-					sendMessage("iron-man-debug", {
+					sendMessage("jedi-debug", {
 						cal: true,
 						dy: Math.round(gestDeltaY * 100) / 100,
 					});
@@ -153,14 +157,14 @@ function initIronMan() {
 		}
 
 		if (
-			Date.now() - ironManActivatedAt >= IRON_MAN_GRACE_MS &&
-			gestDeltaY > GESTURE_THRESHOLD_UP
+			Date.now() - jediActivatedAt >= JEDI_GRACE_MS &&
+			gestDeltaY < -GESTURE_THRESHOLD_UP
 		) {
-			if (IRON_MAN_DEBUG) {
-				sendMessage("iron-man-debug", { gesture: "DISABLE" });
+			if (JEDI_DEBUG) {
+				sendMessage("jedi-debug", { gesture: "DISABLE" });
 			}
 			moveBuffer.length = 0;
-			autoDisableIronMan();
+			autoDisableJedi();
 			return;
 		}
 
@@ -175,11 +179,11 @@ function initIronMan() {
 		forceX = clampForce(ddx);
 		forceY = clampForce(ddy);
 
-		if (IRON_MAN_DEBUG) {
+		if (JEDI_DEBUG) {
 			const now = Date.now();
 			if (now - lastDebugTime > 200) {
 				lastDebugTime = now;
-				sendMessage("iron-man-debug", {
+				sendMessage("jedi-debug", {
 					dx: Math.round(forceX * 100) / 100,
 					dy: Math.round(forceY * 100) / 100,
 				});
@@ -188,15 +192,14 @@ function initIronMan() {
 	});
 
 	function physicsTick() {
-		ironManRAF = requestAnimationFrame(physicsTick);
-		if (!ironManActive) return;
-
+		jediRAF = requestAnimationFrame(physicsTick);
+		if (!jediActive || jediCalibrating) return;
 		const now = Date.now();
 		const cutoff = now - MOVE_BUFFER_MS;
 		const flushType =
-			ironManFingerCount === 1
+			jediFingerCount === 1
 				? "mouse-move"
-				: ironManFingerCount === 0
+				: jediFingerCount === 0
 					? "window-drag"
 					: null;
 		while (moveBuffer.length > 0 && moveBuffer[0].time <= cutoff) {
@@ -222,33 +225,37 @@ function initIronMan() {
 		const dy = Math.round(velY);
 		if (dx === 0 && dy === 0) return;
 
-		if (ironManFingerCount <= 1) {
-			if (now - ironManActivatedAt < IRON_MAN_GRACE_MS) return;
+		if (jediFingerCount <= 1) {
+			if (now - jediActivatedAt < JEDI_GRACE_MS) return;
 			moveBuffer.push({ dx, dy, time: now });
 		}
 	}
 
-	ironManRAF = requestAnimationFrame(physicsTick);
+	jediRAF = requestAnimationFrame(physicsTick);
 }
 
-function ironManTouchStart(e) {
-	if (e.touches.length !== ironManFingerCount) moveBuffer.length = 0;
-	ironManFingerCount = e.touches.length;
+function jediTouchStart(e) {
+	if (jediCalibrating) return;
+	if (e.touches.length !== jediFingerCount) moveBuffer.length = 0;
+	jediFingerCount = e.touches.length;
 	if (e.touches.length === 2) {
-		ironManDragId = null;
+		jediDragId = null;
 		pinchStartDist = Math.hypot(
 			e.touches[1].clientX - e.touches[0].clientX,
 			e.touches[1].clientY - e.touches[0].clientY,
 		);
-		ironManPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-		ironManPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+		pinchStartSpanX = Math.abs(e.touches[1].clientX - e.touches[0].clientX);
+		pinchStartSpanY = Math.abs(e.touches[1].clientY - e.touches[0].clientY);
+		jediPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+		jediPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 	} else {
 		pinchStartDist = null;
-		ironManPinchCenterX = null;
-		ironManPinchCenterY = null;
+		pinchStartSpanX = null;
+		pinchStartSpanY = null;
+		jediPinchCenterX = null;
+		jediPinchCenterY = null;
 	}
 
-	// Tap detection
 	if (e.touches.length === 1) {
 		const t = e.touches[0];
 		imTouchDownX = t.clientX;
@@ -262,9 +269,10 @@ function ironManTouchStart(e) {
 	}
 }
 
-function ironManTouchMove(e) {
-	if (e.touches.length !== ironManFingerCount) moveBuffer.length = 0;
-	ironManFingerCount = e.touches.length;
+function jediTouchMove(e) {
+	if (jediCalibrating) return;
+	if (e.touches.length !== jediFingerCount) moveBuffer.length = 0;
+	jediFingerCount = e.touches.length;
 
 	if (e.touches.length === 1 && !imOneFingerMoved) {
 		const t = e.touches[0];
@@ -275,48 +283,64 @@ function ironManTouchMove(e) {
 		}
 	}
 
-	if (e.touches.length >= 2 && pinchStartDist !== null && pinchStartDist > 0) {
-		const dist = Math.hypot(
-			e.touches[1].clientX - e.touches[0].clientX,
-			e.touches[1].clientY - e.touches[0].clientY,
-		);
+	if (e.touches.length >= 2 && pinchStartSpanX !== null) {
+		const spanX = Math.abs(e.touches[1].clientX - e.touches[0].clientX);
+		const spanY = Math.abs(e.touches[1].clientY - e.touches[0].clientY);
 		const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
 		const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 		const now = Date.now();
 		if (now - lastSendTime >= SEND_THROTTLE_MS) {
 			lastSendTime = now;
-			sendMessage("window-resize", { scale: dist / pinchStartDist });
-			if (ironManPinchCenterX !== null && ironManPinchCenterY !== null) {
+			const MIN_SPAN = 20;
+			const span = Math.sqrt(spanX * spanX + spanY * spanY);
+			const pinchStartSpan = Math.sqrt(
+				pinchStartSpanX * pinchStartSpanX +
+					pinchStartSpanY * pinchStartSpanY,
+			);
+			const scale = pinchStartSpan >= MIN_SPAN ? span / pinchStartSpan : 1;
+			let dx = 0,
+				dy = 0;
+			if (jediPinchCenterX !== null && jediPinchCenterY !== null) {
 				const dragDx =
-					(cx - ironManPinchCenterX) *
+					(cx - jediPinchCenterX) *
 					MOUSE_SENSITIVITY *
 					IM_PINCH_DRAG_SENSITIVITY;
 				const dragDy =
-					(cy - ironManPinchCenterY) *
+					(cy - jediPinchCenterY) *
 					MOUSE_SENSITIVITY *
 					IM_PINCH_DRAG_SENSITIVITY;
 				const rotated = rotateForSide(dragDx, dragDy);
-				if (Math.abs(rotated.dx) > 0.5 || Math.abs(rotated.dy) > 0.5) {
-					sendMessage("window-drag", {
-						dx: Math.round(rotated.dx),
-						dy: Math.round(rotated.dy),
-					});
-				}
+				dx = Math.round(rotated.dx);
+				dy = Math.round(rotated.dy);
 			}
+			const hasResize = Math.abs(scale - 1) > 0.005;
+			const hasDrag = Math.abs(dx) > 0 || Math.abs(dy) > 0;
+			if (hasResize || hasDrag) {
+				sendMessage("window-pinch", {
+					scale: hasResize ? scale : 1,
+					dx,
+					dy,
+				});
+			}
+			// Update references only after sending to avoid micro-drift between frames
+			pinchStartSpanX = spanX;
+			pinchStartSpanY = spanY;
+			jediPinchCenterX = cx;
+			jediPinchCenterY = cy;
 		}
-		pinchStartDist = dist;
-		ironManPinchCenterX = cx;
-		ironManPinchCenterY = cy;
 	}
 }
 
-function ironManTouchEnd(e) {
-	if (e.touches.length !== ironManFingerCount) moveBuffer.length = 0;
-	ironManFingerCount = e.touches.length;
+function jediTouchEnd(e) {
+	if (jediCalibrating) return;
+	if (e.touches.length !== jediFingerCount) moveBuffer.length = 0;
+	jediFingerCount = e.touches.length;
 	if (e.touches.length < 2) {
 		pinchStartDist = null;
-		ironManPinchCenterX = null;
-		ironManPinchCenterY = null;
+		pinchStartSpanX = null;
+		pinchStartSpanY = null;
+		jediPinchCenterX = null;
+		jediPinchCenterY = null;
 	}
 	if (e.touches.length === 2) {
 		pinchStartDist = Math.hypot(
@@ -339,22 +363,22 @@ function ironManTouchEnd(e) {
 	}
 }
 
-async function autoEnableIronMan() {
-	if (ironManActive) return;
-	ironManAutoEnabled = true;
-	await setTouchpadMode("iron-man");
+async function autoEnableJedi() {
+	if (jediActive) return;
+	jediAutoEnabled = true;
+	await setTouchpadMode("jedi");
 }
 
-function autoDisableIronMan() {
-	if (!ironManActive) return;
-	ironManAutoEnabled = false;
+function autoDisableJedi() {
+	if (!jediActive) return;
+	jediAutoEnabled = false;
 	stopCalibration();
 	deactivateTouchpad();
 	updateModeBtns(null);
 }
 
 function startCalibration() {
-	ironManCalibrating = true;
+	jediCalibrating = true;
 	calStartTime = Date.now();
 
 	showCalibrationCountdown(3);
@@ -373,7 +397,7 @@ function startCalibration() {
 }
 
 function stopCalibration() {
-	ironManCalibrating = false;
+	jediCalibrating = false;
 	if (calTimer) {
 		clearTimeout(calTimer);
 		calTimer = null;
@@ -388,22 +412,22 @@ function stopCalibration() {
 function endCalibration() {
 	stopCalibration();
 
-	if (IRON_MAN_DEBUG) {
-		sendMessage("iron-man-debug", { calResult: "TIMEOUT" });
+	if (JEDI_DEBUG) {
+		sendMessage("jedi-debug", { calResult: "TIMEOUT" });
 	}
 
-	autoDisableIronMan();
+	autoDisableJedi();
 }
 
 function showCalibrationCountdown(seconds) {
-	const el = document.getElementById("ironManCountdown");
+	const el = document.getElementById("jediCountdown");
 	if (!el) return;
 	el.textContent = seconds;
 	el.style.display = "flex";
 }
 
 function hideCalibrationCountdown() {
-	const el = document.getElementById("ironManCountdown");
+	const el = document.getElementById("jediCountdown");
 	if (!el) return;
 	el.style.display = "none";
 	el.textContent = "";

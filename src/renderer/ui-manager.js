@@ -13,6 +13,7 @@ class UIManager {
 				"addQuestionCommentBtn",
 			),
 			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
+			addWebCommentBtn: document.getElementById("addWebCommentBtn"),
 			addGhostCodeBlockBtn: document.getElementById("addGhostCodeBlockBtn"),
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),

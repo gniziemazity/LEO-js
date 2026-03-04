@@ -27,6 +27,9 @@ let questionWindowRect = null;
 let imageWindow = null;
 let imageWindowPinned = false;
 let imageWindowRect = null;
+let webWindow = null;
+let webWindowPinned = false;
+let webWindowRect = null;
 
 broadcastServer.on("client-toggle-active", () => {
 	state.mainWindow.webContents.send("global-toggle-active");
@@ -141,43 +144,138 @@ broadcastServer.on("client-mouse-drag-end", async () => {
 function getActiveFloatingWindow() {
 	if (questionWindow && !questionWindow.isDestroyed()) return questionWindow;
 	if (imageWindow && !imageWindow.isDestroyed()) return imageWindow;
+	if (webWindow && !webWindow.isDestroyed()) return webWindow;
 	return null;
 }
-broadcastServer.on("client-window-drag", (dx, dy) => {
-	const win = getActiveFloatingWindow();
-	if (win) {
+
+let floatTargetX = null;
+let floatTargetY = null;
+let floatTargetW = null;
+let floatTargetH = null;
+let floatLerpTimer = null;
+let floatPrevBX = -1;
+let floatPrevBY = -1;
+let floatPrevBW = -1;
+let floatPrevBH = -1;
+const FLOAT_LERP = 0.5;
+
+function startFloatLerp() {
+	if (floatLerpTimer) return;
+	floatLerpTimer = setInterval(() => {
+		const win = getActiveFloatingWindow();
+		if (!win) {
+			stopFloatLerp();
+			return;
+		}
 		const rect =
-			win === questionWindow ? questionWindowRect : imageWindowRect;
-		if (!rect) return;
-		rect.x += dx;
-		rect.y += dy;
-		win.setBounds({
-			x: Math.floor(rect.x),
-			y: Math.floor(rect.y),
-			width: rect.w - 1 - (Math.random() < 0.3 ? 1 : 0),
-			height: rect.h - 1 - (Math.random() < 0.4 ? 1 : 0),
-		});
+			win === questionWindow
+				? questionWindowRect
+				: win === imageWindow
+					? imageWindowRect
+					: webWindowRect;
+		if (!rect || floatTargetX === null) {
+			stopFloatLerp();
+			return;
+		}
+		rect.x += (floatTargetX - rect.x) * FLOAT_LERP;
+		rect.y += (floatTargetY - rect.y) * FLOAT_LERP;
+		rect.w += (floatTargetW - rect.w) * FLOAT_LERP;
+		rect.h += (floatTargetH - rect.h) * FLOAT_LERP;
+		const bx = Math.round(rect.x);
+		const by = Math.round(rect.y);
+		const bw = Math.max(200, Math.round(rect.w));
+		const bh = Math.max(150, Math.round(rect.h));
+		if (
+			bx !== floatPrevBX ||
+			by !== floatPrevBY ||
+			bw !== floatPrevBW ||
+			bh !== floatPrevBH
+		) {
+			floatPrevBX = bx;
+			floatPrevBY = by;
+			floatPrevBW = bw;
+			floatPrevBH = bh;
+			win.setBounds({ x: bx, y: by, width: bw, height: bh });
+		}
+		if (
+			Math.abs(rect.x - floatTargetX) < 1 &&
+			Math.abs(rect.y - floatTargetY) < 1 &&
+			Math.abs(rect.w - floatTargetW) < 1 &&
+			Math.abs(rect.h - floatTargetH) < 1
+		) {
+			rect.x = floatTargetX;
+			rect.y = floatTargetY;
+			rect.w = floatTargetW;
+			rect.h = floatTargetH;
+			stopFloatLerp();
+		}
+	}, 16);
+}
+
+function stopFloatLerp() {
+	if (floatLerpTimer) {
+		clearInterval(floatLerpTimer);
+		floatLerpTimer = null;
+	}
+	floatTargetX = floatTargetY = floatTargetW = floatTargetH = null;
+	floatPrevBX = floatPrevBY = floatPrevBW = floatPrevBH = -1;
+}
+
+function getFloatRect() {
+	const win = getActiveFloatingWindow();
+	if (!win) return null;
+	const rect =
+		win === questionWindow
+			? questionWindowRect
+			: win === imageWindow
+				? imageWindowRect
+				: webWindowRect;
+	return rect || null;
+}
+
+function ensureFloatTargets(rect) {
+	if (floatTargetX === null) {
+		floatTargetX = rect.x;
+		floatTargetY = rect.y;
+		floatTargetW = rect.w;
+		floatTargetH = rect.h;
+	}
+}
+
+broadcastServer.on("client-window-pinch", (scale, dx, dy) => {
+	const rect = getFloatRect();
+	if (!rect) return;
+	ensureFloatTargets(rect);
+	const newW = Math.max(200, floatTargetW * scale);
+	const newH = Math.max(150, floatTargetH * scale);
+	floatTargetX -= (newW - floatTargetW) / 2;
+	floatTargetY -= (newH - floatTargetH) / 2;
+	floatTargetW = newW;
+	floatTargetH = newH;
+	floatTargetX += dx;
+	floatTargetY += dy;
+	startFloatLerp();
+});
+broadcastServer.on("client-window-drag", (dx, dy) => {
+	const rect = getFloatRect();
+	if (rect) {
+		ensureFloatTargets(rect);
+		floatTargetX += dx;
+		floatTargetY += dy;
+		startFloatLerp();
 	}
 });
-broadcastServer.on("client-window-resize", (scale) => {
-	const win = getActiveFloatingWindow();
-	if (win) {
-		const rect =
-			win === questionWindow ? questionWindowRect : imageWindowRect;
-		if (!rect) return;
-		const newW = Math.max(200, Math.floor(rect.w * scale));
-		const newH = Math.max(150, Math.floor(rect.h * scale));
-		if (newW === rect.w && newH === rect.h) return;
-		rect.x -= (newW - rect.w) / 2;
-		rect.y -= (newH - rect.h) / 2;
-		rect.w = newW;
-		rect.h = newH;
-		win.setBounds({
-			x: Math.floor(rect.x),
-			y: Math.floor(rect.y),
-			width: rect.w,
-			height: rect.h,
-		});
+broadcastServer.on("client-window-resize", (scaleX, scaleY) => {
+	const rect = getFloatRect();
+	if (rect) {
+		ensureFloatTargets(rect);
+		const newW = Math.max(200, floatTargetW * scaleX);
+		const newH = Math.max(150, floatTargetH * scaleY);
+		floatTargetX -= (newW - floatTargetW) / 2;
+		floatTargetY -= (newH - floatTargetH) / 2;
+		floatTargetW = newW;
+		floatTargetH = newH;
+		startFloatLerp();
 	}
 });
 broadcastServer.on("client-remote-key-press", () => {
@@ -383,7 +481,8 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		questionWindow = new BrowserWindow({
 			width: 900,
 			height: 480,
-			frame: true,
+			frame: false,
+			transparent: true,
 			resizable: true,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
@@ -475,7 +574,7 @@ broadcastServer.on("client-close-answered-question", () => {
 
 ipcMain.on(
 	"open-image-window",
-	(event, { imageName, lessonFilePath, bgColor }) => {
+	(event, { imageName, lessonFilePath, bgColor, shouldPin }) => {
 		if (!lessonFilePath) return;
 		const imagePath = path.join(
 			path.dirname(lessonFilePath),
@@ -489,18 +588,25 @@ ipcMain.on(
 
 		if (imageWindow && !imageWindow.isDestroyed()) {
 			if (!imageWindowPinned) {
-				imageWindow.webContents.send("set-image", { imagePath, bgColor });
+				broadcastServer.signalFloatingWindowOpen();
+				imageWindow.webContents.send("set-image", {
+					imagePath,
+					bgColor,
+					shouldPin,
+				});
 				imageWindow.show();
 				imageWindow.focus();
+				if (shouldPin) imageWindowPinned = true;
 			}
 			return;
 		}
 
-		imageWindowPinned = false;
+		imageWindowPinned = shouldPin || false;
 		imageWindow = new BrowserWindow({
 			width: 900,
 			height: 650,
-			frame: true,
+			frame: false,
+			transparent: true,
 			resizable: true,
 			autoHideMenuBar: true,
 			alwaysOnTop: true,
@@ -518,7 +624,11 @@ ipcMain.on(
 		imageWindow.setMenu(null);
 		imageWindow.loadFile(path.join(__dirname, "../image-window.html"));
 		imageWindow.webContents.on("did-finish-load", () => {
-			imageWindow.webContents.send("set-image", { imagePath, bgColor });
+			imageWindow.webContents.send("set-image", {
+				imagePath,
+				bgColor,
+				shouldPin,
+			});
 		});
 		imageWindow.on("closed", () => {
 			broadcastServer.broadcastFloatingWindowClosed();
@@ -553,8 +663,9 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	const display = screen.getPrimaryDisplay();
 	const maxW = Math.floor(display.workAreaSize.width * 0.95);
 	const maxH = Math.floor(display.workAreaSize.height * 0.95);
-	const newW = Math.min(width, maxW);
-	const newH = Math.min(height, maxH);
+	const scale = Math.min(1, maxW / width, maxH / height);
+	const newW = Math.round(width * scale);
+	const newH = Math.round(height * scale);
 	imageWindow.setSize(newW, newH);
 	imageWindow.center();
 	const b = imageWindow.getBounds();
@@ -566,12 +677,147 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	};
 });
 
+ipcMain.on("force-close-image-window", () => {
+	if (imageWindow && !imageWindow.isDestroyed()) {
+		imageWindow.close();
+		imageWindow = null;
+	}
+});
+
 ipcMain.on("close-image-window", () => {
 	if (imageWindowPinned) return;
 	if (imageWindow && !imageWindow.isDestroyed()) {
 		imageWindow.close();
 		imageWindow = null;
 	}
+});
+
+ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
+	if (webWindow && !webWindow.isDestroyed()) {
+		if (!webWindowPinned) {
+			broadcastServer.signalFloatingWindowOpen();
+			webWindow.webContents.send("set-url", { url, bgColor, shouldPin });
+			webWindow.show();
+			webWindow.focus();
+			if (shouldPin) webWindowPinned = true;
+		}
+		return;
+	}
+
+	webWindowPinned = shouldPin || false;
+	webWindow = new BrowserWindow({
+		width: 1100,
+		height: 800,
+		frame: false,
+		transparent: true,
+		resizable: true,
+		autoHideMenuBar: true,
+		alwaysOnTop: true,
+		title: "Web",
+		icon: path.join(__dirname, "../shared/icon.ico"),
+		webPreferences: {
+			nodeIntegration: true,
+			contextIsolation: false,
+			webviewTag: true,
+		},
+	});
+	broadcastServer.broadcastFloatingWindowOpened();
+	webWindowRect = {
+		x: webWindow.getBounds().x,
+		y: webWindow.getBounds().y,
+		w: webWindow.getBounds().width,
+		h: webWindow.getBounds().height,
+	};
+	webWindow.setMenu(null);
+	webWindow.loadFile(path.join(__dirname, "../web-window.html"));
+	webWindow.webContents.on("did-finish-load", () => {
+		webWindow.webContents.send("set-url", { url, bgColor, shouldPin });
+	});
+	webWindow.on("closed", () => {
+		broadcastServer.broadcastFloatingWindowClosed();
+		webWindow = null;
+		webWindowPinned = false;
+		webWindowRect = null;
+	});
+	webWindow.on("move", () => {
+		if (webWindow && !webWindow.isDestroyed() && webWindowRect) {
+			const b = webWindow.getBounds();
+			webWindowRect.x = b.x;
+			webWindowRect.y = b.y;
+		}
+	});
+	webWindow.on("resize", () => {
+		if (webWindow && !webWindow.isDestroyed() && webWindowRect) {
+			const b = webWindow.getBounds();
+			webWindowRect.w = b.width;
+			webWindowRect.h = b.height;
+		}
+	});
+});
+
+ipcMain.on("close-web-window", () => {
+	if (webWindowPinned) return;
+	if (webWindow && !webWindow.isDestroyed()) {
+		webWindow.close();
+		webWindow = null;
+	}
+});
+
+ipcMain.on("force-close-web-window", () => {
+	if (webWindow && !webWindow.isDestroyed()) {
+		webWindow.close();
+		webWindow = null;
+	}
+});
+
+ipcMain.on("start-resizing", (event, edge) => {
+	stopFloatLerp();
+	const win = event.sender.getOwnerBrowserWindow();
+	if (!win) return;
+	const { screen } = require("electron");
+	const initBounds = win.getBounds();
+	const initCursor = screen.getCursorScreenPoint();
+	let stopped = false;
+	const stopResize = () => {
+		stopped = true;
+	};
+	ipcMain.once("end-resizing", stopResize);
+	const interval = setInterval(() => {
+		if (stopped || !win || win.isDestroyed()) {
+			clearInterval(interval);
+			ipcMain.removeListener("end-resizing", stopResize);
+			return;
+		}
+		const cur = screen.getCursorScreenPoint();
+		const dx = cur.x - initCursor.x;
+		const dy = cur.y - initCursor.y;
+		const b = { ...initBounds };
+		if (edge === "move") {
+			b.x = initBounds.x + dx;
+			b.y = initBounds.y + dy;
+			win.setBounds(b);
+			return;
+		}
+		if (edge.includes("right")) {
+			b.width = Math.max(220, initBounds.width + dx);
+		}
+		if (edge.includes("bottom")) {
+			b.height = Math.max(150, initBounds.height + dy);
+		}
+		if (edge.includes("left")) {
+			b.x = initBounds.x + dx;
+			b.width = Math.max(220, initBounds.width - dx);
+		}
+		if (edge.includes("top")) {
+			b.y = initBounds.y + dy;
+			b.height = Math.max(150, initBounds.height - dy);
+		}
+		win.setBounds(b);
+	}, 16);
+});
+
+ipcMain.on("pin-web-window", (event, isPinned) => {
+	webWindowPinned = isPinned;
 });
 
 ipcMain.on("set-active", (event, isActive) => {

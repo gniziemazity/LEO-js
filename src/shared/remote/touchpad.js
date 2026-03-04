@@ -73,7 +73,7 @@ function updateModeBtns(activeMode) {
 	const ids = {
 		mouse: "modeBtnMouse",
 		keyboard: "modeBtnKeyboard",
-		"iron-man": "modeBtnIronMan",
+		"jedi": "modeBtnJedi",
 	};
 	for (const [m, id] of Object.entries(ids)) {
 		const btn = document.getElementById(id);
@@ -96,12 +96,13 @@ function deactivateTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 	touchpadActive = false;
-	overlay.classList.remove("active", "keyboard-mode", "iron-man-mode");
+	overlay.classList.remove("active", "keyboard-mode", "jedi-mode");
 	header.classList.remove("hidden");
 	stopDragIfActive();
-	if (ironManActive) {
+	if (jediActive) {
 		stopCalibration();
-		ironManActive = false;
+		resetJediState();
+		jediActive = false;
 	}
 }
 
@@ -114,8 +115,8 @@ async function setTouchpadMode(mode) {
 	if (mode === "keyboard" && !autoTypingActive) return;
 
 	const alreadyActive =
-		(mode === "iron-man" && ironManActive) ||
-		(mode !== "iron-man" && touchpadActive && touchpadMode === mode);
+		(mode === "jedi" && jediActive) ||
+		(mode !== "jedi" && touchpadActive && touchpadMode === mode);
 
 	deactivateTouchpad();
 
@@ -127,14 +128,14 @@ async function setTouchpadMode(mode) {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 
-	if (mode === "iron-man") {
-		if (!ironManGranted) await requestOrientationPermission();
-		ironManActive = true;
-		resetIronManState();
+	if (mode === "jedi") {
+		if (!jediGranted) await requestOrientationPermission();
+		jediActive = true;
+		resetJediState();
 		touchpadActive = true;
-		overlay.classList.add("active", "iron-man-mode");
+		overlay.classList.add("active", "jedi-mode");
 		header.classList.add("hidden");
-		initIronMan();
+		initJedi();
 		startCalibration();
 	} else {
 		touchpadActive = true;
@@ -169,7 +170,7 @@ function initTouchpad() {
 	let touchDownX = 0;
 	let touchDownY = 0;
 
-	initIronMan();
+	initJedi();
 
 	overlay.addEventListener(
 		"touchstart",
@@ -182,8 +183,8 @@ function initTouchpad() {
 				return;
 			}
 
-			if (ironManActive) {
-				ironManTouchStart(e);
+			if (jediActive) {
+				jediTouchStart(e);
 				return;
 			}
 
@@ -227,8 +228,8 @@ function initTouchpad() {
 			e.preventDefault();
 			if (touchpadMode === "keyboard") return;
 
-			if (ironManActive) {
-				ironManTouchMove(e);
+			if (jediActive) {
+				jediTouchMove(e);
 				return;
 			}
 
@@ -291,8 +292,8 @@ function initTouchpad() {
 
 			if (touchpadMode === "keyboard") return;
 
-			if (ironManActive) {
-				ironManTouchEnd(e);
+			if (jediActive) {
+				jediTouchEnd(e);
 				return;
 			}
 

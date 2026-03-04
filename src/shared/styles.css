@@ -8,6 +8,13 @@
    --font-mono: "Consolas", "Monaco", "Courier New", monospace;
 }
 
+html:has(body.question-view),
+html:has(body.image-view),
+html:has(body.web-view) {
+   background: transparent;
+   overflow: hidden;
+}
+
 body {
    font-family: var(--font-mono);
    font-size: 14px;
@@ -716,7 +723,7 @@ body.typing-active #editor-toolbar {
    opacity: 0.15;
    pointer-events: none;
 }
-#modeBtnIronMan.mode-active {
+#modeBtnJedi.mode-active {
    background: rgba(231, 76, 60, 0.9);
 }
 #modeSideBtns.has-active .mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(.mode-side-btn-help) {
@@ -764,15 +771,15 @@ body.side-left .mode-side-btn .side-btn-emoji {
 .touchpad-overlay.keyboard-mode {
    background: rgba(27, 94, 32, 0.40);
 }
-.touchpad-overlay.iron-man-mode {
+.touchpad-overlay.jedi-mode {
    background: rgba(231, 76, 60, 0.35);
    z-index: 2550;
 }
-.touchpad-overlay.iron-man-mode ~ .mode-side-btns .mode-side-btn:not(#modeBtnIronMan) {
+.touchpad-overlay.jedi-mode ~ .mode-side-btns .mode-side-btn:not(#modeBtnJedi) {
    display: none;
 }
 
-.iron-man-countdown {
+.jedi-countdown {
    display: none;
    position: fixed;
    top: 0;
@@ -826,11 +833,42 @@ body.side-left .i-modal {
    flex: 1;
 }
 
-.comment-block.image-comment {
+.comment-block.image-comment,
+.comment-block.web-comment {
    background: #bbdefb;
 }
 
-.comment-block.image-comment.active-comment {
+/* ── popup window resize handles ── */
+.resize-handle {
+   position: fixed;
+   z-index: 999;
+   -webkit-app-region: no-drag;
+}
+.resize-n  { top:    0;      left:  16px; right: 16px;  height: 16px; cursor: n-resize;  }
+.resize-s  { bottom: 0;      left:  16px; right: 16px;  height: 16px; cursor: s-resize;  }
+.resize-w  { left:   0;      top:   16px; bottom: 16px; width:  16px; cursor: w-resize;  }
+.resize-e  { right:  0;      top:   16px; bottom: 16px; width:  16px; cursor: e-resize;  }
+.resize-nw { top:    0;      left:  0;    width:  20px; height: 20px; cursor: nw-resize; }
+.resize-ne { top:    0;      right: 0;    width:  20px; height: 20px; cursor: ne-resize; }
+.resize-sw { bottom: 0;      left:  0;    width:  20px; height: 20px; cursor: sw-resize; }
+.resize-se { bottom: 0;      right: 0;    width:  20px; height: 20px; cursor: se-resize; }
+
+/* ── remote client overflow fix ── */
+.mobile-view #mobile-header {
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   width: 100%;
+   z-index: 2001;
+}
+.mobile-view #lesson-container {
+   padding-top: 64px;
+   overflow-x: hidden;
+}
+
+.comment-block.image-comment.active-comment,
+.comment-block.web-comment.active-comment {
    background: #0d47a1;
 }
 
@@ -1077,27 +1115,100 @@ body.side-left .i-modal {
    color: rgba(0, 0, 0, 0.35);
 }
 
+/* ── frameless popup windows: neon glow frame ── */
+
+.neon-frame {
+   position: absolute;
+   inset: 32px;
+   border-radius: 8px;
+   overflow: hidden;
+   -webkit-app-region: drag;
+   cursor: move;
+   --glow: color-mix(in srgb, var(--bg, #bbdefb), black 45%);
+   box-shadow:
+      0 0 0 1px var(--glow),
+      0 0 6px 2px var(--glow),
+      0 0 14px 5px var(--glow),
+      0 0 22px 7px var(--glow);
+}
+
+.popup-close-btn {
+   position: absolute;
+   top: 6px;
+   right: 8px;
+   width: 28px;
+   height: 28px;
+   border-radius: 6px;
+   border: none;
+   background: rgba(0, 0, 0, 0.15);
+   color: rgba(0, 0, 0, 0.6);
+   font-size: 14px;
+   line-height: 1;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
+   padding: 0;
+   -webkit-app-region: no-drag;
+   z-index: 20;
+   transition: background 0.15s, color 0.15s;
+}
+.popup-close-btn:hover {
+   background: rgba(220, 50, 50, 0.75);
+   color: #fff;
+}
+
 /* ── image window ── */
 
 body.image-view {
    --bg: #bbdefb;
-   background: var(--bg);
-   display: flex;
-   align-items: center;
-   justify-content: center;
+   background: transparent;
+   display: block;
    min-height: 100vh;
-   padding: 16px;
+   padding: 0;
    overflow: hidden;
    position: relative;
 }
 
+body.image-view .neon-frame {
+   background: var(--bg);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 0;
+}
+
+body.image-view .popup-close-btn {
+   background: rgba(255, 255, 255, 0.55);
+   backdrop-filter: blur(4px);
+   color: rgba(0, 0, 0, 0.7);
+}
+body.image-view .popup-close-btn:hover {
+   background: rgba(220, 50, 50, 0.85);
+   color: #fff;
+}
+
+body.image-view #pinBtn {
+   background: rgba(255, 255, 255, 0.65);
+   border-color: rgba(255, 255, 255, 0.4);
+}
+body.image-view #pinBtn:hover {
+   background: rgba(255, 255, 255, 0.9);
+   border-color: rgba(255, 255, 255, 0.6);
+}
+body.image-view #pinBtn.pinned {
+   background: rgba(255, 255, 255, 0.7);
+   border-color: rgba(231, 76, 60, 0.8);
+}
+body.image-view #pinBtn.pinned:hover {
+   background: rgba(255, 255, 255, 0.85);
+}
+
 #imageDisplay {
-   max-width: 100%;
-   max-height: calc(100vh - 32px);
-   object-fit: contain;
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
    display: none;
-   border-radius: 4px;
-   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
 }
 
 #errorMsg {
@@ -1107,10 +1218,28 @@ body.image-view {
    display: none;
 }
 
+#pinBtn,
+#webPinBtn {
+   -webkit-app-region: no-drag;
+   cursor: pointer;
+}
+
+webview {
+   -webkit-app-region: no-drag;
+}
+
+.web-drag-overlay {
+   position: absolute;
+   inset: 0;
+   z-index: 10;
+   background: transparent;
+   cursor:default;
+}
+
 #pinBtn {
-   position: fixed;
-   top: 10px;
-   right: 10px;
+   position: absolute;
+   top: 6px;
+   left: 8px;
    width: 36px;
    height: 36px;
    border-radius: 50%;
@@ -1141,7 +1270,7 @@ body.image-view {
 #pinBtn::after {
    content: attr(data-tip);
    position: absolute;
-   right: 44px;
+   left: 44px;
    top: 50%;
    transform: translateY(-50%);
    background: rgba(0, 0, 0, 0.72);
@@ -1163,15 +1292,24 @@ body.image-view {
 
 body.question-view {
    --bg: #ffcdd2;
-   background: var(--bg);
+   background: transparent;
    font-family: "Segoe UI", system-ui, sans-serif;
+   display: block;
+   min-height: 100vh;
+   padding: 0;
+   overflow: hidden;
+   user-select: none;
+   position: relative;
+}
+
+body.question-view .neon-frame {
+   background: var(--bg);
    display: flex;
    flex-direction: column;
    align-items: center;
    justify-content: center;
-   min-height: 100vh;
    padding: 40px;
-   user-select: none;
+   padding-top: 52px;
    transition: background 0.3s;
 }
 
@@ -1189,6 +1327,7 @@ body.question-view {
    color: rgba(0, 0, 0, 0.82);
    max-width: 860px;
    word-break: break-word;
+   white-space: pre-wrap;
 }
 
 .student-banner {
@@ -1247,4 +1386,46 @@ body.question-view {
       transform: scale(1);
       opacity: 1;
    }
+}
+/* ── web window ── */
+
+body.web-view {
+   --bg: #bbdefb;
+   background: transparent;
+   display: block;
+   min-height: 100vh;
+   padding: 0;
+   overflow: hidden;
+   position: relative;
+}
+
+body.web-view .neon-frame {
+   background: var(--bg);
+   display: flex;
+   flex-direction: column;
+   padding: 0;
+}
+
+#webview {
+   flex: 1;
+   min-height: 0;
+   width: 100%;
+   border: none;
+   -webkit-app-region: no-drag;
+}
+
+.web-url-bar {
+   position: absolute;
+   top: 6px;
+   left: 46px;
+   right: 46px;
+   font-size: 0.72rem;
+   font-family: "Segoe UI", system-ui, sans-serif;
+   color: rgba(0, 0, 0, 0.5);
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   line-height: 28px;
+   pointer-events: none;
+   -webkit-app-region: drag;
 }

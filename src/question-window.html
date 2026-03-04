@@ -6,17 +6,46 @@
 		<link rel="stylesheet" href="./shared/styles.css" />
 	</head>
 	<body class="question-view">
-		<div class="question-emoji" id="questionEmoji">❓</div>
-		<div class="question-text" id="questionText"></div>
-		<div class="dots" id="dots">
-			<div class="dot"></div>
-			<div class="dot"></div>
-			<div class="dot"></div>
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame" id="neonFrame">
+			<button class="popup-close-btn" id="closeBtn">✕</button>
+			<div class="question-emoji" id="questionEmoji">❓</div>
+			<div class="question-text" id="questionText"></div>
+			<div class="dots" id="dots">
+				<div class="dot"></div>
+				<div class="dot"></div>
+				<div class="dot"></div>
+			</div>
+			<div class="student-banner" id="studentBanner"></div>
 		</div>
-		<div class="student-banner" id="studentBanner"></div>
 
 		<script>
 			const { ipcRenderer } = require("electron");
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape") ipcRenderer.send("close-question-window");
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			document.getElementById("closeBtn").addEventListener("click", () => {
+				ipcRenderer.send("close-question-window");
+			});
 
 			ipcRenderer.on(
 				"set-question",
@@ -34,9 +63,12 @@
 						banner.className = "student-banner";
 					}
 					if (bgColor) {
-						document.body.style.background = bgColor;
+						document.getElementById("neonFrame").style.background =
+							bgColor;
+						document.documentElement.style.setProperty("--bg", bgColor);
 					} else {
-						document.body.style.background = "";
+						document.getElementById("neonFrame").style.background = "";
+						document.documentElement.style.removeProperty("--bg");
 					}
 				},
 			);

@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Web</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="web-view">
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame">
+			<button id="pinBtn" data-tip="Pin">📌</button>
+			<button class="popup-close-btn" id="closeBtn">✕</button>
+			<div class="web-drag-overlay" id="dragOverlay"></div>
+			<webview id="webview" src="about:blank"></webview>
+		</div>
+
+		<script>
+			const { ipcRenderer } = require("electron");
+			let pinned = false;
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape") ipcRenderer.send("force-close-web-window");
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			const pinBtn = document.getElementById("pinBtn");
+			const closeBtn = document.getElementById("closeBtn");
+			const webview = document.getElementById("webview");
+
+			function applyPin() {
+				pinned = true;
+				pinBtn.classList.add("pinned");
+				pinBtn.setAttribute("data-tip", "Pinned");
+				ipcRenderer.send("pin-web-window", true);
+			}
+
+			pinBtn.addEventListener("click", () => {
+				if (pinned) return;
+				applyPin();
+			});
+
+			closeBtn.addEventListener("click", () => {
+				ipcRenderer.send("force-close-web-window");
+			});
+
+			ipcRenderer.on("set-url", (event, { url, bgColor, shouldPin }) => {
+				if (bgColor)
+					document.documentElement.style.setProperty("--bg", bgColor);
+				webview.src = url;
+				if (shouldPin && !pinned) applyPin();
+			});
+
+			const dragOverlay = document.getElementById("dragOverlay");
+			let dragActive = false;
+			let pendingClick = null;
+
+			dragOverlay.addEventListener("dblclick", (e) => e.preventDefault());
+
+			dragOverlay.addEventListener("mousedown", (e) => {
+				if (e.button !== 0) return;
+				pendingClick = { x: e.clientX, y: e.clientY };
+				dragActive = false;
+			});
+
+			dragOverlay.addEventListener("mousemove", (e) => {
+				if (pendingClick && !dragActive) {
+					const dx = Math.abs(e.clientX - pendingClick.x);
+					const dy = Math.abs(e.clientY - pendingClick.y);
+					if (dx > 5 || dy > 5) {
+						dragActive = true;
+						pendingClick = null;
+						ipcRenderer.send("start-resizing", "move");
+					}
+				}
+			});
+
+			window.addEventListener("mouseup", (e) => {
+				if (e.button !== 0) return;
+				const wasClick = !dragActive && pendingClick;
+				const wasDrag = dragActive;
+				dragActive = false;
+				pendingClick = null;
+				if (wasDrag) ipcRenderer.send("end-resizing");
+				if (wasClick) {
+					const rect = webview.getBoundingClientRect();
+					const x = Math.round(e.clientX - rect.left);
+					const y = Math.round(e.clientY - rect.top);
+					webview.executeJavaScript(`
+						(function() {
+							const el = document.elementFromPoint(${x}, ${y});
+							if (el) el.click();
+						})();
+					`).catch(() => {});
+				}
+			});
+
+			dragOverlay.addEventListener("wheel", (e) => {
+				e.preventDefault();
+				webview.executeJavaScript(`
+					window.scrollBy(${e.deltaX}, ${e.deltaY});
+				`).catch(() => {});
+			}, { passive: false });
+		</script>
+	</body>
+</html>

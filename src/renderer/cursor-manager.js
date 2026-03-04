@@ -12,12 +12,16 @@ class CursorManager {
 		this.onEnterQuestionBlock = null;
 		this.onLeaveQuestionBlock = null;
 		this.onImageBlock = null;
+		this.onWebBlock = null;
 
 		this._questionWindowOpen = false;
 		this._imageWindowOpen = false;
+		this._webWindowOpen = false;
 
 		this._activeQuestionIndex = null;
 		this._activeImageIndex = null;
+		this._activeWebIndex = null;
+		this._activeGhostCommentIndex = null;
 	}
 
 	setExecutionSteps(steps) {
@@ -55,7 +59,14 @@ class CursorManager {
 		this._imageWindowOpen = true;
 
 		const match = element.innerText.trim().match(/^🖼️\s*(.+)$/);
-		if (match && this.onImageBlock) this.onImageBlock(match[1].trim());
+		if (match) {
+			const parts = match[1].trim().split(/\s+/);
+			const imageName = parts[0];
+			const shouldPin = parts
+				.slice(1)
+				.some((p) => p.toLowerCase() === "pin");
+			if (this.onImageBlock) this.onImageBlock(imageName, shouldPin);
+		}
 	}
 
 	_leaveImageBlock() {
@@ -65,6 +76,25 @@ class CursorManager {
 		ipcRenderer.send("close-image-window");
 	}
 
+	_enterWebBlock(element, globalIndex) {
+		if (this._activeWebIndex === globalIndex) return;
+		this._activeWebIndex = globalIndex;
+		this._webWindowOpen = true;
+
+		const raw = element.innerText.trim().replace(/^🌐\s*/, "");
+		const parts = raw.split(/\s+/);
+		const url = parts[0];
+		const shouldPin = parts.slice(1).some((p) => p.toLowerCase() === "pin");
+		if (this.onWebBlock) this.onWebBlock(url, shouldPin);
+	}
+
+	_leaveWebBlock() {
+		if (!this._webWindowOpen) return;
+		this._webWindowOpen = false;
+		this._activeWebIndex = null;
+		ipcRenderer.send("close-web-window");
+	}
+
 	updateLastStepIndex() {
 		localStorage.setItem("lastStepIndex", this.currentStepIndex);
 	}
@@ -72,8 +102,11 @@ class CursorManager {
 	resetProgress() {
 		this._leaveQuestionBlock();
 		this._leaveImageBlock();
+		this._leaveWebBlock();
 		this._activeQuestionIndex = null;
 		this._activeImageIndex = null;
+		this._activeWebIndex = null;
+		this._activeGhostCommentIndex = null;
 		this.currentStepIndex = 0;
 		this.updateLastStepIndex();
 		this.uiManager.updateProgressBar(0);
@@ -88,6 +121,8 @@ class CursorManager {
 			if (step.type === "char") {
 				this._leaveQuestionBlock();
 				this._leaveImageBlock();
+				this._leaveWebBlock();
+				this._activeGhostCommentIndex = null;
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
 					behavior: "smooth",
@@ -104,18 +139,41 @@ class CursorManager {
 				const subtype = getBlockSubtype(blockText);
 				if (subtype === "question-comment") {
 					this._leaveImageBlock();
+					this._leaveWebBlock();
+					this._activeGhostCommentIndex = null;
 					this._enterQuestionBlock(step.element, step.globalIndex);
 				} else if (subtype === "image-comment") {
 					this._leaveQuestionBlock();
+					this._leaveWebBlock();
+					this._activeGhostCommentIndex = null;
 					this._enterImageBlock(step.element, step.globalIndex);
+				} else if (subtype === "web-comment") {
+					this._leaveQuestionBlock();
+					this._leaveImageBlock();
+					this._activeGhostCommentIndex = null;
+					this._enterWebBlock(step.element, step.globalIndex);
+				} else if (subtype === "ghost-code-comment") {
+					this._leaveQuestionBlock();
+					this._leaveImageBlock();
+					this._leaveWebBlock();
+					if (this._activeGhostCommentIndex !== step.globalIndex) {
+						this._activeGhostCommentIndex = step.globalIndex;
+						const text = step.element.innerText
+							.trim()
+							.replace(/^👾 ?/, "");
+						this.logManager.addEntry({ code_insert: text });
+					}
 				} else {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
+					this._leaveWebBlock();
+					this._activeGhostCommentIndex = null;
 				}
 			}
 		} else {
 			this._leaveQuestionBlock();
 			this._leaveImageBlock();
+			this._leaveWebBlock();
 		}
 
 		const progress =
@@ -233,6 +291,8 @@ class CursorManager {
 	jumpTo(index) {
 		this._activeQuestionIndex = null;
 		this._activeImageIndex = null;
+		this._activeWebIndex = null;
+		this._activeGhostCommentIndex = null;
 		this.currentStepIndex = index;
 
 		this.executionSteps.forEach((step, i) => {

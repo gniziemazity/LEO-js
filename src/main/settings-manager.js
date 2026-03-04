@@ -25,7 +25,8 @@ class SettingsManager {
 				textColor: "#333333",
 				questionCommentColor: "#ffcdd2",
 				imageBlockColor: "#bbdefb",
-				ghostCodeBlockColor: "#e0e0e0",
+				ghostCodeBlockColor: "#f0f0f0",
+				codeBlockColor: "#ffffff",
 			},
 			fontSize: 14,
 			hotkeyMode: "single-key", // "single-key" or "auto-run"
@@ -41,7 +42,19 @@ class SettingsManager {
 		try {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
-				return { ...this.defaultSettings, ...JSON.parse(data) };
+				const saved = JSON.parse(data);
+				return {
+					...this.defaultSettings,
+					...saved,
+					colors: {
+						...this.defaultSettings.colors,
+						...(saved.colors || {}),
+					},
+					hotkeys: {
+						...this.defaultSettings.hotkeys,
+						...(saved.hotkeys || {}),
+					},
+				};
 			}
 		} catch (error) {
 			console.error("Failed to load settings:", error);

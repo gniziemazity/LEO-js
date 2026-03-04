@@ -59,7 +59,7 @@
 
 		<div id="touchpadOverlay" class="touchpad-overlay"></div>
 
-		<div id="ironManCountdown" class="iron-man-countdown"></div>
+		<div id="jediCountdown" class="jedi-countdown"></div>
 
 		<div id="modeSideBtns" class="mode-side-btns">
 			<button
@@ -79,10 +79,10 @@
 				<span class="side-btn-emoji">⌨️</span>
 			</button>
 			<button
-				id="modeBtnIronMan"
+				id="modeBtnJedi"
 				class="mode-side-btn"
-				onclick="setTouchpadMode('iron-man')"
-				title="Iron Man Mode"
+				onclick="setTouchpadMode('jedi')"
+				title="Jedi Mode"
 			>
 				<span class="side-btn-emoji">🦾</span>
 			</button>
@@ -140,7 +140,7 @@
 		</div>
 
 		<script src="remote/connection.js"></script>
-		<script src="remote/iron-man.js"></script>
+		<script src="remote/jedi.js"></script>
 		<script src="remote/touchpad.js"></script>
 		<script src="remote/timer.js"></script>
 		<script src="remote/lesson.js"></script>
@@ -189,10 +189,10 @@
 						showTimerStopped();
 						break;
 					case "floating-window-opened":
-						autoEnableIronMan();
+						autoEnableJedi();
 						break;
 					case "floating-window-closed":
-						autoDisableIronMan();
+						autoDisableJedi();
 						break;
 				}
 			}
@@ -217,7 +217,7 @@
 				if (state.timeRemaining != null)
 					showTimerRunning(state.timeRemaining);
 				else showTimerStopped();
-				if (state.floatingWindowCount > 0) autoEnableIronMan();
+				if (state.floatingWindowCount > 0) autoEnableJedi();
 			}
 
 			setMessageHandler(handleMessage);

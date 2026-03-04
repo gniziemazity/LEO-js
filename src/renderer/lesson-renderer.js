@@ -132,6 +132,7 @@ class LessonRenderer {
 			blockDiv.classList.remove(
 				"question-comment",
 				"image-comment",
+				"web-comment",
 				"ghost-code-comment",
 			);
 			const sub = getBlockSubtype(blockDiv.innerText);

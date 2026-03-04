@@ -79,7 +79,7 @@ def find_files_in_directory():
             try:
                 with open(full_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    if 'keyPresses' in data and isinstance(data['keyPresses'], list):
+                    if 'triggers' in data and isinstance(data['triggers'], list):
                         json_files.append(full_path)
             except:
                 pass
@@ -251,7 +251,7 @@ def analyze_typing_blocks(key_presses):
     return timestamps, rates, texts, widths
 
 def create_visualizations(data, student_data=None):
-    key_presses = data['keyPresses']
+    key_presses = data['triggers']
     session_start = key_presses[0]['timestamp'] / 1000
     session_end = key_presses[-1]['timestamp'] / 1000
     
@@ -865,12 +865,12 @@ def main():
     s_data = None
     if csv_path:
         print(f"Auto-detected CSV file: {csv_path}")
-        s_data = load_student_data(csv_path, len(data['keyPresses']))
+        s_data = load_student_data(csv_path, len(data['triggers']))
     else:
         if messagebox.askyesno("Load Student Data", "Load CSV?"):
             cp = select_csv_file()
             if cp:
-                s_data = load_student_data(cp, len(data['keyPresses']))
+                s_data = load_student_data(cp, len(data['triggers']))
     
     create_visualizations(data, s_data)
     

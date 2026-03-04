@@ -68,7 +68,6 @@ class LogManager {
 
 		this.keyPressLog.push(logEntry);
 
-		// auto-save periodically
 		if (this.keyPressLog.length % this.saveInterval === 0) {
 			this.save();
 		}
@@ -90,8 +89,8 @@ class LogManager {
 		const logData = {
 			lessonFile: this.currentLessonPath || "No file loaded",
 			sessionStart: this.sessionStartTime,
-			totalKeyPresses: this.keyPressLog.length,
-			keyPresses: this.keyPressLog,
+			totalTriggers: this.keyPressLog.length,
+			triggers: this.keyPressLog,
 		};
 
 		fs.writeFile(
