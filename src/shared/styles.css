@@ -212,7 +212,6 @@ button:hover {
    word-wrap: break-word;
 }
 
-/* Placeholder text for empty editable blocks */
 .comment-block:empty::before {
    content: attr(data-placeholder);
    color: #aaa;
