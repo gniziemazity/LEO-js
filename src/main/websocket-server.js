@@ -1,12 +1,11 @@
 const express = require("express");
-const https = require("https");
+const http = require("http");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const EventEmitter = require("events");
-const selfsigned = require("selfsigned");
 
 const IRON_MAN_DEBUG = true;
 
@@ -33,14 +32,7 @@ class LEOBroadcastServer extends EventEmitter {
 	}
 
 	async start() {
-		const pems = await selfsigned.generate(
-			[{ name: "commonName", value: "leo-local" }],
-			{ days: 3650, keyType: "ec", curve: "P-256" },
-		);
-		this.server = https.createServer(
-			{ key: pems.private, cert: pems.cert },
-			this.app,
-		);
+		this.server = http.createServer(this.app);
 		this.app.get("/", (req, res) => {
 			res.sendFile(path.join(__dirname, "../remote.html"));
 		});
@@ -71,7 +63,7 @@ class LEOBroadcastServer extends EventEmitter {
 		Object.keys(interfaces).forEach((ifname) => {
 			interfaces[ifname].forEach((iface) => {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `https://${iface.address}:${this.port}`;
+					const url = `http://${iface.address}:${this.port}`;
 					console.log(`Client Viewer URL: ${url}`);
 					qrcode.generate(url);
 				}
@@ -254,7 +246,7 @@ class LEOBroadcastServer extends EventEmitter {
 		for (const ifname of Object.keys(interfaces)) {
 			for (const iface of interfaces[ifname]) {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `https://${iface.address}:${this.port}`;
+					const url = `http://${iface.address}:${this.port}`;
 					try {
 						const qrCodeDataUrl = await QRCode.toDataURL(url, {
 							width: 300,

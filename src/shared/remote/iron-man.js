@@ -1,3 +1,6 @@
+/* For Motion sensors:
+chrome://flags/#unsafely-treat-insecure-origin-as-secure */
+
 let ironManActive = false;
 let ironManGranted = false;
 let ironManInitialized = false;
@@ -122,7 +125,7 @@ function initIronMan() {
 		const gestDeltaY = rawY - gestureBaseY;
 
 		if (ironManCalibrating) {
-			if (gestDeltaY > GESTURE_THRESHOLD_DOWN) {
+			if (gestDeltaY < -GESTURE_THRESHOLD_DOWN) {
 				stopCalibration();
 				gestureBaseY = null;
 				velX = 0;
@@ -151,7 +154,7 @@ function initIronMan() {
 
 		if (
 			Date.now() - ironManActivatedAt >= IRON_MAN_GRACE_MS &&
-			gestDeltaY < -GESTURE_THRESHOLD_UP
+			gestDeltaY > GESTURE_THRESHOLD_UP
 		) {
 			if (IRON_MAN_DEBUG) {
 				sendMessage("iron-man-debug", { gesture: "DISABLE" });
