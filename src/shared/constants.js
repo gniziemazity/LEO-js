@@ -64,6 +64,7 @@ function getBlockSubtype(text) {
 	const t = text.trim();
 	if (t.startsWith("❓")) return "question-comment";
 	if (t.startsWith("🖼️")) return "image-comment";
+	if (t.startsWith("👾")) return "ghost-code-comment";
 	return null;
 }
 
@@ -85,6 +86,7 @@ function buildSettingsCSS(settings) {
 		.comment-block { background: ${settings.colors.commentNormal}; }
 		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
 		.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
+		.comment-block.ghost-code-comment { background: ${settings.colors.ghostCodeBlockColor}; }
 		.comment-block.active-comment {
 			background: ${settings.colors.commentActive};
 			color: ${settings.colors.commentActiveText};
@@ -96,6 +98,7 @@ function buildSettingsCSS(settings) {
 		.char.cursor { background: ${settings.colors.cursor}; }
 		#addQuestionCommentBtn { background: ${settings.colors.questionCommentColor}; }
 		#addImageCommentBtn { background: ${settings.colors.imageBlockColor}; }
+		#addGhostCodeBlockBtn { background: ${settings.colors.ghostCodeBlockColor}; }
 	`;
 }
 

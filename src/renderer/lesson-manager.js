@@ -60,7 +60,10 @@ class LessonManager {
 	addBlock(type, afterIndex = null, initialText = null) {
 		const newBlock = {
 			type,
-			text: initialText || (type === "code" ? "" : "New Comment"),
+			text:
+				initialText !== null && initialText !== undefined
+					? initialText
+					: "",
 		};
 
 		if (afterIndex === null) {

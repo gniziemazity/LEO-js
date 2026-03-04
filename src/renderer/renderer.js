@@ -106,9 +106,11 @@ function setupEventListeners() {
 	uiManager.getElement("addCommentBtn").onclick = () =>
 		blockEditor.addBlock("comment");
 	uiManager.getElement("addQuestionCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment", "❓");
+		blockEditor.addBlock("comment", "❓ ");
 	uiManager.getElement("addImageCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment", "🖼️");
+		blockEditor.addBlock("comment", "🖼️ ");
+	uiManager.getElement("addGhostCodeBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "👾 ");
 	uiManager.getElement("addCodeBtn").onclick = () =>
 		blockEditor.addBlock("code");
 	uiManager.getElement("removeBlockBtn").onclick = () =>

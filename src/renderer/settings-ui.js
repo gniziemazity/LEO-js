@@ -93,6 +93,8 @@ class SettingsUI {
 			settings.colors.questionCommentColor;
 		document.getElementById("imageBlockColor").value =
 			settings.colors.imageBlockColor;
+		document.getElementById("ghostCodeBlockColor").value =
+			settings.colors.ghostCodeBlockColor;
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -153,6 +155,8 @@ class SettingsUI {
 					"questionCommentColor",
 				).value,
 				imageBlockColor: document.getElementById("imageBlockColor").value,
+				ghostCodeBlockColor: document.getElementById("ghostCodeBlockColor")
+					.value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,

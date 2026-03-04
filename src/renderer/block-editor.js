@@ -16,9 +16,28 @@ class BlockEditor {
 		}
 
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
+		const newBlockIdx =
+			(selectedBlockIndex === null ? -1 : selectedBlockIndex) + 1;
 		this.lessonManager.addBlock(type, selectedBlockIndex, initialText);
-		this.uiManager.selectBlock(selectedBlockIndex + 1);
+		this.uiManager.selectBlock(newBlockIdx);
 		this.lessonRenderer.render();
+		this.focusNewBlock(newBlockIdx);
+	}
+
+	focusNewBlock(blockIdx) {
+		setTimeout(() => {
+			const blocks = document.querySelectorAll(".block");
+			const target = blocks[blockIdx];
+			if (target && target.contentEditable !== "false") {
+				target.focus();
+				const range = document.createRange();
+				const sel = window.getSelection();
+				range.selectNodeContents(target);
+				range.collapse(false);
+				sel.removeAllRanges();
+				sel.addRange(range);
+			}
+		}, 0);
 	}
 
 	removeBlock() {

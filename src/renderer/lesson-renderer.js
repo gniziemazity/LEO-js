@@ -129,7 +129,11 @@ class LessonRenderer {
 			this.saveEditState(blockIdx, blockDiv.innerText);
 			this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
 
-			blockDiv.classList.remove("question-comment", "image-comment");
+			blockDiv.classList.remove(
+				"question-comment",
+				"image-comment",
+				"ghost-code-comment",
+			);
 			const sub = getBlockSubtype(blockDiv.innerText);
 			if (sub) blockDiv.classList.add(sub);
 		};

@@ -186,10 +186,20 @@ button:hover {
    background: #ffcdd2;
 }
 
+.comment-block.ghost-code-comment {
+   background: #e0e0e0;
+   font-style: normal;
+   opacity: 0.75;
+}
+
+#addGhostCodeBlockBtn {
+   background: #e0e0e0;
+   color: #333;
+}
+
 .comment-block.active-comment {
    background: #2c3e50;
    color: #f1c40f;
-   border-left: 5px solid #e74c3c;
    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
    transform: scale(1.01);
    z-index: 10;
@@ -200,6 +210,19 @@ button:hover {
    font-family: var(--font-mono);
    white-space: pre-wrap;
    word-wrap: break-word;
+}
+
+/* Placeholder text for empty editable blocks */
+.comment-block:empty::before {
+   content: attr(data-placeholder);
+   color: #aaa;
+   pointer-events: none;
+}
+.code-block[contenteditable="true"]:empty::before {
+   content: attr(data-placeholder);
+   color: #aaa;
+   pointer-events: none;
+   font-style: italic;
 }
 
 .char {
@@ -806,7 +829,6 @@ body.side-left .i-modal {
 
 .comment-block.image-comment {
    background: #bbdefb;
-   border-left-color: #1976d2;
 }
 
 .comment-block.image-comment.active-comment {

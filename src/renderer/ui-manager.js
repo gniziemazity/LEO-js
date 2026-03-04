@@ -13,6 +13,7 @@ class UIManager {
 				"addQuestionCommentBtn",
 			),
 			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
+			addGhostCodeBlockBtn: document.getElementById("addGhostCodeBlockBtn"),
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),
 			formatBlockBtn: document.getElementById("formatBlockBtn"),
@@ -79,6 +80,12 @@ class UIManager {
 	createBlockElement(block, blockIdx) {
 		const blockDiv = document.createElement("div");
 		blockDiv.className = `block ${block.type}-block`;
+
+		if (block.type === "comment") {
+			blockDiv.dataset.placeholder = "Type comment here";
+		} else if (block.type === "code") {
+			blockDiv.dataset.placeholder = "Type code here";
+		}
 
 		if (this.selectedBlockIndex === blockIdx) {
 			blockDiv.classList.add("selected");

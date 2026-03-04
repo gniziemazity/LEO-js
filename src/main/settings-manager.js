@@ -25,6 +25,7 @@ class SettingsManager {
 				textColor: "#333333",
 				questionCommentColor: "#ffcdd2",
 				imageBlockColor: "#bbdefb",
+				ghostCodeBlockColor: "#e0e0e0",
 			},
 			fontSize: 14,
 			hotkeyMode: "single-key", // "single-key" or "auto-run"
