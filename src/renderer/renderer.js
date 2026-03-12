@@ -119,6 +119,8 @@ function setupEventListeners() {
 		blockEditor.addBlock("comment", "🌐 ");
 	uiManager.getElement("addGhostCodeBlockBtn").onclick = () =>
 		blockEditor.addBlock("comment", "👾 ");
+	uiManager.getElement("addCodeRemoveBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "🗑️ ");
 	uiManager.getElement("addCodeBtn").onclick = () =>
 		blockEditor.addBlock("code");
 	uiManager.getElement("removeBlockBtn").onclick = () =>

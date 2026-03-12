@@ -89,8 +89,7 @@ class LogManager {
 		const logData = {
 			lessonFile: this.currentLessonPath || "No file loaded",
 			sessionStart: this.sessionStartTime,
-			totalTriggers: this.keyPressLog.length,
-			triggers: this.keyPressLog,
+			events: this.keyPressLog,
 		};
 
 		fs.writeFile(

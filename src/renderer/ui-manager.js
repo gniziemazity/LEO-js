@@ -15,6 +15,7 @@ class UIManager {
 			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
 			addWebCommentBtn: document.getElementById("addWebCommentBtn"),
 			addGhostCodeBlockBtn: document.getElementById("addGhostCodeBlockBtn"),
+			addCodeRemoveBlockBtn: document.getElementById("addCodeRemoveBlockBtn"),
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),
 			formatBlockBtn: document.getElementById("formatBlockBtn"),

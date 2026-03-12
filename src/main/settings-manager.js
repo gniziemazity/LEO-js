@@ -26,6 +26,7 @@ class SettingsManager {
 				questionCommentColor: "#ffcdd2",
 				imageBlockColor: "#bbdefb",
 				ghostCodeBlockColor: "#f0f0f0",
+				codeRemoveBlockColor: "#E0815C",
 				codeBlockColor: "#ffffff",
 			},
 			fontSize: 14,

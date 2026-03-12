@@ -67,6 +67,7 @@ function getBlockSubtype(text) {
 	if (t.startsWith("🖼️")) return "image-comment";
 	if (t.startsWith("🌐")) return "web-comment";
 	if (t.startsWith("👾")) return "ghost-code-comment";
+	if (t.startsWith("🗑️")) return "code-remove-comment";
 	return null;
 }
 
@@ -91,6 +92,7 @@ function buildSettingsCSS(settings) {
 		.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
 		.comment-block.web-comment { background: ${settings.colors.imageBlockColor}; }
 		.comment-block.ghost-code-comment { background: ${settings.colors.ghostCodeBlockColor}; }
+		.comment-block.code-remove-comment { background: ${settings.colors.codeRemoveBlockColor}; }
 		.comment-block.active-comment {
 			background: ${settings.colors.commentActive};
 			color: ${settings.colors.commentActiveText};
@@ -104,6 +106,7 @@ function buildSettingsCSS(settings) {
 		#addImageCommentBtn { background: ${settings.colors.imageBlockColor}; }
 		#addWebCommentBtn { background: ${settings.colors.imageBlockColor}; }
 		#addGhostCodeBlockBtn { background: ${settings.colors.ghostCodeBlockColor}; }
+		#addCodeRemoveBlockBtn { background: ${settings.colors.codeRemoveBlockColor}; }
 		#addCommentBtn { background: ${settings.colors.commentNormal}; color: #333; }
 		#addCodeBtn { background: ${settings.colors.codeBlockColor}; color: #333; }
 	`;

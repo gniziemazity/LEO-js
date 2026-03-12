@@ -22,6 +22,7 @@ class CursorManager {
 		this._activeImageIndex = null;
 		this._activeWebIndex = null;
 		this._activeGhostCommentIndex = null;
+		this._activeCodeRemoveIndex = null;
 	}
 
 	setExecutionSteps(steps) {
@@ -107,6 +108,7 @@ class CursorManager {
 		this._activeImageIndex = null;
 		this._activeWebIndex = null;
 		this._activeGhostCommentIndex = null;
+		this._activeCodeRemoveIndex = null;
 		this.currentStepIndex = 0;
 		this.updateLastStepIndex();
 		this.uiManager.updateProgressBar(0);
@@ -123,6 +125,7 @@ class CursorManager {
 				this._leaveImageBlock();
 				this._leaveWebBlock();
 				this._activeGhostCommentIndex = null;
+				this._activeCodeRemoveIndex = null;
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
 					behavior: "smooth",
@@ -141,21 +144,25 @@ class CursorManager {
 					this._leaveImageBlock();
 					this._leaveWebBlock();
 					this._activeGhostCommentIndex = null;
+					this._activeCodeRemoveIndex = null;
 					this._enterQuestionBlock(step.element, step.globalIndex);
 				} else if (subtype === "image-comment") {
 					this._leaveQuestionBlock();
 					this._leaveWebBlock();
 					this._activeGhostCommentIndex = null;
+					this._activeCodeRemoveIndex = null;
 					this._enterImageBlock(step.element, step.globalIndex);
 				} else if (subtype === "web-comment") {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
 					this._activeGhostCommentIndex = null;
+					this._activeCodeRemoveIndex = null;
 					this._enterWebBlock(step.element, step.globalIndex);
 				} else if (subtype === "ghost-code-comment") {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
 					this._leaveWebBlock();
+					this._activeCodeRemoveIndex = null;
 					if (this._activeGhostCommentIndex !== step.globalIndex) {
 						this._activeGhostCommentIndex = step.globalIndex;
 						const text = step.element.innerText
@@ -163,11 +170,24 @@ class CursorManager {
 							.replace(/^👾 ?/, "");
 						this.logManager.addEntry({ code_insert: text });
 					}
+				} else if (subtype === "code-remove-comment") {
+					this._leaveQuestionBlock();
+					this._leaveImageBlock();
+					this._leaveWebBlock();
+					this._activeGhostCommentIndex = null;
+					if (this._activeCodeRemoveIndex !== step.globalIndex) {
+						this._activeCodeRemoveIndex = step.globalIndex;
+						const text = step.element.innerText
+							.trim()
+							.replace(/^🗑️ ?/, "");
+						this.logManager.addEntry({ code_remove: text });
+					}
 				} else {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
 					this._leaveWebBlock();
 					this._activeGhostCommentIndex = null;
+					this._activeCodeRemoveIndex = null;
 				}
 			}
 		} else {

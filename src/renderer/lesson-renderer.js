@@ -134,6 +134,7 @@ class LessonRenderer {
 				"image-comment",
 				"web-comment",
 				"ghost-code-comment",
+				"code-remove-comment",
 			);
 			const sub = getBlockSubtype(blockDiv.innerText);
 			if (sub) blockDiv.classList.add(sub);

@@ -97,6 +97,8 @@ class SettingsUI {
 			settings.colors.imageBlockColor;
 		document.getElementById("ghostCodeBlockColor").value =
 			settings.colors.ghostCodeBlockColor;
+		document.getElementById("codeRemoveBlockColor").value =
+			settings.colors.codeRemoveBlockColor || "#E0815C";
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -159,6 +161,8 @@ class SettingsUI {
 				).value,
 				imageBlockColor: document.getElementById("imageBlockColor").value,
 				ghostCodeBlockColor: document.getElementById("ghostCodeBlockColor")
+					.value,
+				codeRemoveBlockColor: document.getElementById("codeRemoveBlockColor")
 					.value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
