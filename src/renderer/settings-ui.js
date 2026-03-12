@@ -162,8 +162,9 @@ class SettingsUI {
 				imageBlockColor: document.getElementById("imageBlockColor").value,
 				ghostCodeBlockColor: document.getElementById("ghostCodeBlockColor")
 					.value,
-				codeRemoveBlockColor: document.getElementById("codeRemoveBlockColor")
-					.value,
+				codeRemoveBlockColor: document.getElementById(
+					"codeRemoveBlockColor",
+				).value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,
