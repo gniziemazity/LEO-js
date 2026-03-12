@@ -31,6 +31,7 @@ const NUTJS_KEY_MAPPING = {
 	ω: { modifier: Key.LeftControl, key: Key.W },
 	"↩": { key: Key.Enter },
 	é: { key: Key.Escape },
+	"🅴": { key: Key.Escape },
 	Ț: { modifier: Key.LeftControl, key: Key.F },
 
 	// special pause symbol - no key action

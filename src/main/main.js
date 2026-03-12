@@ -311,7 +311,8 @@ async function createWindow() {
 	state.mainWindow = new BrowserWindow(config);
 	createApplicationMenu();
 	state.mainWindow.loadFile(path.join(__dirname, "../index.html"));
-	await broadcastServer.start();
+	const certDir = path.join(app.getPath("userData"), "certs");
+	await broadcastServer.start(certDir);
 	state.broadcastServer = broadcastServer;
 	hotkeyManager.registerSystemShortcuts();
 	state.mainWindow.webContents.on("did-finish-load", () => {

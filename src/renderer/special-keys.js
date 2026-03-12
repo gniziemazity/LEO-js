@@ -17,6 +17,7 @@ class SpecialKeys {
 			"💾": "Save File",
 			"🔁": "Alt Tab",
 			"🕛": "Pause",
+			"🅴": "Escape",
 			"↩": "Enter",
 			"↢": "Backspace",
 			"―": "Tab",

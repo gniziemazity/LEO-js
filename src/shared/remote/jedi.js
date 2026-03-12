@@ -97,6 +97,7 @@ function resetJediState() {
 	jediPinchCenterX = null;
 	jediPinchCenterY = null;
 	moveBuffer.length = 0;
+	jediFingerCount = 0;
 }
 
 function initJedi() {
