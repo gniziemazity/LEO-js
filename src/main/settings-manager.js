@@ -23,7 +23,7 @@ class SettingsManager {
 				cursor: "#e74c3c",
 				selectedBorder: "#3498db",
 				textColor: "#333333",
-				questionCommentColor: "#ffcdd2",
+				questionCommentColor: "#facaca",
 				imageBlockColor: "#bbdefb",
 				ghostCodeBlockColor: "#f0f0f0",
 				codeRemoveBlockColor: "#E0815C",

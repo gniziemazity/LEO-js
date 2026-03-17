@@ -79,8 +79,8 @@
 				document.getElementById("dots").style.display = "none";
 				const banner = document.getElementById("studentBanner");
 				banner.textContent = studentName
-					? `✅ Answered by ${studentName}`
-					: "✅ Answered";
+					? `Answered by ${studentName}`
+					: "Answered";
 				banner.className = "student-banner visible";
 				launchFireworks();
 				setTimeout(() => {
@@ -97,14 +97,12 @@
 				canvas.height = window.innerHeight;
 				const ctx = canvas.getContext("2d");
 				const COLORS = [
-					"#ff4444",
+					"#ff0000",
 					"#ff8800",
-					"#ffdd00",
-					"#44ff44",
-					"#44aaff",
-					"#ff44ff",
-					"#ffffff",
-					"#88ffdd",
+					"#00dd00",
+					"#00ddff",
+					"#0000ff",
+					"#4400ff",
 				];
 				const particles = [];
 

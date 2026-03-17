@@ -113,7 +113,7 @@ function buildSettingsCSS(settings) {
 }
 
 function formatAnsweredText(studentName) {
-	return studentName ? `✅ Answered by ${studentName}` : "✅ Answered";
+	return studentName ? `Answered by ${studentName}` : "Answered";
 }
 
 module.exports = {

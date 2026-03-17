@@ -194,7 +194,7 @@ button:hover {
 }
 
 .comment-block.question-comment {
-	background: #ffcdd2;
+	background: #facaca;
 }
 
 .comment-block.ghost-code-comment {
@@ -1369,7 +1369,7 @@ webview {
 /* ── question window ── */
 
 body.question-view {
-	--bg: #ffcdd2;
+	--bg: #facaca;
 	background: transparent;
 	font-family: "Segoe UI", system-ui, sans-serif;
 	display: block;

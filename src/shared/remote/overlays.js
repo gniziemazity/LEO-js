@@ -14,7 +14,7 @@ function setInteractionBtnsVisible(visible) {
 }
 
 function formatAnsweredText(name) {
-	return name ? `✅ Answered by ${name}` : "✅ Answered";
+	return name ? `Answered by ${name}` : "Answered";
 }
 
 function hexToRgba(hex, alpha) {
@@ -58,7 +58,7 @@ function showQuestionOverlay(question, students, bgColor) {
 		const btn = document.createElement("button");
 		btn.className = "q-student-btn";
 		btn.style.cssText = "width:100%;margin-bottom:4px";
-		btn.textContent = "✅ Answered";
+		btn.textContent = "Answered";
 		btn.onclick = () => onStudentAnswered(null);
 		grid.appendChild(btn);
 	}

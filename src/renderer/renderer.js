@@ -50,7 +50,7 @@ let pendingQuestion = null;
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
 	pendingQuestion = { question, timestamp, answeredBy: null };
 	const students = fileOperations.getStudents();
-	const bgColor = getColor("questionCommentColor", "#ffcdd2");
+	const bgColor = getColor("questionCommentColor", "#facaca");
 	ipcRenderer.send("enter-question-block", { question, students, bgColor });
 };
 
