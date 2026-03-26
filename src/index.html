@@ -24,17 +24,18 @@
 				</button>
 				<button
 					class="tb-emoji-btn"
-					id="addGhostCodeBlockBtn"
-					title="Add Ghost Code Block"
+					id="addCodeInsertBlockBtn"
+					title="Add Code Insert Block"
 				>
-					👾
+					📋
 				</button>
 				<button
 					class="tb-emoji-btn"
-					id="addCodeRemoveBlockBtn"
-					title="Add Code Remove Block"
+					id="addMoveToBlockBtn"
+					title="Add Move To Block"
+					style="background: #424242; color: #ffffff"
 				>
-					🗑️
+					➡️
 				</button>
 				<span class="tb-sep"></span>
 				<button
@@ -73,6 +74,14 @@
 					✨
 				</button>
 			</div>
+			<button
+				id="generateArtificialLogBtn"
+				class="artificial-log-btn"
+				title="Generate Artificial Log"
+				style="margin-left: 6px"
+			>
+				🤖
+			</button>
 			<button
 				id="showQrBtn"
 				class="qr-btn"
@@ -191,13 +200,18 @@
 						</div>
 
 						<div class="setting-item">
-							<label>Ghost Code Block (👾):</label>
-							<input type="color" id="ghostCodeBlockColor" />
+							<label>Code Insert Block (📋):</label>
+							<input type="color" id="codeInsertBlockColor" />
 						</div>
 
 						<div class="setting-item">
-							<label>Code Remove Block (🗑️):</label>
-							<input type="color" id="codeRemoveBlockColor" />
+							<label>Move To Block (➡️) Background:</label>
+							<input type="color" id="moveToBlockColor" />
+						</div>
+
+						<div class="setting-item">
+							<label>Move To Block (➡️) Text Color:</label>
+							<input type="color" id="moveToTextColor" />
 						</div>
 
 						<div class="setting-item">

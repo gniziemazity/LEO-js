@@ -80,6 +80,32 @@ class LogManager {
 		this.save();
 	}
 
+	saveArtificialLog(events) {
+		if (!this.currentLessonPath && !this.logFilePath) {
+			console.warn("No lesson path set. Cannot save artificial log.");
+			return;
+		}
+
+		const { logsDir, basename } = this.getLogPaths(this.currentLessonPath);
+		this.ensureLogsDirectory(logsDir);
+
+		const timestamp = this.getTimestamp();
+		const artificialPath = path.join(
+			logsDir,
+			`artificial_${basename}_${timestamp}.json`,
+		);
+
+		const logData = {
+			lessonFile: this.currentLessonPath || "No file loaded",
+			sessionStart: events.length > 0 ? events[0].timestamp : Date.now(),
+			artificial: true,
+			events,
+		};
+
+		fs.writeFileSync(artificialPath, JSON.stringify(logData, null, 2));
+		return artificialPath;
+	}
+
 	save() {
 		if (!this.logFilePath) {
 			console.warn("No log file path set. Cannot save.");

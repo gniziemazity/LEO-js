@@ -6,8 +6,8 @@ function getBlockSubtype(text) {
 	if (t.startsWith("❓")) return "question-comment";
 	if (t.startsWith("🖼️")) return "image-comment";
 	if (t.startsWith("🌐")) return "web-comment";
-	if (t.startsWith("👾")) return "ghost-code-comment";
-	if (t.startsWith("🗑️")) return "code-remove-comment";
+	if (t.startsWith("📋")) return "code-insert-comment";
+	if (t.startsWith("➡️")) return "move-to-comment";
 	return null;
 }
 
@@ -16,12 +16,12 @@ function buildSettingsCSS(settings) {
 		body { font-size: ${settings.fontSize}px; }
 		.comment-block, .code-block { color: ${settings.colors.textColor}; }
 		.comment-block { background: ${settings.colors.commentNormal}; }
-		.code-block { background: ${settings.colors.codeBlockColor || "#ffffff"}; }
+		.code-block { background: ${settings.colors.codeBlockColor}; }
 		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
 		.comment-block.image-comment,
 		.comment-block.web-comment { background: ${settings.colors.imageBlockColor}; }
-		.comment-block.ghost-code-comment { background: ${settings.colors.ghostCodeBlockColor}; }
-		.comment-block.code-remove-comment { background: ${settings.colors.codeRemoveBlockColor || "#E0815C"}; }
+		.comment-block.code-insert-comment { background: ${settings.colors.codeInsertBlockColor}; }
+		.comment-block.move-to-comment { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
 		.comment-block.active-comment {
 			background: ${settings.colors.commentActive};
 			color: ${settings.colors.commentActiveText};

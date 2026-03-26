@@ -8,16 +8,19 @@ class UIManager {
 	cacheElements() {
 		this.elements = {
 			toggleBtn: document.getElementById("toggleBtn"),
+			generateArtificialLogBtn: document.getElementById(
+				"generateArtificialLogBtn",
+			),
 			addCommentBtn: document.getElementById("addCommentBtn"),
 			addQuestionCommentBtn: document.getElementById(
 				"addQuestionCommentBtn",
 			),
 			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
 			addWebCommentBtn: document.getElementById("addWebCommentBtn"),
-			addGhostCodeBlockBtn: document.getElementById("addGhostCodeBlockBtn"),
-			addCodeRemoveBlockBtn: document.getElementById(
-				"addCodeRemoveBlockBtn",
+			addCodeInsertBlockBtn: document.getElementById(
+				"addCodeInsertBlockBtn",
 			),
+			addMoveToBlockBtn: document.getElementById("addMoveToBlockBtn"),
 			addCodeBtn: document.getElementById("addCodeBtn"),
 			removeBlockBtn: document.getElementById("removeBlockBtn"),
 			formatBlockBtn: document.getElementById("formatBlockBtn"),
@@ -43,6 +46,8 @@ class UIManager {
 			this.elements.toggleBtn.classList.add("btn-stop");
 			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.add("hidden");
+			if (this.elements.generateArtificialLogBtn)
+				this.elements.generateArtificialLogBtn.classList.add("hidden");
 			document.body.classList.add("typing-active");
 		} else {
 			this.elements.toggleBtn.textContent = "▶︎";
@@ -51,6 +56,8 @@ class UIManager {
 			this.elements.toggleBtn.classList.add("btn-start");
 			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.remove("hidden");
+			if (this.elements.generateArtificialLogBtn)
+				this.elements.generateArtificialLogBtn.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}
 	}

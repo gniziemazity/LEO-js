@@ -95,10 +95,12 @@ class SettingsUI {
 			settings.colors.questionCommentColor;
 		document.getElementById("imageBlockColor").value =
 			settings.colors.imageBlockColor;
-		document.getElementById("ghostCodeBlockColor").value =
-			settings.colors.ghostCodeBlockColor;
-		document.getElementById("codeRemoveBlockColor").value =
-			settings.colors.codeRemoveBlockColor || "#E0815C";
+		document.getElementById("codeInsertBlockColor").value =
+			settings.colors.codeInsertBlockColor || "#f0f0f0";
+		document.getElementById("moveToBlockColor").value =
+			settings.colors.moveToBlockColor || "#424242";
+		document.getElementById("moveToTextColor").value =
+			settings.colors.moveToTextColor || "#ffffff";
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -160,11 +162,10 @@ class SettingsUI {
 					"questionCommentColor",
 				).value,
 				imageBlockColor: document.getElementById("imageBlockColor").value,
-				ghostCodeBlockColor: document.getElementById("ghostCodeBlockColor")
+				codeInsertBlockColor: document.getElementById("codeInsertBlockColor")
 					.value,
-				codeRemoveBlockColor: document.getElementById(
-					"codeRemoveBlockColor",
-				).value,
+				moveToBlockColor: document.getElementById("moveToBlockColor").value,
+				moveToTextColor: document.getElementById("moveToTextColor").value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,

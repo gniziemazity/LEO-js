@@ -13,6 +13,8 @@ const NUTJS_KEY_MAPPING = {
 	// editing
 	"↢": { key: Key.Backspace },
 	"―": { key: Key.Tab },
+	"⛔": { modifier: Key.LeftControl, shift: true, key: Key.K },
+	"↣": { key: Key.Delete },
 
 	// navigation with Shift
 	"⇑": { shift: true, key: Key.Up },
@@ -66,8 +68,8 @@ function getBlockSubtype(text) {
 	if (t.startsWith("❓")) return "question-comment";
 	if (t.startsWith("🖼️")) return "image-comment";
 	if (t.startsWith("🌐")) return "web-comment";
-	if (t.startsWith("👾")) return "ghost-code-comment";
-	if (t.startsWith("🗑️")) return "code-remove-comment";
+	if (t.startsWith("📋")) return "code-insert-comment";
+	if (t.startsWith("➡️")) return "move-to-comment";
 	return null;
 }
 
@@ -91,8 +93,8 @@ function buildSettingsCSS(settings) {
 		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
 		.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
 		.comment-block.web-comment { background: ${settings.colors.imageBlockColor}; }
-		.comment-block.ghost-code-comment { background: ${settings.colors.ghostCodeBlockColor}; }
-		.comment-block.code-remove-comment { background: ${settings.colors.codeRemoveBlockColor}; }
+		.comment-block.code-insert-comment { background: ${settings.colors.codeInsertBlockColor}; }
+		.comment-block.move-to-comment { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
 		.comment-block.active-comment {
 			background: ${settings.colors.commentActive};
 			color: ${settings.colors.commentActiveText};
@@ -102,11 +104,12 @@ function buildSettingsCSS(settings) {
 			border-left-color: ${settings.colors.selectedBorder};
 		}
 		.char.cursor { background: ${settings.colors.cursor}; }
+		.anchor-token.cursor { background: ${settings.colors.cursor}; }
 		#addQuestionCommentBtn { background: ${settings.colors.questionCommentColor}; }
 		#addImageCommentBtn { background: ${settings.colors.imageBlockColor}; }
 		#addWebCommentBtn { background: ${settings.colors.imageBlockColor}; }
-		#addGhostCodeBlockBtn { background: ${settings.colors.ghostCodeBlockColor}; }
-		#addCodeRemoveBlockBtn { background: ${settings.colors.codeRemoveBlockColor}; }
+		#addCodeInsertBlockBtn { background: ${settings.colors.codeInsertBlockColor}; }
+		#addMoveToBlockBtn { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
 		#addCommentBtn { background: ${settings.colors.commentNormal}; color: #333; }
 		#addCodeBtn { background: ${settings.colors.codeBlockColor}; color: #333; }
 	`;

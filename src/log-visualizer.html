@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📋 Log Visualizer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%; width: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 13px;
+    background: #e8e8e8;
+    color: #1e1e1e;
+  }
+
+  /* ── Root layout: left half | right half ─────────────────────────────── */
+  #vis-root {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+  }
+
+  #vis-left {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 50%;
+    min-width: 0;
+    border-right: 2px solid #ccc;
+  }
+
+  #vis-right {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 50%;
+    min-width: 0;
+    background: #f9f9f9;
+  }
+
+  /* ── Toolbar ──────────────────────────────────────────────────────────── */
+  #vis-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #e8e8e8;
+    border-bottom: 1px solid #ccc;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  #vis-toolbar button {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #fff;
+  }
+
+  #btn-play  { background: #2d8f2d; }
+  #btn-reset { background: #7a6500; }
+  #btn-settings { background: #f0f0f8; color: #0000ff !important; }
+
+  #vis-toolbar label { font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px; }
+  #speed-slider { width: 120px; }
+  #speed-label  { font-size: 12px; font-weight: bold; color: #007acc; min-width: 32px; }
+
+  .sep { width: 1px; height: 18px; background: #bbb; margin: 0 4px; }
+
+  /* ── Seekbar ──────────────────────────────────────────────────────────── */
+  #vis-seekbar {
+    height: 10px;
+    background: #f3f3f3;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    border-bottom: 1px solid #ddd;
+  }
+  #vis-seekfill {
+    height: 100%;
+    background: #007acc;
+    width: 0%;
+    pointer-events: none;
+  }
+
+  /* ── Main pane (editor + event-log side by side) ─────────────────────── */
+  #vis-main {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Editor area ─────────────────────────────────────────────────────── */
+  #vis-editor-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  pre#vis-editor {
+    flex: 1 1 0;
+    overflow: auto;
+    background: #ffffff;
+    color: #1e1e1e;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 6px 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 0;
+  }
+
+  /* ── DevTools overlay ────────────────────────────────────────────────── */
+  #vis-dev-outer {
+    position: absolute;
+    bottom: 22px;
+    right: 10px;
+    width: 52%;
+    height: 38%;
+    background: #f5f5f5;
+    border: 1px solid #007acc;
+    display: flex;
+    flex-direction: column;
+    z-index: 5;
+  }
+  #vis-dev-outer.collapsed { height: auto; }
+  #vis-dev-outer.collapsed pre#vis-dev-editor { display: none; }
+
+  #vis-dev-title {
+    display: flex;
+    align-items: center;
+    background: #ddeeff;
+    padding: 2px 6px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    font-weight: bold;
+    color: #007acc;
+    gap: 4px;
+  }
+  #dev-indicator { margin-left: auto; }
+  #btn-dev-toggle {
+    border: none; background: transparent; cursor: pointer;
+    font-size: 13px; font-weight: bold; color: #007acc; padding: 0 4px;
+  }
+
+  pre#vis-dev-editor {
+    flex: 1 1 0;
+    overflow: auto;
+    background: #f5f5f5;
+    color: #009900;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 4px 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ── Event log ───────────────────────────────────────────────────────── */
+  #vis-event-log-wrap {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #ddd;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  #vis-event-log {
+    flex: 1 1 0;
+    overflow-y: auto;
+    font-family: Consolas, monospace;
+    font-size: 10px;
+    padding: 4px 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #007acc;
+  }
+
+  /* ── Status bar ──────────────────────────────────────────────────────── */
+  #vis-status {
+    background: #007acc;
+    color: #fff;
+    padding: 3px 8px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* ── Right pane: live preview ────────────────────────────────────────── */
+  #vis-right {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #vis-preview {
+    flex: 1 1 0;
+    border: none;
+    background: #fff;
+  }
+
+  #btn-refresh-preview {
+    padding: 1px 6px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    background: #fff;
+    color: #333;
+  }
+  #btn-refresh-preview:hover { background: #e8e8e8; }
+
+  /* ── Pane titles ─────────────────────────────────────────────────────── */
+  .pane-title {
+    background: #f3f3f3;
+    border-bottom: 1px solid #ddd;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #1e1e1e;
+    flex-shrink: 0;
+  }
+
+  /* ── Cursor blink ────────────────────────────────────────────────────── */
+  .vis-cursor {
+    display: inline-block;
+    width: 1px;
+    background: #000;
+    color: transparent;
+    font-size: 0;
+    vertical-align: text-bottom;
+    height: 1.2em;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { background: transparent; } }
+
+  /* ── Settings modal ──────────────────────────────────────────────────── */
+  #settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #settings-box {
+    background: #f0f0f8;
+    border-radius: 6px;
+    padding: 20px 24px;
+    min-width: 460px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  #settings-box table { border-collapse: collapse; width: 100%; }
+  #settings-box td    { padding: 3px 6px; font-size: 12px; }
+  #btn-close-settings {
+    padding: 5px 18px;
+    background: #007acc;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div id="vis-root"></div>
+<script src="./renderer/log-visualizer.js"></script>
+</body>
+</html>

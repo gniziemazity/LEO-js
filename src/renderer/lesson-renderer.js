@@ -133,8 +133,8 @@ class LessonRenderer {
 				"question-comment",
 				"image-comment",
 				"web-comment",
-				"ghost-code-comment",
-				"code-remove-comment",
+				"code-insert-comment",
+				"move-to-comment",
 			);
 			const sub = getBlockSubtype(blockDiv.innerText);
 			if (sub) blockDiv.classList.add(sub);
@@ -168,19 +168,63 @@ class LessonRenderer {
 			return globalStepCounter;
 		} else {
 			blockDiv.contentEditable = "false";
-			for (const char of block.text) {
-				const span = this.uiManager.createCharSpan(char, globalStepCounter);
-				blockDiv.appendChild(span);
 
-				executionSteps.push({
-					type: "char",
-					element: span,
-					char: char,
-					blockIndex: blockIdx,
-					globalIndex: globalStepCounter,
-				});
-				globalStepCounter++;
+			const anchorRegex = /⚓[^⚓]*⚓/g;
+			const text = block.text;
+			let lastIndex = 0;
+			let match;
+
+			const segments = [];
+			while ((match = anchorRegex.exec(text)) !== null) {
+				if (match.index > lastIndex) {
+					segments.push({
+						type: "text",
+						value: text.slice(lastIndex, match.index),
+					});
+				}
+				segments.push({ type: "anchor", value: match[0] });
+				lastIndex = match.index + match[0].length;
 			}
+			if (lastIndex < text.length) {
+				segments.push({ type: "text", value: text.slice(lastIndex) });
+			}
+
+			for (const seg of segments) {
+				if (seg.type === "anchor") {
+					const span = document.createElement("span");
+					span.className = "char anchor-token";
+					span.textContent = seg.value;
+					span.dataset.stepIndex = globalStepCounter;
+					blockDiv.appendChild(span);
+
+					executionSteps.push({
+						type: "anchor",
+						element: span,
+						value: seg.value,
+						blockIndex: blockIdx,
+						globalIndex: globalStepCounter,
+					});
+					globalStepCounter++;
+				} else {
+					for (const char of seg.value) {
+						const span = this.uiManager.createCharSpan(
+							char,
+							globalStepCounter,
+						);
+						blockDiv.appendChild(span);
+
+						executionSteps.push({
+							type: "char",
+							element: span,
+							char: char,
+							blockIndex: blockIdx,
+							globalIndex: globalStepCounter,
+						});
+						globalStepCounter++;
+					}
+				}
+			}
+
 			executionSteps.push({
 				type: "block",
 				element: blockDiv,
@@ -291,6 +335,7 @@ class LessonRenderer {
 				blockIndex: step.blockIndex,
 				globalIndex: step.globalIndex,
 				char: step.char,
+				value: step.value,
 			})),
 		});
 	}

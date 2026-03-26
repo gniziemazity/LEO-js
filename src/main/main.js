@@ -22,7 +22,7 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
 let tray = null;
 let questionWindow = null;
-let questionWindowIsTeacher = false;
+let questionWindowFromLesson = false;
 let questionWindowRect = null;
 let imageWindow = null;
 let imageWindowPinned = false;
@@ -41,6 +41,7 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.mainWindow.webContents.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
+	questionWindowFromLesson = false;
 	if (state.mainWindow) {
 		state.mainWindow.webContents.send("question-answered", { studentName });
 	}
@@ -79,7 +80,7 @@ broadcastServer.on(
 broadcastServer.on(
 	"client-close-student-interaction",
 	(interactionType, studentName, questionText, openedAt, closedAt) => {
-		questionWindowIsTeacher = false;
+		questionWindowFromLesson = false;
 		if (questionWindow && !questionWindow.isDestroyed()) {
 			questionWindow.close();
 			questionWindow = null;
@@ -472,7 +473,7 @@ ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
 
 function openQuestionWindow(question, bgColor, emoji, studentName) {
 	const payload = { question, bgColor, emoji, studentName };
-	questionWindowIsTeacher = !studentName;
+	questionWindowFromLesson = !studentName;
 	if (questionWindow && !questionWindow.isDestroyed()) {
 		broadcastServer.signalFloatingWindowOpen();
 		questionWindow.webContents.send("set-question", payload);
@@ -504,7 +505,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			questionWindow.webContents.send("set-question", payload);
 		});
 		questionWindow.on("closed", () => {
-			if (questionWindowIsTeacher) {
+			if (questionWindowFromLesson) {
 				broadcastServer.broadcastQuestionEnded();
 				if (state.mainWindow) {
 					state.mainWindow.webContents.send("question-answered", {
@@ -551,7 +552,7 @@ ipcMain.on("close-question-window", () => {
 
 broadcastServer.on("client-dismiss-question", () => {
 	if (
-		questionWindowIsTeacher &&
+		questionWindowFromLesson &&
 		questionWindow &&
 		!questionWindow.isDestroyed()
 	) {
@@ -566,7 +567,7 @@ broadcastServer.on("client-dismiss-question", () => {
 });
 
 broadcastServer.on("client-close-answered-question", () => {
-	questionWindowIsTeacher = false;
+	questionWindowFromLesson = false;
 	if (questionWindow && !questionWindow.isDestroyed()) {
 		questionWindow.close();
 		questionWindow = null;
@@ -883,6 +884,26 @@ ipcMain.on("update-window-title", (event, titleData) => {
 	state.mainWindow.setTitle(
 		buildWindowTitle(cleanName, studentCount, hasUnsaved),
 	);
+});
+
+ipcMain.on("open-log-visualizer", (event, logFilePath) => {
+	const visWindow = new BrowserWindow({
+		width: 1600,
+		height: 900,
+		autoHideMenuBar: true,
+		title: "📋 Log Visualizer",
+		icon: path.join(__dirname, "../shared/icon.ico"),
+		webPreferences: {
+			nodeIntegration: true,
+			contextIsolation: false,
+			webviewTag: true,
+		},
+	});
+	visWindow.maximize();
+	visWindow.loadFile(path.join(__dirname, "../log-visualizer.html"));
+	visWindow.webContents.on("did-finish-load", () => {
+		visWindow.webContents.send("load-log", logFilePath);
+	});
 });
 
 ipcMain.on("broadcast-lesson-data", (e, d) =>

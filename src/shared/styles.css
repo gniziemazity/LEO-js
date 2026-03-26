@@ -197,26 +197,35 @@ button:hover {
 	background: #facaca;
 }
 
-.comment-block.ghost-code-comment {
+.comment-block.code-insert-comment {
 	background: #e0e0e0;
 	font-style: normal;
 	opacity: 0.75;
 }
 
-#addGhostCodeBlockBtn {
+#addCodeInsertBlockBtn {
 	background: #e0e0e0;
 	color: #333;
 }
 
-.comment-block.code-remove-comment {
-	background: #e0815c;
+.comment-block.move-to-comment {
+	background: #424242;
+	color: #ffffff;
 	font-style: normal;
 	opacity: 0.75;
 }
 
-#addCodeRemoveBlockBtn {
-	background: #e0815c;
-	color: #333;
+#addMoveToBlockBtn {
+	background: #424242;
+	color: #ffffff;
+}
+
+.anchor-token {
+	background: rgba(100, 100, 255, 0.12);
+	border-radius: 3px;
+	font-size: 0.8em;
+	padding: 0 1px;
+	user-select: none;
 }
 
 .comment-block.active-comment {
@@ -371,6 +380,24 @@ body.typing-active #editor-toolbar {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.artificial-log-btn {
+	height: 30px;
+	padding: 0 8px;
+	border: none;
+	cursor: pointer;
+	font-size: 15px;
+	background: #555;
+	color: #fff;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.artificial-log-btn:hover {
+	background: #333;
 }
 
 .timer-btn,

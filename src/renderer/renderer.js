@@ -11,6 +11,9 @@ const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
+const path = require("path");
+
+const soundPath = path.join(__dirname, "..", "assets", "sounds");
 
 const logManager = new LogManager();
 const lessonManager = new LessonManager();
@@ -96,6 +99,11 @@ fileOperations.onStudentsLoaded = (students) => {
 	ipcRenderer.send("broadcast-students", students);
 };
 
+function playFireworksSound() {
+	const audio = new Audio(soundPath + "/fireworks (by dragon studio).mp3");
+	audio.play();
+}
+
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	settingsUI.initialize();
@@ -117,16 +125,44 @@ function setupEventListeners() {
 		blockEditor.addBlock("comment", "🖼️ ");
 	uiManager.getElement("addWebCommentBtn").onclick = () =>
 		blockEditor.addBlock("comment", "🌐 ");
-	uiManager.getElement("addGhostCodeBlockBtn").onclick = () =>
-		blockEditor.addBlock("comment", "👾 ");
-	uiManager.getElement("addCodeRemoveBlockBtn").onclick = () =>
-		blockEditor.addBlock("comment", "🗑️ ");
+	uiManager.getElement("addCodeInsertBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "📋 ");
+	uiManager.getElement("addMoveToBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "➡️ ");
 	uiManager.getElement("addCodeBtn").onclick = () =>
 		blockEditor.addBlock("code");
 	uiManager.getElement("removeBlockBtn").onclick = () =>
 		blockEditor.removeBlock();
 	uiManager.getElement("formatBlockBtn").onclick = () =>
 		blockEditor.formatBlock();
+
+	const artBtn = uiManager.getElement("generateArtificialLogBtn");
+	if (artBtn) {
+		artBtn.onclick = () => {
+			// If a code block is selected it is rendered as an editable element
+			// with no execution steps, so buildArtificialLogEvents() would skip
+			// it entirely.  Temporarily deselect to force a full render first.
+			const savedSelection = uiManager.getSelectedBlockIndex();
+			if (savedSelection !== null) {
+				uiManager.deselectBlock();
+				lessonRenderer.render();
+			}
+
+			const events = cursorManager.buildArtificialLogEvents();
+			const logPath = logManager.saveArtificialLog(events);
+
+			// Restore the previous selection so the editor state is unchanged.
+			if (savedSelection !== null) {
+				uiManager.selectBlock(savedSelection);
+				lessonRenderer.render();
+			}
+
+			// Open the JS log visualizer in a new window.
+			if (logPath) {
+				ipcRenderer.send("open-log-visualizer", logPath);
+			}
+		};
+	}
 }
 
 function setupGlobalIpcListeners() {
@@ -159,6 +195,9 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("question-answered", (event, { studentName }) => {
 		if (pendingQuestion) {
 			pendingQuestion.answeredBy = studentName;
+		}
+		if (studentName) {
+			playFireworksSound();
 		}
 	});
 
