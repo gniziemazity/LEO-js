@@ -97,7 +97,7 @@ function updateLessonData(data) {
 				const anchorSpan = document.createElement("span");
 				anchorSpan.className = "char anchor-token";
 				anchorSpan.dataset.stepIndex = ctr++;
-				anchorSpan.style.display = "none";
+				anchorSpan.textContent = m[0];
 				div.appendChild(anchorSpan);
 				last = m.index + m[0].length;
 			}

@@ -28,7 +28,11 @@ class KeyboardHandler {
 		const isInterceptorKey = typingHotkeys.includes(charLower);
 
 		try {
-			await this.typeCharWithHotkeyManagement(char, charLower, isInterceptorKey);
+			await this.typeCharWithHotkeyManagement(
+				char,
+				charLower,
+				isInterceptorKey,
+			);
 			this.processQueue();
 
 			if (state.mainWindow) {
@@ -77,7 +81,11 @@ class KeyboardHandler {
 				const isInterceptorKey = typingHotkeys.includes(charLower);
 
 				try {
-					await this.typeCharWithHotkeyManagement(char, charLower, isInterceptorKey);
+					await this.typeCharWithHotkeyManagement(
+						char,
+						charLower,
+						isInterceptorKey,
+					);
 
 					if (state.mainWindow) {
 						state.mainWindow.webContents.send(
@@ -108,8 +116,9 @@ class KeyboardHandler {
 				state.unpause();
 				return;
 			}
-
-			if (mapping.modifier) {
+			if (mapping.modifier && mapping.shift) {
+				await keyboard.type(mapping.modifier, Key.LeftShift, mapping.key);
+			} else if (mapping.modifier) {
 				await keyboard.type(mapping.modifier, mapping.key);
 			} else if (mapping.shift) {
 				await keyboard.type(Key.LeftShift, mapping.key);

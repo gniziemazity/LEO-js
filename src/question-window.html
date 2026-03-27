@@ -74,6 +74,7 @@
 			);
 
 			const AUTO_CLOSE_MS = 3000;
+			const FADE_MS = 600;
 
 			ipcRenderer.on("set-answered", (event, studentName) => {
 				document.getElementById("dots").style.display = "none";
@@ -84,7 +85,9 @@
 				banner.className = "student-banner visible";
 				launchFireworks();
 				setTimeout(() => {
-					window.close();
+					document.body.style.transition = `opacity ${FADE_MS}ms ease`;
+					document.body.style.opacity = "0";
+					setTimeout(() => window.close(), FADE_MS);
 				}, AUTO_CLOSE_MS);
 			});
 
