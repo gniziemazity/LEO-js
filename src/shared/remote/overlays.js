@@ -70,29 +70,8 @@ function showQuestionOverlay(question, students, bgColor) {
 function onStudentAnswered(name) {
 	sendMessage("student-answered", { studentName: name });
 
-	document.getElementById("qGrid").style.display = "none";
-
-	const answeredRow = document.getElementById("qAnsweredRow");
-	const answeredText = document.getElementById("qAnsweredText");
-	answeredText.textContent = formatAnsweredText(name);
-	answeredRow.style.display = "flex";
-
-	const fill = document.getElementById("qCloseBarFill");
-	fill.style.transition = "none";
-	fill.style.width = "0%";
-	requestAnimationFrame(() => {
-		requestAnimationFrame(() => {
-			fill.style.transition = `width ${AUTO_CLOSE_MS}ms linear`;
-			fill.style.width = "100%";
-		});
-	});
-
-	autoCloseTimer = setTimeout(() => {
-		clearAutoCloseTimer();
-		sendMessage("close-answered-question", {});
-		document.getElementById("questionOverlay").classList.remove("active");
-		setInteractionBtnsVisible(true);
-	}, AUTO_CLOSE_MS);
+	document.getElementById("questionOverlay").classList.remove("active");
+	setInteractionBtnsVisible(true);
 }
 
 function hideQuestionOverlay() {

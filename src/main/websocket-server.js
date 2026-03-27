@@ -279,8 +279,6 @@ class LEOBroadcastServer extends EventEmitter {
 			this.emit("client-remote-key-press");
 		} else if (type === "dismiss-question") {
 			this.emit("client-dismiss-question");
-		} else if (type === "close-answered-question") {
-			this.emit("client-close-answered-question");
 		}
 	}
 

@@ -86,7 +86,22 @@ function updateLessonData(data) {
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "code") {
-			for (const char of block.text) {
+			const ANCHOR_RE = /⚓[^⚓]*⚓/g;
+			let last = 0;
+			ANCHOR_RE.lastIndex = 0;
+			let m;
+			while ((m = ANCHOR_RE.exec(block.text)) !== null) {
+				for (const char of block.text.slice(last, m.index)) {
+					div.appendChild(createCharSpan(char, ctr++));
+				}
+				const anchorSpan = document.createElement("span");
+				anchorSpan.className = "char anchor-token";
+				anchorSpan.dataset.stepIndex = ctr++;
+				anchorSpan.style.display = "none";
+				div.appendChild(anchorSpan);
+				last = m.index + m[0].length;
+			}
+			for (const char of block.text.slice(last)) {
 				div.appendChild(createCharSpan(char, ctr++));
 			}
 			div.dataset.stepIndex = ctr++;

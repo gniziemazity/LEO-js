@@ -22,7 +22,8 @@ const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
 let tray = null;
 let questionWindow = null;
-let questionWindowFromLesson = false;
+let questionWindowIsLesson = false;
+let questionWindowStudentAnswered = null;
 let questionWindowRect = null;
 let imageWindow = null;
 let imageWindowPinned = false;
@@ -41,7 +42,7 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.mainWindow.webContents.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
-	questionWindowFromLesson = false;
+	questionWindowStudentAnswered = studentName;
 	if (state.mainWindow) {
 		state.mainWindow.webContents.send("question-answered", { studentName });
 	}
@@ -80,7 +81,7 @@ broadcastServer.on(
 broadcastServer.on(
 	"client-close-student-interaction",
 	(interactionType, studentName, questionText, openedAt, closedAt) => {
-		questionWindowFromLesson = false;
+		questionWindowIsLesson = false;
 		if (questionWindow && !questionWindow.isDestroyed()) {
 			questionWindow.close();
 			questionWindow = null;
@@ -473,7 +474,8 @@ ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
 
 function openQuestionWindow(question, bgColor, emoji, studentName) {
 	const payload = { question, bgColor, emoji, studentName };
-	questionWindowFromLesson = !studentName;
+	questionWindowIsLesson = !studentName;
+	questionWindowStudentAnswered = null;
 	if (questionWindow && !questionWindow.isDestroyed()) {
 		broadcastServer.signalFloatingWindowOpen();
 		questionWindow.webContents.send("set-question", payload);
@@ -505,9 +507,10 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			questionWindow.webContents.send("set-question", payload);
 		});
 		questionWindow.on("closed", () => {
-			if (questionWindowFromLesson) {
+			if (questionWindowIsLesson) {
 				broadcastServer.broadcastQuestionEnded();
-				if (state.mainWindow) {
+
+				if (state.mainWindow && questionWindowStudentAnswered === null) {
 					state.mainWindow.webContents.send("question-answered", {
 						studentName: null,
 					});
@@ -516,6 +519,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			broadcastServer.broadcastFloatingWindowClosed();
 			questionWindow = null;
 			questionWindowRect = null;
+			questionWindowStudentAnswered = null;
 		});
 		questionWindow.on("move", () => {
 			if (
@@ -552,23 +556,10 @@ ipcMain.on("close-question-window", () => {
 
 broadcastServer.on("client-dismiss-question", () => {
 	if (
-		questionWindowFromLesson &&
+		questionWindowIsLesson &&
 		questionWindow &&
 		!questionWindow.isDestroyed()
 	) {
-		questionWindow.close();
-		questionWindow = null;
-	}
-	if (state.mainWindow) {
-		state.mainWindow.webContents.send("question-answered", {
-			studentName: null,
-		});
-	}
-});
-
-broadcastServer.on("client-close-answered-question", () => {
-	questionWindowFromLesson = false;
-	if (questionWindow && !questionWindow.isDestroyed()) {
 		questionWindow.close();
 		questionWindow = null;
 	}
