@@ -93,8 +93,8 @@ class BlockEditor {
 		text = text.replace(/↓💾/g, "💾");
 		text = text.replace(/↑►↓/g, "↑►");
 
-		text = text.replace(/<\/html>/g, "↢</html>");
-		text = text.replace(/<\/script>/g, "↢</script>");
+		text = text.replace(/<\/html>/g, "⌫</html>");
+		text = text.replace(/<\/script>/g, "⌫</script>");
 
 		text = text.replace(/(?:↓►)+$/, "");
 

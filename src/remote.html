@@ -59,8 +59,6 @@
 
 		<div id="touchpadOverlay" class="touchpad-overlay"></div>
 
-		<div id="jediCountdown" class="jedi-countdown"></div>
-
 		<div id="modeSideBtns" class="mode-side-btns">
 			<button
 				id="modeBtnMouse"
@@ -77,14 +75,6 @@
 				title="Keyboard"
 			>
 				<span class="side-btn-emoji">⌨️</span>
-			</button>
-			<button
-				id="modeBtnJedi"
-				class="mode-side-btn"
-				onclick="setTouchpadMode('jedi')"
-				title="Jedi Mode"
-			>
-				<span class="side-btn-emoji">🥋</span>
 			</button>
 			<div class="mode-side-divider"></div>
 			<button
@@ -140,7 +130,6 @@
 		</div>
 
 		<script src="remote/connection.js"></script>
-		<script src="remote/jedi.js"></script>
 		<script src="remote/touchpad.js"></script>
 		<script src="remote/timer.js"></script>
 		<script src="remote/lesson.js"></script>
@@ -188,12 +177,6 @@
 					case "timer-stopped":
 						showTimerStopped();
 						break;
-					case "floating-window-opened":
-						autoEnableJedi();
-						break;
-					case "floating-window-closed":
-						autoDisableJedi();
-						break;
 				}
 			}
 
@@ -217,7 +200,6 @@
 				if (state.timeRemaining != null)
 					showTimerRunning(state.timeRemaining);
 				else showTimerStopped();
-				if (state.floatingWindowCount > 0) autoEnableJedi();
 			}
 
 			setMessageHandler(handleMessage);

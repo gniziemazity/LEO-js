@@ -107,40 +107,30 @@ broadcastServer.on("client-mouse-move", async (dx, dy) => {
 	try {
 		const pos = await mouse.getPosition();
 		await mouse.setPosition(new Point(pos.x + dx, pos.y + dy));
-	} catch (e) {
-		/* ignore */
-	}
+	} catch (e) {}
 });
 broadcastServer.on("client-mouse-click", async (button) => {
 	try {
 		if (button === "right") await mouse.rightClick();
 		else await mouse.leftClick();
-	} catch (e) {
-		/* ignore */
-	}
+	} catch (e) {}
 });
 broadcastServer.on("client-mouse-scroll", async (dy) => {
 	try {
 		const amount = Math.abs(Math.round(dy));
 		if (dy > 0) await mouse.scrollDown(amount);
 		else await mouse.scrollUp(amount);
-	} catch (e) {
-		/* ignore */
-	}
+	} catch (e) {}
 });
 broadcastServer.on("client-mouse-drag-start", async () => {
 	try {
 		await mouse.pressButton(Button.LEFT);
-	} catch (e) {
-		/* ignore */
-	}
+	} catch (e) {}
 });
 broadcastServer.on("client-mouse-drag-end", async () => {
 	try {
 		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {
-		/* ignore */
-	}
+	} catch (e) {}
 });
 
 function getActiveFloatingWindow() {
@@ -313,8 +303,7 @@ async function createWindow() {
 	state.mainWindow = new BrowserWindow(config);
 	createApplicationMenu();
 	state.mainWindow.loadFile(path.join(__dirname, "../index.html"));
-	const certDir = path.join(app.getPath("userData"), "certs");
-	await broadcastServer.start(certDir);
+	await broadcastServer.start();
 	state.broadcastServer = broadcastServer;
 	hotkeyManager.registerSystemShortcuts();
 	state.mainWindow.webContents.on("did-finish-load", () => {

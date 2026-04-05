@@ -38,9 +38,7 @@ async function requestWakeLock() {
 				wakeLock = null;
 			});
 		}
-	} catch (e) {
-		/* wake lock not supported or denied */
-	}
+	} catch (e) {}
 }
 
 document.addEventListener("click", function goFS() {

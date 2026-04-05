@@ -765,9 +765,6 @@ body.typing-active #editor-toolbar {
 	opacity: 0.15;
 	pointer-events: none;
 }
-#modeBtnJedi.mode-active {
-	background: rgba(231, 76, 60, 0.9);
-}
 #modeSideBtns.has-active
 	.mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(
 		.mode-side-btn-help
@@ -816,31 +813,6 @@ body.side-left .mode-side-btn .side-btn-emoji {
 .touchpad-overlay.keyboard-mode {
 	background: rgba(27, 94, 32, 0.4);
 }
-.touchpad-overlay.jedi-mode {
-	background: rgba(231, 76, 60, 0.35);
-	z-index: 2550;
-}
-.touchpad-overlay.jedi-mode ~ .mode-side-btns .mode-side-btn:not(#modeBtnJedi) {
-	display: none;
-}
-
-.jedi-countdown {
-	display: none;
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	justify-content: center;
-	align-items: center;
-	font-size: 8rem;
-	font-weight: 700;
-	color: rgba(255, 255, 255, 0.85);
-	text-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
-	z-index: 2600;
-	pointer-events: none;
-	user-select: none;
-}
 
 body.side-right .overlay,
 body.side-left .overlay {
@@ -883,7 +855,6 @@ body.side-left .i-modal {
 	background: #bbdefb;
 }
 
-/* ── popup window resize handles ── */
 .resize-handle {
 	position: fixed;
 	z-index: 999;
@@ -946,7 +917,6 @@ body.side-left .i-modal {
 	cursor: se-resize;
 }
 
-/* ── remote client overflow fix ── */
 .mobile-view #mobile-header {
 	position: fixed;
 	top: 0;
@@ -1215,7 +1185,7 @@ body.side-left .i-modal {
 	color: rgba(0, 0, 0, 0.35);
 }
 
-/* ── frameless popup windows: neon glow frame ── */
+
 
 .neon-frame {
 	position: absolute;
@@ -1260,7 +1230,7 @@ body.side-left .i-modal {
 	color: #fff;
 }
 
-/* ── image window ── */
+
 
 body.image-view {
 	--bg: #bbdefb;
@@ -1393,7 +1363,7 @@ webview {
 	opacity: 1;
 }
 
-/* ── question window ── */
+
 
 body.question-view {
 	--bg: #facaca;
@@ -1492,7 +1462,6 @@ body.question-view .neon-frame {
 		opacity: 1;
 	}
 }
-/* ── web window ── */
 
 body.web-view {
 	--bg: #bbdefb;

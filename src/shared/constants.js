@@ -10,19 +10,16 @@ const NUTJS_KEY_MAPPING = {
 	"▲": { key: Key.PageUp },
 	"▼": { key: Key.PageDown },
 
-	// editing
-	"↢": { key: Key.Backspace },
+	"⌫": { key: Key.Backspace },
 	"―": { key: Key.Tab },
 	"⛔": { modifier: Key.LeftControl, shift: true, key: Key.K },
-	"↣": { key: Key.Delete },
+	"⌦": { key: Key.Delete },
 
-	// navigation with Shift
 	"⇑": { shift: true, key: Key.Up },
 	"⇓": { shift: true, key: Key.Down },
 	"⇐": { shift: true, key: Key.Home },
 	"⇒": { shift: true, key: Key.End },
 
-	// advanced functions
 	"💾": { modifier: Key.LeftControl, key: Key.S },
 	"🔁": { modifier: Key.LeftAlt, key: Key.Tab },
 	Ö: { modifier: Key.LeftAlt, key: Key.Tab },
@@ -36,7 +33,6 @@ const NUTJS_KEY_MAPPING = {
 	"🅴": { key: Key.Escape },
 	Ț: { modifier: Key.LeftControl, key: Key.F },
 
-	// special pause symbol - no key action
 	"🕛": { pause: 500 },
 };
 
@@ -53,7 +49,7 @@ const WINDOW_CONFIG = {
 };
 
 const LOG_CONFIG = {
-	SAVE_INTERVAL: 10, // save log every N key presses
+	SAVE_INTERVAL: 10,
 };
 
 const TIMER_CONFIG = {

@@ -73,7 +73,6 @@ function updateModeBtns(activeMode) {
 	const ids = {
 		mouse: "modeBtnMouse",
 		keyboard: "modeBtnKeyboard",
-		"jedi": "modeBtnJedi",
 	};
 	for (const [m, id] of Object.entries(ids)) {
 		const btn = document.getElementById(id);
@@ -96,14 +95,9 @@ function deactivateTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 	touchpadActive = false;
-	overlay.classList.remove("active", "keyboard-mode", "jedi-mode");
+	overlay.classList.remove("active", "keyboard-mode");
 	header.classList.remove("hidden");
 	stopDragIfActive();
-	if (jediActive) {
-		stopCalibration();
-		resetJediState();
-		jediActive = false;
-	}
 }
 
 function closeTouchpad() {
@@ -111,12 +105,10 @@ function closeTouchpad() {
 	updateModeBtns(null);
 }
 
-async function setTouchpadMode(mode) {
+function setTouchpadMode(mode) {
 	if (mode === "keyboard" && !autoTypingActive) return;
 
-	const alreadyActive =
-		(mode === "jedi" && jediActive) ||
-		(mode !== "jedi" && touchpadActive && touchpadMode === mode);
+	const alreadyActive = touchpadActive && touchpadMode === mode;
 
 	deactivateTouchpad();
 
@@ -128,22 +120,11 @@ async function setTouchpadMode(mode) {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 
-	if (mode === "jedi") {
-		if (!jediGranted) await requestOrientationPermission();
-		jediActive = true;
-		resetJediState();
-		touchpadActive = true;
-		overlay.classList.add("active", "jedi-mode");
-		header.classList.add("hidden");
-		initJedi();
-		startCalibration();
-	} else {
-		touchpadActive = true;
-		touchpadMode = mode;
-		overlay.classList.add("active");
-		overlay.classList.toggle("keyboard-mode", mode === "keyboard");
-		header.classList.add("hidden");
-	}
+	touchpadActive = true;
+	touchpadMode = mode;
+	overlay.classList.add("active");
+	overlay.classList.toggle("keyboard-mode", mode === "keyboard");
+	header.classList.add("hidden");
 
 	updateModeBtns(mode);
 }
@@ -170,8 +151,6 @@ function initTouchpad() {
 	let touchDownX = 0;
 	let touchDownY = 0;
 
-	initJedi();
-
 	overlay.addEventListener(
 		"touchstart",
 		(e) => {
@@ -180,11 +159,6 @@ function initTouchpad() {
 
 			if (touchpadMode === "keyboard") {
 				sendMessage("remote-key-press", {});
-				return;
-			}
-
-			if (jediActive) {
-				jediTouchStart(e);
 				return;
 			}
 
@@ -227,11 +201,6 @@ function initTouchpad() {
 		(e) => {
 			e.preventDefault();
 			if (touchpadMode === "keyboard") return;
-
-			if (jediActive) {
-				jediTouchMove(e);
-				return;
-			}
 
 			const now = Date.now();
 			if (now - lastSendTime < SEND_THROTTLE_MS) return;
@@ -291,11 +260,6 @@ function initTouchpad() {
 			e.preventDefault();
 
 			if (touchpadMode === "keyboard") return;
-
-			if (jediActive) {
-				jediTouchEnd(e);
-				return;
-			}
 
 			if (e.touches.length === 0 && twoFingerTapStart > 0) {
 				const elapsed = Date.now() - twoFingerTapStart;

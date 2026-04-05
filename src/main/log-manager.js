@@ -37,7 +37,6 @@ class LogManager {
 				basename: path.basename(lessonFilePath, ".json"),
 			};
 		} else {
-			// fallback to temp directory
 			return {
 				logsDir: path.join(os.tmpdir(), "leo-logs"),
 				basename: "unnamed_lesson",

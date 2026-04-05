@@ -1,16 +1,11 @@
 const express = require("express");
 const http = require("http");
-const https = require("https");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
-const fs = require("fs");
-const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
+const qrcode = require("qrcode-terminal");
 const EventEmitter = require("events");
-const selfsigned = require("selfsigned");
-
-const JEDI_DEBUG = true;
 
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
@@ -34,41 +29,14 @@ class LEOBroadcastServer extends EventEmitter {
 		};
 	}
 
-	async loadOrCreateCert(certDir) {
-		const certFile = path.join(certDir, "leo-cert.pem");
-		const keyFile = path.join(certDir, "leo-key.pem");
-		if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
-			return {
-				cert: fs.readFileSync(certFile),
-				key: fs.readFileSync(keyFile),
-			};
-		}
-		fs.mkdirSync(certDir, { recursive: true });
-		const attrs = [{ name: "commonName", value: "LEO-js" }];
-		const pems = await selfsigned.generate(attrs, {
-			days: 3650,
-			keySize: 2048,
-		});
-		fs.writeFileSync(certFile, pems.cert);
-		fs.writeFileSync(keyFile, pems.private);
-		console.log("Generated new self-signed certificate at", certDir);
-		return { cert: pems.cert, key: pems.private };
-	}
-
-	async start(certDir) {
+	async start() {
 		this.app.get("/", (req, res) => {
 			res.sendFile(path.join(__dirname, "../remote.html"));
 		});
 		this.app.use(express.static(__dirname + "/../shared/"));
 
-		if (certDir) {
-			const { cert, key } = await this.loadOrCreateCert(certDir);
-			this.server = https.createServer({ cert, key }, this.app);
-			this.protocol = "https";
-		} else {
-			this.server = http.createServer(this.app);
-			this.protocol = "http";
-		}
+		this.server = http.createServer(this.app);
+		this.protocol = "http";
 
 		this.wss = new WebSocket.Server({ server: this.server });
 		this.wss.on("connection", (ws) => {
@@ -91,12 +59,11 @@ class LEOBroadcastServer extends EventEmitter {
 	}
 
 	printLocalIPs() {
-		const proto = this.protocol || "http";
 		const interfaces = os.networkInterfaces();
 		Object.keys(interfaces).forEach((ifname) => {
 			interfaces[ifname].forEach((iface) => {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `${proto}://${iface.address}:${this.port}`;
+					const url = `http://${iface.address}:${this.port}`;
 					console.log(`Client Viewer URL: ${url}`);
 					qrcode.generate(url);
 				}
@@ -259,8 +226,6 @@ class LEOBroadcastServer extends EventEmitter {
 				data.dx ?? 0,
 				data.dy ?? 0,
 			);
-		} else if (type === "jedi-debug") {
-			if (JEDI_DEBUG) console.log(`[jedi]`, JSON.stringify(data));
 		} else if (type === "mouse-click") {
 			this.emit("client-mouse-click", data.button);
 		} else if (type === "mouse-scroll") {
@@ -283,13 +248,12 @@ class LEOBroadcastServer extends EventEmitter {
 	}
 
 	async getServerInfo() {
-		const proto = this.protocol || "http";
 		const interfaces = os.networkInterfaces();
 		const serverInfos = [];
 		for (const ifname of Object.keys(interfaces)) {
 			for (const iface of interfaces[ifname]) {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `${proto}://${iface.address}:${this.port}`;
+					const url = `http://${iface.address}:${this.port}`;
 					try {
 						const qrCodeDataUrl = await QRCode.toDataURL(url, {
 							width: 300,

@@ -139,9 +139,6 @@ function setupEventListeners() {
 	const artBtn = uiManager.getElement("generateArtificialLogBtn");
 	if (artBtn) {
 		artBtn.onclick = () => {
-			// If a code block is selected it is rendered as an editable element
-			// with no execution steps, so buildArtificialLogEvents() would skip
-			// it entirely.  Temporarily deselect to force a full render first.
 			const savedSelection = uiManager.getSelectedBlockIndex();
 			if (savedSelection !== null) {
 				uiManager.deselectBlock();
@@ -151,13 +148,11 @@ function setupEventListeners() {
 			const events = cursorManager.buildArtificialLogEvents();
 			const logPath = logManager.saveArtificialLog(events);
 
-			// Restore the previous selection so the editor state is unchanged.
 			if (savedSelection !== null) {
 				uiManager.selectBlock(savedSelection);
 				lessonRenderer.render();
 			}
 
-			// Open the JS log visualizer in a new window.
 			if (logPath) {
 				ipcRenderer.send("open-log-visualizer", logPath);
 			}
