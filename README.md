@@ -11,25 +11,52 @@ To best understand how **LEO** works, please check the [Video Tutorial](https://
 ### 🎯 Core Features
 
 - **Auto-Typing (Code) Blocks**: Press any hotkey to advance through pre-written code character by character
-- **Comment Blocks**: Brief explanations for the teacher
-- **Question Blocks**: Comment Blocks starting with ❓ are logged as teacher questions
+- **Comment Blocks**: Brief explanations for the teacher (not auto-typed)
 - **Visual Progress**: Real-time progress bar and cursor highlighting
 - **Timer Integration**: Presentation timer with adjustable duration (default 90 minutes)
 - **Remote Viewing**: Mobile-friendly client viewer via WebSocket connection
 
+### 💬 Special Comment Block Types
+
+Comment blocks can be given special roles by starting their text with a specific emoji:
+
+| Prefix | Type        | Behavior                                                       |
+| ------ | ----------- | -------------------------------------------------------------- |
+| ❓     | Question    | Displayed in a floating question window                        |
+| 🖼️     | Image       | Opens a floating image window showing the specified image file |
+| 🌐     | Web         | Opens a floating web viewer window for the specified URL       |
+| 📋     | Code Insert | Logs a pre-written code into the editor                        |
+| ➡️     | Move To     | Moves the editor cursor to a specific location                 |
+
+### 🪟 Floating Windows
+
+When a special comment block is reached, LEO opens a dedicated floating window:
+
+- **Question Window**: Displays the question text and student answer buttons (loaded from `students.txt`)
+- **Image Window**: Shows an image file with resize and pin controls
+- **Web Window**: Displays a URL inside an embedded web viewer
+
+### 👨‍🎓 Student Management
+
+- Load a class roster by placing a `students.txt` file next to your lesson file (one student per line)
+- Student names appear as answer buttons in the question window
+- When a student answers, a **fireworks sound effect** plays and the event is logged
+
 ### ⚙️ Advanced Features
 
-- **Always On Top**: Keep LEO visible over your IDE or presentation
-- **Transparency Toggle**: For overlay presentations
+- **Always On Top**: Keep LEO visible over your IDE or presentation (`Ctrl+Shift+Space`)
+- **Transparency Toggle**: For overlay presentations (`Ctrl+Shift+T`)
 - **Undo/Redo**: Full undo/redo support for editing lessons
-- **Navigation**: Press anywhere in the plan to jump to that location
+- **Navigation**: Click any character to jump directly to that position
+- **Step Navigation**: `Ctrl+Left` / `Ctrl+Right` to step backward or forward one block
 - **Auto-Typing Modes**:
    - **Single Key** (default): Press any key to advance one character
-   - **Entire Block**: Press a key to auto-type an entire code block at configurable speed (10-200ms)
+   - **Entire Block**: Press a key to auto-type an entire code block at configurable speed
 - **Interaction Tracking**: Log student questions (❓) and help sessions (🤝) for later analysis
 - **Special Characters**: Easy insertion of navigation keys, shortcuts, and timing controls
-- **Auto-Formatting**: Auto-format code with ✨ button (adds cursor movement symbols)
-- **Keystroke Logging**: Automatic session logging for performance analysis
+- **Auto-Formatting**: Auto-format code with ✨ button (still work in progress...)
+- **Keystroke Logging**: Automatic session logging saved to a `logs/` directory
+- **Lesson Tools**: Standalone browser tools for session analysis, animated replay, student comparison
 - **Customizable Styling**: Configure colors, fonts, and appearance
 
 ## 📋 Prerequisites
@@ -69,7 +96,7 @@ npm start
 3. **Navigate**:
    - `Ctrl+Left`: Step backward
    - `Ctrl+Right`: Step forward
-   - Press on any character to jump to that position
+   - Click on any character to jump to that position
 4. **Track interactions**:
    - ❓ button: Log a student question
    - 🤝 button: Log when you provide help
@@ -79,7 +106,7 @@ npm start
 
 While **not** in auto-typing mode, you can edit your lesson:
 
-1. **Select blocks**: Press any block to select it
+1. **Select blocks**: Click any block to select it
 2. **Edit content**: Edit text directly in the selected block
 3. **Add blocks**: Use + buttons (yellow for comments, white for code)
 4. **Remove blocks**: Select a block and press the – button
@@ -104,9 +131,25 @@ You can disable them by loading the VS Code settings provided in the settings fo
 ### Remote Viewing (Mobile/Tablet)
 
 1. Start LEO on your computer
-2. Look for the console output showing the WebSocket URL with QR code
-3. Scan the QR code or visit the URL on your mobile device
-4. The mobile viewer will sync automatically with your presentation
+2. Click the QR button in the toolbar to display the connection QR code
+3. Scan the QR code or visit the URL shown on your mobile device
+4. The mobile viewer syncs automatically with your presentation
+
+The remote client supports two interaction modes:
+
+- **Mouse Mode**: Touchpad-style cursor and click control
+- **Keyboard Mode**: On-screen keyboard input
+
+### Lesson Tools (standalone browser tools)
+
+LEO ships four standalone browser-based analysis tools in the `lesson_tools/` directory. Open them with the npm scripts below — no server required, they run directly in your browser.
+
+| Tool              | Script             | Description                                     |
+| ----------------- | ------------------ | ----------------------------------------------- |
+| 📊 Dashboard      | `npm run dash`     | Key log charts and session analysis             |
+| 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview |
+| 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison    |
+| 👥 Students       | `npm run students` | Student submission viewer                       |
 
 ## 📺 Demo
 
@@ -124,7 +167,7 @@ The Emordnilap lesson plan was used during this [live stream](https://www.youtub
 | Step Backward       | `Ctrl+Left`        |
 | Step Forward        | `Ctrl+Right`       |
 | Undo                | `Ctrl+Z`           |
-| Redo                | `Ctrl+Y`           |
+| Redo                | `Ctrl+Shift+Z`     |
 | Always On Top       | `Ctrl+Shift+Space` |
 | Toggle Transparency | `Ctrl+Shift+T`     |
 | New Plan            | `Ctrl+N`           |
@@ -143,41 +186,37 @@ All hotkeys are customizable via Settings.
 LEO includes quick-insert buttons for special characters commonly used in coding demonstrations:
 
 - **Navigation**: ←, →, ↑, ↓, ◄ (Home), ► (End), ▲ (Page Up), ▼ (Page Down)
-- **Editing**: ↢ (Backspace), ― (Tab), ↩ (Enter)
+- **Editing**: ⌫ (Backspace), ― (Tab), ↩ (Enter)
 - **Shift Navigation**: ⇑ (Shift+Up), ⇓ (Shift+Down), ⇐ (Shift+Left), ⇒ (Shift+Right)
 - **Shortcuts**: 💾 (Save: Ctrl+S), 🔁 (Alt+Tab)
-- **Special**: ❓ (Question marker for comment blocks), 🕛 (Pause 1000ms during typing)
+- **Timing**: 🕛 (Pause 500ms during typing)
+- **Block Markers**: ❓ (Question block), 🖼️ (Image block), 🌐 (Web block), 📋 (Code insert), ➡️ (Move to)
 
 These symbols are automatically translated to actual keystrokes during auto-typing mode.
-
-## 📁 Lesson File Format
-
-Lessons are stored as JSON files:
-
-```json
-[
-	{
-		"type": "comment",
-		"text": "Welcome to the lesson!"
-	},
-	{
-		"type": "comment",
-		"text": "❓ What do you think will happen next?"
-	},
-	{
-		"type": "code",
-		"text": "function hello() {\n  console.log('Hello, World!');\n}"
-	}
-]
-```
 
 ### Block Types
 
 - **`comment`**: Brief explanations for the teacher (not auto-typed)
-   - Start with ❓ to create a question block
-   - Question blocks are automatically logged when reached during presentation
+   - Start with ❓ to create a **question block** — logged automatically when reached; shows student buttons
+   - Start with 🖼️ to create an **image block** — opens a floating image window
+   - Start with 🌐 to create a **web block** — opens a floating web viewer
+   - Start with 📋 to create a **code insert block**
+   - Start with ➡️ to create a **move-to block**
 - **`code`**: Text typed character-by-character (for controlled pacing)
    - Use special symbols (←, →, 💾, 🕛, etc.) to insert keystrokes and pauses
+
+## 👥 Student File Format
+
+To enable student answer buttons in the question window, create a `students.txt` file in the same directory as your lesson file:
+
+```
+Alice
+Bob
+Carol
+David
+```
+
+One student name per line. The file is loaded automatically when the lesson is opened.
 
 ## ⚙️ Configuration
 
@@ -200,7 +239,7 @@ Access settings via File → Settings (`Ctrl+,`).
 #### Colors
 
 - Comment block colors (normal, active, selected)
-- Question comment block color (for blocks starting with ❓)
+- Question/Image/Web/Code-Insert block colors
 - Active text color
 - Cursor color
 - Border colors
@@ -214,6 +253,7 @@ LEO automatically logs all keystrokes and interactions during sessions for analy
 
 - **Keystrokes**: All characters typed during the lesson
 - **Teacher Questions**: When you reach a question block (❓)
+- **Student Answers**: Which student answered and when
 - **Student Questions**: When you press the ❓ button
 - **Help Sessions**: When you press the 🤝 button
 - **Timestamps**: Exact timing for all events
@@ -223,8 +263,6 @@ LEO automatically logs all keystrokes and interactions during sessions for analy
 - Logs saved to `logs/` directory next to your lesson file
 - Format: `lessonname_key_presses_TIMESTAMP.json`
 - Includes session metadata (start time, lesson name, etc.)
-
-This data can be used to analyze teaching patterns, identify challenging sections, and improve lesson pacing.
 
 ## 🐛 Troubleshooting
 
