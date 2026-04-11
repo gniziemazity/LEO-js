@@ -1,9 +1,5 @@
 "use strict";
 
-const { ipcRenderer } = require("electron");
-const path = require("path");
-const fs = require("fs");
-
 const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 
@@ -83,6 +79,146 @@ const CLR = {
 	settingsbg: "#f0f0f8",
 };
 
+const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
+const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
+const _EXPAND_FILE_EXTS = [".js", ".css", ".html", ".htm"];
+const _EXPAND_DELAY_CODE = 30;
+const _EXPAND_MAX_DELAY = 3000;
+const _CI_SPECIAL = new Set([
+	...Object.keys(CURSOR_MOVES),
+	DELETE_LINE_CHAR,
+	"↩",
+	"\n",
+	"―",
+	"\t",
+	"↢",
+	"⌫",
+	"↣",
+	"⌦",
+]);
+
+function _splitCodeWithAnchors(code) {
+	const result = [];
+	let last = 0;
+	const re = /⚓([^⚓]*)⚓/g;
+	let m;
+	while ((m = re.exec(code)) !== null) {
+		if (m.index > last) result.push(["text", code.slice(last, m.index)]);
+		result.push(["anchor", `⚓${m[1]}⚓`]);
+		last = m.index + m[0].length;
+	}
+	if (last < code.length) result.push(["text", code.slice(last)]);
+	return result;
+}
+
+function expandEvents(events) {
+	const micro = [];
+	const n = events.length;
+	let currentEditor = "main";
+
+	for (let i = 0; i < n; i++) {
+		const ev = events[i];
+		const ts = ev.timestamp || 0;
+		const nts = i + 1 < n ? events[i + 1].timestamp || ts : ts;
+		const realDelay = Math.min(Math.max(nts - ts, 1), _EXPAND_MAX_DELAY);
+
+		if ("move_to" in ev) {
+			const target = ev.move_to;
+			if (target === "DEV" || target === "dev") {
+				currentEditor = "dev";
+				micro.push(["switch_editor", "dev", ts, DELAY_OPS]);
+			} else if (target === "MAIN" || target === "main") {
+				currentEditor = "main";
+				micro.push(["switch_editor", "main", ts, DELAY_OPS]);
+			} else if (
+				_EXPAND_FILE_EXTS.some((ext) => target.toLowerCase().endsWith(ext))
+			) {
+				currentEditor = "main";
+				micro.push(["switch_file", target, ts, DELAY_OPS]);
+			} else {
+				micro.push(["move_anchor", target, ts, realDelay]);
+			}
+			continue;
+		}
+
+		if ("switch_editor" in ev) {
+			currentEditor = ev.switch_editor;
+			micro.push(["switch_editor", currentEditor, ts, DELAY_OPS]);
+			continue;
+		}
+
+		const editor = currentEditor;
+
+		if ("char" in ev) {
+			micro.push(["char", ev.char, ts, realDelay, editor]);
+		} else if ("code_insert" in ev) {
+			const segments = _splitCodeWithAnchors(ev.code_insert);
+			micro.push([
+				"log_code_insert",
+				ev.code_insert.slice(0, 60),
+				ts,
+				DELAY_OPS,
+			]);
+			micro.push(["code_insert_begin", ts, DELAY_OPS]);
+			let totalChars = 0;
+			for (const [k, v] of segments)
+				if (k === "text")
+					for (const ch of v) if (!_CI_SPECIAL.has(ch)) totalChars++;
+			let charI = 0;
+			for (const [segKind, segVal] of segments) {
+				if (segKind === "text") {
+					for (const ch of segVal) {
+						if (ch === DELETE_LINE_CHAR) {
+							micro.push(["code_delete_line", ts, DELAY_OPS, editor]);
+						} else if (
+							Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
+						) {
+							micro.push([
+								"code_cursor_move",
+								ch,
+								ts,
+								DELAY_OPS,
+								editor,
+							]);
+						} else if (ch === "↩" || ch === "\n") {
+							micro.push(["code_insert_newline", ts, DELAY_OPS, editor]);
+						} else if (ch === "―" || ch === "\t") {
+							micro.push([
+								"code_char",
+								"\t",
+								ts,
+								_EXPAND_DELAY_CODE,
+								editor,
+							]);
+						} else if (_EXPAND_BACKSPACE.has(ch)) {
+							micro.push(["code_backspace", ts, DELAY_OPS, editor]);
+						} else if (_EXPAND_FWD_DEL.has(ch)) {
+							micro.push(["code_fwd_delete", ts, DELAY_OPS, editor]);
+						} else {
+							charI++;
+							const d =
+								charI === totalChars ? realDelay : _EXPAND_DELAY_CODE;
+							micro.push(["code_char", ch, ts, d, editor]);
+						}
+					}
+				} else {
+					micro.push(["set_anchor", segVal, ts, DELAY_OPS]);
+				}
+			}
+			micro.push(["code_insert_end", ts, DELAY_OPS]);
+		} else if ("code_remove" in ev) {
+			micro.push(["code_remove", ev.code_remove, ts, realDelay]);
+		} else if ("anchor" in ev) {
+			micro.push(["set_anchor", ev.anchor, ts, DELAY_OPS]);
+		} else if ("move" in ev) {
+			micro.push(["move_anchor", ev.move, ts, realDelay]);
+		} else if ("jump_to" in ev) {
+			micro.push(["move_anchor", ev.jump_to, ts, realDelay]);
+		}
+	}
+	return micro;
+}
+
 class TextState {
 	constructor() {
 		this.reset();
@@ -102,7 +238,6 @@ class TextState {
 		const pos = this.cursor;
 		this.text = this.text.slice(0, pos) + ch + this.text.slice(pos);
 		this.charTs.splice(pos, 0, ts);
-		// right gravity for the last jumped-to anchor after a backspace; left gravity otherwise.
 		for (const name in this.anchors) {
 			const p = this.anchors[name];
 			if (
@@ -271,19 +406,7 @@ class VSCodeSettings {
 		return JSON.parse(result);
 	}
 
-	static load(logPath) {
-		const folder = path.dirname(path.resolve(logPath));
-		const candidate = path.join(folder, ".vscode", "settings.json");
-		if (fs.existsSync(candidate)) {
-			try {
-				const raw = VSCodeSettings._parseJsonc(
-					fs.readFileSync(candidate, "utf8"),
-				);
-				return new VSCodeSettings(raw, candidate);
-			} catch (e) {
-				return new VSCodeSettings({}, `parse error: ${e.message}`);
-			}
-		}
+	static load() {
 		return new VSCodeSettings({}, "defaults");
 	}
 
@@ -357,8 +480,7 @@ const HL_COLORS = {
 	hl_css_num: "#098658",
 	hl_css_at: "#af00db",
 };
-// Priority matches Python's tag_raise order: last in this list = highest display priority
-// (in Python the last tag_raise'd wins; here the first item in the array wins the used[] race)
+
 const HL_PRIORITY = [
 	"hl_comment",
 	"hl_value",
@@ -775,6 +897,8 @@ class LogVisualizer {
             <button id="btn-play" disabled>▶  Play</button>
             <button id="btn-reset" disabled>⏮  Reset</button>
             <div class="sep"></div>
+            <button id="btn-open-toolbar">📄 Open</button>
+            <div class="sep"></div>
             <button id="btn-settings">⚙ VS Code: defaults</button>
             <div class="sep"></div>
             <label>Speed: <input id="speed-slider" type="range" min="1" max="60" value="8" step="0.5"></label>
@@ -864,15 +988,12 @@ class LogVisualizer {
 
 	loadFile({ filePath, micro, error }) {
 		if (error) {
-			this._setStatus(
-				`⚠ Python error — see DevTools console for details`,
-				CLR.red,
-			);
-			console.error("lv_expand.py error:\n" + error);
+			this._setStatus(`⚠ Expand error — see console for details`, CLR.red);
+			console.error("expand error:\n" + error);
 			return;
 		}
 
-		this.vscode = VSCodeSettings.load(filePath);
+		this.vscode = VSCodeSettings.load();
 		this._updateSettingsBadge();
 
 		this.micro = micro;
@@ -1412,7 +1533,7 @@ class LogVisualizer {
 				if (node.nodeType !== Node.TEXT_NODE) return srcIdx;
 				const p = node.parentElement;
 				if (p?.classList.contains("vis-cursor")) return srcIdx;
-				if (p?.classList.contains("vis-tab")) return srcIdx; // cursor inside tab
+				if (p?.classList.contains("vis-tab")) return srcIdx;
 				return srcIdx + targetOffset;
 			}
 			if (node.nodeType === Node.TEXT_NODE) {
@@ -1856,16 +1977,38 @@ document.addEventListener("DOMContentLoaded", () => {
 	vis = new LogVisualizer();
 
 	const landing = document.getElementById("lv-landing");
+	const fileInput = document.getElementById("lv-file-input");
 	const btnOpen = document.getElementById("btn-open-log");
 
-	btnOpen.addEventListener("click", () => {
-		btnOpen.disabled = true;
-		btnOpen.textContent = "Loading…";
-		ipcRenderer.send("pick-log-file");
-	});
-
-	ipcRenderer.on("load-log", (_e, data) => {
+	function loadFromData(data) {
 		landing.style.display = "none";
 		vis.loadFile(data);
+	}
+
+	if (window.__LOG_DATA__) {
+		loadFromData(window.__LOG_DATA__);
+	}
+
+	btnOpen.addEventListener("click", () => fileInput.click());
+	document
+		.getElementById("btn-open-toolbar")
+		.addEventListener("click", () => fileInput.click());
+
+	fileInput.addEventListener("change", () => {
+		const file = fileInput.files[0];
+		if (!file) return;
+		fileInput.value = "";
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			try {
+				const json = JSON.parse(e.target.result);
+				const events = json.events || [];
+				const micro = expandEvents(events);
+				loadFromData({ filePath: file.name, micro, error: null });
+			} catch (err) {
+				alert("Failed to load log: " + err.message);
+			}
+		};
+		reader.readAsText(file);
 	});
 });

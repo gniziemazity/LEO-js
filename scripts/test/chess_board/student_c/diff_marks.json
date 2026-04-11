@@ -1,0 +1,653 @@
+{
+  "format_version": 2,
+  "token_matching": "hyphen-aware-boundaries",
+  "case_sensitive": false,
+  "teacher_files": {
+    "123456.html": {
+      "INLINE": [
+        "comment"
+      ],
+      "50PX": [
+        null,
+        null,
+        "comment",
+        "comment"
+      ],
+      "LEFT-OFFSET": [
+        "missing",
+        "missing",
+        "missing",
+        "missing"
+      ],
+      ".LEFT-OFFSET": [
+        "missing"
+      ],
+      "NOT": [
+        "comment",
+        "comment"
+      ],
+      "DIV": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "comment",
+        "comment",
+        "comment"
+      ],
+      "WIDTH": [
+        null,
+        null,
+        "comment"
+      ],
+      "RECOMMENDED": [
+        "comment"
+      ],
+      "STYLING": [
+        "comment",
+        "comment"
+      ],
+      "MARGIN-LEFT": [
+        "missing"
+      ],
+      "USE": [
+        "comment"
+      ],
+      "SIZE": [
+        "comment"
+      ],
+      "25PX": [
+        "missing"
+      ],
+      "CSS": [
+        "comment"
+      ],
+      "IN": [
+        "comment"
+      ],
+      "BY": [
+        "comment"
+      ],
+      "BACKGROUND-COLOR": [
+        null,
+        null,
+        "comment"
+      ],
+      "425PX": [
+        "missing"
+      ],
+      "STYLE": [
+        null,
+        null,
+        "comment",
+        "comment"
+      ],
+      "CLASS": [
+        "comment",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "BORDER": [
+        null,
+        "comment"
+      ],
+      "WITH": [
+        "comment"
+      ],
+      "5PX": [
+        "comment"
+      ],
+      "AN": [
+        "comment"
+      ],
+      "ID": [
+        "comment",
+        null
+      ],
+      "10PX": [
+        "comment"
+      ],
+      "EXAMPLE": [
+        "comment"
+      ],
+      "MARGIN": [
+        "comment"
+      ],
+      "COMMENTED": [
+        "comment"
+      ],
+      "JUST": [
+        "comment"
+      ],
+      "AND": [
+        "comment"
+      ],
+      "BLACK": [
+        null,
+        "comment"
+      ],
+      "HEIGHT": [
+        null,
+        "comment"
+      ],
+      "INCLUDES": [
+        "comment"
+      ],
+      "PADDING": [
+        "comment",
+        "comment"
+      ]
+    }
+  },
+  "student_files": {
+    "123456.html": {
+      "WIDTH": [
+        null,
+        null,
+        "comment"
+      ],
+      "USE": [
+        "comment"
+      ],
+      "CSS": [
+        "comment"
+      ],
+      "BY": [
+        "comment"
+      ],
+      "CLASS": [
+        "comment",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "WITH": [
+        "comment"
+      ],
+      "5PX": [
+        "comment"
+      ],
+      "ID": [
+        "comment",
+        null
+      ],
+      "MARGIN": [
+        "comment"
+      ],
+      "RECOMENDED": [
+        "comment"
+      ],
+      "JUST": [
+        "comment"
+      ],
+      "AND": [
+        "comment"
+      ],
+      "INLINE-BLOCK": [
+        "comment"
+      ],
+      "DISPLAY": [
+        null,
+        "comment"
+      ],
+      "PADDING": [
+        "comment",
+        "comment"
+      ],
+      "INLINE": [
+        "comment"
+      ],
+      "50PX": [
+        null,
+        null,
+        "comment",
+        "comment"
+      ],
+      "NOT": [
+        "comment",
+        "comment"
+      ],
+      "DIV": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "comment",
+        "comment",
+        "comment"
+      ],
+      "STYLING": [
+        "comment",
+        "comment"
+      ],
+      "SIZE": [
+        "comment"
+      ],
+      "400PX": [
+        "extra_star"
+      ],
+      "IN": [
+        "comment"
+      ],
+      "BACKGROUND-COLOR": [
+        null,
+        null,
+        "comment"
+      ],
+      "STYLE": [
+        null,
+        null,
+        "comment",
+        "comment"
+      ],
+      "FONT-SIZE": [
+        "comment"
+      ],
+      "BORDER": [
+        null,
+        "comment"
+      ],
+      "0PX": [
+        "comment"
+      ],
+      "AN": [
+        "comment"
+      ],
+      "10PX": [
+        "comment"
+      ],
+      "EXAMPLE": [
+        "comment"
+      ],
+      "COMMENTED": [
+        "comment"
+      ],
+      "BLACK": [
+        null,
+        "comment"
+      ],
+      "HEIGHT": [
+        null,
+        "comment"
+      ],
+      "INCLUDES": [
+        "comment"
+      ]
+    }
+  }
+}

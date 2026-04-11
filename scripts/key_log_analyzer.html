@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Key Log Analyzer</title>
+		<link rel="stylesheet" href="key_log_analyzer.css" />
+	</head>
+	<body>
+		<div id="landing">
+			<div id="landing-buttons">
+				<button
+					id="btn-open-file"
+					onclick="document.getElementById('file-input').click()"
+				>
+					📄 Open Log File
+				</button>
+				<button id="btn-open-folder" onclick="openFolderPicker()">
+					📁 Open Lesson Folder
+				</button>
+			</div>
+			<p class="landing-hint">
+				xlsx files in the same folder are loaded automatically
+			</p>
+			<input
+				type="file"
+				id="file-input"
+				accept=".json,.xlsx"
+				multiple
+				style="display: none"
+			/>
+		</div>
+
+		<div id="main">
+			<div id="charts">
+				<div class="chart-section">
+					<div class="chart-wrap"><canvas id="chart1"></canvas></div>
+				</div>
+				<div class="chart-section">
+					<div class="chart-wrap"><canvas id="chart2"></canvas></div>
+				</div>
+				<div
+					class="chart-section"
+					id="chart3-section"
+					style="display: none"
+				>
+					<div class="chart-wrap"><canvas id="chart3"></canvas></div>
+				</div>
+			</div>
+		</div>
+
+		<div id="loading">Processing…</div>
+		<div id="tooltip"></div>
+
+		<script src="kla-config.js"></script>
+		<script src="kla-utils.js"></script>
+		<script src="kla-data.js"></script>
+		<script src="kla-render.js"></script>
+		<script src="kla-zoom.js"></script>
+		<script src="kla-tooltip.js"></script>
+		<script src="kla-students.js"></script>
+		<script src="kla-diff.js"></script>
+		<script src="kla-app.js"></script>
+
+		<script
+			src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"
+			async
+		></script>
+	</body>
+</html>

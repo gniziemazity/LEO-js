@@ -1,0 +1,24 @@
+{
+  "format_version": 3,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": false,
+  "teacher_files": {
+    "reconstructed.html": {
+      "FRACTION": ["comment"],
+      "1": ["comment"],
+      "FUNCTION": [null, "comment", null],
+      "ANONYMOUS": ["comment"]
+    }
+  },
+  "student_files": {
+    "index.html": {
+      "FRACTION": ["comment"],
+      "1": ["comment"],
+      "THIS": ["extra_star"],
+      "ONCLICK": ["extra_star", null],
+      "HANDLECLICK": ["extra_star", null, null],
+      "FUNCTION": [null, "comment", null],
+      "ANONYMOUS": ["comment"]
+    }
+  }
+}

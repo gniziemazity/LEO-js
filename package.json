@@ -1,34 +1,38 @@
 {
-   "name": "leo",
-   "version": "1.0.0",
-   "description": "Live-coding Assistant for Teachers",
-   "author": "Radu Mariescu-Istodor <gniziemazity@gmail.com>",
-   "main": "src/main/main.js",
-   "scripts": {
-      "start": "electron .",
-      "build": "electron-builder"
-   },
-   "build": {
-      "appId": "com.leo-js.app",
-      "productName": "LEO-js",
-      "icon": "src/shared/icon.ico",
-      "files": [
-         "**/*",
-         "!node_modules/.cache"
-      ],
-      "directories": {
-         "output": "dist"
-      }
-   },
-   "dependencies": {
-      "@computer-use/nut-js": "^4.2.0",
-      "express": "^5.2.1",
-      "qrcode": "^1.5.4",
-      "qrcode-terminal": "^0.12.0",
-      "ws": "^8.19.0"
-   },
-   "devDependencies": {
-      "electron": "^40.0.0",
-      "electron-builder": "^26.4.0"
-   }
+	"name": "leo",
+	"version": "1.0.0",
+	"description": "Live-coding Assistant for Teachers",
+	"author": "Radu Mariescu-Istodor <gniziemazity@gmail.com>",
+	"main": "src/main/main.js",
+	"scripts": {
+		"start": "electron .",
+		"build": "electron-builder",
+		"kla": "start \"\" scripts\\key_log_analyzer.html",
+		"vis": "start \"\" scripts\\log_visualizer.html",
+		"main": "py scripts/main.py",
+		"test": "cd scripts && python -m unittest test_reconstruction -v"
+	},
+	"build": {
+		"appId": "com.leo-js.app",
+		"productName": "LEO-js",
+		"icon": "src/shared/icon.ico",
+		"files": [
+			"**/*",
+			"!node_modules/.cache"
+		],
+		"directories": {
+			"output": "dist"
+		}
+	},
+	"dependencies": {
+		"@computer-use/nut-js": "^4.2.0",
+		"express": "^5.2.1",
+		"qrcode": "^1.5.4",
+		"qrcode-terminal": "^0.12.0",
+		"ws": "^8.19.0"
+	},
+	"devDependencies": {
+		"electron": "^40.0.0",
+		"electron-builder": "^26.4.0"
+	}
 }

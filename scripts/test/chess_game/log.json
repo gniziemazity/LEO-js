@@ -1,0 +1,5891 @@
+{
+  "lessonFile": "C:\\UNIVERSITY\\2026 - 2027\\WebProgramming\\plans\\b_chess_game_(grid).json",
+  "sessionStart": 1771408039647,
+  "events": [
+    {
+      "timestamp": 1771408412589,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408413035,
+      "char": "!"
+    },
+    {
+      "timestamp": 1771408413228,
+      "char": "D"
+    },
+    {
+      "timestamp": 1771408413368,
+      "char": "O"
+    },
+    {
+      "timestamp": 1771408413619,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771408413899,
+      "char": "T"
+    },
+    {
+      "timestamp": 1771408414008,
+      "char": "Y"
+    },
+    {
+      "timestamp": 1771408414249,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771408414268,
+      "char": "E"
+    },
+    {
+      "timestamp": 1771408414532,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408414652,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408415009,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408415238,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771408415429,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408415612,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408418918,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408424666,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408424950,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408425139,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408425368,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771408425519,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408425809,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408428743,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408430039,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771408430280,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408430705,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408430870,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408431099,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408431449,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771408431648,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408432219,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408438290,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771408439178,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408439713,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408455252,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408455351,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408455550,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408455701,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408455919,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408456068,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408456329,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408456750,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408457051,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408457282,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408457467,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408457660,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408457800,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408458010,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408465185,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771408465809,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408466211,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408473126,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408473360,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408473650,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408473810,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408473980,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408474115,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408474260,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408474720,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771408475020,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408475270,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408475440,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408475640,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408476472,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408476880,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771408477340,
+      "char": "2"
+    },
+    {
+      "timestamp": 1771408477629,
+      "char": "3"
+    },
+    {
+      "timestamp": 1771408477890,
+      "char": "4"
+    },
+    {
+      "timestamp": 1771408478150,
+      "char": "5"
+    },
+    {
+      "timestamp": 1771408478390,
+      "char": "6"
+    },
+    {
+      "timestamp": 1771408478640,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408478960,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408479200,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408479390,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408479531,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408479768,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408480030,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408480333,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408480627,
+      "anchor": "⚓0⚓"
+    },
+    {
+      "timestamp": 1771408487480,
+      "char": "↓"
+    },
+    {
+      "timestamp": 1771408489973,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408490414,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408492531,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408492770,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408492920,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408493110,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408493250,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771408493422,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408493910,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408494271,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408494533,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408494761,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408494960,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408495140,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408495300,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771408495620,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408495901,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771408496551,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408497029,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771408526834,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771408575236,
+      "interaction": "teacher-question",
+      "info": "What element displays a large text on the page?",
+      "answered_by": "Moeen Sultan"
+    },
+    {
+      "timestamp": 1771408594174,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408594373,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408594633,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771408594786,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408595034,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771408595334,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408595593,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408595673,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408596022,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408596243,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408596453,
+      "char": "G"
+    },
+    {
+      "timestamp": 1771408596673,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408596879,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771408597092,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408597235,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408597374,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408597603,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408597843,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771408598063,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408598464,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771408667834,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771408667987,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408668558,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408668776,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408668934,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408669095,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408669304,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408669484,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408669656,
+      "char": "="
+    },
+    {
+      "timestamp": 1771408669878,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408670005,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408670285,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408670446,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408670677,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408670815,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408670988,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771408671146,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408671324,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408671534,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408671715,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408671886,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408671964,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408672245,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408672654,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408673334,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408673697,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408673896,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408674099,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408674307,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408674595,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408674611,
+      "anchor": "⚓9⚓"
+    },
+    {
+      "timestamp": 1771408674787,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771408703775,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408704386,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408706416,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408706667,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408706816,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408706978,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408707176,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408707396,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408707556,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408707697,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408707881,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408708006,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408708211,
+      "char": "="
+    },
+    {
+      "timestamp": 1771408708306,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408708555,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408708687,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408709172,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408709277,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408709510,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408709586,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408709956,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408710066,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771408710346,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408710424,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408710756,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408710857,
+      "anchor": "⚓8⚓"
+    },
+    {
+      "timestamp": 1771408711028,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408711198,
+      "anchor": "⚓2⚓"
+    },
+    {
+      "timestamp": 1771408711306,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408711557,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408711835,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408712036,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408712257,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408712435,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408712686,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408714127,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408714355,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408714547,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408714716,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408714846,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408714945,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408715145,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408715286,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408715458,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408715627,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408715806,
+      "char": "="
+    },
+    {
+      "timestamp": 1771408715936,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408716156,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408716298,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408716506,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408716677,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408716828,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408716996,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408717166,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408717355,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408717516,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771408717677,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771408717846,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408717993,
+      "anchor": "⚓3⚓"
+    },
+    {
+      "timestamp": 1771408718240,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408718458,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408718666,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408718827,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408718976,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771408719096,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408719194,
+      "anchor": "⚓1⚓"
+    },
+    {
+      "timestamp": 1771408719348,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771408727544,
+      "interaction": "teacher-question",
+      "info": "How can we test to see if what we did is OK?",
+      "answered_by": "Ghanendra Kathet"
+    },
+    {
+      "timestamp": 1771408897500,
+      "move_to": "⚓0⚓"
+    },
+    {
+      "timestamp": 1771408899715,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771408899931,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408900190,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408900261,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408900541,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771408900751,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408900906,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408901062,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408901320,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408901876,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771408905466,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771408905690,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771408905870,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408906050,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408906200,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771408906361,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408906570,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408906830,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771408917075,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771408917750,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408918240,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408922515,
+      "char": "."
+    },
+    {
+      "timestamp": 1771408922701,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408922792,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408923041,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408923224,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408923381,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408923611,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408923733,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771408923901,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771408924133,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408924192,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408924301,
+      "anchor": "⚓16⚓"
+    },
+    {
+      "timestamp": 1771408924404,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408924831,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408924991,
+      "anchor": "⚓15⚓"
+    },
+    {
+      "timestamp": 1771408925210,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408925491,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408925629,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408925827,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408925941,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408926104,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408926330,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771408926523,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408926728,
+      "char": "2"
+    },
+    {
+      "timestamp": 1771408927168,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771408927418,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771408927572,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408927816,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771408928121,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408928302,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408928412,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408928617,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408928803,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408928933,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408929195,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408929424,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408929707,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408929802,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771408929902,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771408931267,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408954537,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408960633,
+      "char": "."
+    },
+    {
+      "timestamp": 1771408960793,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408961024,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408961183,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771408961391,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408961562,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408961811,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408961952,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771408962180,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771408962294,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408962581,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408962685,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408963032,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408963153,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408963442,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408963544,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408963772,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771408963872,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771408964202,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408964295,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408964441,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771408964653,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771408964774,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408964902,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771408965112,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408965265,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408965376,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408965622,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408965741,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408965881,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771408966132,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408966362,
+      "char": "w"
+    },
+    {
+      "timestamp": 1771408966471,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771408966763,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771408967061,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771408967215,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771408967481,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771408970115,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408970491,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771408970851,
+      "char": "."
+    },
+    {
+      "timestamp": 1771408971132,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408971302,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408971582,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408971651,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771408971662,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408971841,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408972122,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771408972252,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771408972373,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408972617,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408972729,
+      "char": "←"
+    },
+    {
+      "timestamp": 1771408972883,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408973221,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771408973224,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408973242,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408973450,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771408973650,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771408973788,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408973994,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408974211,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771408974341,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771408974495,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771408974681,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771408974844,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771408975035,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408975203,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771408975341,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771408975503,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408975739,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771408976010,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408976193,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771408976403,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771408976501,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771408976656,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771408976862,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771408977654,
+      "char": " "
+    },
+    {
+      "timestamp": 1771408978935,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771408980021,
+      "interaction": "teacher-question",
+      "info": "What is the syntax for CSS ID selectors?",
+      "answered_by": "Many students all at once!"
+    },
+    {
+      "timestamp": 1771409012362,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771409012677,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771409012974,
+      "char": "#"
+    },
+    {
+      "timestamp": 1771409013777,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771409014044,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409014303,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409014543,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409014673,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409014863,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771409015033,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771409015292,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771409015432,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409015680,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409015904,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409016126,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409025614,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771409025964,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409026223,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771409026376,
+      "anchor": "⚓4⚓"
+    },
+    {
+      "timestamp": 1771409026573,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771409026816,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771409027023,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409032914,
+      "char": "w"
+    },
+    {
+      "timestamp": 1771409033024,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409033283,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409033433,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409033664,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409033815,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409034047,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409034428,
+      "char": "4"
+    },
+    {
+      "timestamp": 1771409034838,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409035023,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409035163,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409035724,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771409036433,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409037054,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409037364,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409037633,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409037843,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409038013,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409038305,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409038424,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409038642,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409038783,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409038956,
+      "char": "4"
+    },
+    {
+      "timestamp": 1771409039157,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409039313,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409039443,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409039623,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771409039983,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409069549,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409069714,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409069832,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409070134,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409070215,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409070363,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771409070545,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409070809,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771409070956,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409071109,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409071321,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409071411,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409071660,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409071828,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409071947,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409072494,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409073184,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409073395,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409073547,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409073754,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409073904,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771409074195,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409074375,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409074575,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771409074759,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409074924,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771409075266,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409075453,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409075595,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409075825,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771409075994,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409076175,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771409076395,
+      "char": "w"
+    },
+    {
+      "timestamp": 1771409076605,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409076824,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409077286,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409077454,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409077664,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409077835,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409077980,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409078156,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409078265,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409078464,
+      "char": "("
+    },
+    {
+      "timestamp": 1771409078615,
+      "char": "8"
+    },
+    {
+      "timestamp": 1771409078815,
+      "char": ","
+    },
+    {
+      "timestamp": 1771409079155,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409079484,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771409079694,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771409079895,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409080284,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771409081114,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409102894,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409103224,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771409103534,
+      "char": "*"
+    },
+    {
+      "timestamp": 1771409103744,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409103985,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771409104214,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409104514,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771409104704,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409104915,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409105156,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771409105345,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409105556,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409105824,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771409106032,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771409106428,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409106876,
+      "char": "*"
+    },
+    {
+      "timestamp": 1771409107284,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771409112651,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409113024,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409113284,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409113596,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409113835,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409113965,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771409114154,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409114285,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409114485,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771409114604,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409114833,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771409114925,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409115114,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409115244,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409115455,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771409115585,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771409115836,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771409115943,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771409116195,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771409116321,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771409116614,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771409116995,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409117546,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409118195,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409118385,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409118556,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409118645,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409118845,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409118995,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409119245,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409119365,
+      "char": "("
+    },
+    {
+      "timestamp": 1771409119564,
+      "char": "8"
+    },
+    {
+      "timestamp": 1771409119694,
+      "char": ","
+    },
+    {
+      "timestamp": 1771409119935,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409120015,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771409120295,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771409120375,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409120735,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771409121224,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409121565,
+      "anchor": "⚓5⚓"
+    },
+    {
+      "timestamp": 1771409121784,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771409296061,
+      "move_to": "⚓1⚓"
+    },
+    {
+      "timestamp": 1771409300649,
+      "code_insert": "↩<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>\n<div class=\"cell dark\"></div>\n<div class=\"cell light\"></div>"
+    },
+    {
+      "timestamp": 1771409450111,
+      "move_to": "DEV"
+    },
+    {
+      "timestamp": 1771409450350,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409450542,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409450826,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409450993,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409451102,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771409451363,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409451445,
+      "char": "("
+    },
+    {
+      "timestamp": 1771409453580,
+      "char": "4"
+    },
+    {
+      "timestamp": 1771409454825,
+      "char": ","
+    },
+    {
+      "timestamp": 1771409455357,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409456664,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771409456962,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771409457115,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409457789,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409458033,
+      "char": "2"
+    },
+    {
+      "timestamp": 1771409458416,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771409458775,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409459367,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771409702568,
+      "interaction": "student-question",
+      "info": "Does using the developer tools modify the actual code?",
+      "asked_by": "Jake Anderson"
+    },
+    {
+      "timestamp": 1771409761552,
+      "move_to": "MAIN"
+    },
+    {
+      "timestamp": 1771409762187,
+      "move_to": "⚓2⚓"
+    },
+    {
+      "timestamp": 1771409762309,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771409763096,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771409763235,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409763471,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771409763539,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409763707,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409763921,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409763974,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771409764180,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771409764364,
+      "char": "="
+    },
+    {
+      "timestamp": 1771409764496,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771409764615,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409764824,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409764949,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409765004,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771409765391,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409765472,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771409765547,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771409765745,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409765784,
+      "char": "2"
+    },
+    {
+      "timestamp": 1771409765907,
+      "char": "."
+    },
+    {
+      "timestamp": 1771409766101,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409766200,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771409766483,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409766631,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771409766826,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409766916,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771409767223,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771409767517,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771409777403,
+      "interaction": "teacher-question",
+      "info": "Why is the image so big?",
+      "answered_by": "Eetu Mäkinen"
+    },
+    {
+      "timestamp": 1771409861175,
+      "move_to": "⚓4⚓"
+    },
+    {
+      "timestamp": 1771409861515,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771409861897,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771409862049,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409862125,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771409862316,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409862618,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409863930,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771409864348,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409864760,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771409864961,
+      "anchor": "⚓7⚓"
+    },
+    {
+      "timestamp": 1771409865136,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771409865316,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771409865504,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409865891,
+      "char": "w"
+    },
+    {
+      "timestamp": 1771409866065,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409866217,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771409866408,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409866519,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409866637,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409866835,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409866912,
+      "char": "5"
+    },
+    {
+      "timestamp": 1771409867024,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409867227,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409867318,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771409867402,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409867900,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771409868134,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409868270,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771409868393,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771409868608,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771409868653,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771409868752,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771409868971,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771409869033,
+      "char": " "
+    },
+    {
+      "timestamp": 1771409869123,
+      "char": "5"
+    },
+    {
+      "timestamp": 1771409869425,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771409869480,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771409869652,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771409869882,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771409870760,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771409910001,
+      "char": "⛔"
+    },
+    {
+      "timestamp": 1771409910251,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771409910469,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771409910678,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771409911257,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771409912025,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771409914495,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771410014155,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771410014454,
+      "char": "5"
+    },
+    {
+      "timestamp": 1771410014679,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771410015048,
+      "char": "%"
+    },
+    {
+      "timestamp": 1771410015734,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410016616,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410067101,
+      "interaction": "teacher-question",
+      "info": "How to center the image horizontally and vertically?",
+      "answered_by": "Roshan De Alwis, Denis Miliushchenko"
+    },
+    {
+      "timestamp": 1771410237209,
+      "move_to": "⚓15⚓"
+    },
+    {
+      "timestamp": 1771410237611,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410237812,
+      "move_to": "⚓16⚓"
+    },
+    {
+      "timestamp": 1771410238112,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410238511,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771410238754,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771410239001,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410239380,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410239508,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410239662,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410239873,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410239920,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410240072,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771410240249,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771410240305,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771410240417,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410240612,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771410240637,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410240770,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410241021,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771410241062,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410241171,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410241432,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771410241688,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410241801,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410241929,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771410242085,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410242160,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771410242298,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410242468,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410242535,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410242649,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771410242847,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410242905,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771410243109,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410243339,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410243454,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410243557,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410243720,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410243786,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410243888,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410244120,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410244362,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410244463,
+      "char": "j"
+    },
+    {
+      "timestamp": 1771410244556,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771410244773,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410244828,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410245002,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410245125,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771410245208,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771410245310,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771410245480,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410245542,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410245653,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410245817,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410245883,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410246001,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410246155,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410246193,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771410246294,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410246520,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410246573,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410246643,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410246843,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410246892,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410246974,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410247219,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410247627,
+      "char": "↓"
+    },
+    {
+      "timestamp": 1771410334001,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410334312,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410334566,
+      "move_to": "⚓3⚓"
+    },
+    {
+      "timestamp": 1771410334831,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410335183,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771410335328,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410335462,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771410335587,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771410335773,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410335811,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410335922,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410336055,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410336158,
+      "char": "="
+    },
+    {
+      "timestamp": 1771410336263,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410336406,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410336497,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410336604,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410336758,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410336835,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410336942,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410337101,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771410337188,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410337323,
+      "char": "5"
+    },
+    {
+      "timestamp": 1771410337455,
+      "char": "."
+    },
+    {
+      "timestamp": 1771410337554,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410337642,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410337820,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771410337887,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410337912,
+      "anchor": "⚓6⚓"
+    },
+    {
+      "timestamp": 1771410337985,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410338262,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771410338415,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771410338615,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410399002,
+      "move_to": "⚓6⚓"
+    },
+    {
+      "timestamp": 1771410399221,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410399528,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410399696,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410399907,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771410400043,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410400112,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410400322,
+      "char": "="
+    },
+    {
+      "timestamp": 1771410400398,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410400486,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410400739,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410400876,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771410400958,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410401154,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410401236,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410401304,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771410401577,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410401630,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410401866,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410402037,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410402135,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410402323,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410418211,
+      "move_to": "⚓7⚓"
+    },
+    {
+      "timestamp": 1771410418516,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410418876,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410419194,
+      "char": "."
+    },
+    {
+      "timestamp": 1771410419561,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410419678,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410419825,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771410420006,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410420123,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410420276,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410420505,
+      "char": "-"
+    },
+    {
+      "timestamp": 1771410420570,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410420677,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410420876,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410420979,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410421088,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410421296,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410421623,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771410421721,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410421815,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771410422139,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771410422365,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771410422541,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410422775,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771410423031,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410423154,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410423282,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410423447,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410423504,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410423611,
+      "char": ":"
+    },
+    {
+      "timestamp": 1771410423815,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410423916,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410424045,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410424233,
+      "char": "v"
+    },
+    {
+      "timestamp": 1771410424315,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410424386,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410424599,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410424701,
+      "char": "("
+    },
+    {
+      "timestamp": 1771410424777,
+      "char": "1"
+    },
+    {
+      "timestamp": 1771410425054,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771410425242,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771410425330,
+      "char": "%"
+    },
+    {
+      "timestamp": 1771410425403,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771410425635,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410426004,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410540127,
+      "move_to": "⚓8⚓"
+    },
+    {
+      "timestamp": 1771410540311,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410540663,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410540848,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410540967,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410541083,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410541291,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410541382,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410541460,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771410541692,
+      "char": "="
+    },
+    {
+      "timestamp": 1771410541838,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410541941,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771410542269,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771410542445,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410542565,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410542641,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410542893,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410542966,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771410543038,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410543260,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410543338,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410543438,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771410543670,
+      "char": "("
+    },
+    {
+      "timestamp": 1771410543709,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410543800,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771410544066,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410544225,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410544420,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771410544544,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410544601,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410544601,
+      "anchor": "⚓17⚓"
+    },
+    {
+      "timestamp": 1771410545362,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410582330,
+      "interaction": "teacher-question",
+      "info": "Test! What do you observe?",
+      "answered_by": "Elham Madani Sarighiyeh, Valtteri Kinnunen"
+    },
+    {
+      "timestamp": 1771410769319,
+      "move_to": "⚓9⚓"
+    },
+    {
+      "timestamp": 1771410769612,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410769888,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771410770247,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410770527,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410770679,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410770929,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410771039,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410771381,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410771598,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771410775388,
+      "anchor": "⚓10⚓"
+    },
+    {
+      "timestamp": 1771410775633,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410775989,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771410776367,
+      "char": "<"
+    },
+    {
+      "timestamp": 1771410776641,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771410776799,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410776994,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410777099,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410777278,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410777498,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410777708,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410777888,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771410778388,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771410778812,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771410779227,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410791656,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771410791806,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771410792119,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410792279,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410792431,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410792553,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410792795,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410792887,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410792997,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410793249,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771410793517,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771410793682,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410793939,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410794069,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410794188,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410794420,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771410794628,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410794839,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410794948,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410795169,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771410795574,
+      "char": "("
+    },
+    {
+      "timestamp": 1771410810278,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410810472,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410810611,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410810815,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771410810939,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410811040,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410811273,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410811490,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771410811702,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410811939,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771410812005,
+      "anchor": "⚓12⚓"
+    },
+    {
+      "timestamp": 1771410812170,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410812500,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771410812781,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771410813040,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771410813221,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771410815030,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771410815210,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410815439,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410815577,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410815711,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410815926,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410816020,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410816160,
+      "char": "."
+    },
+    {
+      "timestamp": 1771410816469,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410816781,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410817033,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771410817161,
+      "char": "("
+    },
+    {
+      "timestamp": 1771410817399,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410817780,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410817955,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410818106,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771410818221,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410818445,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410818646,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410819011,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771410819319,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410819698,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771410918151,
+      "char": "⛔"
+    },
+    {
+      "timestamp": 1771410918559,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771410918776,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771410918999,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771410928847,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410929098,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410929247,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410929460,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771410929501,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410929640,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771410929850,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410929897,
+      "char": "."
+    },
+    {
+      "timestamp": 1771410929998,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410930259,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771410930313,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771410930406,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410930654,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410930690,
+      "char": "."
+    },
+    {
+      "timestamp": 1771410930806,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771410931041,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410931082,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410931187,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410931500,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410931623,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410931675,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410931964,
+      "char": "="
+    },
+    {
+      "timestamp": 1771410932028,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410932142,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410932343,
+      "char": "4"
+    },
+    {
+      "timestamp": 1771410932425,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771410932761,
+      "char": "x"
+    },
+    {
+      "timestamp": 1771410932903,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410933000,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771410933309,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771410933427,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771410933528,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771410933765,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410933838,
+      "char": " "
+    },
+    {
+      "timestamp": 1771410933964,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771410934218,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771410934494,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771410934719,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771410934782,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771410934960,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771411067811,
+      "move_to": "⚓10⚓"
+    },
+    {
+      "timestamp": 1771411067864,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411068133,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411068306,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411068509,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411068596,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411068706,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411069040,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411069409,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411069628,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411069751,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411069915,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411070777,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411071458,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411071732,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411071949,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411072085,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411072346,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411072477,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411072599,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411072810,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771411072933,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411073005,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411073231,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411073332,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411073439,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771411073694,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411073743,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411073850,
+      "char": "E"
+    },
+    {
+      "timestamp": 1771411074081,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411074180,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411074269,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771411074491,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411074569,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411074685,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411074879,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411074989,
+      "char": "B"
+    },
+    {
+      "timestamp": 1771411075087,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771411075291,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771411075369,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411075455,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771411075691,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411075780,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411075912,
+      "char": "N"
+    },
+    {
+      "timestamp": 1771411076112,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771411076168,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771411076267,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411076511,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411076614,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771411076702,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411076959,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411077121,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411077285,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411077322,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771411077415,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411077948,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411117884,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411118964,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411119112,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411119268,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411119510,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411119632,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411119741,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411119916,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411120002,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411120112,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411120351,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411120491,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771411120613,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411120812,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411121027,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411121180,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411121275,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411121419,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411121614,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411121813,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411122138,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411203882,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771411204218,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411204471,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411204647,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411204795,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411205062,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411205181,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411205323,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411205613,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411205830,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411205961,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411206180,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411206363,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411206488,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411206773,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411207005,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411207126,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411207402,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411207568,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411207695,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411207972,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411208191,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411208299,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411208569,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411208777,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411208976,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411209071,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411209330,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411209672,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771411210094,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411210479,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771411210674,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411210806,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411211187,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411211776,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411212136,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411261427,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411261791,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411261832,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411261976,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411262140,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411262240,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411262415,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411262656,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411262754,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411262827,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411263081,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411263108,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771411263239,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411263565,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411263756,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411263817,
+      "anchor": "⚓11⚓"
+    },
+    {
+      "timestamp": 1771411263870,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771411263940,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771411264186,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411264256,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411264364,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411264546,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411264631,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771411264719,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411264958,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411265003,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411265110,
+      "char": "k"
+    },
+    {
+      "timestamp": 1771411265322,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411265387,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411265473,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411265789,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411265938,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411266014,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411266100,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411266394,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771411372111,
+      "move_to": "⚓11⚓"
+    },
+    {
+      "timestamp": 1771411372526,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411372749,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411372830,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411372987,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411373184,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411373276,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411373349,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411373600,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411373653,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411373774,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411374033,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411374204,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411374492,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771411374725,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411375308,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411375555,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411375807,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771411376099,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411376441,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771411380616,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411380897,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411381167,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411381372,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411381572,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771411381758,
+      "char": "/"
+    },
+    {
+      "timestamp": 1771411381927,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411382052,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771411382197,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411382276,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411382415,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411382520,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771411382648,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771411382757,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411382846,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411382997,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411383073,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411383154,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411383273,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411383436,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411383490,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411383573,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411383733,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411383957,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411384046,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411387621,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411509874,
+      "move_to": "⚓12⚓"
+    },
+    {
+      "timestamp": 1771411510110,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411510456,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411510642,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411510734,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411510866,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411510940,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411511059,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411511216,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411511287,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411511389,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411511586,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411511653,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411511752,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411511911,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411512004,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411512077,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411512287,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411512347,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411512445,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411512595,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411512688,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411512796,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411512965,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411513034,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411513126,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411513282,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411513335,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411513429,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771411513751,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411514091,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771411514144,
+      "anchor": "⚓13⚓"
+    },
+    {
+      "timestamp": 1771411514289,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411514590,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411514849,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411515218,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411515299,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411515448,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411515585,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411515653,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411515774,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411515907,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411515980,
+      "char": "y"
+    },
+    {
+      "timestamp": 1771411516114,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411516257,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411516341,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411516455,
+      "char": "b"
+    },
+    {
+      "timestamp": 1771411516608,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411516694,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411516824,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411516999,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411517065,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411517150,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411517408,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411517435,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411517554,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771411517716,
+      "char": "\""
+    },
+    {
+      "timestamp": 1771411517800,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411517899,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771411764419,
+      "interaction": "student-question",
+      "asked_by": "Roshan De Alwis"
+    },
+    {
+      "timestamp": 1771411881065,
+      "move_to": "⚓10⚓"
+    },
+    {
+      "timestamp": 1771411881318,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411881558,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411881687,
+      "char": "o"
+    },
+    {
+      "timestamp": 1771411881843,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411882129,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411882375,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411882487,
+      "anchor": "⚓14⚓"
+    },
+    {
+      "timestamp": 1771411882507,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411883040,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411883181,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411883283,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411883463,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411883549,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411883652,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411883829,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411883898,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411883983,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771411884164,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411884225,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411884310,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411884557,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411884750,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411885050,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411885277,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411885487,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411885624,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411885717,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411885976,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411886168,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411928555,
+      "move_to": "⚓13⚓"
+    },
+    {
+      "timestamp": 1771411928711,
+      "char": "↩"
+    },
+    {
+      "timestamp": 1771411929071,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411929187,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771411929322,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411929521,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411929657,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411929796,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411929935,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411930047,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411930158,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411930309,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411930335,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411930462,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411930541,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771411930766,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411930784,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411930905,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411931021,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411931169,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411931199,
+      "char": "!"
+    },
+    {
+      "timestamp": 1771411931394,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411931543,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411931651,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411931795,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411931927,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411932151,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411932258,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411932566,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411933192,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771411933515,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411933889,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771411934483,
+      "char": "↑"
+    },
+    {
+      "timestamp": 1771411934639,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411934787,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411936366,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411936553,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411936739,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411936913,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771411937057,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411937214,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411937343,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411937503,
+      "char": "."
+    },
+    {
+      "timestamp": 1771411937635,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411937836,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411937954,
+      "char": "p"
+    },
+    {
+      "timestamp": 1771411938225,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411938323,
+      "char": "a"
+    },
+    {
+      "timestamp": 1771411938513,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411938606,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411938805,
+      "char": "C"
+    },
+    {
+      "timestamp": 1771411938988,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771411939159,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411939278,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411939356,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411939505,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771411939691,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411939864,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411940104,
+      "char": "("
+    },
+    {
+      "timestamp": 1771411945129,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411945459,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411945663,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411945754,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411945842,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411945980,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411946256,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411946436,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411946531,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771411946595,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411946691,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411946855,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411947076,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411947306,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771411947504,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411948536,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771411949051,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771411949195,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411949295,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411949518,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411949618,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411949732,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771411949907,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411949988,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771411950063,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771411950234,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771411950297,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411950403,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771411950640,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771411950652,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411950782,
+      "char": "="
+    },
+    {
+      "timestamp": 1771411951195,
+      "char": " "
+    },
+    {
+      "timestamp": 1771411951350,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771411951401,
+      "char": "u"
+    },
+    {
+      "timestamp": 1771411951496,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411951680,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771411951748,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771411952223,
+      "char": "↓"
+    },
+    {
+      "timestamp": 1771411999686,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771411999954,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412000438,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412000653,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412000781,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771412001053,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412001130,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412001234,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771412001564,
+      "char": "f"
+    },
+    {
+      "timestamp": 1771412001772,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412001907,
+      "char": "("
+    },
+    {
+      "timestamp": 1771412002022,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412002225,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412002340,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412002460,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771412002635,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412002764,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771412002856,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771412003156,
+      "char": "."
+    },
+    {
+      "timestamp": 1771412003247,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771412003365,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771412003589,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771412003699,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412003791,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771412004013,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771412004136,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412004239,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771412004440,
+      "char": "."
+    },
+    {
+      "timestamp": 1771412004565,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412004609,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412004895,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771412005020,
+      "char": "g"
+    },
+    {
+      "timestamp": 1771412005036,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771412005353,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771412005464,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412005538,
+      "char": ">"
+    },
+    {
+      "timestamp": 1771412005780,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412005958,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771412006160,
+      "char": ")"
+    },
+    {
+      "timestamp": 1771412006393,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412006813,
+      "char": "{"
+    },
+    {
+      "timestamp": 1771412007160,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771412007525,
+      "char": "s"
+    },
+    {
+      "timestamp": 1771412007888,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412008102,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412008324,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412008493,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771412008600,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771412008817,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412008885,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771412009006,
+      "char": "P"
+    },
+    {
+      "timestamp": 1771412009229,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771412009350,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412009420,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771412009605,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412009687,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412009806,
+      "char": "="
+    },
+    {
+      "timestamp": 1771412009959,
+      "char": " "
+    },
+    {
+      "timestamp": 1771412010034,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412010108,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412010343,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412010514,
+      "char": "m"
+    },
+    {
+      "timestamp": 1771412010647,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412010808,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771412010886,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771412010998,
+      "char": "."
+    },
+    {
+      "timestamp": 1771412011241,
+      "char": "c"
+    },
+    {
+      "timestamp": 1771412011452,
+      "char": "h"
+    },
+    {
+      "timestamp": 1771412011614,
+      "char": "i"
+    },
+    {
+      "timestamp": 1771412011713,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412011827,
+      "char": "d"
+    },
+    {
+      "timestamp": 1771412012046,
+      "char": "r"
+    },
+    {
+      "timestamp": 1771412012143,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412012203,
+      "char": "n"
+    },
+    {
+      "timestamp": 1771412012414,
+      "char": "["
+    },
+    {
+      "timestamp": 1771412012510,
+      "char": "0"
+    },
+    {
+      "timestamp": 1771412012595,
+      "char": "]"
+    },
+    {
+      "timestamp": 1771412013053,
+      "char": ";"
+    },
+    {
+      "timestamp": 1771412013497,
+      "char": "↓"
+    },
+    {
+      "timestamp": 1771412013775,
+      "char": "◄"
+    },
+    {
+      "timestamp": 1771412014000,
+      "char": "―"
+    },
+    {
+      "timestamp": 1771412014283,
+      "char": "►"
+    },
+    {
+      "timestamp": 1771412014541,
+      "char": "\n"
+    },
+    {
+      "timestamp": 1771412014733,
+      "char": "}"
+    },
+    {
+      "timestamp": 1771412014877,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771412015817,
+      "interaction": "teacher-question",
+      "info": "Why doesn't it work?",
+      "answered_by": "Roshan De Alwis"
+    },
+    {
+      "timestamp": 1771412211512,
+      "move_to": "⚓14⚓"
+    },
+    {
+      "timestamp": 1771412211877,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412211996,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412212105,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412212225,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412212432,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412212775,
+      "char": "l"
+    },
+    {
+      "timestamp": 1771412212988,
+      "char": "e"
+    },
+    {
+      "timestamp": 1771412213095,
+      "char": "t"
+    },
+    {
+      "timestamp": 1771412213202,
+      "char": "💾"
+    },
+    {
+      "timestamp": 1771412213497,
+      "move_to": "⚓17⚓"
+    },
+    {
+      "timestamp": 1771412213775,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412214000,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412214283,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412214575,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412214817,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215002,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215197,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215392,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215587,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215782,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412215977,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412216172,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412216367,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412216512,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412216771,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412216977,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412217172,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412217377,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412217582,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412217787,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412217992,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412218197,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412218422,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412218627,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412218832,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412219037,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412219242,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412219447,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412219622,
+      "char": "⌫"
+    },
+    {
+      "timestamp": 1771412219827,
+      "char": "💾"
+    }
+  ]
+}

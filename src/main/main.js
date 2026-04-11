@@ -866,24 +866,52 @@ ipcMain.on("update-window-title", (event, titleData) => {
 	);
 });
 
-ipcMain.on("open-log-visualizer", (event, logFilePath) => {
-	const visWindow = new BrowserWindow({
-		width: 1600,
-		height: 900,
-		autoHideMenuBar: true,
-		title: "📋 Log Visualizer",
-		icon: path.join(__dirname, "../shared/icon.ico"),
-		webPreferences: {
-			nodeIntegration: true,
-			contextIsolation: false,
-			webviewTag: true,
-		},
-	});
-	visWindow.maximize();
-	visWindow.loadFile(path.join(__dirname, "../log-visualizer.html"));
-	visWindow.webContents.on("did-finish-load", () => {
-		visWindow.webContents.send("load-log", logFilePath);
-	});
+const { shell } = require("electron");
+const { spawnSync } = require("child_process");
+
+const _VIS_HTML = path.join(__dirname, "../../scripts/log_visualizer.html");
+const _VIS_DATA = path.join(__dirname, "../../scripts/.last_vis_data.js");
+
+function openLogVisualizer(logFilePath) {
+	if (logFilePath) {
+		const scriptPath = path.join(__dirname, "../../scripts/lv_expand.py");
+		const result = spawnSync("python", [scriptPath, logFilePath], {
+			encoding: "utf8",
+		});
+		let payload;
+		if (result.status === 0) {
+			try {
+				const micro = JSON.parse(result.stdout);
+				payload = { filePath: logFilePath, micro, error: null };
+			} catch (e) {
+				payload = {
+					filePath: logFilePath,
+					micro: null,
+					error: `JSON parse error: ${e.message}`,
+				};
+			}
+		} else {
+			payload = {
+				filePath: logFilePath,
+				micro: null,
+				error: result.stderr || `Python exited with code ${result.status}`,
+			};
+		}
+		fs.writeFileSync(
+			_VIS_DATA,
+			`window.__LOG_DATA__ = ${JSON.stringify(payload)};`,
+			"utf8",
+		);
+	} else {
+		try {
+			fs.writeFileSync(_VIS_DATA, "window.__LOG_DATA__ = null;", "utf8");
+		} catch (_) {}
+	}
+	shell.openPath(_VIS_HTML);
+}
+
+ipcMain.on("open-log-visualizer", (_event, logFilePath) => {
+	openLogVisualizer(logFilePath);
 });
 
 ipcMain.on("broadcast-lesson-data", (e, d) =>

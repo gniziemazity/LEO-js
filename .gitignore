@@ -1,4 +1,7 @@
 /.claude/*
+__pycache__/
+*.pyc
+/CLAUDE.md
 /node_modules/
 /package-lock.json
 /build/
@@ -6,3 +9,5 @@
 /ideas/
 /plans/logs/
 /settings/yt_settings.json
+/scripts/.last_folder
+/scripts/.last_vis_data.js

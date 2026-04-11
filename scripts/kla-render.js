@@ -1,0 +1,432 @@
+'use strict';
+
+function tsToX(ts, L)   { return L.M.left + L.plotW * (ts - L.timeMin) / (L.timeMax - L.timeMin); }
+function xToTs(x, L)    { return L.timeMin + (x - L.M.left) / L.plotW * (L.timeMax - L.timeMin); }
+
+const Y1_LO = 5, Y1_HI = 1500;
+function rateToY(r, L) {
+  const t = (Math.log10(Math.max(r, Y1_LO)) - Math.log10(Y1_LO))
+          / (Math.log10(Y1_HI) - Math.log10(Y1_LO));
+  return L.M.top + L.plotH1 * (1 - t);
+}
+function countToY(n, maxN, L) { return L.M.top + L.plotH2 * (1 - n / Math.max(maxN, 1)); }
+function pctToY(pct, L)       { return L.M.top + L.plotH3 * (1 - Math.max(0, Math.min(100, pct)) / 100); }
+
+function makeLayout(p, W, H1, H2, H3) {
+  const M = CFG.M;
+  return {
+    W, M, H1, H2, H3,
+    plotW:  W  - M.left - M.right,
+    plotH1: H1 - M.top  - M.bottom,
+    plotH2: H2 - M.top  - M.bottom,
+    plotH3: H3 - M.top  - M.bottom,
+    timeMin: _zoomMin ?? (p.sessionStart - CFG.PADDING),
+    timeMax: _zoomMax ?? (p.sessionEnd   + CFG.PADDING),
+  };
+}
+
+function prep(c, W, H) {
+  const dpr = window.devicePixelRatio || 1;
+  c.width  = W * dpr;
+  c.height = H * dpr;
+  c.style.width  = W + 'px';
+  c.style.height = H + 'px';
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+function scheduleRender() {
+  if (_renderScheduled) return;
+  _renderScheduled = true;
+  requestAnimationFrame(() => {
+    _renderScheduled = false;
+    showLoading(false);
+    if (_p) renderCharts(_p);
+  });
+}
+
+function renderCharts(p) {
+  const c1 = document.getElementById('chart1');
+  const c2 = document.getElementById('chart2');
+  const c3 = document.getElementById('chart3');
+  const W  = c1.parentElement.clientWidth;
+  const H1 = c1.parentElement.clientHeight;
+  const H2 = c2.parentElement.clientHeight;
+  const H3 = _students ? c3.parentElement.clientHeight : 0;
+  const L  = makeLayout(p, W, H1, H2, H3);
+  _lastL = L;
+
+  drawChart1(prep(c1, W, H1), p, L);
+  drawChart2(prep(c2, W, H2), p, L);
+  if (_students) drawChart3(prep(c3, W, H3), p, _students, L);
+
+  setupZoomPan(c1, p, L);
+  setupZoomPan(c2, p, L);
+  if (_students) setupZoomPan(c3, p, L);
+  setupHover(c1, c2, c3, p, L);
+  updateZoomLabel(p, L);
+}
+
+function redrawChart3() {
+  if (!_p || !_students || !_lastL) return;
+  const c3 = document.getElementById('chart3');
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = c3.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawChart3(ctx, _p, _students, _lastL);
+}
+
+const BAR_COLORS = {
+  normal: ['#777777','#000000'],
+  dev:    ['#22aa22','#116611'],
+  remove: ['#CC2222','#880000'],
+  insert: ['#999999','#666666'],
+  anchor: ['#007acc','#005a99'],
+  move:   ['#e07020','#a04010'],
+};
+
+function drawChart1(ctx, p, L) {
+  const { M, W, H1:H, plotW, plotH1 } = L;
+  const bottomY  = M.top + plotH1;
+  const minBarW  = tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.left, M.top, plotW, plotH1); ctx.clip();
+
+  ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 1;
+  for (const r of [10,20,50,100,200,500,1000]) {
+    const y = rateToY(r, L);
+    ctx.beginPath(); ctx.moveTo(M.left,y); ctx.lineTo(M.left+plotW,y); ctx.stroke();
+  }
+
+  function bar(ts, rate, dur, colorKey, alpha=0.72) {
+    const x  = tsToX(ts - dur/2, L);
+    const x2 = tsToX(ts + dur/2, L);
+    const bw = Math.max(x2 - x, minBarW);
+    const cx = (x + x2) / 2;
+    const bx = cx - bw / 2;
+    const y  = rateToY(rate, L);
+    const bh = bottomY - y;
+    const [fill,edge] = BAR_COLORS[colorKey] || BAR_COLORS.normal;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = fill; ctx.fillRect(bx, y, bw, bh);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = edge; ctx.lineWidth=0.5; ctx.strokeRect(bx, y, bw, bh);
+  }
+
+  for (const b of p.bursts) {
+    if (b.chars > 0) bar(b.centerTs, b.rate, b.dur, b.colorType);
+  }
+  for (const kp of p.singletons) {
+    if (kp._virtualType === 'anchor') {
+      bar(kp.timestamp/1000, 20, 0, 'anchor', 0.7);
+    } else if (kp._virtualType === 'move') {
+      bar(kp.timestamp/1000, 20, 0, 'move', 0.7);
+    } else {
+      const ck = kp._editor==='dev' ? 'dev' : DELETE_CHARS.has(kp.char) ? 'remove' : 'normal';
+      bar(kp.timestamp/1000, 20, 0, ck);
+    }
+  }
+  for (const ev of p.codeInserts) bar(ev.timestamp/1000, Math.max(10,ev.code_insert.length/(CFG.BAR_MIN_SECS/60)), 0, 'insert', 0.6);
+
+  ctx.lineWidth=2; ctx.globalAlpha=0.7;
+  function rateLine(r, clr) {
+    const y=rateToY(r,L); ctx.strokeStyle=clr; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(M.left,y); ctx.lineTo(M.left+plotW,y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  rateLine(p.sessionRate,'#888888');
+  rateLine(p.activeRate, '#000000');
+  ctx.globalAlpha=1;
+
+  ctx.restore();
+
+  drawYAxisLog(ctx, L);
+  rotatedLabel(ctx, 12, L.M.top + L.plotH1/2, 'Keys / Minute (log)', '#666');
+
+  ctx.font='10px Consolas,monospace'; ctx.textAlign='left';
+  const lx = M.left + plotW - 190, ly = M.top + 4;
+  [
+    [`Session: ${p.sessionRate.toFixed(1)} kpm`,'#888888'],
+    [`Active:  ${p.activeRate.toFixed(1)} kpm`, '#000000'],
+  ].forEach(([lbl,clr],i) => {
+    const yy = ly + i*16;
+    ctx.strokeStyle=clr; ctx.lineWidth=2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.moveTo(lx,yy+5); ctx.lineTo(lx+20,yy+5); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=clr; ctx.fillText(lbl, lx+24, yy+9);
+  });
+
+  drawTimeAxis(ctx, L, M.top+plotH1, H);
+}
+
+function drawChart2(ctx, p, L) {
+  const { M, W, H2:H, plotW, plotH2 } = L;
+  const cum  = p.cumulative;
+  const maxN = p.totalChars || 1;
+  const gs   = niceStep(maxN, 5);
+
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.left,M.top,plotW,plotH2); ctx.clip();
+
+  ctx.strokeStyle='#e8e8e8'; ctx.lineWidth=1;
+  for (let v=gs; v<=maxN; v+=gs) {
+    const y=countToY(v,maxN,L);
+    ctx.beginPath(); ctx.moveTo(M.left,y); ctx.lineTo(M.left+plotW,y); ctx.stroke();
+  }
+
+  drawInteractionSpans(ctx, p, L, M.top, plotH2, {
+    'teacher-question':'rgba(239,154,154,0.35)',
+    'student-question':'rgba(255,165,0,0.28)',
+    'providing-help'  :'rgba(102,187,106,0.32)',
+  });
+
+  if (cum.length > 1) {
+    const pts = cum.map(c=>[tsToX(c.ts,L), countToY(c.count,maxN,L)]);
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.lineTo(pts[pts.length-1][0], countToY(0,maxN,L));
+    ctx.lineTo(pts[0][0], countToY(0,maxN,L));
+    ctx.closePath(); ctx.fillStyle='rgba(204,204,204,0.3)'; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0],pts[0][1]);
+    for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.strokeStyle='#CCCCCC'; ctx.lineWidth=2; ctx.stroke();
+  }
+
+  const R = CFG.DOT_R, DR = CFG.DIA_R;
+
+  function dot(x,y,fill,edge,alpha=1) {
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.beginPath(); ctx.arc(x,y,R,0,Math.PI*2);
+    ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=edge; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.restore();
+  }
+  function dia(x,y,fill,edge,alpha=0.85) {
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.beginPath();
+    ctx.moveTo(x,y-DR); ctx.lineTo(x+DR,y); ctx.lineTo(x,y+DR); ctx.lineTo(x-DR,y);
+    ctx.closePath();
+    ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=edge; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const grp of p.burstGroups)
+    for (const idx of grp.idxs) {
+      const c=cum[idx]; if(!c) continue;
+      dot(tsToX(c.ts,L), countToY(c.count,maxN,L), '#000','none',0.5);
+    }
+  for (const ev of p.codeInserts) {
+    const ts=ev.timestamp/1000;
+    dia(tsToX(ts,L), countToY(charsAt(ts,cum),maxN,L), '#999999','#666666');
+  }
+  for (const ev of p.deletes) {
+    const ts=ev.timestamp/1000;
+    dot(tsToX(ts,L), countToY(charsAt(ts,cum),maxN,L), '#CC2222','#880000',0.8);
+  }
+  for (const ev of p.devChars) {
+    const ts=ev.timestamp/1000;
+    dot(tsToX(ts,L), countToY(charsAt(ts,cum),maxN,L), '#22aa22','#116611',0.8);
+  }
+  for (const anc of p.anchors) {
+    const ts=anc.ts/1000;
+    dot(tsToX(ts,L), countToY(charsAt(ts,cum),maxN,L), '#007acc','#005a99',0.9);
+  }
+  for (const mv of p.moves) {
+    const ts=mv.ts/1000;
+    dot(tsToX(ts,L), countToY(charsAt(ts,cum),maxN,L), '#e07020','#a04010',0.9);
+  }
+
+  ctx.restore();
+
+  ctx.fillStyle='#555'; ctx.font='11px Consolas,monospace'; ctx.textAlign='right';
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
+  for (let v=gs;v<=maxN;v+=gs) {
+    const y=countToY(v,maxN,L);
+    ctx.fillText(v, M.left-5, y+4);
+    ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
+  }
+  rotatedLabel(ctx, 12, M.top+plotH2/2, 'Total Key Presses', '#666');
+
+  const items=[
+    { lbl:`Chars (${p.totalChars})`,          clr:'#000',    alpha:0.5 },
+    { lbl:`Inserts (${p.codeInserts.length})`, clr:'#999',    alpha:0.85, shape:'dia' },
+    { lbl:`Deletes (${p.deletes.length})`,     clr:'#CC2222', alpha:0.8 },
+    { lbl:`Anchors (${p.anchors.length})`,     clr:'#007acc', alpha:0.9 },
+    { lbl:`Dev (${p.devChars.length})`,        clr:'#22aa22', alpha:0.8 },
+    { lbl:`Moves (${p.moves.length})`,         clr:'#e07020', alpha:0.9 },
+  ];
+  ctx.font='10px Consolas,monospace'; ctx.textAlign='left';
+  const colX = [M.left + 8, M.left + 110];
+  const rowY0 = M.top + 10;
+  const rowH  = 14;
+  items.forEach((it, i) => {
+    const lx = colX[i % 2];
+    const ly = rowY0 + Math.floor(i / 2) * rowH;
+    ctx.save(); ctx.globalAlpha=it.alpha; ctx.fillStyle=it.clr;
+    if (it.shape==='dia') {
+      ctx.beginPath();
+      ctx.moveTo(lx+4,ly); ctx.lineTo(lx+8,ly+4);
+      ctx.lineTo(lx+4,ly+8); ctx.lineTo(lx,ly+4); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(lx+4,ly+4,3.5,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore(); ctx.fillStyle='#333';
+    ctx.fillText(it.lbl, lx+12, ly+8);
+  });
+
+  drawTimeAxis(ctx, L, M.top+plotH2, H);
+}
+
+function drawChart3(ctx, p, students, L) {
+  const { M, W, H3:H, plotW, plotH3 } = L;
+  const gs = 10;
+
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.left,M.top,plotW,plotH3); ctx.clip();
+
+  ctx.strokeStyle='#e8e8e8'; ctx.lineWidth=1;
+  for (let v=gs; v<=100; v+=gs) {
+    const y=pctToY(v,L);
+    ctx.beginPath(); ctx.moveTo(M.left,y); ctx.lineTo(M.left+plotW,y); ctx.stroke();
+  }
+
+  for (const s of students) {
+    const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
+    const evs = (s.follow_events || []).filter(e => e.ts != null);
+    if (!evs.length) continue;
+    const sorted = [...evs].sort((a,b)=>a.ts-b.ts);
+    const clusters = [];
+    let cur = [sorted[0]];
+    for (let i=1;i<sorted.length;i++) {
+      if (sorted[i].ts - sorted[i-1].ts < CFG.BURST_GAP*2) cur.push(sorted[i]);
+      else { clusters.push(cur); cur=[sorted[i]]; }
+    }
+    clusters.push(cur);
+    const barH = isHovered ? 6 : 3;
+    const y0 = pctToY(s.follow_pct, L) - barH/2;
+    for (const cl of clusters) {
+      const x1 = tsToX(cl[0].ts, L);
+      const x2 = Math.max(tsToX(cl[cl.length-1].ts, L), x1 + 3);
+      ctx.fillStyle = isHovered ? 'rgba(0,0,0,0.85)' : 'rgba(180,180,180,0.35)';
+      ctx.fillRect(x1, y0, x2-x1, barH);
+    }
+  }
+
+  const answering = new Set(), asking = new Set(), helping = new Set();
+  for (const q of p.interactions['teacher-question'])
+    for (const name of q.answered_by) answering.add(name);
+  for (const q of p.interactions['student-question'])
+    { const nm=q.asked_by.trim(); if(nm) asking.add(nm); }
+  for (const q of p.interactions['providing-help'])
+    { const nm=q.student.trim(); if(nm) helping.add(nm); }
+
+  for (const s of students) {
+    if (s.follow_dt == null) continue;
+    const x   = tsToX(s.follow_dt, L);
+    const y   = pctToY(s.follow_pct, L);
+    const ans  = answering.has(s.name);
+    const ask  = asking.has(s.name);
+    const hlp  = helping.has(s.name);
+    const active = ans || ask || hlp;
+
+    ctx.save();
+    if (active) {
+      const r    = ans ? 9 : 7;
+      const fill = ans ? '#1565C0' : ask ? '#F9A825' : '#66BB6A';
+      drawStar(ctx, x, y, r, fill, 1.0);
+    } else {
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#CCCCCC'; ctx.fill();
+      ctx.strokeStyle='#999'; ctx.lineWidth=0.8; ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  ctx.fillStyle='#555'; ctx.font='11px Consolas,monospace'; ctx.textAlign='right';
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
+  for (let v=0;v<=100;v+=10) {
+    const y=pctToY(v,L);
+    ctx.fillText(v+'%', M.left-5, y+4);
+    ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
+  }
+  rotatedLabel(ctx, 12, M.top+plotH3/2, 'Follow Score (%)', '#666');
+
+  drawTimeAxis(ctx, L, M.top+plotH3, H);
+}
+
+function drawStar(ctx, cx, cy, r, fill, alpha=1) {
+  ctx.save(); ctx.globalAlpha=alpha;
+  ctx.beginPath();
+  for (let i=0;i<5;i++) {
+    const a1 = (i*4*Math.PI/5) - Math.PI/2;
+    const a2 = ((i*4+2)*Math.PI/5) - Math.PI/2;
+    if (i===0) ctx.moveTo(cx+r*Math.cos(a1), cy+r*Math.sin(a1));
+    else        ctx.lineTo(cx+r*Math.cos(a1), cy+r*Math.sin(a1));
+    ctx.lineTo(cx+(r*0.4)*Math.cos(a2), cy+(r*0.4)*Math.sin(a2));
+  }
+  ctx.closePath();
+  ctx.fillStyle=fill; ctx.fill();
+  ctx.restore();
+}
+
+function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
+  for (const [type, qs] of Object.entries(p.interactions)) {
+    const clr=colors[type]; if(!clr) continue;
+    for (const q of qs) {
+      let endTs;
+      if (q.closed_at) { endTs=q.closed_at; }
+      else {
+        const nxt=p.events.find(e=>e.timestamp/1000>q.timestamp);
+        endTs = nxt ? nxt.timestamp/1000 : q.timestamp+5;
+      }
+      const x1=tsToX(q.timestamp,L), x2=tsToX(endTs,L);
+      ctx.fillStyle=clr; ctx.fillRect(x1,plotTop,Math.max(x2-x1,2),plotH);
+    }
+  }
+}
+
+function drawYAxisLog(ctx, L) {
+  const { M, plotH1 } = L;
+  ctx.strokeStyle='#ccc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(M.left,M.top); ctx.lineTo(M.left,M.top+plotH1); ctx.stroke();
+  ctx.fillStyle='#555'; ctx.font='11px Consolas,monospace'; ctx.textAlign='right';
+  ctx.strokeStyle='#aaa';
+  for (const r of [10,100,1000]) {
+    const y=rateToY(r,L);
+    ctx.fillText(r, M.left-5, y+4);
+    ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
+  }
+}
+
+function drawTimeAxis(ctx, L, axisY, H) {
+  const { M, plotW, timeMin, timeMax } = L;
+  const totalSecs = timeMax - timeMin;
+  const targets   = [5,10,15,20,30,60,120,180,300,600,900,1800,3600];
+  const want      = Math.min(plotW/80, 14);
+  const tickInt   = targets.find(t=>totalSecs/t<=want) || 3600;
+  const firstTick = Math.ceil(timeMin/tickInt)*tickInt;
+
+  ctx.strokeStyle='#ccc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(M.left,axisY); ctx.lineTo(M.left+plotW,axisY); ctx.stroke();
+  ctx.fillStyle='#555'; ctx.font='10px Consolas,monospace'; ctx.textAlign='center';
+  ctx.strokeStyle='#aaa';
+  for (let ts=firstTick; ts<=timeMax; ts+=tickInt) {
+    const x=tsToX(ts,L);
+    ctx.beginPath(); ctx.moveTo(x,axisY); ctx.lineTo(x,axisY+4); ctx.stroke();
+    ctx.fillText(fmtTime(ts), x, axisY+14);
+  }
+}

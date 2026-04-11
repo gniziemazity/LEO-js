@@ -71,6 +71,9 @@
 			#btn-reset {
 				background: #7a6500;
 			}
+			#btn-open-toolbar {
+				background: #555;
+			}
 			#btn-settings {
 				background: #f0f0f8;
 				color: #0000ff !important;
@@ -431,7 +434,18 @@
 				</div>
 			</div>
 		</div>
+		<input
+			type="file"
+			id="lv-file-input"
+			accept=".json"
+			style="display: none"
+		/>
 		<div id="vis-root"></div>
-		<script src="./renderer/log-visualizer.js"></script>
+		<script>
+			// populated by LEO (main.js writes .last_vis_data.js before opening this page).
+			window.__LOG_DATA__ = null;
+		</script>
+		<script src=".last_vis_data.js" onerror="void 0"></script>
+		<script src="log_visualizer.js"></script>
 	</body>
 </html>
