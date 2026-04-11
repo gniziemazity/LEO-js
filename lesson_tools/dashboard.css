@@ -60,24 +60,7 @@ body {
 	cursor: default;
 }
 
-#btn-open-sim {
-	position: absolute;
-	top: 8px;
-	left: 4px;
-	width: 34px;
-	height: 34px;
-	font-size: 17px;
-	border: none;
-	border-radius: 8px;
-	background: #888;
-	cursor: pointer;
-	z-index: 5;
-	line-height: 1;
-}
-#btn-open-sim:hover {
-	background: #666;
-}
-
+#btn-open-sim,
 #btn-shake {
 	position: absolute;
 	top: 8px;
@@ -89,12 +72,18 @@ body {
 	border-radius: 8px;
 	background: #888;
 	cursor: pointer;
-	z-index: 10;
 	line-height: 1;
-	transition: background 0.15s;
 }
+#btn-open-sim:hover,
 #btn-shake:hover {
 	background: #666;
+}
+#btn-open-sim {
+	z-index: 5;
+}
+#btn-shake {
+	z-index: 10;
+	transition: background 0.15s;
 }
 #btn-shake.active {
 	background: #e07820;

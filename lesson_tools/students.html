@@ -264,7 +264,7 @@
 
 			function _idbOpen() {
 				return new Promise((res, rej) => {
-					const req = indexedDB.open("students", 1);
+					const req = indexedDB.open("kla", 1);
 					req.onupgradeneeded = (e) =>
 						e.target.result.createObjectStore("state");
 					req.onsuccess = (e) => res(e.target.result);
@@ -473,13 +473,6 @@
 						({ name, idx }) =>
 							!specialSet.has(idx) && REMARK_WHITELIST.test(name),
 					);
-				console.log(
-					"[students] remarkCols:",
-					remarkCols.map((c) => c.name),
-					"| hdrR:",
-					hdrR,
-				);
-
 				if (iName === -1)
 					throw new Error('Remarks xlsx: missing "Student" column');
 

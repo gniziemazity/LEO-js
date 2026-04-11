@@ -9,23 +9,13 @@
 	<body>
 		<div id="landing">
 			<div id="landing-buttons">
-				<button
-					class="landing-btn"
-					onclick="document.getElementById('file-input').click()"
-				>
+				<button class="landing-btn" onclick="openFilePicker()">
 					📄 Open Log File
 				</button>
 				<button class="landing-btn" onclick="openFolderPicker()">
 					📁 Open Folder
 				</button>
 			</div>
-			<input
-				type="file"
-				id="file-input"
-				accept=".json,.xlsx"
-				multiple
-				style="display: none"
-			/>
 		</div>
 
 		<div id="main">

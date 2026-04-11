@@ -4,13 +4,23 @@ let _pendingXlsx = [];
 let _allFiles = new Map();
 
 const landingEl = document.getElementById("landing");
-const fileInput = document.getElementById("file-input");
 
-fileInput.addEventListener("change", (e) => {
-	if (!e.target.files.length) return;
-	_allFiles = new Map();
-	handleFiles([...e.target.files]);
-});
+async function openFilePicker() {
+	try {
+		const lastDir = await _idbGet("lastDir");
+		const opts = { multiple: true };
+		if (lastDir) opts.startIn = lastDir;
+		const handles = await window.showOpenFilePicker(opts);
+		if (!handles.length) return;
+		_idbSet("lastDir", handles[0]);
+		_allFiles = new Map();
+		showLoading(true);
+		const files = await Promise.all(handles.map((h) => h.getFile()));
+		handleFiles(files);
+	} catch (e) {
+		if (e.name !== "AbortError") alert("Could not open files: " + e.message);
+	}
+}
 
 function _idbOpen() {
 	return new Promise((res, rej) => {
@@ -77,50 +87,6 @@ async function readDirHandle(handle, prefix, pathMap, files) {
 	}
 }
 
-async function readAllDirEntries(reader) {
-	const entries = [];
-	while (true) {
-		const batch = await new Promise((res, rej) =>
-			reader.readEntries(res, rej),
-		);
-		if (!batch.length) break;
-		entries.push(...batch);
-	}
-	return entries;
-}
-
-async function readDirEntry(dirEntry, pathPrefix, pathMap, files) {
-	const entries = await readAllDirEntries(dirEntry.createReader());
-	for (const entry of entries) {
-		const entryPath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
-		if (entry.isDirectory) {
-			await readDirEntry(entry, entryPath, pathMap, files);
-		} else if (entry.isFile) {
-			const file = await new Promise((res, rej) => entry.file(res, rej));
-			files.push(file);
-			pathMap.set(entryPath, file);
-		}
-	}
-}
-
-async function collectDroppedFiles(dt) {
-	const files = [];
-	const pathMap = new Map();
-	for (const item of [...dt.items]) {
-		const entry = item.webkitGetAsEntry?.();
-		if (entry?.isDirectory) {
-			await readDirEntry(entry, "", pathMap, files);
-		} else if (item.kind === "file") {
-			const file = item.getAsFile();
-			if (file) {
-				files.push(file);
-				pathMap.set(file.name, file);
-			}
-		}
-	}
-	return { files: files.filter(Boolean), pathMap };
-}
-
 function handleFiles(files) {
 	const jsonFiles = files.filter(
 		(f) =>
@@ -156,7 +122,7 @@ async function loadBestJsonFile(jsonFiles) {
 			const data = JSON.parse(await file.text());
 			const events = data?.events || data?.keyPresses || [];
 			if (Array.isArray(events) && events.length) {
-				loadJsonData(file, data);
+				await loadJsonData(file, data);
 				return;
 			}
 		} catch {}
@@ -166,7 +132,24 @@ async function loadBestJsonFile(jsonFiles) {
 	showLoading(false);
 }
 
-function loadJsonData(file, data) {
+const IMAGE_EXT_KLA = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+
+async function _readImageUris(fileMap) {
+	const imageUris = {};
+	await Promise.all(
+		[...fileMap.entries()]
+			.filter(([p]) => IMAGE_EXT_KLA.test(p))
+			.map(([, f]) => new Promise((res) => {
+				const r = new FileReader();
+				r.onload = (e) => { imageUris[f.name] = e.target.result; res(); };
+				r.onerror = res;
+				r.readAsDataURL(f);
+			})),
+	);
+	return imageUris;
+}
+
+async function loadJsonData(file, data) {
 	document.title = "Key Log Analyzer – " + file.name.replace(/\.json$/i, "");
 	_zoomMin = _zoomMax = null;
 	const p = processData(data);
@@ -181,6 +164,17 @@ function loadJsonData(file, data) {
 			events: data.events || data.keyPresses || [],
 		}));
 	} catch {}
+	if (_allFiles.size) {
+		try {
+			const imageUris = await _readImageUris(_allFiles);
+			if (Object.keys(imageUris).length)
+				localStorage.setItem("kla_sim_images", JSON.stringify(imageUris));
+			else
+				localStorage.removeItem("kla_sim_images");
+		} catch {}
+	} else {
+		localStorage.removeItem("kla_sim_images");
+	}
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";
 	scheduleRender();

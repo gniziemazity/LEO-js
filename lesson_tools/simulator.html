@@ -314,18 +314,16 @@
 	<body>
 		<div id="lv-landing">
 			<div id="lv-landing-box">
-				<div id="lv-landing-title">📋 Simulator</div>
-				<button id="btn-open-log" class="landing-btn-primary">
-					📄 Select a Lesson
-				</button>
+				<div style="display: flex; gap: 12px">
+					<button id="btn-open-log" class="landing-btn">
+						📄 Open Log File
+					</button>
+					<button id="btn-open-folder" class="landing-btn">
+						📁 Open Folder
+					</button>
+				</div>
 			</div>
 		</div>
-		<input
-			type="file"
-			id="lv-file-input"
-			accept=".json"
-			style="display: none"
-		/>
 		<div id="vis-root"></div>
 		<script>
 			window.__LOG_DATA__ = null;

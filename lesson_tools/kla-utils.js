@@ -22,11 +22,6 @@ function niceStep(max, steps) {
   return Math.max(1, (n<1.5?1:n<3.5?2:n<7.5?5:10)*mag);
 }
 
-function truncate(str, max) {
-  if (str.length <= max) return str;
-  return str.slice(0, max) + `\n… (+${str.length - max} more chars)`;
-}
-
 function rotatedLabel(ctx, x, y, text, color) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI/2);
   ctx.textAlign = 'center'; ctx.fillStyle = color; ctx.font = '11px Segoe UI';

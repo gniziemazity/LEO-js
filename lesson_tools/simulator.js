@@ -327,38 +327,6 @@ class VSCodeSettings {
 		this.source = source;
 	}
 
-	static _parseJsonc(text) {
-		text = text.replace(/\/\*[\s\S]*?\*\//g, "");
-		let result = "",
-			inStr = false,
-			escape = false;
-		for (let i = 0; i < text.length; i++) {
-			const ch = text[i];
-			if (escape) {
-				result += ch;
-				escape = false;
-				continue;
-			}
-			if (ch === "\\" && inStr) {
-				result += ch;
-				escape = true;
-				continue;
-			}
-			if (ch === '"') {
-				inStr = !inStr;
-				result += ch;
-				continue;
-			}
-			if (!inStr && ch === "/" && text[i + 1] === "/") {
-				while (i < text.length && text[i] !== "\n") i++;
-				continue;
-			}
-			result += ch;
-		}
-		result = result.replace(/,(\s*[}\]])/g, "$1");
-		return JSON.parse(result);
-	}
-
 	static load() {
 		return new VSCodeSettings({}, "defaults");
 	}
@@ -745,15 +713,6 @@ function fmtTs(tsMs) {
 	}
 }
 
-function fmtElapsed(tsMs, originMs) {
-	const elMs = Math.max(0, tsMs - originMs);
-	const ms = String(elMs % 1000).padStart(3, "0");
-	const totS = Math.floor(elMs / 1000);
-	const s = String(totS % 60).padStart(2, "0");
-	const m = String(Math.floor(totS / 60)).padStart(2, "0");
-	return `${m}:${s}.${ms}`;
-}
-
 function esc(s) {
 	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -819,6 +778,7 @@ class LogVisualizer {
 		this.speed = 8.0;
 		this._silent = false;
 
+		this._imageUris = {};
 		this.main = new TextState();
 		this.dev = new TextState();
 		this._files = { MAIN: this.main };
@@ -943,19 +903,18 @@ class LogVisualizer {
 		this.elDevOuter.style.display = this._devExpanded ? "" : "none";
 	}
 
-	loadFile({ filePath, micro, error }) {
+	loadFile({ filePath, micro, error, imageUris }) {
 		if (error) {
-			this._setStatus(`⚠ Expand error — see console for details`, CLR.red);
 			console.error("expand error:\n" + error);
 			return;
 		}
 
 		this.vscode = VSCodeSettings.load();
 		this._updateSettingsBadge();
+		this._imageUris = imageUris || {};
 
 		this.micro = micro;
 
-		// Find the first real timestamp to use as elapsed-time origin
 		this._tsOrigin = 0;
 		for (const act of micro) {
 			const ts = act[2];
@@ -1011,7 +970,6 @@ class LogVisualizer {
 		this.playing = true;
 		this.elPlay.textContent = "⏸  Pause";
 		this.elPlay.style.background = "#9a7000";
-		this._setStatus("  ▶  Playing…");
 		this._stepStartWall = performance.now();
 		this._stepDurS = 0.001;
 		this._scheduleSeekbarUpdate();
@@ -1030,7 +988,6 @@ class LogVisualizer {
 		}
 		this.elPlay.textContent = "▶  Play";
 		this.elPlay.style.background = "#2d8f2d";
-		this._setStatus("  ⏸  Paused");
 	}
 
 	resetPlayback() {
@@ -1066,7 +1023,6 @@ class LogVisualizer {
 			this.playing = false;
 			this.elPlay.textContent = "▶  Play";
 			this.elPlay.style.background = "#2d8f2d";
-			this._setStatus("  ✓  Playback complete");
 			this._renderEditors();
 			this._schedulePreview();
 			return;
@@ -1730,23 +1686,14 @@ class LogVisualizer {
 		this._previewDirty = false;
 	}
 
-	_findFile(filename) {
-		for (const [key, st] of Object.entries(this._files)) {
-			if (key === "MAIN") continue;
-			const base = key.replace(/\\/g, "/").split("/").pop();
-			if (base === filename) return st;
-		}
-		return null;
-	}
-
 	_inlineFiles(html) {
-		if (Object.keys(this._files).length <= 1) return html;
-		const filesMap = {};
+		const filesMap = { ...this._imageUris };
 		for (const [key, st] of Object.entries(this._files)) {
 			if (key === "MAIN") continue;
 			const base = key.replace(/\\/g, "/").split("/").pop();
 			filesMap[base] = st.text;
 		}
+		if (!Object.keys(filesMap).length) return html;
 		return inlineFilesInHtml(html, filesMap);
 	}
 
@@ -1864,7 +1811,6 @@ class LogVisualizer {
 	_seekTo(targetIdx) {
 		if (!this.micro.length) return;
 		targetIdx = Math.max(0, Math.min(targetIdx, this.micro.length));
-		this._setStatus("  ⏩  Seeking…", CLR.dim);
 
 		this._silent = true;
 		this.microIdx = 0;
@@ -1896,15 +1842,6 @@ class LogVisualizer {
 		this._renderEditors();
 		this._updatePreview(true);
 		this._updateProgress();
-
-		if (!this._seeking) {
-			if (targetIdx >= this.micro.length)
-				this._setStatus("  ✓  Playback complete");
-			else
-				this._setStatus(
-					`  ⏸  Seeked to ${targetIdx} / ${this.micro.length}`,
-				);
-		}
 	}
 
 	_updateProgress() {
@@ -1913,8 +1850,6 @@ class LogVisualizer {
 		if (!this._silent) this.elProgLbl.textContent = `${i} / ${t}`;
 		if (!this.playing || this._seeking) this._drawSeekbar(this._idxToFrac(i));
 	}
-
-	_setStatus(msg, bg = CLR.accent) {}
 
 	_showSettings() {
 		const existing = document.getElementById("settings-modal");
@@ -1975,12 +1910,86 @@ class LogVisualizer {
 
 let vis;
 
+function _simIdbOpen() {
+	return new Promise((res, rej) => {
+		const req = indexedDB.open("kla", 1);
+		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
+		req.onsuccess = (e) => res(e.target.result);
+		req.onerror = () => rej(req.error);
+	});
+}
+async function _simIdbGet(key) {
+	try {
+		const db = await _simIdbOpen();
+		return await new Promise((res) => {
+			const r = db.transaction("state").objectStore("state").get(key);
+			r.onsuccess = () => res(r.result ?? null);
+			r.onerror = () => res(null);
+		});
+	} catch { return null; }
+}
+async function _simIdbSet(key, value) {
+	try {
+		const db = await _simIdbOpen();
+		await new Promise((res, rej) => {
+			const tx = db.transaction("state", "readwrite");
+			tx.objectStore("state").put(value, key);
+			tx.oncomplete = res;
+			tx.onerror = rej;
+		});
+	} catch {}
+}
+
+const _SIM_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+const _SIM_LOG_SKIP = new Set(["diff_marks.json", "tokens_positions.json"]);
+const _SIM_LOG_RANK = (name) => {
+	const n = name.toLowerCase();
+	if (n === "log.json") return 0;
+	if (n.endsWith("_log.json")) return 1;
+	if (n.includes("log")) return 2;
+	return 3;
+};
+
+async function _simReadDir(handle, prefix, pathMap, files) {
+	for await (const [name, entry] of handle) {
+		const path = prefix ? `${prefix}/${name}` : name;
+		if (entry.kind === "directory") {
+			await _simReadDir(entry, path, pathMap, files);
+		} else {
+			const file = await entry.getFile();
+			files.push(file);
+			pathMap.set(path, file);
+		}
+	}
+}
+
+async function _simReadImageUris(pathMap) {
+	const imageUris = {};
+	await Promise.all(
+		[...pathMap.entries()]
+			.filter(([p]) => _SIM_IMAGE_EXT.test(p))
+			.map(
+				([, f]) =>
+					new Promise((res) => {
+						const r = new FileReader();
+						r.onload = (e) => {
+							imageUris[f.name] = e.target.result;
+							res();
+						};
+						r.onerror = res;
+						r.readAsDataURL(f);
+					}),
+			),
+	);
+	return imageUris;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 	vis = new LogVisualizer();
 
 	const landing = document.getElementById("lv-landing");
-	const fileInput = document.getElementById("lv-file-input");
 	const btnOpen = document.getElementById("btn-open-log");
+	const btnFolder = document.getElementById("btn-open-folder");
 
 	function loadFromData(data) {
 		landing.style.display = "none";
@@ -1990,13 +1999,17 @@ document.addEventListener("DOMContentLoaded", () => {
 	const isReload =
 		performance.getEntriesByType("navigation")[0]?.type === "reload";
 	if (!isReload) {
-		// Prefer data stored by dashboard (localStorage), then fall back to .last_vis_data.js
 		try {
 			const stored = localStorage.getItem("kla_sim_data");
 			if (stored) {
 				const { filePath, events } = JSON.parse(stored);
+				let imageUris = {};
+				try {
+					const raw = localStorage.getItem("kla_sim_images");
+					if (raw) imageUris = JSON.parse(raw);
+				} catch {}
 				const micro = expandEvents(events || []);
-				loadFromData({ filePath, micro, error: null });
+				loadFromData({ filePath, micro, error: null, imageUris });
 			} else if (window.__LOG_DATA__) {
 				loadFromData(window.__LOG_DATA__);
 			}
@@ -2005,23 +2018,70 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	}
 
-	btnOpen.addEventListener("click", () => fileInput.click());
+	btnFolder.addEventListener("click", async () => {
+		try {
+			const lastDir = await _simIdbGet("lastDir");
+			const opts = { mode: "read" };
+			if (lastDir) opts.startIn = lastDir;
+			const dirHandle = await window.showDirectoryPicker(opts);
+			_simIdbSet("lastDir", dirHandle);
+			const files = [];
+			const pathMap = new Map();
+			await _simReadDir(dirHandle, "", pathMap, files);
 
-	fileInput.addEventListener("change", () => {
-		const file = fileInput.files[0];
-		if (!file) return;
-		fileInput.value = "";
-		const reader = new FileReader();
-		reader.onload = (e) => {
-			try {
-				const json = JSON.parse(e.target.result);
-				const events = json.events || [];
-				const micro = expandEvents(events);
-				loadFromData({ filePath: file.name, micro, error: null });
-			} catch (err) {
-				alert("Failed to load log: " + err.message);
+			const jsonFiles = files.filter(
+				(f) =>
+					f.name.toLowerCase().endsWith(".json") &&
+					!_SIM_LOG_SKIP.has(f.name.toLowerCase()),
+			);
+			if (!jsonFiles.length) {
+				alert("No JSON log file found in this folder.");
+				return;
 			}
-		};
-		reader.readAsText(file);
+
+			const candidates = [...jsonFiles].sort(
+				(a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name),
+			);
+			let loaded = false;
+			for (const file of candidates) {
+				try {
+					const data = JSON.parse(await file.text());
+					const events = data?.events || data?.keyPresses || [];
+					if (Array.isArray(events) && events.length) {
+						const imageUris = await _simReadImageUris(pathMap);
+						const micro = expandEvents(events);
+						loadFromData({
+							filePath: file.name,
+							micro,
+							error: null,
+							imageUris,
+						});
+						loaded = true;
+						break;
+					}
+				} catch {}
+			}
+			if (!loaded) alert("No JSON log file with events found.");
+		} catch (e) {
+			if (e.name !== "AbortError")
+				alert("Could not open folder: " + e.message);
+		}
+	});
+
+	btnOpen.addEventListener("click", async () => {
+		try {
+			const lastDir = await _simIdbGet("lastDir");
+			const opts = { types: [{ description: "Log files", accept: { "application/json": [".json"] } }] };
+			if (lastDir) opts.startIn = lastDir;
+			const [fh] = await window.showOpenFilePicker(opts);
+			_simIdbSet("lastDir", fh);
+			const file = await fh.getFile();
+			const json = JSON.parse(await file.text());
+			const events = json.events || [];
+			const micro = expandEvents(events);
+			loadFromData({ filePath: file.name, micro, error: null });
+		} catch (e) {
+			if (e.name !== "AbortError") alert("Failed to load log: " + e.message);
+		}
 	});
 });
