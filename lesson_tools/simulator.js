@@ -1926,7 +1926,9 @@ async function _simIdbGet(key) {
 			r.onsuccess = () => res(r.result ?? null);
 			r.onerror = () => res(null);
 		});
-	} catch { return null; }
+	} catch {
+		return null;
+	}
 }
 async function _simIdbSet(key, value) {
 	try {
@@ -2000,22 +2002,22 @@ document.addEventListener("DOMContentLoaded", () => {
 		performance.getEntriesByType("navigation")[0]?.type === "reload";
 	if (!isReload) {
 		try {
-			const stored = localStorage.getItem("kla_sim_data");
-			if (stored) {
-				const { filePath, events } = JSON.parse(stored);
-				let imageUris = {};
-				try {
-					const raw = localStorage.getItem("kla_sim_images");
-					if (raw) imageUris = JSON.parse(raw);
-				} catch {}
-				const micro = expandEvents(events || []);
-				loadFromData({ filePath, micro, error: null, imageUris });
-			} else if (window.__LOG_DATA__) {
+			if (window.__LOG_DATA__) {
 				loadFromData(window.__LOG_DATA__);
+			} else {
+				const stored = localStorage.getItem("kla_sim_data");
+				if (stored) {
+					const { filePath, events } = JSON.parse(stored);
+					let imageUris = {};
+					try {
+						const raw = localStorage.getItem("kla_sim_images");
+						if (raw) imageUris = JSON.parse(raw);
+					} catch {}
+					const micro = expandEvents(events || []);
+					loadFromData({ filePath, micro, error: null, imageUris });
+				}
 			}
-		} catch {
-			if (window.__LOG_DATA__) loadFromData(window.__LOG_DATA__);
-		}
+		} catch {}
 	}
 
 	btnFolder.addEventListener("click", async () => {
@@ -2071,7 +2073,14 @@ document.addEventListener("DOMContentLoaded", () => {
 	btnOpen.addEventListener("click", async () => {
 		try {
 			const lastDir = await _simIdbGet("lastDir");
-			const opts = { types: [{ description: "Log files", accept: { "application/json": [".json"] } }] };
+			const opts = {
+				types: [
+					{
+						description: "Log files",
+						accept: { "application/json": [".json"] },
+					},
+				],
+			};
 			if (lastDir) opts.startIn = lastDir;
 			const [fh] = await window.showOpenFilePicker(opts);
 			_simIdbSet("lastDir", fh);
