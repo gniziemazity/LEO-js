@@ -49,36 +49,7 @@ def expand_events(events: list) -> list:
             micro.append(("char", ev["char"], ts, real_delay, editor))
 
         elif "code_insert" in ev:
-            segments = split_code_with_anchors(ev["code_insert"])
-            micro.append(("log_code_insert", ev["code_insert"][:60], ts, DELAY_OPS))
-            micro.append(("code_insert_begin", ts, DELAY_OPS))
-            total_chars = sum(
-                sum(1 for ch in v if ch not in _CI_SPECIAL)
-                for k, v in segments if k == "text"
-            )
-            char_i = 0
-            for seg_kind, seg_val in segments:
-                if seg_kind == "text":
-                    for ch in seg_val:
-                        if ch == DELETE_LINE_CHAR:
-                            micro.append(("code_delete_line", ts, DELAY_OPS, editor))
-                        elif ch in CURSOR_MOVES:
-                            micro.append(("code_cursor_move", ch, ts, DELAY_OPS, editor))
-                        elif ch in ("↩", "\n"):
-                            micro.append(("code_insert_newline", ts, DELAY_OPS, editor))
-                        elif ch in ("―", "\t"):
-                            micro.append(("code_char", "\t", ts, DELAY_CODE, editor))
-                        elif ch in BACKSPACE_CHARS:
-                            micro.append(("code_backspace", ts, DELAY_OPS, editor))
-                        elif ch in DELETE_FWRD_CHARS:
-                            micro.append(("code_fwd_delete", ts, DELAY_OPS, editor))
-                        else:
-                            char_i += 1
-                            d = real_delay if char_i == total_chars else DELAY_CODE
-                            micro.append(("code_char", ch, ts, d, editor))
-                else:
-                    micro.append(("set_anchor", seg_val, ts, DELAY_OPS))
-            micro.append(("code_insert_end", ts, DELAY_OPS))
+            micro.append(("code_insert_atomic", ev["code_insert"], ts, DELAY_OPS, editor))
 
         elif "code_remove" in ev:
             micro.append(("code_remove", ev["code_remove"], ts, real_delay))

@@ -2,25 +2,15 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>📋 Log Visualizer</title>
+		<title>📋 Simulator</title>
+		<link rel="stylesheet" href="shared.css" />
 		<style>
-			*,
-			*::before,
-			*::after {
-				box-sizing: border-box;
-				margin: 0;
-				padding: 0;
-			}
-
 			html,
 			body {
 				height: 100%;
 				width: 100%;
 				overflow: hidden;
-				font-family: "Segoe UI", sans-serif;
-				font-size: 13px;
 				background: #e8e8e8;
-				color: #1e1e1e;
 			}
 
 			#vis-root {
@@ -32,7 +22,7 @@
 			#vis-left {
 				display: flex;
 				flex-direction: column;
-				flex: 1 1 50%;
+				flex: 1 1 0;
 				min-width: 0;
 				border-right: 2px solid #ccc;
 			}
@@ -40,9 +30,16 @@
 			#vis-right {
 				display: flex;
 				flex-direction: column;
-				flex: 1 1 50%;
+				flex: 0 0 33.33%;
 				min-width: 0;
 				background: #f9f9f9;
+			}
+
+			#vis-right-main {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 0;
+				min-height: 0;
 			}
 
 			#vis-toolbar {
@@ -71,12 +68,18 @@
 			#btn-reset {
 				background: #7a6500;
 			}
-			#btn-open-toolbar {
-				background: #555;
-			}
 			#btn-settings {
 				background: #f0f0f8;
 				color: #0000ff !important;
+			}
+			#btn-toggle-log,
+			#btn-toggle-devtools {
+				background: #888;
+				padding: 4px 8px;
+			}
+			#btn-toggle-log:hover,
+			#btn-toggle-devtools:hover {
+				background: #666;
 			}
 
 			#vis-toolbar label {
@@ -94,13 +97,6 @@
 				font-weight: bold;
 				color: #007acc;
 				min-width: 32px;
-			}
-
-			.sep {
-				width: 1px;
-				height: 18px;
-				background: #bbb;
-				margin: 0 4px;
 			}
 
 			#vis-seekbar {
@@ -148,62 +144,6 @@
 				min-height: 0;
 			}
 
-			#vis-dev-outer {
-				position: absolute;
-				bottom: 22px;
-				right: 10px;
-				width: 52%;
-				height: 38%;
-				background: #f5f5f5;
-				border: 1px solid #007acc;
-				display: flex;
-				flex-direction: column;
-				z-index: 5;
-			}
-			#vis-dev-outer.collapsed {
-				height: auto;
-			}
-			#vis-dev-outer.collapsed pre#vis-dev-editor {
-				display: none;
-			}
-
-			#vis-dev-title {
-				display: flex;
-				align-items: center;
-				background: #ddeeff;
-				padding: 2px 6px;
-				font-family: Consolas, monospace;
-				font-size: 11px;
-				font-weight: bold;
-				color: #007acc;
-				gap: 4px;
-			}
-			#dev-indicator {
-				margin-left: auto;
-			}
-			#btn-dev-toggle {
-				border: none;
-				background: transparent;
-				cursor: pointer;
-				font-size: 13px;
-				font-weight: bold;
-				color: #007acc;
-				padding: 0 4px;
-			}
-
-			pre#vis-dev-editor {
-				flex: 1 1 0;
-				overflow: auto;
-				background: #f5f5f5;
-				color: #009900;
-				font-family: Consolas, "Courier New", monospace;
-				font-size: 11px;
-				line-height: 1.5;
-				padding: 4px 6px;
-				white-space: pre-wrap;
-				word-break: break-all;
-			}
-
 			#vis-event-log-wrap {
 				width: 260px;
 				flex-shrink: 0;
@@ -225,46 +165,34 @@
 				color: #007acc;
 			}
 
-			#vis-status {
-				background: #007acc;
-				color: #fff;
-				padding: 3px 8px;
-				font-size: 12px;
-				flex-shrink: 0;
-			}
-
-			#vis-right {
-				display: flex;
-				flex-direction: column;
-			}
-
 			#vis-preview {
-				flex: 1 1 0;
+				flex: 2 1 0;
+				min-height: 0;
 				border: none;
 				background: #fff;
 			}
 
-			#btn-refresh-preview {
-				padding: 1px 6px;
-				font-size: 14px;
-				border: 1px solid #ccc;
-				border-radius: 3px;
-				cursor: pointer;
-				background: #fff;
-				color: #333;
-			}
-			#btn-refresh-preview:hover {
-				background: #e8e8e8;
+			#vis-dev-outer {
+				flex: 1 1 0;
+				min-height: 0;
+				display: flex;
+				flex-direction: column;
+				background: #f5f5f5;
+				border-top: 1px solid #ddd;
 			}
 
-			.pane-title {
-				background: #f3f3f3;
-				border-bottom: 1px solid #ddd;
-				padding: 3px 8px;
-				font-size: 12px;
-				font-weight: bold;
-				color: #1e1e1e;
-				flex-shrink: 0;
+			pre#vis-dev-editor {
+				flex: 1 1 0;
+				overflow: auto;
+				background: #f5f5f5;
+				color: #009900;
+				font-family: Consolas, "Courier New", monospace;
+				font-size: 11px;
+				line-height: 1.5;
+				padding: 4px 6px;
+				white-space: pre-wrap;
+				word-break: break-all;
+				min-height: 0;
 			}
 
 			#vis-file-tabs {
@@ -276,27 +204,6 @@
 			}
 			#vis-file-tabs:empty {
 				display: none;
-			}
-			.file-tab {
-				padding: 3px 14px;
-				border: none;
-				border-right: 1px solid #ccc;
-				background: #f3f3f3;
-				color: #888;
-				font-size: 11px;
-				font-family: Consolas, monospace;
-				cursor: pointer;
-				white-space: nowrap;
-			}
-			.file-tab:hover {
-				background: #e0e0e0;
-				color: #333;
-			}
-			.file-tab-active {
-				background: #ffffff;
-				color: #1e1e1e;
-				font-weight: bold;
-				border-bottom: 2px solid #007acc;
 			}
 
 			@keyframes anchor-flash {
@@ -402,36 +309,15 @@
 				font-weight: bold;
 				color: #1e1e1e;
 			}
-			#btn-open-log {
-				padding: 10px 32px;
-				font-size: 14px;
-				background: #007acc;
-				color: #fff;
-				border: none;
-				border-radius: 4px;
-				cursor: pointer;
-			}
-			#btn-open-log:hover {
-				background: #005a9e;
-			}
-			#btn-open-log:disabled {
-				background: #999;
-				cursor: default;
-			}
-			#lv-landing-hint {
-				font-size: 12px;
-				color: #888;
-			}
 		</style>
 	</head>
 	<body>
 		<div id="lv-landing">
 			<div id="lv-landing-box">
-				<div id="lv-landing-title">📋 Log Visualizer</div>
-				<button id="btn-open-log">📄 Open Log File</button>
-				<div id="lv-landing-hint">
-					or wait for LEO to open a log automatically
-				</div>
+				<div id="lv-landing-title">📋 Simulator</div>
+				<button id="btn-open-log" class="landing-btn-primary">
+					📄 Select a Lesson
+				</button>
 			</div>
 		</div>
 		<input
@@ -442,10 +328,10 @@
 		/>
 		<div id="vis-root"></div>
 		<script>
-			// populated by LEO (main.js writes .last_vis_data.js before opening this page).
 			window.__LOG_DATA__ = null;
 		</script>
 		<script src=".last_vis_data.js" onerror="void 0"></script>
-		<script src="log_visualizer.js"></script>
+		<script src="preview.js"></script>
+		<script src="simulator.js"></script>
 	</body>
 </html>

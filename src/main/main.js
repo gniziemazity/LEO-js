@@ -869,12 +869,12 @@ ipcMain.on("update-window-title", (event, titleData) => {
 const { shell } = require("electron");
 const { spawnSync } = require("child_process");
 
-const _VIS_HTML = path.join(__dirname, "../../scripts/log_visualizer.html");
-const _VIS_DATA = path.join(__dirname, "../../scripts/.last_vis_data.js");
+const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
+const _VIS_DATA = path.join(__dirname, "../../lesson_tools/.last_vis_data.js");
 
 function openLogVisualizer(logFilePath) {
 	if (logFilePath) {
-		const scriptPath = path.join(__dirname, "../../scripts/lv_expand.py");
+		const scriptPath = path.join(__dirname, "../../lesson_tools/lv_expand.py");
 		const result = spawnSync("python", [scriptPath, logFilePath], {
 			encoding: "utf8",
 		});

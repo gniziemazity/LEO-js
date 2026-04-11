@@ -10,7 +10,7 @@ function rateToY(r, L) {
   return L.M.top + L.plotH1 * (1 - t);
 }
 function countToY(n, maxN, L) { return L.M.top + L.plotH2 * (1 - n / Math.max(maxN, 1)); }
-function pctToY(pct, L)       { return L.M.top + L.plotH3 * (1 - Math.max(0, Math.min(100, pct)) / 100); }
+function pctToY(pct, L)       { const pad = L.plotH3Pad || 0; return L.M.top + pad + (L.plotH3 - 2 * pad) * (1 - Math.max(0, Math.min(100, pct)) / 100); }
 
 function makeLayout(p, W, H1, H2, H3) {
   const M = CFG.M;
@@ -20,6 +20,7 @@ function makeLayout(p, W, H1, H2, H3) {
     plotH1: H1 - M.top  - M.bottom,
     plotH2: H2 - M.top  - M.bottom,
     plotH3: H3 - M.top  - M.bottom,
+    plotH3Pad: 8,
     timeMin: _zoomMin ?? (p.sessionStart - CFG.PADDING),
     timeMax: _zoomMax ?? (p.sessionEnd   + CFG.PADDING),
   };
@@ -148,7 +149,7 @@ function drawChart1(ctx, p, L) {
   rotatedLabel(ctx, 12, L.M.top + L.plotH1/2, 'Keys / Minute (log)', '#666');
 
   ctx.font='10px Consolas,monospace'; ctx.textAlign='left';
-  const lx = M.left + plotW - 190, ly = M.top + 4;
+  const lx = M.left + plotW - 145, ly = M.top + 4;
   [
     [`Session: ${p.sessionRate.toFixed(1)} kpm`,'#888888'],
     [`Active:  ${p.activeRate.toFixed(1)} kpm`, '#000000'],
@@ -251,7 +252,7 @@ function drawChart2(ctx, p, L) {
   ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
   for (let v=gs;v<=maxN;v+=gs) {
     const y=countToY(v,maxN,L);
-    ctx.fillText(v, M.left-5, y+4);
+    ctx.fillText(v, M.left-3, y+4);
     ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
   }
   rotatedLabel(ctx, 12, M.top+plotH2/2, 'Total Key Presses', '#666');
@@ -265,12 +266,12 @@ function drawChart2(ctx, p, L) {
     { lbl:`Moves (${p.moves.length})`,         clr:'#e07020', alpha:0.9 },
   ];
   ctx.font='10px Consolas,monospace'; ctx.textAlign='left';
-  const colX = [M.left + 8, M.left + 110];
+  const lx0 = M.left + 8;
   const rowY0 = M.top + 10;
   const rowH  = 14;
   items.forEach((it, i) => {
-    const lx = colX[i % 2];
-    const ly = rowY0 + Math.floor(i / 2) * rowH;
+    const lx = lx0;
+    const ly = rowY0 + i * rowH;
     ctx.save(); ctx.globalAlpha=it.alpha; ctx.fillStyle=it.clr;
     if (it.shape==='dia') {
       ctx.beginPath();
@@ -303,6 +304,7 @@ function drawChart3(ctx, p, students, L) {
 
   for (const s of students) {
     const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
+    const jitter = _shake ? (_jitterMap.get(s.name) || { dx: 0, dy: 0 }) : { dx: 0, dy: 0 };
     const evs = (s.follow_events || []).filter(e => e.ts != null);
     if (!evs.length) continue;
     const sorted = [...evs].sort((a,b)=>a.ts-b.ts);
@@ -314,7 +316,9 @@ function drawChart3(ctx, p, students, L) {
     }
     clusters.push(cur);
     const barH = isHovered ? 6 : 3;
-    const y0 = pctToY(s.follow_pct, L) - barH/2;
+    const minY = L.M.top + (L.plotH3Pad || 0);
+    const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+    const y0 = Math.max(minY, Math.min(maxY, pctToY(s.follow_pct, L) + jitter.dy)) - barH/2;
     for (const cl of clusters) {
       const x1 = tsToX(cl[0].ts, L);
       const x2 = Math.max(tsToX(cl[cl.length-1].ts, L), x1 + 3);
@@ -333,23 +337,27 @@ function drawChart3(ctx, p, students, L) {
 
   for (const s of students) {
     if (s.follow_dt == null) continue;
-    const x   = tsToX(s.follow_dt, L);
-    const y   = pctToY(s.follow_pct, L);
+    const jitter = _shake ? (_jitterMap.get(s.name) || { dx: 0, dy: 0 }) : { dx: 0, dy: 0 };
+    const x   = tsToX(s.follow_dt, L) + jitter.dx;
+    const _minY = L.M.top + (L.plotH3Pad || 0);
+    const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+    const y   = Math.max(_minY, Math.min(_maxY, pctToY(s.follow_pct, L) + jitter.dy));
     const ans  = answering.has(s.name);
     const ask  = asking.has(s.name);
     const hlp  = helping.has(s.name);
     const active = ans || ask || hlp;
+    const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
 
     ctx.save();
     if (active) {
       const r    = ans ? 9 : 7;
-      const fill = ans ? '#1565C0' : ask ? '#F9A825' : '#66BB6A';
+      const fill = isHovered ? '#000000' : (ans ? '#1565C0' : ask ? '#F9A825' : '#66BB6A');
       drawStar(ctx, x, y, r, fill, 1.0);
     } else {
-      ctx.globalAlpha = 0.65;
+      ctx.globalAlpha = isHovered ? 1.0 : 0.65;
       ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
-      ctx.fillStyle = '#CCCCCC'; ctx.fill();
-      ctx.strokeStyle='#999'; ctx.lineWidth=0.8; ctx.stroke();
+      ctx.fillStyle = isHovered ? '#000' : '#CCCCCC'; ctx.fill();
+      ctx.strokeStyle = isHovered ? '#000' : '#999'; ctx.lineWidth = isHovered ? 1.5 : 0.8; ctx.stroke();
     }
     ctx.restore();
   }
@@ -360,7 +368,7 @@ function drawChart3(ctx, p, students, L) {
   ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
   for (let v=0;v<=100;v+=10) {
     const y=pctToY(v,L);
-    ctx.fillText(v+'%', M.left-5, y+4);
+    ctx.fillText(v+'%', M.left-3, y+4);
     ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
   }
   rotatedLabel(ctx, 12, M.top+plotH3/2, 'Follow Score (%)', '#666');
@@ -407,7 +415,7 @@ function drawYAxisLog(ctx, L) {
   ctx.strokeStyle='#aaa';
   for (const r of [10,100,1000]) {
     const y=rateToY(r,L);
-    ctx.fillText(r, M.left-5, y+4);
+    ctx.fillText(r, M.left-3, y+4);
     ctx.beginPath(); ctx.moveTo(M.left-3,y); ctx.lineTo(M.left,y); ctx.stroke();
   }
 }

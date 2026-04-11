@@ -1,0 +1,124 @@
+*, *::before, *::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: "Segoe UI", sans-serif;
+	font-size: 13px;
+	color: #1e1e1e;
+}
+
+.pane-title {
+	background: #f3f3f3;
+	border-bottom: 1px solid #ddd;
+	padding: 3px 8px;
+	font-size: 12px;
+	font-weight: bold;
+	color: #1e1e1e;
+	flex-shrink: 0;
+}
+
+.sep {
+	width: 1px;
+	height: 18px;
+	background: #bbb;
+	margin: 0 4px;
+}
+
+.file-tab {
+	padding: 3px 14px;
+	border: none;
+	border-right: 1px solid #ccc;
+	background: #f3f3f3;
+	color: #888;
+	font-size: 11px;
+	font-family: Consolas, monospace;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.file-tab:hover {
+	background: #e0e0e0;
+	color: #333;
+}
+.file-tab-active {
+	background: #ffffff;
+	color: #1e1e1e;
+	font-weight: bold;
+	border-bottom: 2px solid #007acc;
+}
+
+.landing-btn {
+	padding: 14px 32px;
+	font-size: 14px;
+	border: 1px solid #bbb;
+	border-radius: 6px;
+	background: #fff;
+	cursor: pointer;
+	color: #1e1e1e;
+	transition: background 0.15s, border-color 0.15s;
+}
+.landing-btn:hover {
+	background: #e8f4ff;
+	border-color: #007acc;
+	color: #007acc;
+}
+
+.landing-btn-primary {
+	padding: 10px 32px;
+	font-size: 14px;
+	background: #007acc;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.landing-btn-primary:hover {
+	background: #005a9e;
+}
+.landing-btn-primary:disabled {
+	background: #999;
+	cursor: default;
+}
+
+.landing-hint {
+	font-size: 12px;
+	color: #888;
+}
+
+#loading {
+	position: fixed;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.7);
+	display: none;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	color: #555;
+	z-index: 500;
+}
+
+#tooltip {
+	position: fixed;
+	display: none;
+	background: #ffffff;
+	color: #1e1e1e;
+	font-family: Consolas, monospace;
+	font-size: 11px;
+	padding: 6px 10px;
+	border-radius: 4px;
+	pointer-events: none;
+	z-index: 1000;
+	max-width: 440px;
+	max-height: 320px;
+	overflow: hidden;
+	white-space: pre-wrap;
+	word-break: break-all;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	line-height: 1.6;
+	border-left: 3px solid transparent;
+}
+#tooltip.pinned {
+	border-left-color: #007acc;
+}

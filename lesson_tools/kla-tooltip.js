@@ -137,47 +137,79 @@ function hitChart2(ts, my, p, L, thT) {
 	const cum = p.cumulative,
 		maxN = p.totalChars || 1,
 		PY = 8;
+	let best = null,
+		bestD = Infinity;
 
-	function nearDot(evTs_secs) {
+	function check(type, payload, evTs_secs) {
+		const dx = Math.abs(ts - evTs_secs);
 		const dy = Math.abs(my - countToY(charsAt(evTs_secs, cum), maxN, L));
-		return Math.abs(ts - evTs_secs) < thT * 2 && dy < PY;
+		if (dx < thT * 2 && dy < PY) {
+			const dxPx = (dx / (L.timeMax - L.timeMin)) * L.plotW;
+			const d = dxPx * dxPx + dy * dy;
+			if (d < bestD) {
+				bestD = d;
+				best = { type, ...payload };
+			}
+		}
 	}
 
-	for (const anc of p.anchors)
-		if (nearDot(anc.ts / 1000)) return { type: "anchor", anc };
-	for (const mv of p.moves)
-		if (nearDot(mv.ts / 1000)) return { type: "move", mv };
+	for (const anc of p.anchors) check("anchor", { anc }, anc.ts / 1000);
+	for (const mv of p.moves) check("move", { mv }, mv.ts / 1000);
 	for (const ev of p.codeInserts)
-		if (nearDot(ev.timestamp / 1000)) return { type: "code_insert", ev };
-	for (const ev of p.deletes)
-		if (nearDot(ev.timestamp / 1000)) return { type: "delete", ev };
-	for (const ev of p.devChars)
-		if (nearDot(ev.timestamp / 1000)) return { type: "dev_char", ev };
+		check("code_insert", { ev }, ev.timestamp / 1000);
+	for (const ev of p.deletes) check("delete", { ev }, ev.timestamp / 1000);
+	for (const ev of p.devChars) check("dev_char", { ev }, ev.timestamp / 1000);
 
 	for (const grp of p.burstGroups) {
 		for (const idx of grp.idxs) {
 			const c = cum[idx];
 			if (!c) continue;
-			if (
-				Math.abs(ts - c.ts) < thT * 2 &&
-				Math.abs(my - countToY(c.count, maxN, L)) < PY
-			)
-				return { type: "char", ev: c.event };
+			const dx = Math.abs(ts - c.ts);
+			const dy = Math.abs(my - countToY(c.count, maxN, L));
+			if (dx < thT * 2 && dy < PY) {
+				const dxPx = (dx / (L.timeMax - L.timeMin)) * L.plotW;
+				const d = dxPx * dxPx + dy * dy;
+				if (d < bestD) {
+					bestD = d;
+					best = { type: "char", ev: c.event };
+				}
+			}
 		}
 	}
-	return hitInteraction(ts, p);
+	return best || hitInteraction(ts, p);
 }
 
 function hitChart3(ts, my, p, L, thT) {
 	if (!_students) return null;
 	const PY = 10;
+	let best = null,
+		bestD = Infinity;
 	for (const s of _students) {
 		if (s.follow_dt == null) continue;
-		const dy = Math.abs(my - pctToY(s.follow_pct, L));
-		if (Math.abs(ts - s.follow_dt) < thT * 3 && dy < PY)
-			return { type: "student", s };
+		const jitter = _shake
+			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
+			: { dx: 0, dy: 0 };
+		const jitterDt = (jitter.dx / L.plotW) * (L.timeMax - L.timeMin);
+		const dx = Math.abs(ts - (s.follow_dt + jitterDt));
+		const _minY = L.M.top + (L.plotH3Pad || 0);
+		const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+		const dy = Math.abs(
+			my -
+				Math.max(
+					_minY,
+					Math.min(_maxY, pctToY(s.follow_pct, L) + jitter.dy),
+				),
+		);
+		if (dx < thT * 3 && dy < PY) {
+			const dxPx = (dx / (L.timeMax - L.timeMin)) * L.plotW;
+			const d = dxPx * dxPx + dy * dy;
+			if (d < bestD) {
+				bestD = d;
+				best = { type: "student", s };
+			}
+		}
 	}
-	return null;
+	return best;
 }
 
 function hitInteraction(ts, p) {
@@ -317,8 +349,31 @@ function formatHit(hit, simple = false) {
 			const mismatches = (s.follow_events || []).filter(
 				(ev) => ev.kind && ev.kind !== "normal",
 			);
-			let html = `👤 ${escHtml(s.name)} (${escHtml(pct)})\n`;
+			let html = `👤 ${escHtml(s.name)} (${escHtml(pct)})`;
+			const interTypes = [];
+			if (_p) {
+				const answered = (_p.interactions["teacher-question"] || []).filter(
+					(q) => q.answered_by && q.answered_by.includes(s.name),
+				);
+				for (const q of answered)
+					interTypes.push("Answered: " + (q.info || "?"));
+				const asked = (_p.interactions["student-question"] || []).filter(
+					(q) => q.asked_by && q.asked_by.trim() === s.name,
+				);
+				for (const q of asked) interTypes.push("Asked: " + (q.info || "?"));
+				const helped = (_p.interactions["providing-help"] || []).filter(
+					(q) => q.student && q.student.trim() === s.name,
+				);
+				if (helped.length)
+					interTypes.push(
+						"Got help" + (helped.length > 1 ? " ×" + helped.length : ""),
+					);
+			}
+			if (interTypes.length) {
+				html += "\n──────────\n" + interTypes.join("\n");
+			}
 			if (mismatches.length) {
+				html += "\n──────────\n";
 				const counts = new Map();
 				const order = [];
 				for (const ev of mismatches) {

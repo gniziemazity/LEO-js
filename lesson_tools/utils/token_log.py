@@ -1021,3 +1021,109 @@ class TokenLogMixin:
             written += 1
 
         print(f'  Written token files for {written} student(s) in {names_dir.name}/')
+
+    def write_similarity_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        """Generate diff_marks.json for each student using file comparison only (no log needed)."""
+        teacher_code_files = self.get_code_files(self.reference_dir)
+        if not teacher_code_files:
+            print('  Similarity diff marks skipped — no teacher code files found.')
+            return
+
+        written = 0
+        for student_dir in sorted(names_dir.iterdir()):
+            if not student_dir.is_dir():
+                continue
+            sid = self.name_to_id.get(student_dir.name)
+            if sid is None or sid not in self.results:
+                continue
+
+            anon_dir = student_dir
+            if anon_names_dir is not None and anon_names_dir.is_dir():
+                candidate = anon_names_dir / student_dir.name
+                if candidate.is_dir():
+                    anon_dir = candidate
+
+            stu_files = self.get_code_files(anon_dir) or self.get_code_files(student_dir)
+            if not stu_files:
+                continue
+
+            data = self.results.get(sid, {})
+            if not data or not data.get('files_compared'):
+                continue
+
+            # Build aggregated normalised token counts for teacher and student
+            teacher_agg: Counter = Counter()
+            student_agg: Counter = Counter()
+            for ext in ['.html', '.css', '.js']:
+                if ext == '.html':
+                    t_html = (self.teacher_html_outside_css_by_ext.get(ext)
+                              or self.teacher_html_outside_by_ext.get(ext, Counter()))
+                    t_script = self.teacher_script_outside_by_ext.get(ext, Counter())
+                    teacher_ext = _sm.upper_counter(t_html) + _sm.upper_counter(t_script)
+                    fd = data['files_compared'].get(ext)
+                    if fd and fd.get('status') == 'success':
+                        s_html = fd.get('student_html_outside_css',
+                                        fd.get('student_html_outside', Counter()))
+                        s_script = fd.get('student_script_outside', Counter())
+                        student_ext = _sm.upper_counter(s_html) + _sm.upper_counter(s_script)
+                    else:
+                        student_ext = Counter()
+                else:
+                    teacher_ext = _sm.upper_counter(
+                        self.teacher_outside_by_ext.get(ext, Counter()))
+                    fd = data['files_compared'].get(ext)
+                    student_ext = (_sm.upper_counter(fd.get('student_outside', Counter()))
+                                   if fd and fd.get('status') == 'success' else Counter())
+                teacher_agg += teacher_ext
+                student_agg += student_ext
+
+            # miss_budget: teacher tokens not covered by student (shared across teacher files)
+            miss_budget: Dict[str, int] = {
+                tok: teacher_agg[tok] - student_agg.get(tok, 0)
+                for tok in teacher_agg
+                if teacher_agg[tok] > student_agg.get(tok, 0)
+            }
+            # found_out: student tokens matched to teacher (shared across student files)
+            found_out: Dict[str, int] = dict(teacher_agg & student_agg)
+            # extra budget: student tokens not covered by teacher
+            extra_budget: Dict[str, int] = dict(student_agg - teacher_agg)
+
+            teacher_colors: Dict[str, dict] = {}
+            for t_ext, t_path in teacher_code_files.items():
+                try:
+                    raw = t_path.read_text(encoding='utf-8', errors='ignore')
+                    _, file_comm = _extract_student_ci_split({t_ext: t_path})
+                    result = _build_teacher_file_coloring(raw, t_ext, miss_budget, dict(file_comm))
+                    if result:
+                        teacher_colors[t_path.name] = result
+                except Exception:
+                    pass
+
+            student_colors: Dict[str, dict] = {}
+            for s_ext, s_path in stu_files.items():
+                try:
+                    raw = s_path.read_text(encoding='utf-8', errors='ignore')
+                    _, file_comm = _extract_student_ci_split({s_ext: s_path})
+                    result = _build_student_file_coloring(
+                        raw, s_ext,
+                        found_out, dict(file_comm),
+                        {}, extra_budget, {}
+                    )
+                    if result:
+                        student_colors[s_path.name] = result
+                except Exception:
+                    pass
+
+            diff_marks = {
+                'format_version': 3,
+                'token_matching': 'similarity-containment',
+                'case_sensitive': _sm._ALL_CASE_SENSITIVE,
+                'teacher_files':  teacher_colors,
+                'student_files':  student_colors,
+            }
+            diff_path = anon_dir / 'diff_marks.json'
+            with open(diff_path, 'w', encoding='utf-8') as fh:
+                json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+            written += 1
+
+        print(f'  Written similarity diff marks for {written} student(s) in {names_dir.name}/')

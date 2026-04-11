@@ -534,10 +534,12 @@ def main() -> None:
     checker.load_lesson_json(current_dir)
 
     folder_name = current_dir.name
+    print('\nWriting diff mark files...')
     if checker._lesson_keypresses:
-        print('\nWriting debug output files...')
         checker.write_keyword_log()
         checker.write_student_token_files(names_dir, anon_names_dir)
+    else:
+        checker.write_similarity_diff_marks(names_dir, anon_names_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

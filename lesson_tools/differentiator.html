@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Differentiator</title>
+		<link rel="stylesheet" href="shared.css" />
+		<style>
+			html,
+			body {
+				height: 100%;
+				overflow: hidden;
+				background: #e8e8e8;
+			}
+
+			#diff-root {
+				display: flex;
+				height: 100vh;
+				width: 100%;
+			}
+
+			.diff-panel {
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+				min-width: 0;
+				overflow: hidden;
+				border-right: 2px solid #ccc;
+			}
+			.diff-panel:last-child {
+				border-right: none;
+			}
+
+			.panel-header {
+				background: #e8e8e8;
+				padding: 4px 10px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #555;
+				text-transform: uppercase;
+				letter-spacing: 0.6px;
+				flex-shrink: 0;
+				border-bottom: 1px solid #ccc;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.panel-landing {
+				flex: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.panel-content {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+				overflow: hidden;
+			}
+
+			.tab-bar {
+				display: flex;
+				flex: 1;
+				min-width: 0;
+				overflow-x: auto;
+				scrollbar-width: none;
+			}
+			.tab-bar::-webkit-scrollbar {
+				display: none;
+			}
+
+			.code-wrap {
+				flex: 1;
+				overflow: hidden;
+				position: relative;
+			}
+
+			.code-pane {
+				display: none;
+				height: 100%;
+				overflow: auto;
+			}
+			.code-pane.active {
+				display: block;
+			}
+			.code-pane pre {
+				padding: 8px;
+				font-family: Consolas, "Courier New", monospace;
+				font-size: 12px;
+				line-height: 1.5;
+				color: #aaa;
+				background: #fff;
+				white-space: pre-wrap;
+				word-wrap: break-word;
+				tab-size: 4;
+				-moz-tab-size: 4;
+				min-height: 100%;
+			}
+
+			.btn-preview {
+				position: fixed;
+				bottom: 14px;
+				right: 14px;
+				z-index: 100;
+				padding: 4px 12px;
+				font-size: 11px;
+				font-weight: normal;
+				text-transform: none;
+				letter-spacing: 0;
+				border: 1px solid #bbb;
+				border-radius: 4px;
+				background: #fff;
+				color: #555;
+				cursor: pointer;
+				display: none;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+			}
+			.btn-preview:hover {
+				background: #e8f4ff;
+				border-color: #007acc;
+				color: #007acc;
+			}
+			.btn-preview.active {
+				background: #007acc;
+				color: #fff;
+				border-color: #007acc;
+			}
+
+			.preview-frame {
+				flex: 1;
+				min-height: 0;
+				border: none;
+				background: #fff;
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
+			⬜ Preview
+		</button>
+		<div id="diff-root">
+			<div class="diff-panel" id="panel-teacher">
+				<div class="panel-header">
+					<span id="title-teacher">Teacher</span>
+					<div class="tab-bar" id="tabs-teacher"></div>
+				</div>
+				<div class="panel-landing" id="landing-teacher">
+					<button
+						class="landing-btn"
+						onclick="document.getElementById('input-teacher').click()"
+					>
+						📁 Select Teacher Files
+					</button>
+					<input
+						type="file"
+						id="input-teacher"
+						multiple
+						accept=".html,.css,.js,.json"
+						style="display: none"
+					/>
+				</div>
+				<div
+					class="panel-content"
+					id="content-teacher"
+					style="display: none"
+				>
+					<div class="code-wrap" id="code-teacher"></div>
+					<iframe
+						class="preview-frame"
+						id="preview-teacher"
+						sandbox="allow-scripts allow-same-origin"
+					></iframe>
+				</div>
+			</div>
+			<div class="diff-panel" id="panel-student">
+				<div class="panel-header">
+					<span id="title-student">Student</span>
+					<div class="tab-bar" id="tabs-student"></div>
+				</div>
+				<div class="panel-landing" id="landing-student">
+					<button
+						class="landing-btn"
+						onclick="document.getElementById('input-student').click()"
+					>
+						📁 Select Student Files
+					</button>
+					<input
+						type="file"
+						id="input-student"
+						multiple
+						accept=".html,.css,.js,.json"
+						style="display: none"
+					/>
+				</div>
+				<div
+					class="panel-content"
+					id="content-student"
+					style="display: none"
+				>
+					<div class="code-wrap" id="code-student"></div>
+					<iframe
+						class="preview-frame"
+						id="preview-student"
+						sandbox="allow-scripts allow-same-origin"
+					></iframe>
+				</div>
+			</div>
+		</div>
+		<script src="preview.js"></script>
+		<script src="differentiator.js"></script>
+	</body>
+</html>

@@ -152,60 +152,13 @@ function expandEvents(events) {
 		if ("char" in ev) {
 			micro.push(["char", ev.char, ts, realDelay, editor]);
 		} else if ("code_insert" in ev) {
-			const segments = _splitCodeWithAnchors(ev.code_insert);
 			micro.push([
-				"log_code_insert",
-				ev.code_insert.slice(0, 60),
+				"code_insert_atomic",
+				ev.code_insert,
 				ts,
 				DELAY_OPS,
+				editor,
 			]);
-			micro.push(["code_insert_begin", ts, DELAY_OPS]);
-			let totalChars = 0;
-			for (const [k, v] of segments)
-				if (k === "text")
-					for (const ch of v) if (!_CI_SPECIAL.has(ch)) totalChars++;
-			let charI = 0;
-			for (const [segKind, segVal] of segments) {
-				if (segKind === "text") {
-					for (const ch of segVal) {
-						if (ch === DELETE_LINE_CHAR) {
-							micro.push(["code_delete_line", ts, DELAY_OPS, editor]);
-						} else if (
-							Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
-						) {
-							micro.push([
-								"code_cursor_move",
-								ch,
-								ts,
-								DELAY_OPS,
-								editor,
-							]);
-						} else if (ch === "↩" || ch === "\n") {
-							micro.push(["code_insert_newline", ts, DELAY_OPS, editor]);
-						} else if (ch === "―" || ch === "\t") {
-							micro.push([
-								"code_char",
-								"\t",
-								ts,
-								_EXPAND_DELAY_CODE,
-								editor,
-							]);
-						} else if (_EXPAND_BACKSPACE.has(ch)) {
-							micro.push(["code_backspace", ts, DELAY_OPS, editor]);
-						} else if (_EXPAND_FWD_DEL.has(ch)) {
-							micro.push(["code_fwd_delete", ts, DELAY_OPS, editor]);
-						} else {
-							charI++;
-							const d =
-								charI === totalChars ? realDelay : _EXPAND_DELAY_CODE;
-							micro.push(["code_char", ch, ts, d, editor]);
-						}
-					}
-				} else {
-					micro.push(["set_anchor", segVal, ts, DELAY_OPS]);
-				}
-			}
-			micro.push(["code_insert_end", ts, DELAY_OPS]);
 		} else if ("code_remove" in ev) {
 			micro.push(["code_remove", ev.code_remove, ts, realDelay]);
 		} else if ("anchor" in ev) {
@@ -792,6 +745,15 @@ function fmtTs(tsMs) {
 	}
 }
 
+function fmtElapsed(tsMs, originMs) {
+	const elMs = Math.max(0, tsMs - originMs);
+	const ms = String(elMs % 1000).padStart(3, "0");
+	const totS = Math.floor(elMs / 1000);
+	const s = String(totS % 60).padStart(2, "0");
+	const m = String(Math.floor(totS / 60)).padStart(2, "0");
+	return `${m}:${s}.${ms}`;
+}
+
 function esc(s) {
 	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -865,12 +827,10 @@ class LogVisualizer {
 		this._ciBaseIndent = "";
 		this._anchorFlashTimer = null;
 
-		this._fullLog = [];
-		this._logMicro = [];
-		this._logBuilt = false;
 		this._logBuf = [];
+		this._microCumDelay = null;
+		this._totalDelay = 0;
 
-		this._microTs = [];
 		this._seeking = false;
 		this._seekWasPlaying = false;
 		this._dragFrac = 0;
@@ -897,9 +857,10 @@ class LogVisualizer {
             <button id="btn-play" disabled>▶  Play</button>
             <button id="btn-reset" disabled>⏮  Reset</button>
             <div class="sep"></div>
-            <button id="btn-open-toolbar">📄 Open</button>
-            <div class="sep"></div>
             <button id="btn-settings">⚙ VS Code: defaults</button>
+            <div class="sep"></div>
+            <button id="btn-toggle-log" title="Toggle event log">📋</button>
+            <button id="btn-toggle-devtools" title="Toggle dev tools">🔧</button>
             <div class="sep"></div>
             <label>Speed: <input id="speed-slider" type="range" min="1" max="60" value="8" step="0.5"></label>
             <span id="speed-label">8×</span>
@@ -911,31 +872,23 @@ class LogVisualizer {
           <div id="vis-seekbar"><div id="vis-seekfill"></div></div>
           <div id="vis-main">
             <div id="vis-editor-wrap">
-              <div class="pane-title">Code Output</div>
               <div id="vis-file-tabs"></div>
               <pre id="vis-editor"></pre>
-              <div id="vis-dev-outer">
-                <div id="vis-dev-title">
-                  <span>  DevTools</span>
-                  <span id="dev-indicator" style="color:${CLR.dim}">●</span>
-                  <button id="btn-dev-toggle">−</button>
-                </div>
-                <pre id="vis-dev-editor"></pre>
-              </div>
             </div>
             <div id="vis-event-log-wrap">
               <div class="pane-title">Event Log</div>
               <div id="vis-event-log"></div>
             </div>
           </div>
-          <div id="vis-status">Ready</div>
         </div>
         <div id="vis-right">
-          <div class="pane-title" style="display:flex;align-items:center;gap:8px">
-            Live Preview
-            <button id="btn-refresh-preview" title="Refresh preview">↻</button>
+          <div id="vis-right-main">
+            <iframe id="vis-preview" sandbox="allow-scripts allow-same-origin"></iframe>
+            <div id="vis-dev-outer">
+              <div class="pane-title">DevTools</div>
+              <pre id="vis-dev-editor"></pre>
+            </div>
           </div>
-          <iframe id="vis-preview" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
         `;
 
@@ -953,37 +906,41 @@ class LogVisualizer {
 		this.elEditor = document.getElementById("vis-editor");
 		this.elDevEditor = document.getElementById("vis-dev-editor");
 		this.elDevOuter = document.getElementById("vis-dev-outer");
-		this.elDevInd = document.getElementById("dev-indicator");
 		this.elEventLog = document.getElementById("vis-event-log");
-		this.elStatus = document.getElementById("vis-status");
+		this.elEventLogWrap = document.getElementById("vis-event-log-wrap");
 		this.elPreview = document.getElementById("vis-preview");
-		this.elDevToggle = document.getElementById("btn-dev-toggle");
-		this.elRefresh = document.getElementById("btn-refresh-preview");
 
 		this._devExpanded = true;
 
 		this.elPlay.onclick = () => this.togglePlay();
 		this.elReset.onclick = () => this.resetPlayback();
 		this.elSettings.onclick = () => this._showSettings();
-		this.elRefresh.onclick = () => this._updatePreview(true);
-		this.elDevToggle.onclick = () => this._toggleDevPanel();
+		document.getElementById("btn-toggle-log").onclick = () => {
+			const hidden = this.elEventLogWrap.style.display === "none";
+			this.elEventLogWrap.style.display = hidden ? "" : "none";
+		};
+		document.getElementById("btn-toggle-devtools").onclick = () =>
+			this._toggleDevPanel();
 
 		this.elSpeed.addEventListener("input", () => {
 			this.speed = parseFloat(this.elSpeed.value);
 			this.elSpeedLbl.textContent = `${this.speed.toFixed(0)}×`;
 		});
 
-		this.elSeekbar.addEventListener("mousedown", (e) => this._onSeekPress(e));
-		document.addEventListener("mousemove", (e) => this._onSeekDrag(e));
-		document.addEventListener("mouseup", (e) => this._onSeekRelease(e));
+		this.elSeekbar.addEventListener("pointerdown", (e) => {
+			this.elSeekbar.setPointerCapture(e.pointerId);
+			this._onSeekPress(e);
+		});
+		document.addEventListener("pointermove", (e) => this._onSeekDrag(e));
+		document.addEventListener("pointerup", (e) => this._onSeekRelease(e));
+		document.addEventListener("pointercancel", (e) => this._onSeekRelease(e));
 
 		this._initHoverTooltip();
 	}
 
 	_toggleDevPanel() {
 		this._devExpanded = !this._devExpanded;
-		this.elDevOuter.classList.toggle("collapsed", !this._devExpanded);
-		this.elDevToggle.textContent = this._devExpanded ? "−" : "+";
+		this.elDevOuter.style.display = this._devExpanded ? "" : "none";
 	}
 
 	loadFile({ filePath, micro, error }) {
@@ -997,24 +954,40 @@ class LogVisualizer {
 		this._updateSettingsBadge();
 
 		this.micro = micro;
-		this._microTs = this.micro.map((a) => {
-			switch (a[0]) {
-				case "interaction":
-					return a[3];
+
+		// Find the first real timestamp to use as elapsed-time origin
+		this._tsOrigin = 0;
+		for (const act of micro) {
+			const ts = act[2];
+			if (ts && ts > 1_000_000_000_000) {
+				this._tsOrigin = ts;
+				break;
+			}
+		}
+
+		this._microCumDelay = new Float64Array(micro.length + 1);
+		let cumD = 0;
+		for (let i = 0; i < micro.length; i++) {
+			this._microCumDelay[i] = cumD;
+			const act = micro[i];
+			let d;
+			switch (act[0]) {
 				case "code_insert_begin":
 				case "code_insert_end":
-					return a[1];
+					d = act[2];
+					break;
 				default:
-					return a[2];
+					d = act[3] !== undefined ? act[3] : DELAY_OPS;
+					break;
 			}
-		});
+			cumD += Math.max(1, d);
+		}
+		this._microCumDelay[micro.length] = cumD;
+		this._totalDelay = cumD;
 
 		this._seekTo(this.micro.length);
 		this.elPlay.disabled = false;
 		this.elReset.disabled = false;
-
-		const name = filePath.replace(/\\/g, "/").split("/").pop();
-		this._setStatus(`  Loaded: ${name}  ·  ${this.micro.length} steps`);
 	}
 
 	_updateSettingsBadge() {
@@ -1068,15 +1041,10 @@ class LogVisualizer {
 		this._ciBaseIndent = "";
 		this._activeEditor = "main";
 		this._selAnchorMain = null;
-		this._logBuilt = false;
-		this._fullLog = [];
-		this._logMicro = [];
 		this._logBuf = [];
 		this._renderEditors();
 		this._clearEventLog();
 		this._updateProgress();
-		this.elDevInd.style.color = CLR.dim;
-		this._setStatus("  ⏮  Reset — press Play to begin");
 	}
 
 	_resetAllFiles() {
@@ -1108,7 +1076,6 @@ class LogVisualizer {
 		this._renderEditors();
 		this._schedulePreview();
 		this._updateProgress();
-		this._updateLogClip(this.microIdx);
 		const delayMs = Math.max(
 			1,
 			Math.round(delayBase / Math.max(0.1, this.speed)),
@@ -1127,7 +1094,7 @@ class LogVisualizer {
 			this._log(act[2], `⇄  switch to ${label}`, CLR.move);
 			this._activeEditor = target;
 			if (target === "main") this._switchToFile("MAIN");
-			this.elDevInd.style.color = target === "dev" ? CLR.devborder : CLR.dim;
+
 			return delay;
 		} else if (kind === "char") {
 			const [, ch, ts, delay, editor] = act;
@@ -1148,7 +1115,6 @@ class LogVisualizer {
 			const st = editor === "dev" ? this.dev : this.main;
 			if (editor === "main") this._autoDedent(ch, ts);
 			st.insert(ch, ts);
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			return delay;
 		} else if (kind === "log_code_insert") {
 			const clean = act[1].replace(ANCHOR_RE, "");
@@ -1218,7 +1184,6 @@ class LogVisualizer {
 					.match(/^(\s*)/);
 				this._ciBaseIndent = m ? m[1] : "";
 			}
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			this._log(ts, "↩  Insert Newline (in code_insert)", CLR.orange);
 			return delay;
 		} else if (kind === "code_cursor_move") {
@@ -1246,14 +1211,12 @@ class LogVisualizer {
 				st.deleteBack(1);
 				this._log(ts, "⌫  Backspace (in code_insert)", CLR.red);
 			}
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			return delay;
 		} else if (kind === "code_fwd_delete") {
 			const [, ts, delay, editor] = act;
 			const st = editor === "dev" ? this.dev : this.main;
 			st.deleteForward(1);
 			this._log(ts, "⌦  Delete (in code_insert)", CLR.red);
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			return delay;
 		} else if (kind === "code_delete_line") {
 			const [, ts, delay, editor] = act;
@@ -1261,6 +1224,8 @@ class LogVisualizer {
 			st.deleteLine();
 			this._log(ts, "⛔  Delete Line (in code_insert)", CLR.red);
 			return delay;
+		} else if (kind === "code_insert_atomic") {
+			return this._handleCodeInsertAtomic(act);
 		}
 
 		return DELAY_OPS;
@@ -1297,7 +1262,6 @@ class LogVisualizer {
 			st.insert(real, ts);
 			if (real === "\n" && editor === "main") this._autoIndent(ts);
 			this._log(ts, `⌨  ${real === "\n" ? "↩ Enter" : "⇥ Tab"}`, CLR.blue);
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			return delay;
 		}
 
@@ -1338,16 +1302,82 @@ class LogVisualizer {
 			st.insert(ch, ts);
 			this._devSemicolonNewline(ts);
 			this._log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
-			if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 			return delay;
 		}
 
 		if (editor === "main") this._autoDedent(ch, ts);
 		st.insert(ch, ts);
 		if (editor === "main") this._applyVscodeAuto(ch, ts);
-		if (editor === "dev") this.elDevInd.style.color = CLR.devborder;
 
 		this._log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
+		return delay;
+	}
+
+	_handleCodeInsertAtomic(act) {
+		const [, code, ts, delay, editor] = act;
+		const clean = code.replace(ANCHOR_RE, "");
+		this._log(
+			ts,
+			`⬇  code_insert: ${JSON.stringify(clean.slice(0, 50))}`,
+			CLR.orange,
+		);
+
+		const lineStart =
+			this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
+		const m = this.main.text
+			.slice(lineStart, this.main.cursor)
+			.match(/^(\s*)/);
+		this._ciBaseIndent = m ? m[1] : "";
+
+		const segments = _splitCodeWithAnchors(code);
+		for (const [segKind, segVal] of segments) {
+			if (segKind === "text") {
+				for (const ch of segVal) {
+					const st = editor === "dev" ? this.dev : this.main;
+					if (ch === DELETE_LINE_CHAR) {
+						st.deleteLine();
+					} else if (
+						Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
+					) {
+						st.moveCursor(CURSOR_MOVES[ch]);
+						if (editor === "main") {
+							const ls =
+								this.main.text.lastIndexOf("\n", this.main.cursor - 1) +
+								1;
+							const mc = this.main.text
+								.slice(ls, this.main.cursor)
+								.match(/^(\s*)/);
+							this._ciBaseIndent = mc ? mc[1] : "";
+						}
+					} else if (ch === "↩" || ch === "\n") {
+						st.insert("\n", ts);
+						if (editor === "main") {
+							this._autoIndent(ts);
+							const ls =
+								this.main.text.lastIndexOf("\n", this.main.cursor - 1) +
+								1;
+							const mc = this.main.text
+								.slice(ls, this.main.cursor)
+								.match(/^(\s*)/);
+							this._ciBaseIndent = mc ? mc[1] : "";
+						}
+					} else if (ch === "―" || ch === "\t") {
+						st.insert("\t", ts);
+					} else if (_EXPAND_BACKSPACE.has(ch)) {
+						if (!this._backspaceIsIgnored(st)) st.deleteBack(1);
+					} else if (_EXPAND_FWD_DEL.has(ch)) {
+						st.deleteForward(1);
+					} else {
+						if (editor === "main") this._autoDedent(ch, ts);
+						st.insert(ch, ts);
+					}
+				}
+			} else {
+				this.main.setAnchor(segVal);
+			}
+		}
+
+		this._ciBaseIndent = "";
 		return delay;
 	}
 
@@ -1673,7 +1703,7 @@ class LogVisualizer {
 			if (cur) cur.scrollIntoView({ block: "nearest" });
 		}
 		const ts = this.main.tsAtCursor() || this.dev.tsAtCursor();
-		if (ts && !this._silent) this.elTsLbl.textContent = fmtTs(ts);
+		if (ts && !this._silent) this.elTsLbl.textContent = fmtTs(ts).slice(-12);
 	}
 
 	_schedulePreview() {
@@ -1711,33 +1741,19 @@ class LogVisualizer {
 
 	_inlineFiles(html) {
 		if (Object.keys(this._files).length <= 1) return html;
-		let result = html.replace(
-			/<link\b[^>]*\brel=["']stylesheet["'][^>]*>/gi,
-			(match) => {
-				const m = match.match(/\bhref=["']([^"']+)["']/i);
-				if (!m) return match;
-				const st = this._findFile(m[1].split("/").pop());
-				return st ? `<style>${st.text}</style>` : match;
-			},
-		);
-		result = result.replace(
-			/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>\s*<\/script>/gi,
-			(match, src) => {
-				const st = this._findFile(src.split("/").pop());
-				return st ? `<script>${st.text}</script>` : match;
-			},
-		);
-		return result;
+		const filesMap = {};
+		for (const [key, st] of Object.entries(this._files)) {
+			if (key === "MAIN") continue;
+			const base = key.replace(/\\/g, "/").split("/").pop();
+			filesMap[base] = st.text;
+		}
+		return inlineFilesInHtml(html, filesMap);
 	}
 
 	_log(ts, msg, color = CLR.blue) {
 		const tShort = ts ? fmtTs(ts).slice(-12) : "??:??:??.???";
 		const text = `[${tShort}] ${msg}\n`;
-		if (this._logBuilt) return;
-		if (this._silent) {
-			this._logBuf.push([this.microIdx, text, color]);
-			return;
-		}
+		this._logBuf.push([this.microIdx, text, color]);
 		if (!this._silent) this._appendLogEntry(text, color);
 	}
 
@@ -1753,50 +1769,33 @@ class LogVisualizer {
 		this.elEventLog.innerHTML = "";
 	}
 
-	_buildFullLogWidget() {
-		this._clearEventLog();
-		const frag = document.createDocumentFragment();
-		this._logChars = [];
-		let cum = 0;
-		for (const [, text, color] of this._fullLog) {
-			const span = document.createElement("span");
-			span.className = "log-entry";
-			span.style.color = color;
-			span.textContent = text;
-			span.dataset.cum = cum;
-			frag.appendChild(span);
-			cum += text.length;
-			this._logChars.push(cum);
-		}
-		this.elEventLog.appendChild(frag);
-		this._logBuilt = true;
-	}
-
-	_updateLogClip(targetIdx) {
-		if (!this._logBuilt || !this._fullLog.length) return;
-		const entries = this.elEventLog.querySelectorAll(".log-entry");
-		let lastVisible = null;
-		entries.forEach((el, i) => {
-			const mi = this._logMicro[i];
-			const visible = mi <= targetIdx;
-			el.style.display = visible ? "" : "none";
-			if (visible) lastVisible = el;
-		});
-		if (lastVisible) lastVisible.scrollIntoView({ block: "nearest" });
-	}
-
 	_drawSeekbar(frac) {
 		this.elSeekFill.style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
 	}
 
 	_idxToFrac(idx) {
-		return this.micro.length ? idx / this.micro.length : 0;
+		if (!this._totalDelay || !this._microCumDelay)
+			return this.micro.length ? idx / this.micro.length : 0;
+		const i = Math.max(0, Math.min(idx, this._microCumDelay.length - 1));
+		return this._microCumDelay[i] / this._totalDelay;
 	}
+
 	_fracToIdx(frac) {
-		return Math.max(
-			0,
-			Math.min(this.micro.length, Math.round(frac * this.micro.length)),
-		);
+		if (!this._totalDelay || !this._microCumDelay) {
+			return Math.max(
+				0,
+				Math.min(this.micro.length, Math.round(frac * this.micro.length)),
+			);
+		}
+		const target = frac * this._totalDelay;
+		let lo = 0,
+			hi = this.micro.length;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if (this._microCumDelay[mid] < target) lo = mid + 1;
+			else hi = mid;
+		}
+		return Math.max(0, Math.min(this.micro.length, lo));
 	}
 
 	_scheduleSeekbarUpdate() {
@@ -1808,10 +1807,9 @@ class LogVisualizer {
 			const elapsed = (performance.now() - this._stepStartWall) / 1000;
 			const t =
 				this._stepDurS > 0 ? Math.min(1, elapsed / this._stepDurS) : 1;
-			const frac = Math.min(
-				1,
-				(this.microIdx + t) / Math.max(1, this.micro.length),
-			);
+			const prevFrac = this._idxToFrac(Math.max(0, this.microIdx - 1));
+			const nextFrac = this._idxToFrac(this.microIdx);
+			const frac = Math.min(1, prevFrac + (nextFrac - prevFrac) * t);
 			this._drawSeekbar(frac);
 			this._scheduleSeekbarUpdate();
 		});
@@ -1852,11 +1850,13 @@ class LogVisualizer {
 			this._dragTimer = null;
 		}
 		this._seeking = false;
-		const rect = this.elSeekbar.getBoundingClientRect();
-		const frac = Math.max(
-			0,
-			Math.min(1, (e.clientX - rect.left) / rect.width),
-		);
+		let frac;
+		if (e.type === "pointercancel") {
+			frac = this._dragFrac;
+		} else {
+			const rect = this.elSeekbar.getBoundingClientRect();
+			frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+		}
 		this._seekTo(this._fracToIdx(frac));
 		if (this._seekWasPlaying) this._play();
 	}
@@ -1873,6 +1873,7 @@ class LogVisualizer {
 		this._ciBaseIndent = "";
 		this._activeEditor = "main";
 		this._selAnchorMain = null;
+		this._logBuf = [];
 
 		while (this.microIdx < targetIdx) {
 			this._handle(this.micro[this.microIdx]);
@@ -1881,13 +1882,17 @@ class LogVisualizer {
 		this._silent = false;
 		this._updateFileTabs();
 
-		if (!this._logBuilt) {
-			this._fullLog = [...this._logBuf];
-			this._logMicro = this._fullLog.map((e) => e[0]);
-			this._logBuf = [];
-			this._buildFullLogWidget();
+		this._clearEventLog();
+		const frag = document.createDocumentFragment();
+		for (const [, text, color] of this._logBuf) {
+			const span = document.createElement("span");
+			span.style.color = color;
+			span.textContent = text;
+			frag.appendChild(span);
 		}
-		this._updateLogClip(targetIdx);
+		this.elEventLog.appendChild(frag);
+		this.elEventLog.scrollTop = this.elEventLog.scrollHeight;
+
 		this._renderEditors();
 		this._updatePreview(true);
 		this._updateProgress();
@@ -1909,10 +1914,7 @@ class LogVisualizer {
 		if (!this.playing || this._seeking) this._drawSeekbar(this._idxToFrac(i));
 	}
 
-	_setStatus(msg, bg = CLR.accent) {
-		this.elStatus.textContent = msg;
-		this.elStatus.style.background = bg;
-	}
+	_setStatus(msg, bg = CLR.accent) {}
 
 	_showSettings() {
 		const existing = document.getElementById("settings-modal");
@@ -1985,14 +1987,25 @@ document.addEventListener("DOMContentLoaded", () => {
 		vis.loadFile(data);
 	}
 
-	if (window.__LOG_DATA__) {
-		loadFromData(window.__LOG_DATA__);
+	const isReload =
+		performance.getEntriesByType("navigation")[0]?.type === "reload";
+	if (!isReload) {
+		// Prefer data stored by dashboard (localStorage), then fall back to .last_vis_data.js
+		try {
+			const stored = localStorage.getItem("kla_sim_data");
+			if (stored) {
+				const { filePath, events } = JSON.parse(stored);
+				const micro = expandEvents(events || []);
+				loadFromData({ filePath, micro, error: null });
+			} else if (window.__LOG_DATA__) {
+				loadFromData(window.__LOG_DATA__);
+			}
+		} catch {
+			if (window.__LOG_DATA__) loadFromData(window.__LOG_DATA__);
+		}
 	}
 
 	btnOpen.addEventListener("click", () => fileInput.click());
-	document
-		.getElementById("btn-open-toolbar")
-		.addEventListener("click", () => fileInput.click());
 
 	fileInput.addEventListener("change", () => {
 		const file = fileInput.files[0];

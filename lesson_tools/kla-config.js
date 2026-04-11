@@ -37,3 +37,18 @@ let _lastL = null;
 const PAN_STATE = { active: false, startX: 0, startMin: 0, startMax: 0 };
 const _abortCtrls = new Map();
 const _hoverAborts = new Map();
+
+let _shake = false;
+const _jitterMap = new Map();
+
+function toggleShake() {
+  _shake = !_shake;
+  if (_shake && _students) {
+    for (const s of _students) {
+      _jitterMap.set(s.name, { dx: (Math.random() - 0.5) * 28, dy: (Math.random() - 0.5) * 28 });
+    }
+  }
+  const btn = document.getElementById('btn-shake');
+  if (btn) btn.classList.toggle('active', _shake);
+  redrawChart3();
+}

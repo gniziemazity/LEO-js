@@ -128,11 +128,14 @@ class ExcelReportMixin:
     def _add_remarks_sheet(self, wb: Workbook, anonymize: bool = False) -> None:
         sheet   = wb.create_sheet(title='Remarks')
         has_log = bool(self._lesson_keypresses)
+        has_sim = not has_log
 
         header = ['ID', 'Student', 'Number', 'Remarks', 'Extra', 'Extra Desc', 'Inc']
         if has_log:
             header.extend(['Follow (C)', 'Follow (C) Desc',
                             'Follow (E)', 'Follow (E) Desc', 'Interactions'])
+        if has_sim:
+            header.extend(['Similarity', 'Similarity Desc'])
         if self.required_items or self.not_expected_items:
             header.extend(['Expected', 'Expected Desc'])
         header.extend(['Obs', 'Grade', 'Comments'])
@@ -149,6 +152,11 @@ class ExcelReportMixin:
             COL_INTERACT  = _next; _next += 1
         else:
             COL_FOLLOWC = COL_FOLLOWC_T = COL_FOLLOWE = COL_FOLLOWE_T = COL_INTERACT = None
+        if has_sim:
+            COL_SIM   = _next; _next += 1
+            COL_SIM_T = _next; _next += 1
+        else:
+            COL_SIM = COL_SIM_T = None
         if self.required_items or self.not_expected_items:
             COL_EXPECTED   = _next; _next += 1
             COL_EXPECTED_T = _next; _next += 1
@@ -213,6 +221,7 @@ class ExcelReportMixin:
             req_count, req_details, req_missing, req_fill = self._check_required(
                 sid, has_submission, code_not_found
             )
+            sim_items = []
 
             if code_not_found:
                 row = [int(sid), display_name, info['number'], '⛔']
@@ -226,6 +235,10 @@ class ExcelReportMixin:
                     row.extend([comment_pct, comment_text,
                                  follow_e_pct, extra_e_text,
                                  student_interactions.get(sid, '')])
+                if has_sim:
+                    sim_pct, sim_desc, sim_items = self._similarity_info(
+                        sid, has_submission, code_not_found)
+                    row.extend([sim_pct, sim_desc])
                 if self.required_items or self.not_expected_items:
                     row.extend([req_count, req_details])
                 row.extend(['_' if has_submission else '', ''])
@@ -292,6 +305,12 @@ class ExcelReportMixin:
                 c.height = min(200 + 80 * len(_e_items), 6000)
                 sheet.cell(row=cur, column=COL_FOLLOWE).comment = c
 
+            if has_sim and sim_items and COL_SIM:
+                c = Comment(', '.join(sim_items), 'sim_check')
+                c.width  = 400
+                c.height = min(200 + 80 * len(sim_items), 6000)
+                sheet.cell(row=cur, column=COL_SIM).comment = c
+
             if (self.required_items or self.not_expected_items) and req_missing and COL_EXPECTED:
                 c = Comment(', '.join(req_missing), 'sim_check')
                 c.width = 500; c.height = min(100 + 30 * len(req_missing), 1200)
@@ -300,6 +319,8 @@ class ExcelReportMixin:
         _hidden = [get_column_letter(COL_EXTRA_T)]
         if has_log:
             _hidden += [get_column_letter(COL_FOLLOWC_T), get_column_letter(COL_FOLLOWE_T)]
+        if has_sim and COL_SIM_T:
+            _hidden.append(get_column_letter(COL_SIM_T))
         if self.required_items and COL_EXPECTED_T:
             _hidden.append(get_column_letter(COL_EXPECTED_T))
         for col in _hidden:
@@ -334,9 +355,64 @@ class ExcelReportMixin:
                             f'{ltr}2:{ltr}{max_row}',
                             ColorScaleRule(start_type='min', start_color='F8696B',
                                            end_type='max', end_color='FFFFFF'))
+            if has_sim and COL_SIM:
+                ltr = get_column_letter(COL_SIM)
+                sheet.conditional_formatting.add(
+                    f'{ltr}2:{ltr}{max_row}',
+                    ColorScaleRule(start_type='min', start_color='F8696B',
+                                   end_type='max', end_color='FFFFFF'))
 
         self._auto_column_widths(sheet)
         sheet.column_dimensions['B'].width = 18
+
+    def _similarity_info(self, sid: str, has_submission: bool, code_not_found: bool):
+        """Returns (sim_pct, sim_desc_str, sim_items_list) for no-log Similarity column.
+        sim_pct   = average inc_sim across files (same value as Inc column).
+        sim_desc  = '-TOKEN / +TOKEN' formatted string for students.html mismatch rendering.
+        sim_items = human-readable comment items.
+        """
+        if not has_submission or code_not_found:
+            return ('', '', [])
+        data = self.results.get(sid, {})
+        if not data or not data.get('files_compared'):
+            return ('', '', [])
+        inc_vals    = []
+        teacher_agg: Counter = Counter()
+        student_agg: Counter = Counter()
+        for ext in ['.html', '.css', '.js']:
+            fd = data['files_compared'].get(ext)
+            if not fd or fd.get('status') != 'success':
+                continue
+            inc_vals.append(fd['inc_sim'])
+            if ext == '.html':
+                t_html_css = (self.teacher_html_outside_css_by_ext.get(ext, Counter())
+                              or self.teacher_html_outside_by_ext.get(ext, Counter()))
+                teacher_ext = (upper_counter(t_html_css)
+                               + self.teacher_script_outside_by_ext.get(ext, Counter()))
+                s_html_css = fd.get('student_html_outside_css',
+                                    fd.get('student_html_outside', Counter()))
+                student_ext = (upper_counter(s_html_css)
+                               + fd.get('student_script_outside', Counter()))
+            elif ext == '.css':
+                teacher_ext = upper_counter(self.teacher_tokens_by_ext.get(ext, Counter()))
+                student_ext = upper_counter(fd.get('student_outside', Counter()))
+            else:
+                teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
+                student_ext = fd.get('student_outside', Counter())
+            teacher_agg += teacher_ext
+            student_agg += student_ext
+
+        parts     = []
+        sim_items = []
+        for kw, n in sorted((teacher_agg - student_agg).items()):
+            parts.append(f'-{kw} (x{n})' if n > 1 else f'-{kw}')
+            sim_items.append(f'Missing: {kw}' + (f' (x{n})' if n > 1 else ''))
+        for kw, n in sorted((student_agg - teacher_agg).items()):
+            parts.append(f'+{kw} (x{n})' if n > 1 else f'+{kw}')
+            sim_items.append(f'Extra: {kw}' + (f' (x{n})' if n > 1 else ''))
+        sim_pct  = round(sum(inc_vals) / len(inc_vals), 1) if inc_vals else ''
+        sim_desc = ', '.join(parts)
+        return (sim_pct, sim_desc, sim_items)
 
     def _teacher_token_denom(self) -> int:
         _ts_denom = next(

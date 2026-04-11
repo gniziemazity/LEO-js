@@ -7,10 +7,15 @@
 	"scripts": {
 		"start": "electron .",
 		"build": "electron-builder",
-		"kla": "start \"\" scripts\\key_log_analyzer.html",
-		"vis": "start \"\" scripts\\log_visualizer.html",
-		"main": "py scripts/main.py",
-		"test": "cd scripts && python -m unittest test_reconstruction -v"
+		"dash": "start \"\" lesson_tools\\dashboard.html",
+		"sim": "start \"\" lesson_tools\\simulator.html",
+		"diff": "start \"\" lesson_tools\\differentiator.html",
+		"students": "node lesson_tools/open.js students.html",
+		"students-name": "node lesson_tools/open.js students.html anon=name",
+		"students-id": "node lesson_tools/open.js students.html anon=id",
+		"students-anon": "node lesson_tools/open.js students.html anon=id",
+		"main": "py lesson_tools/main.py",
+		"test": "cd lesson_tools && python -m unittest test_reconstruction -v"
 	},
 	"build": {
 		"appId": "com.leo-js.app",

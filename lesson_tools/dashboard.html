@@ -2,25 +2,23 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Key Log Analyzer</title>
-		<link rel="stylesheet" href="key_log_analyzer.css" />
+		<title>Dashboard</title>
+		<link rel="stylesheet" href="shared.css" />
+		<link rel="stylesheet" href="dashboard.css" />
 	</head>
 	<body>
 		<div id="landing">
 			<div id="landing-buttons">
 				<button
-					id="btn-open-file"
+					class="landing-btn"
 					onclick="document.getElementById('file-input').click()"
 				>
 					📄 Open Log File
 				</button>
-				<button id="btn-open-folder" onclick="openFolderPicker()">
-					📁 Open Lesson Folder
+				<button class="landing-btn" onclick="openFolderPicker()">
+					📁 Open Folder
 				</button>
 			</div>
-			<p class="landing-hint">
-				xlsx files in the same folder are loaded automatically
-			</p>
 			<input
 				type="file"
 				id="file-input"
@@ -32,10 +30,17 @@
 
 		<div id="main">
 			<div id="charts">
-				<div class="chart-section">
+				<div class="chart-section" id="chart1-section">
 					<div class="chart-wrap"><canvas id="chart1"></canvas></div>
+					<button
+						id="btn-open-sim"
+						onclick="window.open('simulator.html')"
+						title="Simulate Lesson"
+					>
+						▶
+					</button>
 				</div>
-				<div class="chart-section">
+				<div class="chart-section" id="chart2-section">
 					<div class="chart-wrap"><canvas id="chart2"></canvas></div>
 				</div>
 				<div
@@ -44,6 +49,9 @@
 					style="display: none"
 				>
 					<div class="chart-wrap"><canvas id="chart3"></canvas></div>
+					<button id="btn-shake" onclick="toggleShake()" title="Shake">
+						🎲
+					</button>
 				</div>
 			</div>
 		</div>

@@ -175,6 +175,12 @@ function loadJsonData(file, data) {
 		return;
 	}
 	_p = p;
+	try {
+		localStorage.setItem("kla_sim_data", JSON.stringify({
+			filePath: file.name,
+			events: data.events || data.keyPresses || [],
+		}));
+	} catch {}
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";
 	scheduleRender();
