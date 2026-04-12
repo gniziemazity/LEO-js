@@ -11,7 +11,7 @@ from .similarity_measures import (
     normalize_code,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, split_css_tokens, split_html_tokens, calculate_containment,
-    get_html_outside_css, upper_counter,
+    get_html_outside_css,
     save_xlsx, open_csv_encoded,
 )
 
@@ -26,8 +26,8 @@ def _read_split(raw: str, ext: str) -> Tuple[Counter, Counter]:
     if ext == '.html':
         html_outside_css = get_html_outside_css(raw)
         _, script_outside, inside = split_html_tokens(raw)
-        outside = upper_counter(html_outside_css) + upper_counter(script_outside)
-        return outside, upper_counter(inside)
+        outside = html_outside_css + script_outside
+        return outside, inside
     if ext == '.css':
         return split_css_tokens(raw)
     return split_code_tokens(raw)
@@ -47,9 +47,9 @@ def _parse_tokens_txt(path: Path) -> Tuple[Counter, Counter]:
             flags = set(parts[2:]) if len(parts) > 2 else set()
             if 'EXTRA' in flags:
                 if 'COMMENT' in flags:
-                    extra_comment[token.upper()] += 1
+                    extra_comment[token] += 1
                 else:
-                    extra_outside[token.upper()] += 1
+                    extra_outside[token] += 1
     except Exception:
         pass
     return extra_outside, extra_comment
@@ -147,7 +147,7 @@ class PeerSimilarityChecker:
                     self.student_data[name][ext] = normalize_code(raw) if raw else None
                     if raw:
                         out, _ = _read_split(raw, ext)
-                        full_outside += upper_counter(out) if ext == '.css' else out
+                        full_outside += out
                 self.student_outside_full[name] = full_outside
                 continue
 
@@ -164,12 +164,12 @@ class PeerSimilarityChecker:
                     out, ins = _read_split(raw, ext)
                     if ext in ('.html', '.css'):
                         self.student_extra_outside[name][ext] = (
-                            upper_counter(out) - upper_counter(self.baseline_outside[ext])
+                            out - self.baseline_outside[ext]
                         )
                         self.student_extra_inside[name][ext] = (
-                            upper_counter(ins) - upper_counter(self.baseline_inside[ext])
+                            ins - self.baseline_inside[ext]
                         )
-                        full_outside += upper_counter(out)
+                        full_outside += out
                     else:
                         self.student_extra_outside[name][ext] = out - self.baseline_outside[ext]
                         self.student_extra_inside[name][ext]  = ins - self.baseline_inside[ext]

@@ -9,7 +9,6 @@ from openpyxl.utils import get_column_letter
 
 from .similarity_measures import (
     save_xlsx,
-    upper_counter,
 )
 
 
@@ -387,15 +386,15 @@ class ExcelReportMixin:
             if ext == '.html':
                 t_html_css = (self.teacher_html_outside_css_by_ext.get(ext, Counter())
                               or self.teacher_html_outside_by_ext.get(ext, Counter()))
-                teacher_ext = (upper_counter(t_html_css)
+                teacher_ext = (t_html_css
                                + self.teacher_script_outside_by_ext.get(ext, Counter()))
                 s_html_css = fd.get('student_html_outside_css',
                                     fd.get('student_html_outside', Counter()))
-                student_ext = (upper_counter(s_html_css)
+                student_ext = (s_html_css
                                + fd.get('student_script_outside', Counter()))
             elif ext == '.css':
-                teacher_ext = upper_counter(self.teacher_tokens_by_ext.get(ext, Counter()))
-                student_ext = upper_counter(fd.get('student_outside', Counter()))
+                teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
+                student_ext = fd.get('student_outside', Counter())
             else:
                 teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
                 student_ext = fd.get('student_outside', Counter())
@@ -423,21 +422,21 @@ class ExcelReportMixin:
         if _ts_denom:
             return _ts_denom
         teacher_outside = (
-            upper_counter(sum(self.teacher_html_outside_css_by_ext.values(), Counter()))
-            + upper_counter(self.teacher_outside_by_ext.get('.css', Counter()))
-            + upper_counter(sum(self.teacher_script_outside_by_ext.values(), Counter()))
-            + upper_counter(self.teacher_outside_by_ext.get('.js', Counter()))
+            sum(self.teacher_html_outside_css_by_ext.values(), Counter())
+            + self.teacher_outside_by_ext.get('.css', Counter())
+            + sum(self.teacher_script_outside_by_ext.values(), Counter())
+            + self.teacher_outside_by_ext.get('.js', Counter())
         )
         return max(1, sum(teacher_outside.values()))
 
     def _teacher_aggregates(self) -> Dict:
         outside_all = (
-            upper_counter(sum(self.teacher_html_outside_css_by_ext.values(), Counter()))
-            + upper_counter(sum(self.teacher_script_outside_by_ext.values(), Counter()))
-            + upper_counter(self.teacher_outside_by_ext.get('.css', Counter()))
-            + upper_counter(self.teacher_outside_by_ext.get('.js', Counter()))
+            sum(self.teacher_html_outside_css_by_ext.values(), Counter())
+            + sum(self.teacher_script_outside_by_ext.values(), Counter())
+            + self.teacher_outside_by_ext.get('.css', Counter())
+            + self.teacher_outside_by_ext.get('.js', Counter())
         )
-        inside_all = upper_counter(sum(self.teacher_inside_by_ext.values(), Counter()))
+        inside_all = sum(self.teacher_inside_by_ext.values(), Counter())
         return {
             'outside_all': outside_all,
             'inside_all':  inside_all,

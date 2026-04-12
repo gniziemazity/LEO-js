@@ -18,7 +18,6 @@ from utils.token_log import (
     _build_contextual_diff_marks,
     _build_ghost_contexts,
     _extract_student_ci_split,
-    _norm_key,
     _parse_teacher_tokens,
     _CONTEXT_K,
     _GHOST_K,
@@ -126,12 +125,9 @@ class _ReconstructionBase:
     reconstructed_file: Path = None
     tokens_file:        Path = None
     has_css:            bool = True
-    case_sensitive:     bool = False
 
     @classmethod
     def setUpClass(cls):
-        if cls.case_sensitive:
-            _sm._ALL_CASE_SENSITIVE = True
         cls.events = _load_events(cls.log_file)
         cls.headers, cls.expected = _parse_tokens_file(cls.tokens_file)
         cls.occ = _build_token_occurrences(cls.events, cls.has_css)
@@ -139,8 +135,7 @@ class _ReconstructionBase:
 
     @classmethod
     def tearDownClass(cls):
-        if cls.case_sensitive:
-            _sm._ALL_CASE_SENSITIVE = False
+        pass
 
     def test_html_matches_reference(self):
         actual   = reconstruct_html_headless(self.events)
@@ -224,17 +219,6 @@ class TestChessBoardReconstruction(_ReconstructionBase, unittest.TestCase):
     reconstructed_file = _TEST / 'chess_board' / 'reconstructed.html'
     tokens_file        = _TEST / 'chess_board' / 'tokens.txt'
     has_css            = True
-
-
-class TestChessBoardCSSensitive(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'chess_board' / 'log.json'
-    reconstructed_file = _TEST / 'chess_board' / 'reconstructed.html'
-    tokens_file        = _TEST / 'chess_board' / 'tokens_cs.txt'
-    has_css            = True
-    case_sensitive     = True
-
-    def test_html_matches_reference(self):
-        pass
 
 
 class TestChessBoardStudentATokens(_StudentBase, unittest.TestCase):
@@ -332,7 +316,7 @@ class TestChessGameStudentBDiffMarks(unittest.TestCase):
         chess_game = _TEST / 'chess_game'
         cls.events = _load_events(chess_game / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
-        removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'.html': chess_game / 'student_b' / 'index.html'}
         teacher_files = {'.html': chess_game / 'reconstructed.html'}
@@ -402,7 +386,7 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
         chess_game = _TEST / 'chess_game'
         cls.events = _load_events(chess_game / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
-        removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'.html': chess_game / 'student_c' / 'index.html'}
         teacher_files = {'.html': chess_game / 'reconstructed.html'}
@@ -430,7 +414,7 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
         sorting = _TEST / 'sorting'
         cls.events = _load_events(sorting / 'log.json')
         teacher_entries = _parse_teacher_tokens(sorting / 'tokens.txt')
-        removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'.html': sorting / 'student_b' / 'index.html'}
         teacher_files = {'.html': sorting / 'reconstructed.html'}

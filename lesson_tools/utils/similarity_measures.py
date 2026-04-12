@@ -16,8 +16,7 @@ from .lv_editor import (
     replay_with_timestamps, replay_with_timestamps_all,
 )
 
-_ALL_CASE_SENSITIVE: bool = os.environ.get('STUDENT_ANALYTICS_CASE_SENSITIVE', '1') == '1'
-_ALL_EXTRA_STAR:     bool = os.environ.get('STUDENT_ANALYTICS_EXTRA_STAR',     '0') == '1'
+_ALL_EXTRA_STAR: bool = os.environ.get('STUDENT_ANALYTICS_EXTRA_STAR', '0') == '1'
 
 def normalize_code(code: str) -> List[str]:
     return [line.strip() for line in code.split('\n') if line.strip()]
@@ -42,14 +41,6 @@ _TOKEN_RE = re.compile(r'[_a-zA-Z][a-zA-Z0-9_]*|[0-9]+(?:\.[0-9]+)?[a-zA-Z%]*')
 _HTML_TAG_RE = re.compile(r'</?[a-zA-Z][a-zA-Z0-9]*')
 
 _CSS_TOKEN_RE = re.compile(r'[_a-zA-Z][a-zA-Z0-9_]*(?:-[_a-zA-Z][a-zA-Z0-9_]*)*|[0-9]+(?:\.[0-9]+)?[a-zA-Z%]*')
-
-def upper_counter(c: Counter) -> Counter:
-    if _ALL_CASE_SENSITIVE:
-        return c
-    result: Counter = Counter()
-    for k, v in c.items():
-        result[k.upper()] += v
-    return result
 
 _COMMENT_RE = re.compile(
     r'/\*.*?\*/|/\*.*\Z|<!--.*?-->|<!--.*\Z|(?<!:)//[^\n]*',
@@ -267,23 +258,23 @@ def extract_user_identifiers(text: str, ext: str) -> set:
             for part in m.group(1).split():
                 p = part.strip()
                 if p:
-                    result.add(p.upper())
+                    result.add(p)
         for m in _CLASS_ATTR_RE.finditer(text):
             for part in m.group(1).split():
                 p = part.strip()
                 if p:
-                    result.add(p.upper())
+                    result.add(p)
     elif ext == '.css':
         css_text = text
 
     for m in _CSS_ID_SEL_RE.finditer(css_text):
         ident = m.group(1).strip()
         if ident:
-            result.add(ident.upper())
+            result.add(ident)
     for m in _CSS_CLASS_SEL_RE.finditer(css_text):
         ident = m.group(1).strip()
         if ident:
-            result.add(ident.upper())
+            result.add(ident)
 
     return result
 
@@ -292,15 +283,15 @@ def tokenise_follow_style(text: str) -> Counter:
     result: Counter = Counter()
     covered: set = set()
     for m in _HTML_TAG_RE.finditer(text):
-        result[m.group().upper()] += 1
+        result[m.group()] += 1
         covered.update(range(m.start(), m.end()))
     for m in _CSS_HYPHEN_RE.finditer(text):
         if m.start() not in covered:
-            result[m.group().upper()] += 1
+            result[m.group()] += 1
             covered.update(range(m.start(), m.end()))
     for m in _TOKEN_RE.finditer(text):
         if m.start() not in covered:
-            result[m.group().upper()] += 1
+            result[m.group()] += 1
     return result
 
 
@@ -382,78 +373,6 @@ def _file_at_ts_bisect(ts: int, timeline: List[Tuple[int, str]]) -> str:
         else:
             hi = mid - 1
     return timeline[idx][1]
-
-
-def _build_case_context(
-    text: str,
-    char_ts: List[int],
-    events: List[dict],
-) -> bytearray:
-    n = len(text)
-    case_ci = bytearray(n)
-
-    if not events and not char_ts:
-        return case_ci
-
-    timeline = _build_file_timeline_from_events(events)
-
-    char_file: List[str] = [_file_at_ts_bisect(ts, timeline) for ts in char_ts]
-
-    for i in range(n):
-        fk = char_file[i]
-        if isinstance(fk, str) and fk.lower().endswith('.css'):
-            case_ci[i] = 1
-
-    style_body_ranges: List[Tuple[int, int]] = []
-    for m in _STYLE_TAG_CONTENT_RE.finditer(text):
-        style_body_ranges.append((m.start(1), m.end(1)))
-
-    script_body_ranges: List[Tuple[int, int]] = []
-    _complete_script_starts_ctx = {m.start() for m in _SCRIPT_TAG_RE.finditer(text)}
-    for m in _SCRIPT_TAG_RE.finditer(text):
-        script_body_ranges.append((m.start(1), m.end(1)))
-    m_unc = _UNCLOSED_SCRIPT_RE.search(text)
-    if m_unc and m_unc.start() not in _complete_script_starts_ctx:
-        script_body_ranges.append((m_unc.start(1), m_unc.end(1)))
-
-    is_style_body = bytearray(n)
-    is_script_body = bytearray(n)
-    for s, e in style_body_ranges:
-        for i in range(s, min(e, n)):
-            if char_file[i] == 'MAIN':
-                is_style_body[i] = 1
-                case_ci[i] = 1
-    for s, e in script_body_ranges:
-        for i in range(s, min(e, n)):
-            if char_file[i] == 'MAIN':
-                is_script_body[i] = 1
-
-    in_tag = False
-    in_attr_val = False
-    quote_char = ''
-    for i, c in enumerate(text):
-        if char_file[i] != 'MAIN':
-            continue
-        if is_style_body[i] or is_script_body[i]:
-            continue
-        if in_tag:
-            if in_attr_val:
-                if c == quote_char:
-                    in_attr_val = False
-            else:
-                if c in ('"', "'"):
-                    in_attr_val = True
-                    quote_char = c
-                elif c == '>':
-                    in_tag = False
-                else:
-                    case_ci[i] = 1
-        else:
-            if c == '<':
-                in_tag = True
-                case_ci[i] = 1
-
-    return case_ci
 
 
 def _extract_matches_with_priority(
@@ -579,11 +498,6 @@ def _reconstruct_tokens_core(
             for k in range(js + cm.start(), min(js + cm.end(), n)):
                 comment_mask_final[k] = True
 
-    case_ci = _build_case_context(final_text, char_ts_final, events)
-    for i in range(n):
-        if comment_mask_final[i]:
-            case_ci[i] = 1
-
     css_only_regions: List[Tuple[int, int]] = []
     for m in _STYLE_TAG_CONTENT_RE.finditer(final_text):
         css_only_regions.append((m.start(1), m.end(1)))
@@ -602,26 +516,13 @@ def _reconstruct_tokens_core(
         ts = char_ts_final[f_end]
         is_comment = bool(comment_mask_final[f_end])
 
-        is_css_var = (
-            has_css
-            and not is_cs_override
-            and f_start >= 2
-            and final_text[f_start - 2:f_start] == '--'
-        )
-
-        if _ALL_CASE_SENSITIVE or is_cs_override or is_css_var or not case_ci[f_end]:
-            display = tok
-        else:
-            display = tok.upper()
-
-        upper = tok.upper()
         kw_ts_cs.setdefault(tok, []).append(ts)
-        kw_ts_ci.setdefault(upper, []).append(ts)
-        if upper not in upper_to_display:
-            upper_to_display[upper] = display
-        ci_occ_with_display.setdefault(upper, []).append((ts, display))
+        kw_ts_ci.setdefault(tok, []).append(ts)
+        if tok not in upper_to_display:
+            upper_to_display[tok] = tok
+        ci_occ_with_display.setdefault(tok, []).append((ts, tok))
         if is_comment:
-            kw_ts_ci_comment.setdefault(upper, []).append(ts)
+            kw_ts_ci_comment.setdefault(tok, []).append(ts)
 
     removed_kw_ts_ci: Dict[str, List[Tuple[int, int]]] = {}
     removed_upper_to_display: Dict[str, str] = {}
@@ -635,38 +536,14 @@ def _reconstruct_tokens_core(
             if not seg_chars:
                 return
             seg_text = ''.join(c for c, _, _ in seg_chars)
-            seg_ts = seg_chars[-1][1] if seg_chars else 0
-            seg_file = _file_at_ts_bisect(seg_ts, timeline)
-            seg_is_css = has_css and isinstance(seg_file, str) and seg_file.lower().endswith('.css')
-
-            seg_len = len(seg_text)
-            seg_ci = bytearray(seg_len)
-            if seg_is_css:
-                for k in range(seg_len):
-                    seg_ci[k] = 1
-
             d_matches = _extract_matches_with_priority(seg_text, has_css, [])
             for s_rel, tok, is_cs_override in d_matches:
                 end_rel = s_rel + len(tok) - 1
                 ins_ts = seg_chars[end_rel][1]
                 del_ts = seg_chars[end_rel][2]
-                is_css_var = (
-                    has_css
-                    and not is_cs_override
-                    and s_rel >= 2
-                    and seg_text[s_rel - 2:s_rel] == '--'
-                )
-                if _ALL_CASE_SENSITIVE or is_cs_override or is_css_var:
-                    display = tok
-                elif seg_ci[end_rel]:
-                    display = tok.upper()
-                else:
-                    display = upper_to_display.get(tok.upper(),
-                                                   tok.upper() if has_css else tok)
-                upper = tok.upper()
-                removed_kw_ts_ci.setdefault(upper, []).append((ins_ts, del_ts))
-                if upper not in removed_upper_to_display:
-                    removed_upper_to_display[upper] = display
+                removed_kw_ts_ci.setdefault(tok, []).append((ins_ts, del_ts))
+                if tok not in removed_upper_to_display:
+                    removed_upper_to_display[tok] = tok
             seg_chars.clear()
 
         for ch, ins_ts, del_ts, _ in ordered:
@@ -703,7 +580,7 @@ def build_net_kw_ts(
 
     def _record(token: str, ts: int) -> None:
         kw_ts_cs.setdefault(token, []).append(ts)
-        kw_ts_ci.setdefault(token.upper(), []).append(ts)
+        kw_ts_ci.setdefault(token, []).append(ts)
 
     text_chars: List[Tuple[str, int]] = []
     for ev in keypresses:
@@ -801,24 +678,6 @@ def comment_flag_indices(
     ]
     scores.sort(key=lambda x: (-x[0], x[1], x[2]))
     return {i for *_, i in scores[:n_comment]}
-
-
-def display_token(
-    upper: str,
-    cs_form: str,
-    html_css_ci: set,
-    comment_ci: Dict[str, int],
-    user_id_ci: set,
-) -> str:
-    if _ALL_CASE_SENSITIVE:
-        return cs_form
-    if upper in user_id_ci:
-        return cs_form
-    if upper.startswith('.') or upper.startswith('#'):
-        return cs_form
-    if upper in html_css_ci:
-        return upper
-    return cs_form
 
 
 _SIZEWITHCELLS_RE = re.compile(r'<[^>]*:SizeWithCells\s*/>|<SizeWithCells\s*/>')

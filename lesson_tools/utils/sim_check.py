@@ -24,7 +24,6 @@ from .similarity_measures import (
     split_css_tokens,
     split_follow_tokens_html,
     split_html_tokens,
-    upper_counter,
 )
 from .token_log import TokenLogMixin
 from .report_excel import ExcelReportMixin
@@ -198,24 +197,23 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 student_outside, student_inside = split_code_tokens(student_raw)
 
             if ext == '.html' and teacher_html_outside is not None:
-                t_inc   = (upper_counter(teacher_html_outside_css or teacher_html_outside)
+                t_inc   = ((teacher_html_outside_css or teacher_html_outside)
                            + teacher_script_outside)
-                s_inc   = upper_counter(s_html_out_css) + s_script_out
+                s_inc   = s_html_out_css + s_script_out
                 inc_sim = calculate_containment(t_inc, s_inc)
             elif ext == '.css':
-                inc_sim = calculate_containment(
-                    upper_counter(teacher_tokens), upper_counter(student_outside))
+                inc_sim = calculate_containment(teacher_tokens, student_outside)
             else:
                 inc_sim = calculate_containment(teacher_tokens, student_outside)
 
             if ext == '.html' and baseline_html_outside is not None:
                 bl_html       = baseline_html_outside_css or baseline_html_outside
-                extra_outside = (upper_counter(s_html_out_css) - upper_counter(bl_html)
+                extra_outside = (s_html_out_css - bl_html
                                  + s_script_out - baseline_script_outside)
-                extra_inside  = upper_counter(student_inside) - upper_counter(baseline_inside)
+                extra_inside  = student_inside - baseline_inside
             elif ext == '.css':
-                extra_outside = upper_counter(student_outside) - upper_counter(baseline_outside)
-                extra_inside  = upper_counter(student_inside)  - upper_counter(baseline_inside)
+                extra_outside = student_outside - baseline_outside
+                extra_inside  = student_inside  - baseline_inside
             else:
                 extra_outside = student_outside - baseline_outside
                 extra_inside  = student_inside  - baseline_inside
@@ -354,12 +352,12 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                         s_out, s_ins = split_css_tokens(s_raw)
                         _bl_html = bl_html_out.get('.html', t_html_out.get('.html', Counter()))
                         _bl_ins  = bl_inside.get('.html', t_inside.get('.html', Counter()))
-                        extra_out = upper_counter(s_out) - upper_counter(_bl_html)
-                        extra_ins = upper_counter(s_ins) - upper_counter(_bl_ins)
+                        extra_out = s_out - _bl_html
+                        extra_ins = s_ins - _bl_ins
                         total     = max(1, sum(extract_tokens(normalize_code(s_raw)).values()))
                         res['files_compared'][_ext] = self._no_ref_result(
                             s_file, s_out, s_ins, extra_out, extra_ins,
-                            calculate_containment(upper_counter(t_html_ref), upper_counter(s_out)),
+                            calculate_containment(t_html_ref, s_out),
                             total, is_script=False)
                         ext_extras[_ext] = extra_out
                         continue
@@ -386,20 +384,20 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                         s_out_css    = get_html_outside_css(raw)
                         _, sc, _     = split_html_tokens(raw)
                         _, ins_css   = split_follow_tokens_html(raw)
-                        stu_outside_ci += upper_counter(s_out_css) + upper_counter(sc)
-                        stu_all_ci     += upper_counter(s_out_css) + upper_counter(sc) + ins_css
+                        stu_outside_ci += s_out_css + sc
+                        stu_all_ci     += s_out_css + sc + ins_css
                         s_out = s_out_css
                     elif ext == '.css':
                         s_out, s_ins = split_css_tokens(raw)
-                        stu_outside_ci += upper_counter(s_out)
-                        stu_all_ci     += upper_counter(s_out) + upper_counter(s_ins)
+                        stu_outside_ci += s_out
+                        stu_all_ci     += s_out + s_ins
                     else:
                         s_out, s_ins = split_code_tokens(raw)
-                        stu_outside_ci += upper_counter(s_out)
-                        stu_all_ci     += upper_counter(s_out) + upper_counter(s_ins)
+                        stu_outside_ci += s_out
+                        stu_all_ci     += s_out + s_ins
                     simple_extras[ext] = (
-                        upper_counter(s_out)
-                        - upper_counter(self.simple_baseline_by_ext.get(ext, Counter()))
+                        s_out
+                        - self.simple_baseline_by_ext.get(ext, Counter())
                     )
                 except Exception:
                     simple_extras[ext] = Counter()

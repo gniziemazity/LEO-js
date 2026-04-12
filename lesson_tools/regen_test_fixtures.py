@@ -19,7 +19,6 @@ from utils.token_log import (
     _build_student_token_occurrences,
     _build_contextual_diff_marks,
     _colors_to_position_marks,
-    _norm_key,
     _build_ghost_contexts,
     _CONTEXT_K,
     _GHOST_K,
@@ -29,11 +28,11 @@ from utils.token_log import (
 _TEST = _ROOT / "test"
 
 _CASES = [
-    ("chess_board",  True,  False, ["student_a", "student_b", "student_c"], True),
-    ("chess_game",   True,  False, ["student_a", "student_b"], True),
-    ("js",           True,  False, ["student_a", "student_b"], True),
-    ("qr_code",      True,  False, [], True),
-    ("sorting",      True,  False, ["student_a", "student_b"], True),
+    ("chess_board",  True,  ["student_a", "student_b", "student_c"], True),
+    ("chess_game",   True,  ["student_a", "student_b"], True),
+    ("js",           True,  ["student_a", "student_b"], True),
+    ("qr_code",      True,  [], True),
+    ("sorting",      True,  ["student_a", "student_b"], True),
 ]
 
 _DIFF_MARKS_CASES = [
@@ -46,57 +45,51 @@ def _load_events(log_path: Path) -> list:
         return json.load(f)["events"]
 
 
-def regen_teacher_tokens(case_dir: Path, has_css: bool, case_sensitive: bool) -> None:
+def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
     log_path = case_dir / "log.json"
     if not log_path.exists():
         print(f"  SKIP (no log.json): {case_dir.name}")
         return
 
-    old_cs = _sm._ALL_CASE_SENSITIVE
-    _sm._ALL_CASE_SENSITIVE = case_sensitive
-    try:
-        events = _load_events(log_path)
-        kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display = (
-            reconstruct_tokens_from_keylog_full(events, has_css=has_css)
-        )
+    events = _load_events(log_path)
+    kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display = (
+        reconstruct_tokens_from_keylog_full(events, has_css=has_css)
+    )
 
-        all_occ = []
-        for ci_key in kw_ts_ci:
-            occ_sorted = sorted(ci_occ_with_display.get(ci_key, []))
-            comment_ts_set = set(kw_ts_ci_comment.get(ci_key, []))
-            for ts, disp in occ_sorted:
-                all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
-        for ci_key, ts_list in removed_kw_ts_ci.items():
-            disp = upper_to_display.get(ci_key, ci_key)
-            for ins_ts, del_ts in ts_list:
-                all_occ.append((ins_ts, del_ts, disp, False, True))
-        all_occ.sort(key=lambda x: x[0])
+    all_occ = []
+    for ci_key in kw_ts_ci:
+        occ_sorted = sorted(ci_occ_with_display.get(ci_key, []))
+        comment_ts_set = set(kw_ts_ci_comment.get(ci_key, []))
+        for ts, disp in occ_sorted:
+            all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
+    for ci_key, ts_list in removed_kw_ts_ci.items():
+        disp = upper_to_display.get(ci_key, ci_key)
+        for ins_ts, del_ts in ts_list:
+            all_occ.append((ins_ts, del_ts, disp, False, True))
+    all_occ.sort(key=lambda x: x[0])
 
-        n_typed   = sum(1 for *_, is_removed in all_occ if not is_removed)
-        n_removed = sum(1 for *_, is_removed in all_occ if is_removed)
+    n_typed   = sum(1 for *_, is_removed in all_occ if not is_removed)
+    n_removed = sum(1 for *_, is_removed in all_occ if is_removed)
 
-        file_timeline   = _build_file_timeline(events)
-        has_multi_files = {f for _, f in file_timeline} - {"MAIN"}
+    file_timeline   = _build_file_timeline(events)
+    has_multi_files = {f for _, f in file_timeline} - {"MAIN"}
 
-        suffix = "_cs" if case_sensitive else ""
-        out = case_dir / f"tokens{suffix}.txt"
-        with open(out, "w", encoding="utf-8") as fh:
-            fh.write(f"# Occurrences: {n_typed}\n")
-            fh.write(f"# Removed    : {n_removed}\n")
-            fh.write(f"# Unique     : {len(kw_ts_ci)}\n")
-            for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
-                flags = []
-                if is_comment:
-                    flags.append("COMMENT")
-                if is_removed:
-                    flags.append("REMOVED")
-                file_col    = f"\t{_file_at_ts(ins_ts, file_timeline)}" if has_multi_files else ""
-                removal_col = f"\t{ts_to_local(del_ts)}" if is_removed else ""
-                flag_col    = ("\t" + "\t".join(flags)) if flags else ""
-                fh.write(f"{token}\t{ts_to_local(ins_ts)}{file_col}{flag_col}{removal_col}\n")
-        print(f"  {case_dir.name}/tokens{suffix}.txt  ({n_typed} occ, {n_removed} removed, {len(kw_ts_ci)} unique)")
-    finally:
-        _sm._ALL_CASE_SENSITIVE = old_cs
+    out = case_dir / "tokens.txt"
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(f"# Occurrences: {n_typed}\n")
+        fh.write(f"# Removed    : {n_removed}\n")
+        fh.write(f"# Unique     : {len(kw_ts_ci)}\n")
+        for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
+            flags = []
+            if is_comment:
+                flags.append("COMMENT")
+            if is_removed:
+                flags.append("REMOVED")
+            file_col    = f"\t{_file_at_ts(ins_ts, file_timeline)}" if has_multi_files else ""
+            removal_col = f"\t{ts_to_local(del_ts)}" if is_removed else ""
+            flag_col    = ("\t" + "\t".join(flags)) if flags else ""
+            fh.write(f"{token}\t{ts_to_local(ins_ts)}{file_col}{flag_col}{removal_col}\n")
+    print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {len(kw_ts_ci)} unique)")
 
 
 def regen_reconstructed(case_dir: Path) -> None:
@@ -190,7 +183,7 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
         teacher_entries, stu_outside, stu_comment
     )
 
-    removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+    removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
     log_path = case_dir / "log.json"
     ghost_ctx = None
     if log_path.exists() and removed_keys and _sm._ALL_EXTRA_STAR:
@@ -207,7 +200,7 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
     diff_marks = {
         "format_version": 4,
         "token_matching": "context-cosine-hungarian",
-        "case_sensitive": _sm._ALL_CASE_SENSITIVE,
+        "case_sensitive": True,
         "teacher_files": _colors_to_position_marks(teacher_files, tf_colors),
         "student_files": _colors_to_position_marks(stu_files, sf_colors),
     }
@@ -221,19 +214,15 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
 def main():
     print("Regenerating test fixtures...\n")
 
-    for dir_name, has_css, case_sensitive, students, regen_reco in _CASES:
+    for dir_name, has_css, students, regen_reco in _CASES:
         case_dir = _TEST / dir_name
         print(f"[{dir_name}]")
 
-        regen_teacher_tokens(case_dir, has_css, case_sensitive)
-
-        if dir_name == "chess_board":
-            regen_teacher_tokens(case_dir, has_css, True)
+        regen_teacher_tokens(case_dir, has_css)
 
         if regen_reco:
             regen_reconstructed(case_dir)
 
-        _sm._ALL_CASE_SENSITIVE = False
         for student in students:
             regen_student_tokens(case_dir, student)
 

@@ -27,9 +27,6 @@ from .similarity_measures import (
 from .lv_editor import replay_with_timestamps_all
 
 
-def _norm_key(tok: str) -> str:
-    return tok if _sm._ALL_CASE_SENSITIVE else tok.upper()
-
 _FILE_EXTS = (".js", ".css", ".html", ".htm")
 
 
@@ -141,8 +138,7 @@ def _build_teacher_file_coloring(text: str, ext: str,
     """Return {tok: [label|None, ...]} per file occurrence.
     Labels: 'missing' (non-comment missing) | 'comment' (any comment occurrence).
     Consumes from miss_budget and comm_tokens in place (shared across multiple file calls)."""
-    cs = _sm._ALL_CASE_SENSITIVE
-    text_s = text if cs else text.upper()
+    text_s = text
     c_starts, c_ends = _comment_ranges_for_ext(text, ext)
     result = {}
     for tok in set(miss_budget) | set(comm_tokens):
@@ -151,9 +147,10 @@ def _build_teacher_file_coloring(text: str, ext: str,
             continue
         labels = []
         for _, is_c in occs:
-            if is_c and comm_tokens.get(tok, 0) > 0:
-                labels.append('comment'); comm_tokens[tok] -= 1
-            elif not is_c and miss_budget.get(tok, 0) > 0:
+            if is_c:
+                labels.append('comment')
+                comm_tokens[tok] = max(0, comm_tokens.get(tok, 0) - 1)
+            elif miss_budget.get(tok, 0) > 0:
                 labels.append('missing'); miss_budget[tok] -= 1
             else:
                 labels.append(None)
@@ -168,8 +165,7 @@ def _build_student_file_coloring(text: str, ext: str,
     """Return {tok: [label|None, ...]} per file occurrence.
     Labels: 'comment' (any comment occurrence) | 'extra_star' | 'extra' (non-comment extras).
     Consumes from all budget dicts in place (shared across multiple file calls)."""
-    cs = _sm._ALL_CASE_SENSITIVE
-    text_s = text if cs else text.upper()
+    text_s = text
     c_starts, c_ends = _comment_ranges_for_ext(text, ext)
     all_toks = set(found_out) | set(found_comm) | set(star) | set(extra) | set(extra_comm)
     result = {}
@@ -180,12 +176,11 @@ def _build_student_file_coloring(text: str, ext: str,
         labels = []
         for _, is_c in occs:
             if is_c:
+                labels.append('comment')
                 if found_comm.get(tok, 0) > 0:
-                    labels.append('comment'); found_comm[tok] -= 1
+                    found_comm[tok] -= 1
                 elif extra_comm.get(tok, 0) > 0:
-                    labels.append('comment'); extra_comm[tok] -= 1
-                else:
-                    labels.append(None)
+                    extra_comm[tok] -= 1
             else:
                 if found_out.get(tok, 0) > 0:
                     labels.append(None); found_out[tok] -= 1
@@ -210,36 +205,36 @@ def _extract_student_ci_split(stu_files: dict):
             continue
         if ext in ('.html', '.htm'):
             for k, v in get_html_outside_css(raw).items():
-                outside[_norm_key(k)] += v
+                outside[k] += v
             for m in _SCRIPT_TAG_RE.finditer(raw):
                 s_out, _ = split_code_tokens(m.group(1))
                 for k, v in s_out.items():
-                    outside[_norm_key(k)] += v
+                    outside[k] += v
             _stripped = _SCRIPT_TAG_RE.sub(' ', raw)
             m_unc = _UNCLOSED_SCRIPT_RE.search(_stripped)
             if m_unc:
                 s_out, _ = split_code_tokens(m_unc.group(1))
                 for k, v in s_out.items():
-                    outside[_norm_key(k)] += v
+                    outside[k] += v
             html_body = _strip_script_bodies(raw)
             for body in _extract_event_handler_bodies(html_body):
                 s_out, _ = split_code_tokens(body)
                 for k, v in s_out.items():
-                    outside[_norm_key(k)] += v
+                    outside[k] += v
             for k, v in split_follow_tokens_html(raw)[1].items():
-                comment[_norm_key(k)] += v
+                comment[k] += v
         elif ext == '.css':
             out, ins = split_css_tokens(raw)
             for k, v in out.items():
-                outside[_norm_key(k)] += v
+                outside[k] += v
             for k, v in ins.items():
-                comment[_norm_key(k)] += v
+                comment[k] += v
         else:
             out, ins = split_code_tokens(raw)
             for k, v in out.items():
-                outside[_norm_key(k)] += v
+                outside[k] += v
             for k, v in ins.items():
-                comment[_norm_key(k)] += v
+                comment[k] += v
     return outside, comment
 
 
@@ -261,7 +256,7 @@ def _build_student_token_occurrences(
             removal_ts_str = entry[4] if len(entry) > 4 else ''
             if is_removed:
                 effective_ts = removal_ts_str if removal_ts_str else ts_str
-                teacher_removed_del_ts.setdefault(_norm_key(tok), []).append(effective_ts)
+                teacher_removed_del_ts.setdefault(tok, []).append(effective_ts)
 
     student_ci_total = student_ci_outside + student_ci_comment
     last_ts = teacher_occ[-1][1] if teacher_occ else '00:00:00'
@@ -270,7 +265,7 @@ def _build_student_token_occurrences(
     all_occ: List[Tuple[str, str, set]] = []
 
     for tok, ts_str, is_comment in teacher_occ:
-        ci_key = _norm_key(tok)
+        ci_key = tok
         pool = student_ci_comment if is_comment else student_ci_outside
         cons = consumed[is_comment]
         if cons[ci_key] < pool.get(ci_key, 0):
@@ -441,7 +436,7 @@ def _build_ghost_contexts(
             return
         text = ''.join(ch for _, ch, _, _ in s)
         for m in _sm._CSS_TOKEN_RE.finditer(text):
-            tok = _norm_key(m.group())
+            tok = m.group()
             if tok not in token_keys:
                 continue
             rel_end = m.end() - 1
@@ -473,13 +468,13 @@ def _build_ghost_contexts(
             if ch in ('\n', '\r'):
                 if seg2:
                     text = ''.join(seg2)
-                    batch_toks.extend(_norm_key(m.group()) for m in _sm._CSS_TOKEN_RE.finditer(text))
+                    batch_toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(text))
                     seg2 = []
             else:
                 seg2.append(ch)
         if seg2:
             text = ''.join(seg2)
-            batch_toks.extend(_norm_key(m.group()) for m in _sm._CSS_TOKEN_RE.finditer(text))
+            batch_toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(text))
         del_ts_co_tokens[dt] = batch_toks
 
     relevant_del_ts = {
@@ -495,7 +490,7 @@ def _build_ghost_contexts(
         seq: List[str] = []
         for text in texts.values():
             for m in _sm._CSS_TOKEN_RE.finditer(text):
-                seq.append(_norm_key(m.group()))
+                seq.append(m.group())
         reconstructed_at[dt] = seq
 
     ghost_ctxs: Dict[str, List[Counter]] = {}
@@ -608,7 +603,6 @@ def _locate_token(
 
 
 def _collect_occurrences(files_by_ext: dict, token_keys: set) -> Tuple[List[dict], Dict[str, Dict[str, int]]]:
-    cs = _sm._ALL_CASE_SENSITIVE
     occs: List[dict] = []
     counts: Dict[str, Dict[str, int]] = {}
 
@@ -617,7 +611,7 @@ def _collect_occurrences(files_by_ext: dict, token_keys: set) -> Tuple[List[dict
             raw = path.read_text(encoding='utf-8', errors='ignore')
         except Exception:
             continue
-        text_s = raw if cs else raw.upper()
+        text_s = raw
         c_starts, c_ends = _comment_ranges_for_ext(raw, ext)
         file_name = path.name
 
@@ -656,7 +650,7 @@ def _build_contextual_diff_marks(
 ) -> Tuple[dict, dict]:
     token_keys = set()
     for entry in teacher_entries:
-        token_keys.add(_norm_key(entry[0]))
+        token_keys.add(entry[0])
     token_keys.update(student_ci_outside.keys())
     token_keys.update(student_ci_comment.keys())
 
@@ -676,7 +670,7 @@ def _build_contextual_diff_marks(
     student_flags = [oc['is_comment'] for oc in student_occs]
 
     d_counts = Counter(
-        _norm_key(tok)
+        tok
         for tok, _ts, _is_comment, is_removed, *_ in teacher_entries
         if is_removed
     ) if _sm._ALL_EXTRA_STAR else Counter()
@@ -848,7 +842,7 @@ class TokenLogMixin:
         if _sm._ALL_EXTRA_STAR:
             all_events = getattr(self, '_lesson_all_events', None)
             if all_events:
-                removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+                removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
                 if removed_keys:
                     ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
                     n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
@@ -952,14 +946,14 @@ class TokenLogMixin:
                     ghost_contexts=ghost_contexts,
                 )
             except Exception:
-                miss_budget  = Counter(_norm_key(tok) for _, tok, fl in all_occ if fl == {'MISSING'})
-                comm_tokens  = Counter(_norm_key(tok) for _, tok, fl in all_occ
+                miss_budget  = Counter(tok for _, tok, fl in all_occ if fl == {'MISSING'})
+                comm_tokens  = Counter(tok for _, tok, fl in all_occ
                                        if 'COMMENT' in fl and 'EXTRA' not in fl and 'EXTRA*' not in fl)
                 found_out    = Counter(consumed[False])
                 found_comm   = Counter(consumed[True])
-                star_budget      = Counter(_norm_key(tok) for _, tok, fl in all_occ if fl == {'EXTRA*'})
-                extra_budget     = Counter(_norm_key(tok) for _, tok, fl in all_occ if fl == {'EXTRA'})
-                extra_comm_budget= Counter(_norm_key(tok) for _, tok, fl in all_occ
+                star_budget      = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA*'})
+                extra_budget     = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA'})
+                extra_comm_budget= Counter(tok for _, tok, fl in all_occ
                                            if 'COMMENT' in fl and ('EXTRA' in fl or 'EXTRA*' in fl))
 
                 teacher_files_colors = {}
@@ -986,7 +980,7 @@ class TokenLogMixin:
             diff_marks = {
                 'format_version': 4,
                 'token_matching': 'context-cosine-hungarian',
-                'case_sensitive': _sm._ALL_CASE_SENSITIVE,
+                'case_sensitive': True,
                 'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_files_colors),
                 'student_files': _colors_to_position_marks(stu_files, student_files_colors),
             }
@@ -1035,20 +1029,19 @@ class TokenLogMixin:
                     t_html = (self.teacher_html_outside_css_by_ext.get(ext)
                               or self.teacher_html_outside_by_ext.get(ext, Counter()))
                     t_script = self.teacher_script_outside_by_ext.get(ext, Counter())
-                    teacher_ext = _sm.upper_counter(t_html) + _sm.upper_counter(t_script)
+                    teacher_ext = t_html + t_script
                     fd = data['files_compared'].get(ext)
                     if fd and fd.get('status') == 'success':
                         s_html = fd.get('student_html_outside_css',
                                         fd.get('student_html_outside', Counter()))
                         s_script = fd.get('student_script_outside', Counter())
-                        student_ext = _sm.upper_counter(s_html) + _sm.upper_counter(s_script)
+                        student_ext = s_html + s_script
                     else:
                         student_ext = Counter()
                 else:
-                    teacher_ext = _sm.upper_counter(
-                        self.teacher_outside_by_ext.get(ext, Counter()))
+                    teacher_ext = self.teacher_outside_by_ext.get(ext, Counter())
                     fd = data['files_compared'].get(ext)
-                    student_ext = (_sm.upper_counter(fd.get('student_outside', Counter()))
+                    student_ext = (fd.get('student_outside', Counter())
                                    if fd and fd.get('status') == 'success' else Counter())
                 teacher_agg += teacher_ext
                 student_agg += student_ext
@@ -1093,7 +1086,7 @@ class TokenLogMixin:
             diff_marks = {
                 'format_version': 4,
                 'token_matching': 'similarity-containment',
-                'case_sensitive': _sm._ALL_CASE_SENSITIVE,
+                'case_sensitive': True,
                 'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_colors),
                 'student_files': _colors_to_position_marks(stu_files, student_colors),
             }
