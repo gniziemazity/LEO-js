@@ -874,7 +874,10 @@ const _VIS_DATA = path.join(__dirname, "../../lesson_tools/.last_vis_data.js");
 
 function openLogVisualizer(logFilePath) {
 	if (logFilePath) {
-		const scriptPath = path.join(__dirname, "../../lesson_tools/lv_expand.py");
+		const scriptPath = path.join(
+			__dirname,
+			"../../lesson_tools/lv_expand.py",
+		);
 		const result = spawnSync("python", [scriptPath, logFilePath], {
 			encoding: "utf8",
 		});
@@ -899,7 +902,7 @@ function openLogVisualizer(logFilePath) {
 		}
 		fs.writeFileSync(
 			_VIS_DATA,
-			`window.__LOG_DATA__ = ${JSON.stringify(payload)};`,
+			`window.__LOG_DATA__ = ${JSON.stringify({ ...payload, loadedAt: Date.now() })};`,
 			"utf8",
 		);
 	} else {

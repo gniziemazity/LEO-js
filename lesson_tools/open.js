@@ -1,13 +1,37 @@
 "use strict";
-// Opens a lesson_tools HTML file in the default browser with optional URL query params.
-// Usage: node lesson_tools/open.js <filename> [param=value ...]
-// Example: node lesson_tools/open.js students.html anon=name
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
+const http = require("http");
 const path = require("path");
+
+const PORT = 7891;
 const [, , tool = "students.html", ...params] = process.argv;
-const absPath = path.resolve(__dirname, tool);
 const qs = params.length ? "?" + params.join("&") : "";
-const url = "file:///" + absPath.replace(/\\/g, "/") + qs;
-exec(`start "" "${url}"`, (err) => {
-	if (err) console.error(err.message);
+const url = `http://127.0.0.1:${PORT}/${tool}${qs}`;
+
+function openUrl() {
+	exec(`start "" "${url}"`, (err) => {
+		if (err) console.error(err.message);
+	});
+}
+
+function startServer(cb) {
+	const child = spawn(process.execPath, [path.join(__dirname, "server.js")], {
+		detached: true,
+		stdio: "ignore",
+	});
+	child.unref();
+	setTimeout(cb, 300);
+}
+
+const req = http
+	.get(`http://127.0.0.1:${PORT}/`, (res) => {
+		res.destroy();
+		openUrl();
+	})
+	.on("error", () => {
+		startServer(openUrl);
+	});
+req.setTimeout(500, () => {
+	req.destroy();
+	startServer(openUrl);
 });

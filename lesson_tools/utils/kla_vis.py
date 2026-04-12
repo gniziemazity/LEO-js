@@ -427,28 +427,6 @@ def create_visualizations(data, student_data=None):
                 'is_code_insert': True,
             })
 
-    for kp in key_presses:
-        if 'code_remove' not in kp:
-            continue
-        removed = kp['code_remove']
-        cr_ts = kp['timestamp'] / 1000
-        cr_dt = datetime.fromtimestamp(cr_ts)
-        cr_rate = max(10.0, len(removed) / (Config.BAR_MIN_WIDTH_SECONDS / 60.0))
-        cr_bars = ax1.bar(
-            cr_dt, cr_rate, width=min_width_days,
-            alpha=0.6, color=Config.CODE_REMOVE_BAR_COLOR,
-            edgecolor=Config.CODE_REMOVE_BAR_EDGE_COLOR, zorder=3,
-        )
-        if cr_bars:
-            bar_artists.append({
-                'rect': cr_bars[0],
-                'text': removed,
-                'rate': cr_rate,
-                'time': cr_dt,
-                'width': min_width_days,
-                'is_code_remove': True,
-            })
-
     _covered_ranges = _bar_ts_ranges
 
     def _in_any_block(ts_ms):
@@ -647,30 +625,6 @@ def create_visualizations(data, student_data=None):
             'x': ci_dt,
             'y': chars_before,
             'code': kp['code_insert'],
-        })
-
-    code_remove_artists = []
-    for kp in key_presses:
-        if 'code_remove' not in kp:
-            continue
-        cr_ts = kp['timestamp']
-        cr_dt = datetime.fromtimestamp(cr_ts / 1000)
-        chars_at = sum(1 for j in char_indices if key_presses[j]['timestamp'] <= cr_ts)
-        sc = ax2.scatter(
-            cr_dt, chars_at,
-            color=Config.CODE_REMOVE_DOT_COLOR,
-            alpha=0.85,
-            s=Config.BURST_MARKER_SIZE * 4,
-            zorder=5,
-            marker='D',
-            edgecolors=Config.CODE_REMOVE_DOT_EDGE_COLOR,
-            linewidths=1,
-        )
-        code_remove_artists.append({
-            'scatter': sc,
-            'x': cr_dt,
-            'y': chars_at,
-            'removed': kp['code_remove'],
         })
 
     _DELETE_CHARS = {'↢', '⌫', '↣', '⌦', '⛔'}
@@ -1257,7 +1211,7 @@ def create_visualizations(data, student_data=None):
                 raw_block  = closest.get('raw_block', [])
                 extra_evs  = closest.get('extra_events', [])
 
-                if raw_block and not closest.get('is_code_insert') and not closest.get('is_code_remove'):
+                if raw_block and not closest.get('is_code_insert'):
                     items = [(kp['timestamp'],
                                'char_dev' if kp.get('_editor') == 'dev' else 'char',
                                kp.get('char', '')) for kp in raw_block]
@@ -1384,11 +1338,6 @@ def create_visualizations(data, student_data=None):
                 d = ((event.x - px[0])**2 + (event.y - px[1])**2)**0.5
                 candidates.append((d, _P, 'code_insert', cia))
 
-            for cra in code_remove_artists:
-                px = ax2.transData.transform((mdates.date2num(cra['x']), cra['y']))
-                d = ((event.x - px[0])**2 + (event.y - px[1])**2)**0.5
-                candidates.append((d, _P, 'code_remove', cra))
-
             for mva in move_dot_artists:
                 px = ax2.transData.transform((mdates.date2num(mva['x']), mva['y']))
                 d = ((event.x - px[0])**2 + (event.y - px[1])**2)**0.5
@@ -1483,15 +1432,6 @@ def create_visualizations(data, student_data=None):
                 _del_seg = 'delete_ignored' if art.get('ignored') else 'delete'
                 ann = _rich_annotate(ax2, (art['x'], art['y']), _xt, _ha,
                                      [(_del_seg, art['char'])], None, bg_color='#FDECEA')
-
-            elif kind == 'code_remove':
-                removed = art['removed']
-                raw_lines = removed.split('\n')
-                preview = raw_lines[:Config.TOOLTIP_MAX_LINES]
-                if len(raw_lines) > Config.TOOLTIP_MAX_LINES:
-                    preview.append(f'[... {len(raw_lines) - Config.TOOLTIP_MAX_LINES} more lines ...]')
-                lbl = f'Code remove ({len(removed)} chars):\n\n' + '\n'.join(preview)
-                ann = _ax_annotate(ax2, lbl, (art['x'], art['y']), _xt, '#FDECEA', ha=_ha, ma=_ma)
 
             elif kind == 'code_insert':
                 code = art['code']

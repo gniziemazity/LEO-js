@@ -51,9 +51,6 @@ def expand_events(events: list) -> list:
         elif "code_insert" in ev:
             micro.append(("code_insert_atomic", ev["code_insert"], ts, DELAY_OPS, editor))
 
-        elif "code_remove" in ev:
-            micro.append(("code_remove", ev["code_remove"], ts, real_delay))
-
         elif "anchor" in ev:
             micro.append(("set_anchor", ev["anchor"], ts, DELAY_OPS))
 

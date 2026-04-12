@@ -1,3 +1,4 @@
+import json
 import sys
 import tkinter as tk
 from tkinter import filedialog
@@ -5,6 +6,7 @@ from pathlib import Path
 
 _ROOT             = Path(__file__).resolve().parent.parent
 _LAST_FOLDER_FILE = _ROOT / '.last_folder'
+_LAST_PROJECT_JS  = _ROOT / '.last_project.js'
 _LESSONS_DIR      = _ROOT / 'lessons'
 
 
@@ -18,6 +20,10 @@ def load_last_folder() -> str:
 
 def save_last_folder(path: Path) -> None:
     _LAST_FOLDER_FILE.write_text(str(path.parent), encoding='utf-8')
+    _LAST_PROJECT_JS.write_text(
+        f'window.__LAST_PROJECT__ = {json.dumps(str(path))};',
+        encoding='utf-8',
+    )
 
 
 def select_project_folder(title: str = "Select project folder") -> Path:

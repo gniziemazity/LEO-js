@@ -827,11 +827,6 @@ class LogVisualizer:
             self._log(ts, f"⚓  anchor {name} → {pos}", CLR["accent"])
             return delay
 
-        elif kind == "code_remove":
-            _, code, ts, delay = act
-            self._handle_code_remove(code, ts)
-            return delay
-
         elif kind == "move_anchor":
             _, name, ts, delay = act
             mark = f"_anchor_{name}"
@@ -1057,22 +1052,6 @@ class LogVisualizer:
             self.lbl_ts.config(text=fmt_ts(ts))
             if widget is self.text and self.highlighter:
                 self.highlighter.schedule()
-
-    def _handle_code_remove(self, code: str, ts: int) -> None:
-        content = self.text.get("1.0", "end-1c")
-        pos     = content.rfind(code)
-        if pos < 0:
-            self._log(ts, f"✗  remove not found: {repr(code[:40])}", CLR["red"])
-            return
-        start  = f"1.0+{pos}c"
-        end    = f"1.0+{pos + len(code)}c"
-        end_p  = min(pos + len(code), len(self.char_ts))
-        if pos < len(self.char_ts):
-            del self.char_ts[pos:end_p]
-        self.text.delete(start, end)
-        if self.highlighter:
-            self.highlighter.schedule()
-        self._log(ts, f"✂  remove: {repr(code[:50])}", CLR["orange"])
 
     def _indent_selection(self, ts: int) -> None:
         sel_ranges = self.text.tag_ranges("sel")

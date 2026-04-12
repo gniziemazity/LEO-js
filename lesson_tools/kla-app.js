@@ -162,6 +162,7 @@ async function loadJsonData(file, data) {
 		localStorage.setItem("kla_sim_data", JSON.stringify({
 			filePath: file.name,
 			events: data.events || data.keyPresses || [],
+			loadedAt: Date.now(),
 		}));
 	} catch {}
 	if (_allFiles.size) {

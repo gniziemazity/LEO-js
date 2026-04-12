@@ -1,4 +1,6 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
@@ -57,7 +59,9 @@ body {
 	background: #fff;
 	cursor: pointer;
 	color: #1e1e1e;
-	transition: background 0.15s, border-color 0.15s;
+	transition:
+		background 0.15s,
+		border-color 0.15s;
 }
 .landing-btn:hover {
 	background: #e8f4ff;
@@ -80,11 +84,6 @@ body {
 .landing-btn-primary:disabled {
 	background: #999;
 	cursor: default;
-}
-
-.landing-hint {
-	font-size: 12px;
-	color: #888;
 }
 
 #loading {

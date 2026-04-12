@@ -7,9 +7,9 @@
 	"scripts": {
 		"start": "electron .",
 		"build": "electron-builder",
-		"dash": "start \"\" lesson_tools\\dashboard.html",
-		"sim": "start \"\" lesson_tools\\simulator.html",
-		"diff": "start \"\" lesson_tools\\differentiator.html",
+		"dash": "node lesson_tools/open.js dashboard.html",
+		"sim": "node lesson_tools/open.js simulator.html",
+		"diff": "node lesson_tools/open.js differentiator.html",
 		"students": "node lesson_tools/open.js students.html",
 		"students-name": "node lesson_tools/open.js students.html anon=name",
 		"students-id": "node lesson_tools/open.js students.html anon=id",

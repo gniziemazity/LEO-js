@@ -159,8 +159,6 @@ function expandEvents(events) {
 				DELAY_OPS,
 				editor,
 			]);
-		} else if ("code_remove" in ev) {
-			micro.push(["code_remove", ev.code_remove, ts, realDelay]);
 		} else if ("anchor" in ev) {
 			micro.push(["set_anchor", ev.anchor, ts, DELAY_OPS]);
 		} else if ("move" in ev) {
@@ -1099,29 +1097,6 @@ class LogVisualizer {
 				this._log(ts, `⚠  unknown anchor: ${name}`, CLR.red);
 			}
 			return delay;
-		} else if (kind === "code_remove") {
-			const [, code, ts, delay] = act;
-			const pos = this.main.text.lastIndexOf(code);
-			if (pos < 0) {
-				this._log(
-					ts,
-					`✗  remove not found: ${JSON.stringify(code.slice(0, 40))}`,
-					CLR.red,
-				);
-			} else {
-				this.main.text =
-					this.main.text.slice(0, pos) +
-					this.main.text.slice(pos + code.length);
-				this.main.charTs.splice(pos, code.length);
-				if (this.main.cursor > pos)
-					this.main.cursor = Math.max(pos, this.main.cursor - code.length);
-				this._log(
-					ts,
-					`✂  remove: ${JSON.stringify(code.slice(0, 50))}`,
-					CLR.orange,
-				);
-			}
-			return delay;
 		} else if (kind === "switch_file") {
 			const [, filename, ts, delay] = act;
 			this._switchToFile(filename);
@@ -2002,20 +1977,28 @@ document.addEventListener("DOMContentLoaded", () => {
 		performance.getEntriesByType("navigation")[0]?.type === "reload";
 	if (!isReload) {
 		try {
-			if (window.__LOG_DATA__) {
-				loadFromData(window.__LOG_DATA__);
-			} else {
+			const logData = window.__LOG_DATA__;
+			const logTs = logData?.loadedAt || 0;
+			let parsed = null;
+			try {
 				const stored = localStorage.getItem("kla_sim_data");
-				if (stored) {
-					const { filePath, events } = JSON.parse(stored);
-					let imageUris = {};
-					try {
-						const raw = localStorage.getItem("kla_sim_images");
-						if (raw) imageUris = JSON.parse(raw);
-					} catch {}
-					const micro = expandEvents(events || []);
-					loadFromData({ filePath, micro, error: null, imageUris });
-				}
+				if (stored) parsed = JSON.parse(stored);
+			} catch {}
+			const storedTs = parsed?.loadedAt || 0;
+
+			if (logData && logTs >= storedTs) {
+				loadFromData(logData);
+			} else if (parsed) {
+				const { filePath, events } = parsed;
+				let imageUris = {};
+				try {
+					const raw = localStorage.getItem("kla_sim_images");
+					if (raw) imageUris = JSON.parse(raw);
+				} catch {}
+				const micro = expandEvents(events || []);
+				loadFromData({ filePath, micro, error: null, imageUris });
+			} else if (logData) {
+				loadFromData(logData);
 			}
 		} catch {}
 	}
