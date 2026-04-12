@@ -253,13 +253,15 @@ def _build_student_token_occurrences(
         for tok, ts_str, is_comment, is_removed, *_ in teacher_entries
         if not is_removed
     ]
+    use_extra_star = _sm._ALL_EXTRA_STAR
     teacher_removed_del_ts: Dict[str, List[str]] = {}
-    for entry in teacher_entries:
-        tok, ts_str, _, is_removed = entry[:4]
-        removal_ts_str = entry[4] if len(entry) > 4 else ''
-        if is_removed:
-            effective_ts = removal_ts_str if removal_ts_str else ts_str
-            teacher_removed_del_ts.setdefault(_norm_key(tok), []).append(effective_ts)
+    if use_extra_star:
+        for entry in teacher_entries:
+            tok, ts_str, _, is_removed = entry[:4]
+            removal_ts_str = entry[4] if len(entry) > 4 else ''
+            if is_removed:
+                effective_ts = removal_ts_str if removal_ts_str else ts_str
+                teacher_removed_del_ts.setdefault(_norm_key(tok), []).append(effective_ts)
 
     student_ci_total = student_ci_outside + student_ci_comment
     last_ts = teacher_occ[-1][1] if teacher_occ else '00:00:00'
@@ -281,7 +283,7 @@ def _build_student_token_occurrences(
     for ci_key in sorted(student_ci_total):
         extra_outside = student_ci_outside[ci_key] - consumed[False][ci_key]
         extra_comment = student_ci_comment[ci_key] - consumed[True][ci_key]
-        removal_ts_list = list(reversed(teacher_removed_del_ts.get(ci_key, [])))
+        removal_ts_list = list(reversed(teacher_removed_del_ts.get(ci_key, []))) if use_extra_star else []
         n_star = min(max(0, extra_outside), len(removal_ts_list))
         for i in range(max(0, extra_outside)):
             if i < n_star:
@@ -677,7 +679,7 @@ def _build_contextual_diff_marks(
         _norm_key(tok)
         for tok, _ts, _is_comment, is_removed, *_ in teacher_entries
         if is_removed
-    )
+    ) if _sm._ALL_EXTRA_STAR else Counter()
 
     teacher_colors = {
         fn: {tok: [None] * n for tok, n in toks.items()}
@@ -855,14 +857,15 @@ class TokenLogMixin:
         teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
 
         ghost_contexts = None
-        all_events = getattr(self, '_lesson_all_events', None)
-        if all_events:
-            removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-            if removed_keys:
-                ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
-                n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
-                print(f'  Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
-                      f'have deletion-batch context')
+        if _sm._ALL_EXTRA_STAR:
+            all_events = getattr(self, '_lesson_all_events', None)
+            if all_events:
+                removed_keys = {_norm_key(tok) for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+                if removed_keys:
+                    ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
+                    n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
+                    print(f'  Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
+                          f'have deletion-batch context')
 
         written = 0
         for student_dir in sorted(names_dir.iterdir()):

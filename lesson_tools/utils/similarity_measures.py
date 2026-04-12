@@ -16,7 +16,8 @@ from .lv_editor import (
     replay_with_timestamps, replay_with_timestamps_all,
 )
 
-_ALL_CASE_SENSITIVE: bool = os.environ.get('STUDENT_ANALYTICS_CASE_SENSITIVE', '0') == '1'
+_ALL_CASE_SENSITIVE: bool = os.environ.get('STUDENT_ANALYTICS_CASE_SENSITIVE', '1') == '1'
+_ALL_EXTRA_STAR:     bool = os.environ.get('STUDENT_ANALYTICS_EXTRA_STAR',     '0') == '1'
 
 def normalize_code(code: str) -> List[str]:
     return [line.strip() for line in code.split('\n') if line.strip()]

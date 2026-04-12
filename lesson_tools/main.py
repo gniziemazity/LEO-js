@@ -16,11 +16,18 @@ from utils.folder_utils import select_project_folder
 
 _parser = argparse.ArgumentParser(description='Student analytics grading pipeline')
 _parser.add_argument('project', nargs='?', help='Project folder path or name under lessons/')
-_parser.add_argument('--case-sensitive', action='store_true',
-                     help='Keep all tokens as typed; case-sensitive comparisons')
+_cs_group = _parser.add_mutually_exclusive_group()
+_cs_group.add_argument('--case-sensitive', action='store_true',
+                       help='Case-sensitive token matching (default)')
+_cs_group.add_argument('--case-insensitive', action='store_true',
+                       help='Merge tokens that differ only in case (e.g. HTML/CSS lessons)')
+_parser.add_argument('--extra-star', action='store_true',
+                     help='Mark teacher-removed tokens found in student code as EXTRA* '
+                          'instead of plain EXTRA')
 _args = _parser.parse_args()
 
-ALL_CASE_SENSITIVE = _args.case_sensitive
+ALL_CASE_SENSITIVE = not _args.case_insensitive
+ALL_EXTRA_STAR     = _args.extra_star
 
 STEPS = [
     ("1. Extract submissions",    "extract"),
@@ -40,6 +47,7 @@ def run_step(label: str, module: str, project_dir: Path) -> bool:
 
     env = os.environ.copy()
     env['STUDENT_ANALYTICS_CASE_SENSITIVE'] = '1' if ALL_CASE_SENSITIVE else '0'
+    env['STUDENT_ANALYTICS_EXTRA_STAR']     = '1' if ALL_EXTRA_STAR     else '0'
     result = subprocess.run(
         [sys.executable, "-m", f"utils.{module}", str(project_dir)],
         cwd=str(ROOT_DIR),
