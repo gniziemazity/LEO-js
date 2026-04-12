@@ -47,12 +47,6 @@ def calculate_intervals(key_presses):
     return intervals
 
 
-def find_keypress_at_position(key_presses, position):
-    if position is None or position < 0 or position >= len(key_presses):
-        return None
-    return key_presses[position]['timestamp'] / 1000
-
-
 def analyze_typing_blocks(key_presses):
     if not key_presses:
         return [], [], [], []

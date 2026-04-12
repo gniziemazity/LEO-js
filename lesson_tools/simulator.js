@@ -1918,7 +1918,7 @@ async function _simIdbSet(key, value) {
 }
 
 const _SIM_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
-const _SIM_LOG_SKIP = new Set(["diff_marks.json", "tokens_positions.json"]);
+const _SIM_LOG_SKIP = new Set(["diff_marks.json"]);
 const _SIM_LOG_RANK = (name) => {
 	const n = name.toLowerCase();
 	if (n === "log.json") return 0;

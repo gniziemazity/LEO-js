@@ -1,10 +1,8 @@
 import csv
 import difflib
 import io
-import math
 import os
 import re
-import sys
 import zipfile
 from collections import Counter
 from datetime import datetime
@@ -190,27 +188,6 @@ def get_html_outside_css(text: str) -> Counter:
     if m_unclosed:
         result['<script'] = result.get('<script', 0) + 1
     return result
-
-
-def split_follow_style_tokens(text: str, has_css: bool = True) -> Tuple[Counter, Counter]:
-    outside_text = _COMMENT_RE.sub(' ', text)
-    inside_text  = ' '.join(m.group() for m in _COMMENT_RE.finditer(text))
-
-    def _tok(t: str) -> Counter:
-        if not has_css:
-            return Counter(tok for tok in _TOKEN_RE.findall(t) if tok)
-        covered: set = set()
-        result: Counter = Counter()
-        for m in _CSS_TOKEN_RE.finditer(t):
-            result[m.group()] += 1
-            for i in range(m.start(), m.end()):
-                covered.add(i)
-        for m in _TOKEN_RE.finditer(t):
-            if m.start() not in covered:
-                result[m.group()] += 1
-        return result
-
-    return _tok(outside_text), _tok(inside_text)
 
 
 _CSS_HYPHEN_RE = re.compile(r'[_a-zA-Z][a-zA-Z0-9_]*(?:-[_a-zA-Z][a-zA-Z0-9_]*)+')
@@ -560,94 +537,9 @@ def _reconstruct_tokens_core(
     return kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display
 
 
-def get_reconstructed_html(events: List[dict], has_css: bool = True) -> str:
-    return reconstruct_html_headless(events)
-
-
 def get_reconstructed_files(events: List[dict]) -> dict:
     return reconstruct_all_headless(events)
 
-
-def build_net_kw_ts(
-    keypresses:   List[dict],
-    code_inserts: List[dict],
-    has_css: bool = True,
-) -> Tuple[Dict[str, List[int]], Dict[str, List[int]]]:
-    _SEPARATORS = {'\n', '\r', '\t', '↩', '―'}
-
-    kw_ts_cs: Dict[str, List[int]] = {}
-    kw_ts_ci: Dict[str, List[int]] = {}
-
-    def _record(token: str, ts: int) -> None:
-        kw_ts_cs.setdefault(token, []).append(ts)
-        kw_ts_ci.setdefault(token, []).append(ts)
-
-    text_chars: List[Tuple[str, int]] = []
-    for ev in keypresses:
-        if ev.get('editor', 'main') != 'main':
-            continue
-        ts = ev['timestamp']
-        for c in ev.get('char', ''):
-            if c in _SEPARATORS:
-                text_chars.append((' ', ts))
-            elif c.isascii() and c.isprintable():
-                text_chars.append((c, ts))
-
-    if text_chars:
-        text = ''.join(c for c, _ in text_chars)
-        covered: set = set()
-        all_matches: List[Tuple[int, str, int]] = []
-        if has_css:
-            for m in _CSS_HYPHEN_RE.finditer(text):
-                ts_m = text_chars[min(m.end() - 1, len(text_chars) - 1)][1]
-                all_matches.append((m.start(), m.group(), ts_m))
-                for i in range(m.start(), m.end()):
-                    covered.add(i)
-        for m in _TOKEN_RE.finditer(text):
-            if m.start() not in covered:
-                ts_m = text_chars[min(m.end() - 1, len(text_chars) - 1)][1]
-                all_matches.append((m.start(), m.group(), ts_m))
-        for _, token, ts_m in sorted(all_matches, key=lambda x: x[0]):
-            _record(token, ts_m)
-
-    for ev in code_inserts:
-        ts   = ev['timestamp']
-        code = ev.get('code_insert', '')
-        ci_covered: set = set()
-        if has_css:
-            for m in _CSS_HYPHEN_RE.finditer(code):
-                _record(m.group(), ts)
-                for i in range(m.start(), m.end()):
-                    ci_covered.add(i)
-        for m in _TOKEN_RE.finditer(code):
-            if m.start() not in ci_covered:
-                _record(m.group(), ts)
-
-    return kw_ts_cs, kw_ts_ci
-
-
-def calculate_jaccard_sim(a: Counter, b: Counter) -> float:
-    if not a and not b:
-        return 0.0
-    intersection = sum((a & b).values())
-    union = sum((a | b).values())
-    if union == 0:
-        return 0.0
-    return round(intersection / union * 100, 1)
-
-def calculate_weighted_jaccard_sim(a: Counter, b: Counter) -> float:
-    if not a and not b:
-        return 0.0
-    intersection = sum((a & b).values())
-    union = sum((a | b).values())
-    if union == 0:
-        return 0.0
-    return round(intersection / math.sqrt(union), 4)
-
-def calculate_cosine_sim(a: Counter, b: Counter) -> float:
-    inter = sum((a & b).values())
-    denom = math.sqrt(sum(a.values())) * math.sqrt(sum(b.values()))
-    return round(inter / denom, 4) if denom else 0.0
 
 def calculate_containment(a: Counter, b: Counter) -> float:
     if not a:
@@ -656,28 +548,6 @@ def calculate_containment(a: Counter, b: Counter) -> float:
 
 def ts_to_local(ts_ms: int) -> str:
     return datetime.fromtimestamp(ts_ms / 1000).strftime('%H:%M:%S')
-
-
-def comment_flag_indices(
-    sorted_ts: List[int],
-    n_comment: int,
-    comment_only_ts: Set[int],
-    window_ms: int = 60_000,
-) -> Set[int]:
-    if n_comment <= 0:
-        return set()
-    if not comment_only_ts:
-        return set(range(min(n_comment, len(sorted_ts))))
-    scores = [
-        (
-            sum(1 for ct in comment_only_ts if abs(t - ct) <= window_ms),
-            min(abs(t - ct) for ct in comment_only_ts),
-            i,
-        )
-        for i, t in enumerate(sorted_ts)
-    ]
-    scores.sort(key=lambda x: (-x[0], x[1], x[2]))
-    return {i for *_, i in scores[:n_comment]}
 
 
 _SIZEWITHCELLS_RE = re.compile(r'<[^>]*:SizeWithCells\s*/>|<SizeWithCells\s*/>')

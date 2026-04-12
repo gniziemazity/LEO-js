@@ -65,9 +65,6 @@ async function openDiffWindow(student) {
 				imageUris,
 				teacherMarks: diffMarks ? diffMarks.teacher_files || {} : null,
 				studentMarks: diffMarks ? diffMarks.student_files || {} : null,
-				caseSensitive: diffMarks
-					? diffMarks.case_sensitive === true
-					: false,
 				title: `${escHtml(student.name)} (${escHtml(followPct)})`,
 			}),
 		);

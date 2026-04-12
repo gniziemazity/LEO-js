@@ -15,14 +15,12 @@ from .similarity_measures import (
     calculate_containment,
     calculate_ide_diff_sim,
     extract_tokens,
-    extract_user_identifiers,
     get_html_outside_css,
     normalize_code,
     open_csv_encoded,
     save_xlsx,
     split_code_tokens,
     split_css_tokens,
-    split_follow_tokens_html,
     split_html_tokens,
 )
 from .token_log import TokenLogMixin
@@ -48,8 +46,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self.student_raw_texts:           Dict[str, str]                = {}
 
         self._student_token_stats: Dict[str, dict]    = {}
-        self._student_outside_ci:  Dict[str, Counter] = {}
-        self._student_all_ci:      Dict[str, Counter] = {}
 
         self.teacher_tokens_by_ext:           Dict[str, Counter] = {}
         self.teacher_outside_by_ext:          Dict[str, Counter] = {}
@@ -57,8 +53,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self.teacher_html_outside_by_ext:     Dict[str, Counter] = {}
         self.teacher_script_outside_by_ext:   Dict[str, Counter] = {}
         self.teacher_html_outside_css_by_ext: Dict[str, Counter] = {}
-        self.teacher_html_inside_css_by_ext:  Dict[str, Counter] = {}
-        self._user_id_ci: set = set()
 
         self.remarks_data:       Dict[str, str]  = {}
         self.required_items:     List[List[str]] = []
@@ -120,9 +114,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             except (UnicodeDecodeError, UnicodeError):
                 self.required_items.clear()
                 self.not_expected_items.clear()
-
-    def load_required_csv(self, csv_path: str) -> None:
-        self.load_expected_csv(csv_path)
 
     def load_lesson_json(self, project_dir: Path) -> None:
         json_files = list(project_dir.glob('*.json'))
@@ -254,7 +245,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         t_html_out:     Dict[str, Counter] = {}
         t_script_out:   Dict[str, Counter] = {}
         t_html_css_out: Dict[str, Counter] = {}
-        t_html_css_ins: Dict[str, Counter] = {}
 
         for ext, ref_file in ref_files.items():
             raw = ref_file.read_text(encoding='utf-8', errors='ignore')
@@ -264,8 +254,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 t_html_out[ext]     = html_out
                 t_script_out[ext]   = script_out
                 t_html_css_out[ext] = get_html_outside_css(raw)
-                _, css_ins = split_follow_tokens_html(raw)
-                t_html_css_ins[ext] = css_ins
             elif ext == '.css':
                 out, ins = split_css_tokens(raw)
             else:
@@ -280,15 +268,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self.teacher_html_outside_by_ext     = t_html_out
         self.teacher_script_outside_by_ext   = t_script_out
         self.teacher_html_outside_css_by_ext = t_html_css_out
-        self.teacher_html_inside_css_by_ext  = t_html_css_ins
-
-        self._user_id_ci = {
-            uid
-            for ext, f in ref_files.items()
-            for uid in extract_user_identifiers(
-                f.read_text(encoding='utf-8', errors='ignore'), ext
-            )
-        }
 
         (bl_outside, bl_inside,
          bl_html_out, bl_script_out, bl_html_css) = self._build_baselines(
@@ -369,8 +348,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
             raw_parts:      List[str]          = []
             simple_extras:  Dict[str, Counter] = {}
-            stu_outside_ci: Counter            = Counter()
-            stu_all_ci:     Counter            = Counter()
 
             for ext in ['.html', '.css', '.js']:
                 _files = list(student_dir.glob(f'*{ext}'))
@@ -382,19 +359,11 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                     raw_parts.append(raw)
                     if ext == '.html':
                         s_out_css    = get_html_outside_css(raw)
-                        _, sc, _     = split_html_tokens(raw)
-                        _, ins_css   = split_follow_tokens_html(raw)
-                        stu_outside_ci += s_out_css + sc
-                        stu_all_ci     += s_out_css + sc + ins_css
                         s_out = s_out_css
                     elif ext == '.css':
                         s_out, s_ins = split_css_tokens(raw)
-                        stu_outside_ci += s_out
-                        stu_all_ci     += s_out + s_ins
                     else:
                         s_out, s_ins = split_code_tokens(raw)
-                        stu_outside_ci += s_out
-                        stu_all_ci     += s_out + s_ins
                     simple_extras[ext] = (
                         s_out
                         - self.simple_baseline_by_ext.get(ext, Counter())
@@ -404,8 +373,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
             self.student_simple_extra_by_ext[sid] = simple_extras
             self.student_raw_texts[sid]           = ', '.join(raw_parts)
-            self._student_outside_ci[sid]         = stu_outside_ci
-            self._student_all_ci[sid]             = stu_all_ci
 
     def _build_baselines(self, ref_files, t_outside, t_inside,
                          t_html_outside, t_script_outside, t_html_css_outside):

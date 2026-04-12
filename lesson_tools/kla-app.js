@@ -91,8 +91,7 @@ function handleFiles(files) {
 	const jsonFiles = files.filter(
 		(f) =>
 			f.name.toLowerCase().endsWith(".json") &&
-			f.name.toLowerCase() !== "diff_marks.json" &&
-			f.name.toLowerCase() !== "tokens_positions.json",
+			f.name.toLowerCase() !== "diff_marks.json",
 	);
 	const xlsxFiles = files.filter((f) =>
 		f.name.toLowerCase().endsWith(".xlsx"),

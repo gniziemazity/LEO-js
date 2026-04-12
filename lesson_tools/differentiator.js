@@ -12,7 +12,6 @@ let _teacherFiles = null;
 let _studentFiles = null;
 let _teacherMarks = null;
 let _studentMarks = null;
-let _caseSensitive = false;
 let _imageUris = {}; // basename → data: URI for preview image inlining
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -26,7 +25,6 @@ window.addEventListener("DOMContentLoaded", () => {
 			_studentFiles = data.studentFiles || {};
 			_teacherMarks = data.teacherMarks || null;
 			_studentMarks = data.studentMarks || null;
-			_caseSensitive = data.caseSensitive || false;
 			_imageUris = data.imageUris || {};
 			if (data.title) document.title = data.title;
 			document.getElementById("title-student").textContent =
@@ -69,8 +67,7 @@ function loadFilesFromInput(files, side) {
 							? diffMarks.teacher_files
 							: diffMarks.student_files) || null
 					: null;
-				if (diffMarks && diffMarks.case_sensitive === true)
-					_caseSensitive = true;
+
 				if (side === "teacher") {
 					_teacherFiles = texts;
 					_teacherMarks = marks;
@@ -144,23 +141,9 @@ function renderPanel(side, files, marks) {
 
 		const text = files[name] || "";
 		const fileMarks = marks ? marks[name] || null : null;
-		let html;
-		if (!fileMarks) {
-			html = escHtml(text);
-		} else if (Array.isArray(fileMarks)) {
-			// format v4: [{token, label, start, end}, ...]
-			html = diffColorizePositions(text, fileMarks);
-		} else {
-			const occMap = buildFileOccurrenceMap(
-				{ [name]: fileMarks },
-				name,
-				_caseSensitive,
-			);
-			html =
-				occMap && occMap.size
-					? diffColorize(text, occMap, _caseSensitive)
-					: escHtml(text);
-		}
+		const html = Array.isArray(fileMarks)
+			? diffColorizePositions(text, fileMarks)
+			: escHtml(text);
 
 		pane.innerHTML = `<pre>${html}</pre>`;
 		codeWrap.appendChild(pane);
@@ -207,21 +190,6 @@ function escHtml(s) {
 		.replace(/>/g, "&gt;");
 }
 
-function buildFileOccurrenceMap(filesColorData, filename, caseSensitive) {
-	const map = new Map();
-	if (!filesColorData) return map;
-	const fileData = filesColorData[filename] || {};
-	for (const [tok, entries] of Object.entries(fileData)) {
-		if (!Array.isArray(entries)) continue;
-		const colors = entries.map((e) =>
-			e && typeof e === "string" ? (DIFF_LABEL_COLORS[e] ?? e) : e,
-		);
-		if (colors.some((c) => c))
-			map.set(caseSensitive ? tok : tok.toUpperCase(), colors);
-	}
-	return map;
-}
-
 function diffColorizePositions(text, posMarks) {
 	if (!posMarks || !posMarks.length) return escHtml(text);
 	const colored = posMarks.filter(
@@ -250,70 +218,6 @@ function diffColorizePositions(text, posMarks) {
 		pos = m.end;
 	}
 	out += escHtml(normText.slice(pos));
-	return out;
-}
-
-function diffColorize(text, occurrenceMap, caseSensitive) {
-	if (!occurrenceMap || !occurrenceMap.size) return escHtml(text);
-
-	const escaped = escHtml(text);
-	const searchText = caseSensitive ? escaped : escaped.toUpperCase();
-	const marks = [];
-
-	for (const [token, occColors] of occurrenceMap) {
-		if (!occColors.some((c) => c)) continue;
-
-		const searchTok = caseSensitive
-			? token.replace(/</g, "&lt;").replace(/>/g, "&gt;")
-			: token.replace(/</g, "&LT;").replace(/>/g, "&GT;");
-		const rePat = searchTok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const startsWord = /^\w/.test(searchTok);
-		const endsWord = /\w$/.test(searchTok);
-		let pattern = rePat;
-		if (startsWord)
-			pattern =
-				(searchTok.includes("-") ? "(?<![.\\w])" : "(?<!\\w)") + rePat;
-		if (endsWord) pattern = pattern + "(?!\\w)";
-		const re = new RegExp(pattern, "g");
-
-		const positions = [];
-		let m;
-		while ((m = re.exec(searchText)) !== null)
-			positions.push({ start: m.index, end: m.index + m[0].length });
-
-		for (let i = 0; i < Math.min(positions.length, occColors.length); i++) {
-			const color = occColors[i];
-			if (color) {
-				marks.push({
-					start: positions[i].start,
-					end: positions[i].end,
-					color,
-					raw: escaped.slice(positions[i].start, positions[i].end),
-				});
-			}
-		}
-	}
-
-	if (!marks.length) return escaped;
-
-	marks.sort((a, b) => a.start - b.start || b.end - a.end);
-	const kept = [];
-	let lastEnd = 0;
-	for (const mk of marks) {
-		if (mk.start >= lastEnd) {
-			kept.push(mk);
-			lastEnd = mk.end;
-		}
-	}
-
-	let out = "",
-		pos = 0;
-	for (const mk of kept) {
-		out += escaped.slice(pos, mk.start);
-		out += `<span style="color:${mk.color};font-weight:bold">${mk.raw}</span>`;
-		pos = mk.end;
-	}
-	out += escaped.slice(pos);
 	return out;
 }
 

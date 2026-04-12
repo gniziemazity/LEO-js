@@ -16,7 +16,7 @@
 		"students-anon": "node lesson_tools/open.js students.html anon=id",
 		"main": "py lesson_tools/main.py",
 		"main-star": "py lesson_tools/main.py --extra-star",
-		"test": "cd lesson_tools && python -m unittest test_reconstruction -v"
+		"test": "cd lesson_tools && python -m unittest discover -v"
 	},
 	"build": {
 		"appId": "com.leo-js.app",

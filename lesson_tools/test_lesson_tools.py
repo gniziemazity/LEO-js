@@ -270,19 +270,19 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
         self.assertEqual(starts, sorted(starts))
 
     def test_size_and_inline_are_comment(self):
-        size_labels = [o['label'] for o in self.student_occs if o['token'] == 'SIZE']
+        size_labels = [o['label'] for o in self.student_occs if o['token'] == 'size']
         self.assertTrue(size_labels)
         self.assertTrue(all(x == 'comment' for x in size_labels))
-        inline_labels = [o['label'] for o in self.student_occs if o['token'] == 'INLINE']
+        inline_labels = [o['label'] for o in self.student_occs if o['token'] == 'inline']
         self.assertTrue(inline_labels)
         self.assertTrue(all(x == 'comment' for x in inline_labels))
 
     def test_student_extra_star_example(self):
-        labels_400px = [o['label'] for o in self.student_occs if o['token'] == '400PX']
+        labels_400px = [o['label'] for o in self.student_occs if o['token'] == '400px']
         self.assertEqual(labels_400px, ['extra_star'])
 
     def test_student_div_comment_count(self):
-        div_comment = [o for o in self.student_occs if o['token'] == 'DIV' and o['label'] == 'comment']
+        div_comment = [o for o in self.student_occs if o['token'] == 'div' and o['label'] == 'comment']
         self.assertEqual(len(div_comment), 3)
 
     def test_no_null_labels_in_fixture(self):
@@ -328,15 +328,15 @@ class TestChessGameStudentBDiffMarks(unittest.TestCase):
         cls.student_index = cls.sf_colors.get('index.html', {})
 
     def test_this_is_extra_star(self):
-        self.assertEqual(self.student_index.get('THIS'), ['extra_star'])
+        self.assertEqual(self.student_index.get('this'), ['extra_star'])
 
     def test_onclick_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('ONCLICK', [])
+        labels = self.student_index.get('onclick', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'extra_star')
 
     def test_handleclick_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('HANDLECLICK', [])
+        labels = self.student_index.get('handleClick', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'extra_star')
 
@@ -398,12 +398,12 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
         cls.student_index = cls.sf_colors.get('index.html', {})
 
     def test_element_extra_occurrence_is_plain_extra(self):
-        labels = self.student_index.get('ELEMENT', [])
+        labels = self.student_index.get('element', [])
         self.assertGreaterEqual(len(labels), 6)
         self.assertEqual(labels[5], 'extra')
 
     def test_element_extra_occurrence_is_not_extra_star(self):
-        labels = self.student_index.get('ELEMENT', [])
+        labels = self.student_index.get('element', [])
         self.assertGreaterEqual(len(labels), 6)
         self.assertNotEqual(labels[5], 'extra_star')
 
@@ -427,50 +427,50 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
         cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
 
     def test_width_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('WIDTH', [])
+        labels = self.student_index.get('width', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'extra_star')
 
     def test_width_second_occurrence_is_matched(self):
-        labels = self.student_index.get('WIDTH', [])
+        labels = self.student_index.get('width', [])
         self.assertGreaterEqual(len(labels), 2)
         self.assertIsNone(labels[1])
 
     def test_200px_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('200PX', [])
+        labels = self.student_index.get('200px', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'extra_star')
 
     def test_200px_second_occurrence_is_matched(self):
-        labels = self.student_index.get('200PX', [])
+        labels = self.student_index.get('200px', [])
         self.assertGreaterEqual(len(labels), 2)
         self.assertIsNone(labels[1])
 
     def test_background_color_student_is_extra_star(self):
-        labels = self.student_index.get('BACKGROUND-COLOR', [])
+        labels = self.student_index.get('background-color', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'extra_star')
 
     def test_red_is_extra_star(self):
-        self.assertEqual(self.student_index.get('RED'), ['extra_star'])
+        self.assertEqual(self.student_index.get('red'), ['extra_star'])
 
     def test_background_color_teacher_is_missing(self):
-        labels = self.teacher_index.get('BACKGROUND-COLOR', [])
+        labels = self.teacher_index.get('background-color', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'missing')
 
     def test_function_updatebars_is_missing(self):
-        labels = self.teacher_index.get('FUNCTION', [])
+        labels = self.teacher_index.get('function', [])
         self.assertGreaterEqual(len(labels), 1)
         self.assertEqual(labels[0], 'missing')
 
     def test_function_bubblesort_is_matched(self):
-        labels = self.teacher_index.get('FUNCTION', [])
+        labels = self.teacher_index.get('function', [])
         self.assertGreaterEqual(len(labels), 2)
         self.assertIsNone(labels[1])
 
     def test_async_is_missing(self):
-        self.assertEqual(self.teacher_index.get('ASYNC'), ['missing'])
+        self.assertEqual(self.teacher_index.get('async'), ['missing'])
 
 
 if __name__ == '__main__':
