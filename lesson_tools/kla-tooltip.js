@@ -106,13 +106,6 @@ function hitChart1(ts, p, L, thT) {
 			}
 		}
 	}
-	for (const ev of p.codeInserts) {
-		const d = Math.abs(ts - ev.timestamp / 1000);
-		if (d < thT * 2 && d < bestD) {
-			bestD = d;
-			best = { type: "code_insert", ev };
-		}
-	}
 	for (const kp of p.singletons) {
 		const d = Math.abs(ts - kp.timestamp / 1000);
 		if (d < thT * 2 && d < bestD) {
@@ -127,6 +120,8 @@ function hitChart1(ts, p, L, thT) {
 					type: "move",
 					mv: { ts: kp.timestamp, target: kp._target },
 				};
+			else if (kp._virtualType === "code_insert")
+				best = { type: "code_insert", ev: kp };
 			else best = { type: "char", ev: kp };
 		}
 	}
@@ -237,9 +232,9 @@ function showTip(cx, cy, hit, pinned, chartId) {
 	const tw = tooltipEl.offsetWidth,
 		th = tooltipEl.offsetHeight;
 	let tx = cx + 16,
-		ty = cy - 8;
+		ty = cy + 42;
 	if (tx + tw > window.innerWidth - 8) tx = cx - tw - 16;
-	if (ty + th > window.innerHeight - 8) ty = cy - th - 8;
+	if (ty + th > window.innerHeight - 8) ty = cy - th + 42;
 	tooltipEl.style.left = tx + "px";
 	tooltipEl.style.top = ty + "px";
 }
@@ -289,6 +284,10 @@ function textPartsToHtml(parts) {
 			html += `<span style="color:#007acc">${escHtml(p.t)}</span>`;
 		} else if (p.type === "move") {
 			html += `<span style="color:#e07020">→${escHtml(p.t)}</span>`;
+		} else if (p.type === "code_insert") {
+			const raw = (p.t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
+			const display = raw.length > 200 ? raw.slice(0, 200) + "…" : raw;
+			html += `<span style="color:#888888">${escHtml(display)}</span>`;
 		} else {
 			if (charCount >= MAX) {
 				html += escHtml("\n… (+more chars)");

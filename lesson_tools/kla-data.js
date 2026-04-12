@@ -41,9 +41,15 @@ function processData(raw) {
 			_virtualType: "move",
 			_target: e.move_to || e.move || e.jump_to,
 		}));
-	const allTypingEvs = [...charEvents, ...anchorEvs, ...moveEvs].sort(
-		(a, b) => a.timestamp - b.timestamp,
-	);
+	const codeInsertEvs = events
+		.filter((e) => e.code_insert != null)
+		.map((e) => ({ ...e, _virtualType: "code_insert" }));
+	const allTypingEvs = [
+		...charEvents,
+		...anchorEvs,
+		...moveEvs,
+		...codeInsertEvs,
+	].sort((a, b) => a.timestamp - b.timestamp);
 
 	const { bursts, singletons } = computeBursts(allTypingEvs);
 
@@ -143,8 +149,11 @@ function makeBurst(evs) {
 	const textParts = evs.map((e) => {
 		if (e._virtualType === "anchor") return { t: e._target, type: "anchor" };
 		if (e._virtualType === "move") return { t: e._target, type: "move" };
+		if (e._virtualType === "code_insert")
+			return { t: e.code_insert || "", type: "code_insert" };
 		return { t: e.char || "", type: "char" };
 	});
+	const hasCodeInserts = evs.some((e) => e._virtualType === "code_insert");
 	let devCnt = 0,
 		remCnt = 0;
 	let hasDeleteLine = false;
@@ -156,11 +165,13 @@ function makeBurst(evs) {
 		}
 	}
 	const colorType =
-		devCnt >= chars / 2
-			? "dev"
-			: hasDeleteLine || remCnt >= chars / 2
-				? "remove"
-				: "normal";
+		chars === 0
+			? "normal"
+			: devCnt >= chars / 2
+				? "dev"
+				: hasDeleteLine || remCnt >= chars / 2
+					? "remove"
+					: "normal";
 	return {
 		startTs,
 		endTs,
@@ -170,6 +181,7 @@ function makeBurst(evs) {
 		rate,
 		textParts,
 		colorType,
+		hasCodeInserts,
 		evs,
 	};
 }

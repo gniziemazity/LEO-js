@@ -493,9 +493,59 @@ const JS_BUILTINS = new Set([
 	"getElementsByTagName",
 ]);
 
-function buildHighlightSpans(content) {
+function buildHighlightSpans(content, fileType = "html") {
+	if (fileType === "none") return [];
+
 	const spans = {};
 	for (const k of Object.keys(HL_COLORS)) spans[k] = [];
+
+	if (fileType === "css") {
+		_hlCss(content, 0, spans);
+		const result = [];
+		const used = new Uint8Array(content.length);
+		for (const cls of HL_PRIORITY) {
+			for (const { start, end } of spans[cls]) {
+				if (end <= start) continue;
+				let ok = true;
+				for (let i = start; i < end; i++) {
+					if (used[i]) {
+						ok = false;
+						break;
+					}
+				}
+				if (ok) {
+					for (let i = start; i < end; i++) used[i] = 1;
+					result.push({ start, end, cls });
+				}
+			}
+		}
+		result.sort((a, b) => a.start - b.start);
+		return result;
+	}
+
+	if (fileType === "js") {
+		_hlJs(content, 0, spans);
+		const result = [];
+		const used = new Uint8Array(content.length);
+		for (const cls of HL_PRIORITY) {
+			for (const { start, end } of spans[cls]) {
+				if (end <= start) continue;
+				let ok = true;
+				for (let i = start; i < end; i++) {
+					if (used[i]) {
+						ok = false;
+						break;
+					}
+				}
+				if (ok) {
+					for (let i = start; i < end; i++) used[i] = 1;
+					result.push({ start, end, cls });
+				}
+			}
+		}
+		result.sort((a, b) => a.start - b.start);
+		return result;
+	}
 
 	const styleRegions = [];
 	const scriptRegions = [];
@@ -601,19 +651,21 @@ function _hlCss(css, off, spans) {
 				end: off + m.index + m[0].length,
 			});
 	for (const m of css.matchAll(
-		/(?:^|(?<=[}]))\s*([^{@/][^{@/]*?)(?=\s*\{)/gms,
+		/(?:^|(?<=[;}]))\s*([^{}\s@/][^{}@/]*?)(?=\s*\{)/gm,
 	))
 		if (!p.has(m.index + css.slice(m.index).search(/\S/))) {
 			const s = m.index + m[0].indexOf(m[1]),
-				e = s + m[1].length;
+				e = s + m[1].trimEnd().length;
 			if (e > s) spans.hl_css_sel.push({ start: off + s, end: off + e });
 		}
-	for (const m of css.matchAll(/(?:^|\{|;)\s*([a-zA-Z-]+)\s*(?=:)/gm))
-		if (!p.has(m.index))
+	for (const m of css.matchAll(/(?:^|\{|;)\s*([a-zA-Z-]+)\s*(?=:)/gm)) {
+		const propStart = m.index + (m[0].length - m[1].length);
+		if (!p.has(propStart))
 			spans.hl_css_prop.push({
-				start: off + m.index + (m[0].length - m[1].length),
+				start: off + propStart,
 				end: off + m.index + m[0].length,
 			});
+	}
 	for (const m of css.matchAll(
 		/-?\b\d+\.?\d*(%|px|em|rem|vh|vw|vmin|vmax|pt|pc|cm|mm|in|ex|ch|deg|rad|turn|s|ms|fr)?/g,
 	))
@@ -715,13 +767,13 @@ function esc(s) {
 	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function renderEditorHtml(textState, cursorVisible = true) {
+function renderEditorHtml(textState, cursorVisible = true, fileType = "html") {
 	const text = textState.text;
 	const cur = textState.cursor;
 
 	let hlSpans = [];
 	try {
-		hlSpans = buildHighlightSpans(text);
+		hlSpans = buildHighlightSpans(text, fileType);
 	} catch (_) {}
 
 	const colorAt = new Array(text.length).fill(null);
@@ -1627,8 +1679,14 @@ class LogVisualizer {
 	}
 
 	_renderEditors() {
-		this.elEditor.innerHTML = renderEditorHtml(this.main);
-		this.elDevEditor.innerHTML = renderEditorHtml(this.dev);
+		const fn = this._activeFilename.toLowerCase();
+		const mainFileType = fn.endsWith(".css")
+			? "css"
+			: fn.endsWith(".js")
+				? "js"
+				: "html";
+		this.elEditor.innerHTML = renderEditorHtml(this.main, true, mainFileType);
+		this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
 		if (this.elAutoScroll.checked) {
 			const cur = this.elEditor.querySelector(".vis-cursor");
 			if (cur) cur.scrollIntoView({ block: "nearest" });

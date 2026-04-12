@@ -7,7 +7,7 @@ const CFG = {
 	BAR_MIN_SECS: 8,
 	M: { top: 22, right: 24, bottom: 44, left: 68 },
 	DOT_R: 3.5,
-	DIA_R: 5,
+	DIA_R: 6,
 	STUDENT_SUBDIR: "anon_names",
 };
 
@@ -42,13 +42,16 @@ let _shake = false;
 const _jitterMap = new Map();
 
 function toggleShake() {
-  _shake = !_shake;
-  if (_shake && _students) {
-    for (const s of _students) {
-      _jitterMap.set(s.name, { dx: (Math.random() - 0.5) * 28, dy: (Math.random() - 0.5) * 28 });
-    }
-  }
-  const btn = document.getElementById('btn-shake');
-  if (btn) btn.classList.toggle('active', _shake);
-  redrawChart3();
+	_shake = !_shake;
+	if (_shake && _students) {
+		for (const s of _students) {
+			_jitterMap.set(s.name, {
+				dx: (Math.random() - 0.5) * 28,
+				dy: (Math.random() - 0.5) * 28,
+			});
+		}
+	}
+	const btn = document.getElementById("btn-shake");
+	if (btn) btn.classList.toggle("active", _shake);
+	redrawChart3();
 }

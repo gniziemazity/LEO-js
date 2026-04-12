@@ -155,7 +155,7 @@ async function _readImageUris(fileMap) {
 }
 
 async function loadJsonData(file, data) {
-	document.title = "Key Log Analyzer – " + file.name.replace(/\.json$/i, "");
+	document.title = "Dashboard: " + file.name.replace(/\.json$/i, "");
 	_zoomMin = _zoomMax = null;
 	const p = processData(data);
 	if (!p) {
