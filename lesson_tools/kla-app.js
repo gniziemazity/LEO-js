@@ -138,12 +138,18 @@ async function _readImageUris(fileMap) {
 	await Promise.all(
 		[...fileMap.entries()]
 			.filter(([p]) => IMAGE_EXT_KLA.test(p))
-			.map(([, f]) => new Promise((res) => {
-				const r = new FileReader();
-				r.onload = (e) => { imageUris[f.name] = e.target.result; res(); };
-				r.onerror = res;
-				r.readAsDataURL(f);
-			})),
+			.map(
+				([, f]) =>
+					new Promise((res) => {
+						const r = new FileReader();
+						r.onload = (e) => {
+							imageUris[f.name] = e.target.result;
+							res();
+						};
+						r.onerror = res;
+						r.readAsDataURL(f);
+					}),
+			),
 	);
 	return imageUris;
 }
@@ -158,19 +164,21 @@ async function loadJsonData(file, data) {
 	}
 	_p = p;
 	try {
-		localStorage.setItem("kla_sim_data", JSON.stringify({
-			filePath: file.name,
-			events: data.events || data.keyPresses || [],
-			loadedAt: Date.now(),
-		}));
+		localStorage.setItem(
+			"kla_sim_data",
+			JSON.stringify({
+				filePath: file.name,
+				events: data.events || data.keyPresses || [],
+				loadedAt: Date.now(),
+			}),
+		);
 	} catch {}
 	if (_allFiles.size) {
 		try {
 			const imageUris = await _readImageUris(_allFiles);
 			if (Object.keys(imageUris).length)
 				localStorage.setItem("kla_sim_images", JSON.stringify(imageUris));
-			else
-				localStorage.removeItem("kla_sim_images");
+			else localStorage.removeItem("kla_sim_images");
 		} catch {}
 	} else {
 		localStorage.removeItem("kla_sim_images");
