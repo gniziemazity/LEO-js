@@ -1,653 +1,565 @@
 {
-  "format_version": 2,
-  "token_matching": "hyphen-aware-boundaries",
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
   "case_sensitive": false,
   "teacher_files": {
-    "123456.html": {
-      "INLINE": [
-        "comment"
-      ],
-      "50PX": [
-        null,
-        null,
-        "comment",
-        "comment"
-      ],
-      "LEFT-OFFSET": [
-        "missing",
-        "missing",
-        "missing",
-        "missing"
-      ],
-      ".LEFT-OFFSET": [
-        "missing"
-      ],
-      "NOT": [
-        "comment",
-        "comment"
-      ],
-      "DIV": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "comment",
-        "comment",
-        "comment"
-      ],
-      "WIDTH": [
-        null,
-        null,
-        "comment"
-      ],
-      "RECOMMENDED": [
-        "comment"
-      ],
-      "STYLING": [
-        "comment",
-        "comment"
-      ],
-      "MARGIN-LEFT": [
-        "missing"
-      ],
-      "USE": [
-        "comment"
-      ],
-      "SIZE": [
-        "comment"
-      ],
-      "25PX": [
-        "missing"
-      ],
-      "CSS": [
-        "comment"
-      ],
-      "IN": [
-        "comment"
-      ],
-      "BY": [
-        "comment"
-      ],
-      "BACKGROUND-COLOR": [
-        null,
-        null,
-        "comment"
-      ],
-      "425PX": [
-        "missing"
-      ],
-      "STYLE": [
-        null,
-        null,
-        "comment",
-        "comment"
-      ],
-      "CLASS": [
-        "comment",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "BORDER": [
-        null,
-        "comment"
-      ],
-      "WITH": [
-        "comment"
-      ],
-      "5PX": [
-        "comment"
-      ],
-      "AN": [
-        "comment"
-      ],
-      "ID": [
-        "comment",
-        null
-      ],
-      "10PX": [
-        "comment"
-      ],
-      "EXAMPLE": [
-        "comment"
-      ],
-      "MARGIN": [
-        "comment"
-      ],
-      "COMMENTED": [
-        "comment"
-      ],
-      "JUST": [
-        "comment"
-      ],
-      "AND": [
-        "comment"
-      ],
-      "BLACK": [
-        null,
-        "comment"
-      ],
-      "HEIGHT": [
-        null,
-        "comment"
-      ],
-      "INCLUDES": [
-        "comment"
-      ],
-      "PADDING": [
-        "comment",
-        "comment"
-      ]
-    }
+    "reconstructed.html": [
+      {
+        "token": "STYLING",
+        "label": "comment",
+        "start": 76,
+        "end": 83
+      },
+      {
+        "token": "BY",
+        "label": "comment",
+        "start": 84,
+        "end": 86
+      },
+      {
+        "token": "ID",
+        "label": "comment",
+        "start": 87,
+        "end": 89
+      },
+      {
+        "token": "425PX",
+        "label": "missing",
+        "start": 122,
+        "end": 127
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 184,
+        "end": 187
+      },
+      {
+        "token": "CLASS",
+        "label": "comment",
+        "start": 188,
+        "end": 193
+      },
+      {
+        "token": "COMMENTED",
+        "label": "comment",
+        "start": 250,
+        "end": 259
+      },
+      {
+        "token": "STYLING",
+        "label": "comment",
+        "start": 260,
+        "end": 267
+      },
+      {
+        "token": "NOT",
+        "label": "comment",
+        "start": 270,
+        "end": 273
+      },
+      {
+        "token": "IN",
+        "label": "comment",
+        "start": 274,
+        "end": 276
+      },
+      {
+        "token": "USE",
+        "label": "comment",
+        "start": 277,
+        "end": 280
+      },
+      {
+        "token": "JUST",
+        "label": "comment",
+        "start": 283,
+        "end": 287
+      },
+      {
+        "token": "AN",
+        "label": "comment",
+        "start": 288,
+        "end": 290
+      },
+      {
+        "token": "EXAMPLE",
+        "label": "comment",
+        "start": 291,
+        "end": 298
+      },
+      {
+        "token": "MARGIN",
+        "label": "comment",
+        "start": 303,
+        "end": 309
+      },
+      {
+        "token": "10PX",
+        "label": "comment",
+        "start": 311,
+        "end": 315
+      },
+      {
+        "token": "PADDING",
+        "label": "comment",
+        "start": 321,
+        "end": 328
+      },
+      {
+        "token": "5PX",
+        "label": "comment",
+        "start": 330,
+        "end": 333
+      },
+      {
+        "token": "SIZE",
+        "label": "comment",
+        "start": 397,
+        "end": 401
+      },
+      {
+        "token": "INCLUDES",
+        "label": "comment",
+        "start": 402,
+        "end": 410
+      },
+      {
+        "token": "PADDING",
+        "label": "comment",
+        "start": 411,
+        "end": 418
+      },
+      {
+        "token": "AND",
+        "label": "comment",
+        "start": 419,
+        "end": 422
+      },
+      {
+        "token": "BORDER",
+        "label": "comment",
+        "start": 423,
+        "end": 429
+      },
+      {
+        "token": ".LEFT-OFFSET",
+        "label": "missing",
+        "start": 544,
+        "end": 556
+      },
+      {
+        "token": "MARGIN-LEFT",
+        "label": "missing",
+        "start": 563,
+        "end": 574
+      },
+      {
+        "token": "25PX",
+        "label": "missing",
+        "start": 576,
+        "end": 580
+      },
+      {
+        "token": "LEFT-OFFSET",
+        "label": "missing",
+        "start": 960,
+        "end": 971
+      },
+      {
+        "token": "LEFT-OFFSET",
+        "label": "missing",
+        "start": 1516,
+        "end": 1527
+      },
+      {
+        "token": "LEFT-OFFSET",
+        "label": "missing",
+        "start": 2072,
+        "end": 2083
+      },
+      {
+        "token": "LEFT-OFFSET",
+        "label": "missing",
+        "start": 2628,
+        "end": 2639
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 2899,
+        "end": 2902
+      },
+      {
+        "token": "WITH",
+        "label": "comment",
+        "start": 2903,
+        "end": 2907
+      },
+      {
+        "token": "INLINE",
+        "label": "comment",
+        "start": 2908,
+        "end": 2914
+      },
+      {
+        "token": "STYLE",
+        "label": "comment",
+        "start": 2915,
+        "end": 2920
+      },
+      {
+        "token": "NOT",
+        "label": "comment",
+        "start": 2922,
+        "end": 2925
+      },
+      {
+        "token": "RECOMMENDED",
+        "label": "comment",
+        "start": 2926,
+        "end": 2937
+      },
+      {
+        "token": "<DIV",
+        "label": "comment",
+        "start": 2941,
+        "end": 2945
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 2942,
+        "end": 2945
+      },
+      {
+        "token": "STYLE",
+        "label": "comment",
+        "start": 2946,
+        "end": 2951
+      },
+      {
+        "token": "HEIGHT",
+        "label": "comment",
+        "start": 2953,
+        "end": 2959
+      },
+      {
+        "token": "50PX",
+        "label": "comment",
+        "start": 2961,
+        "end": 2965
+      },
+      {
+        "token": "BACKGROUND-COLOR",
+        "label": "comment",
+        "start": 2970,
+        "end": 2986
+      },
+      {
+        "token": "BLACK",
+        "label": "comment",
+        "start": 2988,
+        "end": 2993
+      },
+      {
+        "token": "WIDTH",
+        "label": "comment",
+        "start": 2998,
+        "end": 3003
+      },
+      {
+        "token": "50PX",
+        "label": "comment",
+        "start": 3005,
+        "end": 3009
+      },
+      {
+        "token": "</DIV",
+        "label": "comment",
+        "start": 3015,
+        "end": 3020
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 3017,
+        "end": 3020
+      }
+    ]
   },
   "student_files": {
-    "123456.html": {
-      "WIDTH": [
-        null,
-        null,
-        "comment"
-      ],
-      "USE": [
-        "comment"
-      ],
-      "CSS": [
-        "comment"
-      ],
-      "BY": [
-        "comment"
-      ],
-      "CLASS": [
-        "comment",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "WITH": [
-        "comment"
-      ],
-      "5PX": [
-        "comment"
-      ],
-      "ID": [
-        "comment",
-        null
-      ],
-      "MARGIN": [
-        "comment"
-      ],
-      "RECOMENDED": [
-        "comment"
-      ],
-      "JUST": [
-        "comment"
-      ],
-      "AND": [
-        "comment"
-      ],
-      "INLINE-BLOCK": [
-        "comment"
-      ],
-      "DISPLAY": [
-        null,
-        "comment"
-      ],
-      "PADDING": [
-        "comment",
-        "comment"
-      ],
-      "INLINE": [
-        "comment"
-      ],
-      "50PX": [
-        null,
-        null,
-        "comment",
-        "comment"
-      ],
-      "NOT": [
-        "comment",
-        "comment"
-      ],
-      "DIV": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "comment",
-        "comment",
-        "comment"
-      ],
-      "STYLING": [
-        "comment",
-        "comment"
-      ],
-      "SIZE": [
-        "comment"
-      ],
-      "400PX": [
-        "extra_star"
-      ],
-      "IN": [
-        "comment"
-      ],
-      "BACKGROUND-COLOR": [
-        null,
-        null,
-        "comment"
-      ],
-      "STYLE": [
-        null,
-        null,
-        "comment",
-        "comment"
-      ],
-      "FONT-SIZE": [
-        "comment"
-      ],
-      "BORDER": [
-        null,
-        "comment"
-      ],
-      "0PX": [
-        "comment"
-      ],
-      "AN": [
-        "comment"
-      ],
-      "10PX": [
-        "comment"
-      ],
-      "EXAMPLE": [
-        "comment"
-      ],
-      "COMMENTED": [
-        "comment"
-      ],
-      "BLACK": [
-        null,
-        "comment"
-      ],
-      "HEIGHT": [
-        null,
-        "comment"
-      ],
-      "INCLUDES": [
-        "comment"
-      ]
-    }
+    "index.html": [
+      {
+        "token": "STYLING",
+        "label": "comment",
+        "start": 99,
+        "end": 106
+      },
+      {
+        "token": "BY",
+        "label": "comment",
+        "start": 107,
+        "end": 109
+      },
+      {
+        "token": "ID",
+        "label": "comment",
+        "start": 110,
+        "end": 112
+      },
+      {
+        "token": "400PX",
+        "label": "extra_star",
+        "start": 164,
+        "end": 169
+      },
+      {
+        "token": "FONT-SIZE",
+        "label": "comment",
+        "start": 189,
+        "end": 198
+      },
+      {
+        "token": "SIZE",
+        "label": "comment",
+        "start": 194,
+        "end": 198
+      },
+      {
+        "token": "0PX",
+        "label": "comment",
+        "start": 200,
+        "end": 203
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 299,
+        "end": 302
+      },
+      {
+        "token": "CLASS",
+        "label": "comment",
+        "start": 303,
+        "end": 308
+      },
+      {
+        "token": "COMMENTED",
+        "label": "comment",
+        "start": 408,
+        "end": 417
+      },
+      {
+        "token": "STYLING",
+        "label": "comment",
+        "start": 418,
+        "end": 425
+      },
+      {
+        "token": "NOT",
+        "label": "comment",
+        "start": 428,
+        "end": 431
+      },
+      {
+        "token": "IN",
+        "label": "comment",
+        "start": 432,
+        "end": 434
+      },
+      {
+        "token": "USE",
+        "label": "comment",
+        "start": 435,
+        "end": 438
+      },
+      {
+        "token": "JUST",
+        "label": "comment",
+        "start": 441,
+        "end": 445
+      },
+      {
+        "token": "AN",
+        "label": "comment",
+        "start": 446,
+        "end": 448
+      },
+      {
+        "token": "EXAMPLE",
+        "label": "comment",
+        "start": 449,
+        "end": 456
+      },
+      {
+        "token": "MARGIN",
+        "label": "comment",
+        "start": 473,
+        "end": 479
+      },
+      {
+        "token": "10PX",
+        "label": "comment",
+        "start": 481,
+        "end": 485
+      },
+      {
+        "token": "PADDING",
+        "label": "comment",
+        "start": 503,
+        "end": 510
+      },
+      {
+        "token": "5PX",
+        "label": "comment",
+        "start": 512,
+        "end": 515
+      },
+      {
+        "token": "DISPLAY",
+        "label": "comment",
+        "start": 577,
+        "end": 584
+      },
+      {
+        "token": "INLINE-BLOCK",
+        "label": "comment",
+        "start": 586,
+        "end": 598
+      },
+      {
+        "token": "SIZE",
+        "label": "comment",
+        "start": 645,
+        "end": 649
+      },
+      {
+        "token": "INCLUDES",
+        "label": "comment",
+        "start": 650,
+        "end": 658
+      },
+      {
+        "token": "PADDING",
+        "label": "comment",
+        "start": 659,
+        "end": 666
+      },
+      {
+        "token": "AND",
+        "label": "comment",
+        "start": 667,
+        "end": 670
+      },
+      {
+        "token": "BORDER",
+        "label": "comment",
+        "start": 671,
+        "end": 677
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 3827,
+        "end": 3830
+      },
+      {
+        "token": "WITH",
+        "label": "comment",
+        "start": 3831,
+        "end": 3835
+      },
+      {
+        "token": "INLINE",
+        "label": "comment",
+        "start": 3836,
+        "end": 3842
+      },
+      {
+        "token": "STYLE",
+        "label": "comment",
+        "start": 3843,
+        "end": 3848
+      },
+      {
+        "token": "NOT",
+        "label": "comment",
+        "start": 3850,
+        "end": 3853
+      },
+      {
+        "token": "RECOMENDED",
+        "label": "comment",
+        "start": 3854,
+        "end": 3864
+      },
+      {
+        "token": "<DIV",
+        "label": "comment",
+        "start": 3874,
+        "end": 3878
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 3875,
+        "end": 3878
+      },
+      {
+        "token": "STYLE",
+        "label": "comment",
+        "start": 3879,
+        "end": 3884
+      },
+      {
+        "token": "HEIGHT",
+        "label": "comment",
+        "start": 3899,
+        "end": 3905
+      },
+      {
+        "token": "50PX",
+        "label": "comment",
+        "start": 3907,
+        "end": 3911
+      },
+      {
+        "token": "BACKGROUND-COLOR",
+        "label": "comment",
+        "start": 3925,
+        "end": 3941
+      },
+      {
+        "token": "BLACK",
+        "label": "comment",
+        "start": 3943,
+        "end": 3948
+      },
+      {
+        "token": "WIDTH",
+        "label": "comment",
+        "start": 3962,
+        "end": 3967
+      },
+      {
+        "token": "50PX",
+        "label": "comment",
+        "start": 3969,
+        "end": 3973
+      },
+      {
+        "token": "</DIV",
+        "label": "comment",
+        "start": 3985,
+        "end": 3990
+      },
+      {
+        "token": "DIV",
+        "label": "comment",
+        "start": 3987,
+        "end": 3990
+      }
+    ]
   }
 }

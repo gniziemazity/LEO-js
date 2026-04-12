@@ -740,42 +740,30 @@ def _build_contextual_diff_marks(
     return _prune(teacher_colors), _prune(student_colors)
 
 
-def _build_occurrence_position_metadata(files_by_ext: dict, colors_map: dict) -> dict:
-    token_keys = set()
+def _colors_to_position_marks(files_by_ext: dict, colors_map: dict) -> dict:
+    token_keys: set = set()
     for toks in colors_map.values():
         token_keys.update(toks.keys())
-
+    if not token_keys:
+        return {}
     occs, _counts = _collect_occurrences(files_by_ext, token_keys)
-
-    token_arrays: Dict[str, List[list]] = {}
-    for _fn, toks in colors_map.items():
-        for tok, arr in toks.items():
-            token_arrays.setdefault(tok, []).append(arr)
-
-    occurrences = []
+    result: Dict[str, List[dict]] = {}
     for oc in occs:
         labels = colors_map.get(oc['file'], {}).get(oc['token'])
-        if labels is None:
-            arrays = token_arrays.get(oc['token'], [])
-            if len(arrays) == 1:
-                labels = arrays[0]
-        label = None
-        if labels and oc['file_idx'] < len(labels):
-            label = labels[oc['file_idx']]
-        occurrences.append({
+        if not labels or oc['file_idx'] >= len(labels):
+            continue
+        label = labels[oc['file_idx']]
+        if label is None:
+            continue
+        result.setdefault(oc['file'], []).append({
             'token': oc['token'],
-            'file': oc['file'],
-            'char_index': oc['pos'],
-            'token_index': oc['seq_idx'],
-            'file_token_index': oc['file_idx'],
-            'in_comment': oc['is_comment'],
             'label': label,
+            'start': oc['pos'],
+            'end':   oc['pos'] + len(oc['token']),
         })
-
-    return {
-        'count': len(occurrences),
-        'occurrences': occurrences,
-    }
+    for lst in result.values():
+        lst.sort(key=lambda x: x['start'])
+    return result
 
 
 class TokenLogMixin:
@@ -996,30 +984,15 @@ class TokenLogMixin:
                         pass
 
             diff_marks = {
-                'format_version': 3,
+                'format_version': 4,
                 'token_matching': 'context-cosine-hungarian',
                 'case_sensitive': _sm._ALL_CASE_SENSITIVE,
-                'teacher_files':  teacher_files_colors,
-                'student_files':  student_files_colors,
+                'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_files_colors),
+                'student_files': _colors_to_position_marks(stu_files, student_files_colors),
             }
             diff_path = anon_dir / 'diff_marks.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-
-            positions_meta = {
-                'format_version': 1,
-                'source': 'diff_marks',
-                'case_sensitive': _sm._ALL_CASE_SENSITIVE,
-                'teacher': _build_occurrence_position_metadata(
-                    teacher_code_files, teacher_files_colors,
-                ),
-                'student': _build_occurrence_position_metadata(
-                    stu_files, student_files_colors,
-                ),
-            }
-            pos_path = anon_dir / 'tokens_positions.json'
-            with open(pos_path, 'w', encoding='utf-8') as fh:
-                json.dump(positions_meta, fh, ensure_ascii=False, indent=2)
 
             written += 1
 
@@ -1118,11 +1091,11 @@ class TokenLogMixin:
                     pass
 
             diff_marks = {
-                'format_version': 3,
+                'format_version': 4,
                 'token_matching': 'similarity-containment',
                 'case_sensitive': _sm._ALL_CASE_SENSITIVE,
-                'teacher_files':  teacher_colors,
-                'student_files':  student_colors,
+                'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_colors),
+                'student_files': _colors_to_position_marks(stu_files, student_colors),
             }
             diff_path = anon_dir / 'diff_marks.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:

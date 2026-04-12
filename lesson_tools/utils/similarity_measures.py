@@ -39,6 +39,7 @@ def calculate_char_histogram_similarity(lines1: List[str], lines2: List[str]) ->
     return 1.0 - total_diff / (total1 + total2)
 
 _TOKEN_RE = re.compile(r'[_a-zA-Z][a-zA-Z0-9_]*|[0-9]+(?:\.[0-9]+)?[a-zA-Z%]*')
+_HTML_TAG_RE = re.compile(r'</?[a-zA-Z][a-zA-Z0-9]*')
 
 _CSS_TOKEN_RE = re.compile(r'[_a-zA-Z][a-zA-Z0-9_]*(?:-[_a-zA-Z][a-zA-Z0-9_]*)*|[0-9]+(?:\.[0-9]+)?[a-zA-Z%]*')
 
@@ -91,8 +92,8 @@ def split_code_tokens(text: str) -> Tuple[Counter, Counter]:
     inside  = Counter(t for t in _TOKEN_RE.findall(inside_text)  if len(t) >= 1)
     return outside, inside
 
-def _extract_css_tokens(text: str, css_only_regions: List[Tuple[int, int]] = None) -> Counter:
-    covered: set = set()
+def _extract_css_tokens(text: str, css_only_regions: List[Tuple[int, int]] = None, initial_covered: set = None) -> Counter:
+    covered: set = set(initial_covered) if initial_covered else set()
     result: Counter = Counter()
     for m in _CSS_HEX_COLOR_RE.finditer(text):
         result[m.group()] += 1
@@ -160,12 +161,17 @@ def split_html_tokens(text: str) -> Tuple[Counter, Counter, Counter]:
     for body in event_handler_bodies:
         script_outside_parts.append(_COMMENT_RE.sub(' ', body))
 
-    html_outside   = Counter(t for t in _TOKEN_RE.findall(html_outside_text) if len(t) >= 1)
-    n_complete = len(list(_SCRIPT_TAG_RE.finditer(text)))
+    html_outside: Counter = Counter()
+    covered: set = set()
+    for m in _HTML_TAG_RE.finditer(html_outside_text):
+        html_outside[m.group()] += 1
+        covered.update(range(m.start(), m.end()))
+    for m in _TOKEN_RE.finditer(html_outside_text):
+        if m.start() not in covered and len(m.group()) >= 1:
+            html_outside[m.group()] += 1
     n_unclosed = 1 if m_unclosed else 0
-    n_script_tokens = n_complete * 2 + n_unclosed
-    if n_script_tokens:
-        html_outside['script'] = n_script_tokens
+    if n_unclosed:
+        html_outside['<script'] = html_outside.get('<script', 0) + n_unclosed
     script_outside = Counter(t for t in _TOKEN_RE.findall(' '.join(script_outside_parts)) if len(t) >= 1)
     inside_all     = Counter(t for t in _TOKEN_RE.findall(
         html_comments_text + ' ' + ' '.join(script_comment_parts)) if len(t) >= 1)
@@ -183,10 +189,15 @@ def get_html_outside_css(text: str) -> Counter:
     html_outside_text = _COMMENT_RE_HTML.sub(' ', _strip_event_handler_values(html_body))
     style_regions = [(m.start(1), m.end(1))
                      for m in _STYLE_TAG_CONTENT_RE.finditer(html_outside_text)]
-    result = _extract_css_tokens(html_outside_text, css_only_regions=style_regions)
-    n_script_tokens = n_complete * 2 + (1 if m_unclosed else 0)
-    if n_script_tokens:
-        result['script'] = n_script_tokens
+    html_tag_covered: set = set()
+    html_tag_counter: Counter = Counter()
+    for m in _HTML_TAG_RE.finditer(html_outside_text):
+        html_tag_counter[m.group()] += 1
+        html_tag_covered.update(range(m.start(), m.end()))
+    result = _extract_css_tokens(html_outside_text, css_only_regions=style_regions, initial_covered=html_tag_covered)
+    result.update(html_tag_counter)
+    if m_unclosed:
+        result['<script'] = result.get('<script', 0) + 1
     return result
 
 
@@ -280,10 +291,13 @@ def extract_user_identifiers(text: str, ext: str) -> set:
 def tokenise_follow_style(text: str) -> Counter:
     result: Counter = Counter()
     covered: set = set()
-    for m in _CSS_HYPHEN_RE.finditer(text):
+    for m in _HTML_TAG_RE.finditer(text):
         result[m.group().upper()] += 1
-        for i in range(m.start(), m.end()):
-            covered.add(i)
+        covered.update(range(m.start(), m.end()))
+    for m in _CSS_HYPHEN_RE.finditer(text):
+        if m.start() not in covered:
+            result[m.group().upper()] += 1
+            covered.update(range(m.start(), m.end()))
     for m in _TOKEN_RE.finditer(text):
         if m.start() not in covered:
             result[m.group().upper()] += 1
@@ -454,6 +468,10 @@ def _extract_matches_with_priority(
         for i in range(start, start + len(tok)):
             covered.add(i)
         matches.append((start, tok, cs_override))
+
+    for m in _HTML_TAG_RE.finditer(text):
+        if m.start() not in covered:
+            _add(m.start(), m.group(), False)
 
     if has_css:
         for m in _CSS_HEX_COLOR_RE.finditer(text):

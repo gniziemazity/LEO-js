@@ -143,13 +143,24 @@ function renderPanel(side, files, marks) {
 		pane.className = "code-pane" + (i === 0 ? " active" : "");
 
 		const text = files[name] || "";
-		const occMap = marks
-			? buildFileOccurrenceMap(marks, name, _caseSensitive)
-			: null;
-		const html =
-			occMap && occMap.size
-				? diffColorize(text, occMap, _caseSensitive)
-				: escHtml(text);
+		const fileMarks = marks ? marks[name] || null : null;
+		let html;
+		if (!fileMarks) {
+			html = escHtml(text);
+		} else if (Array.isArray(fileMarks)) {
+			// format v4: [{token, label, start, end}, ...]
+			html = diffColorizePositions(text, fileMarks);
+		} else {
+			const occMap = buildFileOccurrenceMap(
+				{ [name]: fileMarks },
+				name,
+				_caseSensitive,
+			);
+			html =
+				occMap && occMap.size
+					? diffColorize(text, occMap, _caseSensitive)
+					: escHtml(text);
+		}
 
 		pane.innerHTML = `<pre>${html}</pre>`;
 		codeWrap.appendChild(pane);
@@ -211,6 +222,37 @@ function buildFileOccurrenceMap(filesColorData, filename, caseSensitive) {
 	return map;
 }
 
+function diffColorizePositions(text, posMarks) {
+	if (!posMarks || !posMarks.length) return escHtml(text);
+	const colored = posMarks.filter(
+		(m) => m.label && DIFF_LABEL_COLORS[m.label],
+	);
+	if (!colored.length) return escHtml(text);
+
+	const normText = text.replace(/\r\n/g, "\n");
+
+	colored.sort((a, b) => a.start - b.start || b.end - a.end);
+	const kept = [];
+	let lastEnd = 0;
+	for (const m of colored) {
+		if (m.start >= lastEnd) {
+			kept.push(m);
+			lastEnd = m.end;
+		}
+	}
+
+	let out = "",
+		pos = 0;
+	for (const m of kept) {
+		out += escHtml(normText.slice(pos, m.start));
+		const color = DIFF_LABEL_COLORS[m.label];
+		out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
+		pos = m.end;
+	}
+	out += escHtml(normText.slice(pos));
+	return out;
+}
+
 function diffColorize(text, occurrenceMap, caseSensitive) {
 	if (!occurrenceMap || !occurrenceMap.size) return escHtml(text);
 
@@ -221,12 +263,16 @@ function diffColorize(text, occurrenceMap, caseSensitive) {
 	for (const [token, occColors] of occurrenceMap) {
 		if (!occColors.some((c) => c)) continue;
 
-		const rePat = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const startsWord = /^\w/.test(token);
-		const endsWord = /\w$/.test(token);
+		const searchTok = caseSensitive
+			? token.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+			: token.replace(/</g, "&LT;").replace(/>/g, "&GT;");
+		const rePat = searchTok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const startsWord = /^\w/.test(searchTok);
+		const endsWord = /\w$/.test(searchTok);
 		let pattern = rePat;
 		if (startsWord)
-			pattern = (token.includes("-") ? "(?<![.\\w])" : "(?<!\\w)") + rePat;
+			pattern =
+				(searchTok.includes("-") ? "(?<![.\\w])" : "(?<!\\w)") + rePat;
 		if (endsWord) pattern = pattern + "(?!\\w)";
 		const re = new RegExp(pattern, "g");
 

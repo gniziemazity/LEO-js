@@ -259,9 +259,15 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.diff_marks = _load_json(_TEST / 'chess_board' / 'student_c' / 'diff_marks.json')
-        cls.positions = _load_json(_TEST / 'chess_board' / 'student_c' / 'tokens_positions.json')
-        cls.teacher_file = next(iter(cls.diff_marks['teacher_files']))
-        cls.student_file = next(iter(cls.diff_marks['student_files']))
+        cls.teacher_occs = cls.diff_marks['teacher_files'][
+            next(iter(cls.diff_marks['teacher_files']))
+        ]
+        cls.student_occs = cls.diff_marks['student_files'][
+            next(iter(cls.diff_marks['student_files']))
+        ]
+
+    def test_format_version(self):
+        self.assertEqual(self.diff_marks.get('format_version'), 4)
 
     def test_shape_contains_teacher_and_student_files(self):
         self.assertIn('teacher_files', self.diff_marks)
@@ -269,34 +275,36 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
         self.assertTrue(self.diff_marks['teacher_files'])
         self.assertTrue(self.diff_marks['student_files'])
 
-    def test_size_and_inline_are_per_occurrence_arrays(self):
-        student_index = self.diff_marks['student_files'][self.student_file]
-        self.assertEqual(student_index['SIZE'], ['comment'])
-        self.assertEqual(student_index['INLINE'], ['comment'])
+    def test_positions_have_start_end(self):
+        for occ in self.teacher_occs + self.student_occs:
+            self.assertIn('start', occ)
+            self.assertIn('end', occ)
+            self.assertGreaterEqual(occ['end'], occ['start'])
+
+    def test_occurrences_sorted_by_start(self):
+        starts = [o['start'] for o in self.student_occs]
+        self.assertEqual(starts, sorted(starts))
+
+    def test_size_and_inline_are_comment(self):
+        size_labels = [o['label'] for o in self.student_occs if o['token'] == 'SIZE']
+        self.assertTrue(size_labels)
+        self.assertTrue(all(x == 'comment' for x in size_labels))
+        inline_labels = [o['label'] for o in self.student_occs if o['token'] == 'INLINE']
+        self.assertTrue(inline_labels)
+        self.assertTrue(all(x == 'comment' for x in inline_labels))
 
     def test_student_extra_star_example(self):
-        student_index = self.diff_marks['student_files'][self.student_file]
-        self.assertEqual(student_index['400PX'], ['extra_star'])
+        labels_400px = [o['label'] for o in self.student_occs if o['token'] == '400PX']
+        self.assertEqual(labels_400px, ['extra_star'])
 
-    def test_student_div_comment_occurrences_and_length(self):
-        student_index = self.diff_marks['student_files'][self.student_file]
-        div_labels = student_index['DIV']
-        self.assertEqual(len(div_labels), 133)
-        self.assertEqual(sum(1 for x in div_labels if x == 'comment'), 3)
+    def test_student_div_comment_count(self):
+        div_comment = [o for o in self.student_occs if o['token'] == 'DIV' and o['label'] == 'comment']
+        self.assertEqual(len(div_comment), 3)
 
-    def test_positions_metadata_schema(self):
-        self.assertEqual(self.positions.get('format_version'), 1)
-        self.assertIn('teacher', self.positions)
-        self.assertIn('student', self.positions)
-        self.assertIn('occurrences', self.positions['teacher'])
-        self.assertIn('occurrences', self.positions['student'])
-
-    def test_positions_link_to_diff_labels(self):
-        student_occ = self.positions['student']['occurrences']
-        div_occ = [o for o in student_occ if o['token'] == 'DIV']
-        self.assertEqual(len(div_occ), 133)
-        labels = [o.get('label') for o in div_occ]
-        self.assertEqual(sum(1 for x in labels if x == 'comment'), 3)
+    def test_no_null_labels_in_fixture(self):
+        # format v4 only stores colored (non-null) occurrences
+        for occ in self.teacher_occs + self.student_occs:
+            self.assertIsNotNone(occ.get('label'))
 
 
 class TestChessGameReconstruction(_ReconstructionBase, unittest.TestCase):
