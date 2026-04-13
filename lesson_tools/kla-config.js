@@ -43,20 +43,43 @@ const _jitterMap = new Map();
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
+function _cssVar(name) {
+	return getComputedStyle(document.documentElement)
+		.getPropertyValue(name)
+		.trim();
+}
+function _hexToRgba(hex, a) {
+	const r = parseInt(hex.slice(1, 3), 16);
+	const g = parseInt(hex.slice(3, 5), 16);
+	const b = parseInt(hex.slice(5, 7), 16);
+	return `rgba(${r},${g},${b},${a})`;
+}
+
+const THEME = {
+	blue: _cssVar("--clr-accent"),
+	orange: _cssVar("--clr-orange"),
+	green: _cssVar("--clr-green"),
+	red: _cssVar("--clr-red"),
+	gray: _cssVar("--clr-gray"),
+	paleRed: _cssVar("--clr-pale-red"),
+	muted: _cssVar("--clr-muted"),
+};
+
 const INTERACTION_COLORS = {
 	"teacher-question": {
-		hex: "#007acc",
-		spanRgba: "rgba(0,122,204,0.6)",
+		hex: THEME.blue,
+		spanRgba: _hexToRgba(THEME.blue, 0.6),
+		spanRgbaUnanswered: _hexToRgba(THEME.blue, 0.15),
 		tipBg: "#E3F2FD",
 	},
 	"student-question": {
-		hex: "#e07020",
-		spanRgba: "rgba(224,112,32,0.6)",
+		hex: THEME.orange,
+		spanRgba: _hexToRgba(THEME.orange, 0.6),
 		tipBg: "#FFF3E0",
 	},
 	"providing-help": {
-		hex: "#66BB6A",
-		spanRgba: "rgba(102,187,106,0.6)",
+		hex: THEME.green,
+		spanRgba: _hexToRgba(THEME.green, 0.6),
 		tipBg: "#E8F5E9",
 	},
 };

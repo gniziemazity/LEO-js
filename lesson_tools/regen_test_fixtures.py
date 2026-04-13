@@ -119,10 +119,10 @@ def regen_student_tokens(case_dir: Path, student_name: str) -> None:
     teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
 
     stu_files = {}
-    for f in student_dir.iterdir():
+    for f in sorted(student_dir.iterdir()):
         ext = f.suffix.lower()
         if ext in (".html", ".htm", ".css", ".js"):
-            stu_files[ext] = f
+            stu_files[f.name] = f
 
     if not stu_files:
         print(f"  SKIP (no code files): {case_dir.name}/{student_name}")
@@ -155,28 +155,28 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
     teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
 
     teacher_files = {}
-    for f in case_dir.iterdir():
+    for f in sorted(case_dir.iterdir()):
         ext = f.suffix.lower()
         if ext in (".html", ".htm", ".css", ".js"):
-            teacher_files[ext] = f
+            teacher_files[f.name] = f
 
     reco_dir = case_dir / "reconstructed"
     if reco_dir.is_dir():
-        for f in reco_dir.iterdir():
+        for f in sorted(reco_dir.iterdir()):
             ext = f.suffix.lower()
             if ext in (".html", ".htm", ".css", ".js"):
-                teacher_files[ext] = f
+                teacher_files[f.name] = f
 
     reco_html = case_dir / "reconstructed.html"
     if reco_html.exists():
-        teacher_files[".html"] = reco_html
+        teacher_files["reconstructed.html"] = reco_html
 
     student_dir = case_dir / student_name
     stu_files = {}
-    for f in student_dir.iterdir():
+    for f in sorted(student_dir.iterdir()):
         ext = f.suffix.lower()
         if ext in (".html", ".htm", ".css", ".js"):
-            stu_files[ext] = f
+            stu_files[f.name] = f
 
     stu_outside, stu_comment = _extract_student_ci_split(stu_files)
     all_occ, _, _, _, _, consumed = _build_student_token_occurrences(

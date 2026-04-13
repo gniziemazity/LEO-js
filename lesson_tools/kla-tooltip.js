@@ -276,13 +276,13 @@ function textPartsToHtml(parts) {
 		if (truncated) break;
 		const p = parts[i];
 		if (p.type === "anchor") {
-			html += `<span style="color:${BAR_COLORS.anchor[0]}">${escHtml(p.t)}</span>`;
+			html += `<span style="color:${BAR_COLORS.anchor}">${escHtml(p.t)}</span>`;
 		} else if (p.type === "move") {
-			html += `<span style="color:${BAR_COLORS.move[0]}">→${escHtml(p.t)}</span>`;
+			html += `<span style="color:${BAR_COLORS.move}">→${escHtml(p.t)}</span>`;
 		} else if (p.type === "code_insert") {
 			const raw = (p.t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
 			const display = raw.length > 200 ? raw.slice(0, 200) + "…" : raw;
-			html += `<span style="color:#888888">${escHtml(display)}</span>`;
+			html += `<span style="color:${THEME.muted}">${escHtml(display)}</span>`;
 		} else {
 			if (charCount >= MAX) {
 				html += escHtml("\n… (+more chars)");
@@ -300,7 +300,7 @@ function textPartsToHtml(parts) {
 							.join("");
 						isPaleRed = nextChars.startsWith("</");
 					}
-					const col = isPaleRed ? "#ffaaaa" : "#cc2222";
+					const col = isPaleRed ? THEME.paleRed : THEME.red;
 					html += `<span style="color:${col}">${escHtml(ch)}</span>`;
 				} else {
 					html += escHtml(ch === "↩" ? "\n" : ch);
@@ -333,7 +333,9 @@ function formatHit(hit, simple = false) {
 				raw.length > 280
 					? raw.slice(0, 280) + `\n… (+${raw.length - 280} more chars)`
 					: raw;
-			lines.push(escHtml(display));
+			lines.push(
+				`<span style="color:${THEME.muted}">${escHtml(display)}</span>`,
+			);
 			break;
 		}
 		case "student": {
@@ -351,21 +353,21 @@ function formatHit(hit, simple = false) {
 				);
 				for (const q of answered)
 					interTypes.push(
-						`<span style="color:#007acc">Answered: ${escHtml(q.info || "?")}</span>`,
+						`<span style="color:${INTERACTION_COLORS["teacher-question"].hex}">Answered: ${escHtml(q.info || "?")}</span>`,
 					);
 				const asked = (_p.interactions["student-question"] || []).filter(
 					(q) => q.asked_by && q.asked_by.trim() === s.name,
 				);
 				for (const q of asked)
 					interTypes.push(
-						`<span style="color:#e07020">Asked: ${escHtml(q.info || "?")}</span>`,
+						`<span style="color:${INTERACTION_COLORS["student-question"].hex}">Asked: ${escHtml(q.info || "?")}</span>`,
 					);
 				const helped = (_p.interactions["providing-help"] || []).filter(
 					(q) => q.student && q.student.trim() === s.name,
 				);
 				if (helped.length)
 					interTypes.push(
-						`<span style="color:#66BB6A">Got help${helped.length > 1 ? " ×" + helped.length : ""}</span>`,
+						`<span style="color:${INTERACTION_COLORS["providing-help"].hex}">Got help${helped.length > 1 ? " ×" + helped.length : ""}</span>`,
 					);
 			}
 			if (interTypes.length) {
@@ -420,10 +422,10 @@ function formatHitSimple(hit) {
 			return escHtml(hit.ev.char);
 		}
 		case "move": {
-			return `<span style="color:${BAR_COLORS.move[0]}">→${escHtml(hit.mv.target)}</span>`;
+			return `<span style="color:${BAR_COLORS.move}">→${escHtml(hit.mv.target)}</span>`;
 		}
 		case "anchor": {
-			return `<span style="color:${BAR_COLORS.anchor[0]}">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
+			return `<span style="color:${BAR_COLORS.anchor}">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
 		}
 		case "code_insert": {
 			const raw = (hit.ev.code_insert || "").replace(/↩/g, "\n");
@@ -431,7 +433,7 @@ function formatHitSimple(hit) {
 				raw.length > 280
 					? raw.slice(0, 280) + `\n… (+${raw.length - 280} more chars)`
 					: raw;
-			return escHtml(display);
+			return `<span style="color:${THEME.muted}">${escHtml(display)}</span>`;
 		}
 		case "interaction": {
 			const q = hit.q;

@@ -46,6 +46,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self.student_raw_texts:           Dict[str, str]                = {}
 
         self._student_token_stats: Dict[str, dict]    = {}
+        self._student_all_outside: Dict[str, Counter] = {}  # full outside tokens across all files
 
         self.teacher_tokens_by_ext:           Dict[str, Counter] = {}
         self.teacher_outside_by_ext:          Dict[str, Counter] = {}
@@ -152,6 +153,13 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             matching = list(directory.glob(f'*{ext}'))
             if matching:
                 files[ext] = matching[0]
+        return files
+
+    def get_all_code_files(self, directory: Path) -> Dict[str, Path]:
+        files = {}
+        for ext in ('.html', '.css', '.js'):
+            for path in sorted(directory.glob(f'*{ext}')):
+                files[path.name] = path
         return files
 
     def compare_files(self,
@@ -346,33 +354,35 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             self.results[sid]              = res
             self.student_extra_by_ext[sid] = ext_extras
 
-            raw_parts:      List[str]          = []
-            simple_extras:  Dict[str, Counter] = {}
+            raw_parts:        List[str]          = []
+            simple_extras:    Dict[str, Counter] = {}
+            all_outside_parts: List[Counter]     = []
 
             for ext in ['.html', '.css', '.js']:
-                _files = list(student_dir.glob(f'*{ext}'))
+                _files = sorted(student_dir.glob(f'*{ext}'))
                 if not _files:
                     simple_extras[ext] = Counter()
                     continue
-                try:
-                    raw = _files[0].read_text(encoding='utf-8', errors='ignore')
-                    raw_parts.append(raw)
-                    if ext == '.html':
-                        s_out_css    = get_html_outside_css(raw)
-                        s_out = s_out_css
-                    elif ext == '.css':
-                        s_out, s_ins = split_css_tokens(raw)
-                    else:
-                        s_out, s_ins = split_code_tokens(raw)
-                    simple_extras[ext] = (
-                        s_out
-                        - self.simple_baseline_by_ext.get(ext, Counter())
-                    )
-                except Exception:
-                    simple_extras[ext] = Counter()
+                ext_out: Counter = Counter()
+                for _f in _files:
+                    try:
+                        raw = _f.read_text(encoding='utf-8', errors='ignore')
+                        raw_parts.append(raw)
+                        if ext == '.html':
+                            s_out = get_html_outside_css(raw)
+                        elif ext == '.css':
+                            s_out, _ = split_css_tokens(raw)
+                        else:
+                            s_out, _ = split_code_tokens(raw)
+                        ext_out += s_out
+                    except Exception:
+                        pass
+                simple_extras[ext] = ext_out - self.simple_baseline_by_ext.get(ext, Counter())
+                all_outside_parts.append(ext_out)
 
             self.student_simple_extra_by_ext[sid] = simple_extras
             self.student_raw_texts[sid]           = ', '.join(raw_parts)
+            self._student_all_outside[sid]        = sum(all_outside_parts, Counter())
 
     def _build_baselines(self, ref_files, t_outside, t_inside,
                          t_html_outside, t_script_outside, t_html_css_outside):

@@ -101,12 +101,11 @@ function redrawChart3() {
 }
 
 const BAR_COLORS = {
-	normal: ["#777777", "#000000"],
-	dev: ["#22aa22", "#116611"],
-	remove: ["#CC2222", "#880000"],
-	insert: ["#999999", "#666666"],
-	anchor: ["#007acc", "#005a99"],
-	move: ["#e07020", "#a04010"],
+	normal: THEME.gray,
+	dev: THEME.green,
+	remove: THEME.red,
+	anchor: THEME.blue,
+	move: THEME.orange,
 };
 
 const _chart2Visible = {
@@ -173,12 +172,12 @@ function drawChart1(ctx, p, L) {
 		const bx = cx - bw / 2;
 		const y = rateToY(rate, L);
 		const bh = bottomY - y;
-		const [fill, edge] = BAR_COLORS[colorKey] || BAR_COLORS.normal;
+		const fill = BAR_COLORS[colorKey] || BAR_COLORS.normal;
 		ctx.globalAlpha = alpha;
 		ctx.fillStyle = fill;
 		ctx.fillRect(bx, y, bw, bh);
 		ctx.globalAlpha = 1;
-		ctx.strokeStyle = edge;
+		ctx.strokeStyle = fill;
 		ctx.lineWidth = 0.5;
 		ctx.strokeRect(bx, y, bw, bh);
 	}
@@ -196,8 +195,7 @@ function drawChart1(ctx, p, L) {
 				b.centerTs,
 				Math.max(10, insLen / (CFG.BAR_MIN_SECS / 60)),
 				b.dur,
-				"insert",
-				0.6,
+				"normal",
 			);
 		} else if (b.hasAnchors || b.hasMoves) {
 			bar(b.centerTs, 20, b.dur, b.hasAnchors ? "anchor" : "move", 0.7);
@@ -216,8 +214,7 @@ function drawChart1(ctx, p, L) {
 					(kp.code_insert || "").length / (CFG.BAR_MIN_SECS / 60),
 				),
 				0,
-				"insert",
-				0.6,
+				"normal",
 			);
 		} else {
 			const ck =
@@ -291,16 +288,15 @@ function drawChart2(ctx, p, L) {
 		ctx.stroke();
 	}
 
-	drawInteractionSpans(
-		ctx,
-		p,
-		L,
-		M.top,
-		plotH2,
-		Object.fromEntries(
+	drawInteractionSpans(ctx, p, L, M.top, plotH2, {
+		...Object.fromEntries(
 			Object.entries(INTERACTION_COLORS).map(([k, v]) => [k, v.spanRgba]),
 		),
-	);
+		"teacher-question": (q) =>
+			q.answered_by?.length
+				? INTERACTION_COLORS["teacher-question"].spanRgba
+				: INTERACTION_COLORS["teacher-question"].spanRgbaUnanswered,
+	});
 
 	if (cum.length > 1) {
 		const pts = cum.map((c) => [tsToX(c.ts, L), countToY(c.count, maxN, L)]);
@@ -372,24 +368,39 @@ function drawChart2(ctx, p, L) {
 			dot(
 				tsToX(ts, L),
 				countToY(charsAt(ts, cum), maxN, L),
-				ev._isStructuralDelete ? "#EE9999" : "#CC2222",
+				ev._isStructuralDelete ? THEME.paleRed : BAR_COLORS.remove,
 				1.0,
 			);
 		}
 	if (_chart2Visible.dev)
 		for (const ev of p.devChars) {
 			const ts = ev.timestamp / 1000;
-			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#22aa22", 1.0);
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				BAR_COLORS.dev,
+				1.0,
+			);
 		}
 	if (_chart2Visible.anchors)
 		for (const anc of p.anchors) {
 			const ts = anc.ts / 1000;
-			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#007acc", 1.0);
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				BAR_COLORS.anchor,
+				1.0,
+			);
 		}
 	if (_chart2Visible.moves)
 		for (const mv of p.moves) {
 			const ts = mv.ts / 1000;
-			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#e07020", 1.0);
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				BAR_COLORS.move,
+				1.0,
+			);
 		}
 	if (_chart2Visible.inserts)
 		for (const ev of p.codeInserts) {
@@ -564,24 +575,26 @@ function drawStar(ctx, cx, cy, r, fill, alpha = 1) {
 }
 
 function drawStudentStar(ctx, x, y, ans, ask, hlp) {
+	const blue = INTERACTION_COLORS["teacher-question"].hex;
+	const orange = INTERACTION_COLORS["student-question"].hex;
+	const green = INTERACTION_COLORS["providing-help"].hex;
 	const n = (ans ? 1 : 0) + (ask ? 1 : 0) + (hlp ? 1 : 0);
 	if (n === 3) {
-		drawStar(ctx, x, y, 9, "#66BB6A", 1.0);
-		drawStar(ctx, x, y, 5, "#e07020", 1.0);
-		drawStar(ctx, x, y, 2, "#007acc", 1.0);
+		drawStar(ctx, x, y, 9, green, 1.0);
+		drawStar(ctx, x, y, 5, orange, 1.0);
+		drawStar(ctx, x, y, 2, blue, 1.0);
 	} else if (n === 2) {
 		const [outerClr, innerClr] =
 			ans && ask
-				? ["#e07020", "#007acc"]
+				? [orange, blue]
 				: ans && hlp
-					? ["#66BB6A", "#007acc"]
-					: ["#66BB6A", "#e07020"];
+					? [green, blue]
+					: [green, orange];
 		drawStar(ctx, x, y, 9, outerClr, 1.0);
 		drawStar(ctx, x, y, 5, innerClr, 1.0);
 	} else {
-		const r = 9;
-		const fill = ans ? "#007acc" : ask ? "#e07020" : "#66BB6A";
-		drawStar(ctx, x, y, r, fill, 1.0);
+		const fill = ans ? blue : ask ? orange : green;
+		drawStar(ctx, x, y, 9, fill, 1.0);
 	}
 }
 

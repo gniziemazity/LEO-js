@@ -185,8 +185,7 @@ class _StudentBase:
     def setUpClass(cls):
         _teacher_headers, cls.teacher_entries = _parse_tokens_file(cls.teacher_tokens_file)
         cls.headers, cls.expected = _parse_student_tokens_file(cls.tokens_file)
-        ext = cls.student_html.suffix.lower()
-        outside, comment = _extract_student_ci_split({ext: cls.student_html})
+        outside, comment = _extract_student_ci_split({cls.student_html.name: cls.student_html})
         cls.all_occ, cls.n_found, cls.n_missing, cls.n_extra, cls.follow_e, _ = (
             _build_student_token_occurrences(cls.teacher_entries, outside, comment)
         )
@@ -313,19 +312,24 @@ class TestChessGameStudentBTokens(_StudentBase, unittest.TestCase):
 class TestChessGameStudentBDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        _sm._ALL_EXTRA_STAR = True
         chess_game = _TEST / 'chess_game'
         cls.events = _load_events(chess_game / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
         removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
-        stu_files = {'.html': chess_game / 'student_b' / 'index.html'}
-        teacher_files = {'.html': chess_game / 'reconstructed.html'}
+        stu_files = {'index.html': chess_game / 'student_b' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess_game / 'reconstructed.html'}
         stu_outside, stu_comment = _extract_student_ci_split(stu_files)
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, teacher_entries,
             stu_outside, stu_comment, context_k=_CONTEXT_K, ghost_contexts=ghost_ctx,
         )
         cls.student_index = cls.sf_colors.get('index.html', {})
+
+    @classmethod
+    def tearDownClass(cls):
+        _sm._ALL_EXTRA_STAR = False
 
     def test_this_is_extra_star(self):
         self.assertEqual(self.student_index.get('this'), ['extra_star'])
@@ -388,8 +392,8 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
         teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
         removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
-        stu_files = {'.html': chess_game / 'student_c' / 'index.html'}
-        teacher_files = {'.html': chess_game / 'reconstructed.html'}
+        stu_files = {'index.html': chess_game / 'student_c' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess_game / 'reconstructed.html'}
         stu_outside, stu_comment = _extract_student_ci_split(stu_files)
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, teacher_entries,
@@ -411,13 +415,14 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
 class TestSortingStudentBDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        _sm._ALL_EXTRA_STAR = True
         sorting = _TEST / 'sorting'
         cls.events = _load_events(sorting / 'log.json')
         teacher_entries = _parse_teacher_tokens(sorting / 'tokens.txt')
         removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
-        stu_files = {'.html': sorting / 'student_b' / 'index.html'}
-        teacher_files = {'.html': sorting / 'reconstructed.html'}
+        stu_files = {'index.html': sorting / 'student_b' / 'index.html'}
+        teacher_files = {'reconstructed.html': sorting / 'reconstructed.html'}
         stu_outside, stu_comment = _extract_student_ci_split(stu_files)
         cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, teacher_entries,
@@ -425,6 +430,10 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
         )
         cls.student_index = cls.sf_colors.get('index.html', {})
         cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
+
+    @classmethod
+    def tearDownClass(cls):
+        _sm._ALL_EXTRA_STAR = False
 
     def test_width_first_occurrence_is_extra_star(self):
         labels = self.student_index.get('width', [])

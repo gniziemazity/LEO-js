@@ -377,7 +377,6 @@ class ExcelReportMixin:
             return ('', '', [])
         inc_vals    = []
         teacher_agg: Counter = Counter()
-        student_agg: Counter = Counter()
         for ext in ['.html', '.css', '.js']:
             fd = data['files_compared'].get(ext)
             if not fd or fd.get('status') != 'success':
@@ -388,18 +387,12 @@ class ExcelReportMixin:
                               or self.teacher_html_outside_by_ext.get(ext, Counter()))
                 teacher_ext = (t_html_css
                                + self.teacher_script_outside_by_ext.get(ext, Counter()))
-                s_html_css = fd.get('student_html_outside_css',
-                                    fd.get('student_html_outside', Counter()))
-                student_ext = (s_html_css
-                               + fd.get('student_script_outside', Counter()))
             elif ext == '.css':
                 teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
-                student_ext = fd.get('student_outside', Counter())
             else:
                 teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
-                student_ext = fd.get('student_outside', Counter())
             teacher_agg += teacher_ext
-            student_agg += student_ext
+        student_agg: Counter = getattr(self, '_student_all_outside', {}).get(sid, Counter())
 
         parts     = []
         sim_items = []

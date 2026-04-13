@@ -198,7 +198,8 @@ def _build_student_file_coloring(text: str, ext: str,
 def _extract_student_ci_split(stu_files: dict):
     outside: Counter = Counter()
     comment: Counter = Counter()
-    for ext, path in stu_files.items():
+    for name, path in stu_files.items():
+        ext = Path(name).suffix.lower()
         try:
             raw = path.read_text(encoding='utf-8', errors='ignore')
         except Exception:
@@ -549,7 +550,6 @@ def _build_ghost_contexts(
 def _locate_token(
     s_positions: List[int],
     t_positions: List[int],
-    d_count: int,
     s_seq: List[str],
     t_seq: List[str],
     k: int,
@@ -606,7 +606,8 @@ def _collect_occurrences(files_by_ext: dict, token_keys: set) -> Tuple[List[dict
     occs: List[dict] = []
     counts: Dict[str, Dict[str, int]] = {}
 
-    for file_order, (ext, path) in enumerate(files_by_ext.items()):
+    for file_order, (name, path) in enumerate(files_by_ext.items()):
+        ext = Path(name).suffix.lower()
         try:
             raw = path.read_text(encoding='utf-8', errors='ignore')
         except Exception:
@@ -697,11 +698,17 @@ def _build_contextual_diff_marks(
         s_out_pos = [x['seq_idx'] for x in s_out]
         ghost_vecs = (ghost_contexts or {}).get(tok)
         _mso, missing_to, extra_so, extra_star_so = _locate_token(
-            s_out_pos, t_out_pos, d_counts.get(tok, 0), student_seq, teacher_seq, context_k,
+            s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
             ghost_ctx_vecs=ghost_vecs,
             s_flags=student_flags,
             t_flags=teacher_flags,
         )
+
+        all_extra_so = extra_so | extra_star_so
+        d_count = d_counts.get(tok, 0)
+        sorted_extra = sorted(all_extra_so)
+        extra_star_assigned = set(sorted_extra[:d_count])
+        extra_assigned = all_extra_so - extra_star_assigned
 
         for i, oc in enumerate(t_out):
             arr = teacher_colors[oc['file']][tok]
@@ -714,9 +721,9 @@ def _build_contextual_diff_marks(
 
         for i, oc in enumerate(s_out):
             arr = student_colors[oc['file']][tok]
-            if i in extra_star_so:
+            if i in extra_star_assigned:
                 arr[oc['file_idx']] = 'extra_star'
-            elif i in extra_so:
+            elif i in extra_assigned:
                 arr[oc['file_idx']] = 'extra'
 
         for oc in s_com:
@@ -734,6 +741,16 @@ def _build_contextual_diff_marks(
     return _prune(teacher_colors), _prune(student_colors)
 
 
+def _build_utf16_map(text: str) -> List[int]:
+    u16map = []
+    u16 = 0
+    for ch in text:
+        u16map.append(u16)
+        u16 += 2 if ord(ch) > 0xFFFF else 1
+    u16map.append(u16)
+    return u16map
+
+
 def _colors_to_position_marks(files_by_ext: dict, colors_map: dict) -> dict:
     token_keys: set = set()
     for toks in colors_map.values():
@@ -741,6 +758,16 @@ def _colors_to_position_marks(files_by_ext: dict, colors_map: dict) -> dict:
     if not token_keys:
         return {}
     occs, _counts = _collect_occurrences(files_by_ext, token_keys)
+
+    file_u16maps: Dict[str, List[int]] = {}
+    for _name, path in files_by_ext.items():
+        try:
+            text = path.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        if any(ord(c) > 0xFFFF for c in text):
+            file_u16maps[path.name] = _build_utf16_map(text)
+
     result: Dict[str, List[dict]] = {}
     for oc in occs:
         labels = colors_map.get(oc['file'], {}).get(oc['token'])
@@ -749,11 +776,18 @@ def _colors_to_position_marks(files_by_ext: dict, colors_map: dict) -> dict:
         label = labels[oc['file_idx']]
         if label is None:
             continue
+        u16map = file_u16maps.get(oc['file'])
+        if u16map:
+            start = u16map[oc['pos']]
+            end   = start + len(oc['token'])
+        else:
+            start = oc['pos']
+            end   = oc['pos'] + len(oc['token'])
         result.setdefault(oc['file'], []).append({
             'token': oc['token'],
             'label': label,
-            'start': oc['pos'],
-            'end':   oc['pos'] + len(oc['token']),
+            'start': start,
+            'end':   end,
         })
     for lst in result.values():
         lst.sort(key=lambda x: x['start'])
@@ -863,7 +897,7 @@ class TokenLogMixin:
                 if candidate.is_dir():
                     anon_dir = candidate
 
-            stu_files = self.get_code_files(anon_dir) or self.get_code_files(student_dir)
+            stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
                 continue
 
@@ -935,7 +969,7 @@ class TokenLogMixin:
                     suffix   = f'\t{flag_str}' if flag_str else ''
                     fh.write(f'{token}\t{ts}{suffix}\n')
 
-            teacher_code_files = self.get_code_files(self.reference_dir)
+            teacher_code_files = self.get_all_code_files(self.reference_dir)
             try:
                 teacher_files_colors, student_files_colors = _build_contextual_diff_marks(
                     teacher_code_files,
@@ -957,7 +991,8 @@ class TokenLogMixin:
                                            if 'COMMENT' in fl and ('EXTRA' in fl or 'EXTRA*' in fl))
 
                 teacher_files_colors = {}
-                for t_ext, t_path in teacher_code_files.items():
+                for t_name, t_path in teacher_code_files.items():
+                    t_ext = Path(t_name).suffix.lower()
                     try:
                         raw = t_path.read_text(encoding='utf-8', errors='ignore')
                         teacher_files_colors[t_path.name] = _build_teacher_file_coloring(
@@ -967,7 +1002,8 @@ class TokenLogMixin:
                         pass
 
                 student_files_colors = {}
-                for s_ext, s_path in stu_files.items():
+                for s_name, s_path in stu_files.items():
+                    s_ext = Path(s_name).suffix.lower()
                     try:
                         raw = s_path.read_text(encoding='utf-8', errors='ignore')
                         student_files_colors[s_path.name] = _build_student_file_coloring(
@@ -993,8 +1029,7 @@ class TokenLogMixin:
         print(f'  Written token files for {written} student(s) in {names_dir.name}/')
 
     def write_similarity_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        """Generate diff_marks.json for each student using file comparison only (no log needed)."""
-        teacher_code_files = self.get_code_files(self.reference_dir)
+        teacher_code_files = self.get_all_code_files(self.reference_dir)
         if not teacher_code_files:
             print('  Similarity diff marks skipped — no teacher code files found.')
             return
@@ -1013,7 +1048,7 @@ class TokenLogMixin:
                 if candidate.is_dir():
                     anon_dir = candidate
 
-            stu_files = self.get_code_files(anon_dir) or self.get_code_files(student_dir)
+            stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
                 continue
 
@@ -1021,47 +1056,32 @@ class TokenLogMixin:
             if not data or not data.get('files_compared'):
                 continue
 
-            # Build aggregated normalised token counts for teacher and student
             teacher_agg: Counter = Counter()
-            student_agg: Counter = Counter()
             for ext in ['.html', '.css', '.js']:
                 if ext == '.html':
                     t_html = (self.teacher_html_outside_css_by_ext.get(ext)
                               or self.teacher_html_outside_by_ext.get(ext, Counter()))
                     t_script = self.teacher_script_outside_by_ext.get(ext, Counter())
                     teacher_ext = t_html + t_script
-                    fd = data['files_compared'].get(ext)
-                    if fd and fd.get('status') == 'success':
-                        s_html = fd.get('student_html_outside_css',
-                                        fd.get('student_html_outside', Counter()))
-                        s_script = fd.get('student_script_outside', Counter())
-                        student_ext = s_html + s_script
-                    else:
-                        student_ext = Counter()
                 else:
                     teacher_ext = self.teacher_outside_by_ext.get(ext, Counter())
-                    fd = data['files_compared'].get(ext)
-                    student_ext = (fd.get('student_outside', Counter())
-                                   if fd and fd.get('status') == 'success' else Counter())
                 teacher_agg += teacher_ext
-                student_agg += student_ext
+            student_agg, _ = _extract_student_ci_split(stu_files)
 
-            # miss_budget: teacher tokens not covered by student (shared across teacher files)
             miss_budget: Dict[str, int] = {
                 tok: teacher_agg[tok] - student_agg.get(tok, 0)
                 for tok in teacher_agg
                 if teacher_agg[tok] > student_agg.get(tok, 0)
             }
-            # found_out: student tokens matched to teacher (shared across student files)
             found_out: Dict[str, int] = dict(teacher_agg & student_agg)
-            # extra budget: student tokens not covered by teacher
             extra_budget: Dict[str, int] = dict(student_agg - teacher_agg)
 
             teacher_colors: Dict[str, dict] = {}
-            for t_ext, t_path in teacher_code_files.items():
+            for t_name, t_path in teacher_code_files.items():
+                t_ext = Path(t_name).suffix.lower()
                 try:
                     raw = t_path.read_text(encoding='utf-8', errors='ignore')
-                    _, file_comm = _extract_student_ci_split({t_ext: t_path})
+                    _, file_comm = _extract_student_ci_split({t_name: t_path})
                     result = _build_teacher_file_coloring(raw, t_ext, miss_budget, dict(file_comm))
                     if result:
                         teacher_colors[t_path.name] = result
@@ -1069,10 +1089,11 @@ class TokenLogMixin:
                     pass
 
             student_colors: Dict[str, dict] = {}
-            for s_ext, s_path in stu_files.items():
+            for s_name, s_path in stu_files.items():
+                s_ext = Path(s_name).suffix.lower()
                 try:
                     raw = s_path.read_text(encoding='utf-8', errors='ignore')
-                    _, file_comm = _extract_student_ci_split({s_ext: s_path})
+                    _, file_comm = _extract_student_ci_split({s_name: s_path})
                     result = _build_student_file_coloring(
                         raw, s_ext,
                         found_out, dict(file_comm),

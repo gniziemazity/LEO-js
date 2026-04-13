@@ -1,5 +1,10 @@
 :root {
 	--clr-accent: #007acc;
+	--clr-orange: #e07020;
+	--clr-green: #66bb6a;
+	--clr-red: #cc2222;
+	--clr-gray: #222222;
+	--clr-pale-red: #ee9999;
 	--clr-text: #1e1e1e;
 	--clr-surface: #f3f3f3;
 	--clr-border: #ddd;

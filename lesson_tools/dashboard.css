@@ -96,6 +96,11 @@ body {
 	bottom: 36px;
 	left: 4px;
 	z-index: 10;
+	background: var(--clr-surface);
+	border: 1.5px solid var(--clr-muted) !important;
+}
+#btn-students:hover {
+	background: var(--clr-border);
 }
 
 .chart-legend-overlay {

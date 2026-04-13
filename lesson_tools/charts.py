@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 WHISKER_IQR = 25
 
 INCLUDE_FOLLOW = True
-INCLUDE_INC = True
+INCLUDE_INC = False # now in agreement with Follow, so not needed
 INCLUDE_ASSIGNMENTS = True
 
 SHOW_OBSERVATIONS = True
@@ -324,16 +324,19 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
     xform_top = ax_l.get_xaxis_transform()
 
     metric_color = {"Follow": C_FOLLOW, "Inc": C_SIM, "Assignment": C_ASSIGN}
+    lesson_positions: dict = {}
     for pos, (label, *_) in zip(positions, groups):
         lesson, metric = label.split("\n", 1)
-        if metric == "Inc":
-            ax_l.text(pos, 1.02, lesson, transform=xform_top,
-                      ha="center", va="bottom", fontsize=12, fontweight="bold",
-                      color="#111111", clip_on=False)
+        lesson_positions.setdefault(lesson, []).append(pos)
         ax_l.text(pos, -0.03, metric, transform=xform_bot,
                   ha="center", va="top", fontsize=12,
                   color=metric_color.get(metric, "#444444"),
                   clip_on=False)
+    for lesson, pos_list in lesson_positions.items():
+        center = sum(pos_list) / len(pos_list)
+        ax_l.text(center, 1.02, lesson, transform=xform_top,
+                  ha="center", va="bottom", fontsize=12, fontweight="bold",
+                  color="#111111", clip_on=False)
 
                    
     if INCLUDE_FOLLOW or INCLUDE_INC:
