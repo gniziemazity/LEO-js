@@ -330,20 +330,36 @@
 				await readDirHandle(handle, "", _allFiles, files);
 				lessonNameEl.textContent = handle.name;
 				document.title = "Students – " + handle.name;
-				loadXlsxFiles(files);
+				await loadXlsxFiles(files);
 				return true;
 			}
 
 			(async function () {
 				const qs = new URLSearchParams(location.search);
 				if (qs.get("autoload") !== "1") return;
-				// Wait for XLSX if not yet ready (it loads async)
-				let waited = 0;
-				while (typeof XLSX === "undefined" && waited < 4000) {
-					await new Promise((r) => setTimeout(r, 100));
-					waited += 100;
+				if (typeof XLSX === "undefined") {
+					await new Promise((resolve) => {
+						const s = document.querySelector('script[src*="xlsx"]');
+						if (s) {
+							s.addEventListener("load", resolve, { once: true });
+							s.addEventListener("error", resolve, { once: true });
+						} else {
+							resolve();
+						}
+					});
 				}
-				await _tryAutoLoad();
+				const ok = await _tryAutoLoad();
+				if (!ok) {
+					const btn = document.createElement("button");
+					btn.className = "landing-btn";
+					btn.textContent = "🔄 Load Students";
+					btn.onclick = async () => {
+						btn.disabled = true;
+						await _tryAutoLoad();
+						btn.disabled = false;
+					};
+					document.getElementById("landing-buttons").prepend(btn);
+				}
 			})();
 
 			function showLoading(on) {
@@ -358,12 +374,13 @@
 					const dirHandle = await window.showDirectoryPicker(opts);
 					_idbSet("lastDir", dirHandle);
 					showLoading(true);
+					_allFiles.clear();
 					const files = [];
 					await readDirHandle(dirHandle, "", _allFiles, files);
 					const name = dirHandle.name;
 					lessonNameEl.textContent = name;
 					document.title = "Students – " + name;
-					loadXlsxFiles(files);
+					await loadXlsxFiles(files);
 				} catch (e) {
 					if (e.name !== "AbortError")
 						alert("Could not open folder: " + e.message);
@@ -404,8 +421,19 @@
 
 			async function loadXlsxFiles(files) {
 				if (typeof XLSX === "undefined") {
+					await new Promise((resolve) => {
+						const s = document.querySelector('script[src*="xlsx"]');
+						if (s) {
+							s.addEventListener("load", resolve, { once: true });
+							s.addEventListener("error", resolve, { once: true });
+						} else {
+							resolve();
+						}
+					});
+				}
+				if (typeof XLSX === "undefined") {
 					alert(
-						"SheetJS not loaded yet — need an internet connection or xlsx.full.min.js next to this file.",
+						"SheetJS not loaded — need an internet connection or xlsx.full.min.js next to this file.",
 					);
 					showLoading(false);
 					return;

@@ -260,6 +260,11 @@ function bgForHit(hit) {
 			return "#ffffff";
 		case "burst":
 			return hit.b?.colorType === "dev" ? "#E8F5E9" : "#ffffff";
+		case "interaction":
+			if (hit.itype === "teacher-question") return "#E3F2FD";
+			if (hit.itype === "student-question") return "#FFF3E0";
+			if (hit.itype === "providing-help") return "#E8F5E9";
+			return "#ffffff";
 		default:
 			return "#ffffff";
 	}
@@ -355,17 +360,22 @@ function formatHit(hit, simple = false) {
 					(q) => q.answered_by && q.answered_by.includes(s.name),
 				);
 				for (const q of answered)
-					interTypes.push("Answered: " + (q.info || "?"));
+					interTypes.push(
+						`<span style="color:#007acc">Answered: ${escHtml(q.info || "?")}</span>`,
+					);
 				const asked = (_p.interactions["student-question"] || []).filter(
 					(q) => q.asked_by && q.asked_by.trim() === s.name,
 				);
-				for (const q of asked) interTypes.push("Asked: " + (q.info || "?"));
+				for (const q of asked)
+					interTypes.push(
+						`<span style="color:#e07020">Asked: ${escHtml(q.info || "?")}</span>`,
+					);
 				const helped = (_p.interactions["providing-help"] || []).filter(
 					(q) => q.student && q.student.trim() === s.name,
 				);
 				if (helped.length)
 					interTypes.push(
-						"Got help" + (helped.length > 1 ? " ×" + helped.length : ""),
+						`<span style="color:#66BB6A">Got help${helped.length > 1 ? " ×" + helped.length : ""}</span>`,
 					);
 			}
 			if (interTypes.length) {
@@ -434,23 +444,22 @@ function formatHitSimple(hit) {
 			return escHtml(display);
 		}
 		case "interaction": {
-			const lines = [];
-			function add(s) {
-				lines.push(escHtml(String(s)));
-			}
 			const q = hit.q;
 			if (hit.itype === "teacher-question") {
-				add(`❓ ${q.info || ""}`);
+				let h = `<span style="color:#007acc">❓ ${escHtml(q.info || "")}</span>`;
 				if (q.answered_by && q.answered_by.length)
-					add(`Answered by: ${q.answered_by.join(", ")}`);
+					h += `\nAnswered by: ${q.answered_by.map(escHtml).join(", ")}`;
+				return h;
 			} else if (hit.itype === "student-question") {
-				add(`🙋 ${q.info || ""}`);
-				if (q.asked_by) add(`Asked by: ${q.asked_by}`);
+				let h = `<span style="color:#e07020">🙋 ${escHtml(q.info || "")}</span>`;
+				if (q.asked_by) h += `\nAsked by: ${escHtml(q.asked_by)}`;
+				return h;
 			} else if (hit.itype === "providing-help") {
-				add("🤝 Providing Help");
-				if (q.student) add(`Student: ${q.student}`);
+				let h = `<span style="color:#66BB6A">🤝 Providing Help</span>`;
+				if (q.student) h += `\nStudent: ${escHtml(q.student)}`;
+				return h;
 			}
-			return lines.join("\n");
+			return "";
 		}
 		default:
 			return formatHit(hit);

@@ -120,7 +120,7 @@ const _chart2Visible = {
 
 function setupChart2Legend(p) {
 	const totalEl = document.getElementById("leg-total");
-	if (totalEl) totalEl.textContent = `Total: ${p.eventCount}`;
+	if (totalEl) totalEl.textContent = `Total Events: ${p.eventCount}`;
 	const items = [
 		{ key: "chars", count: p.totalChars },
 		{ key: "inserts", count: p.codeInserts.length },
@@ -185,7 +185,9 @@ function drawChart1(ctx, p, L) {
 
 	for (const b of p.bursts) {
 		if (b.chars > 0) {
-			bar(b.centerTs, b.rate, b.dur, b.colorType);
+			const hasVirtual = b.hasCodeInserts || b.hasAnchors || b.hasMoves;
+			const effectiveRate = hasVirtual ? Math.max(b.rate, 20) : b.rate;
+			bar(b.centerTs, effectiveRate, b.dur, b.colorType);
 		} else if (b.hasCodeInserts) {
 			const insLen = b.evs
 				.filter((e) => e._virtualType === "code_insert")
@@ -290,12 +292,9 @@ function drawChart2(ctx, p, L) {
 	}
 
 	drawInteractionSpans(ctx, p, L, M.top, plotH2, {
-		"teacher-question": (q) =>
-			q.answered_by && q.answered_by.length > 0
-				? "rgba(21,101,192,0.6)"
-				: "rgba(21,101,192,0.18)",
-		"student-question": "rgba(255,165,0,0.28)",
-		"providing-help": "rgba(102,187,106,0.32)",
+		"teacher-question": "rgba(0,122,204,0.6)",
+		"student-question": "rgba(224,112,32,0.6)",
+		"providing-help": "rgba(102,187,106,0.6)",
 	});
 
 	if (cum.length > 1) {
@@ -588,20 +587,20 @@ function drawStudentStar(ctx, x, y, ans, ask, hlp) {
 	const n = (ans ? 1 : 0) + (ask ? 1 : 0) + (hlp ? 1 : 0);
 	if (n === 3) {
 		drawStar(ctx, x, y, 9, "#66BB6A", 1.0);
-		drawStar(ctx, x, y, 5, "#F9A825", 1.0);
-		drawStar(ctx, x, y, 2, "#1565C0", 1.0);
+		drawStar(ctx, x, y, 5, "#e07020", 1.0);
+		drawStar(ctx, x, y, 2, "#007acc", 1.0);
 	} else if (n === 2) {
 		const [outerClr, innerClr] =
 			ans && ask
-				? ["#F9A825", "#1565C0"]
+				? ["#e07020", "#007acc"]
 				: ans && hlp
-					? ["#66BB6A", "#1565C0"]
-					: ["#66BB6A", "#F9A825"];
+					? ["#66BB6A", "#007acc"]
+					: ["#66BB6A", "#e07020"];
 		drawStar(ctx, x, y, 9, outerClr, 1.0);
 		drawStar(ctx, x, y, 5, innerClr, 1.0);
 	} else {
 		const r = 9;
-		const fill = ans ? "#1565C0" : ask ? "#F9A825" : "#66BB6A";
+		const fill = ans ? "#007acc" : ask ? "#e07020" : "#66BB6A";
 		drawStar(ctx, x, y, r, fill, 1.0);
 	}
 }

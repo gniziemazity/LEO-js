@@ -100,8 +100,10 @@ body {
 
 .chart-legend-overlay {
 	position: absolute;
-	left: 76px;
-	top: 32px;
+	left: 68px;
+	top: 21px;
+	background-color: #fff8;
+	padding: 5px;
 	display: flex;
 	flex-direction: column;
 	pointer-events: all;
