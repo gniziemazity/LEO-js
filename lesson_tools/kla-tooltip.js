@@ -261,20 +261,10 @@ function bgForHit(hit) {
 		case "burst":
 			return hit.b?.colorType === "dev" ? "#E8F5E9" : "#ffffff";
 		case "interaction":
-			if (hit.itype === "teacher-question") return "#E3F2FD";
-			if (hit.itype === "student-question") return "#FFF3E0";
-			if (hit.itype === "providing-help") return "#E8F5E9";
-			return "#ffffff";
+			return INTERACTION_COLORS[hit.itype]?.tipBg ?? "#ffffff";
 		default:
 			return "#ffffff";
 	}
-}
-
-function escHtml(s) {
-	return String(s)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;");
 }
 
 function textPartsToHtml(parts) {
@@ -286,9 +276,9 @@ function textPartsToHtml(parts) {
 		if (truncated) break;
 		const p = parts[i];
 		if (p.type === "anchor") {
-			html += `<span style="color:#007acc">${escHtml(p.t)}</span>`;
+			html += `<span style="color:${BAR_COLORS.anchor[0]}">${escHtml(p.t)}</span>`;
 		} else if (p.type === "move") {
-			html += `<span style="color:#e07020">→${escHtml(p.t)}</span>`;
+			html += `<span style="color:${BAR_COLORS.move[0]}">→${escHtml(p.t)}</span>`;
 		} else if (p.type === "code_insert") {
 			const raw = (p.t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
 			const display = raw.length > 200 ? raw.slice(0, 200) + "…" : raw;
@@ -430,10 +420,10 @@ function formatHitSimple(hit) {
 			return escHtml(hit.ev.char);
 		}
 		case "move": {
-			return `<span style="color:#e07020">→${escHtml(hit.mv.target)}</span>`;
+			return `<span style="color:${BAR_COLORS.move[0]}">→${escHtml(hit.mv.target)}</span>`;
 		}
 		case "anchor": {
-			return `<span style="color:#007acc">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
+			return `<span style="color:${BAR_COLORS.anchor[0]}">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
 		}
 		case "code_insert": {
 			const raw = (hit.ev.code_insert || "").replace(/↩/g, "\n");
@@ -445,17 +435,18 @@ function formatHitSimple(hit) {
 		}
 		case "interaction": {
 			const q = hit.q;
+			const clr = INTERACTION_COLORS[hit.itype]?.hex;
 			if (hit.itype === "teacher-question") {
-				let h = `<span style="color:#007acc">❓ ${escHtml(q.info || "")}</span>`;
+				let h = `<span style="color:${clr}">❓ ${escHtml(q.info || "")}</span>`;
 				if (q.answered_by && q.answered_by.length)
 					h += `\nAnswered by: ${q.answered_by.map(escHtml).join(", ")}`;
 				return h;
 			} else if (hit.itype === "student-question") {
-				let h = `<span style="color:#e07020">🙋 ${escHtml(q.info || "")}</span>`;
+				let h = `<span style="color:${clr}">🙋 ${escHtml(q.info || "")}</span>`;
 				if (q.asked_by) h += `\nAsked by: ${escHtml(q.asked_by)}`;
 				return h;
 			} else if (hit.itype === "providing-help") {
-				let h = `<span style="color:#66BB6A">🤝 Providing Help</span>`;
+				let h = `<span style="color:${clr}">🤝 Providing Help</span>`;
 				if (q.student) h += `\nStudent: ${escHtml(q.student)}`;
 				return h;
 			}

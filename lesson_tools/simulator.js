@@ -56,33 +56,20 @@ const HTML_VOID_TAGS = new Set([
 ]);
 
 const CLR = {
-	bg: "#ffffff",
-	sidebar: "#f3f3f3",
 	toolbar: "#e8e8e8",
-	fg: "#1e1e1e",
-	cursor: "#000000",
-	select: "#add6ff",
 	blue: "#0000ff",
-	purple: "#af00db",
 	orange: "#795e26",
-	yellow: "#795e26",
 	move: "#e07020",
 	green: "#267f99",
 	red: "#d40000",
-	pink: "#d40000",
-	comment: "#008000",
 	accent: "#007acc",
 	dim: "#717171",
 	muted: "#999999",
-	devbg: "#f5f5f5",
-	devborder: "#007acc",
-	settingsbg: "#f0f0f8",
 };
 
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
 const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
 const _EXPAND_FILE_EXTS = [".js", ".css", ".html", ".htm"];
-const _EXPAND_DELAY_CODE = 30;
 const _EXPAND_MAX_DELAY = 3000;
 const _CI_SPECIAL = new Set([
 	...Object.keys(CURSOR_MOVES),

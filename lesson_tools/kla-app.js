@@ -131,13 +131,11 @@ async function loadBestJsonFile(jsonFiles) {
 	showLoading(false);
 }
 
-const IMAGE_EXT_KLA = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
-
 async function _readImageUris(fileMap) {
 	const imageUris = {};
 	await Promise.all(
 		[...fileMap.entries()]
-			.filter(([p]) => IMAGE_EXT_KLA.test(p))
+			.filter(([p]) => IMAGE_EXT.test(p))
 			.map(
 				([, f]) =>
 					new Promise((res) => {

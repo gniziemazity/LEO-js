@@ -1,7 +1,5 @@
 "use strict";
 
-const IMAGE_EXT_DIFF = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
-
 async function openDiffWindow(student) {
 	try {
 		const followPct =
@@ -48,7 +46,7 @@ async function openDiffWindow(student) {
 		const imageUris = {};
 		const imageEntries = [..._allFiles.entries()].filter(
 			([p]) =>
-				IMAGE_EXT_DIFF.test(p) &&
+				IMAGE_EXT.test(p) &&
 				(/^correct\//i.test(p) || p.toLowerCase().startsWith(studentDir)),
 		);
 		for (const [, file] of imageEntries) {

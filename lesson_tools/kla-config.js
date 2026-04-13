@@ -41,6 +41,26 @@ const _hoverAborts = new Map();
 let _shake = false;
 const _jitterMap = new Map();
 
+const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+
+const INTERACTION_COLORS = {
+	"teacher-question": {
+		hex: "#007acc",
+		spanRgba: "rgba(0,122,204,0.6)",
+		tipBg: "#E3F2FD",
+	},
+	"student-question": {
+		hex: "#e07020",
+		spanRgba: "rgba(224,112,32,0.6)",
+		tipBg: "#FFF3E0",
+	},
+	"providing-help": {
+		hex: "#66BB6A",
+		spanRgba: "rgba(102,187,106,0.6)",
+		tipBg: "#E8F5E9",
+	},
+};
+
 function toggleShake() {
 	_shake = !_shake;
 	if (_shake && _students) {

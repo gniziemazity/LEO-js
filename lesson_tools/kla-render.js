@@ -291,11 +291,16 @@ function drawChart2(ctx, p, L) {
 		ctx.stroke();
 	}
 
-	drawInteractionSpans(ctx, p, L, M.top, plotH2, {
-		"teacher-question": "rgba(0,122,204,0.6)",
-		"student-question": "rgba(224,112,32,0.6)",
-		"providing-help": "rgba(102,187,106,0.6)",
-	});
+	drawInteractionSpans(
+		ctx,
+		p,
+		L,
+		M.top,
+		plotH2,
+		Object.fromEntries(
+			Object.entries(INTERACTION_COLORS).map(([k, v]) => [k, v.spanRgba]),
+		),
+	);
 
 	if (cum.length > 1) {
 		const pts = cum.map((c) => [tsToX(c.ts, L), countToY(c.count, maxN, L)]);
@@ -318,7 +323,7 @@ function drawChart2(ctx, p, L) {
 	const R = CFG.DOT_R,
 		DR = CFG.DIA_R;
 
-	function dot(x, y, fill, _edge, alpha = 1) {
+	function dot(x, y, fill, alpha = 1) {
 		ctx.save();
 		ctx.globalAlpha = alpha;
 		ctx.beginPath();
@@ -359,13 +364,7 @@ function drawChart2(ctx, p, L) {
 			for (const idx of grp.idxs) {
 				const c = cum[idx];
 				if (!c) continue;
-				dot(
-					tsToX(c.ts, L),
-					countToY(c.count, maxN, L),
-					"#000",
-					"none",
-					1.0,
-				);
+				dot(tsToX(c.ts, L), countToY(c.count, maxN, L), "#000", 1.0);
 			}
 	if (_chart2Visible.deletes)
 		for (const ev of p.deletes) {
@@ -374,42 +373,23 @@ function drawChart2(ctx, p, L) {
 				tsToX(ts, L),
 				countToY(charsAt(ts, cum), maxN, L),
 				ev._isStructuralDelete ? "#EE9999" : "#CC2222",
-				"none",
 				1.0,
 			);
 		}
 	if (_chart2Visible.dev)
 		for (const ev of p.devChars) {
 			const ts = ev.timestamp / 1000;
-			dot(
-				tsToX(ts, L),
-				countToY(charsAt(ts, cum), maxN, L),
-				"#22aa22",
-				"none",
-				1.0,
-			);
+			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#22aa22", 1.0);
 		}
 	if (_chart2Visible.anchors)
 		for (const anc of p.anchors) {
 			const ts = anc.ts / 1000;
-			dot(
-				tsToX(ts, L),
-				countToY(charsAt(ts, cum), maxN, L),
-				"#007acc",
-				"none",
-				1.0,
-			);
+			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#007acc", 1.0);
 		}
 	if (_chart2Visible.moves)
 		for (const mv of p.moves) {
 			const ts = mv.ts / 1000;
-			dot(
-				tsToX(ts, L),
-				countToY(charsAt(ts, cum), maxN, L),
-				"#e07020",
-				"none",
-				1.0,
-			);
+			dot(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#e07020", 1.0);
 		}
 	if (_chart2Visible.inserts)
 		for (const ev of p.codeInserts) {
