@@ -18,9 +18,15 @@ function processData(raw) {
 	const sessionStart = events[0].timestamp / 1000;
 	const sessionEnd = events[events.length - 1].timestamp / 1000;
 	const charEvents = events.filter((e) => e.char != null);
-	const totalChars = charEvents.length;
+	const devChars = charEvents.filter((e) => e._editor === "dev");
+	const allCharsCount = charEvents.length;
+	// Forward-progress chars only: exclude dev editor and delete chars
+	const mainCharEvents = charEvents.filter(
+		(e) => e._editor !== "dev" && !DELETE_CHARS.has(e.char),
+	);
+	const totalChars = mainCharEvents.length;
 
-	const cumulative = charEvents.map((e, i) => ({
+	const cumulative = mainCharEvents.map((e, i) => ({
 		ts: e.timestamp / 1000,
 		count: i + 1,
 		event: e,
@@ -51,16 +57,37 @@ function processData(raw) {
 		...codeInsertEvs,
 	].sort((a, b) => a.timestamp - b.timestamp);
 
-	const { bursts, singletons } = computeBursts(allTypingEvs);
+	const { bursts: rawBursts, singletons } = computeBursts(allTypingEvs);
 
-	const sessionRate = totalChars / ((sessionEnd - sessionStart) / 60) || 0;
+	const sessionRate = allCharsCount / ((sessionEnd - sessionStart) / 60) || 0;
 	let totalC = 0,
 		totalS = 0;
-	for (const b of bursts) {
+	for (const b of rawBursts) {
 		totalC += b.chars;
 		totalS += b.dur || 1;
 	}
 	const activeRate = totalC > 0 ? (totalC / totalS) * 60 : 0;
+
+	const bursts = [];
+	for (const b of rawBursts) {
+		const devCharEvs = b.evs.filter(
+			(e) => !e._virtualType && e._editor === "dev",
+		);
+		const nonDevCharEvs = b.evs.filter(
+			(e) => !e._virtualType && e._editor !== "dev",
+		);
+		if (devCharEvs.length > 0 && nonDevCharEvs.length > 0) {
+			// Dev-only bar
+			bursts.push(makeBurst(devCharEvs));
+			// Non-dev bar: retains virtual events (anchors, moves, inserts)
+			const nonDevEvs = b.evs
+				.filter((e) => e._virtualType || e._editor !== "dev")
+				.sort((a, b_) => a.timestamp - b_.timestamp);
+			bursts.push(makeBurst(nonDevEvs));
+		} else {
+			bursts.push(b);
+		}
+	}
 
 	const burstGroups = [];
 	for (const burst of bursts) {
@@ -75,7 +102,35 @@ function processData(raw) {
 
 	const codeInserts = events.filter((e) => e.code_insert != null);
 	const deletes = charEvents.filter((e) => DELETE_CHARS.has(e.char));
-	const devChars = charEvents.filter((e) => e._editor === "dev");
+
+	const CLOSING_TAGS = ["</html>", "</style>", "</script>"];
+	const structuralDeleteTs = new Set();
+	for (const b of bursts) {
+		if (b.isClosingTagBurst) {
+			for (const e of b.evs) {
+				if (DELETE_CHARS.has(e.char)) structuralDeleteTs.add(e.timestamp);
+			}
+		}
+	}
+	for (const kp of singletons) {
+		if (!DELETE_CHARS.has(kp.char)) continue;
+		const fwdChars = events
+			.filter(
+				(e) =>
+					e.timestamp > kp.timestamp &&
+					e.timestamp < kp.timestamp + 15000 &&
+					e.char &&
+					!DELETE_CHARS.has(e.char),
+			)
+			.slice(0, 30)
+			.map((e) => e.char)
+			.join("");
+		if (CLOSING_TAGS.some((t) => fwdChars.includes(t)))
+			structuralDeleteTs.add(kp.timestamp);
+	}
+	for (const e of deletes) {
+		if (structuralDeleteTs.has(e.timestamp)) e._isStructuralDelete = true;
+	}
 
 	const anchorMap = new Map();
 	for (const ev of events) {
@@ -102,6 +157,8 @@ function processData(raw) {
 		sessionEnd,
 		sessionRate,
 		activeRate,
+		eventCount: events.length,
+		allCharsCount,
 		totalChars,
 		bursts,
 		singletons,
@@ -154,6 +211,8 @@ function makeBurst(evs) {
 		return { t: e.char || "", type: "char" };
 	});
 	const hasCodeInserts = evs.some((e) => e._virtualType === "code_insert");
+	const hasAnchors = evs.some((e) => e._virtualType === "anchor");
+	const hasMoves = evs.some((e) => e._virtualType === "move");
 	let devCnt = 0,
 		remCnt = 0;
 	let hasDeleteLine = false;
@@ -164,12 +223,19 @@ function makeBurst(evs) {
 			if (e.char === "\u26d4") hasDeleteLine = true;
 		}
 	}
+	const forwardText = charEvs
+		.filter((e) => !DELETE_CHARS.has(e.char))
+		.map((e) => e.char)
+		.join("");
+	const isClosingTagBurst = ["</html>", "</style>", "</script>"].some((t) =>
+		forwardText.includes(t),
+	);
 	const colorType =
 		chars === 0
 			? "normal"
 			: devCnt >= chars / 2
 				? "dev"
-				: hasDeleteLine || remCnt >= chars / 2
+				: (remCnt > 0 || hasDeleteLine) && !isClosingTagBurst
 					? "remove"
 					: "normal";
 	return {
@@ -181,7 +247,10 @@ function makeBurst(evs) {
 		rate,
 		textParts,
 		colorType,
+		isClosingTagBurst,
 		hasCodeInserts,
+		hasAnchors,
+		hasMoves,
 		evs,
 	};
 }

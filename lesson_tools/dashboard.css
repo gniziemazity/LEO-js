@@ -61,7 +61,8 @@ body {
 }
 
 #btn-open-sim,
-#btn-shake {
+#btn-shake,
+#btn-students {
 	position: absolute;
 	top: 8px;
 	left: 4px;
@@ -75,11 +76,13 @@ body {
 	line-height: 1;
 }
 #btn-open-sim:hover,
-#btn-shake:hover {
+#btn-shake:hover,
+#btn-students:hover {
 	background: #666;
 }
 #btn-open-sim {
 	z-index: 5;
+	color: #fff;
 }
 #btn-shake {
 	z-index: 10;
@@ -87,4 +90,77 @@ body {
 }
 #btn-shake.active {
 	background: #e07820;
+}
+#btn-students {
+	top: auto;
+	bottom: 36px;
+	left: 4px;
+	z-index: 10;
+}
+
+.chart-legend-overlay {
+	position: absolute;
+	left: 76px;
+	top: 32px;
+	display: flex;
+	flex-direction: column;
+	pointer-events: all;
+	z-index: 5;
+}
+.leg-total-row {
+	font:
+		bold 10px Consolas,
+		monospace;
+	color: #333;
+	margin-bottom: 3px;
+	user-select: none;
+}
+.chart-legend-overlay label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+	font:
+		10px Consolas,
+		monospace;
+	color: #333;
+	height: 14px;
+	user-select: none;
+	white-space: nowrap;
+}
+.chart-legend-overlay input[type="checkbox"] {
+	width: 10px;
+	height: 10px;
+	margin: 0;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.leg-swatch {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--clr);
+	flex-shrink: 0;
+	display: inline-block;
+}
+.leg-swatch.leg-dia {
+	width: 9px;
+	height: 9px;
+	border-radius: 1px;
+	transform: rotate(45deg);
+	background: #999;
+	border: 2px solid #888;
+	box-sizing: border-box;
+	position: relative;
+}
+.leg-swatch.leg-dia::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 3px;
+	height: 3px;
+	background: #000;
+	display: block;
 }

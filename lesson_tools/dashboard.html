@@ -32,6 +32,51 @@
 				</div>
 				<div class="chart-section" id="chart2-section">
 					<div class="chart-wrap"><canvas id="chart2"></canvas></div>
+					<div id="chart2-legend" class="chart-legend-overlay">
+						<div id="leg-total" class="leg-total-row"></div>
+						<label
+							><input type="checkbox" id="leg-chars" checked /><span
+								class="leg-swatch"
+								style="--clr: #000"
+							></span
+							><span>Chars <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-inserts" checked /><span
+								class="leg-swatch leg-dia"
+								style="--clr: #999"
+							></span
+							><span>Inserts <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-deletes" checked /><span
+								class="leg-swatch"
+								style="--clr: #cc2222"
+							></span
+							><span>Deletes <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-dev" checked /><span
+								class="leg-swatch"
+								style="--clr: #22aa22"
+							></span
+							><span>Dev <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-anchors" checked /><span
+								class="leg-swatch"
+								style="--clr: #007acc"
+							></span
+							><span>Anchors <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-moves" checked /><span
+								class="leg-swatch"
+								style="--clr: #e07020"
+							></span
+							><span>Moves <span class="leg-count"></span></span
+						></label>
+					</div>
 				</div>
 				<div
 					class="chart-section"
@@ -41,6 +86,13 @@
 					<div class="chart-wrap"><canvas id="chart3"></canvas></div>
 					<button id="btn-shake" onclick="toggleShake()" title="Shake">
 						🎲
+					</button>
+					<button
+						id="btn-students"
+						onclick="window.open('students.html?autoload=1')"
+						title="Open Students"
+					>
+						👥
 					</button>
 				</div>
 			</div>

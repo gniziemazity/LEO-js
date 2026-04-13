@@ -16,7 +16,8 @@ function rateToY(r, L) {
 	return L.M.top + L.plotH1 * (1 - t);
 }
 function countToY(n, maxN, L) {
-	return L.M.top + L.plotH2 * (1 - n / Math.max(maxN, 1));
+	const pad = L.plotH2Pad || 0;
+	return L.M.top + pad + (L.plotH2 - 2 * pad) * (1 - n / Math.max(maxN, 1));
 }
 function pctToY(pct, L) {
 	const pad = L.plotH3Pad || 0;
@@ -38,6 +39,7 @@ function makeLayout(p, W, H1, H2, H3) {
 		plotW: W - M.left - M.right,
 		plotH1: H1 - M.top - M.bottom,
 		plotH2: H2 - M.top - M.bottom,
+		plotH2Pad: 8,
 		plotH3: H3 - M.top - M.bottom,
 		plotH3Pad: 8,
 		timeMin: _zoomMin ?? p.sessionStart - CFG.PADDING,
@@ -79,6 +81,7 @@ function renderCharts(p) {
 
 	drawChart1(prep(c1, W, H1), p, L);
 	drawChart2(prep(c2, W, H2), p, L);
+	setupChart2Legend(p);
 	if (_students) drawChart3(prep(c3, W, H3), p, _students, L);
 
 	setupZoomPan(c1, p, L);
@@ -105,6 +108,38 @@ const BAR_COLORS = {
 	anchor: ["#007acc", "#005a99"],
 	move: ["#e07020", "#a04010"],
 };
+
+const _chart2Visible = {
+	chars: true,
+	inserts: true,
+	deletes: true,
+	anchors: true,
+	dev: true,
+	moves: true,
+};
+
+function setupChart2Legend(p) {
+	const totalEl = document.getElementById("leg-total");
+	if (totalEl) totalEl.textContent = `Total: ${p.eventCount}`;
+	const items = [
+		{ key: "chars", count: p.totalChars },
+		{ key: "inserts", count: p.codeInserts.length },
+		{ key: "deletes", count: p.deletes.length },
+		{ key: "dev", count: p.devChars.length },
+		{ key: "anchors", count: p.anchors.length },
+		{ key: "moves", count: p.moves.length },
+	];
+	for (const { key, count } of items) {
+		const cb = document.getElementById("leg-" + key);
+		if (!cb) continue;
+		const countEl = cb.closest("label")?.querySelector(".leg-count");
+		if (countEl) countEl.textContent = `(${count})`;
+		cb.onchange = () => {
+			_chart2Visible[key] = cb.checked;
+			scheduleRender();
+		};
+	}
+}
 
 function drawChart1(ctx, p, L) {
 	const { M, W, H1: H, plotW, plotH1 } = L;
@@ -162,6 +197,8 @@ function drawChart1(ctx, p, L) {
 				"insert",
 				0.6,
 			);
+		} else if (b.hasAnchors || b.hasMoves) {
+			bar(b.centerTs, 20, b.dur, b.hasAnchors ? "anchor" : "move", 0.7);
 		}
 	}
 	for (const kp of p.singletons) {
@@ -210,27 +247,19 @@ function drawChart1(ctx, p, L) {
 	ctx.restore();
 
 	drawYAxisLog(ctx, L);
-	rotatedLabel(ctx, 12, L.M.top + L.plotH1 / 2, "Keys / Minute (log)", "#666");
+	rotatedLabel(ctx, 22, L.M.top + L.plotH1 / 2, "Keys / Minute", "#666");
 
 	ctx.font = "10px Consolas,monospace";
 	ctx.textAlign = "left";
-	const lx = M.left + plotW - 145,
-		ly = M.top + 4;
+	const lx = M.left + plotW - 110,
+		ly = M.top - 2;
 	[
 		[`Session: ${p.sessionRate.toFixed(1)} kpm`, "#888888"],
 		[`Active:  ${p.activeRate.toFixed(1)} kpm`, "#000000"],
 	].forEach(([lbl, clr], i) => {
 		const yy = ly + i * 16;
-		ctx.strokeStyle = clr;
-		ctx.lineWidth = 2;
-		ctx.setLineDash([5, 3]);
-		ctx.beginPath();
-		ctx.moveTo(lx, yy + 5);
-		ctx.lineTo(lx + 20, yy + 5);
-		ctx.stroke();
-		ctx.setLineDash([]);
 		ctx.fillStyle = clr;
-		ctx.fillText(lbl, lx + 24, yy + 9);
+		ctx.fillText(lbl, lx + 14, yy + 9);
 	});
 
 	drawTimeAxis(ctx, L, M.top + plotH1, H);
@@ -261,7 +290,10 @@ function drawChart2(ctx, p, L) {
 	}
 
 	drawInteractionSpans(ctx, p, L, M.top, plotH2, {
-		"teacher-question": "rgba(239,154,154,0.35)",
+		"teacher-question": (q) =>
+			q.answered_by && q.answered_by.length > 0
+				? "rgba(21,101,192,0.6)"
+				: "rgba(21,101,192,0.18)",
 		"student-question": "rgba(255,165,0,0.28)",
 		"providing-help": "rgba(102,187,106,0.32)",
 	});
@@ -271,8 +303,8 @@ function drawChart2(ctx, p, L) {
 		ctx.beginPath();
 		ctx.moveTo(pts[0][0], pts[0][1]);
 		for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-		ctx.lineTo(pts[pts.length - 1][0], countToY(0, maxN, L));
-		ctx.lineTo(pts[0][0], countToY(0, maxN, L));
+		ctx.lineTo(pts[pts.length - 1][0], M.top + plotH2);
+		ctx.lineTo(pts[0][0], M.top + plotH2);
 		ctx.closePath();
 		ctx.fillStyle = "rgba(204,204,204,0.3)";
 		ctx.fill();
@@ -296,75 +328,95 @@ function drawChart2(ctx, p, L) {
 		ctx.fill();
 		ctx.restore();
 	}
-	function dia(x, y, fill, _edge, alpha = 0.85) {
+	function dia(x, y, fill, alpha = 1) {
 		ctx.save();
 		ctx.globalAlpha = alpha;
+		const outerR = DR - 2;
 		ctx.beginPath();
-		ctx.moveTo(x, y - DR);
-		ctx.lineTo(x + DR, y);
-		ctx.lineTo(x, y + DR);
-		ctx.lineTo(x - DR, y);
+		ctx.moveTo(x, y - outerR);
+		ctx.lineTo(x + outerR, y);
+		ctx.lineTo(x, y + outerR);
+		ctx.lineTo(x - outerR, y);
 		ctx.closePath();
 		ctx.fillStyle = fill;
+		ctx.fill();
+		ctx.strokeStyle = "#888";
+		ctx.lineWidth = 2.5;
+		ctx.stroke();
+		const ir = 3;
+		ctx.beginPath();
+		ctx.moveTo(x, y - ir);
+		ctx.lineTo(x + ir, y);
+		ctx.lineTo(x, y + ir);
+		ctx.lineTo(x - ir, y);
+		ctx.closePath();
+		ctx.fillStyle = "#000";
 		ctx.fill();
 		ctx.restore();
 	}
 
-	for (const grp of p.burstGroups)
-		for (const idx of grp.idxs) {
-			const c = cum[idx];
-			if (!c) continue;
-			dot(tsToX(c.ts, L), countToY(c.count, maxN, L), "#000", "none", 1.0);
+	if (_chart2Visible.chars)
+		for (const grp of p.burstGroups)
+			for (const idx of grp.idxs) {
+				const c = cum[idx];
+				if (!c) continue;
+				dot(
+					tsToX(c.ts, L),
+					countToY(c.count, maxN, L),
+					"#000",
+					"none",
+					1.0,
+				);
+			}
+	if (_chart2Visible.deletes)
+		for (const ev of p.deletes) {
+			const ts = ev.timestamp / 1000;
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				ev._isStructuralDelete ? "#EE9999" : "#CC2222",
+				"none",
+				1.0,
+			);
 		}
-	for (const ev of p.codeInserts) {
-		const ts = ev.timestamp / 1000;
-		dia(
-			tsToX(ts, L),
-			countToY(charsAt(ts, cum), maxN, L),
-			"#999999",
-			"#666666",
-		);
-	}
-	for (const ev of p.deletes) {
-		const ts = ev.timestamp / 1000;
-		dot(
-			tsToX(ts, L),
-			countToY(charsAt(ts, cum), maxN, L),
-			"#CC2222",
-			"#880000",
-			0.8,
-		);
-	}
-	for (const ev of p.devChars) {
-		const ts = ev.timestamp / 1000;
-		dot(
-			tsToX(ts, L),
-			countToY(charsAt(ts, cum), maxN, L),
-			"#22aa22",
-			"#116611",
-			0.8,
-		);
-	}
-	for (const anc of p.anchors) {
-		const ts = anc.ts / 1000;
-		dot(
-			tsToX(ts, L),
-			countToY(charsAt(ts, cum), maxN, L),
-			"#007acc",
-			"#005a99",
-			0.9,
-		);
-	}
-	for (const mv of p.moves) {
-		const ts = mv.ts / 1000;
-		dot(
-			tsToX(ts, L),
-			countToY(charsAt(ts, cum), maxN, L),
-			"#e07020",
-			"#a04010",
-			0.9,
-		);
-	}
+	if (_chart2Visible.dev)
+		for (const ev of p.devChars) {
+			const ts = ev.timestamp / 1000;
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				"#22aa22",
+				"none",
+				1.0,
+			);
+		}
+	if (_chart2Visible.anchors)
+		for (const anc of p.anchors) {
+			const ts = anc.ts / 1000;
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				"#007acc",
+				"none",
+				1.0,
+			);
+		}
+	if (_chart2Visible.moves)
+		for (const mv of p.moves) {
+			const ts = mv.ts / 1000;
+			dot(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				"#e07020",
+				"none",
+				1.0,
+			);
+		}
+	if (_chart2Visible.inserts)
+		for (const ev of p.codeInserts) {
+			const ts = ev.timestamp / 1000;
+			dia(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#999999");
+		}
 
 	ctx.restore();
 
@@ -381,49 +433,7 @@ function drawChart2(ctx, p, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 12, M.top + plotH2 / 2, "Total Key Presses", "#666");
-
-	const items = [
-		{ lbl: `Chars (${p.totalChars})`, clr: "#000", alpha: 1.0 },
-		{
-			lbl: `Inserts (${p.codeInserts.length})`,
-			clr: "#999",
-			alpha: 0.85,
-			shape: "dia",
-		},
-		{ lbl: `Deletes (${p.deletes.length})`, clr: "#CC2222", alpha: 0.8 },
-		{ lbl: `Anchors (${p.anchors.length})`, clr: "#007acc", alpha: 0.9 },
-		{ lbl: `Dev (${p.devChars.length})`, clr: "#22aa22", alpha: 0.8 },
-		{ lbl: `Moves (${p.moves.length})`, clr: "#e07020", alpha: 0.9 },
-	];
-	ctx.font = "10px Consolas,monospace";
-	ctx.textAlign = "left";
-	const lx0 = M.left + 8;
-	const rowY0 = M.top + 10;
-	const rowH = 14;
-	items.forEach((it, i) => {
-		const lx = lx0;
-		const ly = rowY0 + i * rowH;
-		ctx.save();
-		ctx.globalAlpha = it.alpha;
-		ctx.fillStyle = it.clr;
-		if (it.shape === "dia") {
-			ctx.beginPath();
-			ctx.moveTo(lx + 4, ly);
-			ctx.lineTo(lx + 8, ly + 4);
-			ctx.lineTo(lx + 4, ly + 8);
-			ctx.lineTo(lx, ly + 4);
-			ctx.closePath();
-			ctx.fill();
-		} else {
-			ctx.beginPath();
-			ctx.arc(lx + 4, ly + 4, 3.5, 0, Math.PI * 2);
-			ctx.fill();
-		}
-		ctx.restore();
-		ctx.fillStyle = "#333";
-		ctx.fillText(it.lbl, lx + 12, ly + 8);
-	});
+	rotatedLabel(ctx, 22, M.top + plotH2 / 2, "Chars Typed", "#666");
 
 	drawTimeAxis(ctx, L, M.top + plotH2, H);
 }
@@ -552,7 +562,7 @@ function drawChart3(ctx, p, students, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 12, M.top + plotH3 / 2, "Follow Score (%)", "#666");
+	rotatedLabel(ctx, 22, M.top + plotH3 / 2, "Follow Score", "#666");
 
 	drawTimeAxis(ctx, L, M.top + plotH3, H);
 }
@@ -598,8 +608,8 @@ function drawStudentStar(ctx, x, y, ans, ask, hlp) {
 
 function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
 	for (const [type, qs] of Object.entries(p.interactions)) {
-		const clr = colors[type];
-		if (!clr) continue;
+		const clrOrFn = colors[type];
+		if (!clrOrFn) continue;
 		for (const q of qs) {
 			let endTs;
 			if (q.closed_at) {
@@ -610,7 +620,7 @@ function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
 			}
 			const x1 = tsToX(q.timestamp, L),
 				x2 = tsToX(endTs, L);
-			ctx.fillStyle = clr;
+			ctx.fillStyle = typeof clrOrFn === "function" ? clrOrFn(q) : clrOrFn;
 			ctx.fillRect(x1, plotTop, Math.max(x2 - x1, 2), plotH);
 		}
 	}
@@ -638,7 +648,7 @@ function drawYAxisLog(ctx, L) {
 	}
 }
 
-function drawTimeAxis(ctx, L, axisY, H) {
+function drawTimeAxis(ctx, L, axisY, _H) {
 	const { M, plotW, timeMin, timeMax } = L;
 	const totalSecs = timeMax - timeMin;
 	const targets = [5, 10, 15, 20, 30, 60, 120, 180, 300, 600, 900, 1800, 3600];

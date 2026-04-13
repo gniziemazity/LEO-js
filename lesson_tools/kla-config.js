@@ -7,7 +7,7 @@ const CFG = {
 	BAR_MIN_SECS: 8,
 	M: { top: 22, right: 24, bottom: 44, left: 68 },
 	DOT_R: 3.5,
-	DIA_R: 6,
+	DIA_R: 8,
 	STUDENT_SUBDIR: "anon_names",
 };
 

@@ -315,6 +315,37 @@
 				}
 			})();
 
+			async function _tryAutoLoad() {
+				const handle = await _idbGet("lastDir");
+				if (!handle || handle.kind !== "directory") return false;
+				try {
+					const perm = await handle.requestPermission({ mode: "read" });
+					if (perm !== "granted") return false;
+				} catch {
+					return false;
+				}
+				showLoading(true);
+				_allFiles.clear();
+				const files = [];
+				await readDirHandle(handle, "", _allFiles, files);
+				lessonNameEl.textContent = handle.name;
+				document.title = "Students – " + handle.name;
+				loadXlsxFiles(files);
+				return true;
+			}
+
+			(async function () {
+				const qs = new URLSearchParams(location.search);
+				if (qs.get("autoload") !== "1") return;
+				// Wait for XLSX if not yet ready (it loads async)
+				let waited = 0;
+				while (typeof XLSX === "undefined" && waited < 4000) {
+					await new Promise((r) => setTimeout(r, 100));
+					waited += 100;
+				}
+				await _tryAutoLoad();
+			})();
+
 			function showLoading(on) {
 				loadingEl.style.display = on ? "flex" : "none";
 			}

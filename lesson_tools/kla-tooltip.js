@@ -232,9 +232,9 @@ function showTip(cx, cy, hit, pinned, chartId) {
 	const tw = tooltipEl.offsetWidth,
 		th = tooltipEl.offsetHeight;
 	let tx = cx + 16,
-		ty = cy + 42;
+		ty = cy + 16;
 	if (tx + tw > window.innerWidth - 8) tx = cx - tw - 16;
-	if (ty + th > window.innerHeight - 8) ty = cy - th + 42;
+	if (ty + th > window.innerHeight - 8) ty = cy - th - 8;
 	tooltipEl.style.left = tx + "px";
 	tooltipEl.style.top = ty + "px";
 }
