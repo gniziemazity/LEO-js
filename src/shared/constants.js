@@ -54,10 +54,7 @@ const LOG_CONFIG = {
 
 const TIMER_CONFIG = {
 	DEFAULT_MINUTES: 90,
-	ADJUSTMENT_MINUTES: 10,
 };
-
-const AUTO_CLOSE_MS = 3000;
 
 function getBlockSubtype(text) {
 	const t = text.trim();
@@ -111,18 +108,12 @@ function buildSettingsCSS(settings) {
 	`;
 }
 
-function formatAnsweredText(studentName) {
-	return studentName ? `Answered by ${studentName}` : "Answered";
-}
-
 module.exports = {
 	NUTJS_KEY_MAPPING,
 	TIMER_CONFIG,
 	WINDOW_CONFIG,
 	LOG_CONFIG,
-	AUTO_CLOSE_MS,
 	getBlockSubtype,
 	buildWindowTitle,
 	buildSettingsCSS,
-	formatAnsweredText,
 };

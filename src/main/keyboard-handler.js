@@ -134,7 +134,7 @@ class KeyboardHandler {
 
 	processQueue() {
 		if (state.hasQueuedKeys()) {
-			const nextKey = state.dequeueKey();
+			state.dequeueKey();
 			state.mainWindow.webContents.send("advance-cursor");
 		} else {
 			state.unlock();

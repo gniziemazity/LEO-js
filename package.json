@@ -16,7 +16,9 @@
 		"main": "py lesson_tools/main.py --extra-star",
 		"main-no-star": "py lesson_tools/main.py",
 		"charts": "py lesson_tools/charts.py",
-		"test": "cd lesson_tools && python -m unittest discover -v"
+		"test": "npm run test:py && npm run test:js",
+		"test:py": "cd lesson_tools && python -m unittest discover -v",
+		"test:js": "node --test tests/*.test.js"
 	},
 	"build": {
 		"appId": "com.leo-js.app",

@@ -72,25 +72,9 @@ class UndoManager {
 		return true;
 	}
 
-	canUndo() {
-		return this.undoStack.length > 0;
-	}
-
-	canRedo() {
-		return this.redoStack.length > 0;
-	}
-
 	clear() {
 		this.undoStack = [];
 		this.redoStack = [];
-	}
-
-	getUndoStackSize() {
-		return this.undoStack.length;
-	}
-
-	getRedoStackSize() {
-		return this.redoStack.length;
 	}
 }
 

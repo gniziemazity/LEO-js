@@ -37,10 +37,6 @@ class LessonRenderer {
 		this.attachEditHandlers(element);
 	}
 
-	setUndoManager(undoManager) {
-		this.undoManager = undoManager;
-	}
-
 	saveEditState(blockIndex, content) {
 		if (!this.undoManager) return;
 

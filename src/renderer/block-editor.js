@@ -6,10 +6,6 @@ class BlockEditor {
 		this.undoManager = undoManager;
 	}
 
-	setUndoManager(undoManager) {
-		this.undoManager = undoManager;
-	}
-
 	addBlock(type, initialText) {
 		if (this.undoManager) {
 			this.undoManager.saveState(`add-${type}-block`);

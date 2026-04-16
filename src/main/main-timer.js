@@ -47,10 +47,6 @@ class MainProcessTimer extends EventEmitter {
 		if (!this.endTime) return 0;
 		return Math.max(0, Math.floor((this.endTime - Date.now()) / 1000));
 	}
-
-	isRunning() {
-		return this.interval !== null;
-	}
 }
 
 module.exports = MainProcessTimer;

@@ -104,10 +104,6 @@ class LessonManager {
 		return this.data;
 	}
 
-	getBlockCount() {
-		return this.data.length;
-	}
-
 	getCurrentFilePath() {
 		return this.currentFilePath;
 	}
@@ -125,12 +121,6 @@ class LessonManager {
 
 	onChange(callback) {
 		this.onChangeCallback = callback;
-	}
-
-	reset() {
-		this.data = [];
-		this.currentFilePath = "";
-		this.hasUnsavedChanges = false;
 	}
 }
 
