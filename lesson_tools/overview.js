@@ -628,12 +628,6 @@ async function openDiff(dirHandle, student, followPct) {
 		} catch {}
 
 		const studentFiles = {};
-		const DM_FILES = {
-			"": "diff_marks.json",
-			"token-lcs": "diff_marks_lcs.json",
-			"line-myers": "diff_marks_myers.json",
-			"intra-line": "diff_marks_intraline.json",
-		};
 		const allMarks = {};
 		try {
 			const anonDir = await dirHandle.getDirectoryHandle("anon_names");
@@ -643,7 +637,7 @@ async function openDiff(dirHandle, student, followPct) {
 				if (/\.(html|css|js)$/i.test(name))
 					studentFiles[name] = await (await entry.getFile()).text();
 			}
-			for (const [mode, fname] of Object.entries(DM_FILES)) {
+			for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
 				try {
 					const fh = await studentDir.getFileHandle(fname);
 					allMarks[mode] = JSON.parse(await (await fh.getFile()).text());
@@ -652,7 +646,6 @@ async function openDiff(dirHandle, student, followPct) {
 		} catch (e) {
 			console.warn("Student dir error:", e.message);
 		}
-		const defaultMarks = allMarks[""] ?? Object.values(allMarks)[0] ?? null;
 
 		if (
 			!Object.keys(teacherFiles).length &&
@@ -665,22 +658,14 @@ async function openDiff(dirHandle, student, followPct) {
 
 		const label =
 			followPct != null ? followPct.toFixed(0) + "%" : "assignment";
-		const dataKey =
-			"diffData_" + Date.now() + "_" + ((Math.random() * 1e6) | 0);
-		localStorage.setItem(
-			dataKey,
-			JSON.stringify({
-				teacherFiles,
-				studentFiles,
-				imageUris: {},
-				teacherMarks: defaultMarks?.teacher_files ?? null,
-				studentMarks: defaultMarks?.student_files ?? null,
-				allMarks,
-				title: `${escHtml(student.name)} (${escHtml(label)})`,
-			}),
-		);
 		showLoading(false);
-		window.open(`differentiator.html?key=${dataKey}`, "_blank");
+		openDifferentiator(
+			teacherFiles,
+			studentFiles,
+			allMarks,
+			{},
+			`${escHtml(student.name)} (${escHtml(label)})`,
+		);
 	} catch (e) {
 		showLoading(false);
 		alert("Error: " + e.message);
