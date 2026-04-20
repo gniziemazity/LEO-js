@@ -3,6 +3,7 @@
 class ScatterChart {
 	constructor(container, options = {}) {
 		this._onClick = options.onClick ?? null;
+		this._onRightClick = options.onRightClick ?? null;
 		this._xLabel = options.xLabel ?? "";
 		this._yLabel = options.yLabel ?? "";
 		this._xMin = options.xMin ?? null;
@@ -21,6 +22,7 @@ class ScatterChart {
 		this._zoom = 1;
 		this._drag = { active: false, startPx: null, startPan: null };
 		this._hovered = null;
+		this._dragClickPoint = null;
 		this._dpr = 1;
 
 		this._ro = new ResizeObserver(() => this._resize());
@@ -152,6 +154,11 @@ class ScatterChart {
 
 		this._drawAxesLabels(ctx, b);
 
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(b.left, b.top, b.W - b.left - b.right, b.H - b.top - b.bottom);
+		ctx.clip();
+
 		for (const ds of this._datasets) {
 			if (ds.type === "line") {
 				this._drawLine(ctx, ds, b);
@@ -172,8 +179,14 @@ class ScatterChart {
 			ctx.strokeStyle = ds.color ?? "#333";
 			ctx.lineWidth = 2;
 			ctx.stroke();
-			if (this._hoveredTooltip)
-				this._drawTooltip(ctx, b, px, py, this._hoveredTooltip);
+		}
+
+		ctx.restore();
+
+		if (this._hovered && this._hoveredTooltip) {
+			const { point } = this._hovered;
+			const [px, py] = this._toPixel(point.x, point.y, b);
+			this._drawTooltip(ctx, b, px, py, this._hoveredTooltip);
 		}
 	}
 
@@ -239,8 +252,12 @@ class ScatterChart {
 	_drawTooltip(ctx, b, px, py, lines) {
 		const pad = 6,
 			lh = 14;
-		ctx.font = "11px sans-serif";
-		const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+		const maxW = Math.max(
+			...lines.map((l, i) => {
+				ctx.font = i === 0 ? "bold 11px sans-serif" : "11px sans-serif";
+				return ctx.measureText(l).width;
+			}),
+		);
 		const tw = maxW + pad * 2,
 			th = lines.length * lh + pad * 2;
 		let tx = px + 10,
@@ -255,10 +272,13 @@ class ScatterChart {
 		ctx.roundRect(tx, ty, tw, th, 3);
 		ctx.fill();
 		ctx.stroke();
-		ctx.fillStyle = "#333";
 		ctx.textAlign = "left";
 		ctx.textBaseline = "top";
-		lines.forEach((l, i) => ctx.fillText(l, tx + pad, ty + pad + i * lh));
+		lines.forEach((l, i) => {
+			ctx.font = i === 0 ? "bold 11px sans-serif" : "11px sans-serif";
+			ctx.fillStyle = "#333";
+			ctx.fillText(l, tx + pad, ty + pad + i * lh);
+		});
 	}
 
 	_addEvents() {
@@ -280,14 +300,17 @@ class ScatterChart {
 				startPx: [e.clientX, e.clientY],
 				startPan: { ...this._pan },
 			};
+			this._dragClickPoint = this._hovered ? this._hovered.point : null;
 			c.style.cursor = "grabbing";
 		});
 
 		this._docMouseMove = (e) => {
 			if (!this._drag.active) return;
-			const b = this._dataBounds();
 			const dx = e.clientX - this._drag.startPx[0];
 			const dy = e.clientY - this._drag.startPx[1];
+			if (Math.hypot(dx, dy) < 4) return;
+			this._dragClickPoint = null;
+			const b = this._dataBounds();
 			const xRange = b.xMax - b.xMin;
 			const yRange = b.yMax - b.yMin;
 			const pxRange = b.W - b.left - b.right;
@@ -353,13 +376,32 @@ class ScatterChart {
 
 		c.addEventListener("dblclick", () => this.resetZoom());
 
-		c.addEventListener("click", (e) => {
-			if (this._drag.active) return;
-			if (!this._hovered) {
-				if (this._onClick) this._onClick(null);
-				return;
+		c.addEventListener("click", () => {
+			if (this._onClick) this._onClick(this._dragClickPoint);
+			this._dragClickPoint = null;
+		});
+
+		c.addEventListener("contextmenu", (e) => {
+			e.preventDefault();
+			if (!this._onRightClick) return;
+			const rect = c.getBoundingClientRect();
+			const mx = e.clientX - rect.left,
+				my = e.clientY - rect.top;
+			const b = this._dataBounds();
+			let nearest = null,
+				nearestDist = Infinity;
+			for (const ds of this._datasets) {
+				if (ds.type === "line") continue;
+				for (const p of ds.data) {
+					const [px, py] = this._toPixel(p.x, p.y, b);
+					const d = Math.hypot(mx - px, my - py);
+					if (d < nearestDist) {
+						nearestDist = d;
+						nearest = p;
+					}
+				}
 			}
-			if (this._onClick) this._onClick(this._hovered.point);
+			this._onRightClick(nearestDist < 10 ? nearest : null);
 		});
 	}
 }

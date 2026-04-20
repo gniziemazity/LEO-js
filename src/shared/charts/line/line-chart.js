@@ -9,6 +9,7 @@ class LineChart {
 		this._options = options;
 		this._datasets = [];
 		this._hitAreas = [];
+		this._hovered = null;
 		this._margin = { top: 18, right: 28, bottom: 20, left: 22 };
 		this._dpr = 1;
 		this._ro = new ResizeObserver(() => this._resize());
@@ -177,6 +178,23 @@ class LineChart {
 		ctx.lineTo(left, H - bottom);
 		ctx.lineTo(W - right, H - bottom);
 		ctx.stroke();
+
+		if (this._hovered) {
+			const ds = this._datasets[this._hovered.di];
+			if (ds) {
+				const { px, py } = this._hovered;
+				const pr = ds.pointRadius ?? 4;
+				ctx.beginPath();
+				ctx.arc(px, py, pr + 3, 0, Math.PI * 2);
+				ctx.fillStyle = "rgba(255,255,255,0.7)";
+				ctx.fill();
+				ctx.beginPath();
+				ctx.arc(px, py, pr + 2, 0, Math.PI * 2);
+				ctx.strokeStyle = ds.color ?? "#333";
+				ctx.lineWidth = 2;
+				ctx.stroke();
+			}
+		}
 	}
 
 	_addEvents() {
@@ -185,10 +203,26 @@ class LineChart {
 			const r = c.getBoundingClientRect();
 			const mx = e.clientX - r.left,
 				my = e.clientY - r.top;
-			const hit = this._hitAreas.find(
-				(h) => Math.hypot(mx - h.px, my - h.py) <= h.r,
-			);
+			let hit = null,
+				nearDist = Infinity;
+			for (const h of this._hitAreas) {
+				const d = Math.hypot(mx - h.px, my - h.py);
+				if (d <= h.r && d < nearDist) {
+					nearDist = d;
+					hit = h;
+				}
+			}
+			if (hit !== this._hovered) {
+				this._hovered = hit;
+				this._draw();
+			}
 			c.style.cursor = hit ? "pointer" : "default";
+		});
+		c.addEventListener("mouseleave", () => {
+			if (this._hovered) {
+				this._hovered = null;
+				this._draw();
+			}
 		});
 		c.addEventListener("click", (e) => {
 			const r = c.getBoundingClientRect();

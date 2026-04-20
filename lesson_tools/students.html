@@ -912,14 +912,23 @@
 							/\.(html|css|js)$/i.test(p),
 					);
 
-					let diffMarks = null;
-					const dmKey = anonBase + studentDir + "diff_marks.json";
-					const dmEntry = _allFiles.get(dmKey);
-					if (dmEntry) {
-						try {
-							diffMarks = JSON.parse(await readText(dmEntry));
-						} catch {}
+					const DM_FILES = {
+						"": "diff_marks.json",
+						"token-lcs": "diff_marks_lcs.json",
+						"line-myers": "diff_marks_myers.json",
+						"intra-line": "diff_marks_intraline.json",
+					};
+					const allMarks = {};
+					for (const [mode, fname] of Object.entries(DM_FILES)) {
+						const entry = _allFiles.get(anonBase + studentDir + fname);
+						if (entry) {
+							try {
+								allMarks[mode] = JSON.parse(await readText(entry));
+							} catch {}
+						}
 					}
+					const diffMarks =
+						allMarks[""] ?? Object.values(allMarks)[0] ?? null;
 
 					const teacherFiles = {};
 					for (const [, file] of teacherEntries)
@@ -959,6 +968,7 @@
 							teacherFiles,
 							studentFiles,
 							imageUris,
+							allMarks,
 							teacherMarks: diffMarks
 								? diffMarks.teacher_files || {}
 								: null,

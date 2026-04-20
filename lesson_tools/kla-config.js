@@ -43,11 +43,6 @@ const _jitterMap = new Map();
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
-function _cssVar(name) {
-	return getComputedStyle(document.documentElement)
-		.getPropertyValue(name)
-		.trim();
-}
 function _hexToRgba(hex, a) {
 	const r = parseInt(hex.slice(1, 3), 16);
 	const g = parseInt(hex.slice(3, 5), 16);
@@ -63,6 +58,8 @@ const THEME = {
 	gray: _cssVar("--clr-gray"),
 	paleRed: _cssVar("--clr-pale-red"),
 	muted: _cssVar("--clr-muted"),
+	label: _cssVar("--clr-label"),
+	bg: _cssVar("--clr-bg"),
 };
 
 const INTERACTION_COLORS = {

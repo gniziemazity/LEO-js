@@ -246,7 +246,7 @@ function drawChart1(ctx, p, L) {
 	ctx.restore();
 
 	drawYAxisLog(ctx, L);
-	rotatedLabel(ctx, 22, L.M.top + L.plotH1 / 2, "Keys / Minute", "#666");
+	rotatedLabel(ctx, 22, L.M.top + L.plotH1 / 2, "Keys / Minute", THEME.label);
 
 	ctx.font = "10px Consolas,monospace";
 	ctx.textAlign = "left";
@@ -423,7 +423,7 @@ function drawChart2(ctx, p, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 22, M.top + plotH2 / 2, "Chars Typed", "#666");
+	rotatedLabel(ctx, 22, M.top + plotH2 / 2, "Chars Typed", THEME.label);
 
 	drawTimeAxis(ctx, L, M.top + plotH2, H);
 }
@@ -552,7 +552,7 @@ function drawChart3(ctx, p, students, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 22, M.top + plotH3 / 2, "Follow Score", "#666");
+	rotatedLabel(ctx, 22, M.top + plotH3 / 2, "Follow Score", THEME.label);
 
 	drawTimeAxis(ctx, L, M.top + plotH3, H);
 }

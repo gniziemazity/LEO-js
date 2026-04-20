@@ -1,5 +1,11 @@
 "use strict";
 
+function _cssVar(name) {
+	return getComputedStyle(document.documentElement)
+		.getPropertyValue(name)
+		.trim();
+}
+
 function lowerBound(arr, val, key) {
 	let lo = 0,
 		hi = arr.length;

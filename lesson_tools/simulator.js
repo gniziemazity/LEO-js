@@ -1,5 +1,11 @@
 "use strict";
 
+function _cssVar(name) {
+	return getComputedStyle(document.documentElement)
+		.getPropertyValue(name)
+		.trim();
+}
+
 const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 
@@ -371,20 +377,20 @@ class VSCodeSettings {
 }
 
 const HL_COLORS = {
-	hl_comment: "#008000",
-	hl_doctype: "#0000ff",
-	hl_tag: "#800000",
-	hl_attr: "#ff0000",
-	hl_value: "#0000ff",
-	hl_keyword: "#0000ff",
-	hl_builtin: "#267f99",
-	hl_number: "#098658",
-	hl_string: "#a31515",
-	hl_func: "#795e26",
-	hl_css_sel: "#800000",
-	hl_css_prop: "#ff0000",
-	hl_css_num: "#098658",
-	hl_css_at: "#af00db",
+	hl_comment: _cssVar("--hl-comment"),
+	hl_doctype: _cssVar("--hl-doctype"),
+	hl_tag: _cssVar("--hl-tag"),
+	hl_attr: _cssVar("--hl-attr"),
+	hl_value: _cssVar("--hl-value"),
+	hl_keyword: _cssVar("--hl-keyword"),
+	hl_builtin: _cssVar("--hl-builtin"),
+	hl_number: _cssVar("--hl-number"),
+	hl_string: _cssVar("--hl-string"),
+	hl_func: _cssVar("--hl-func"),
+	hl_css_sel: _cssVar("--hl-css-sel"),
+	hl_css_prop: _cssVar("--hl-css-prop"),
+	hl_css_num: _cssVar("--hl-css-num"),
+	hl_css_at: _cssVar("--hl-css-at"),
 };
 
 const HL_PRIORITY = [

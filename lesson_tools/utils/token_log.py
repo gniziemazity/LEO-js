@@ -806,25 +806,11 @@ def _line_start_offsets(text: str) -> List[int]:
 def _tokenize_file_ordered(text: str, ext: str) -> List[Tuple[int, str]]:
     has_css = ext in ('.css', '.html', '.htm')
     css_only: List[Tuple[int, int]] = []
-    script_regions: List[Tuple[int, int]] = []
     if ext in ('.html', '.htm'):
         for m in _sm._STYLE_TAG_CONTENT_RE.finditer(text):
             css_only.append((m.start(1), m.end(1)))
-        for m in _sm._SCRIPT_TAG_RE.finditer(text):
-            script_regions.append((m.start(1), m.end(1)))
-    elif ext == '.js':
-        script_regions = [(0, len(text))]
     matches = _sm._extract_matches_with_priority(text, has_css, css_only)
-
-    def _in_script(pos: int) -> bool:
-        return any(s <= pos < e for s, e in script_regions)
-
-    result = []
-    for pos, tok, cs in matches:
-        if tok.startswith('<') and _in_script(pos):
-            continue
-        result.append((pos, tok))
-    return result
+    return [(pos, tok) for pos, tok, cs in matches]
 
 
 def _match_files_by_name_then_ext(

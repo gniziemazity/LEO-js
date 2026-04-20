@@ -92,6 +92,18 @@ class BoxPlotChart {
 			}
 		}
 
+		if (n > 1) {
+			ctx.strokeStyle = "#e8e8e8";
+			ctx.lineWidth = 1;
+			for (let gi = 1; gi < n; gi++) {
+				const x = left + gi * (plotW / n);
+				ctx.beginPath();
+				ctx.moveTo(x, top);
+				ctx.lineTo(x, H - bottom);
+				ctx.stroke();
+			}
+		}
+
 		ctx.fillStyle = "#888";
 		ctx.font = "10px sans-serif";
 		ctx.textAlign = "center";
@@ -102,7 +114,9 @@ class BoxPlotChart {
 		}
 
 		const groupW = plotW / n;
-		const boxW = (groupW * 0.6) / nSets;
+		const totalBoxSpan = groupW * 0.65;
+		const gap = nSets > 1 ? (totalBoxSpan * 0.18) / (nSets - 1) : 0;
+		const boxW = (totalBoxSpan - (nSets - 1) * gap) / nSets;
 
 		for (let si = 0; si < nSets; si++) {
 			const ds = this._datasets[si];
@@ -115,7 +129,7 @@ class BoxPlotChart {
 				if (!stats) continue;
 
 				const gx = left + gi * groupW + groupW / 2;
-				const bx = gx + (si - (nSets - 1) / 2) * boxW - boxW / 2;
+				const bx = gx - totalBoxSpan / 2 + si * (boxW + gap);
 				const bxMid = bx + boxW / 2;
 				const yQ1 = this._axisY(stats.q1, axKey);
 				const yMed = this._axisY(stats.median, axKey);

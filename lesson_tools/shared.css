@@ -1,5 +1,7 @@
 :root {
 	--clr-accent: #007acc;
+	--clr-accent-dark: #005a9e;
+	--clr-accent-light: #e8f4ff;
 	--clr-orange: #e07020;
 	--clr-green: #66bb6a;
 	--clr-red: #cc2222;
@@ -7,8 +9,28 @@
 	--clr-pale-red: #ee9999;
 	--clr-text: #1e1e1e;
 	--clr-surface: #f3f3f3;
+	--clr-bg: #ffffff;
 	--clr-border: #ddd;
 	--clr-muted: #888;
+	--clr-label: #555;
+	--clr-page: #f0f0f0;
+	--clr-tab-hover: #e0e0e0;
+	--clr-diff-btn-border: #aaa;
+
+	--hl-comment: #008000;
+	--hl-tag: #800000;
+	--hl-attr: #ff0000;
+	--hl-value: #007acc;
+	--hl-string: #a31515;
+	--hl-keyword: #007acc;
+	--hl-builtin: #267f99;
+	--hl-number: #098658;
+	--hl-func: #795e26;
+	--hl-css-sel: #800000;
+	--hl-css-prop: #ff0000;
+	--hl-css-num: #098658;
+	--hl-css-at: #af00db;
+	--hl-doctype: #007acc;
 }
 
 *,
@@ -38,14 +60,14 @@ body {
 .sep {
 	width: 1px;
 	height: 18px;
-	background: #bbb;
+	background: var(--clr-border);
 	margin: 0 4px;
 }
 
 .file-tab {
 	padding: 3px 14px;
 	border: none;
-	border-right: 1px solid #ccc;
+	border-right: 1px solid var(--clr-border);
 	background: var(--clr-surface);
 	color: var(--clr-muted);
 	font-size: 11px;
@@ -54,11 +76,11 @@ body {
 	white-space: nowrap;
 }
 .file-tab:hover {
-	background: #e0e0e0;
-	color: #333;
+	background: var(--clr-tab-hover);
+	color: var(--clr-gray);
 }
 .file-tab-active {
-	background: #ffffff;
+	background: var(--clr-bg);
 	color: var(--clr-text);
 	font-weight: bold;
 	border-bottom: 2px solid var(--clr-accent);
@@ -67,17 +89,17 @@ body {
 .landing-btn {
 	padding: 14px 32px;
 	font-size: 14px;
-	border: 1px solid #bbb;
+	border: 1px solid var(--clr-border);
 	border-radius: 6px;
-	background: #fff;
+	background: var(--clr-bg);
 	cursor: pointer;
-	color: #1e1e1e;
+	color: var(--clr-text);
 	transition:
 		background 0.15s,
 		border-color 0.15s;
 }
 .landing-btn:hover {
-	background: #e8f4ff;
+	background: var(--clr-accent-light);
 	border-color: var(--clr-accent);
 	color: var(--clr-accent);
 }
@@ -86,16 +108,16 @@ body {
 	padding: 10px 32px;
 	font-size: 14px;
 	background: var(--clr-accent);
-	color: #fff;
+	color: var(--clr-bg);
 	border: none;
 	border-radius: 4px;
 	cursor: pointer;
 }
 .landing-btn-primary:hover {
-	background: #005a9e;
+	background: var(--clr-accent-dark);
 }
 .landing-btn-primary:disabled {
-	background: #999;
+	background: var(--clr-muted);
 	cursor: default;
 }
 
@@ -108,14 +130,14 @@ body {
 	justify-content: center;
 	padding-bottom: 40px;
 	font-size: 18px;
-	color: #555;
+	color: var(--clr-label);
 	z-index: 500;
 }
 
 #tooltip {
 	position: fixed;
 	display: none;
-	background: #ffffff;
+	background: var(--clr-bg);
 	color: var(--clr-text);
 	font-family: Consolas, monospace;
 	font-size: 11px;
@@ -146,14 +168,14 @@ body {
 		10px/1 Consolas,
 		monospace;
 	padding: 2px 7px;
-	border: 1px solid #aaa;
+	border: 1px solid var(--clr-diff-btn-border);
 	border-radius: 3px;
-	background: #f5f5f5;
+	background: var(--clr-surface);
 	cursor: pointer;
-	color: #333;
+	color: var(--clr-gray);
 }
 .diff-btn:hover {
 	background: var(--clr-accent);
-	color: #fff;
+	color: var(--clr-bg);
 	border-color: var(--clr-accent);
 }

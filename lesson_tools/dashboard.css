@@ -1,5 +1,11 @@
+:root {
+	--clr-legend-label: #333;
+	--clr-btn-hover-dark: #666;
+	--bg-legend: #fff8;
+}
+
 body {
-	background: #f0f0f0;
+	background: var(--clr-page);
 	height: 100vh;
 	display: flex;
 	flex-direction: column;
@@ -43,7 +49,7 @@ body {
 .chart-section {
 	flex: 1;
 	min-height: 0;
-	background: #fff;
+	background: var(--clr-bg);
 	border: 1px solid var(--clr-border);
 	border-radius: 3px;
 	overflow: hidden;
@@ -78,18 +84,18 @@ body {
 #btn-open-sim:hover,
 #btn-shake:hover,
 #btn-students:hover {
-	background: #666;
+	background: var(--clr-btn-hover-dark);
 }
 #btn-open-sim {
 	z-index: 5;
-	color: #fff;
+	color: var(--clr-bg);
 }
 #btn-shake {
 	z-index: 10;
 	transition: background 0.15s;
 }
 #btn-shake.active {
-	background: #e07020;
+	background: var(--clr-orange);
 }
 #btn-students {
 	top: auto;
@@ -107,7 +113,7 @@ body {
 	position: absolute;
 	left: 68px;
 	top: 21px;
-	background-color: #fff8;
+	background-color: var(--bg-legend);
 	padding: 5px;
 	display: flex;
 	flex-direction: column;
@@ -118,7 +124,7 @@ body {
 	font:
 		bold 10px Consolas,
 		monospace;
-	color: #333;
+	color: var(--clr-legend-label);
 	margin-bottom: 3px;
 	user-select: none;
 }
@@ -130,7 +136,7 @@ body {
 	font:
 		10px Consolas,
 		monospace;
-	color: #333;
+	color: var(--clr-legend-label);
 	height: 14px;
 	user-select: none;
 	white-space: nowrap;
@@ -155,8 +161,8 @@ body {
 	height: 9px;
 	border-radius: 1px;
 	transform: rotate(45deg);
-	background: #999;
-	border: 2px solid #888;
+	background: var(--clr-muted);
+	border: 2px solid var(--clr-label);
 	box-sizing: border-box;
 	position: relative;
 }
@@ -168,6 +174,6 @@ body {
 	transform: translate(-50%, -50%);
 	width: 3px;
 	height: 3px;
-	background: #000;
+	background: var(--clr-gray);
 	display: block;
 }

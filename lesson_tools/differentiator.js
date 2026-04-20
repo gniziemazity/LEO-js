@@ -19,6 +19,8 @@ let _studentFiles = null;
 let _teacherMarks = null;
 let _studentMarks = null;
 let _allMarks = {};
+let _defaultTeacherMarks = null;
+let _defaultStudentMarks = null;
 let _imageUris = {}; // basename → data: URI for preview image inlining
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -34,9 +36,18 @@ window.addEventListener("DOMContentLoaded", () => {
 		modeSelect.addEventListener("change", () => {
 			_diffMode = modeSelect.value || null;
 			_applyDiffModeLabel();
-			const marks = _allMarks[_diffMode ?? ""] ?? null;
-			_teacherMarks = marks ? marks.teacher_files || null : null;
-			_studentMarks = marks ? marks.student_files || null : null;
+			const modeKey = _diffMode ?? "";
+			const entry = _allMarks[modeKey];
+			if (entry !== undefined) {
+				_teacherMarks = entry ? entry.teacher_files || null : null;
+				_studentMarks = entry ? entry.student_files || null : null;
+			} else if (!_diffMode) {
+				_teacherMarks = _defaultTeacherMarks;
+				_studentMarks = _defaultStudentMarks;
+			} else {
+				_teacherMarks = null;
+				_studentMarks = null;
+			}
 			if (_teacherFiles)
 				renderPanel("teacher", _teacherFiles, _teacherMarks);
 			if (_studentFiles)
@@ -61,8 +72,10 @@ window.addEventListener("DOMContentLoaded", () => {
 				_teacherMarks = marks ? marks.teacher_files || null : null;
 				_studentMarks = marks ? marks.student_files || null : null;
 			} else {
-				_teacherMarks = data.teacherMarks || null;
-				_studentMarks = data.studentMarks || null;
+				_defaultTeacherMarks = data.teacherMarks || null;
+				_defaultStudentMarks = data.studentMarks || null;
+				_teacherMarks = _defaultTeacherMarks;
+				_studentMarks = _defaultStudentMarks;
 			}
 
 			if (data.title) document.title = data.title;

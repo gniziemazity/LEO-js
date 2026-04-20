@@ -1,5 +1,19 @@
 "use strict";
 
+function _hexToRgba(hex, a) {
+	const r = parseInt(hex.slice(1, 3), 16);
+	const g = parseInt(hex.slice(3, 5), 16);
+	const b = parseInt(hex.slice(5, 7), 16);
+	return `rgba(${r},${g},${b},${a})`;
+}
+
+const OV_CLR = {
+	accent: _cssVar("--clr-accent") || "#007acc",
+	red: _cssVar("--clr-red") || "#cc2222",
+	label: _cssVar("--clr-label") || "#555",
+	muted: _cssVar("--clr-muted") || "#888",
+};
+
 function _idbOpen() {
 	return new Promise((res, rej) => {
 		const req = indexedDB.open("grades-dash", 1);
@@ -50,7 +64,7 @@ const COL = {
 const ASSIGNMENTS = [
 	{
 		n: 1,
-		follow: 20,
+		follow: 17,
 		lesson_obs: 22,
 		grade: 23,
 		status: 24,
@@ -59,7 +73,7 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 2,
-		follow: 29,
+		follow: 26,
 		lesson_obs: 31,
 		grade: 32,
 		status: 33,
@@ -68,7 +82,7 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 3,
-		follow: 38,
+		follow: 35,
 		lesson_obs: 40,
 		grade: 41,
 		status: 42,
@@ -77,7 +91,7 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 4,
-		follow: 47,
+		follow: 44,
 		lesson_obs: 49,
 		grade: 50,
 		status: 51,
@@ -86,7 +100,7 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 5,
-		follow: 56,
+		follow: 53,
 		lesson_obs: 58,
 		grade: 59,
 		status: 60,
@@ -424,7 +438,7 @@ function renderTable() {
 				tr.appendChild(cell(obsText(entry.lesson_obs)));
 
 				const gc = document.createElement("td");
-				gc.className = "follow clickable";
+				gc.className = "follow clickable asn-col";
 				gc.title = `Open ${entry.name} assignment`;
 				gc.addEventListener("click", () => openAssignDiff(s, entry));
 				if (entry.grade != null) {
@@ -435,12 +449,13 @@ function renderTable() {
 				tr.appendChild(gc);
 				const stc1 = document.createElement("td");
 				stc1.textContent = entry.status || "";
-				if (entry.status) stc1.className = statusCellCls(entry.status);
+				const sc1 = statusCellCls(entry.status);
+				stc1.className = sc1 || "asn-col";
 				tr.appendChild(stc1);
-				tr.appendChild(cell(obsText(entry.obs)));
+				tr.appendChild(cell(obsText(entry.obs), "asn-col"));
 			} else {
 				const gc = document.createElement("td");
-				gc.className = "follow clickable asn-sep";
+				gc.className = "follow clickable asn-sep asn-col";
 				gc.title = `Open ${entry.name} assignment`;
 				gc.addEventListener("click", () => openAssignDiff(s, entry));
 				if (entry.grade != null) {
@@ -451,9 +466,10 @@ function renderTable() {
 				tr.appendChild(gc);
 				const stc2 = document.createElement("td");
 				stc2.textContent = entry.status || "";
-				if (entry.status) stc2.className = statusCellCls(entry.status);
+				const sc2 = statusCellCls(entry.status);
+				stc2.className = sc2 || "asn-col";
 				tr.appendChild(stc2);
-				tr.appendChild(cell(obsText(entry.obs)));
+				tr.appendChild(cell(obsText(entry.obs), "asn-col"));
 			}
 		}
 
@@ -465,7 +481,7 @@ function renderTable() {
 		fg.className = "num";
 		fg.textContent = fmtN(s.final_grade, 1) || "—";
 		fg.style.color = s.passed_course
-			? "#16a34a"
+			? ""
 			: s.final_grade != null
 				? "#dc2626"
 				: "#bbb";
@@ -702,7 +718,7 @@ function renderStats() {
 		return `<span class="${cls}">${r > 0 ? "+" : ""}${r.toFixed(3)}</span>`;
 	};
 	const fmtPct = (v) => (v != null ? (v * 100).toFixed(1) + "%" : "—");
-	const ACCENT = "#555";
+	const ACCENT = OV_CLR.label;
 
 	if (py.assignments) {
 		const names6 = py.assignments.map((a) => a.name);
@@ -1046,10 +1062,10 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		const h = card.querySelector("h3");
 		h.insertAdjacentHTML(
 			"beforeend",
-			'<span style="margin-left:6px;font-size:11px;color:#007acc">●</span>' +
-				'<span style="font-size:9px;color:#888;font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>' +
-				'<span style="font-size:11px;color:#111111">●</span>' +
-				'<span style="font-size:9px;color:#888;font-weight:400;text-transform:none;letter-spacing:0"> AI</span>',
+			`<span style="margin-left:6px;font-size:11px;color:#111111">●</span>` +
+				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>` +
+				`<span style="font-size:11px;color:${OV_CLR.red}">●</span>` +
+				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> AI</span>`,
 		);
 	}
 	const box = el("div", "chart-box");
@@ -1068,15 +1084,17 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		yMax: 5.1,
 		onClick: (pt) => {
 			if (!pt?.student) return;
-			const entry = pt.student.lessons[pt.assignment.n - 1];
-			openLessonDiff(pt.student, entry);
-			setTimeout(() => openAssignDiff(pt.student, entry), 350);
+			openLessonDiff(pt.student, pt.student.lessons[pt.assignment.n - 1]);
+		},
+		onRightClick: (pt) => {
+			if (!pt?.student) return;
+			openAssignDiff(pt.student, pt.student.lessons[pt.assignment.n - 1]);
 		},
 	});
 	chart.setDatasets([
 		{
 			data: noAI,
-			color: "#007acc99",
+			color: "#11111199",
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1085,7 +1103,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		},
 		{
 			data: aiPts,
-			color: "#11111199",
+			color: OV_CLR.red + "99",
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1166,33 +1184,33 @@ function addProgressTotals(container) {
 		leftAxis: {
 			min: 0,
 			max: 100,
-			ticks: [0, 25, 50, 75, 100],
+			ticks: [0, 20, 40, 60, 80, 100],
 			color: "#999",
 		},
 		rightAxis: {
 			min: 0,
 			max: 5,
 			ticks: [0, 1, 2, 3, 4, 5],
-			color: "#007acc",
+			color: OV_CLR.accent,
 		},
 	});
 	chart.setData([
 		{
 			data: followData,
-			color: "rgba(85,85,85,0.44)",
-			borderColor: "#555555",
+			color: _hexToRgba(OV_CLR.label, 0.44),
+			borderColor: OV_CLR.label,
 			yAxis: "left",
 			coef: 25,
-			outlierColor: "rgba(85,85,85,0.5)",
+			outlierColor: _hexToRgba(OV_CLR.label, 0.5),
 			outlierRadius: 3,
 		},
 		{
 			data: gradeData,
-			color: "rgba(0,122,204,0.44)",
-			borderColor: "#007acc",
+			color: _hexToRgba(OV_CLR.accent, 0.44),
+			borderColor: OV_CLR.accent,
 			yAxis: "right",
 			coef: 25,
-			outlierColor: "rgba(0,122,204,0.5)",
+			outlierColor: _hexToRgba(OV_CLR.accent, 0.5),
 			outlierRadius: 3,
 		},
 	]);
@@ -1241,7 +1259,7 @@ function renderProgress() {
 				min: -0.25,
 				max: 5.25,
 				ticks: [0, 1, 2, 3, 4, 5],
-				color: "#007acc",
+				color: OV_CLR.accent,
 			},
 			onClick: (di, pi) => {
 				const asgn = ASSIGNMENTS[pi];
@@ -1254,8 +1272,8 @@ function renderProgress() {
 		chart.setDatasets([
 			{
 				data: follows,
-				color: "#555555",
-				pointFillColor: "rgba(85,85,85,0.44)",
+				color: OV_CLR.label,
+				pointFillColor: _hexToRgba(OV_CLR.label, 0.44),
 				lineWidth: 1.5,
 				pointRadius: 4,
 				yAxis: "left",
@@ -1263,12 +1281,12 @@ function renderProgress() {
 					const v = l.lesson_obs?.trim();
 					return v && v !== "_" ? v : null;
 				}),
-				labelColor: "#555555",
+				labelColor: OV_CLR.label,
 			},
 			{
 				data: grades,
-				color: "#007acc",
-				pointFillColor: "rgba(0,122,204,0.44)",
+				color: OV_CLR.accent,
+				pointFillColor: _hexToRgba(OV_CLR.accent, 0.44),
 				lineWidth: 1.5,
 				lineDash: [4, 3],
 				pointRadius: 4,
@@ -1277,7 +1295,7 @@ function renderProgress() {
 					const v = l.obs?.trim();
 					return v && v !== "_" ? v : null;
 				}),
-				labelColor: "#007acc",
+				labelColor: OV_CLR.accent,
 			},
 		]);
 		_progressCharts.push(chart);

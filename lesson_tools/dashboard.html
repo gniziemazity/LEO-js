@@ -44,35 +44,34 @@
 						<label
 							><input type="checkbox" id="leg-inserts" checked /><span
 								class="leg-swatch leg-dia"
-								style="--clr: #999"
 							></span
 							><span>Inserts <span class="leg-count"></span></span
 						></label>
 						<label
 							><input type="checkbox" id="leg-deletes" checked /><span
 								class="leg-swatch"
-								style="--clr: #cc2222"
+								style="--clr: var(--clr-red)"
 							></span
 							><span>Deletes <span class="leg-count"></span></span
 						></label>
 						<label
 							><input type="checkbox" id="leg-dev" checked /><span
 								class="leg-swatch"
-								style="--clr: #22aa22"
+								style="--clr: var(--clr-green)"
 							></span
 							><span>Dev <span class="leg-count"></span></span
 						></label>
 						<label
 							><input type="checkbox" id="leg-anchors" checked /><span
 								class="leg-swatch"
-								style="--clr: #007acc"
+								style="--clr: var(--clr-accent)"
 							></span
 							><span>Anchors <span class="leg-count"></span></span
 						></label>
 						<label
 							><input type="checkbox" id="leg-moves" checked /><span
 								class="leg-swatch"
-								style="--clr: #e07020"
+								style="--clr: var(--clr-orange)"
 							></span
 							><span>Moves <span class="leg-count"></span></span
 						></label>
@@ -101,14 +100,9 @@
 		<div id="loading">Processing…</div>
 		<div id="tooltip"></div>
 
-		<script src="kla-config.js"></script>
 		<script src="kla-utils.js"></script>
+		<script src="kla-config.js"></script>
 		<script src="kla-data.js"></script>
-		<script src="/src/shared/charts/utils.js"></script>
-		<script src="/src/shared/charts/scatter/scatter-chart.js"></script>
-		<script src="/src/shared/charts/bar/bar-chart.js"></script>
-		<script src="/src/shared/charts/line/line-chart.js"></script>
-		<script src="/src/shared/charts/boxplot/boxplot-chart.js"></script>
 		<script src="kla-render.js"></script>
 		<script src="kla-zoom.js"></script>
 		<script src="kla-tooltip.js"></script>
