@@ -62,15 +62,15 @@ const HTML_VOID_TAGS = new Set([
 ]);
 
 const CLR = {
-	toolbar: "#e8e8e8",
-	blue: "#0000ff",
-	orange: "#795e26",
-	move: "#e07020",
-	green: "#267f99",
-	red: "#d40000",
-	accent: "#007acc",
-	dim: "#717171",
-	muted: "#999999",
+	blue: _cssVar("--clr-accent"),
+	orange: _cssVar("--hl-func"),
+	move: _cssVar("--clr-orange"),
+	green: _cssVar("--hl-builtin"),
+	red: _cssVar("--clr-red"),
+	accent: _cssVar("--clr-accent"),
+	dim: _cssVar("--clr-muted"),
+	muted: _cssVar("--clr-muted"),
+	pale_red: _cssVar("--clr-pale-red"),
 };
 
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
@@ -1012,7 +1012,7 @@ class LogVisualizer {
 	_play() {
 		this.playing = true;
 		this.elPlay.textContent = "⏸  Pause";
-		this.elPlay.style.background = "#9a7000";
+		this.elPlay.style.background = CLR.move;
 		this._stepStartWall = performance.now();
 		this._stepDurS = 0.001;
 		this._scheduleSeekbarUpdate();
@@ -1030,7 +1030,7 @@ class LogVisualizer {
 			this._seekbarRaf = null;
 		}
 		this.elPlay.textContent = "▶  Play";
-		this.elPlay.style.background = "#2d8f2d";
+		this.elPlay.style.background = CLR.green;
 	}
 
 	resetPlayback() {
@@ -1065,7 +1065,7 @@ class LogVisualizer {
 		if (this.microIdx >= this.micro.length) {
 			this.playing = false;
 			this.elPlay.textContent = "▶  Play";
-			this.elPlay.style.background = "#2d8f2d";
+			this.elPlay.style.background = CLR.green;
 			this._renderEditors();
 			this._schedulePreview();
 			return;
@@ -1182,7 +1182,11 @@ class LogVisualizer {
 			const [, ts, delay, editor] = act;
 			const st = editor === "dev" ? this.dev : this.main;
 			if (this._backspaceIsIgnored(st)) {
-				this._log(ts, "⌫  Backspace (ignored — in code_insert)", "#FFAAAA");
+				this._log(
+					ts,
+					"⌫  Backspace (ignored — in code_insert)",
+					CLR.pale_red,
+				);
 			} else {
 				st.deleteBack(1);
 				this._log(ts, "⌫  Backspace (in code_insert)", CLR.red);
@@ -1246,7 +1250,7 @@ class LogVisualizer {
 				this._log(
 					ts,
 					"⌫  Backspace (ignored — before closing tag)",
-					"#FFAAAA",
+					CLR.pale_red,
 				);
 				return delay;
 			}

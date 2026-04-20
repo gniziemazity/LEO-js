@@ -1,5 +1,4 @@
 :root {
-	--bg-toolbar: #e8e8e8;
 	--bg-asn-col: #f6fbff;
 	--border-mid: #ccc;
 	--border-row: #eee;
@@ -46,7 +45,7 @@ body {
 	align-items: center;
 	gap: 6px;
 	padding: 5px 10px;
-	background: var(--bg-toolbar);
+	background: var(--clr-toolbar);
 	border-bottom: 1px solid var(--border-mid);
 	flex-shrink: 0;
 	font-size: 12px;
@@ -127,7 +126,7 @@ th {
 	letter-spacing: 0.04em;
 }
 th.grp {
-	background: var(--bg-toolbar);
+	background: var(--clr-toolbar);
 	color: var(--clr-dark);
 	font-size: 10px;
 	border-bottom: none;
@@ -232,7 +231,7 @@ thead th.sticky-l {
 	z-index: 15;
 }
 thead th.sticky-l.grp {
-	background: var(--bg-toolbar);
+	background: var(--clr-toolbar);
 }
 
 table.anon-name .col-num {
@@ -339,7 +338,7 @@ td.asn-sep {
 .sort-bar {
 	flex-shrink: 0;
 	padding: 6px 10px;
-	background: var(--bg-toolbar);
+	background: var(--clr-toolbar);
 	border-bottom: 1px solid var(--border-mid);
 	font-size: 12px;
 	color: var(--clr-label);

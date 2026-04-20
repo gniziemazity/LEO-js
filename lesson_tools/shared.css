@@ -14,21 +14,22 @@
 	--clr-muted: #888;
 	--clr-label: #555;
 	--clr-page: #f0f0f0;
+	--clr-toolbar: #e8e8e8;
 	--clr-tab-hover: #e0e0e0;
 	--clr-diff-btn-border: #aaa;
 
-	--hl-comment: #008000;
-	--hl-tag: #800000;
-	--hl-attr: #ff0000;
+	--hl-comment: #66bb6a;
+	--hl-tag: #e07020;
+	--hl-attr: #cc2222;
 	--hl-value: #007acc;
-	--hl-string: #a31515;
+	--hl-string: #cc2222;
 	--hl-keyword: #007acc;
-	--hl-builtin: #267f99;
-	--hl-number: #098658;
-	--hl-func: #795e26;
-	--hl-css-sel: #800000;
-	--hl-css-prop: #ff0000;
-	--hl-css-num: #098658;
+	--hl-builtin: #007acc;
+	--hl-number: #007acc;
+	--hl-func: #e07020;
+	--hl-css-sel: #e07020;
+	--hl-css-prop: #cc2222;
+	--hl-css-num: #007acc;
 	--hl-css-at: #af00db;
 	--hl-doctype: #007acc;
 }
