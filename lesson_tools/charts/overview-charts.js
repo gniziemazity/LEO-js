@@ -544,3 +544,381 @@ function niceStep(range, targetSteps) {
 	let nice = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
 	return nice * mag;
 }
+
+function _boxStats(values, coef = 1.5) {
+	if (!values.length) return null;
+	const sorted = [...values].sort((a, b) => a - b);
+	const n = sorted.length;
+	const q = (p) => {
+		const pos = p * (n - 1);
+		const lo = Math.floor(pos);
+		const hi = Math.ceil(pos);
+		return sorted[lo] + (pos - lo) * (sorted[hi] - sorted[lo]);
+	};
+	const q1 = q(0.25);
+	const median = q(0.5);
+	const q3 = q(0.75);
+	const iqr = q3 - q1;
+	const lo = q1 - coef * iqr;
+	const hi = q3 + coef * iqr;
+	const whiskerMin = sorted.find((v) => v >= lo) ?? sorted[0];
+	const whiskerMax =
+		[...sorted].reverse().find((v) => v <= hi) ?? sorted[n - 1];
+	const outliers = sorted.filter((v) => v < lo || v > hi);
+	return { q1, median, q3, whiskerMin, whiskerMax, outliers };
+}
+
+class LineChart {
+	constructor(container, options = {}) {
+		this._canvas = document.createElement("canvas");
+		this._canvas.style.cssText = "display:block;width:100%;height:100%;";
+		container.appendChild(this._canvas);
+		this._ctx = this._canvas.getContext("2d");
+		this._options = options;
+		this._datasets = [];
+		this._hitAreas = [];
+		this._margin = { top: 24, right: 30, bottom: 22, left: 24 };
+		this._ro = new ResizeObserver(() => this._resize());
+		this._ro.observe(container);
+		this._resize();
+		this._addEvents();
+	}
+
+	setDatasets(datasets) {
+		this._datasets = datasets;
+		this._draw();
+	}
+
+	destroy() {
+		this._ro.disconnect();
+	}
+
+	_resize() {
+		const c = this._canvas;
+		const r = c.getBoundingClientRect();
+		c.width = r.width || c.offsetWidth || 300;
+		c.height = r.height || c.offsetHeight || 150;
+		this._draw();
+	}
+
+	_axisY(v, axisKey) {
+		const { top, bottom } = this._margin;
+		const H = this._canvas.height;
+		const plotH = H - top - bottom;
+		const ax =
+			axisKey === "right" ? this._options.rightAxis : this._options.leftAxis;
+		return top + plotH - ((v - ax.min) / (ax.max - ax.min)) * plotH;
+	}
+
+	_axisX(i) {
+		const { left, right } = this._margin;
+		const W = this._canvas.width;
+		const n = (this._options.xLabels ?? []).length;
+		if (n <= 1) return left + (W - left - right) / 2;
+		return left + (i / (n - 1)) * (W - left - right);
+	}
+
+	_draw() {
+		const c = this._canvas,
+			ctx = this._ctx;
+		const W = c.width,
+			H = c.height;
+		const { top, right, bottom, left } = this._margin;
+		ctx.clearRect(0, 0, W, H);
+		this._hitAreas = [];
+
+		const xLabels = this._options.xLabels ?? [];
+		const leftAxis = this._options.leftAxis;
+		const rightAxis = this._options.rightAxis;
+
+		if (leftAxis?.ticks) {
+			ctx.strokeStyle = "#f0f0f0";
+			ctx.lineWidth = 1;
+			for (const v of leftAxis.ticks) {
+				const py = this._axisY(v, "left");
+				ctx.beginPath();
+				ctx.moveTo(left, py);
+				ctx.lineTo(W - right, py);
+				ctx.stroke();
+			}
+			ctx.fillStyle = leftAxis.color ?? "#999";
+			ctx.font = "9px sans-serif";
+			ctx.textAlign = "right";
+			ctx.textBaseline = "middle";
+			for (const v of leftAxis.ticks) {
+				ctx.fillText(v, left - 2, this._axisY(v, "left"));
+			}
+		}
+
+		if (rightAxis?.ticks) {
+			ctx.fillStyle = rightAxis.color ?? "#007acc";
+			ctx.font = "9px sans-serif";
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			for (const v of rightAxis.ticks) {
+				ctx.fillText(v, W - right + 2, this._axisY(v, "right"));
+			}
+		}
+
+		ctx.fillStyle = "#999";
+		ctx.font = "9px sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "top";
+		for (let i = 0; i < xLabels.length; i++) {
+			ctx.fillText(xLabels[i], this._axisX(i), H - bottom + 2);
+		}
+
+		for (let di = 0; di < this._datasets.length; di++) {
+			const ds = this._datasets[di];
+			const axKey = ds.yAxis ?? "left";
+			ctx.strokeStyle = ds.color ?? "#333";
+			ctx.lineWidth = ds.lineWidth ?? 1.5;
+			ctx.setLineDash(ds.lineDash ?? []);
+			ctx.beginPath();
+			let started = false;
+			for (let i = 0; i < ds.data.length; i++) {
+				const v = ds.data[i];
+				if (v == null) {
+					started = false;
+					continue;
+				}
+				const px = this._axisX(i);
+				const py = this._axisY(v, axKey);
+				if (!started) {
+					ctx.moveTo(px, py);
+					started = true;
+				} else ctx.lineTo(px, py);
+			}
+			ctx.stroke();
+			ctx.setLineDash([]);
+
+			const r = ds.pointRadius ?? 4;
+			ctx.fillStyle = ds.color ?? "#333";
+			for (let i = 0; i < ds.data.length; i++) {
+				const v = ds.data[i];
+				if (v == null) continue;
+				const px = this._axisX(i);
+				const py = this._axisY(v, axKey);
+				ctx.beginPath();
+				ctx.arc(px, py, r, 0, Math.PI * 2);
+				ctx.fill();
+				this._hitAreas.push({ px, py, r: r + 4, di, pi: i });
+			}
+		}
+
+		for (let di = 0; di < this._datasets.length; di++) {
+			const ds = this._datasets[di];
+			if (!ds.pointLabels) continue;
+			const axKey = ds.yAxis ?? "left";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "bottom";
+			ctx.lineJoin = "round";
+			for (let i = 0; i < ds.data.length; i++) {
+				const v = ds.data[i];
+				const lbl = ds.pointLabels[i];
+				if (v == null || !lbl) continue;
+				const px = this._axisX(i);
+				const py = this._axisY(v, axKey);
+				const ty = Math.max(py - 8, top + 10);
+				ctx.font = 'bold 7.5px "Segoe UI", sans-serif';
+				ctx.strokeStyle = "rgba(255,255,255,0.85)";
+				ctx.lineWidth = 2.5;
+				ctx.strokeText(lbl, px, ty);
+				ctx.fillStyle = ds.labelColor ?? ds.color ?? "#333";
+				ctx.fillText(lbl, px, ty);
+			}
+		}
+
+		ctx.strokeStyle = "#ccc";
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(left, top);
+		ctx.lineTo(left, H - bottom);
+		ctx.lineTo(W - right, H - bottom);
+		ctx.stroke();
+	}
+
+	_addEvents() {
+		const c = this._canvas;
+		c.addEventListener("mousemove", (e) => {
+			const r = c.getBoundingClientRect();
+			const mx = e.clientX - r.left,
+				my = e.clientY - r.top;
+			const hit = this._hitAreas.find(
+				(h) => Math.hypot(mx - h.px, my - h.py) <= h.r,
+			);
+			c.style.cursor = hit ? "pointer" : "default";
+		});
+		c.addEventListener("click", (e) => {
+			const r = c.getBoundingClientRect();
+			const mx = e.clientX - r.left,
+				my = e.clientY - r.top;
+			const hit = this._hitAreas.find(
+				(h) => Math.hypot(mx - h.px, my - h.py) <= h.r,
+			);
+			if (hit && this._options.onClick)
+				this._options.onClick(hit.di, hit.pi);
+		});
+	}
+}
+
+class BoxPlotChart {
+	constructor(container, options = {}) {
+		this._canvas = document.createElement("canvas");
+		this._canvas.style.cssText = "display:block;width:100%;height:100%;";
+		container.appendChild(this._canvas);
+		this._ctx = this._canvas.getContext("2d");
+		this._options = options;
+		this._datasets = [];
+		this._margin = { top: 10, right: 30, bottom: 22, left: 24 };
+		this._ro = new ResizeObserver(() => this._resize());
+		this._ro.observe(container);
+		this._resize();
+	}
+
+	setData(datasets) {
+		this._datasets = datasets;
+		this._draw();
+	}
+
+	destroy() {
+		this._ro.disconnect();
+	}
+
+	_resize() {
+		const c = this._canvas;
+		const r = c.getBoundingClientRect();
+		c.width = r.width || c.offsetWidth || 300;
+		c.height = r.height || c.offsetHeight || 200;
+		this._draw();
+	}
+
+	_axisY(v, axisKey) {
+		const { top, bottom } = this._margin;
+		const H = this._canvas.height;
+		const plotH = H - top - bottom;
+		const ax =
+			axisKey === "right" ? this._options.rightAxis : this._options.leftAxis;
+		return top + plotH - ((v - ax.min) / (ax.max - ax.min)) * plotH;
+	}
+
+	_draw() {
+		const c = this._canvas,
+			ctx = this._ctx;
+		const W = c.width,
+			H = c.height;
+		const { top, right, bottom, left } = this._margin;
+		const plotW = W - left - right;
+		ctx.clearRect(0, 0, W, H);
+
+		const xLabels = this._options.xLabels ?? [];
+		const n = xLabels.length;
+		const nSets = this._datasets.length;
+		const leftAxis = this._options.leftAxis;
+		const rightAxis = this._options.rightAxis;
+
+		if (leftAxis?.ticks) {
+			ctx.strokeStyle = "#f0f0f0";
+			ctx.lineWidth = 1;
+			for (const v of leftAxis.ticks) {
+				const py = this._axisY(v, "left");
+				ctx.beginPath();
+				ctx.moveTo(left, py);
+				ctx.lineTo(W - right, py);
+				ctx.stroke();
+			}
+			ctx.fillStyle = leftAxis.color ?? "#999";
+			ctx.font = "9px sans-serif";
+			ctx.textAlign = "right";
+			ctx.textBaseline = "middle";
+			for (const v of leftAxis.ticks) {
+				ctx.fillText(v, left - 2, this._axisY(v, "left"));
+			}
+		}
+
+		if (rightAxis?.ticks) {
+			ctx.fillStyle = rightAxis.color ?? "#007acc";
+			ctx.font = "9px sans-serif";
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			for (const v of rightAxis.ticks) {
+				ctx.fillText(v, W - right + 2, this._axisY(v, "right"));
+			}
+		}
+
+		ctx.fillStyle = "#888";
+		ctx.font = "10px sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "top";
+		for (let gi = 0; gi < n; gi++) {
+			const gx = left + (gi + 0.5) * (plotW / n);
+			ctx.fillText(xLabels[gi], gx, H - bottom + 2);
+		}
+
+		const groupW = plotW / n;
+		const boxW = (groupW * 0.6) / nSets;
+
+		for (let si = 0; si < nSets; si++) {
+			const ds = this._datasets[si];
+			const axKey = ds.yAxis ?? "left";
+			const coef = ds.coef ?? 1.5;
+
+			for (let gi = 0; gi < n; gi++) {
+				const vals = ds.data[gi] ?? [];
+				const stats = _boxStats(vals, coef);
+				if (!stats) continue;
+
+				const gx = left + gi * groupW + groupW / 2;
+				const bx = gx + (si - (nSets - 1) / 2) * boxW - boxW / 2;
+				const bxMid = bx + boxW / 2;
+				const yQ1 = this._axisY(stats.q1, axKey);
+				const yMed = this._axisY(stats.median, axKey);
+				const yQ3 = this._axisY(stats.q3, axKey);
+				const yWlo = this._axisY(stats.whiskerMin, axKey);
+				const yWhi = this._axisY(stats.whiskerMax, axKey);
+
+				ctx.fillStyle = ds.color ?? "rgba(100,100,100,0.4)";
+				ctx.fillRect(bx, yQ3, boxW, yQ1 - yQ3);
+				ctx.strokeStyle = ds.borderColor ?? "#999";
+				ctx.lineWidth = 1.5;
+				ctx.strokeRect(bx, yQ3, boxW, yQ1 - yQ3);
+
+				ctx.beginPath();
+				ctx.moveTo(bx, yMed);
+				ctx.lineTo(bx + boxW, yMed);
+				ctx.stroke();
+
+				ctx.lineWidth = 1;
+				const capW = boxW * 0.4;
+				ctx.beginPath();
+				ctx.moveTo(bxMid, yQ1);
+				ctx.lineTo(bxMid, yWlo);
+				ctx.moveTo(bxMid - capW / 2, yWlo);
+				ctx.lineTo(bxMid + capW / 2, yWlo);
+				ctx.moveTo(bxMid, yQ3);
+				ctx.lineTo(bxMid, yWhi);
+				ctx.moveTo(bxMid - capW / 2, yWhi);
+				ctx.lineTo(bxMid + capW / 2, yWhi);
+				ctx.stroke();
+
+				if (stats.outliers.length && ds.outlierColor) {
+					ctx.fillStyle = ds.outlierColor;
+					for (const ov of stats.outliers) {
+						const oy = this._axisY(ov, axKey);
+						ctx.beginPath();
+						ctx.arc(bxMid, oy, ds.outlierRadius ?? 3, 0, Math.PI * 2);
+						ctx.fill();
+					}
+				}
+			}
+		}
+
+		ctx.strokeStyle = "#ccc";
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(left, top);
+		ctx.lineTo(left, H - bottom);
+		ctx.lineTo(W - right, H - bottom);
+		ctx.stroke();
+	}
+}

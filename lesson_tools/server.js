@@ -102,6 +102,35 @@ http
 			return;
 		}
 
+		if (urlPath.startsWith("/src/")) {
+			const srcRoot = path.resolve(__dirname, "..", "src");
+			const srcFile = path.resolve(
+				srcRoot,
+				...urlPath.slice("/src/".length).split("/"),
+			);
+			if (!srcFile.startsWith(srcRoot + path.sep) && srcFile !== srcRoot) {
+				res.writeHead(403);
+				res.end();
+				return;
+			}
+			fs.readFile(srcFile, (err, data) => {
+				if (err) {
+					res.writeHead(404);
+					res.end();
+					return;
+				}
+				const mime =
+					MIME[path.extname(srcFile).toLowerCase()] ||
+					"application/octet-stream";
+				res.writeHead(200, {
+					"Content-Type": mime,
+					"Cache-Control": "no-cache",
+				});
+				res.end(data);
+			});
+			return;
+		}
+
 		const filePath = path.join(
 			ROOT,
 			urlPath === "/" ? "index.html" : urlPath,

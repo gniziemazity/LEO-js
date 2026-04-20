@@ -977,21 +977,20 @@ function addPassingCard(parent, labels, passCounts, participCounts) {
 		yMin: 0,
 		yMax: Math.max(...participCounts, 1) + 1,
 		stacked: true,
-		tooltipCallback: (label, val, si, gi) => [
-			label,
-			`${passCounts[gi]} / ${participCounts[gi]} passing`,
+		tooltipCallback: (_label, _val, _si, gi) => [
+			`${passCounts[gi]}/${participCounts[gi]}`,
 		],
 	});
 	chart.setData(labels, [
 		{
-			data: notPassCounts,
-			backgroundColor: "rgba(180,180,180,0.18)",
-			borderColor: "#ccc",
+			data: passCounts,
+			backgroundColor: "#555",
+			borderColor: "#555",
 		},
 		{
-			data: passCounts,
-			backgroundColor: "rgba(85,85,85,0.27)",
-			borderColor: "#555555",
+			data: notPassCounts,
+			backgroundColor: "#bbb",
+			borderColor: "#aaa",
 		},
 	]);
 	_barCharts.push(chart);
@@ -1004,8 +1003,7 @@ function addBarCard(parent, title, labels, data, color, yMax, tooltipFmt) {
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax,
-		tooltipCallback: (label, val) => [
-			label,
+		tooltipCallback: (_label, val) => [
 			tooltipFmt === "dec1"
 				? val.toFixed(1)
 				: tooltipFmt === "pct"
@@ -1146,11 +1144,6 @@ document.querySelectorAll(".sort-bar button[data-sort]").forEach((btn) => {
 });
 
 function addProgressTotals(container) {
-	try {
-		if (!Chart.registry.controllers.get("boxplot")) return;
-	} catch {
-		return;
-	}
 	const card = el("div", "prog-totals");
 	const h4 = el("h4");
 	h4.textContent = "Totals";
@@ -1158,8 +1151,6 @@ function addProgressTotals(container) {
 	const box = el("div", "prog-chart-box");
 	box.style.height = "180px";
 	card.appendChild(box);
-	const canvas = el("canvas");
-	box.appendChild(canvas);
 	container.appendChild(card);
 
 	const labels = ASSIGNMENTS.map((a) => a.name);
@@ -1174,66 +1165,41 @@ function addProgressTotals(container) {
 		_students.map((s) => s.lessons[a.n - 1].grade).filter((v) => v != null),
 	);
 
-	const chart = new Chart(canvas.getContext("2d"), {
-		type: "boxplot",
-		data: {
-			labels,
-			datasets: [
-				{
-					label: "Follow %",
-					data: followData,
-					backgroundColor: "rgba(0,0,0,0.7)",
-					borderColor: "#000",
-					borderWidth: 1.5,
-					outlierBackgroundColor: "rgba(0,0,0,0.5)",
-					outlierRadius: 3,
-					coef: 25,
-					yAxisID: "yL",
-				},
-				{
-					label: "Assignment",
-					data: gradeData,
-					backgroundColor: "rgba(0,122,204,0.7)",
-					borderColor: "#007acc",
-					borderWidth: 1.5,
-					outlierBackgroundColor: "rgba(0,122,204,0.5)",
-					outlierRadius: 3,
-					coef: 25,
-					yAxisID: "yR",
-				},
-			],
+	const chart = new BoxPlotChart(box, {
+		xLabels: labels,
+		leftAxis: {
+			min: 0,
+			max: 100,
+			ticks: [0, 25, 50, 75, 100],
+			color: "#999",
 		},
-		options: {
-			responsive: true,
-			maintainAspectRatio: false,
-			animation: false,
-			plugins: {
-				legend: { display: false },
-				tooltip: { enabled: false },
-			},
-			scales: {
-				x: { ticks: { font: { size: 10 } } },
-				yL: {
-					position: "left",
-					min: 0,
-					max: 100,
-					ticks: { font: { size: 9 }, color: "#999" },
-					grid: { color: "#f0f0f0" },
-				},
-				yR: {
-					position: "right",
-					min: 0,
-					max: 5,
-					ticks: {
-						stepSize: 1,
-						font: { size: 9 },
-						color: "#007acc",
-					},
-					grid: { drawOnChartArea: false },
-				},
-			},
+		rightAxis: {
+			min: 0,
+			max: 5,
+			ticks: [0, 1, 2, 3, 4, 5],
+			color: "#007acc",
 		},
 	});
+	chart.setData([
+		{
+			data: followData,
+			color: "rgba(0,0,0,0.7)",
+			borderColor: "#000",
+			yAxis: "left",
+			coef: 25,
+			outlierColor: "rgba(0,0,0,0.5)",
+			outlierRadius: 3,
+		},
+		{
+			data: gradeData,
+			color: "rgba(0,122,204,0.7)",
+			borderColor: "#007acc",
+			yAxis: "right",
+			coef: 25,
+			outlierColor: "rgba(0,122,204,0.5)",
+			outlierRadius: 3,
+		},
+	]);
 	_progressCharts.push(chart);
 }
 
@@ -1260,8 +1226,6 @@ function renderProgress() {
 		card.appendChild(h4);
 		const box = el("div", "prog-chart-box");
 		card.appendChild(box);
-		const canvas = el("canvas");
-		box.appendChild(canvas);
 		grid.appendChild(card);
 
 		const follows = s.lessons.map((l) =>
@@ -1269,150 +1233,56 @@ function renderProgress() {
 		);
 		const grades = s.lessons.map((l) => l.grade ?? null);
 
-		const obsPlugin = {
-			id: "obs_" + s.id,
-			afterDraw(ch) {
-				const {
-					ctx,
-					chartArea,
-					scales: { x, yL, yR },
-				} = ch;
-				ctx.save();
-				ctx.textAlign = "center";
-				ctx.textBaseline = "bottom";
-				ctx.lineJoin = "round";
-				ASSIGNMENTS.forEach((a, i) => {
-					const entry = s.lessons[a.n - 1];
-					const xPx = x.getPixelForTick(i);
-					const lobs = entry.lesson_obs?.trim();
-					if (lobs && lobs !== "_" && entry.follow != null) {
-						const yDot = yL.getPixelForValue(entry.follow);
-						const yText = Math.max(yDot - 8, chartArea.top + 10);
-						ctx.font = 'bold 7.5px "Segoe UI", sans-serif';
-						ctx.strokeStyle = "rgba(255,255,255,0.85)";
-						ctx.lineWidth = 2.5;
-						ctx.strokeText(lobs, xPx, yText);
-						ctx.fillStyle = "#111";
-						ctx.fillText(lobs, xPx, yText);
-					}
-					const aobs = entry.obs?.trim();
-					if (aobs && aobs !== "_" && entry.grade != null) {
-						const yDot = yR.getPixelForValue(entry.grade);
-						const yText = Math.max(yDot - 8, chartArea.top + 10);
-						ctx.font = 'bold 7.5px "Segoe UI", sans-serif';
-						ctx.strokeStyle = "rgba(255,255,255,0.85)";
-						ctx.lineWidth = 2.5;
-						ctx.strokeText(aobs, xPx, yText);
-						ctx.fillStyle = "#007acc";
-						ctx.fillText(aobs, xPx, yText);
-					}
-				});
-				ctx.restore();
+		const chart = new LineChart(box, {
+			xLabels: labels,
+			leftAxis: {
+				min: -4,
+				max: 104,
+				ticks: [0, 25, 50, 75, 100],
+				color: "#999",
 			},
-		};
-
-		const chart = new Chart(canvas.getContext("2d"), {
-			type: "line",
-			plugins: [obsPlugin],
-			data: {
-				labels,
-				datasets: [
-					{
-						label: "Follow%",
-						data: follows,
-						yAxisID: "yL",
-						borderColor: "#111",
-						backgroundColor: "#11111111",
-						tension: 0,
-						pointRadius: 4,
-						hitRadius: 8,
-						spanGaps: true,
-						borderWidth: 1.5,
-					},
-					{
-						label: "Grade",
-						data: grades,
-						yAxisID: "yR",
-						borderColor: "#007acc",
-						backgroundColor: "#007acc11",
-						tension: 0,
-						pointRadius: 4,
-						hitRadius: 8,
-						spanGaps: true,
-						borderWidth: 1.5,
-						borderDash: [4, 3],
-					},
-				],
+			rightAxis: {
+				min: -0.25,
+				max: 5.25,
+				ticks: [0, 1, 2, 3, 4, 5],
+				color: "#007acc",
 			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				animation: false,
-				layout: {
-					padding: { top: 22, left: 8, right: 8, bottom: 8 },
-				},
-				plugins: {
-					legend: { display: false },
-					tooltip: { enabled: false },
-				},
-				scales: {
-					x: {
-						ticks: { font: { size: 9 }, color: "#999" },
-						grid: { color: "#f0f0f0" },
-					},
-					yL: {
-						position: "left",
-						min: -4,
-						max: 104,
-						afterBuildTicks: (scale) => {
-							scale.ticks = [0, 25, 50, 75, 100].map((v) => ({
-								value: v,
-							}));
-						},
-						ticks: { font: { size: 9 }, color: "#999" },
-						grid: { color: "#f0f0f0" },
-					},
-					yR: {
-						position: "right",
-						min: -0.25,
-						max: 5.25,
-						afterBuildTicks: (scale) => {
-							scale.ticks = [0, 1, 2, 3, 4, 5].map((v) => ({
-								value: v,
-							}));
-						},
-						ticks: { font: { size: 9 }, color: "#007acc" },
-						grid: { drawOnChartArea: false },
-					},
-				},
+			onClick: (di, pi) => {
+				const asgn = ASSIGNMENTS[pi];
+				if (!asgn) return;
+				const entry = s.lessons[asgn.n - 1];
+				if (di === 0) openLessonDiff(s, entry);
+				else openAssignDiff(s, entry);
 			},
 		});
+		chart.setDatasets([
+			{
+				data: follows,
+				color: "#111",
+				lineWidth: 1.5,
+				pointRadius: 4,
+				yAxis: "left",
+				pointLabels: s.lessons.map((l) => {
+					const v = l.lesson_obs?.trim();
+					return v && v !== "_" ? v : null;
+				}),
+				labelColor: "#111",
+			},
+			{
+				data: grades,
+				color: "#007acc",
+				lineWidth: 1.5,
+				lineDash: [4, 3],
+				pointRadius: 4,
+				yAxis: "right",
+				pointLabels: s.lessons.map((l) => {
+					const v = l.obs?.trim();
+					return v && v !== "_" ? v : null;
+				}),
+				labelColor: "#007acc",
+			},
+		]);
 		_progressCharts.push(chart);
-
-		canvas.addEventListener("mousemove", (e) => {
-			const els = chart.getElementsAtEventForMode(
-				e,
-				"nearest",
-				{ intersect: true },
-				true,
-			);
-			canvas.style.cursor = els.length ? "pointer" : "default";
-		});
-		canvas.addEventListener("click", (e) => {
-			const els = chart.getElementsAtEventForMode(
-				e,
-				"nearest",
-				{ intersect: true },
-				true,
-			);
-			if (!els.length) return;
-			const { datasetIndex, index } = els[0];
-			const asgn = ASSIGNMENTS[index];
-			if (!asgn) return;
-			const entry = s.lessons[asgn.n - 1];
-			if (datasetIndex === 0) openLessonDiff(s, entry);
-			else openAssignDiff(s, entry);
-		});
 	}
 }
 
