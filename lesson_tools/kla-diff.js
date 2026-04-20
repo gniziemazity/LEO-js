@@ -1,6 +1,6 @@
 "use strict";
 
-async function openDiffWindow(student) {
+async function openDiffWindow(student, mode = null) {
 	try {
 		const followPct =
 			student.follow_pct != null
@@ -23,16 +23,39 @@ async function openDiffWindow(student) {
 				/\.(html|css|js)$/i.test(p),
 		);
 
-		let diffMarks = null;
-		const diffMarksKey = studentDir + "diff_marks.json";
-		const diffMarksEntry = [..._allFiles.entries()].find(
-			([p]) => p.toLowerCase() === diffMarksKey,
-		);
-		if (diffMarksEntry) {
+		const MODE_SUFFIX = {
+			"token-lcs": "_lcs",
+			"line-myers": "_myers",
+			"intra-line": "_intraline",
+		};
+		const suffix = mode ? MODE_SUFFIX[mode] || "" : "";
+		const diffMarksFilename = `diff_marks${suffix}.json`;
+
+		const loadDiffMarks = async (filename) => {
+			const key = studentDir + filename;
+			const entry = [..._allFiles.entries()].find(
+				([p]) => p.toLowerCase() === key,
+			);
+			let fileObj = entry ? entry[1] : null;
+			if (!fileObj && _dirHandle) {
+				try {
+					const sub = await _dirHandle.getDirectoryHandle(
+						CFG.STUDENT_SUBDIR,
+					);
+					const sdir = await sub.getDirectoryHandle(student.name);
+					const fh = await sdir.getFileHandle(filename);
+					fileObj = await fh.getFile();
+				} catch {}
+			}
+			if (!fileObj) return null;
 			try {
-				diffMarks = JSON.parse(await _diffReadText(diffMarksEntry[1]));
-			} catch {}
-		}
+				return JSON.parse(await _diffReadText(fileObj));
+			} catch {
+				return null;
+			}
+		};
+
+		const diffMarks = await loadDiffMarks(diffMarksFilename);
 
 		const teacherFiles = {};
 		for (const [, file] of teacherEntries)
@@ -66,7 +89,10 @@ async function openDiffWindow(student) {
 				title: `${escHtml(student.name)} (${escHtml(followPct)})`,
 			}),
 		);
-		window.open(`differentiator.html?key=${dataKey}`, "_blank");
+		window.open(
+			`differentiator.html?key=${dataKey}${mode ? "&mode=" + encodeURIComponent(mode) : ""}`,
+			"_blank",
+		);
 	} catch (err) {
 		console.error("[KLA diff]", err);
 		alert("Error opening differentiator: " + err.message);

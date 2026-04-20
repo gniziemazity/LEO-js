@@ -1,17 +1,11 @@
-"""
-Web Programming Course — Grade Analysis Tool
-=============================================
-Opens a file dialog to select the .xls grades file, then runs a comprehensive
-analysis covering AI usage, typing speed, self-evaluation, engagement,
-assignment progression, and participation/follow-score patterns.
-
-Requirements:  pip install pandas xlrd scipy numpy matplotlib
-"""
-
+import json
+import math
+import os
 import sys
 import tkinter as tk
 from tkinter import filedialog
 import warnings
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -25,8 +19,6 @@ from scipy.stats import (
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
 
 DIVIDER = "=" * 72
 SUB_DIV = "-" * 72
@@ -42,7 +34,6 @@ def subsection(title):
     print(SUB_DIV)
 
 def safe_corr(x, y, method="pearson"):
-    """Return (corr, p, n) dropping NaN pairs."""
     mask = x.notna() & y.notna()
     xc, yc = x[mask].astype(float), y[mask].astype(float)
     n = len(xc)
@@ -72,8 +63,6 @@ def fmt_p(p):
 def fmt_r(r):
     return f"{r:+.3f}" if not np.isnan(r) else "N/A"
 
-
-# ── Column map ───────────────────────────────────────────────────────────────
 
 COL = {
     "id": 0,
@@ -112,8 +101,6 @@ POOLED_ASSIGNMENTS = {k: v for k, v in ASSIGNMENTS.items() if k != 6}
 
 DATA_ROWS = slice(1, 85)
 
-
-# ── Data loading & enrichment ────────────────────────────────────────────────
 
 def load_data(path):
     df = pd.read_excel(path, engine="xlrd", header=None)
@@ -154,9 +141,8 @@ def enrich(st):
         st[f"a{a_num}_ai"] = obs.str.upper().str.contains("AI", na=False)
         st[f"a{a_num}_submitted"] = grade.notna()
 
-        # Two-way classification:
         #   Pass:    Pass or Pass' (demonstrated knowledge)
-        #   Trouble: everything else — Fail, Fail*, Pass*, no-show
+        #   Trouble: everything else: Fail, Fail*, Pass*, no-show
         st[f"a{a_num}_passed"] = status.isin(["Pass", "Pass'"])
         st[f"a{a_num}_trouble"] = st[f"a{a_num}_submitted"] & ~status.isin(["Pass", "Pass'"])
         st[f"a{a_num}_pass_clean"] = status == "Pass"
@@ -176,14 +162,11 @@ def enrich(st):
     st["total_troubles"] = st[trouble_cols].sum(axis=1)
     st["total_submitted"] = st[submitted_cols].sum(axis=1)
 
-    # Average of SUBMITTED assignments only (ignoring non-submissions)
     grade_cols = [f"a{i}_grade" for i in POOLED_ASSIGNMENTS]
     st["avg_submitted_only"] = st[grade_cols].mean(axis=1, skipna=True)
 
     return st
 
-
-# ── Analysis functions ───────────────────────────────────────────────────────
 
 def analyze_ai_vs_trouble(st):
     section("1. AI USAGE vs. TROUBLE DEMONSTRATING KNOWLEDGE")
@@ -212,7 +195,6 @@ def analyze_ai_vs_trouble(st):
         ai = st[f"a{a_num}_ai"]
         trouble = st[f"a{a_num}_trouble"]
         passed = st[f"a{a_num}_passed"]
-        submitted = st[f"a{a_num}_submitted"]
         has_obs = st[f"a{a_num}_obs"] != ""
 
         ai_t  = (ai & trouble).sum()
@@ -238,7 +220,6 @@ def analyze_ai_vs_trouble(st):
         print(f"  {a['name']:<10} {ai_t:>8} {ai_p:>8} {nai_t:>10} {nai_p:>10} "
               f"{rate_ai:>8.1%} {rate_nai:>9.1%} {or_str:>8} {fmt_p(p_f):>12}")
 
-    # ─ Overall (1-5) ─
     subsection("Overall (assignments 1-5 pooled, excluding final project)")
     ai_t, ai_p, nai_t, nai_p = totals
     table_all = np.array([[ai_t, ai_p], [nai_t, nai_p]])
@@ -272,7 +253,6 @@ def analyze_ai_vs_trouble(st):
 def analyze_early_ai_and_passing(st):
     subsection("Early AI usage (easy assignments) and course pass rate")
 
-    # AI in second assignment (Chess — easiest)
     ai_a2 = st["a2_ai"]
     sub_a2 = st["a2_submitted"]
     with_ai = st[ai_a2 & sub_a2]
@@ -293,7 +273,6 @@ def analyze_early_ai_and_passing(st):
         _, p_f = fisher_exact(table)
         print(f"    Fisher's exact p = {fmt_p(p_f)}")
 
-    # AI in first assignment
     ai_a1 = st["a1_ai"]
     sub_a1 = st["a1_submitted"]
     with_ai = st[ai_a1 & sub_a1]
@@ -314,7 +293,6 @@ def analyze_early_ai_and_passing(st):
         _, p_f = fisher_exact(table)
         print(f"    Fisher's exact p = {fmt_p(p_f)}")
 
-    # AI in first OR second
     ai_12 = st["a1_ai"] | st["a2_ai"]
     sub_12 = st["a1_submitted"] | st["a2_submitted"]
     with_ai = st[ai_12 & sub_12]
@@ -335,7 +313,6 @@ def analyze_early_ai_and_passing(st):
         _, p_f = fisher_exact(table)
         print(f"    Fisher's exact p = {fmt_p(p_f)}")
 
-    # AI in BOTH
     ai_both = st["a1_ai"] & st["a2_ai"]
     sub_both = st["a1_submitted"] & st["a2_submitted"]
     with_ai = st[ai_both & sub_both]
@@ -392,7 +369,6 @@ def analyze_ai_grade_quality(st):
         print(f"  {a['name']:<10} {lt:>9} {lok:>7} {ht:>8} {hok:>7} "
               f"{lr:>6.0%} {hr:>6.0%}")
 
-    # Overall
     all_lt = all_lok = all_ht = all_hok = 0
     for a_num in POOLED_ASSIGNMENTS:
         ai = st[f"a{a_num}_ai"]
@@ -445,7 +421,6 @@ def analyze_typing_speed(st):
                             st.loc[has_both, "final_grade"])
         print(f"    Correlation with final grade: r = {fmt_r(r)}, p = {fmt_p(p)}")
 
-    # Typing speed vs each assignment grade (does it weaken?)
     subsection("Pre-typing speed vs. each assignment grade (does it weaken?)")
     print(f"\n  {'Assign':<10} {'r':>7} {'ρ':>7} {'p(ρ)':>12} {'n':>5}  Note")
     print(f"  {'-'*10} {'-'*7} {'-'*7} {'-'*12} {'-'*5}  {'-'*20}")
@@ -487,7 +462,6 @@ def analyze_participation(st):
     r, p, n = safe_corr(st["participation"], st["avg_submitted_only"], method="spearman")
     print(f"    Spearman ρ = {fmt_r(r)},  p = {fmt_p(p)}")
 
-    # Passed vs failed
     pass_p = st.loc[st["passed_course"], "participation"].dropna()
     fail_p = st.loc[~st["passed_course"], "participation"].dropna()
     if len(pass_p) >= 2 and len(fail_p) >= 2:
@@ -501,34 +475,28 @@ def analyze_participation(st):
         print(f"        Compares ranks: how often a random passer's score")
         print(f"        exceeds a random failer's score.")
 
-    # Participation vs AI
     r, p, n = safe_corr(st["participation"], st["total_ai_flags"])
     print(f"\n  Participation vs total AI flags:")
     print(f"    Pearson r = {fmt_r(r)},  p = {fmt_p(p)},  n = {n}")
 
-    # Self-eval vs participation
     r, p, n = safe_corr(st["self_eval"], st["participation"])
     print(f"\n  Self-eval vs participation:")
     print(f"    Pearson r = {fmt_r(r)},  p = {fmt_p(p)},  n = {n}")
 
-    # Participation vs typing speed
     r, p, n = safe_corr(st["participation"], st["pre_typing"])
     print(f"\n  Participation vs pre-typing speed:")
     print(f"    Pearson r = {fmt_r(r)},  p = {fmt_p(p)},  n = {n}")
 
-    # Does typing along in lessons improve typing speed?
     subsection("Does typing along in lessons improve typing speed?")
 
     print(f"\n  Typing tests: one game at the start, one at the end of the course.")
     print(f"  Students type along with the teacher during every lesson.")
     print(f"  Question: does following along at all (vs not) lead to improvement?\n")
 
-    # How well they follow vs improvement (amount)
     r, p, n = safe_corr(st["participation"], st["typing_improvement"])
     print(f"  Follow amount vs typing improvement (does following MORE help?):")
     print(f"    Pearson r = {fmt_r(r)},  p = {fmt_p(p)},  n = {n}")
 
-    # Followed at all vs didn't follow: compare improvement
     has_both = st["pre_typing"].notna() & st["post_typing"].notna()
     followed = has_both & (st["participation"] > 0.1)  # meaningful participation
     not_followed = has_both & (st["participation"] <= 0.1)
@@ -547,7 +515,6 @@ def analyze_participation(st):
     elif len(nf_imp) < 2:
         print(f"    (Too few non-followers with both typing tests to compare)")
 
-    # Per-lesson follow score vs paired assignment grade
     subsection("Per-lesson follow score vs. its paired assignment grade")
     print(f"\n  {'Lesson':<14} {'r':>7} {'ρ':>7} {'p(ρ)':>12} {'n':>5}")
     print(f"  {'-'*14} {'-'*7} {'-'*7} {'-'*12} {'-'*5}")
@@ -558,7 +525,6 @@ def analyze_participation(st):
         rs, ps, ns = safe_corr(follow, grade, method="spearman")
         print(f"  L{a_num} → {a['name']:<8} {fmt_r(rp):>7} {fmt_r(rs):>7} {fmt_p(ps):>12} {ns:>5}")
 
-    # Per-lesson follow score vs assignment average (BX)
     subsection("Per-lesson follow score vs. assignment average (BX)")
     print(f"\n  {'Lesson':<14} {'r':>7} {'ρ':>7} {'p(ρ)':>12} {'n':>5}")
     print(f"  {'-'*14} {'-'*7} {'-'*7} {'-'*12} {'-'*5}")
@@ -588,7 +554,6 @@ def analyze_engagement(st):
         else:
             print(f"\n  {metric.capitalize()}: no data")
 
-    # Overall: any engagement at all
     any_engagement = (
         (st["answers"].notna() & (st["answers"] > 0)) |
         (st["questions"].notna() & (st["questions"] > 0)) |
@@ -684,8 +649,259 @@ def analyze_correlations_summary(st):
         print(f"  {label:<40} {fmt_r(r_p):>7} {fmt_r(r_s):>7} {fmt_p(p_s):>12} {n_s:>5}")
 
 
+def save_stats_json(st, grades_path):
+
+    def sf(v):
+        if v is None: return None
+        try:
+            f = float(v)
+            return None if math.isnan(f) or math.isinf(f) else round(f, 6)
+        except (TypeError, ValueError):
+            return None
+
+    result = {
+        "generated": datetime.now().isoformat(),
+        "n_students": int(len(st)),
+        "n_passed":   int(st["passed_course"].sum()),
+        "n_failed":   int((~st["passed_course"]).sum()),
+        "assignments": [],
+        "correlations": [],
+        "typing": {},
+        "ai_overall": {},
+    }
+
+    for a_num, a in ASSIGNMENTS.items():
+        sub_mask   = st[f"a{a_num}_submitted"]
+        n_sub      = int(sub_mask.sum())
+        n_total    = len(st)
+        grades     = st.loc[sub_mask, f"a{a_num}_grade"].dropna()
+        n_pass     = int(st[f"a{a_num}_passed"].sum())  if f"a{a_num}_passed"  in st.columns else 0
+        n_trouble  = int(st[f"a{a_num}_trouble"].sum()) if f"a{a_num}_trouble" in st.columns else 0
+        n_ai       = int(st[f"a{a_num}_ai"].sum())      if f"a{a_num}_ai"      in st.columns else 0
+
+        entry = {
+            "name":        a["name"],
+            "difficulty":  a.get("difficulty", ""),
+            "n_submitted": n_sub,
+            "n_total":     n_total,
+            "avg_grade":   sf(grades.mean()) if len(grades) > 0 else None,
+            "pass_rate":   sf(n_pass / n_total) if n_total > 0 else None,
+            "trouble_rate":sf(n_trouble / n_sub) if n_sub > 0 else None,
+            "ai_rate":     sf(n_ai / n_sub) if n_sub > 0 else None,
+            "follow_avg":  None,
+            "odds_ratio":  None,
+            "fisher_p":    None,
+        }
+
+        if a["follow"] is not None:
+            fv = st[f"a{a_num}_follow"].dropna()
+            entry["follow_avg"] = sf(fv.mean()) if len(fv) > 0 else None
+
+            gv     = st[f"a{a_num}_grade"]
+            ai_col = st[f"a{a_num}_ai"]
+            mask   = fv.notna() & gv.notna()
+            entry["scatter"] = [
+                {"x": round(float(fx), 1), "y": round(float(gx), 2), "ai": bool(ax)}
+                for fx, gx, ax in zip(fv[mask], gv[mask], ai_col[mask])
+            ]
+
+        if a_num in POOLED_ASSIGNMENTS:
+            ai       = st[f"a{a_num}_ai"]
+            trouble  = st[f"a{a_num}_trouble"]
+            passed   = st[f"a{a_num}_passed"]
+            has_obs  = st[f"a{a_num}_obs"] != ""
+
+            ai_t  = int((ai & trouble).sum())
+            ai_p  = int((ai & passed).sum())
+            nai_t = int((~ai & trouble & has_obs).sum())
+            nai_p = int((~ai & passed & has_obs).sum())
+
+            entry["ai_trouble"]    = ai_t
+            entry["ai_pass"]       = ai_p
+            entry["no_ai_trouble"] = nai_t
+            entry["no_ai_pass"]    = nai_p
+
+            if ai_p > 0 and nai_t > 0:
+                entry["odds_ratio"] = sf((ai_t * nai_p) / (ai_p * nai_t))
+            if min(ai_t + ai_p, nai_t + nai_p) > 0 and (ai_t + nai_t) > 0:
+                _, p_f = fisher_exact(np.array([[ai_t, ai_p], [nai_t, nai_p]]))
+                entry["fisher_p"] = sf(p_f)
+
+            ai_grades   = st.loc[ai, f"a{a_num}_grade"].dropna()
+            noai_mask   = (~ai) & sub_mask & has_obs
+            noai_grades = st.loc[noai_mask, f"a{a_num}_grade"].dropna()
+            entry["ai_avg_grade"]   = sf(ai_grades.mean())   if len(ai_grades)   > 0 else None
+            entry["no_ai_avg_grade"]= sf(noai_grades.mean()) if len(noai_grades) > 0 else None
+
+        result["assignments"].append(entry)
+
+    corr_pairs = [
+        ("pre_typing",      "final_grade",        "Pre-typing KPM → Final grade"),
+        ("post_typing",     "final_grade",        "Post-typing KPM → Final grade"),
+        ("self_eval",       "final_grade",        "Self-evaluation → Final grade"),
+        ("participation",   "avg_assignments",    "Participation → Assign. avg (BX)"),
+        ("participation",   "avg_submitted_only", "Participation → Avg submitted only"),
+        ("participation",   "pre_typing",         "Participation → Pre-typing speed"),
+        ("participation",   "typing_improvement", "Participation → Typing improvement"),
+        ("answers",         "final_grade",        "Answers given → Final grade"),
+        ("questions",       "final_grade",        "Questions asked → Final grade"),
+        ("help",            "final_grade",        "Help received → Final grade"),
+        ("kahoot",          "final_grade",        "Kahoot score → Final grade"),
+        ("quiz_stii",       "final_grade",        "Final quiz → Final grade"),
+        ("pre_typing",      "total_ai_flags",     "Pre-typing KPM → AI flags"),
+        ("self_eval",       "total_ai_flags",     "Self-evaluation → AI flags"),
+        ("total_ai_flags",  "final_grade",        "Total AI flags → Final grade"),
+        ("self_eval",       "participation",      "Self-evaluation → Participation"),
+    ]
+    for col_x, col_y, label in corr_pairs:
+        if col_x not in st.columns or col_y not in st.columns:
+            continue
+        r_p, p_p, _ = safe_corr(st[col_x], st[col_y])
+        r_s, p_s, n_s = safe_corr(st[col_x], st[col_y], method="spearman")
+        result["correlations"].append({
+            "label": label,
+            "r": sf(r_p), "p_r": sf(p_p),
+            "rho": sf(r_s), "p_rho": sf(p_s),
+            "n": n_s,
+        })
+
+    result["follow_vs_grade"] = []
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        follow = st[f"a{a_num}_follow"]
+        grade  = st[f"a{a_num}_grade"]
+        r_p, p_p, _ = safe_corr(follow, grade)
+        r_s, p_s, n_s = safe_corr(follow, grade, method="spearman")
+        result["follow_vs_grade"].append({
+            "name": a["name"], "n": n_s,
+            "r": sf(r_p), "p_r": sf(p_p),
+            "rho": sf(r_s), "p_rho": sf(p_s),
+        })
+
+    pre  = st["pre_typing"].dropna()
+    post = st["post_typing"].dropna()
+    has_both = st["pre_typing"].notna() & st["post_typing"].notna()
+    imp = st.loc[has_both, "typing_improvement"].dropna()
+    pass_t = st.loc[st["passed_course"], "pre_typing"].dropna()
+    fail_t = st.loc[~st["passed_course"], "pre_typing"].dropna()
+
+    typing = {
+        "pre_avg":         sf(pre.mean())  if len(pre)  > 0 else None,
+        "post_avg":        sf(post.mean()) if len(post) > 0 else None,
+        "improvement_avg": sf(imp.mean())  if len(imp)  > 0 else None,
+        "n_with_both":     int(has_both.sum()),
+        "passed_pre_avg":  sf(pass_t.mean()) if len(pass_t) > 0 else None,
+        "failed_pre_avg":  sf(fail_t.mean()) if len(fail_t) > 0 else None,
+    }
+    if len(pass_t) >= 2 and len(fail_t) >= 2:
+        from scipy.stats import mannwhitneyu as _mwu
+        _, p_mw = _mwu(pass_t, fail_t, alternative="two-sided")
+        typing["pass_fail_mannwhitney_p"] = sf(p_mw)
+    r_p, p_p, _ = safe_corr(st["pre_typing"], st["final_grade"])
+    r_s, p_s, n_s = safe_corr(st["pre_typing"], st["final_grade"], method="spearman")
+    typing["corr_pre_grade"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n_s}
+    r_p, p_p, _ = safe_corr(st["post_typing"], st["final_grade"])
+    r_s, p_s, n_s = safe_corr(st["post_typing"], st["final_grade"], method="spearman")
+    typing["corr_post_grade"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n_s}
+    r_p, p_p, _ = safe_corr(st["typing_improvement"], st["final_grade"])
+    r_s, p_s, n_s = safe_corr(st["typing_improvement"], st["final_grade"], method="spearman")
+    typing["corr_improvement_grade"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n_s}
+    result["typing"] = typing
+
+    se = st["self_eval"].dropna()
+    r_p, p_p, _ = safe_corr(st["self_eval"], st["final_grade"])
+    r_s, p_s, n_s = safe_corr(st["self_eval"], st["final_grade"], method="spearman")
+    result["self_eval"] = {
+        "avg": sf(se.mean()) if len(se) > 0 else None,
+        "corr_grade": {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n_s},
+    }
+
+    result["early_ai"] = []
+    early_checks = [
+        ("AI in Wall (A1)",         st["a1_ai"], st["a1_submitted"]),
+        ("AI in Chess (A2)",        st["a2_ai"], st["a2_submitted"]),
+        ("AI in Wall OR Chess",     st["a1_ai"] | st["a2_ai"],
+                                    st["a1_submitted"] | st["a2_submitted"]),
+        ("AI in Wall AND Chess",    st["a1_ai"] & st["a2_ai"],
+                                    st["a1_submitted"] & st["a2_submitted"]),
+    ]
+    for label, ai_flag, sub_flag in early_checks:
+        with_ai    = st[ai_flag & sub_flag]
+        without_ai = st[~ai_flag & sub_flag]
+        n_with, n_without = len(with_ai), len(without_ai)
+        entry = {"label": label, "n_with": n_with, "n_without": n_without}
+        if n_with > 0:
+            entry["with_ai_pass_rate"]    = sf(with_ai["passed_course"].sum() / n_with)
+        if n_without > 0:
+            entry["without_ai_pass_rate"] = sf(without_ai["passed_course"].sum() / n_without)
+        if n_with >= 2 and n_without >= 2:
+            tbl = np.array([
+                [with_ai["passed_course"].sum(),    n_with    - with_ai["passed_course"].sum()],
+                [without_ai["passed_course"].sum(), n_without - without_ai["passed_course"].sum()],
+            ])
+            _, p_f = fisher_exact(tbl)
+            entry["fisher_p"] = sf(p_f)
+        result["early_ai"].append(entry)
+
+    result["engagement"] = []
+    for metric in ["answers", "questions", "help"]:
+        if metric not in st.columns: continue
+        has = st[metric].notna() & (st[metric] > 0)
+        n_eng = int(has.sum())
+        passed = int(st.loc[has, "passed_course"].sum()) if n_eng > 0 else 0
+        result["engagement"].append({
+            "label":   metric.capitalize(),
+            "n":       n_eng,
+            "n_passed":passed,
+            "pass_rate": sf(passed / n_eng) if n_eng > 0 else None,
+        })
+
+    totals = np.array([0, 0, 0, 0])
+    for a_num in POOLED_ASSIGNMENTS:
+        ai     = st[f"a{a_num}_ai"]
+        trouble= st[f"a{a_num}_trouble"]
+        passed = st[f"a{a_num}_passed"]
+        has_obs= st[f"a{a_num}_obs"] != ""
+        totals += np.array([(ai & trouble).sum(), (ai & passed).sum(),
+                            (~ai & trouble & has_obs).sum(), (~ai & passed & has_obs).sum()])
+
+    ai_t, ai_p, nai_t, nai_p = [int(x) for x in totals]
+    ao = {
+        "ai_trouble":       ai_t,  "ai_pass":    ai_p,
+        "no_ai_trouble":    nai_t, "no_ai_pass": nai_p,
+        "trouble_rate_ai":  sf(ai_t  / (ai_t + ai_p))   if (ai_t + ai_p)   > 0 else None,
+        "trouble_rate_no_ai": sf(nai_t/ (nai_t+ nai_p)) if (nai_t+ nai_p)  > 0 else None,
+        "odds_ratio":       None,
+        "fisher_p":         None,
+        "chi2":             None,
+        "chi2_p":           None,
+    }
+    if ai_p > 0 and nai_t > 0:
+        ao["odds_ratio"] = sf((ai_t * nai_p) / (ai_p * nai_t))
+    tbl = np.array([[ai_t, ai_p], [nai_t, nai_p]])
+    try:
+        chi2, p_chi, _, _ = chi2_contingency(tbl, correction=True)
+        _, p_fisher = fisher_exact(tbl)
+        ao["fisher_p"] = sf(p_fisher)
+        ao["chi2"]     = sf(chi2)
+        ao["chi2_p"]   = sf(p_chi)
+    except Exception:
+        pass
+    result["ai_overall"] = ao
+
+    folder   = os.path.dirname(os.path.abspath(grades_path))
+    out_path = os.path.join(folder, "grades_stats.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
+    print(f"\n  [Stats JSON saved → {out_path}]")
+
+    session_path = os.path.join(os.path.dirname(__file__), ".grades_session.json")
+    with open(session_path, "w", encoding="utf-8") as f:
+        json.dump({"folder": folder}, f)
+
+    return out_path
+
+
 def plot_follow_vs_grade(st):
-    """Scatter plots: follow score vs assignment grade, 2×3 grid (5 plots + legend)."""
     fig, axes = plt.subplots(2, 3, figsize=(14, 9))
 
     last_data_ax = None
@@ -704,15 +920,12 @@ def plot_follow_vs_grade(st):
         g_vals = grade[mask].values
         ai_vals = ai[mask].values
 
-        # Add jitter to grade (integer values overlap)
         jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(g_vals))
         g_jittered = g_vals + jitter
 
-        # Color by AI flag
         colors = ["red" if a else "steelblue" for a in ai_vals]
         ax.scatter(f_vals, g_jittered, c=colors, alpha=0.6, edgecolors="white", s=50)
 
-        # Trend line
         if len(f_vals) >= 3:
             z = np.polyfit(f_vals, g_vals, 1)
             x_line = np.linspace(f_vals.min(), f_vals.max(), 50)
@@ -721,7 +934,6 @@ def plot_follow_vs_grade(st):
         rp, pp, np_ = safe_corr(follow, grade)
         rs, ps, ns = safe_corr(follow, grade, method="spearman")
 
-        # 2 decimal precision for correlations
         rp_s = f"{rp:+.2f}" if not np.isnan(rp) else "N/A"
         rs_s = f"{rs:+.2f}" if not np.isnan(rs) else "N/A"
         avg_f = f_vals.mean()
@@ -737,10 +949,8 @@ def plot_follow_vs_grade(st):
         ax.set_ylim(-0.5, 5.5)
         ax.set_yticks(range(6))
 
-    # Hide the empty 6th slot
     axes[1][2].axis("off")
 
-    # Legend on the last data chart (QR, bottom-right with data)
     from matplotlib.lines import Line2D
     legend_elements = [
         Line2D([0], [0], marker='o', color='w', markerfacecolor='steelblue',
@@ -754,8 +964,6 @@ def plot_follow_vs_grade(st):
     plt.tight_layout()
     plt.show()
 
-
-# ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     root = tk.Tk()
@@ -789,6 +997,7 @@ def main():
     analyze_ai_persistence(st)
     analyze_assignment_difficulty(st)
     analyze_correlations_summary(st)
+    save_stats_json(st, path)
 
     section("INTERPRETATION GUIDE")
     print("""
@@ -810,10 +1019,8 @@ def main():
     < 1.0      AI group less likely to have trouble
 """)
 
-    # Show scatter plots
     plot_follow_vs_grade(st)
 
-    input("\nPress Enter to close...")
 
 
 if __name__ == "__main__":

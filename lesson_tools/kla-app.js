@@ -2,6 +2,7 @@
 
 let _pendingXlsx = [];
 let _allFiles = new Map();
+let _dirHandle = null;
 
 const landingEl = document.getElementById("landing");
 
@@ -63,6 +64,7 @@ async function openFolderPicker() {
 		if (lastDir) opts.startIn = lastDir;
 		const dirHandle = await window.showDirectoryPicker(opts);
 		_idbSet("lastDir", dirHandle);
+		_dirHandle = dirHandle;
 		showLoading(true);
 		const files = [];
 		const pathMap = new Map();
@@ -91,7 +93,7 @@ function handleFiles(files) {
 	const jsonFiles = files.filter(
 		(f) =>
 			f.name.toLowerCase().endsWith(".json") &&
-			f.name.toLowerCase() !== "diff_marks.json",
+			!f.name.toLowerCase().startsWith("diff_marks"),
 	);
 	const xlsxFiles = files.filter((f) =>
 		f.name.toLowerCase().endsWith(".xlsx"),
