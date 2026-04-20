@@ -977,17 +977,21 @@ function addPassingCard(parent, labels, passCounts, participCounts) {
 		yMin: 0,
 		yMax: Math.max(...participCounts, 1) + 1,
 		stacked: true,
+		tooltipCallback: (label, val, si, gi) => [
+			label,
+			`${passCounts[gi]} / ${participCounts[gi]} passing`,
+		],
 	});
 	chart.setData(labels, [
-		{
-			data: passCounts,
-			backgroundColor: "rgba(85,85,85,0.27)",
-			borderColor: "#555555",
-		},
 		{
 			data: notPassCounts,
 			backgroundColor: "rgba(180,180,180,0.18)",
 			borderColor: "#ccc",
+		},
+		{
+			data: passCounts,
+			backgroundColor: "rgba(85,85,85,0.27)",
+			borderColor: "#555555",
 		},
 	]);
 	_barCharts.push(chart);
@@ -1000,6 +1004,14 @@ function addBarCard(parent, title, labels, data, color, yMax, tooltipFmt) {
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax,
+		tooltipCallback: (label, val) => [
+			label,
+			tooltipFmt === "dec1"
+				? val.toFixed(1)
+				: tooltipFmt === "pct"
+					? val.toFixed(1) + "%"
+					: Math.round(val).toString(),
+		],
 	});
 	chart.setData(labels, [
 		{

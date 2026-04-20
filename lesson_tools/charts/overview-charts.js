@@ -47,6 +47,8 @@ class ScatterChart {
 
 	destroy() {
 		this._ro.disconnect();
+		document.removeEventListener("mousemove", this._docMouseMove);
+		document.removeEventListener("mouseup", this._docMouseUp);
 	}
 
 	_resize() {
@@ -123,7 +125,6 @@ class ScatterChart {
 		ctx.lineWidth = 1;
 		ctx.strokeRect(b.m, b.m, c.width - 2 * b.m, c.height - 2 * b.m);
 
-		this._drawGrid(ctx, b);
 		this._drawAxesLabels(ctx, b);
 
 		for (const ds of this._datasets) {
@@ -148,25 +149,6 @@ class ScatterChart {
 			ctx.stroke();
 			if (this._hoveredTooltip)
 				this._drawTooltip(ctx, b, px, py, this._hoveredTooltip);
-		}
-	}
-
-	_drawGrid(ctx, b) {
-		ctx.strokeStyle = "#f0f0f0";
-		ctx.lineWidth = 1;
-		const steps = 5;
-		for (let i = 0; i <= steps; i++) {
-			const t = i / steps;
-			const px = b.m + t * (b.W - 2 * b.m);
-			const py = b.m + t * (b.H - 2 * b.m);
-			ctx.beginPath();
-			ctx.moveTo(px, b.m);
-			ctx.lineTo(px, b.H - b.m);
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.moveTo(b.m, py);
-			ctx.lineTo(b.W - b.m, py);
-			ctx.stroke();
 		}
 	}
 
@@ -268,36 +250,44 @@ class ScatterChart {
 		);
 
 		c.addEventListener("mousedown", (e) => {
-			const b = this._dataBounds();
-			const r = c.getBoundingClientRect();
 			this._drag = {
 				active: true,
-				startPx: [e.clientX - r.left, e.clientY - r.top],
+				startPx: [e.clientX, e.clientY],
 				startPan: { ...this._pan },
 			};
+			c.style.cursor = "grabbing";
 		});
 
+		this._docMouseMove = (e) => {
+			if (!this._drag.active) return;
+			const b = this._dataBounds();
+			const dx = e.clientX - this._drag.startPx[0];
+			const dy = e.clientY - this._drag.startPx[1];
+			const xRange = b.xMax - b.xMin;
+			const yRange = b.yMax - b.yMin;
+			const pxRange = b.W - 2 * b.m;
+			const pyRange = b.H - 2 * b.m;
+			this._pan.x = this._drag.startPan.x - (dx / pxRange) * xRange;
+			this._pan.y = this._drag.startPan.y + (dy / pyRange) * yRange;
+			this._hovered = null;
+			this._hoveredTooltip = null;
+			this._draw();
+		};
+
+		this._docMouseUp = () => {
+			if (!this._drag.active) return;
+			this._drag.active = false;
+			c.style.cursor = "grab";
+		};
+
+		document.addEventListener("mousemove", this._docMouseMove);
+		document.addEventListener("mouseup", this._docMouseUp);
+
 		c.addEventListener("mousemove", (e) => {
+			if (this._drag.active) return;
 			const r = c.getBoundingClientRect();
 			const mx = e.clientX - r.left,
 				my = e.clientY - r.top;
-
-			if (this._drag.active) {
-				const b0 = this._dataBounds();
-				const dx = mx - this._drag.startPx[0];
-				const dy = my - this._drag.startPx[1];
-				const xRange = b0.xMax - b0.xMin;
-				const yRange = b0.yMax - b0.yMin;
-				const pxRange = b0.W - 2 * b0.m;
-				const pyRange = b0.H - 2 * b0.m;
-				this._pan.x = this._drag.startPan.x - (dx / pxRange) * xRange;
-				this._pan.y = this._drag.startPan.y + (dy / pyRange) * yRange;
-				this._hovered = null;
-				this._hoveredTooltip = null;
-				this._draw();
-				return;
-			}
-
 			const b = this._dataBounds();
 			let nearest = null,
 				nearestDist = Infinity,
@@ -323,21 +313,17 @@ class ScatterChart {
 			} else {
 				this._hovered = null;
 				this._hoveredTooltip = null;
-				c.style.cursor = this._drag.active ? "grabbing" : "grab";
+				c.style.cursor = "grab";
 			}
 			this._draw();
 		});
 
-		c.addEventListener("mouseup", () => {
-			this._drag.active = false;
-			c.style.cursor = "grab";
-		});
-
 		c.addEventListener("mouseleave", () => {
-			this._drag.active = false;
-			this._hovered = null;
-			this._hoveredTooltip = null;
-			this._draw();
+			if (!this._drag.active) {
+				this._hovered = null;
+				this._hoveredTooltip = null;
+				this._draw();
+			}
 		});
 
 		c.addEventListener("dblclick", () => this.resetZoom());
@@ -364,9 +350,12 @@ class BarChart {
 		this._labels = [];
 		this._margin = { top: 10, right: 10, bottom: 32, left: 28 };
 
+		this._hitAreas = [];
+		this._hovered = null;
 		this._ro = new ResizeObserver(() => this._resize());
 		this._ro.observe(container);
 		this._resize();
+		this._addEvents();
 	}
 
 	setData(labels, datasets) {
@@ -396,6 +385,7 @@ class BarChart {
 		const plotW = W - left - right;
 		const plotH = H - top - bottom;
 		ctx.clearRect(0, 0, W, H);
+		this._hitAreas = [];
 
 		if (!this._labels.length || !this._datasets.length) return;
 
@@ -461,6 +451,15 @@ class BarChart {
 				if (bh > 0) {
 					ctx.fillRect(bx, by, barW, bh);
 					ctx.strokeRect(bx, by, barW, bh);
+					this._hitAreas.push({
+						x: bx,
+						y: by,
+						w: barW,
+						h: bh,
+						gi,
+						si,
+						val,
+					});
 				}
 				if (stacked) stackTops[gi] += val;
 			}
@@ -483,10 +482,59 @@ class BarChart {
 		ctx.lineTo(W - right, H - bottom);
 		ctx.stroke();
 
-		if (this._options.tooltip) this._setupTooltip();
+		if (this._hovered) this._drawTooltip(ctx, this._hovered);
 	}
 
-	_setupTooltip() {}
+	_addEvents() {
+		const c = this._canvas;
+		c.addEventListener("mousemove", (e) => {
+			const r = c.getBoundingClientRect();
+			const mx = e.clientX - r.left;
+			const my = e.clientY - r.top;
+			this._hovered =
+				this._hitAreas.find(
+					(h) =>
+						mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h,
+				) ?? null;
+			this._draw();
+		});
+		c.addEventListener("mouseleave", () => {
+			this._hovered = null;
+			this._draw();
+		});
+	}
+
+	_drawTooltip(ctx, hit) {
+		const cb = this._options.tooltipCallback;
+		const lines = cb
+			? cb(this._labels[hit.gi], hit.val, hit.si, hit.gi)
+			: [this._labels[hit.gi], hit.val.toFixed(1)];
+		const pad = 6,
+			lh = 14;
+		ctx.font = "11px sans-serif";
+		const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+		const tw = maxW + pad * 2,
+			th = lines.length * lh + pad * 2;
+		const cx = hit.x + hit.w / 2;
+		let tx = cx - tw / 2;
+		let ty = hit.y - th - 6;
+		const W = this._canvas.width,
+			H = this._canvas.height;
+		if (tx < 2) tx = 2;
+		if (tx + tw > W - 2) tx = W - tw - 2;
+		if (ty < 2) ty = hit.y + hit.h + 6;
+		ctx.fillStyle = "#fff";
+		ctx.strokeStyle = "#ddd";
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.roundRect(tx, ty, tw, th, 3);
+		ctx.fill();
+		ctx.stroke();
+		ctx.fillStyle = "#333";
+		ctx.textAlign = "left";
+		ctx.textBaseline = "top";
+		lines.forEach((l, i) => ctx.fillText(l, tx + pad, ty + pad + i * lh));
+	}
 }
 
 function niceStep(range, targetSteps) {
