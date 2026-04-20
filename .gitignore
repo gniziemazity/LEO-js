@@ -10,6 +10,7 @@ __pycache__/
 /ideas/
 /plans/logs/
 /settings/yt_settings.json
+/lesson_tools/.grades_session.json
 /lesson_tools/.last_folder
 /lesson_tools/.last_vis_data.js
 /lesson_tools/.last_project.js

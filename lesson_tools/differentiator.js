@@ -8,6 +8,12 @@ const DIFF_LABEL_COLORS = {
 	extra_comment: "#080",
 };
 
+const DIFF_LINE_BG_COLORS = {
+	missing: "rgba(220,0,0,0.13)",
+	extra: "rgba(0,0,200,0.10)",
+};
+
+let _diffMode = null;
 let _teacherFiles = null;
 let _studentFiles = null;
 let _teacherMarks = null;
@@ -15,7 +21,12 @@ let _studentMarks = null;
 let _imageUris = {}; // basename → data: URI for preview image inlining
 
 window.addEventListener("DOMContentLoaded", () => {
-	const key = new URLSearchParams(location.search).get("key") || "diffData";
+	const params = new URLSearchParams(location.search);
+	const key = params.get("key") || "diffData";
+	const modeParam = params.get("mode") || null;
+	_diffMode = modeParam;
+	_applyDiffModeLabel();
+
 	const raw = localStorage.getItem(key);
 	if (raw) {
 		localStorage.removeItem(key);
@@ -23,9 +34,10 @@ window.addEventListener("DOMContentLoaded", () => {
 			const data = JSON.parse(raw);
 			_teacherFiles = data.teacherFiles || {};
 			_studentFiles = data.studentFiles || {};
+			_imageUris = data.imageUris || {};
 			_teacherMarks = data.teacherMarks || null;
 			_studentMarks = data.studentMarks || null;
-			_imageUris = data.imageUris || {};
+
 			if (data.title) document.title = data.title;
 			document.getElementById("title-student").textContent =
 				data.title || "Student";
@@ -50,10 +62,18 @@ function loadFilesFromInput(files, side) {
 	let pending = files.length;
 	if (!pending) return;
 
+	const MODE_SUFFIX = {
+		"token-lcs": "_lcs",
+		"line-myers": "_myers",
+		"intra-line": "_intraline",
+	};
+	const suffix = _diffMode ? MODE_SUFFIX[_diffMode] || "" : "";
+	const diffMarksFilename = `diff_marks${suffix}.json`;
+
 	for (const file of files) {
 		const reader = new FileReader();
 		reader.onload = (e) => {
-			if (file.name.toLowerCase() === "diff_marks.json") {
+			if (file.name.toLowerCase() === diffMarksFilename) {
 				try {
 					diffMarks = JSON.parse(e.target.result);
 				} catch {}
@@ -193,7 +213,9 @@ function escHtml(s) {
 function diffColorizePositions(text, posMarks) {
 	if (!posMarks || !posMarks.length) return escHtml(text);
 	const colored = posMarks.filter(
-		(m) => m.label && DIFF_LABEL_COLORS[m.label],
+		(m) =>
+			m.label &&
+			(DIFF_LABEL_COLORS[m.label] || DIFF_LINE_BG_COLORS[m.label]),
 	);
 	if (!colored.length) return escHtml(text);
 
@@ -213,12 +235,39 @@ function diffColorizePositions(text, posMarks) {
 		pos = 0;
 	for (const m of kept) {
 		out += escHtml(normText.slice(pos, m.start));
-		const color = DIFF_LABEL_COLORS[m.label];
-		out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
+		if (m.line && DIFF_LINE_BG_COLORS[m.label]) {
+			const bg = DIFF_LINE_BG_COLORS[m.label];
+			out += `<span style="background-color:${bg}">${escHtml(normText.slice(m.start, m.end))}</span>`;
+		} else {
+			const color = DIFF_LABEL_COLORS[m.label];
+			out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
+		}
 		pos = m.end;
 	}
 	out += escHtml(normText.slice(pos));
 	return out;
+}
+
+function _applyDiffModeLabel() {
+	const LABELS = {
+		"token-lcs": "Token LCS",
+		"line-myers": "Myers line diff",
+		"intra-line": "Intra-line (WinMerge)",
+		"token-context-hungarian": "Context–cosine–Hungarian",
+	};
+	const label = _diffMode ? LABELS[_diffMode] || _diffMode : null;
+	if (!label) return;
+	for (const side of ["teacher", "student"]) {
+		const titleEl = document.getElementById(`title-${side}`);
+		if (!titleEl) continue;
+		const hdr = titleEl.parentElement; // .panel-header
+		const badge = document.createElement("span");
+		badge.style.cssText =
+			"margin-left:8px;padding:1px 6px;border-radius:3px;" +
+			"background:#d0d8e8;font-size:10px;font-weight:500;letter-spacing:0;text-transform:none;color:#334";
+		badge.textContent = label;
+		hdr.insertBefore(badge, titleEl.nextSibling);
+	}
 }
 
 function togglePreview() {

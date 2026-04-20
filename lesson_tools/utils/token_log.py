@@ -1,9 +1,10 @@
+import difflib
 import json
 import math
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import bisect
 from . import similarity_measures as _sm
@@ -409,8 +410,8 @@ def _hungarian_max(weights: List[List[float]]) -> List[Tuple[int, int]]:
     return [(r, c) for r, c in pairs if r < rows and c < cols]
 
 
-_CONTEXT_K = 4   # neighbor window for teacher/student context vectors
-_GHOST_K   = 2   # neighbor window for ghost context vectors (and narrow student comparison)
+_CONTEXT_K = 3   # neighbor window for teacher/student context vectors
+_GHOST_K   = 3   # neighbor window for ghost context vectors (and narrow student comparison)
 _GHOST_SIM_THRESHOLD = 0.05  # minimum cosine similarity to ghost context to assign extra_star
 
 
@@ -794,6 +795,308 @@ def _colors_to_position_marks(files_by_ext: dict, colors_map: dict) -> dict:
     return result
 
 
+def _line_start_offsets(text: str) -> List[int]:
+    starts = [0]
+    for i, ch in enumerate(text):
+        if ch == '\n':
+            starts.append(i + 1)
+    return starts
+
+
+def _tokenize_file_ordered(text: str, ext: str) -> List[Tuple[int, str]]:
+    has_css = ext in ('.css', '.html', '.htm')
+    css_only: List[Tuple[int, int]] = []
+    script_regions: List[Tuple[int, int]] = []
+    if ext in ('.html', '.htm'):
+        for m in _sm._STYLE_TAG_CONTENT_RE.finditer(text):
+            css_only.append((m.start(1), m.end(1)))
+        for m in _sm._SCRIPT_TAG_RE.finditer(text):
+            script_regions.append((m.start(1), m.end(1)))
+    elif ext == '.js':
+        script_regions = [(0, len(text))]
+    matches = _sm._extract_matches_with_priority(text, has_css, css_only)
+
+    def _in_script(pos: int) -> bool:
+        return any(s <= pos < e for s, e in script_regions)
+
+    result = []
+    for pos, tok, cs in matches:
+        if tok.startswith('<') and _in_script(pos):
+            continue
+        result.append((pos, tok))
+    return result
+
+
+def _match_files_by_name_then_ext(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> List[Tuple[str, Path, Optional[Path]]]:
+    matched_student: set = set()
+    pairs: List[Tuple[str, Path, Optional[Path]]] = []
+
+    for t_name, t_path in teacher_files.items():
+        if t_name in student_files:
+            pairs.append((t_name, t_path, student_files[t_name]))
+            matched_student.add(t_name)
+        else:
+            ext = Path(t_name).suffix.lower()
+            same_ext = [
+                (s_name, s_path)
+                for s_name, s_path in student_files.items()
+                if Path(s_name).suffix.lower() == ext and s_name not in matched_student
+            ]
+            if len(same_ext) == 1:
+                s_name, s_path = same_ext[0]
+                pairs.append((t_name, t_path, s_path))
+                matched_student.add(s_name)
+            else:
+                pairs.append((t_name, t_path, None))
+
+    return pairs
+
+
+def _build_lcs_token_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+    teacher_result: Dict[str, List[dict]] = {}
+    student_result: Dict[str, List[dict]] = {}
+
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
+        ext = Path(t_name).suffix.lower()
+        try:
+            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        except Exception:
+            continue
+
+        s_text = ''
+        if s_path:
+            try:
+                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+            except Exception:
+                pass
+
+        t_toks = _tokenize_file_ordered(t_text, ext)
+        s_toks = _tokenize_file_ordered(s_text, ext) if s_text else []
+
+        t_seq = [tok for _, tok in t_toks]
+        s_seq = [tok for _, tok in s_toks]
+
+        sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
+
+        t_marks: List[dict] = []
+        s_marks: List[dict] = []
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == 'equal':
+                continue
+            if tag in ('delete', 'replace'):
+                for i in range(i1, i2):
+                    pos, tok = t_toks[i]
+                    t_marks.append({'token': tok, 'label': 'missing',
+                                    'start': pos, 'end': pos + len(tok)})
+            if tag in ('insert', 'replace'):
+                for j in range(j1, j2):
+                    pos, tok = s_toks[j]
+                    s_marks.append({'token': tok, 'label': 'extra',
+                                    'start': pos, 'end': pos + len(tok)})
+
+        fname = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        if t_marks:
+            teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
+        if s_marks:
+            student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
+
+    return teacher_result, student_result
+
+
+def _build_myers_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+    teacher_result: Dict[str, List[dict]] = {}
+    student_result: Dict[str, List[dict]] = {}
+
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
+        try:
+            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        except Exception:
+            continue
+
+        s_text = ''
+        if s_path:
+            try:
+                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+            except Exception:
+                pass
+
+        t_lines_raw = t_text.splitlines()
+        s_lines_raw = s_text.splitlines() if s_text else []
+
+        t_norm = [l.strip() for l in t_lines_raw]
+        s_norm = [l.strip() for l in s_lines_raw]
+
+        t_starts = _line_start_offsets(t_text)
+        s_starts = _line_start_offsets(s_text) if s_text else []
+
+        sm = difflib.SequenceMatcher(None, t_norm, s_norm, autojunk=False)
+
+        t_marks: List[dict] = []
+        s_marks: List[dict] = []
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == 'equal':
+                continue
+            if tag in ('delete', 'replace'):
+                for i in range(i1, i2):
+                    line_content = t_lines_raw[i].strip()
+                    if not line_content:
+                        continue
+                    raw_start = t_starts[i]
+                    raw_end   = t_starts[i + 1] if i + 1 < len(t_starts) else len(t_text)
+                    line_raw = t_lines_raw[i]
+                    ls = len(line_raw) - len(line_raw.lstrip())
+                    le = len(line_raw.rstrip())
+                    start = raw_start + ls
+                    end   = raw_start + le
+                    if start < end:
+                        t_marks.append({'label': 'missing', 'start': start, 'end': end, 'line': True})
+            if tag in ('insert', 'replace'):
+                for j in range(j1, j2):
+                    line_content = s_lines_raw[j].strip()
+                    if not line_content:
+                        continue
+                    raw_start = s_starts[j]
+                    line_raw = s_lines_raw[j]
+                    ls = len(line_raw) - len(line_raw.lstrip())
+                    le = len(line_raw.rstrip())
+                    start = raw_start + ls
+                    end   = raw_start + le
+                    if start < end:
+                        s_marks.append({'label': 'extra', 'start': start, 'end': end, 'line': True})
+
+        fname = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        if t_marks:
+            teacher_result[fname] = t_marks
+        if s_marks:
+            student_result[s_fname] = s_marks
+
+    return teacher_result, student_result
+
+
+def _build_intraline_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+    _WORD_RE = re.compile(r'\S+')
+
+    teacher_result: Dict[str, List[dict]] = {}
+    student_result: Dict[str, List[dict]] = {}
+
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
+        try:
+            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        except Exception:
+            continue
+
+        s_text = ''
+        if s_path:
+            try:
+                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+            except Exception:
+                pass
+
+        t_lines_raw = t_text.splitlines()
+        s_lines_raw = s_text.splitlines() if s_text else []
+        t_norm = [l.strip() for l in t_lines_raw]
+        s_norm = [l.strip() for l in s_lines_raw]
+        t_starts = _line_start_offsets(t_text)
+        s_starts = _line_start_offsets(s_text) if s_text else []
+
+        sm = difflib.SequenceMatcher(None, t_norm, s_norm, autojunk=False)
+
+        t_marks: List[dict] = []
+        s_marks: List[dict] = []
+
+        def _line_content_span(lines_raw, starts, text, idx):
+            raw = lines_raw[idx]
+            ls = len(raw) - len(raw.lstrip())
+            le = len(raw.rstrip())
+            base = starts[idx]
+            return base + ls, base + le
+
+        def _word_spans(line_raw, base_offset):
+            return [(base_offset + m.start(), base_offset + m.end())
+                    for m in _WORD_RE.finditer(line_raw)]
+
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == 'equal':
+                continue
+
+            if tag == 'replace':
+                t_chunk = list(range(i1, i2))
+                s_chunk = list(range(j1, j2))
+                pairs = list(zip(t_chunk, s_chunk))
+                t_unpaired = t_chunk[len(pairs):]
+                s_unpaired = s_chunk[len(pairs):]
+
+                for ti, si in pairs:
+                    t_raw = t_lines_raw[ti]
+                    s_raw = s_lines_raw[si]
+                    t_stripped = t_raw.strip()
+                    s_stripped = s_raw.strip()
+                    if not t_stripped and not s_stripped:
+                        continue
+                    t_base = t_starts[ti] + (len(t_raw) - len(t_raw.lstrip()))
+                    s_base = s_starts[si] + (len(s_raw) - len(s_raw.lstrip()))
+                    t_words = _word_spans(t_stripped, t_base)
+                    s_words = _word_spans(s_stripped, s_base)
+                    t_toks = [t_text[a:b] for a, b in t_words]
+                    s_toks = [s_text[a:b] for a, b in s_words]
+                    wm = difflib.SequenceMatcher(None, t_toks, s_toks, autojunk=False)
+                    for wtag, wi1, wi2, wj1, wj2 in wm.get_opcodes():
+                        if wtag == 'equal':
+                            continue
+                        if wtag in ('delete', 'replace'):
+                            for k in range(wi1, wi2):
+                                a, b = t_words[k]
+                                t_marks.append({'label': 'missing', 'start': a, 'end': b})
+                        if wtag in ('insert', 'replace'):
+                            for k in range(wj1, wj2):
+                                a, b = s_words[k]
+                                s_marks.append({'label': 'extra', 'start': a, 'end': b})
+
+                for ti in t_unpaired:
+                    s, e = _line_content_span(t_lines_raw, t_starts, t_text, ti)
+                    if s < e:
+                        t_marks.append({'label': 'missing', 'start': s, 'end': e, 'line': True})
+                for si in s_unpaired:
+                    s, e = _line_content_span(s_lines_raw, s_starts, s_text, si)
+                    if s < e:
+                        s_marks.append({'label': 'extra', 'start': s, 'end': e, 'line': True})
+
+            elif tag == 'delete':
+                for i in range(i1, i2):
+                    s, e = _line_content_span(t_lines_raw, t_starts, t_text, i)
+                    if s < e:
+                        t_marks.append({'label': 'missing', 'start': s, 'end': e, 'line': True})
+
+            elif tag == 'insert':
+                for j in range(j1, j2):
+                    s, e = _line_content_span(s_lines_raw, s_starts, s_text, j)
+                    if s < e:
+                        s_marks.append({'label': 'extra', 'start': s, 'end': e, 'line': True})
+
+        fname = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        if t_marks:
+            teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
+        if s_marks:
+            student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
+
+    return teacher_result, student_result
+
+
 class TokenLogMixin:
     def write_keyword_log(self) -> None:
         has_css = bool(
@@ -1117,3 +1420,78 @@ class TokenLogMixin:
             written += 1
 
         print(f'  Written similarity diff marks for {written} student(s) in {names_dir.name}/')
+
+    def _write_alt_diff_marks(
+        self,
+        names_dir: Path,
+        anon_names_dir: Optional[Path],
+        build_fn,
+        diff_mode: str,
+        label: str,
+        filename: str = 'diff_marks.json',
+    ) -> None:
+        teacher_code_files = self.get_all_code_files(self.reference_dir)
+        if not teacher_code_files:
+            print(f'  {label} skipped — no teacher code files found.')
+            return
+
+        written = 0
+        for student_dir in sorted(names_dir.iterdir()):
+            if not student_dir.is_dir():
+                continue
+            sid = self.name_to_id.get(student_dir.name)
+            if sid is None or sid not in self.results:
+                continue
+
+            anon_dir = student_dir
+            if anon_names_dir is not None and anon_names_dir.is_dir():
+                candidate = anon_names_dir / student_dir.name
+                if candidate.is_dir():
+                    anon_dir = candidate
+
+            stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
+            if not stu_files:
+                continue
+
+            teacher_marks, student_marks = build_fn(teacher_code_files, stu_files)
+
+            diff_marks = {
+                'format_version': 4,
+                'diff_mode': diff_mode,
+                'case_sensitive': True,
+                'teacher_files': teacher_marks,
+                'student_files': student_marks,
+            }
+            diff_path = anon_dir / filename
+            with open(diff_path, 'w', encoding='utf-8') as fh:
+                json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+            written += 1
+
+        print(f'  Written {label} for {written} student(s) in {names_dir.name}/')
+
+    def write_lcs_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            _build_lcs_token_diff_marks,
+            'token-lcs',
+            'LCS token diff marks',
+            filename='diff_marks_lcs.json',
+        )
+
+    def write_myers_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            _build_myers_diff_marks,
+            'line-myers',
+            'Myers line diff marks',
+            filename='diff_marks_myers.json',
+        )
+
+    def write_intraline_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            _build_intraline_diff_marks,
+            'intra-line',
+            'Intra-line diff marks',
+            filename='diff_marks_intraline.json',
+        )
