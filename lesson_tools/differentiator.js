@@ -18,6 +18,7 @@ let _teacherFiles = null;
 let _studentFiles = null;
 let _teacherMarks = null;
 let _studentMarks = null;
+let _allMarks = {};
 let _imageUris = {}; // basename → data: URI for preview image inlining
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -27,6 +28,22 @@ window.addEventListener("DOMContentLoaded", () => {
 	_diffMode = modeParam;
 	_applyDiffModeLabel();
 
+	const modeSelect = document.getElementById("mode-select");
+	if (modeSelect) {
+		if (_diffMode) modeSelect.value = _diffMode;
+		modeSelect.addEventListener("change", () => {
+			_diffMode = modeSelect.value || null;
+			_applyDiffModeLabel();
+			const marks = _allMarks[_diffMode ?? ""] ?? null;
+			_teacherMarks = marks ? marks.teacher_files || null : null;
+			_studentMarks = marks ? marks.student_files || null : null;
+			if (_teacherFiles)
+				renderPanel("teacher", _teacherFiles, _teacherMarks);
+			if (_studentFiles)
+				renderPanel("student", _studentFiles, _studentMarks);
+		});
+	}
+
 	const raw = localStorage.getItem(key);
 	if (raw) {
 		localStorage.removeItem(key);
@@ -35,8 +52,18 @@ window.addEventListener("DOMContentLoaded", () => {
 			_teacherFiles = data.teacherFiles || {};
 			_studentFiles = data.studentFiles || {};
 			_imageUris = data.imageUris || {};
-			_teacherMarks = data.teacherMarks || null;
-			_studentMarks = data.studentMarks || null;
+			if (data.allMarks) {
+				_allMarks = data.allMarks;
+				const marks =
+					_allMarks[_diffMode ?? ""] ??
+					Object.values(_allMarks)[0] ??
+					null;
+				_teacherMarks = marks ? marks.teacher_files || null : null;
+				_studentMarks = marks ? marks.student_files || null : null;
+			} else {
+				_teacherMarks = data.teacherMarks || null;
+				_studentMarks = data.studentMarks || null;
+			}
 
 			if (data.title) document.title = data.title;
 			document.getElementById("title-student").textContent =
@@ -58,47 +85,55 @@ window.addEventListener("DOMContentLoaded", () => {
 
 function loadFilesFromInput(files, side) {
 	const texts = {};
-	let diffMarks = null;
 	let pending = files.length;
 	if (!pending) return;
 
 	const MODE_SUFFIX = {
+		"": "",
 		"token-lcs": "_lcs",
 		"line-myers": "_myers",
 		"intra-line": "_intraline",
 	};
-	const suffix = _diffMode ? MODE_SUFFIX[_diffMode] || "" : "";
-	const diffMarksFilename = `diff_marks${suffix}.json`;
 
 	for (const file of files) {
 		const reader = new FileReader();
 		reader.onload = (e) => {
-			if (file.name.toLowerCase() === diffMarksFilename) {
+			const fname = file.name.toLowerCase();
+			const modeEntry = Object.entries(MODE_SUFFIX).find(
+				([, sfx]) => fname === `diff_marks${sfx}.json`,
+			);
+			if (modeEntry) {
 				try {
-					diffMarks = JSON.parse(e.target.result);
+					const parsed = JSON.parse(e.target.result);
+					if (!_allMarks[modeEntry[0]]) _allMarks[modeEntry[0]] = {};
+					Object.assign(_allMarks[modeEntry[0]], parsed);
 				} catch {}
 			} else {
 				texts[file.name] = e.target.result;
 			}
 			pending--;
 			if (pending === 0) {
-				const marks = diffMarks
+				const marks =
+					_allMarks[_diffMode ?? ""] ??
+					Object.values(_allMarks)[0] ??
+					null;
+				const sideMarks = marks
 					? (side === "teacher"
-							? diffMarks.teacher_files
-							: diffMarks.student_files) || null
+							? marks.teacher_files
+							: marks.student_files) || null
 					: null;
 
 				if (side === "teacher") {
 					_teacherFiles = texts;
-					_teacherMarks = marks;
+					_teacherMarks = sideMarks;
 				} else {
 					_studentFiles = texts;
-					_studentMarks = marks;
+					_studentMarks = sideMarks;
 				}
 				renderPanel(
 					side,
 					side === "teacher" ? _teacherFiles : _studentFiles,
-					marks,
+					sideMarks,
 				);
 			}
 		};
@@ -119,7 +154,8 @@ function renderPanel(side, files, marks) {
 	landing.style.display = "none";
 	content.style.display = "flex";
 	if (side === "teacher") {
-		if (previewBtn) previewBtn.style.display = "block";
+		const bottomBar = document.getElementById("bottom-bar");
+		if (bottomBar) bottomBar.style.display = "flex";
 	}
 
 	// reset preview state when reloading
@@ -248,27 +284,7 @@ function diffColorizePositions(text, posMarks) {
 	return out;
 }
 
-function _applyDiffModeLabel() {
-	const LABELS = {
-		"token-lcs": "Token LCS",
-		"line-myers": "Myers line diff",
-		"intra-line": "Intra-line (WinMerge)",
-		"token-context-hungarian": "Context–cosine–Hungarian",
-	};
-	const label = _diffMode ? LABELS[_diffMode] || _diffMode : null;
-	if (!label) return;
-	for (const side of ["teacher", "student"]) {
-		const titleEl = document.getElementById(`title-${side}`);
-		if (!titleEl) continue;
-		const hdr = titleEl.parentElement; // .panel-header
-		const badge = document.createElement("span");
-		badge.style.cssText =
-			"margin-left:8px;padding:1px 6px;border-radius:3px;" +
-			"background:#d0d8e8;font-size:10px;font-weight:500;letter-spacing:0;text-transform:none;color:#334";
-		badge.textContent = label;
-		hdr.insertBefore(badge, titleEl.nextSibling);
-	}
-}
+function _applyDiffModeLabel() {}
 
 function togglePreview() {
 	const btn = document.getElementById("btn-preview");

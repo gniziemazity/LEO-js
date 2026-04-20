@@ -24,12 +24,11 @@ async function openDiffWindow(student, mode = null) {
 		);
 
 		const MODE_SUFFIX = {
+			"": "",
 			"token-lcs": "_lcs",
 			"line-myers": "_myers",
 			"intra-line": "_intraline",
 		};
-		const suffix = mode ? MODE_SUFFIX[mode] || "" : "";
-		const diffMarksFilename = `diff_marks${suffix}.json`;
 
 		const loadDiffMarks = async (filename) => {
 			const key = studentDir + filename;
@@ -55,7 +54,12 @@ async function openDiffWindow(student, mode = null) {
 			}
 		};
 
-		const diffMarks = await loadDiffMarks(diffMarksFilename);
+		const allMarks = {};
+		for (const [m, sfx] of Object.entries(MODE_SUFFIX)) {
+			const marks = await loadDiffMarks(`diff_marks${sfx}.json`);
+			if (marks) allMarks[m] = marks;
+		}
+		const defaultMarks = allMarks[""] ?? Object.values(allMarks)[0] ?? null;
 
 		const teacherFiles = {};
 		for (const [, file] of teacherEntries)
@@ -84,15 +88,17 @@ async function openDiffWindow(student, mode = null) {
 				teacherFiles,
 				studentFiles,
 				imageUris,
-				teacherMarks: diffMarks ? diffMarks.teacher_files || {} : null,
-				studentMarks: diffMarks ? diffMarks.student_files || {} : null,
+				teacherMarks: defaultMarks
+					? defaultMarks.teacher_files || {}
+					: null,
+				studentMarks: defaultMarks
+					? defaultMarks.student_files || {}
+					: null,
+				allMarks,
 				title: `${escHtml(student.name)} (${escHtml(followPct)})`,
 			}),
 		);
-		window.open(
-			`differentiator.html?key=${dataKey}${mode ? "&mode=" + encodeURIComponent(mode) : ""}`,
-			"_blank",
-		);
+		window.open(`differentiator.html?key=${dataKey}`, "_blank");
 	} catch (err) {
 		console.error("[KLA diff]", err);
 		alert("Error opening differentiator: " + err.message);

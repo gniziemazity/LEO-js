@@ -100,9 +100,6 @@
 			}
 
 			.btn-preview {
-				position: fixed;
-				bottom: 14px;
-				right: 14px;
 				z-index: 100;
 				padding: 4px 12px;
 				font-size: 11px;
@@ -114,7 +111,6 @@
 				background: #fff;
 				color: #555;
 				cursor: pointer;
-				display: none;
 				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 			}
 			.btn-preview:hover {
@@ -128,6 +124,27 @@
 				border-color: #007acc;
 			}
 
+			#bottom-bar {
+				position: fixed;
+				bottom: 14px;
+				right: 14px;
+				z-index: 100;
+				display: none;
+				gap: 6px;
+				align-items: center;
+			}
+
+			#mode-select {
+				padding: 4px 8px;
+				font-size: 11px;
+				border: 1px solid #bbb;
+				border-radius: 4px;
+				background: #fff;
+				color: #555;
+				cursor: pointer;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+			}
+
 			.preview-frame {
 				flex: 1;
 				min-height: 0;
@@ -138,9 +155,17 @@
 		</style>
 	</head>
 	<body>
-		<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
-			⬜ Preview
-		</button>
+		<div id="bottom-bar">
+			<select id="mode-select">
+				<option value="">Default</option>
+				<option value="token-lcs">Token LCS</option>
+				<option value="line-myers">Myers</option>
+				<option value="intra-line">Intra-line</option>
+			</select>
+			<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
+				⬜ Preview
+			</button>
+		</div>
 		<div id="diff-root">
 			<div class="diff-panel" id="panel-teacher">
 				<div class="panel-header">

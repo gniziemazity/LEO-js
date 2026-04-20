@@ -3,13 +3,6 @@
 const tooltipEl = document.getElementById("tooltip");
 let _pinned = null;
 
-tooltipEl.addEventListener("click", (e) => {
-	const btn = e.target.closest(".diff-btn");
-	if (!btn || !_pinned || _pinned.type !== "student") return;
-	const mode = btn.dataset.diffMode || null;
-	openDiffWindow(_pinned.s, mode);
-});
-
 function setupHover(c1, c2, c3, p, L) {
 	for (const [canvas, id] of [
 		[c1, "c1"],
@@ -66,13 +59,7 @@ function setupHover(c1, c2, c3, p, L) {
 					return;
 				}
 				if (id === "c3" && hit.type === "student") {
-					if (_pinned === hit) {
-						_pinned = null;
-						hideTip();
-					} else {
-						_pinned = hit;
-						showTip(e.clientX, e.clientY, hit, true, id);
-					}
+					openDiffWindow(hit.s, null);
 					return;
 				}
 				if (_pinned === hit) {
@@ -413,13 +400,6 @@ function formatHit(hit, simple = false) {
 					})
 					.join(", ");
 			}
-			html +=
-				`\n<span class="diff-btns">` +
-				`<button class="diff-btn" data-diff-mode="">Diff</button>` +
-				`<button class="diff-btn" data-diff-mode="token-lcs">LCS</button>` +
-				`<button class="diff-btn" data-diff-mode="line-myers">Myers</button>` +
-				`<button class="diff-btn" data-diff-mode="intra-line">Intra-line</button>` +
-				`</span>`;
 			return html;
 		}
 		default:

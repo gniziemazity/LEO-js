@@ -612,32 +612,31 @@ async function openDiff(dirHandle, student, followPct) {
 		} catch {}
 
 		const studentFiles = {};
-		let diffMarks = null;
-		const DM_PRIO = [
-			"diff_marks.json",
-			"diff_marks_intraline.json",
-			"diff_marks_lcs.json",
-		];
+		const DM_FILES = {
+			"": "diff_marks.json",
+			"token-lcs": "diff_marks_lcs.json",
+			"line-myers": "diff_marks_myers.json",
+			"intra-line": "diff_marks_intraline.json",
+		};
+		const allMarks = {};
 		try {
 			const anonDir = await dirHandle.getDirectoryHandle("anon_names");
 			const studentDir = await anonDir.getDirectoryHandle(anonName);
-			const dmEntries = {};
 			for await (const [name, entry] of studentDir.entries()) {
 				if (entry.kind !== "file") continue;
 				if (/\.(html|css|js)$/i.test(name))
 					studentFiles[name] = await (await entry.getFile()).text();
-				if (DM_PRIO.includes(name)) dmEntries[name] = entry;
 			}
-			const dmName = DM_PRIO.find((n) => dmEntries[n]);
-			if (dmName)
+			for (const [mode, fname] of Object.entries(DM_FILES)) {
 				try {
-					diffMarks = JSON.parse(
-						await (await dmEntries[dmName].getFile()).text(),
-					);
+					const fh = await studentDir.getFileHandle(fname);
+					allMarks[mode] = JSON.parse(await (await fh.getFile()).text());
 				} catch {}
+			}
 		} catch (e) {
 			console.warn("Student dir error:", e.message);
 		}
+		const defaultMarks = allMarks[""] ?? Object.values(allMarks)[0] ?? null;
 
 		if (
 			!Object.keys(teacherFiles).length &&
@@ -658,8 +657,9 @@ async function openDiff(dirHandle, student, followPct) {
 				teacherFiles,
 				studentFiles,
 				imageUris: {},
-				teacherMarks: diffMarks?.teacher_files ?? null,
-				studentMarks: diffMarks?.student_files ?? null,
+				teacherMarks: defaultMarks?.teacher_files ?? null,
+				studentMarks: defaultMarks?.student_files ?? null,
+				allMarks,
 				title: `${escHtml(student.name)} (${escHtml(label)})`,
 			}),
 		);
@@ -726,7 +726,7 @@ function renderStats() {
 
 		addBarCard(
 			body,
-			"Average Grade per Assignment (0–5)",
+			"Average Grades",
 			names6,
 			py.assignments.map((a) => a.avg_grade ?? 0),
 			ACCENT,
@@ -735,7 +735,7 @@ function renderStats() {
 		);
 		addBarCard(
 			body,
-			"Trouble Rate among Submitted (%)",
+			"Trouble Rates",
 			names6,
 			py.assignments.map((a) =>
 				a.trouble_rate != null ? a.trouble_rate * 100 : 0,
@@ -746,7 +746,7 @@ function renderStats() {
 		);
 		addBarCard(
 			body,
-			"% Using AI per Assignment",
+			"AI Use",
 			names6,
 			py.assignments.map((a) => (a.ai_rate != null ? a.ai_rate * 100 : 0)),
 			ACCENT,
@@ -756,7 +756,7 @@ function renderStats() {
 		if (names5.length)
 			addBarCard(
 				body,
-				"Average Follow Score per Lesson (%)",
+				"Follow Scores",
 				names5,
 				py.assignments
 					.filter((a) => a.follow_avg != null)
@@ -978,19 +978,19 @@ function addPassingCard(parent, labels, passCounts, participCounts) {
 		yMax: Math.max(...participCounts, 1) + 1,
 		stacked: true,
 		tooltipCallback: (_label, _val, _si, gi) => [
-			`${passCounts[gi]}/${participCounts[gi]}`,
+			`${passCounts[gi]} / ${participCounts[gi]}`,
 		],
 	});
 	chart.setData(labels, [
 		{
 			data: passCounts,
-			backgroundColor: "#555",
-			borderColor: "#555",
+			backgroundColor: "#555555",
+			borderColor: "#555555",
 		},
 		{
 			data: notPassCounts,
-			backgroundColor: "#bbb",
-			borderColor: "#aaa",
+			backgroundColor: "#cccccc",
+			borderColor: "#bbbbbb",
 		},
 	]);
 	_barCharts.push(chart);
@@ -1048,19 +1048,15 @@ function addScatterCard(parent, assignment, points, isFirst) {
 			"beforeend",
 			'<span style="margin-left:6px;font-size:11px;color:#007acc">●</span>' +
 				'<span style="font-size:9px;color:#888;font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>' +
-				'<span style="font-size:11px;color:#dc2626">●</span>' +
+				'<span style="font-size:11px;color:#111111">●</span>' +
 				'<span style="font-size:9px;color:#888;font-weight:400;text-transform:none;letter-spacing:0"> AI</span>',
 		);
 	}
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 
-	const jitter = (p) => ({
-		...p,
-		y: +(p.y + (Math.random() - 0.5) * 0.2).toFixed(2),
-	});
-	const noAI = points.filter((p) => !p.ai).map(jitter);
-	const aiPts = points.filter((p) => p.ai).map(jitter);
+	const noAI = points.filter((p) => !p.ai);
+	const aiPts = points.filter((p) => p.ai);
 	const trend = linReg(points);
 
 	const chart = new ScatterChart(box, {
@@ -1089,7 +1085,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		},
 		{
 			data: aiPts,
-			color: "#dc262699",
+			color: "#11111199",
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1183,16 +1179,16 @@ function addProgressTotals(container) {
 	chart.setData([
 		{
 			data: followData,
-			color: "rgba(0,0,0,0.7)",
-			borderColor: "#000",
+			color: "rgba(85,85,85,0.44)",
+			borderColor: "#555555",
 			yAxis: "left",
 			coef: 25,
-			outlierColor: "rgba(0,0,0,0.5)",
+			outlierColor: "rgba(85,85,85,0.5)",
 			outlierRadius: 3,
 		},
 		{
 			data: gradeData,
-			color: "rgba(0,122,204,0.7)",
+			color: "rgba(0,122,204,0.44)",
 			borderColor: "#007acc",
 			yAxis: "right",
 			coef: 25,
@@ -1238,7 +1234,7 @@ function renderProgress() {
 			leftAxis: {
 				min: -4,
 				max: 104,
-				ticks: [0, 25, 50, 75, 100],
+				ticks: [0, 20, 40, 60, 80, 100],
 				color: "#999",
 			},
 			rightAxis: {
@@ -1258,7 +1254,8 @@ function renderProgress() {
 		chart.setDatasets([
 			{
 				data: follows,
-				color: "#111",
+				color: "#555555",
+				pointFillColor: "rgba(85,85,85,0.44)",
 				lineWidth: 1.5,
 				pointRadius: 4,
 				yAxis: "left",
@@ -1266,11 +1263,12 @@ function renderProgress() {
 					const v = l.lesson_obs?.trim();
 					return v && v !== "_" ? v : null;
 				}),
-				labelColor: "#111",
+				labelColor: "#555555",
 			},
 			{
 				data: grades,
 				color: "#007acc",
+				pointFillColor: "rgba(0,122,204,0.44)",
 				lineWidth: 1.5,
 				lineDash: [4, 3],
 				pointRadius: 4,

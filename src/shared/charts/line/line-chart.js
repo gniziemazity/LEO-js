@@ -134,7 +134,7 @@ class LineChart {
 			ctx.setLineDash([]);
 
 			const r = ds.pointRadius ?? 4;
-			ctx.fillStyle = ds.color ?? "#333";
+			ctx.fillStyle = ds.pointFillColor ?? ds.color ?? "#333";
 			for (let i = 0; i < ds.data.length; i++) {
 				const v = ds.data[i];
 				if (v == null) continue;
