@@ -28,15 +28,15 @@ from utils.token_log import (
 _TEST = _ROOT / "test"
 
 _CASES = [
-    ("chess_board",  True,  ["student_a", "student_b", "student_c"], True),
-    ("chess_game",   True,  ["student_a", "student_b"], True),
+    ("wall",  True,  ["student_a", "student_b", "student_c"], True),
+    ("chess",   True,  ["student_a", "student_b"], True),
     ("js",           True,  ["student_a", "student_b"], True),
-    ("qr_code",      True,  [], True),
+    ("qr",      True,  [], True),
     ("sorting",      True,  ["student_a", "student_b"], True),
 ]
 
 _DIFF_MARKS_CASES = [
-    ("chess_board", "student_c"),
+    ("wall", "student_c"),
 ]
 
 

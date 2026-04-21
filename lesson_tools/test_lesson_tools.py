@@ -214,34 +214,34 @@ class _StudentBase:
 
 
 class TestChessBoardReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'chess_board' / 'log.json'
-    reconstructed_file = _TEST / 'chess_board' / 'reconstructed.html'
-    tokens_file        = _TEST / 'chess_board' / 'tokens.txt'
+    log_file           = _TEST / 'wall' / 'log.json'
+    reconstructed_file = _TEST / 'wall' / 'reconstructed.html'
+    tokens_file        = _TEST / 'wall' / 'tokens.txt'
     has_css            = True
 
 
 class TestChessBoardStudentATokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess_board' / 'tokens.txt'
-    student_html        = _TEST / 'chess_board' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'chess_board' / 'student_a' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_a' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_a' / 'tokens.txt'
 
 
 class TestChessBoardStudentBTokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess_board' / 'tokens.txt'
-    student_html        = _TEST / 'chess_board' / 'student_b' / 'index.html'
-    tokens_file         = _TEST / 'chess_board' / 'student_b' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_b' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_b' / 'tokens.txt'
 
 
 class TestChessBoardStudentCTokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess_board' / 'tokens.txt'
-    student_html        = _TEST / 'chess_board' / 'student_c' / 'index.html'
-    tokens_file         = _TEST / 'chess_board' / 'student_c' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_c' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_c' / 'tokens.txt'
 
 
 class TestChessBoardStudentCDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.diff_marks = _load_json(_TEST / 'chess_board' / 'student_c' / 'diff_marks.json')
+        cls.diff_marks = _load_json(_TEST / 'wall' / 'student_c' / 'diff_marks.json')
         cls.teacher_occs = cls.diff_marks['teacher_files'][
             next(iter(cls.diff_marks['teacher_files']))
         ]
@@ -291,35 +291,35 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
 
 
 class TestChessGameReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'chess_game' / 'log.json'
-    reconstructed_file = _TEST / 'chess_game' / 'reconstructed.html'
-    tokens_file        = _TEST / 'chess_game' / 'tokens.txt'
+    log_file           = _TEST / 'chess' / 'log.json'
+    reconstructed_file = _TEST / 'chess' / 'reconstructed.html'
+    tokens_file        = _TEST / 'chess' / 'tokens.txt'
     has_css            = True
 
 
 class TestChessGameStudentATokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess_game' / 'tokens.txt'
-    student_html        = _TEST / 'chess_game' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'chess_game' / 'student_a' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_a' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_a' / 'tokens.txt'
 
 
 class TestChessGameStudentBTokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess_game' / 'tokens.txt'
-    student_html        = _TEST / 'chess_game' / 'student_b' / 'index.html'
-    tokens_file         = _TEST / 'chess_game' / 'student_b' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_b' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_b' / 'tokens.txt'
 
 
 class TestChessGameStudentBDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _sm._ALL_EXTRA_STAR = True
-        chess_game = _TEST / 'chess_game'
-        cls.events = _load_events(chess_game / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
+        chess = _TEST / 'chess'
+        cls.events = _load_events(chess / 'log.json')
+        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
         removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
-        stu_files = {'index.html': chess_game / 'student_b' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess_game / 'reconstructed.html'}
+        stu_files = {'index.html': chess / 'student_b' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         stu_outside, stu_comment = _extract_student_ci_split(stu_files)
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, teacher_entries,
@@ -365,9 +365,9 @@ class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
 
 
 class TestQRCodeReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'qr_code' / 'log.json'
-    reconstructed_file = _TEST / 'qr_code' / 'reconstructed.html'
-    tokens_file        = _TEST / 'qr_code' / 'tokens.txt'
+    log_file           = _TEST / 'qr' / 'log.json'
+    reconstructed_file = _TEST / 'qr' / 'reconstructed.html'
+    tokens_file        = _TEST / 'qr' / 'tokens.txt'
     has_css            = True
 
 
@@ -387,13 +387,13 @@ class TestSortingStudentATokens(_StudentBase, unittest.TestCase):
 class TestChessGameStudentCDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        chess_game = _TEST / 'chess_game'
-        cls.events = _load_events(chess_game / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess_game / 'tokens.txt')
+        chess = _TEST / 'chess'
+        cls.events = _load_events(chess / 'log.json')
+        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
         removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
-        stu_files = {'index.html': chess_game / 'student_c' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess_game / 'reconstructed.html'}
+        stu_files = {'index.html': chess / 'student_c' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         stu_outside, stu_comment = _extract_student_ci_split(stu_files)
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, teacher_entries,
