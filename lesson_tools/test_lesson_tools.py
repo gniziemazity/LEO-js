@@ -183,12 +183,17 @@ class _StudentBase:
 
     @classmethod
     def setUpClass(cls):
+        _sm._ALL_EXTRA_STAR = True
         _teacher_headers, cls.teacher_entries = _parse_tokens_file(cls.teacher_tokens_file)
         cls.headers, cls.expected = _parse_student_tokens_file(cls.tokens_file)
         outside, comment = _extract_student_ci_split({cls.student_html.name: cls.student_html})
         cls.all_occ, cls.n_found, cls.n_missing, cls.n_extra, cls.follow_e, _ = (
             _build_student_token_occurrences(cls.teacher_entries, outside, comment)
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        _sm._ALL_EXTRA_STAR = False
 
     def test_found_count(self):
         self.assertEqual(self.n_found, int(self.headers['Found']))
@@ -282,7 +287,7 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
 
     def test_student_div_comment_count(self):
         div_comment = [o for o in self.student_occs if o['token'] == 'div' and o['label'] == 'comment']
-        self.assertEqual(len(div_comment), 3)
+        self.assertEqual(len(div_comment), 2)
 
     def test_no_null_labels_in_fixture(self):
         # format v4 only stores colored (non-null) occurrences

@@ -227,12 +227,6 @@
         "end": 2945
       },
       {
-        "token": "div",
-        "label": "comment",
-        "start": 2942,
-        "end": 2945
-      },
-      {
         "token": "style",
         "label": "comment",
         "start": 2946,
@@ -504,12 +498,6 @@
         "token": "<div",
         "label": "comment",
         "start": 3874,
-        "end": 3878
-      },
-      {
-        "token": "div",
-        "label": "comment",
-        "start": 3875,
         "end": 3878
       },
       {

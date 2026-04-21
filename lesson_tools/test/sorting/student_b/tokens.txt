@@ -1,7 +1,7 @@
 # Found            : 156
 # MISSING          : 33
 # EXTRA            : 10
-# Follow (E)       : 80.7 %
+# Follow (E)       : 78.9 %
 DOCTYPE	10:12:14	MISSING
 html	10:12:15
 <html	10:12:20
@@ -101,6 +101,9 @@ flex	10:47:39
 margin	10:48:02
 0px	10:48:03
 1px	10:48:07
+200px	10:50:08	EXTRA*
+width	10:50:08	EXTRA*
+red	10:50:09	EXTRA*
 bar	10:50:10
 style	10:50:11
 height	10:50:14
@@ -193,11 +196,8 @@ resolve	11:14:23
 async	11:15:16	MISSING
 1	11:15:16	EXTRA
 10	11:15:16	EXTRA
-200px	11:15:16	EXTRA
 <DOCTYPE	11:15:16	EXTRA
 appendchild	11:15:16	EXTRA
 background-colour	11:15:16	EXTRA
 crateElement	11:15:16	EXTRA
 promise	11:15:16	EXTRA
-red	11:15:16	EXTRA
-width	11:15:16	EXTRA

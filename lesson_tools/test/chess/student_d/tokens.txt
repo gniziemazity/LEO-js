@@ -1,6 +1,6 @@
-# Found            : 455
-# MISSING          : 0
-# EXTRA            : 3
+# Found            : 453
+# MISSING          : 2
+# EXTRA            : 33
 # Follow (E)       : 99.3 %
 DOCTYPE	11:53:34
 html	11:53:35
@@ -56,8 +56,8 @@ grid-template-rows	12:04:36
 repeat	12:04:38
 8	12:04:38
 1fr	12:04:39
-1	12:05:03	COMMENT
-fraction	12:05:06	COMMENT
+1	12:05:03	COMMENT	MISSING
+fraction	12:05:06	COMMENT	MISSING
 grid-template-columns	12:05:16
 repeat	12:05:19
 8	12:05:19
@@ -457,6 +457,36 @@ element	12:53:30
 children	12:53:32
 0	12:53:32
 let	12:56:53
+<img	12:56:53	EXTRA
+<img	12:56:53	EXTRA
+<img	12:56:53	EXTRA
+<img	12:56:53	EXTRA
+<img	12:56:53	EXTRA
+<img	12:56:53	EXTRA
+p2	12:56:53	EXTRA
+p3	12:56:53	EXTRA
+p4	12:56:53	EXTRA
+p5	12:56:53	EXTRA
+p6	12:56:53	EXTRA
+p6	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+pieces	12:56:53	EXTRA
+png	12:56:53	EXTRA
+png	12:56:53	EXTRA
+png	12:56:53	EXTRA
+png	12:56:53	EXTRA
+png	12:56:53	EXTRA
+png	12:56:53	EXTRA
+src	12:56:53	EXTRA
+src	12:56:53	EXTRA
+src	12:56:53	EXTRA
+src	12:56:53	EXTRA
+src	12:56:53	EXTRA
+src	12:56:53	EXTRA
 this	12:56:54	EXTRA*
 handleClick	12:56:55	EXTRA*
 onclick	12:56:58	EXTRA*

@@ -117,14 +117,8 @@ def _find_token_occs(text_s: str, tok_s: str, c_starts: list, c_ends: list) -> l
     escaped = re.escape(tok_s)
     has_hyphen = '-' in tok_s
     if re.match(r'^\w', tok_s):
-        # Hyphenated tokens (e.g. FLEX-DIRECTION) allow a preceding dot/hyphen;
-        # plain tokens use the standard word-boundary lookbehind.
-        escaped = (r'(?<![.\w])' if has_hyphen else r'(?<!\w)') + escaped
+        escaped = (r'(?<![.<\w])' if has_hyphen else r'(?<![<\w])') + escaped
     if re.search(r'\w$', tok_s):
-        # For non-hyphenated tokens, also block when followed by a hyphen that
-        # begins a CSS identifier continuation (letter after the hyphen), e.g.
-        # FLEX must not match inside `flex-direction` or `flex-end`.
-        # A hyphen followed by a digit is arithmetic (e.g. i-1) and is allowed.
         escaped = escaped + (r'(?!\w)' if has_hyphen else r'(?!\w)(?!-[a-zA-Z_])')
     try:
         pat = re.compile(escaped)
@@ -324,16 +318,33 @@ def _context_vector(
     pos: int,
     k: int,
     comment_flags: List[bool] = None,
+    exclude_positions: set = None,
 ) -> Counter:
-    lo = max(0, pos - k)
-    hi = min(len(tokens_seq), pos + k + 1)
     vec = Counter()
-    for i in range(lo, hi):
-        if i == pos:
-            continue
-        if comment_flags is not None and comment_flags[i]:
-            continue
-        vec[tokens_seq[i]] += 1
+    if exclude_positions:
+        # Expanding window: when a neighbor is excluded or in a comment,
+        # look further to fill k slots on each side.
+        left, right = pos - 1, pos + 1
+        left_count = right_count = 0
+        while left_count < k and left >= 0:
+            if not ((comment_flags is not None and comment_flags[left]) or left in exclude_positions):
+                vec[tokens_seq[left]] += 1
+                left_count += 1
+            left -= 1
+        while right_count < k and right < len(tokens_seq):
+            if not ((comment_flags is not None and comment_flags[right]) or right in exclude_positions):
+                vec[tokens_seq[right]] += 1
+                right_count += 1
+            right += 1
+    else:
+        lo = max(0, pos - k)
+        hi = min(len(tokens_seq), pos + k + 1)
+        for i in range(lo, hi):
+            if i == pos:
+                continue
+            if comment_flags is not None and comment_flags[i]:
+                continue
+            vec[tokens_seq[i]] += 1
     return vec
 
 
@@ -557,6 +568,7 @@ def _locate_token(
     ghost_ctx_vecs: List[Counter] = None,
     s_flags: List[bool] = None,
     t_flags: List[bool] = None,
+    s_exclude: set = None,
 ) -> Tuple[set, set, set, set]:
     n_s = len(s_positions)
     n_t = len(t_positions)
@@ -565,7 +577,7 @@ def _locate_token(
     if n_s == 0:
         return set(), set(range(n_t)), set(), set()
 
-    s_ctx = [_context_vector(s_seq, p, k, s_flags) for p in s_positions]
+    s_ctx = [_context_vector(s_seq, p, k, s_flags, s_exclude) for p in s_positions]
     s_ctx_narrow = [_context_vector(s_seq, p, _GHOST_K, s_flags) for p in s_positions] if n_g else []
 
     n_cols = n_t + n_g
@@ -686,6 +698,31 @@ def _build_contextual_diff_marks(
         for fn, toks in student_counts.items()
     }
 
+    # Pre-pass: identify student positions that are ghost-matched (extra_star) so they
+    # can be excluded from context windows during the main matching.  This prevents
+    # removed-then-reinserted tokens (e.g. onclick/handleClick/this) from distorting
+    # the cosine context of nearby surviving tokens (e.g. <img).
+    pre_extra_star_positions: set = set()
+    if ghost_contexts and d_counts:
+        for tok in token_keys:
+            if not d_counts.get(tok, 0):
+                continue
+            ghost_vecs = ghost_contexts.get(tok)
+            if not ghost_vecs:
+                continue
+            t_out_pre = [x for x in teacher_by_token.get(tok, []) if not x['is_comment']]
+            s_out_pre = [x for x in student_by_token.get(tok, []) if not x['is_comment']]
+            _, _, _, pre_es = _locate_token(
+                [x['seq_idx'] for x in s_out_pre],
+                [x['seq_idx'] for x in t_out_pre],
+                student_seq, teacher_seq, context_k,
+                ghost_ctx_vecs=ghost_vecs,
+                s_flags=student_flags,
+                t_flags=teacher_flags,
+            )
+            for i in pre_es:
+                pre_extra_star_positions.add(s_out_pre[i]['seq_idx'])
+
     for tok in token_keys:
         t_list = teacher_by_token.get(tok, [])
         s_list = student_by_token.get(tok, [])
@@ -698,11 +735,15 @@ def _build_contextual_diff_marks(
         t_out_pos = [x['seq_idx'] for x in t_out]
         s_out_pos = [x['seq_idx'] for x in s_out]
         ghost_vecs = (ghost_contexts or {}).get(tok)
+        # Only apply exclusions for non-ghost tokens: ghost tokens need full context
+        # to match their own ghost vectors, and are already handled in the pre-pass.
+        s_excl = pre_extra_star_positions if (pre_extra_star_positions and ghost_vecs is None) else None
         _mso, missing_to, extra_so, extra_star_so = _locate_token(
             s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
             ghost_ctx_vecs=ghost_vecs,
             s_flags=student_flags,
             t_flags=teacher_flags,
+            s_exclude=s_excl,
         )
 
         all_extra_so = extra_so | extra_star_so

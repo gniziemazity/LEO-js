@@ -28,15 +28,21 @@ from utils.token_log import (
 _TEST = _ROOT / "test"
 
 _CASES = [
-    ("wall",  True,  ["student_a", "student_b", "student_c"], True),
-    ("chess",   True,  ["student_a", "student_b"], True),
-    ("js",           True,  ["student_a", "student_b"], True),
+    ("wall",    True,  ["student_a", "student_b", "student_c", "student_d"], True),
+    ("chess",   True,  ["student_a", "student_b", "student_c", "student_d"], True),
+    ("js",      True,  ["student_a", "student_b"], True),
     ("qr",      True,  [], True),
-    ("sorting",      True,  ["student_a", "student_b"], True),
+    ("sorting", True,  ["student_a", "student_b"], True),
 ]
 
 _DIFF_MARKS_CASES = [
-    ("wall", "student_c"),
+    ("wall",    "student_c"),
+    ("wall",    "student_d"),
+    ("chess",   "student_b"),
+    ("chess",   "student_c"),
+    ("chess",   "student_d"),
+    ("sorting", "student_a"),
+    ("sorting", "student_b"),
 ]
 
 
@@ -214,6 +220,8 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
 def main():
     print("Regenerating test fixtures...\n")
 
+    _sm._ALL_EXTRA_STAR = True
+
     for dir_name, has_css, students, regen_reco in _CASES:
         case_dir = _TEST / dir_name
         print(f"[{dir_name}]")
@@ -229,10 +237,8 @@ def main():
         print()
 
     print("[diff_marks]")
-    _sm._ALL_EXTRA_STAR = True
     for dir_name, student_name in _DIFF_MARKS_CASES:
         regen_diff_marks(_TEST / dir_name, student_name)
-    _sm._ALL_EXTRA_STAR = False
 
     print("\nDone.")
 
