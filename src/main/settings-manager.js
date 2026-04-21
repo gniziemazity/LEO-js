@@ -31,7 +31,8 @@ class SettingsManager {
 				codeBlockColor: "#ffffff",
 			},
 			fontSize: 14,
-			hotkeyMode: "single-key", // "single-key" or "auto-run"
+			mode: "record",
+			hotkeyMode: "single-key",
 			autoTypingSpeed: 50,
 			touchpadSensitivity: 3,
 			touchpadSide: "right", // for right / left handed people

@@ -107,6 +107,15 @@ class LessonRenderer {
 		this.broadcastLessonData(executionSteps);
 	}
 
+	isMultilineCodeInsert(blockIdx) {
+		const block = this.lessonManager.getAllBlocks()[blockIdx];
+		return (
+			block &&
+			getBlockSubtype(block.text) === "code-insert-comment" &&
+			block.text.includes("\n")
+		);
+	}
+
 	renderCommentBlock(
 		blockDiv,
 		block,
@@ -115,11 +124,25 @@ class LessonRenderer {
 		globalStepCounter,
 		executionSteps,
 	) {
-		blockDiv.contentEditable = !isTypingActive;
-		blockDiv.innerText = block.text;
-
 		const subtype = getBlockSubtype(block.text);
 		if (subtype) blockDiv.classList.add(subtype);
+
+		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
+		const isMultilineInsert =
+			subtype === "code-insert-comment" && block.text.includes("\n");
+		const isExpanded =
+			isMultilineInsert && selectedBlockIndex === blockIdx && !isTypingActive;
+
+		if (isMultilineInsert && !isExpanded) {
+			blockDiv.contentEditable = "false";
+			blockDiv.innerText = block.text.split("\n")[0] + "...";
+			blockDiv.title = block.text;
+			blockDiv.classList.add("collapsed");
+		} else {
+			blockDiv.contentEditable = !isTypingActive;
+			blockDiv.innerText = block.text;
+			blockDiv.title = "";
+		}
 
 		blockDiv.oninput = () => {
 			this.saveEditState(blockIdx, blockDiv.innerText);
@@ -291,6 +314,12 @@ class LessonRenderer {
 						}, 0);
 						return;
 					}
+				} else if (this.isMultilineCodeInsert(previousSelectedIndex)) {
+					this.render();
+					setTimeout(() => {
+						this.uiManager.focusBlock(blockIdx, clickX, clickY);
+					}, 0);
+					return;
 				}
 			}
 
@@ -299,6 +328,12 @@ class LessonRenderer {
 
 				if (block.type === "code") {
 					this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
+				} else if (this.isMultilineCodeInsert(blockIdx)) {
+					this.render();
+					setTimeout(() => {
+						this.uiManager.focusBlock(blockIdx, clickX, clickY);
+					}, 0);
+					return;
 				}
 			}
 

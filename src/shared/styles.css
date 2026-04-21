@@ -400,6 +400,28 @@ body.typing-active #editor-toolbar {
 	background: #333;
 }
 
+body.mode-classroom #addCodeInsertBlockBtn,
+body.mode-classroom #addMoveToBlockBtn,
+body.mode-record #addCodeInsertBlockBtn,
+body.mode-record #addMoveToBlockBtn,
+body.mode-record #addQuestionCommentBtn,
+body.mode-record #addImageCommentBtn,
+body.mode-record #addWebCommentBtn {
+	display: none;
+}
+
+body.mode-classroom .key-btn[data-char="⚓"],
+body.mode-record .key-btn[data-char="⚓"] {
+	display: none;
+}
+
+.comment-block.code-insert-comment.collapsed {
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .timer-btn,
 .qr-btn {
 	height: 35px;

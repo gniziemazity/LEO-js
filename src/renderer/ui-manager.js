@@ -142,6 +142,7 @@ class UIManager {
 			btn.className = "key-btn";
 			btn.textContent = char;
 			btn.title = keys[char];
+			btn.dataset.char = char;
 			btn.onclick = () => onKeyClick(char);
 			this.elements.specialKeysContainer.appendChild(btn);
 		});

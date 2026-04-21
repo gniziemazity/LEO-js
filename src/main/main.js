@@ -367,7 +367,17 @@ function cleanupAutoTyping() {
 	hotkeyManager.unregisterEscape();
 }
 
+function setMenuMode(mode) {
+	settingsManager.set("mode", mode);
+	if (state.mainWindow) {
+		state.mainWindow.webContents.send("apply-mode", mode);
+	}
+	createApplicationMenu();
+}
+
 function createApplicationMenu() {
+	const currentMode = settingsManager.get("mode") || "record";
+
 	Menu.setApplicationMenu(
 		Menu.buildFromTemplate([
 			{
@@ -424,6 +434,29 @@ function createApplicationMenu() {
 						label: "Toggle Developer Tools",
 						accelerator: "CmdOrCtrl+I",
 						click: () => state.mainWindow.webContents.toggleDevTools(),
+					},
+				],
+			},
+			{
+				label: "Mode",
+				submenu: [
+					{
+						label: "Record",
+						type: "radio",
+						checked: currentMode === "record",
+						click: () => setMenuMode("record"),
+					},
+					{
+						label: "Classroom",
+						type: "radio",
+						checked: currentMode === "classroom",
+						click: () => setMenuMode("classroom"),
+					},
+					{
+						label: "Scientific",
+						type: "radio",
+						checked: currentMode === "scientific",
+						click: () => setMenuMode("scientific"),
 					},
 				],
 			},
@@ -939,6 +972,7 @@ ipcMain.on("save-settings", (event, settings) => {
 	hotkeyManager.registerSystemShortcuts();
 	if (state.isActive) hotkeyManager.registerTypingHotkeys();
 	broadcastServer.updateSettings(settings);
+	createApplicationMenu();
 	event.reply("settings-saved", settingsManager.getAll());
 });
 ipcMain.on("reset-settings", (event) => {

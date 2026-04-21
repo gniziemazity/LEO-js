@@ -50,6 +50,11 @@ const qrModalManager = new QRModalManager();
 
 let pendingQuestion = null;
 
+function applyMode(mode) {
+	document.body.classList.remove("mode-record", "mode-classroom", "mode-scientific");
+	document.body.classList.add(`mode-${mode}`);
+}
+
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
 	pendingQuestion = { question, timestamp, answeredBy: null };
 	const students = fileOperations.getStudents();
@@ -170,9 +175,13 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("toggle-transparency-event", () =>
 		ipcRenderer.send("toggle-transparency"),
 	);
-	ipcRenderer.on("settings-loaded", (e, s) => settingsUI.applySettings(s));
+	ipcRenderer.on("settings-loaded", (e, s) => {
+		settingsUI.applySettings(s);
+		applyMode(s.mode || "record");
+	});
 	ipcRenderer.on("settings-saved", (e, s) => {
 		settingsUI.applySettings(s);
+		applyMode(s.mode || "record");
 		settingsUI.close();
 	});
 	ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
@@ -219,6 +228,7 @@ function setupGlobalIpcListeners() {
 		},
 	);
 
+	ipcRenderer.on("apply-mode", (e, mode) => applyMode(mode));
 	ipcRenderer.on("undo", () => performUndo());
 	ipcRenderer.on("redo", () => performRedo());
 }
