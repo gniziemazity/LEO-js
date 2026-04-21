@@ -185,7 +185,32 @@ class _StudentBase:
     def setUpClass(cls):
         _sm._ALL_EXTRA_STAR = True
         _teacher_headers, cls.teacher_entries = _parse_tokens_file(cls.teacher_tokens_file)
-        cls.headers, cls.expected = _parse_student_tokens_file(cls.tokens_file)
+        cls.headers, cls.raw_expected = _parse_student_tokens_file(cls.tokens_file)
+        cls.removal_ts_by_token = {
+            tok: removal_ts
+            for tok, _, _, is_rem, removal_ts in cls.teacher_entries
+            if is_rem and removal_ts
+        }
+        tokens_with_missing    = {tok for tok, _, fl in cls.raw_expected if fl == {'MISSING'}}
+        tokens_with_extra_star = {tok for tok, _, fl in cls.raw_expected if fl == {'EXTRA*'}}
+        steal_tokens = tokens_with_missing & tokens_with_extra_star
+        teacher_occ = [ts for _, ts, _, is_rem, *_ in cls.teacher_entries if not is_rem]
+        last_ts = teacher_occ[-1] if teacher_occ else '00:00:00'
+        cls.expected = []
+        for tok, ts, flags in cls.raw_expected:
+            if tok in steal_tokens and flags == {'MISSING'}:
+                cls.expected.append((tok, ts, set()))
+            elif tok in steal_tokens and flags == {'EXTRA*'}:
+                pass  # not in all_occ
+            elif 'EXTRA*' in flags:
+                cls.expected.append((tok, last_ts, flags - {'EXTRA*'} | {'EXTRA'}))
+            else:
+                cls.expected.append((tok, ts, flags))
+        n_found_e   = sum(1 for _, _, fl in cls.expected if not fl)
+        n_missing_e = sum(1 for _, _, fl in cls.expected if fl == {'MISSING'})
+        teacher_total_e = n_found_e + n_missing_e
+        cls.headers['Follow'] = round(n_found_e / teacher_total_e * 100, 1) if teacher_total_e else 0.0
+
         outside, comment = _extract_student_ci_split({cls.student_html.name: cls.student_html})
         cls.all_occ, cls.n_found, cls.n_missing, cls.n_extra, cls.follow_e, _ = (
             _build_student_token_occurrences(cls.teacher_entries, outside, comment)
@@ -216,6 +241,17 @@ class _StudentBase:
         actual   = [(tok, ts, frozenset(flags)) for ts, tok, flags in self.all_occ]
         expected = [(tok, ts, frozenset(flags)) for tok, ts, flags in self.expected]
         self.assertEqual(actual, expected)
+
+    def test_extra_star_timestamps(self):
+        """Each EXTRA* entry in the fixture must have the teacher's removal timestamp."""
+        for tok, ts, flags in self.raw_expected:
+            if flags == {'EXTRA*'}:
+                expected_ts = self.removal_ts_by_token.get(tok)
+                if expected_ts:
+                    self.assertEqual(
+                        ts, expected_ts,
+                        f"EXTRA* token '{tok}' has ts {ts!r}, expected removal ts {expected_ts!r}",
+                    )
 
 
 class TestChessBoardReconstruction(_ReconstructionBase, unittest.TestCase):
@@ -415,6 +451,112 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
         labels = self.student_index.get('element', [])
         self.assertGreaterEqual(len(labels), 6)
         self.assertNotEqual(labels[5], 'extra_star')
+
+
+class TestChessGameStudentETokens(_StudentBase, unittest.TestCase):
+    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_e' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_e' / 'tokens.txt'
+
+
+class TestChessGameStudentEDiffMarks(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _sm._ALL_EXTRA_STAR = True
+        chess = _TEST / 'chess'
+        cls.events = _load_events(chess / 'log.json')
+        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
+        stu_files = {'index.html': chess / 'student_e' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
+        stu_outside, stu_comment = _extract_student_ci_split(stu_files)
+        cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
+            teacher_files, stu_files, teacher_entries,
+            stu_outside, stu_comment, context_k=_CONTEXT_K, ghost_contexts=ghost_ctx,
+        )
+        cls.student_index = cls.sf_colors.get('index.html', {})
+        cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
+
+    @classmethod
+    def tearDownClass(cls):
+        _sm._ALL_EXTRA_STAR = False
+
+    def test_height_is_extra(self):
+        self.assertEqual(self.student_index.get('height'), ['extra'])
+
+    def test_50px_first_two_are_extra(self):
+        labels = self.student_index.get('50px', [])
+        self.assertGreaterEqual(len(labels), 2)
+        self.assertEqual(labels[0], 'extra')
+        self.assertEqual(labels[1], 'extra')
+
+    def test_board_is_extra(self):
+        labels = self.student_index.get('Board', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'extra')
+
+    def test_comment_tokens_are_comment(self):
+        for tok in ('styling', 'by', 'ID'):
+            labels = self.student_index.get(tok, [])
+            self.assertTrue(labels, f'expected at least one occurrence of {tok!r}')
+            self.assertTrue(all(l == 'comment' for l in labels),
+                            f'{tok!r} labels: {labels}')
+
+    def test_script_is_missing_from_teacher(self):
+        labels = self.teacher_index.get('<script', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'missing')
+
+    def test_handleclick_is_missing_from_teacher(self):
+        labels = self.teacher_index.get('handleClick', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'missing')
+
+
+class TestChessGameStudentFTokens(_StudentBase, unittest.TestCase):
+    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_f' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_f' / 'tokens.txt'
+
+
+class TestChessGameStudentFDiffMarks(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _sm._ALL_EXTRA_STAR = True
+        chess = _TEST / 'chess'
+        cls.events = _load_events(chess / 'log.json')
+        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
+        stu_files = {'index.html': chess / 'student_f' / 'index.html'}
+        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
+        stu_outside, stu_comment = _extract_student_ci_split(stu_files)
+        cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
+            teacher_files, stu_files, teacher_entries,
+            stu_outside, stu_comment, context_k=_CONTEXT_K, ghost_contexts=ghost_ctx,
+        )
+        cls.student_index = cls.sf_colors.get('index.html', {})
+        cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
+
+    @classmethod
+    def tearDownClass(cls):
+        _sm._ALL_EXTRA_STAR = False
+
+    def test_onclick_is_extra_star(self):
+        labels = self.student_index.get('onclick', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'extra_star')
+
+    def test_onclick_is_missing_from_teacher(self):
+        labels = self.teacher_index.get('onclick', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'missing')
+
+    def test_handleclick_is_extra_star(self):
+        labels = self.student_index.get('handleClick', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'extra_star')
 
 
 class TestSortingStudentBDiffMarks(unittest.TestCase):

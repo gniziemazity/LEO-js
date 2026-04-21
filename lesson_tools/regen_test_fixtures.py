@@ -20,6 +20,7 @@ from utils.token_log import (
     _build_contextual_diff_marks,
     _colors_to_position_marks,
     _build_ghost_contexts,
+    _update_tokens_txt_extra_star,
     _CONTEXT_K,
     _GHOST_K,
     ts_to_local,
@@ -27,23 +28,27 @@ from utils.token_log import (
 
 _TEST = _ROOT / "test"
 
+# (dir_name, has_css, regen_reco)
+# Students are auto-discovered from student_* subdirectories — no hardcoded lists needed.
 _CASES = [
-    ("wall",    True,  ["student_a", "student_b", "student_c", "student_d"], True),
-    ("chess",   True,  ["student_a", "student_b", "student_c", "student_d"], True),
-    ("js",      True,  ["student_a", "student_b"], True),
-    ("qr",      True,  [], True),
-    ("sorting", True,  ["student_a", "student_b"], True),
+    ("wall",    True,  True),
+    ("chess",   True,  True),
+    ("js",      True,  True),
+    ("qr",      True,  True),
+    ("sorting", True,  True),
 ]
 
-_DIFF_MARKS_CASES = [
-    ("wall",    "student_c"),
-    ("wall",    "student_d"),
-    ("chess",   "student_b"),
-    ("chess",   "student_c"),
-    ("chess",   "student_d"),
-    ("sorting", "student_a"),
-    ("sorting", "student_b"),
-]
+_CODE_EXTS = {".html", ".htm", ".css", ".js"}
+
+
+def _student_dirs(case_dir: Path) -> list[Path]:
+    """Return sorted student_* subdirectories that contain at least one code file."""
+    result = []
+    for d in sorted(case_dir.iterdir()):
+        if d.is_dir() and d.name.startswith("student_"):
+            if any(f.suffix.lower() in _CODE_EXTS for f in d.iterdir()):
+                result.append(d)
+    return result
 
 
 def _load_events(log_path: Path) -> list:
@@ -210,6 +215,12 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
         "teacher_files": _colors_to_position_marks(teacher_files, tf_colors),
         "student_files": _colors_to_position_marks(stu_files, sf_colors),
     }
+    corrected_score, _, _ = _update_tokens_txt_extra_star(
+        student_dir / "tokens.txt", diff_marks,
+        {tok: removal_ts for tok, _, _, is_rem, removal_ts in teacher_entries if is_rem and removal_ts},
+    )
+    diff_marks["score"] = corrected_score
+
     diff_path = student_dir / "diff_marks.json"
     with open(diff_path, "w", encoding="utf-8") as fh:
         json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
@@ -222,7 +233,7 @@ def main():
 
     _sm._ALL_EXTRA_STAR = True
 
-    for dir_name, has_css, students, regen_reco in _CASES:
+    for dir_name, has_css, regen_reco in _CASES:
         case_dir = _TEST / dir_name
         print(f"[{dir_name}]")
 
@@ -231,14 +242,16 @@ def main():
         if regen_reco:
             regen_reconstructed(case_dir)
 
-        for student in students:
-            regen_student_tokens(case_dir, student)
+        for student_dir in _student_dirs(case_dir):
+            regen_student_tokens(case_dir, student_dir.name)
 
         print()
 
     print("[diff_marks]")
-    for dir_name, student_name in _DIFF_MARKS_CASES:
-        regen_diff_marks(_TEST / dir_name, student_name)
+    for dir_name, _, _ in _CASES:
+        case_dir = _TEST / dir_name
+        for student_dir in _student_dirs(case_dir):
+            regen_diff_marks(case_dir, student_dir.name)
 
     print("\nDone.")
 

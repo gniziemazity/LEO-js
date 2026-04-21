@@ -3,6 +3,7 @@ import functools
 import json
 import math
 import re
+import shutil
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -245,16 +246,6 @@ def _build_student_token_occurrences(
         for tok, ts_str, is_comment, is_removed, *_ in teacher_entries
         if not is_removed
     ]
-    use_extra_star = _sm._ALL_EXTRA_STAR
-    teacher_removed_del_ts: Dict[str, List[str]] = {}
-    if use_extra_star:
-        for entry in teacher_entries:
-            tok, ts_str, _, is_removed = entry[:4]
-            removal_ts_str = entry[4] if len(entry) > 4 else ''
-            if is_removed:
-                effective_ts = removal_ts_str if removal_ts_str else ts_str
-                teacher_removed_del_ts.setdefault(tok, []).append(effective_ts)
-
     student_ci_total = student_ci_outside + student_ci_comment
     last_ts = teacher_occ[-1][1] if teacher_occ else '00:00:00'
 
@@ -275,13 +266,8 @@ def _build_student_token_occurrences(
     for ci_key in sorted(student_ci_total):
         extra_outside = student_ci_outside[ci_key] - consumed[False][ci_key]
         extra_comment = student_ci_comment[ci_key] - consumed[True][ci_key]
-        removal_ts_list = list(reversed(teacher_removed_del_ts.get(ci_key, []))) if use_extra_star else []
-        n_star = min(max(0, extra_outside), len(removal_ts_list))
-        for i in range(max(0, extra_outside)):
-            if i < n_star:
-                all_occ.append((removal_ts_list[i], ci_key, {'EXTRA*'}))
-            else:
-                all_occ.append((last_ts, ci_key, {'EXTRA'}))
+        for _ in range(max(0, extra_outside)):
+            all_occ.append((last_ts, ci_key, {'EXTRA'}))
         for _ in range(max(0, extra_comment)):
             all_occ.append((last_ts, ci_key, {'COMMENT', 'EXTRA'}))
 
@@ -289,14 +275,12 @@ def _build_student_token_occurrences(
 
     n_found   = sum(1 for _, _, fl in all_occ if not fl or fl == {'COMMENT'})
     n_missing = sum(1 for _, _, fl in all_occ if 'MISSING' in fl)
-    n_extra   = sum(1 for _, _, fl in all_occ if 'EXTRA' in fl or 'EXTRA*' in fl)
+    n_extra   = sum(1 for _, _, fl in all_occ if 'EXTRA' in fl)
 
-    n_found_e    = sum(1 for _, _, fl in all_occ if not fl)
-    n_missing_e  = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
-    n_extra_star = sum(1 for _, _, fl in all_occ if 'EXTRA*' in fl)
+    n_found_e       = sum(1 for _, _, fl in all_occ if not fl)
+    n_missing_e     = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
     teacher_total_e = n_found_e + n_missing_e
-    follow_e_pct    = (round(max(0.0, (n_found_e - n_extra_star) / teacher_total_e * 100), 1)
-                       if teacher_total_e else 0.0)
+    follow_e_pct    = round(n_found_e / teacher_total_e * 100, 1) if teacher_total_e else 0.0
 
     return all_occ, n_found, n_missing, n_extra, follow_e_pct, consumed
 
@@ -422,9 +406,9 @@ def _hungarian_max(weights: List[List[float]]) -> List[Tuple[int, int]]:
     return [(r, c) for r, c in pairs if r < rows and c < cols]
 
 
-_CONTEXT_K = 3   # neighbor window for teacher/student context vectors
-_GHOST_K   = 3   # neighbor window for ghost context vectors (and narrow student comparison)
-_GHOST_SIM_THRESHOLD = 0.05  # minimum cosine similarity to ghost context to assign extra_star
+_CONTEXT_K = 6   # neighbor window for teacher/student context vectors
+_GHOST_K   = 6   # neighbor window for ghost context vectors (and narrow student comparison)
+_GHOST_SIM_THRESHOLD = 0.5  # minimum cosine similarity to ghost context to assign extra_star
 
 
 def _build_ghost_contexts(
@@ -560,6 +544,16 @@ def _build_ghost_contexts(
     return ghost_ctxs
 
 
+def _extra_star_from_ghost(
+    s_seq: List[str],
+    pos: int,
+    ghost_vecs: List[Counter],
+    s_flags: List[bool] = None,
+) -> bool:
+    s_ctx = _context_vector(s_seq, pos, _GHOST_K, s_flags)
+    return max((_cosine_similarity_sparse(s_ctx, gv) for gv in ghost_vecs), default=0.0) >= _GHOST_SIM_THRESHOLD
+
+
 def _locate_token(
     s_positions: List[int],
     t_positions: List[int],
@@ -607,7 +601,7 @@ def _locate_token(
             matched_s.add(si)
             matched_t.add(col)
         else:
-            if sim[si][col] >= _GHOST_SIM_THRESHOLD:
+            if _extra_star_from_ghost(s_seq, s_positions[si], ghost_ctx_vecs, s_flags):
                 extra_star.add(si)
 
     missing_t = {j for j in range(n_t) if j not in matched_t}
@@ -747,11 +741,8 @@ def _build_contextual_diff_marks(
             s_exclude=s_excl,
         )
 
-        all_extra_so = extra_so | extra_star_so
-        d_count = d_counts.get(tok, 0)
-        sorted_extra = sorted(all_extra_so)
-        extra_star_assigned = set(sorted_extra[:d_count])
-        extra_assigned = all_extra_so - extra_star_assigned
+        extra_star_assigned = extra_star_so
+        extra_assigned = extra_so
 
         for i, oc in enumerate(t_out):
             arr = teacher_colors[oc['file']][tok]
@@ -947,6 +938,7 @@ def _build_lcs_star_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
     removal_counts: Counter,
+    ghost_contexts: Dict[str, List[Counter]] = None,
 ) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
@@ -1001,11 +993,18 @@ def _build_lcs_star_diff_marks(
             if tag in ('insert', 'replace'):
                 for j in range(j1, j2):
                     pos, tok = s_nc[j]
-                    remaining = removal_counts.get(tok, 0) - used_star[tok]
-                    label = 'extra_star' if remaining > 0 else 'extra'
-                    if remaining > 0:
-                        used_star[tok] += 1
-                        n_extra_star_count += 1
+                    label = 'extra'
+                    if ghost_contexts is not None:
+                        ghost_vecs = ghost_contexts.get(tok)
+                        if ghost_vecs and _extra_star_from_ghost(s_seq, j, ghost_vecs):
+                            label = 'extra_star'
+                            n_extra_star_count += 1
+                    else:
+                        remaining = removal_counts.get(tok, 0) - used_star[tok]
+                        if remaining > 0:
+                            label = 'extra_star'
+                            used_star[tok] += 1
+                            n_extra_star_count += 1
                     s_marks.append({'token': tok, 'label': label,
                                     'start': pos, 'end': pos + len(tok)})
 
@@ -1106,123 +1105,84 @@ def _build_myers_diff_marks(
     return teacher_result, student_result, score
 
 
-def _build_intraline_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
-    _WORD_RE = re.compile(r'\S+')
+def _update_tokens_txt_extra_star(
+    tokens_path: Path,
+    diff_marks: dict,
+    removal_ts_by_token: dict = None,
+) -> Tuple[float, Counter, Counter]:
+    if not tokens_path.exists():
+        return 0.0, Counter(), Counter()
 
-    teacher_result: Dict[str, List[dict]] = {}
-    student_result: Dict[str, List[dict]] = {}
-    n_total_lines = 0
-    n_missing_lines = 0
+    extra_star_counts: Counter = Counter()
+    for marks in diff_marks.get('student_files', {}).values():
+        for m in marks:
+            if m.get('label') == 'extra_star':
+                extra_star_counts[m['token']] += 1
 
-    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        try:
-            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-        except Exception:
+    lines = tokens_path.read_text(encoding='utf-8').splitlines()
+
+    extra_avail: Counter = Counter()
+    found_count: Counter = Counter()
+    n_found_e_orig = 0
+    n_missing_e_orig = 0
+    for line in lines:
+        if line.startswith('#') or not line.strip():
             continue
+        parts = line.split('\t')
+        flags = set(parts[2:]) if len(parts) > 2 else set()
+        if flags == {'EXTRA'}:
+            extra_avail[parts[0]] += 1
+        elif not flags:
+            found_count[parts[0]] += 1
+            n_found_e_orig += 1
+        elif flags == {'MISSING'}:
+            n_missing_e_orig += 1
 
-        s_text = ''
-        if s_path:
-            try:
-                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-            except Exception:
-                pass
+    steal_from_found: Counter = Counter()
+    for tok, needed in extra_star_counts.items():
+        deficit = max(0, needed - extra_avail[tok])
+        if deficit > 0:
+            steal_from_found[tok] = min(deficit, found_count.get(tok, 0))
 
-        t_lines_raw = t_text.splitlines()
-        s_lines_raw = s_text.splitlines() if s_text else []
-        n_total_lines += sum(1 for l in t_lines_raw if l.strip())
-        t_norm = [l.strip() for l in t_lines_raw]
-        s_norm = [l.strip() for l in s_lines_raw]
-        t_starts = _line_start_offsets(t_text)
-        s_starts = _line_start_offsets(s_text) if s_text else []
+    total_stolen = sum(steal_from_found.values())
+    n_found_e = n_found_e_orig - total_stolen
+    n_missing_e = n_missing_e_orig + total_stolen
+    teacher_total_e = n_found_e + n_missing_e
+    n_extra_star = sum(extra_star_counts.values())
+    corrected_score = (round(max(0.0, (n_found_e - n_extra_star) / teacher_total_e * 100), 1)
+                       if teacher_total_e else 0.0)
 
-        sm = difflib.SequenceMatcher(None, t_norm, s_norm, autojunk=False)
+    extra_star_used: Counter = Counter()
+    found_stolen: Counter = Counter()
+    new_extra_star_appended: list = []
+    new_lines = []
+    for line in lines:
+        if line.startswith('# Follow (E)'):
+            new_lines.append(f'# Follow (E)       : {corrected_score} %')
+            continue
+        if line.startswith('#') or not line.strip():
+            new_lines.append(line)
+            continue
+        parts = line.split('\t')
+        tok = parts[0]
+        flags = set(parts[2:]) if len(parts) > 2 else set()
+        if flags == {'EXTRA'} and extra_star_used[tok] < extra_star_counts.get(tok, 0):
+            extra_star_used[tok] += 1
+            ts = (removal_ts_by_token.get(tok, parts[1])
+                  if removal_ts_by_token else parts[1])
+            new_lines.append(tok + '\t' + ts + '\tEXTRA*')
+        elif not flags and found_stolen[tok] < steal_from_found.get(tok, 0):
+            found_stolen[tok] += 1
+            new_lines.append(tok + '\t' + parts[1] + '\tMISSING')
+            ts_star = (removal_ts_by_token.get(tok, parts[1])
+                       if removal_ts_by_token else parts[1])
+            new_extra_star_appended.append(tok + '\t' + ts_star + '\tEXTRA*')
+        else:
+            new_lines.append(line)
 
-        t_marks: List[dict] = []
-        s_marks: List[dict] = []
-
-        def _line_content_span(lines_raw, starts, text, idx):
-            raw = lines_raw[idx]
-            ls = len(raw) - len(raw.lstrip())
-            le = len(raw.rstrip())
-            base = starts[idx]
-            return base + ls, base + le
-
-        def _word_spans(line_raw, base_offset):
-            return [(base_offset + m.start(), base_offset + m.end())
-                    for m in _WORD_RE.finditer(line_raw)]
-
-        for tag, i1, i2, j1, j2 in sm.get_opcodes():
-            if tag == 'equal':
-                continue
-
-            if tag == 'replace':
-                t_chunk = list(range(i1, i2))
-                s_chunk = list(range(j1, j2))
-                pairs = list(zip(t_chunk, s_chunk))
-                t_unpaired = t_chunk[len(pairs):]
-                s_unpaired = s_chunk[len(pairs):]
-                n_missing_lines += sum(1 for i in range(i1, i2) if t_lines_raw[i].strip())
-
-                for ti, si in pairs:
-                    t_raw = t_lines_raw[ti]
-                    s_raw = s_lines_raw[si]
-                    t_stripped = t_raw.strip()
-                    s_stripped = s_raw.strip()
-                    if not t_stripped and not s_stripped:
-                        continue
-                    t_base = t_starts[ti] + (len(t_raw) - len(t_raw.lstrip()))
-                    s_base = s_starts[si] + (len(s_raw) - len(s_raw.lstrip()))
-                    t_words = _word_spans(t_stripped, t_base)
-                    s_words = _word_spans(s_stripped, s_base)
-                    t_toks = [t_text[a:b] for a, b in t_words]
-                    s_toks = [s_text[a:b] for a, b in s_words]
-                    wm = difflib.SequenceMatcher(None, t_toks, s_toks, autojunk=False)
-                    for wtag, wi1, wi2, wj1, wj2 in wm.get_opcodes():
-                        if wtag == 'equal':
-                            continue
-                        if wtag in ('delete', 'replace'):
-                            for k in range(wi1, wi2):
-                                a, b = t_words[k]
-                                t_marks.append({'label': 'missing', 'start': a, 'end': b})
-                        if wtag in ('insert', 'replace'):
-                            for k in range(wj1, wj2):
-                                a, b = s_words[k]
-                                s_marks.append({'label': 'extra', 'start': a, 'end': b})
-
-                for ti in t_unpaired:
-                    s, e = _line_content_span(t_lines_raw, t_starts, t_text, ti)
-                    if s < e:
-                        t_marks.append({'label': 'missing', 'start': s, 'end': e, 'line': True})
-                for si in s_unpaired:
-                    s, e = _line_content_span(s_lines_raw, s_starts, s_text, si)
-                    if s < e:
-                        s_marks.append({'label': 'extra', 'start': s, 'end': e, 'line': True})
-
-            elif tag == 'delete':
-                for i in range(i1, i2):
-                    s, e = _line_content_span(t_lines_raw, t_starts, t_text, i)
-                    if s < e:
-                        n_missing_lines += 1
-                        t_marks.append({'label': 'missing', 'start': s, 'end': e, 'line': True})
-
-            elif tag == 'insert':
-                for j in range(j1, j2):
-                    s, e = _line_content_span(s_lines_raw, s_starts, s_text, j)
-                    if s < e:
-                        s_marks.append({'label': 'extra', 'start': s, 'end': e, 'line': True})
-
-        fname = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
-        if t_marks:
-            teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
-        if s_marks:
-            student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
-
-    score = round((n_total_lines - n_missing_lines) / n_total_lines * 100, 1) if n_total_lines else None
-    return teacher_result, student_result, score
+    new_lines.extend(new_extra_star_appended)
+    tokens_path.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
+    return corrected_score, extra_star_counts, steal_from_found
 
 
 class TokenLogMixin:
@@ -1240,7 +1200,7 @@ class TokenLogMixin:
         )
 
         if not kw_ts_cs and not removed_kw_ts_ci:
-            print('  Keyword log skipped — no key-log data.')
+            print('  Keyword log skipped \u2014 no key-log data.')
             return
 
         all_occ: List[Tuple[int, int, str, bool, bool]] = []
@@ -1298,7 +1258,7 @@ class TokenLogMixin:
     def write_student_token_files(self, names_dir: Path, anon_names_dir: Path = None) -> None:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         if not teacher_tokens_path.exists():
-            print('  Student token files skipped — tokens.txt not found.')
+            print('  Student token files skipped \u2014 tokens.txt not found.')
             return
 
         teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
@@ -1452,6 +1412,84 @@ class TokenLogMixin:
                 'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_files_colors),
                 'student_files': _colors_to_position_marks(stu_files, student_files_colors),
             }
+            removal_ts_by_token = {
+                tok: removal_ts
+                for tok, _, _, is_rem, removal_ts in teacher_entries
+                if is_rem and removal_ts
+            }
+            corrected_score, extra_star_counts, steal_from_found = _update_tokens_txt_extra_star(
+                out_path, diff_marks, removal_ts_by_token
+            )
+            diff_marks['score'] = corrected_score
+            self._student_token_stats[sid]['follow_e'] = corrected_score
+
+            if anon_dir != student_dir:
+                shutil.copy2(out_path, anon_dir / 'tokens.txt')
+
+            if extra_star_counts or steal_from_found:
+                stats = self._student_token_stats[sid]
+
+                stolen_miss_items: list = []
+                stolen_star_items: list = []
+                if steal_from_found:
+                    found_occ_by_tok: dict = {}
+                    for ts_o, tok_o, fl_o in all_occ:
+                        if not fl_o:
+                            found_occ_by_tok.setdefault(tok_o, []).append(ts_o)
+                    for tok_s, n_steal in steal_from_found.items():
+                        found_ts_list = found_occ_by_tok.get(tok_s, [])
+                        for i in range(n_steal):
+                            ts_found = found_ts_list[i] if i < len(found_ts_list) else '00:00:00'
+                            stolen_miss_items.append((ts_found, f'-{tok_s}'))
+                            ts_removal = removal_ts_by_token.get(tok_s, ts_found)
+                            stolen_star_items.append((ts_removal, f'+{tok_s}*'))
+
+                used = Counter()
+                new_comb_e = []
+                for ts, s in sorted(_miss_e + stolen_miss_items + _extra):
+                    if s.startswith('+'):
+                        tok_name = s[1:]
+                        if used[tok_name] < extra_star_counts.get(tok_name, 0):
+                            used[tok_name] += 1
+                            new_ts = removal_ts_by_token.get(tok_name, ts)
+                            new_comb_e.append((new_ts, f'+{tok_name}*'))
+                        else:
+                            new_comb_e.append((ts, s))
+                    else:
+                        new_comb_e.append((ts, s))
+
+                new_comb_e.extend(stolen_star_items)
+                new_comb_e.sort(key=lambda x: x[0])
+
+                def _fmt_item_local(ts_str: str, s: str) -> str:
+                    return f'{s} ({ts_str})'
+
+                stats['extra_e_text']  = ', '.join(_fmt_item_local(ts, s) for ts, s in new_comb_e)
+                stats['extra_e_items'] = [_fmt_item_local(ts, s) for ts, s in new_comb_e]
+                stats['extra_e_count'] = len(new_comb_e)
+
+                remaining_extra = Counter(extra_ctr)
+                new_extra_star_ctr: Counter = Counter()
+                for tok_name, n in extra_star_counts.items():
+                    promoted = min(n, remaining_extra[tok_name])
+                    remaining_extra[tok_name] -= promoted
+                    if remaining_extra[tok_name] <= 0:
+                        del remaining_extra[tok_name]
+                    if promoted:
+                        new_extra_star_ctr[tok_name] += promoted
+                for tok_name, n in steal_from_found.items():
+                    new_extra_star_ctr[tok_name] += n
+
+                stats['extra_all'] = _fmt_ctr(remaining_extra) + [
+                    f'{t}* (x{n})' if n > 1 else f'{t}*'
+                    for t, n in sorted(new_extra_star_ctr.items())
+                ]
+                stats['extra_star']     = sum(new_extra_star_ctr.values())
+                stats['extra_star_all'] = [
+                    f'{t}* (x{n})' if n > 1 else f'{t}*'
+                    for t, n in sorted(new_extra_star_ctr.items())
+                ]
+
             diff_path = anon_dir / 'diff_marks.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
@@ -1627,23 +1665,29 @@ class TokenLogMixin:
             filename='diff_marks_myers.json',
         )
 
-    def write_intraline_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_intraline_diff_marks,
-            'intra-line',
-            'Intra-line diff marks',
-            filename='diff_marks_intraline.json',
-        )
-
     def write_lcs_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         removal_counts: Counter = Counter()
+        teacher_entries = []
         if teacher_tokens_path.exists():
-            for tok, _ts, _is_comment, is_removed, _rm_ts in _parse_teacher_tokens(teacher_tokens_path):
+            teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
+            for tok, _ts, _is_comment, is_removed, _rm_ts in teacher_entries:
                 if is_removed:
                     removal_counts[tok] += 1
-        build_fn = functools.partial(_build_lcs_star_diff_marks, removal_counts=removal_counts)
+
+        ghost_contexts = None
+        if _sm._ALL_EXTRA_STAR and teacher_entries:
+            all_events = getattr(self, '_lesson_all_events', None)
+            if all_events:
+                removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+                if removed_keys:
+                    ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
+
+        build_fn = functools.partial(
+            _build_lcs_star_diff_marks,
+            removal_counts=removal_counts,
+            ghost_contexts=ghost_contexts,
+        )
         self._write_alt_diff_marks(
             names_dir, anon_names_dir,
             build_fn,

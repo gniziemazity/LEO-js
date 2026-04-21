@@ -5,7 +5,6 @@ const DIFF_MARKS_FILES = {
 	"token-lcs": "diff_marks_lcs.json",
 	"token-lcs-star": "diff_marks_lcs_star.json",
 	"line-myers": "diff_marks_myers.json",
-	"intra-line": "diff_marks_intraline.json",
 };
 
 function openDifferentiator(

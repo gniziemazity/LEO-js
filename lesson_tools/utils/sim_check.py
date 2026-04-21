@@ -518,7 +518,6 @@ def main() -> None:
     checker.write_lcs_diff_marks(names_dir, anon_names_dir)
     checker.write_lcs_star_diff_marks(names_dir, anon_names_dir)
     checker.write_myers_diff_marks(names_dir, anon_names_dir)
-    checker.write_intraline_diff_marks(names_dir, anon_names_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

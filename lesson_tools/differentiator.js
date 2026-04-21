@@ -114,7 +114,6 @@ function loadFilesFromInput(files, side) {
 		"token-lcs": "_lcs",
 		"token-lcs-star": "_lcs_star",
 		"line-myers": "_myers",
-		"intra-line": "_intraline",
 	};
 
 	for (const file of files) {

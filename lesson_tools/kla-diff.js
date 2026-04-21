@@ -28,7 +28,6 @@ async function openDiffWindow(student, mode = null) {
 			"token-lcs": "_lcs",
 			"token-lcs-star": "_lcs_star",
 			"line-myers": "_myers",
-			"intra-line": "_intraline",
 		};
 
 		const loadDiffMarks = async (filename) => {
