@@ -26,6 +26,7 @@ async function openDiffWindow(student, mode = null) {
 		const MODE_SUFFIX = {
 			"": "",
 			"token-lcs": "_lcs",
+			"token-lcs-star": "_lcs_star",
 			"line-myers": "_myers",
 			"intra-line": "_intraline",
 		};

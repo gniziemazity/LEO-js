@@ -21,6 +21,7 @@ let _studentMarks = null;
 let _allMarks = {};
 let _defaultTeacherMarks = null;
 let _defaultStudentMarks = null;
+let _titleBase = null;
 let _imageUris = {}; // basename → data: URI for preview image inlining
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -48,10 +49,15 @@ window.addEventListener("DOMContentLoaded", () => {
 				_teacherMarks = null;
 				_studentMarks = null;
 			}
+			const savedTeacher = _saveState("teacher");
+			const savedStudent = _saveState("student");
 			if (_teacherFiles)
 				renderPanel("teacher", _teacherFiles, _teacherMarks);
 			if (_studentFiles)
 				renderPanel("student", _studentFiles, _studentMarks);
+			_restoreState("teacher", savedTeacher);
+			_restoreState("student", savedStudent);
+			_updateTitleScore(modeKey);
 		});
 	}
 
@@ -79,8 +85,10 @@ window.addEventListener("DOMContentLoaded", () => {
 			}
 
 			if (data.title) document.title = data.title;
-			document.getElementById("title-student").textContent =
-				data.title || "Student";
+			const titleText = data.title || "Student";
+			_titleBase =
+				titleText.replace(/\s*\([^)]*%\)\s*$/, "").trim() || titleText;
+			document.getElementById("title-student").textContent = titleText;
 			renderPanel("teacher", _teacherFiles, _teacherMarks);
 			renderPanel("student", _studentFiles, _studentMarks);
 		} catch (e) {
@@ -104,6 +112,7 @@ function loadFilesFromInput(files, side) {
 	const MODE_SUFFIX = {
 		"": "",
 		"token-lcs": "_lcs",
+		"token-lcs-star": "_lcs_star",
 		"line-myers": "_myers",
 		"intra-line": "_intraline",
 	};
@@ -298,6 +307,56 @@ function diffColorizePositions(text, posMarks) {
 }
 
 function _applyDiffModeLabel() {}
+
+function _saveState(side) {
+	const tabs = document.getElementById(`tabs-${side}`);
+	const btns = tabs ? [...tabs.querySelectorAll(".file-tab")] : [];
+	const activeIdx = btns.findIndex((b) =>
+		b.classList.contains("file-tab-active"),
+	);
+	const tabName = activeIdx >= 0 ? btns[activeIdx].textContent : null;
+	const wrap = document.getElementById(`code-${side}`);
+	const panes = wrap ? [...wrap.querySelectorAll(".code-pane")] : [];
+	const pane = panes[activeIdx >= 0 ? activeIdx : 0] || null;
+	return {
+		tabName,
+		scrollTop: pane ? pane.scrollTop : 0,
+		scrollLeft: pane ? pane.scrollLeft : 0,
+	};
+}
+
+function _restoreState(side, saved) {
+	if (!saved || !saved.tabName) return;
+	const tabs = document.getElementById(`tabs-${side}`);
+	if (!tabs) return;
+	const btns = [...tabs.querySelectorAll(".file-tab")];
+	const wrap = document.getElementById(`code-${side}`);
+	const panes = wrap ? [...wrap.querySelectorAll(".code-pane")] : [];
+	const matchIdx = btns.findIndex((b) => b.textContent === saved.tabName);
+	if (matchIdx > 0) {
+		btns.forEach((b) => b.classList.remove("file-tab-active"));
+		panes.forEach((p) => p.classList.remove("active"));
+		btns[matchIdx].classList.add("file-tab-active");
+		if (panes[matchIdx]) panes[matchIdx].classList.add("active");
+	}
+	const activeIdx = matchIdx >= 0 ? matchIdx : 0;
+	const pane = panes[activeIdx];
+	if (pane) {
+		pane.scrollTop = saved.scrollTop;
+		pane.scrollLeft = saved.scrollLeft;
+	}
+}
+
+function _updateTitleScore(modeKey) {
+	if (!_titleBase) return;
+	const marks = _allMarks[modeKey ?? ""];
+	const score = marks != null ? marks.score : undefined;
+	const suffix = score != null ? ` (${Number(score).toFixed(1)}%)` : "";
+	const newTitle = _titleBase + suffix;
+	const el = document.getElementById("title-student");
+	if (el) el.textContent = newTitle;
+	document.title = newTitle;
+}
 
 function togglePreview() {
 	const btn = document.getElementById("btn-preview");

@@ -3,6 +3,7 @@
 const DIFF_MARKS_FILES = {
 	"": "diff_marks.json",
 	"token-lcs": "diff_marks_lcs.json",
+	"token-lcs-star": "diff_marks_lcs_star.json",
 	"line-myers": "diff_marks_myers.json",
 	"intra-line": "diff_marks_intraline.json",
 };

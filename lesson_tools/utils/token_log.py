@@ -1,4 +1,5 @@
 import difflib
+import functools
 import json
 import math
 import re
@@ -885,9 +886,11 @@ def _match_files_by_name_then_ext(
 def _build_lcs_token_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
+    n_total = 0
+    n_missing = 0
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
         ext = Path(t_name).suffix.lower()
@@ -908,6 +911,7 @@ def _build_lcs_token_diff_marks(
 
         t_seq = [tok for _, tok in t_toks]
         s_seq = [tok for _, tok in s_toks]
+        n_total += len(t_seq)
 
         sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
 
@@ -917,6 +921,7 @@ def _build_lcs_token_diff_marks(
             if tag == 'equal':
                 continue
             if tag in ('delete', 'replace'):
+                n_missing += i2 - i1
                 for i in range(i1, i2):
                     pos, tok = t_toks[i]
                     t_marks.append({'token': tok, 'label': 'missing',
@@ -934,15 +939,102 @@ def _build_lcs_token_diff_marks(
         if s_marks:
             student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
 
-    return teacher_result, student_result
+    score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
+    return teacher_result, student_result, score
+
+
+def _build_lcs_star_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+    removal_counts: Counter,
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
+    teacher_result: Dict[str, List[dict]] = {}
+    student_result: Dict[str, List[dict]] = {}
+    used_star: Counter = Counter()
+    n_total_nc = 0
+    n_missing_nc = 0
+    n_extra_star_count = 0
+
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
+        ext = Path(t_name).suffix.lower()
+        try:
+            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        except Exception:
+            continue
+
+        s_text = ''
+        if s_path:
+            try:
+                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+            except Exception:
+                pass
+
+        t_all = _tokenize_file_ordered(t_text, ext)
+        s_all = _tokenize_file_ordered(s_text, ext) if s_text else []
+
+        t_cs, t_ce = _comment_ranges_for_ext(t_text, ext)
+        s_cs, s_ce = _comment_ranges_for_ext(s_text, ext) if s_text else ([], [])
+
+        t_nc = [(pos, tok) for pos, tok in t_all if not _pos_in_comment(pos, t_cs, t_ce)]
+        t_cm = [(pos, tok) for pos, tok in t_all if _pos_in_comment(pos, t_cs, t_ce)]
+        s_nc = [(pos, tok) for pos, tok in s_all if not _pos_in_comment(pos, s_cs, s_ce)]
+        s_cm = [(pos, tok) for pos, tok in s_all if _pos_in_comment(pos, s_cs, s_ce)]
+
+        t_seq = [tok for _, tok in t_nc]
+        s_seq = [tok for _, tok in s_nc]
+        n_total_nc += len(t_seq)
+
+        sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
+
+        t_marks: List[dict] = []
+        s_marks: List[dict] = []
+
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == 'equal':
+                continue
+            if tag in ('delete', 'replace'):
+                n_missing_nc += i2 - i1
+                for i in range(i1, i2):
+                    pos, tok = t_nc[i]
+                    t_marks.append({'token': tok, 'label': 'missing',
+                                    'start': pos, 'end': pos + len(tok)})
+            if tag in ('insert', 'replace'):
+                for j in range(j1, j2):
+                    pos, tok = s_nc[j]
+                    remaining = removal_counts.get(tok, 0) - used_star[tok]
+                    label = 'extra_star' if remaining > 0 else 'extra'
+                    if remaining > 0:
+                        used_star[tok] += 1
+                        n_extra_star_count += 1
+                    s_marks.append({'token': tok, 'label': label,
+                                    'start': pos, 'end': pos + len(tok)})
+
+        for pos, tok in t_cm:
+            t_marks.append({'token': tok, 'label': 'comment',
+                            'start': pos, 'end': pos + len(tok)})
+        for pos, tok in s_cm:
+            s_marks.append({'token': tok, 'label': 'comment',
+                            'start': pos, 'end': pos + len(tok)})
+
+        fname = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        if t_marks:
+            teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
+        if s_marks:
+            student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
+
+    score = round(max(0.0, (n_total_nc - n_missing_nc - n_extra_star_count) / n_total_nc * 100), 1) if n_total_nc else None
+    return teacher_result, student_result, score
 
 
 def _build_myers_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
+    n_total_lines = 0
+    n_missing_lines = 0
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
         try:
@@ -959,6 +1051,7 @@ def _build_myers_diff_marks(
 
         t_lines_raw = t_text.splitlines()
         s_lines_raw = s_text.splitlines() if s_text else []
+        n_total_lines += sum(1 for l in t_lines_raw if l.strip())
 
         t_norm = [l.strip() for l in t_lines_raw]
         s_norm = [l.strip() for l in s_lines_raw]
@@ -978,6 +1071,7 @@ def _build_myers_diff_marks(
                     line_content = t_lines_raw[i].strip()
                     if not line_content:
                         continue
+                    n_missing_lines += 1
                     raw_start = t_starts[i]
                     raw_end   = t_starts[i + 1] if i + 1 < len(t_starts) else len(t_text)
                     line_raw = t_lines_raw[i]
@@ -1008,17 +1102,20 @@ def _build_myers_diff_marks(
         if s_marks:
             student_result[s_fname] = s_marks
 
-    return teacher_result, student_result
+    score = round((n_total_lines - n_missing_lines) / n_total_lines * 100, 1) if n_total_lines else None
+    return teacher_result, student_result, score
 
 
 def _build_intraline_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]]]:
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
     _WORD_RE = re.compile(r'\S+')
 
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
+    n_total_lines = 0
+    n_missing_lines = 0
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
         try:
@@ -1035,6 +1132,7 @@ def _build_intraline_diff_marks(
 
         t_lines_raw = t_text.splitlines()
         s_lines_raw = s_text.splitlines() if s_text else []
+        n_total_lines += sum(1 for l in t_lines_raw if l.strip())
         t_norm = [l.strip() for l in t_lines_raw]
         s_norm = [l.strip() for l in s_lines_raw]
         t_starts = _line_start_offsets(t_text)
@@ -1066,6 +1164,7 @@ def _build_intraline_diff_marks(
                 pairs = list(zip(t_chunk, s_chunk))
                 t_unpaired = t_chunk[len(pairs):]
                 s_unpaired = s_chunk[len(pairs):]
+                n_missing_lines += sum(1 for i in range(i1, i2) if t_lines_raw[i].strip())
 
                 for ti, si in pairs:
                     t_raw = t_lines_raw[ti]
@@ -1106,6 +1205,7 @@ def _build_intraline_diff_marks(
                 for i in range(i1, i2):
                     s, e = _line_content_span(t_lines_raw, t_starts, t_text, i)
                     if s < e:
+                        n_missing_lines += 1
                         t_marks.append({'label': 'missing', 'start': s, 'end': e, 'line': True})
 
             elif tag == 'insert':
@@ -1121,7 +1221,8 @@ def _build_intraline_diff_marks(
         if s_marks:
             student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
 
-    return teacher_result, student_result
+    score = round((n_total_lines - n_missing_lines) / n_total_lines * 100, 1) if n_total_lines else None
+    return teacher_result, student_result, score
 
 
 class TokenLogMixin:
@@ -1347,6 +1448,7 @@ class TokenLogMixin:
                 'format_version': 4,
                 'token_matching': 'context-cosine-hungarian',
                 'case_sensitive': True,
+                'score': follow_e_pct,
                 'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_files_colors),
                 'student_files': _colors_to_position_marks(stu_files, student_files_colors),
             }
@@ -1434,6 +1536,8 @@ class TokenLogMixin:
                 except Exception:
                     pass
 
+            teacher_total = sum(teacher_agg.values())
+            sim_score = round(sum(found_out.values()) / teacher_total * 100, 1) if teacher_total else None
             diff_marks = {
                 'format_version': 4,
                 'token_matching': 'similarity-containment',
@@ -1441,6 +1545,8 @@ class TokenLogMixin:
                 'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_colors),
                 'student_files': _colors_to_position_marks(stu_files, student_colors),
             }
+            if sim_score is not None:
+                diff_marks['score'] = sim_score
             diff_path = anon_dir / 'diff_marks.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
@@ -1480,7 +1586,12 @@ class TokenLogMixin:
             if not stu_files:
                 continue
 
-            teacher_marks, student_marks = build_fn(teacher_code_files, stu_files)
+            result = build_fn(teacher_code_files, stu_files)
+            if len(result) == 3:
+                teacher_marks, student_marks, score = result
+            else:
+                teacher_marks, student_marks = result
+                score = None
 
             diff_marks = {
                 'format_version': 4,
@@ -1489,6 +1600,8 @@ class TokenLogMixin:
                 'teacher_files': teacher_marks,
                 'student_files': student_marks,
             }
+            if score is not None:
+                diff_marks['score'] = score
             diff_path = anon_dir / filename
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
@@ -1521,4 +1634,20 @@ class TokenLogMixin:
             'intra-line',
             'Intra-line diff marks',
             filename='diff_marks_intraline.json',
+        )
+
+    def write_lcs_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        teacher_tokens_path = self.reference_dir / 'tokens.txt'
+        removal_counts: Counter = Counter()
+        if teacher_tokens_path.exists():
+            for tok, _ts, _is_comment, is_removed, _rm_ts in _parse_teacher_tokens(teacher_tokens_path):
+                if is_removed:
+                    removal_counts[tok] += 1
+        build_fn = functools.partial(_build_lcs_star_diff_marks, removal_counts=removal_counts)
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            build_fn,
+            'token-lcs-star',
+            'LCS* token diff marks',
+            filename='diff_marks_lcs_star.json',
         )
