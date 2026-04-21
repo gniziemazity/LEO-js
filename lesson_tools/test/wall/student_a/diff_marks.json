@@ -143,48 +143,6 @@
         "end": 429
       },
       {
-        "token": ".left-offset",
-        "label": "missing",
-        "start": 544,
-        "end": 556
-      },
-      {
-        "token": "margin-left",
-        "label": "missing",
-        "start": 563,
-        "end": 574
-      },
-      {
-        "token": "25px",
-        "label": "missing",
-        "start": 576,
-        "end": 580
-      },
-      {
-        "token": "left-offset",
-        "label": "missing",
-        "start": 960,
-        "end": 971
-      },
-      {
-        "token": "left-offset",
-        "label": "missing",
-        "start": 1516,
-        "end": 1527
-      },
-      {
-        "token": "left-offset",
-        "label": "missing",
-        "start": 2072,
-        "end": 2083
-      },
-      {
-        "token": "left-offset",
-        "label": "missing",
-        "start": 2628,
-        "end": 2639
-      },
-      {
         "token": "div",
         "label": "comment",
         "start": 2899,
@@ -279,288 +237,258 @@
         "label": "comment",
         "start": 3017,
         "end": 3020
-      },
-      {
-        "token": "W3Schools",
-        "label": "missing",
-        "start": 3090,
-        "end": 3099
       }
     ]
   },
   "student_files": {
     "index.html": [
       {
-        "token": "styling",
+        "token": "Styling",
         "label": "comment",
-        "start": 99,
-        "end": 106
+        "start": 100,
+        "end": 107
       },
       {
         "token": "by",
         "label": "comment",
-        "start": 107,
-        "end": 109
+        "start": 108,
+        "end": 110
       },
       {
-        "token": "id",
+        "token": "ID",
         "label": "comment",
-        "start": 110,
-        "end": 112
+        "start": 111,
+        "end": 113
       },
       {
-        "token": "400px",
-        "label": "extra_star",
-        "start": 164,
-        "end": 169
-      },
-      {
-        "token": "font-size",
-        "label": "comment",
-        "start": 189,
-        "end": 198
-      },
-      {
-        "token": "size",
-        "label": "comment",
-        "start": 194,
-        "end": 198
-      },
-      {
-        "token": "0px",
-        "label": "comment",
-        "start": 200,
-        "end": 203
+        "token": "432px",
+        "label": "extra",
+        "start": 167,
+        "end": 172
       },
       {
         "token": "CSS",
         "label": "comment",
-        "start": 299,
-        "end": 302
+        "start": 267,
+        "end": 270
       },
       {
         "token": "class",
         "label": "comment",
-        "start": 303,
-        "end": 308
+        "start": 271,
+        "end": 276
+      },
+      {
+        "token": "background-color",
+        "label": "extra_star",
+        "start": 346,
+        "end": 362
+      },
+      {
+        "token": "black",
+        "label": "extra_star",
+        "start": 364,
+        "end": 369
       },
       {
         "token": "commented",
         "label": "comment",
-        "start": 408,
-        "end": 417
+        "start": 420,
+        "end": 429
       },
       {
         "token": "styling",
         "label": "comment",
-        "start": 418,
-        "end": 425
+        "start": 430,
+        "end": 437
       },
       {
         "token": "not",
         "label": "comment",
-        "start": 428,
-        "end": 431
+        "start": 440,
+        "end": 443
       },
       {
         "token": "in",
         "label": "comment",
-        "start": 432,
-        "end": 434
+        "start": 444,
+        "end": 446
       },
       {
         "token": "use",
         "label": "comment",
-        "start": 435,
-        "end": 438
+        "start": 447,
+        "end": 450
       },
       {
         "token": "just",
         "label": "comment",
-        "start": 441,
-        "end": 445
+        "start": 452,
+        "end": 456
       },
       {
         "token": "an",
         "label": "comment",
-        "start": 446,
-        "end": 448
+        "start": 457,
+        "end": 459
       },
       {
         "token": "example",
         "label": "comment",
-        "start": 449,
-        "end": 456
+        "start": 460,
+        "end": 467
       },
       {
         "token": "margin",
         "label": "comment",
-        "start": 473,
-        "end": 479
+        "start": 486,
+        "end": 492
       },
       {
         "token": "10px",
         "label": "comment",
-        "start": 481,
-        "end": 485
+        "start": 494,
+        "end": 498
       },
       {
         "token": "padding",
         "label": "comment",
-        "start": 503,
-        "end": 510
+        "start": 516,
+        "end": 523
       },
       {
         "token": "5px",
         "label": "comment",
-        "start": 512,
-        "end": 515
-      },
-      {
-        "token": "display",
-        "label": "comment",
-        "start": 577,
-        "end": 584
-      },
-      {
-        "token": "inline-block",
-        "label": "comment",
-        "start": 586,
-        "end": 598
+        "start": 525,
+        "end": 528
       },
       {
         "token": "size",
         "label": "comment",
-        "start": 645,
-        "end": 649
+        "start": 616,
+        "end": 620
       },
       {
         "token": "includes",
         "label": "comment",
-        "start": 650,
-        "end": 658
+        "start": 621,
+        "end": 629
       },
       {
         "token": "padding",
         "label": "comment",
-        "start": 659,
-        "end": 666
+        "start": 630,
+        "end": 637
       },
       {
         "token": "and",
         "label": "comment",
-        "start": 667,
-        "end": 670
+        "start": 638,
+        "end": 641
       },
       {
         "token": "border",
         "label": "comment",
-        "start": 671,
-        "end": 677
+        "start": 642,
+        "end": 648
       },
       {
         "token": "div",
         "label": "comment",
-        "start": 3827,
-        "end": 3830
+        "start": 3846,
+        "end": 3849
       },
       {
         "token": "with",
         "label": "comment",
-        "start": 3831,
-        "end": 3835
+        "start": 3850,
+        "end": 3854
       },
       {
-        "token": "inline",
+        "token": "Inline",
         "label": "comment",
-        "start": 3836,
-        "end": 3842
+        "start": 3855,
+        "end": 3861
       },
       {
-        "token": "style",
+        "token": "Style",
         "label": "comment",
-        "start": 3843,
-        "end": 3848
+        "start": 3862,
+        "end": 3867
       },
       {
         "token": "not",
         "label": "comment",
-        "start": 3850,
-        "end": 3853
+        "start": 3869,
+        "end": 3872
       },
       {
-        "token": "recomended",
+        "token": "recommended",
         "label": "comment",
-        "start": 3854,
-        "end": 3864
+        "start": 3873,
+        "end": 3884
       },
       {
         "token": "<div",
         "label": "comment",
-        "start": 3874,
-        "end": 3878
+        "start": 3895,
+        "end": 3899
       },
       {
         "token": "style",
         "label": "comment",
-        "start": 3879,
-        "end": 3884
+        "start": 3900,
+        "end": 3905
       },
       {
         "token": "height",
         "label": "comment",
-        "start": 3899,
-        "end": 3905
+        "start": 3920,
+        "end": 3926
       },
       {
         "token": "50px",
         "label": "comment",
-        "start": 3907,
-        "end": 3911
+        "start": 3928,
+        "end": 3932
       },
       {
         "token": "background-color",
         "label": "comment",
-        "start": 3925,
-        "end": 3941
+        "start": 3946,
+        "end": 3962
       },
       {
         "token": "black",
         "label": "comment",
-        "start": 3943,
-        "end": 3948
+        "start": 3964,
+        "end": 3969
       },
       {
         "token": "width",
         "label": "comment",
-        "start": 3962,
-        "end": 3967
+        "start": 3983,
+        "end": 3988
       },
       {
         "token": "50px",
         "label": "comment",
-        "start": 3969,
-        "end": 3973
+        "start": 3990,
+        "end": 3994
       },
       {
         "token": "</div",
         "label": "comment",
-        "start": 3985,
-        "end": 3990
+        "start": 4006,
+        "end": 4011
       },
       {
         "token": "div",
         "label": "comment",
-        "start": 3987,
-        "end": 3990
-      },
-      {
-        "token": "W3schools",
-        "label": "extra",
-        "start": 4076,
-        "end": 4085
+        "start": 4008,
+        "end": 4011
       }
     ]
   },
-  "score": 97.4
+  "score": 99.2
 }

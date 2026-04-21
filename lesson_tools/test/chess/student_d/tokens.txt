@@ -463,6 +463,8 @@ let	12:56:53
 <img	12:56:53	EXTRA
 <img	12:56:53	EXTRA
 <img	12:56:53	EXTRA
+handleClick	12:56:55	EXTRA*
+onclick	12:56:58	EXTRA*
 p2	12:56:53	EXTRA
 p3	12:56:53	EXTRA
 p4	12:56:53	EXTRA
@@ -488,5 +490,3 @@ src	12:56:53	EXTRA
 src	12:56:53	EXTRA
 src	12:56:53	EXTRA
 this	12:56:54	EXTRA*
-handleClick	12:56:55	EXTRA*
-onclick	12:56:58	EXTRA*

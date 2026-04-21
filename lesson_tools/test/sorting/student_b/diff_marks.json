@@ -41,12 +41,6 @@
         "end": 479
       },
       {
-        "token": "0",
-        "label": "missing",
-        "start": 556,
-        "end": 557
-      },
-      {
         "token": "count",
         "label": "missing",
         "start": 563,
@@ -99,18 +93,6 @@
         "label": "missing",
         "start": 811,
         "end": 822
-      },
-      {
-        "token": "i",
-        "label": "missing",
-        "start": 888,
-        "end": 889
-      },
-      {
-        "token": "100",
-        "label": "missing",
-        "start": 893,
-        "end": 896
       },
       {
         "token": "here",
@@ -251,6 +233,12 @@
         "end": 1126
       },
       {
+        "token": "0",
+        "label": "missing",
+        "start": 1129,
+        "end": 1130
+      },
+      {
         "token": "i",
         "label": "missing",
         "start": 1132,
@@ -303,6 +291,18 @@
         "label": "missing",
         "start": 1184,
         "end": 1189
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1190,
+        "end": 1191
+      },
+      {
+        "token": "100",
+        "label": "missing",
+        "start": 1195,
+        "end": 1198
       },
       {
         "token": "async",
@@ -507,5 +507,6 @@
         "end": 2146
       }
     ]
-  }
+  },
+  "score": 77.6
 }

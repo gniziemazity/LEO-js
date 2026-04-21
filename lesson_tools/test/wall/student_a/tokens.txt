@@ -1,7 +1,7 @@
 # Found            : 420
 # MISSING          : 2
 # EXTRA            : 4
-# Follow (E)       : 99.0 %
+# Follow (E)       : 99.2 %
 DOCTYPE	09:34:25
 html	09:34:27
 <html	09:34:58
@@ -118,7 +118,6 @@ includes	10:24:00	COMMENT
 padding	10:24:00	COMMENT
 and	10:24:01	COMMENT
 border	10:24:02	COMMENT
-432px	10:24:27	EXTRA*
 display	10:25:49
 flex	10:25:49
 flex-wrap	10:25:52
@@ -417,8 +416,6 @@ dark	10:30:31
 dark	10:30:31
 dark	10:30:31
 dark	10:30:31
-background-color	10:36:49	EXTRA*
-black	10:36:49	EXTRA*
 .left-offset	10:39:25
 margin-left	10:39:30
 25px	10:39:32
@@ -427,4 +424,7 @@ left-offset	10:40:38
 left-offset	10:40:42
 left-offset	10:40:46
 425px	10:41:03	MISSING
+432px	10:41:03	EXTRA
 Styling	10:41:03	COMMENT	EXTRA
+background-color	10:36:49	EXTRA*
+black	10:36:49	EXTRA*

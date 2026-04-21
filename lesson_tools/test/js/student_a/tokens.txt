@@ -1,7 +1,7 @@
 # Found            : 449
 # MISSING          : 5
 # EXTRA            : 9
-# Follow (E)       : 99.0 %
+# Follow (E)       : 99.2 %
 <html	12:24:11
 <head	12:24:11
 <meta	12:24:11
@@ -173,7 +173,6 @@ catch	12:51:57
 err	12:51:58
 console	12:52:12
 err	12:52:14
-log	12:53:22	EXTRA*
 error	12:53:23
 myArray	12:56:12
 push	12:56:13
@@ -463,5 +462,6 @@ Never	13:38:22	COMMENT	EXTRA
 console	13:38:22	EXTRA
 escape	13:38:22	COMMENT	EXTRA
 getDay	13:38:22	EXTRA
+log	13:38:22	EXTRA
 old	13:38:22	EXTRA
 someDate	13:38:22	EXTRA

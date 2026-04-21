@@ -1,7 +1,7 @@
 # Found            : 394
 # MISSING          : 60
 # EXTRA            : 52
-# Follow (E)       : 89.0 %
+# Follow (E)       : 89.5 %
 <html	12:24:11
 <head	12:24:11
 <meta	12:24:11
@@ -66,7 +66,6 @@ Tab	12:31:12	MISSING
 Enter	12:31:14
 <script	12:32:51
 </script	12:32:51
-script	12:32:51	EXTRA*
 myNumber	12:33:44	MISSING
 25.2	12:33:50
 console	12:33:56
@@ -174,7 +173,6 @@ catch	12:51:57
 err	12:51:58
 console	12:52:12
 err	12:52:14
-log	12:53:22	EXTRA*
 error	12:53:23	MISSING
 myArray	12:56:12
 push	12:56:13
@@ -486,6 +484,7 @@ karelia	13:38:22	EXTRA
 karelia	13:38:22	EXTRA
 karelia	13:38:22	EXTRA
 lesson	13:38:22	EXTRA
+log	13:38:22	EXTRA
 max	13:38:22	EXTRA
 monday	13:38:22	EXTRA
 my	13:38:22	COMMENT	EXTRA
@@ -496,6 +495,7 @@ powb	13:38:22	EXTRA
 program	13:38:22	COMMENT	EXTRA
 python	13:38:22	COMMENT	EXTRA
 python	13:38:22	COMMENT	EXTRA
+script	13:38:22	EXTRA
 someData	13:38:22	EXTRA
 space	13:38:22	COMMENT	EXTRA
 tab	13:38:22	EXTRA
