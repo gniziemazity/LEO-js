@@ -424,7 +424,7 @@ left-offset	10:40:38
 left-offset	10:40:42
 left-offset	10:40:46
 425px	10:41:03	MISSING
-432px	10:41:03	EXTRA
-Styling	10:41:03	COMMENT	EXTRA
-background-color	10:41:03	EXTRA
-black	10:41:03	EXTRA
+432px	00:00:00	EXTRA
+Styling	00:00:00	COMMENT	EXTRA
+background-color	00:00:00	EXTRA
+black	00:00:00	EXTRA

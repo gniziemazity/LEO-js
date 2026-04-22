@@ -266,11 +266,11 @@ def _build_student_token_occurrences(
         extra_outside = student_outside[tok] - consumed[False][tok]
         extra_comment = student_comment[tok] - consumed[True][tok]
         for _ in range(max(0, extra_outside)):
-            all_occ.append((last_ts, tok, {'EXTRA'}))
+            all_occ.append(('00:00:00', tok, {'EXTRA'}))
         for _ in range(max(0, extra_comment)):
-            all_occ.append((last_ts, tok, {'COMMENT', 'EXTRA'}))
+            all_occ.append(('00:00:00', tok, {'COMMENT', 'EXTRA'}))
 
-    all_occ.sort(key=lambda x: x[0])
+    all_occ.sort(key=lambda x: (x[0] == '00:00:00', x[0]))
 
     n_found   = sum(1 for _, _, fl in all_occ if not fl or fl == {'COMMENT'})
     n_missing = sum(1 for _, _, fl in all_occ if 'MISSING' in fl)

@@ -457,6 +457,6 @@ element	12:53:30
 children	12:53:32
 0	12:53:32
 let	12:56:53
-handleClick	12:56:53	EXTRA
-onclick	12:56:53	EXTRA
-this	12:56:53	EXTRA
+handleClick	00:00:00	EXTRA
+onclick	00:00:00	EXTRA
+this	00:00:00	EXTRA
