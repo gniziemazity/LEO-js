@@ -6,10 +6,6 @@ class SettingsManager {
 	constructor() {
 		this.settingsPath = path.join(os.homedir(), ".leo-settings.json");
 		this.defaultSettings = {
-			// Platform setting: "windows" or "macos"
-			// Defaults to Windows for backward compatibility
-			// macOS users should manually select "macos" in Settings
-			platform: "windows",
 			hotkeys: {
 				typing: "abcdefghijklmnopqrstuvwxyz".split(""),
 				toggleActive: "CommandOrControl+P",

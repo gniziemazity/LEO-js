@@ -970,14 +970,7 @@ ipcMain.on("save-settings", (event, settings) => {
 	settingsManager.save();
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
-	if (state.isActive) {
-		hotkeyManager.registerTypingHotkeys();
-	}
-
-	// update keyboard handler platform settings
-	keyboardHandler.updatePlatformSettings();
-
-	// broadcast settings to clients
+	if (state.isActive) hotkeyManager.registerTypingHotkeys();
 	broadcastServer.updateSettings(settings);
 	createApplicationMenu();
 	event.reply("settings-saved", settingsManager.getAll());
@@ -986,13 +979,7 @@ ipcMain.on("reset-settings", (event) => {
 	settingsManager.reset();
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
-	if (state.isActive) {
-		hotkeyManager.registerTypingHotkeys();
-	}
-
-	// update keyboard handler platform settings
-	keyboardHandler.updatePlatformSettings();
-
+	if (state.isActive) hotkeyManager.registerTypingHotkeys();
 	event.reply("settings-loaded", settingsManager.getAll());
 });
 
