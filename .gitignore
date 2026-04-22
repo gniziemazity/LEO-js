@@ -1,7 +1,16 @@
+/.claude/*
+__pycache__/
+*.pyc
+/CLAUDE.md
+/lesson_tools/CLAUDE.md
 /node_modules/
 /package-lock.json
 /build/
 /dist/
-/TEST/
+/ideas/
 /plans/logs/
 /settings/yt_settings.json
+/lesson_tools/.grades_session.json
+/lesson_tools/.last_folder
+/lesson_tools/.last_vis_data.js
+/lesson_tools/.last_project.js

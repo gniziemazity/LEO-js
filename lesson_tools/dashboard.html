@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Dashboard</title>
+		<link rel="stylesheet" href="shared.css" />
+		<link rel="stylesheet" href="dashboard.css" />
+	</head>
+	<body>
+		<div id="landing">
+			<div id="landing-buttons">
+				<button class="landing-btn" onclick="openFilePicker()">
+					📄 Open Log File
+				</button>
+				<button class="landing-btn" onclick="openFolderPicker()">
+					📁 Open Folder
+				</button>
+			</div>
+		</div>
+
+		<div id="main">
+			<div id="charts">
+				<div class="chart-section" id="chart1-section">
+					<div class="chart-wrap"><canvas id="chart1"></canvas></div>
+					<button
+						id="btn-open-sim"
+						onclick="window.open('simulator.html')"
+						title="Simulate Lesson"
+					>
+						▶
+					</button>
+				</div>
+				<div class="chart-section" id="chart2-section">
+					<div class="chart-wrap"><canvas id="chart2"></canvas></div>
+					<div id="chart2-legend" class="chart-legend-overlay">
+						<div id="leg-total" class="leg-total-row"></div>
+						<label
+							><input type="checkbox" id="leg-chars" checked /><span
+								class="leg-swatch"
+								style="--clr: #000"
+							></span
+							><span>Chars <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-inserts" checked /><span
+								class="leg-swatch leg-dia"
+							></span
+							><span>Inserts <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-deletes" checked /><span
+								class="leg-swatch"
+								style="--clr: var(--clr-red)"
+							></span
+							><span>Deletes <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-dev" checked /><span
+								class="leg-swatch"
+								style="--clr: var(--clr-green)"
+							></span
+							><span>Dev <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-anchors" checked /><span
+								class="leg-swatch"
+								style="--clr: var(--clr-accent)"
+							></span
+							><span>Anchors <span class="leg-count"></span></span
+						></label>
+						<label
+							><input type="checkbox" id="leg-moves" checked /><span
+								class="leg-swatch"
+								style="--clr: var(--clr-orange)"
+							></span
+							><span>Moves <span class="leg-count"></span></span
+						></label>
+					</div>
+				</div>
+				<div
+					class="chart-section"
+					id="chart3-section"
+					style="display: none"
+				>
+					<div class="chart-wrap"><canvas id="chart3"></canvas></div>
+					<button id="btn-shake" onclick="toggleShake()" title="Shake">
+						🎲
+					</button>
+					<button
+						id="btn-students"
+						onclick="window.open('students.html?autoload=1')"
+						title="Open Students"
+					>
+						👥
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="loading">Processing…</div>
+		<div id="tooltip"></div>
+
+		<script src="kla-utils.js"></script>
+		<script src="kla-config.js"></script>
+		<script src="kla-data.js"></script>
+		<script src="kla-render.js"></script>
+		<script src="kla-zoom.js"></script>
+		<script src="kla-tooltip.js"></script>
+		<script src="kla-students.js"></script>
+		<script src="kla-diff.js"></script>
+		<script src="kla-app.js"></script>
+		<script src="xlsx.full.min.js"></script>
+	</body>
+</html>

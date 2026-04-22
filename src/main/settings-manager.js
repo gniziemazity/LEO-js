@@ -17,6 +17,7 @@ class SettingsManager {
 				stepForward: "CommandOrControl+Right",
 				alwaysOnTop: "CommandOrControl+Shift+Space",
 				toggleTransparency: "CommandOrControl+Shift+T",
+				toggleWindow: "CommandOrControl+L",
 			},
 			colors: {
 				commentNormal: "#fff9c4",
@@ -26,10 +27,19 @@ class SettingsManager {
 				cursor: "#e74c3c",
 				selectedBorder: "#3498db",
 				textColor: "#333333",
+				questionCommentColor: "#facaca",
+				imageBlockColor: "#bbdefb",
+				codeInsertBlockColor: "#f0f0f0",
+				moveToBlockColor: "#424242",
+				moveToTextColor: "#3498db",
+				codeBlockColor: "#ffffff",
 			},
 			fontSize: 14,
-			hotkeyMode: "single-key", // "single-key" or "auto-run"
+			mode: "record",
+			hotkeyMode: "single-key",
 			autoTypingSpeed: 50,
+			touchpadSensitivity: 3,
+			touchpadSide: "right", // for right / left handed people
 		};
 
 		this.settings = this.load();
@@ -39,7 +49,19 @@ class SettingsManager {
 		try {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
-				return { ...this.defaultSettings, ...JSON.parse(data) };
+				const saved = JSON.parse(data);
+				return {
+					...this.defaultSettings,
+					...saved,
+					colors: {
+						...this.defaultSettings.colors,
+						...(saved.colors || {}),
+					},
+					hotkeys: {
+						...this.defaultSettings.hotkeys,
+						...(saved.hotkeys || {}),
+					},
+				};
 			}
 		} catch (error) {
 			console.error("Failed to load settings:", error);

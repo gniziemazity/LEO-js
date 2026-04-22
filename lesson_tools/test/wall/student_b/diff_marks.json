@@ -1,0 +1,2630 @@
+{
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": true,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "Chess",
+        "label": "missing",
+        "start": 40,
+        "end": 45
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 76,
+        "end": 83
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 84,
+        "end": 86
+      },
+      {
+        "token": "ID",
+        "label": "comment",
+        "start": 87,
+        "end": 89
+      },
+      {
+        "token": "#chess-board",
+        "label": "missing",
+        "start": 96,
+        "end": 108
+      },
+      {
+        "token": "chess-board",
+        "label": "missing",
+        "start": 97,
+        "end": 108
+      },
+      {
+        "token": "425px",
+        "label": "missing",
+        "start": 122,
+        "end": 127
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 184,
+        "end": 187
+      },
+      {
+        "token": "class",
+        "label": "comment",
+        "start": 188,
+        "end": 193
+      },
+      {
+        "token": "commented",
+        "label": "comment",
+        "start": 250,
+        "end": 259
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 260,
+        "end": 267
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 270,
+        "end": 273
+      },
+      {
+        "token": "in",
+        "label": "comment",
+        "start": 274,
+        "end": 276
+      },
+      {
+        "token": "use",
+        "label": "comment",
+        "start": 277,
+        "end": 280
+      },
+      {
+        "token": "just",
+        "label": "comment",
+        "start": 283,
+        "end": 287
+      },
+      {
+        "token": "an",
+        "label": "comment",
+        "start": 288,
+        "end": 290
+      },
+      {
+        "token": "example",
+        "label": "comment",
+        "start": 291,
+        "end": 298
+      },
+      {
+        "token": "margin",
+        "label": "comment",
+        "start": 303,
+        "end": 309
+      },
+      {
+        "token": "10px",
+        "label": "comment",
+        "start": 311,
+        "end": 315
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 321,
+        "end": 328
+      },
+      {
+        "token": "5px",
+        "label": "comment",
+        "start": 330,
+        "end": 333
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 397,
+        "end": 401
+      },
+      {
+        "token": "includes",
+        "label": "comment",
+        "start": 402,
+        "end": 410
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 411,
+        "end": 418
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 419,
+        "end": 422
+      },
+      {
+        "token": "border",
+        "label": "comment",
+        "start": 423,
+        "end": 429
+      },
+      {
+        "token": ".left-offset",
+        "label": "missing",
+        "start": 544,
+        "end": 556
+      },
+      {
+        "token": "margin-left",
+        "label": "missing",
+        "start": 563,
+        "end": 574
+      },
+      {
+        "token": "25px",
+        "label": "missing",
+        "start": 576,
+        "end": 580
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 700,
+        "end": 704
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 705,
+        "end": 710
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 712,
+        "end": 716
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 723,
+        "end": 728
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 725,
+        "end": 728
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 733,
+        "end": 737
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 738,
+        "end": 743
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 745,
+        "end": 749
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 750,
+        "end": 755
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 757,
+        "end": 762
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 759,
+        "end": 762
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 767,
+        "end": 771
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 772,
+        "end": 777
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 779,
+        "end": 783
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 784,
+        "end": 788
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 790,
+        "end": 795
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 792,
+        "end": 795
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 800,
+        "end": 804
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 805,
+        "end": 810
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 812,
+        "end": 816
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 817,
+        "end": 822
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 824,
+        "end": 829
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 826,
+        "end": 829
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 834,
+        "end": 838
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 839,
+        "end": 844
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 846,
+        "end": 850
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 851,
+        "end": 855
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 857,
+        "end": 862
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 859,
+        "end": 862
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 867,
+        "end": 871
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 872,
+        "end": 877
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 879,
+        "end": 883
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 884,
+        "end": 889
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 891,
+        "end": 896
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 893,
+        "end": 896
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 901,
+        "end": 905
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 906,
+        "end": 911
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 913,
+        "end": 917
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 918,
+        "end": 922
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 924,
+        "end": 929
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 926,
+        "end": 929
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 938,
+        "end": 942
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 943,
+        "end": 948
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 950,
+        "end": 954
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 955,
+        "end": 959
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 960,
+        "end": 971
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 973,
+        "end": 978
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 975,
+        "end": 978
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 983,
+        "end": 987
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 988,
+        "end": 993
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 995,
+        "end": 999
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1000,
+        "end": 1005
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1007,
+        "end": 1012
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1009,
+        "end": 1012
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1017,
+        "end": 1021
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1022,
+        "end": 1027
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1029,
+        "end": 1033
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1034,
+        "end": 1038
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1040,
+        "end": 1045
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1042,
+        "end": 1045
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1050,
+        "end": 1054
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1055,
+        "end": 1060
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1062,
+        "end": 1066
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1067,
+        "end": 1072
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1074,
+        "end": 1079
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1076,
+        "end": 1079
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1084,
+        "end": 1088
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1089,
+        "end": 1094
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1096,
+        "end": 1100
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1101,
+        "end": 1105
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1107,
+        "end": 1112
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1109,
+        "end": 1112
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1117,
+        "end": 1121
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1122,
+        "end": 1127
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1129,
+        "end": 1133
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1134,
+        "end": 1139
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1141,
+        "end": 1146
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1143,
+        "end": 1146
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1151,
+        "end": 1155
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1156,
+        "end": 1161
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1163,
+        "end": 1167
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1168,
+        "end": 1172
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1174,
+        "end": 1179
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1176,
+        "end": 1179
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1184,
+        "end": 1188
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1189,
+        "end": 1194
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1196,
+        "end": 1200
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1201,
+        "end": 1206
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1208,
+        "end": 1213
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1210,
+        "end": 1213
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1222,
+        "end": 1226
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1227,
+        "end": 1232
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1234,
+        "end": 1238
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1239,
+        "end": 1244
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1246,
+        "end": 1251
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1248,
+        "end": 1251
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1256,
+        "end": 1260
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1261,
+        "end": 1266
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1268,
+        "end": 1272
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1273,
+        "end": 1277
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1279,
+        "end": 1284
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1281,
+        "end": 1284
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1289,
+        "end": 1293
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1294,
+        "end": 1299
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1301,
+        "end": 1305
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1306,
+        "end": 1311
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1313,
+        "end": 1318
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1315,
+        "end": 1318
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1323,
+        "end": 1327
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1328,
+        "end": 1333
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1335,
+        "end": 1339
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1340,
+        "end": 1344
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1346,
+        "end": 1351
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1348,
+        "end": 1351
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1356,
+        "end": 1360
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1361,
+        "end": 1366
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1368,
+        "end": 1372
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1373,
+        "end": 1378
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1380,
+        "end": 1385
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1382,
+        "end": 1385
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1390,
+        "end": 1394
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1395,
+        "end": 1400
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1402,
+        "end": 1406
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1407,
+        "end": 1411
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1413,
+        "end": 1418
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1415,
+        "end": 1418
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1423,
+        "end": 1427
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1428,
+        "end": 1433
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1435,
+        "end": 1439
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1440,
+        "end": 1445
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1447,
+        "end": 1452
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1449,
+        "end": 1452
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1457,
+        "end": 1461
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1462,
+        "end": 1467
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1469,
+        "end": 1473
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1474,
+        "end": 1478
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1480,
+        "end": 1485
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1482,
+        "end": 1485
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1494,
+        "end": 1498
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1499,
+        "end": 1504
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1506,
+        "end": 1510
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1511,
+        "end": 1515
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 1516,
+        "end": 1527
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1529,
+        "end": 1534
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1531,
+        "end": 1534
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1539,
+        "end": 1543
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1544,
+        "end": 1549
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1551,
+        "end": 1555
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1556,
+        "end": 1561
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1563,
+        "end": 1568
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1565,
+        "end": 1568
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1573,
+        "end": 1577
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1578,
+        "end": 1583
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1585,
+        "end": 1589
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1590,
+        "end": 1594
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1596,
+        "end": 1601
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1598,
+        "end": 1601
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1606,
+        "end": 1610
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1611,
+        "end": 1616
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1618,
+        "end": 1622
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1623,
+        "end": 1628
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1630,
+        "end": 1635
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1632,
+        "end": 1635
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1640,
+        "end": 1644
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1645,
+        "end": 1650
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1652,
+        "end": 1656
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1657,
+        "end": 1661
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1663,
+        "end": 1668
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1665,
+        "end": 1668
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1673,
+        "end": 1677
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1678,
+        "end": 1683
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1685,
+        "end": 1689
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1690,
+        "end": 1695
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1697,
+        "end": 1702
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1699,
+        "end": 1702
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1707,
+        "end": 1711
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1712,
+        "end": 1717
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1719,
+        "end": 1723
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1724,
+        "end": 1728
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1730,
+        "end": 1735
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1732,
+        "end": 1735
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1740,
+        "end": 1744
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1745,
+        "end": 1750
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1752,
+        "end": 1756
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1757,
+        "end": 1762
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1764,
+        "end": 1769
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1766,
+        "end": 1769
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1778,
+        "end": 1782
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1783,
+        "end": 1788
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1790,
+        "end": 1794
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1795,
+        "end": 1800
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1802,
+        "end": 1807
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1804,
+        "end": 1807
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1812,
+        "end": 1816
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1817,
+        "end": 1822
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1824,
+        "end": 1828
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1829,
+        "end": 1833
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1835,
+        "end": 1840
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1837,
+        "end": 1840
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1845,
+        "end": 1849
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1850,
+        "end": 1855
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1857,
+        "end": 1861
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1862,
+        "end": 1867
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1869,
+        "end": 1874
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1871,
+        "end": 1874
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1879,
+        "end": 1883
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1884,
+        "end": 1889
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1891,
+        "end": 1895
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1896,
+        "end": 1900
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1902,
+        "end": 1907
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1904,
+        "end": 1907
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1912,
+        "end": 1916
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1917,
+        "end": 1922
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1924,
+        "end": 1928
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1929,
+        "end": 1934
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1936,
+        "end": 1941
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1938,
+        "end": 1941
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1946,
+        "end": 1950
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1951,
+        "end": 1956
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1958,
+        "end": 1962
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 1963,
+        "end": 1967
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 1969,
+        "end": 1974
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 1971,
+        "end": 1974
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 1979,
+        "end": 1983
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 1984,
+        "end": 1989
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 1991,
+        "end": 1995
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 1996,
+        "end": 2001
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2003,
+        "end": 2008
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2005,
+        "end": 2008
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2013,
+        "end": 2017
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2018,
+        "end": 2023
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2025,
+        "end": 2029
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2030,
+        "end": 2034
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2036,
+        "end": 2041
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2038,
+        "end": 2041
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2050,
+        "end": 2054
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2055,
+        "end": 2060
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2062,
+        "end": 2066
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2067,
+        "end": 2071
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 2072,
+        "end": 2083
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2085,
+        "end": 2090
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2087,
+        "end": 2090
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2095,
+        "end": 2099
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2100,
+        "end": 2105
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2107,
+        "end": 2111
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2112,
+        "end": 2117
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2119,
+        "end": 2124
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2121,
+        "end": 2124
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2129,
+        "end": 2133
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2134,
+        "end": 2139
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2141,
+        "end": 2145
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2146,
+        "end": 2150
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2152,
+        "end": 2157
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2154,
+        "end": 2157
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2162,
+        "end": 2166
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2167,
+        "end": 2172
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2174,
+        "end": 2178
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2179,
+        "end": 2184
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2186,
+        "end": 2191
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2188,
+        "end": 2191
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2196,
+        "end": 2200
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2201,
+        "end": 2206
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2208,
+        "end": 2212
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2213,
+        "end": 2217
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2219,
+        "end": 2224
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2221,
+        "end": 2224
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2229,
+        "end": 2233
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2234,
+        "end": 2239
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2241,
+        "end": 2245
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2246,
+        "end": 2251
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2253,
+        "end": 2258
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2255,
+        "end": 2258
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2263,
+        "end": 2267
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2268,
+        "end": 2273
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2275,
+        "end": 2279
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2280,
+        "end": 2284
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2286,
+        "end": 2291
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2288,
+        "end": 2291
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2296,
+        "end": 2300
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2301,
+        "end": 2306
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2308,
+        "end": 2312
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2313,
+        "end": 2318
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2320,
+        "end": 2325
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2322,
+        "end": 2325
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2334,
+        "end": 2338
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2339,
+        "end": 2344
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2346,
+        "end": 2350
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2351,
+        "end": 2356
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2358,
+        "end": 2363
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2360,
+        "end": 2363
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2368,
+        "end": 2372
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2373,
+        "end": 2378
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2380,
+        "end": 2384
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2385,
+        "end": 2389
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2391,
+        "end": 2396
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2393,
+        "end": 2396
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2401,
+        "end": 2405
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2406,
+        "end": 2411
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2413,
+        "end": 2417
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2418,
+        "end": 2423
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2425,
+        "end": 2430
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2427,
+        "end": 2430
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2435,
+        "end": 2439
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2440,
+        "end": 2445
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2447,
+        "end": 2451
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2452,
+        "end": 2456
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2458,
+        "end": 2463
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2460,
+        "end": 2463
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2468,
+        "end": 2472
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2473,
+        "end": 2478
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2480,
+        "end": 2484
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2485,
+        "end": 2490
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2492,
+        "end": 2497
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2494,
+        "end": 2497
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2502,
+        "end": 2506
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2507,
+        "end": 2512
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2514,
+        "end": 2518
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2519,
+        "end": 2523
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2525,
+        "end": 2530
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2527,
+        "end": 2530
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2535,
+        "end": 2539
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2540,
+        "end": 2545
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2547,
+        "end": 2551
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2552,
+        "end": 2557
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2559,
+        "end": 2564
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2561,
+        "end": 2564
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2569,
+        "end": 2573
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2574,
+        "end": 2579
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2581,
+        "end": 2585
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2586,
+        "end": 2590
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2592,
+        "end": 2597
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2594,
+        "end": 2597
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2606,
+        "end": 2610
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2611,
+        "end": 2616
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2618,
+        "end": 2622
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2623,
+        "end": 2627
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 2628,
+        "end": 2639
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2641,
+        "end": 2646
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2643,
+        "end": 2646
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2651,
+        "end": 2655
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2656,
+        "end": 2661
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2663,
+        "end": 2667
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2668,
+        "end": 2673
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2675,
+        "end": 2680
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2677,
+        "end": 2680
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2685,
+        "end": 2689
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2690,
+        "end": 2695
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2697,
+        "end": 2701
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2702,
+        "end": 2706
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2708,
+        "end": 2713
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2710,
+        "end": 2713
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2718,
+        "end": 2722
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2723,
+        "end": 2728
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2730,
+        "end": 2734
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2735,
+        "end": 2740
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2742,
+        "end": 2747
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2744,
+        "end": 2747
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2752,
+        "end": 2756
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2757,
+        "end": 2762
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2764,
+        "end": 2768
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2769,
+        "end": 2773
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2775,
+        "end": 2780
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2777,
+        "end": 2780
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2785,
+        "end": 2789
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2790,
+        "end": 2795
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2797,
+        "end": 2801
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2802,
+        "end": 2807
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2809,
+        "end": 2814
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2811,
+        "end": 2814
+      },
+      {
+        "token": "<div",
+        "label": "missing",
+        "start": 2819,
+        "end": 2823
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2824,
+        "end": 2829
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2831,
+        "end": 2835
+      },
+      {
+        "token": "dark",
+        "label": "missing",
+        "start": 2836,
+        "end": 2840
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2842,
+        "end": 2847
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2844,
+        "end": 2847
+      },
+      {
+        "token": "light",
+        "label": "missing",
+        "start": 2869,
+        "end": 2874
+      },
+      {
+        "token": "</div",
+        "label": "missing",
+        "start": 2876,
+        "end": 2881
+      },
+      {
+        "token": "div",
+        "label": "missing",
+        "start": 2878,
+        "end": 2881
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 2899,
+        "end": 2902
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 2903,
+        "end": 2907
+      },
+      {
+        "token": "Inline",
+        "label": "comment",
+        "start": 2908,
+        "end": 2914
+      },
+      {
+        "token": "Style",
+        "label": "comment",
+        "start": 2915,
+        "end": 2920
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 2922,
+        "end": 2925
+      },
+      {
+        "token": "recommended",
+        "label": "comment",
+        "start": 2926,
+        "end": 2937
+      },
+      {
+        "token": "<div",
+        "label": "comment",
+        "start": 2941,
+        "end": 2945
+      },
+      {
+        "token": "style",
+        "label": "comment",
+        "start": 2946,
+        "end": 2951
+      },
+      {
+        "token": "height",
+        "label": "comment",
+        "start": 2953,
+        "end": 2959
+      },
+      {
+        "token": "50px",
+        "label": "comment",
+        "start": 2961,
+        "end": 2965
+      },
+      {
+        "token": "background-color",
+        "label": "comment",
+        "start": 2970,
+        "end": 2986
+      },
+      {
+        "token": "black",
+        "label": "comment",
+        "start": 2988,
+        "end": 2993
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 2998,
+        "end": 3003
+      },
+      {
+        "token": "50px",
+        "label": "comment",
+        "start": 3005,
+        "end": 3009
+      },
+      {
+        "token": "</div",
+        "label": "comment",
+        "start": 3015,
+        "end": 3020
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 3017,
+        "end": 3020
+      },
+      {
+        "token": "Visit",
+        "label": "missing",
+        "start": 3084,
+        "end": 3089
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "chess",
+        "label": "extra",
+        "start": 49,
+        "end": 54
+      },
+      {
+        "token": "#Chess-Board",
+        "label": "extra",
+        "start": 97,
+        "end": 109
+      },
+      {
+        "token": "432px",
+        "label": "extra_star",
+        "start": 135,
+        "end": 140
+      },
+      {
+        "token": "background-color",
+        "label": "extra_star",
+        "start": 285,
+        "end": 301
+      },
+      {
+        "token": "black",
+        "label": "extra_star",
+        "start": 303,
+        "end": 308
+      },
+      {
+        "token": "margin",
+        "label": "extra",
+        "start": 355,
+        "end": 361
+      },
+      {
+        "token": "10px",
+        "label": "extra",
+        "start": 363,
+        "end": 367
+      },
+      {
+        "token": "padding",
+        "label": "extra",
+        "start": 385,
+        "end": 392
+      },
+      {
+        "token": "5px",
+        "label": "extra",
+        "start": 394,
+        "end": 397
+      },
+      {
+        "token": "display",
+        "label": "extra_star",
+        "start": 455,
+        "end": 462
+      },
+      {
+        "token": "inline-block",
+        "label": "extra_star",
+        "start": 464,
+        "end": 476
+      },
+      {
+        "token": "visit",
+        "label": "extra",
+        "start": 916,
+        "end": 921
+      }
+    ]
+  },
+  "score": 14.8
+}

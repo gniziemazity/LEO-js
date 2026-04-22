@@ -1,0 +1,830 @@
+{
+  "format_version": 4,
+  "token_matching": "token-lcs-star",
+  "case_sensitive": true,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "123456",
+        "label": "missing",
+        "start": 46,
+        "end": 52
+      },
+      {
+        "token": ".cell",
+        "label": "missing",
+        "start": 74,
+        "end": 79
+      },
+      {
+        "token": "border",
+        "label": "missing",
+        "start": 88,
+        "end": 94
+      },
+      {
+        "token": "2px",
+        "label": "missing",
+        "start": 96,
+        "end": 99
+      },
+      {
+        "token": "solid",
+        "label": "missing",
+        "start": 100,
+        "end": 105
+      },
+      {
+        "token": "black",
+        "label": "missing",
+        "start": 106,
+        "end": 111
+      },
+      {
+        "token": "align-items",
+        "label": "missing",
+        "start": 137,
+        "end": 148
+      },
+      {
+        "token": "center",
+        "label": "missing",
+        "start": 150,
+        "end": 156
+      },
+      {
+        "token": "justify-content",
+        "label": "missing",
+        "start": 162,
+        "end": 177
+      },
+      {
+        "token": "center",
+        "label": "missing",
+        "start": 179,
+        "end": 185
+      },
+      {
+        "token": "gray",
+        "label": "missing",
+        "start": 265,
+        "end": 269
+      },
+      {
+        "token": "#chess-board",
+        "label": "missing",
+        "start": 281,
+        "end": 293
+      },
+      {
+        "token": "width",
+        "label": "missing",
+        "start": 300,
+        "end": 305
+      },
+      {
+        "token": "400px",
+        "label": "missing",
+        "start": 307,
+        "end": 312
+      },
+      {
+        "token": "height",
+        "label": "missing",
+        "start": 318,
+        "end": 324
+      },
+      {
+        "token": "400px",
+        "label": "missing",
+        "start": 326,
+        "end": 331
+      },
+      {
+        "token": "display",
+        "label": "missing",
+        "start": 337,
+        "end": 344
+      },
+      {
+        "token": "grid",
+        "label": "missing",
+        "start": 346,
+        "end": 350
+      },
+      {
+        "token": "grid-template-rows",
+        "label": "missing",
+        "start": 356,
+        "end": 374
+      },
+      {
+        "token": "repeat",
+        "label": "missing",
+        "start": 376,
+        "end": 382
+      },
+      {
+        "token": "8",
+        "label": "missing",
+        "start": 383,
+        "end": 384
+      },
+      {
+        "token": "1fr",
+        "label": "missing",
+        "start": 386,
+        "end": 389
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 395,
+        "end": 396
+      },
+      {
+        "token": "fraction",
+        "label": "comment",
+        "start": 397,
+        "end": 405
+      },
+      {
+        "token": "grid-template-columns",
+        "label": "missing",
+        "start": 413,
+        "end": 434
+      },
+      {
+        "token": "repeat",
+        "label": "missing",
+        "start": 436,
+        "end": 442
+      },
+      {
+        "token": "8",
+        "label": "missing",
+        "start": 443,
+        "end": 444
+      },
+      {
+        "token": "1fr",
+        "label": "missing",
+        "start": 446,
+        "end": 449
+      },
+      {
+        "token": "img",
+        "label": "missing",
+        "start": 464,
+        "end": 467
+      },
+      {
+        "token": "width",
+        "label": "missing",
+        "start": 474,
+        "end": 479
+      },
+      {
+        "token": "50%",
+        "label": "missing",
+        "start": 481,
+        "end": 484
+      },
+      {
+        "token": ".invert-color",
+        "label": "missing",
+        "start": 498,
+        "end": 511
+      },
+      {
+        "token": "filter",
+        "label": "missing",
+        "start": 518,
+        "end": 524
+      },
+      {
+        "token": "invert",
+        "label": "missing",
+        "start": 526,
+        "end": 532
+      },
+      {
+        "token": "100%",
+        "label": "missing",
+        "start": 533,
+        "end": 537
+      },
+      {
+        "token": "Game",
+        "label": "missing",
+        "start": 585,
+        "end": 589
+      },
+      {
+        "token": "<img",
+        "label": "missing",
+        "start": 652,
+        "end": 656
+      },
+      {
+        "token": "src",
+        "label": "missing",
+        "start": 657,
+        "end": 660
+      },
+      {
+        "token": "pieces",
+        "label": "missing",
+        "start": 662,
+        "end": 668
+      },
+      {
+        "token": "p2",
+        "label": "missing",
+        "start": 669,
+        "end": 671
+      },
+      {
+        "token": "png",
+        "label": "missing",
+        "start": 672,
+        "end": 675
+      },
+      {
+        "token": "<img",
+        "label": "missing",
+        "start": 721,
+        "end": 725
+      },
+      {
+        "token": "src",
+        "label": "missing",
+        "start": 726,
+        "end": 729
+      },
+      {
+        "token": "pieces",
+        "label": "missing",
+        "start": 731,
+        "end": 737
+      },
+      {
+        "token": "p5",
+        "label": "missing",
+        "start": 738,
+        "end": 740
+      },
+      {
+        "token": "png",
+        "label": "missing",
+        "start": 741,
+        "end": 744
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 746,
+        "end": 751
+      },
+      {
+        "token": "invert-color",
+        "label": "missing",
+        "start": 753,
+        "end": 765
+      },
+      {
+        "token": "<script",
+        "label": "missing",
+        "start": 2896,
+        "end": 2903
+      },
+      {
+        "token": "let",
+        "label": "missing",
+        "start": 2908,
+        "end": 2911
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 2912,
+        "end": 2925
+      },
+      {
+        "token": "null",
+        "label": "missing",
+        "start": 2928,
+        "end": 2932
+      },
+      {
+        "token": "const",
+        "label": "missing",
+        "start": 2937,
+        "end": 2942
+      },
+      {
+        "token": "cells",
+        "label": "missing",
+        "start": 2943,
+        "end": 2948
+      },
+      {
+        "token": "document",
+        "label": "missing",
+        "start": 2951,
+        "end": 2959
+      },
+      {
+        "token": "getElementsByClassName",
+        "label": "missing",
+        "start": 2960,
+        "end": 2982
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2984,
+        "end": 2988
+      },
+      {
+        "token": "console",
+        "label": "missing",
+        "start": 2995,
+        "end": 3002
+      },
+      {
+        "token": "log",
+        "label": "missing",
+        "start": 3003,
+        "end": 3006
+      },
+      {
+        "token": "cells",
+        "label": "missing",
+        "start": 3007,
+        "end": 3012
+      },
+      {
+        "token": "for",
+        "label": "missing",
+        "start": 3022,
+        "end": 3025
+      },
+      {
+        "token": "const",
+        "label": "missing",
+        "start": 3027,
+        "end": 3032
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 3033,
+        "end": 3037
+      },
+      {
+        "token": "of",
+        "label": "missing",
+        "start": 3038,
+        "end": 3040
+      },
+      {
+        "token": "cells",
+        "label": "missing",
+        "start": 3041,
+        "end": 3046
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 3054,
+        "end": 3058
+      },
+      {
+        "token": "onclick",
+        "label": "missing",
+        "start": 3059,
+        "end": 3066
+      },
+      {
+        "token": "function",
+        "label": "missing",
+        "start": 3069,
+        "end": 3077
+      },
+      {
+        "token": "anonymous",
+        "label": "comment",
+        "start": 3086,
+        "end": 3095
+      },
+      {
+        "token": "function",
+        "label": "comment",
+        "start": 3096,
+        "end": 3104
+      },
+      {
+        "token": "handleClick",
+        "label": "missing",
+        "start": 3111,
+        "end": 3122
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 3123,
+        "end": 3127
+      },
+      {
+        "token": "function",
+        "label": "missing",
+        "start": 3149,
+        "end": 3157
+      },
+      {
+        "token": "handleClick",
+        "label": "missing",
+        "start": 3158,
+        "end": 3169
+      },
+      {
+        "token": "element",
+        "label": "missing",
+        "start": 3170,
+        "end": 3177
+      },
+      {
+        "token": "for",
+        "label": "missing",
+        "start": 3185,
+        "end": 3188
+      },
+      {
+        "token": "const",
+        "label": "missing",
+        "start": 3190,
+        "end": 3195
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 3196,
+        "end": 3200
+      },
+      {
+        "token": "of",
+        "label": "missing",
+        "start": 3201,
+        "end": 3203
+      },
+      {
+        "token": "cells",
+        "label": "missing",
+        "start": 3204,
+        "end": 3209
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 3218,
+        "end": 3222
+      },
+      {
+        "token": "style",
+        "label": "missing",
+        "start": 3223,
+        "end": 3228
+      },
+      {
+        "token": "border",
+        "label": "missing",
+        "start": 3229,
+        "end": 3235
+      },
+      {
+        "token": "if",
+        "label": "missing",
+        "start": 3252,
+        "end": 3254
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3256,
+        "end": 3269
+      },
+      {
+        "token": "null",
+        "label": "missing",
+        "start": 3273,
+        "end": 3277
+      },
+      {
+        "token": "element",
+        "label": "missing",
+        "start": 3286,
+        "end": 3293
+      },
+      {
+        "token": "replaceChildren",
+        "label": "missing",
+        "start": 3294,
+        "end": 3309
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3310,
+        "end": 3323
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3331,
+        "end": 3344
+      },
+      {
+        "token": "null",
+        "label": "missing",
+        "start": 3347,
+        "end": 3351
+      },
+      {
+        "token": "else",
+        "label": "missing",
+        "start": 3359,
+        "end": 3363
+      },
+      {
+        "token": "if",
+        "label": "missing",
+        "start": 3364,
+        "end": 3366
+      },
+      {
+        "token": "element",
+        "label": "missing",
+        "start": 3368,
+        "end": 3375
+      },
+      {
+        "token": "children",
+        "label": "missing",
+        "start": 3376,
+        "end": 3384
+      },
+      {
+        "token": "length",
+        "label": "missing",
+        "start": 3385,
+        "end": 3391
+      },
+      {
+        "token": "0",
+        "label": "missing",
+        "start": 3394,
+        "end": 3395
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3404,
+        "end": 3417
+      },
+      {
+        "token": "element",
+        "label": "missing",
+        "start": 3420,
+        "end": 3427
+      },
+      {
+        "token": "children",
+        "label": "missing",
+        "start": 3428,
+        "end": 3436
+      },
+      {
+        "token": "0",
+        "label": "missing",
+        "start": 3437,
+        "end": 3438
+      },
+      {
+        "token": "element",
+        "label": "missing",
+        "start": 3446,
+        "end": 3453
+      },
+      {
+        "token": "style",
+        "label": "missing",
+        "start": 3454,
+        "end": 3459
+      },
+      {
+        "token": "border",
+        "label": "missing",
+        "start": 3460,
+        "end": 3466
+      },
+      {
+        "token": "4px",
+        "label": "missing",
+        "start": 3470,
+        "end": 3473
+      },
+      {
+        "token": "solid",
+        "label": "missing",
+        "start": 3474,
+        "end": 3479
+      },
+      {
+        "token": "red",
+        "label": "missing",
+        "start": 3480,
+        "end": 3483
+      },
+      {
+        "token": "</script",
+        "label": "missing",
+        "start": 3499,
+        "end": 3507
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "Board",
+        "label": "extra",
+        "start": 55,
+        "end": 60
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 100,
+        "end": 107
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 108,
+        "end": 110
+      },
+      {
+        "token": "ID",
+        "label": "comment",
+        "start": 111,
+        "end": 113
+      },
+      {
+        "token": "#chess-board",
+        "label": "extra",
+        "start": 129,
+        "end": 141
+      },
+      {
+        "token": "width",
+        "label": "extra",
+        "start": 160,
+        "end": 165
+      },
+      {
+        "token": "400px",
+        "label": "extra",
+        "start": 167,
+        "end": 172
+      },
+      {
+        "token": "flex-wrap",
+        "label": "extra",
+        "start": 221,
+        "end": 230
+      },
+      {
+        "token": "wrap",
+        "label": "extra",
+        "start": 232,
+        "end": 236
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 267,
+        "end": 270
+      },
+      {
+        "token": "class",
+        "label": "comment",
+        "start": 271,
+        "end": 276
+      },
+      {
+        "token": ".cell",
+        "label": "extra",
+        "start": 292,
+        "end": 297
+      },
+      {
+        "token": "height",
+        "label": "extra_star",
+        "start": 316,
+        "end": 322
+      },
+      {
+        "token": "50px",
+        "label": "extra",
+        "start": 324,
+        "end": 328
+      },
+      {
+        "token": "width",
+        "label": "extra",
+        "start": 346,
+        "end": 351
+      },
+      {
+        "token": "50px",
+        "label": "extra",
+        "start": 353,
+        "end": 357
+      },
+      {
+        "token": "border",
+        "label": "extra",
+        "start": 393,
+        "end": 399
+      },
+      {
+        "token": "1px",
+        "label": "extra",
+        "start": 401,
+        "end": 404
+      },
+      {
+        "token": "solid",
+        "label": "extra",
+        "start": 405,
+        "end": 410
+      },
+      {
+        "token": "gray",
+        "label": "extra",
+        "start": 411,
+        "end": 415
+      },
+      {
+        "token": "box-sizing",
+        "label": "extra",
+        "start": 433,
+        "end": 443
+      },
+      {
+        "token": "border-box",
+        "label": "extra",
+        "start": 445,
+        "end": 455
+      },
+      {
+        "token": "black",
+        "label": "extra",
+        "start": 602,
+        "end": 607
+      },
+      {
+        "token": "Board",
+        "label": "extra",
+        "start": 681,
+        "end": 686
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 692,
+        "end": 696
+      },
+      {
+        "token": "id",
+        "label": "extra",
+        "start": 697,
+        "end": 699
+      },
+      {
+        "token": "chess-board",
+        "label": "extra",
+        "start": 701,
+        "end": 712
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 719,
+        "end": 723
+      }
+    ]
+  },
+  "score": 76.7
+}

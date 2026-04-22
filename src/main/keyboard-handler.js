@@ -102,7 +102,37 @@ class KeyboardHandler {
 		const isInterceptorKey = typingHotkeys.includes(charLower);
 
 		try {
-			if (isInterceptorKey) {
+			await this.typeCharWithHotkeyManagement(
+				char,
+				charLower,
+				isInterceptorKey,
+			);
+			this.processQueue();
+
+			if (state.mainWindow) {
+				state.mainWindow.webContents.send("character-typed");
+			}
+
+			// Process any queued characters
+			this.processQueue();
+		} catch (error) {
+			console.error("Error typing character:", error);
+			this.ensureHotkeyRegistered(charLower, isInterceptorKey);
+			state.unlock();
+			state.clearQueue();
+		} finally {
+			this.isProcessing = false;
+			
+			// Check if more characters were queued while we were finishing up
+			if (state.hasQueuedKeys()) {
+				const nextChar = state.dequeueKey();
+				this.typeCharacter(nextChar);
+			}
+		}
+	}
+
+	async typeCharWithHotkeyManagement(char, charLower, isInterceptorKey) {
+    if (isInterceptorKey) {
 				this.hotkeyManager.unregisterKey(charLower);
 				// macOS fix: wait for unregister to take effect
 				if (this.isMacOS()) {
@@ -119,29 +149,11 @@ class KeyboardHandler {
 				}
 				this.hotkeyManager.registerKey(charLower);
 			}
+	}
 
-			if (state.mainWindow) {
-				state.mainWindow.webContents.send("character-typed");
-			}
-
-			// Process any queued characters
-			this.processQueue();
-		} catch (error) {
-			console.error("Error typing character:", error);
-
-			if (isInterceptorKey) {
-				this.hotkeyManager.registerKey(charLower);
-			}
-			state.unlock();
-			state.clearQueue();
-		} finally {
-			this.isProcessing = false;
-			
-			// Check if more characters were queued while we were finishing up
-			if (state.hasQueuedKeys()) {
-				const nextChar = state.dequeueKey();
-				this.typeCharacter(nextChar);
-			}
+	ensureHotkeyRegistered(charLower, isInterceptorKey) {
+		if (isInterceptorKey) {
+			this.hotkeyManager.registerKey(charLower);
 		}
 	}
 
@@ -160,23 +172,11 @@ class KeyboardHandler {
 				const isInterceptorKey = typingHotkeys.includes(charLower);
 
 				try {
-					if (isInterceptorKey) {
-						this.hotkeyManager.unregisterKey(charLower);
-						// macOS fix: wait for unregister to take effect
-						if (this.isMacOS()) {
-							await sleep(20);
-						}
-					}
-
-					await this.typeWithNutJs(char);
-
-					if (isInterceptorKey) {
-						// macOS fix: wait before re-registering
-						if (this.isMacOS()) {
-							await sleep(20);
-						}
-						this.hotkeyManager.registerKey(charLower);
-					}
+					await this.typeCharWithHotkeyManagement(
+						char,
+						charLower,
+						isInterceptorKey,
+					);
 
 					if (state.mainWindow) {
 						state.mainWindow.webContents.send(
@@ -188,10 +188,7 @@ class KeyboardHandler {
 					await new Promise((resolve) => setTimeout(resolve, speed));
 				} catch (error) {
 					console.error("Error typing character during auto-type:", error);
-
-					if (isInterceptorKey) {
-						this.hotkeyManager.registerKey(charLower);
-					}
+					this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 					break;
 				}
 			}
@@ -209,8 +206,9 @@ class KeyboardHandler {
 				state.unpause();
 				return;
 			}
-
-			if (mapping.modifier) {
+			if (mapping.modifier && mapping.shift) {
+				await keyboard.type(mapping.modifier, Key.LeftShift, mapping.key);
+			} else if (mapping.modifier) {
 				await keyboard.type(mapping.modifier, mapping.key);
 			} else if (mapping.shift) {
 				await keyboard.type(Key.LeftShift, mapping.key);
@@ -272,7 +270,7 @@ class KeyboardHandler {
 
 	processQueue() {
 		if (state.hasQueuedKeys()) {
-			const nextKey = state.dequeueKey();
+			state.dequeueKey();
 			state.mainWindow.webContents.send("advance-cursor");
 		} else {
 			state.unlock();

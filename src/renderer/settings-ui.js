@@ -1,4 +1,5 @@
 const { ipcRenderer } = require("electron");
+const { buildSettingsCSS } = require("../shared/constants");
 
 class SettingsUI {
 	constructor() {
@@ -49,6 +50,14 @@ class SettingsUI {
 				document.getElementById("speedValue").textContent = e.target.value;
 			});
 		}
+
+		const sensitivitySlider = document.getElementById("touchpadSensitivity");
+		if (sensitivitySlider) {
+			sensitivitySlider.addEventListener("input", (e) => {
+				document.getElementById("sensitivityValue").textContent =
+					parseFloat(e.target.value).toFixed(1);
+			});
+		}
 	}
 
 	async open() {
@@ -79,9 +88,23 @@ class SettingsUI {
 			settings.hotkeys.alwaysOnTop;
 		document.getElementById("toggleTransparencyKey").value =
 			settings.hotkeys.toggleTransparency;
+		document.getElementById("toggleWindowKey").value =
+			settings.hotkeys.toggleWindow;
 
 		document.getElementById("commentNormalColor").value =
 			settings.colors.commentNormal;
+		document.getElementById("codeBlockColor").value =
+			settings.colors.codeBlockColor || "#ffffff";
+		document.getElementById("questionCommentColor").value =
+			settings.colors.questionCommentColor;
+		document.getElementById("imageBlockColor").value =
+			settings.colors.imageBlockColor;
+		document.getElementById("codeInsertBlockColor").value =
+			settings.colors.codeInsertBlockColor || "#f0f0f0";
+		document.getElementById("moveToBlockColor").value =
+			settings.colors.moveToBlockColor || "#424242";
+		document.getElementById("moveToTextColor").value =
+			settings.colors.moveToTextColor || "#ffffff";
 		document.getElementById("commentActiveColor").value =
 			settings.colors.commentActive;
 		document.getElementById("commentSelectedColor").value =
@@ -101,6 +124,15 @@ class SettingsUI {
 			settings.autoTypingSpeed;
 		document.getElementById("speedValue").textContent =
 			settings.autoTypingSpeed;
+
+		document.getElementById("touchpadSensitivity").value =
+			settings.touchpadSensitivity || 3;
+		document.getElementById("sensitivityValue").textContent = parseFloat(
+			settings.touchpadSensitivity || 3,
+		).toFixed(1);
+
+		document.getElementById("touchpadSide").value =
+			settings.touchpadSide || "right";
 
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
 	}
@@ -126,9 +158,19 @@ class SettingsUI {
 				alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
 				toggleTransparency: document.getElementById("toggleTransparencyKey")
 					.value,
+				toggleWindow: document.getElementById("toggleWindowKey").value,
 			},
 			colors: {
 				commentNormal: document.getElementById("commentNormalColor").value,
+				codeBlockColor: document.getElementById("codeBlockColor").value,
+				questionCommentColor: document.getElementById(
+					"questionCommentColor",
+				).value,
+				imageBlockColor: document.getElementById("imageBlockColor").value,
+				codeInsertBlockColor: document.getElementById("codeInsertBlockColor")
+					.value,
+				moveToBlockColor: document.getElementById("moveToBlockColor").value,
+				moveToTextColor: document.getElementById("moveToTextColor").value,
 				commentActive: document.getElementById("commentActiveColor").value,
 				commentSelected: document.getElementById("commentSelectedColor")
 					.value,
@@ -144,6 +186,10 @@ class SettingsUI {
 			autoTypingSpeed: parseInt(
 				document.getElementById("autoTypingSpeed").value,
 			),
+			touchpadSensitivity: parseFloat(
+				document.getElementById("touchpadSensitivity").value,
+			),
+			touchpadSide: document.getElementById("touchpadSide").value,
 		};
 
 		ipcRenderer.send("save-settings", settings);
@@ -163,34 +209,9 @@ class SettingsUI {
 			document.head.appendChild(styleEl);
 		}
 
-		styleEl.textContent = `
-         body {
-            font-size: ${settings.fontSize}px;
-         }
-         
-         .comment-block,
-         .code-block {
-            color: ${settings.colors.textColor};
-         }
-         
-         .comment-block {
-            background: ${settings.colors.commentNormal};
-         }
-         
-         .comment-block.active-comment {
-            background: ${settings.colors.commentActive};
-            color: ${settings.colors.commentActiveText};
-         }
-         
-         .block.selected {
-            background-color: ${settings.colors.commentSelected};
-            border-left-color: ${settings.colors.selectedBorder};
-         }
-         
-         .char.cursor {
-            background: ${settings.colors.cursor};
-         }
-         
+		styleEl.textContent =
+			buildSettingsCSS(settings) +
+			`
          #speedSettingContainer {
             display: ${settings.hotkeyMode === "auto-run" ? "block" : "none"};
          }

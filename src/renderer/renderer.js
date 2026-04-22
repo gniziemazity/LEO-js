@@ -1,33 +1,43 @@
 const { ipcRenderer } = require("electron");
 const LogManager = require("./main/log-manager");
-const TimerManager = require("./renderer/timer-manager");
 const LessonManager = require("./renderer/lesson-manager");
 const UIManager = require("./renderer/ui-manager");
 const CursorManager = require("./renderer/cursor-manager");
 const LessonRenderer = require("./renderer/lesson-renderer");
 const BlockEditor = require("./renderer/block-editor");
+const UndoManager = require("./renderer/undo-manager");
 const FileOperations = require("./renderer/file-operations");
 const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
-const { TIMER_CONFIG } = require("./shared/constants");
+const QRModalManager = require("./renderer/qr-modal");
+const path = require("path");
+
+const soundPath = path.join(__dirname, "..", "assets", "sounds");
 
 const logManager = new LogManager();
-const timerManager = new TimerManager();
 const lessonManager = new LessonManager();
+const undoManager = new UndoManager(lessonManager);
 const uiManager = new UIManager();
 const cursorManager = new CursorManager(uiManager, logManager);
 const lessonRenderer = new LessonRenderer(
 	lessonManager,
 	uiManager,
 	cursorManager,
+	undoManager,
 );
-const blockEditor = new BlockEditor(lessonManager, uiManager, lessonRenderer);
+const blockEditor = new BlockEditor(
+	lessonManager,
+	uiManager,
+	lessonRenderer,
+	undoManager,
+);
 const fileOperations = new FileOperations(
 	lessonManager,
 	logManager,
 	cursorManager,
 	lessonRenderer,
+	undoManager,
 );
 const settingsUI = new SettingsUI();
 const specialKeys = new SpecialKeys(uiManager, blockEditor);
@@ -36,49 +46,123 @@ const typingController = new TypingController(
 	lessonRenderer,
 	cursorManager,
 );
+const qrModalManager = new QRModalManager();
+
+let pendingQuestion = null;
+
+function applyMode(mode) {
+	document.body.classList.remove("mode-record", "mode-classroom", "mode-scientific");
+	document.body.classList.add(`mode-${mode}`);
+}
+
+cursorManager.onEnterQuestionBlock = (question, timestamp) => {
+	pendingQuestion = { question, timestamp, answeredBy: null };
+	const students = fileOperations.getStudents();
+	const bgColor = getColor("questionCommentColor", "#facaca");
+	ipcRenderer.send("enter-question-block", { question, students, bgColor });
+};
+
+cursorManager.onLeaveQuestionBlock = () => {
+	if (pendingQuestion) {
+		logManager.addEntry({
+			timestamp: pendingQuestion.timestamp,
+			interaction: "teacher-question",
+			info: pendingQuestion.question,
+			answered_by: pendingQuestion.answeredBy,
+			closed_at: Date.now(),
+		});
+		pendingQuestion = null;
+	}
+};
+
+cursorManager.onImageBlock = (imageName, shouldPin) => {
+	const lessonFilePath = lessonManager.getCurrentFilePath();
+	const bgColor = getColor("imageBlockColor", null);
+	ipcRenderer.send("open-image-window", {
+		imageName,
+		lessonFilePath,
+		bgColor,
+		shouldPin,
+	});
+};
+
+cursorManager.onWebBlock = (url, shouldPin) => {
+	const bgColor = getColor("imageBlockColor", null);
+	ipcRenderer.send("open-web-window", { url, bgColor, shouldPin });
+};
+
+function getColor(key, fallback) {
+	return (
+		(settingsUI.currentSettings &&
+			settingsUI.currentSettings.colors &&
+			settingsUI.currentSettings.colors[key]) ||
+		fallback
+	);
+}
+
+fileOperations.onStudentsLoaded = (students) => {
+	ipcRenderer.send("broadcast-students", students);
+};
+
+function playFireworksSound() {
+	const audio = new Audio(soundPath + "/fireworks (by dragon studio).mp3");
+	audio.play();
+}
 
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	settingsUI.initialize();
 	specialKeys.initialize();
-
 	fileOperations.loadLastLesson();
-
-	setupManagers();
 	setupEventListeners();
 	setupGlobalIpcListeners();
+	setupUndoRedoShortcuts();
 });
-
-function setupManagers() {
-	timerManager.onTick((formattedTime) => {
-		uiManager.updateTimerDisplay(formattedTime);
-	});
-
-	timerManager.onComplete(() => {
-		uiManager.hideTimerControls();
-	});
-}
 
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
 		typingController.toggleActive();
 	uiManager.getElement("addCommentBtn").onclick = () =>
 		blockEditor.addBlock("comment");
+	uiManager.getElement("addQuestionCommentBtn").onclick = () =>
+		blockEditor.addBlock("comment", "❓ ");
+	uiManager.getElement("addImageCommentBtn").onclick = () =>
+		blockEditor.addBlock("comment", "🖼️ ");
+	uiManager.getElement("addWebCommentBtn").onclick = () =>
+		blockEditor.addBlock("comment", "🌐 ");
+	uiManager.getElement("addCodeInsertBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "📋 ");
+	uiManager.getElement("addMoveToBlockBtn").onclick = () =>
+		blockEditor.addBlock("comment", "➡️ ");
 	uiManager.getElement("addCodeBtn").onclick = () =>
 		blockEditor.addBlock("code");
 	uiManager.getElement("removeBlockBtn").onclick = () =>
 		blockEditor.removeBlock();
 	uiManager.getElement("formatBlockBtn").onclick = () =>
 		blockEditor.formatBlock();
-	uiManager.getElement("timerStartBtn").onclick = () => startTimer();
-	uiManager.getElement("timerPlusBtn").onclick = () =>
-		adjustTimer(TIMER_CONFIG.ADJUSTMENT_MINUTES);
-	uiManager.getElement("timerMinusBtn").onclick = () =>
-		adjustTimer(-TIMER_CONFIG.ADJUSTMENT_MINUTES);
-	uiManager.getElement("askQuestionBtn").onclick = () =>
-		logInteraction("student-question");
-	uiManager.getElement("helpBtn").onclick = () =>
-		logInteraction("providing-help");
+
+	const artBtn = uiManager.getElement("generateArtificialLogBtn");
+	if (artBtn) {
+		artBtn.onclick = () => {
+			const savedSelection = uiManager.getSelectedBlockIndex();
+			if (savedSelection !== null) {
+				uiManager.deselectBlock();
+				lessonRenderer.render();
+			}
+
+			const events = cursorManager.buildArtificialLogEvents();
+			const logPath = logManager.saveArtificialLog(events);
+
+			if (savedSelection !== null) {
+				uiManager.selectBlock(savedSelection);
+				lessonRenderer.render();
+			}
+
+			if (logPath) {
+				ipcRenderer.send("open-log-visualizer", logPath);
+			}
+		};
+	}
 }
 
 function setupGlobalIpcListeners() {
@@ -88,48 +172,103 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("global-step-backward", () => cursorManager.stepBackward());
 	ipcRenderer.on("global-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
-	ipcRenderer.on("toggle-transparency-event", () => {
-		ipcRenderer.send("toggle-transparency");
+	ipcRenderer.on("toggle-transparency-event", () =>
+		ipcRenderer.send("toggle-transparency"),
+	);
+	ipcRenderer.on("settings-loaded", (e, s) => {
+		settingsUI.applySettings(s);
+		applyMode(s.mode || "record");
 	});
-	ipcRenderer.on("settings-loaded", (event, settings) => {
-		settingsUI.applySettings(settings);
-	});
-	ipcRenderer.on("settings-saved", (event, settings) => {
-		settingsUI.applySettings(settings);
+	ipcRenderer.on("settings-saved", (e, s) => {
+		settingsUI.applySettings(s);
+		applyMode(s.mode || "record");
 		settingsUI.close();
 	});
 	ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
 	ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
 	ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
 	ipcRenderer.on("open-settings", () => settingsUI.open());
-	ipcRenderer.on("client-jump-to", (event, stepIndex) => {
-		cursorManager.jumpTo(stepIndex);
+	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
+	ipcRenderer.on("log-interaction", (e, type) =>
+		logManager.addInteraction(type),
+	);
+
+	ipcRenderer.on("start-auto-typing", () => cursorManager.startAutoTyping());
+	ipcRenderer.on("stop-auto-typing", () => cursorManager.stopAutoTyping());
+
+	ipcRenderer.on("question-answered", (event, { studentName }) => {
+		if (pendingQuestion) {
+			pendingQuestion.answeredBy = studentName;
+		}
+		if (studentName) {
+			playFireworksSound();
+		}
 	});
-	ipcRenderer.on("log-interaction", (event, interactionType) => {
-		logInteraction(interactionType);
-	});
-	ipcRenderer.on("start-auto-typing", () => {
-		cursorManager.startAutoTyping();
-	});
-	ipcRenderer.on("stop-auto-typing", () => {
-		cursorManager.stopAutoTyping();
-	});
+
+	ipcRenderer.on(
+		"log-student-interaction",
+		(
+			event,
+			{ interactionType, studentName, questionText, openedAt, closedAt },
+		) => {
+			if (interactionType === "student-question") {
+				const fields = { asked_by: studentName };
+				if (questionText) fields.info = questionText;
+				if (openedAt) fields.timestamp = openedAt;
+				if (closedAt) fields.closed_at = closedAt;
+				logManager.addInteraction("student-question", fields);
+			} else if (interactionType === "providing-help") {
+				const fields = { student: studentName };
+				if (openedAt) fields.timestamp = openedAt;
+				if (closedAt) fields.closed_at = closedAt;
+				logManager.addInteraction("providing-help", fields);
+			} else {
+				logManager.addInteraction(interactionType);
+			}
+		},
+	);
+
+	ipcRenderer.on("apply-mode", (e, mode) => applyMode(mode));
+	ipcRenderer.on("undo", () => performUndo());
+	ipcRenderer.on("redo", () => performRedo());
 }
 
-function logInteraction(interactionType) {
-	logManager.addInteraction(interactionType);
+function performUndo() {
+	if (!uiManager.isActive()) {
+		if (undoManager.undo()) lessonRenderer.render();
+	}
 }
 
-function startTimer() {
-	timerManager.start(TIMER_CONFIG.DEFAULT_MINUTES);
-	uiManager.showTimerControls();
+function performRedo() {
+	if (!uiManager.isActive()) {
+		if (undoManager.redo()) lessonRenderer.render();
+	}
 }
 
-function adjustTimer(minutes) {
-	timerManager.adjust(minutes);
+function setupUndoRedoShortcuts() {
+	document.addEventListener("keydown", (e) => {
+		if (uiManager.isActive()) return;
+		const active = document.activeElement;
+		const isEditing =
+			active &&
+			active.contentEditable === "true" &&
+			active.classList.contains("block");
+
+		if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+			if (isEditing) return;
+			e.preventDefault();
+			performUndo();
+		} else if (
+			((e.ctrlKey || e.metaKey) && e.key === "y") ||
+			((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+		) {
+			if (isEditing) return;
+			e.preventDefault();
+			performRedo();
+		}
+	});
 }
 
 window.addEventListener("beforeunload", () => {
 	logManager.save();
-	timerManager.reset();
 });

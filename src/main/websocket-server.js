@@ -3,164 +3,272 @@ const http = require("http");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
+const QRCode = require("qrcode");
 const qrcode = require("qrcode-terminal");
-const EventEmitter = require('events');
+const EventEmitter = require("events");
 
 class LEOBroadcastServer extends EventEmitter {
-   constructor(port = 8080) {
-      super();
-      this.port = port;
-      this.app = express();
-      this.server = http.createServer(this.app);
-      this.wss = null;
-      this.currentState = {
-         progress: 0,
-         timeRemaining: null,
-         isActive: false,
-         totalSteps: 0,
-         currentStep: 0,
-         lessonName: "No lesson loaded",
-         lessonData: null,
-         settings: null,
-      };
-   }
+	constructor(port = 8080) {
+		super();
+		this.port = port;
+		this.app = express();
+		this.server = null;
+		this.wss = null;
+		this.currentState = {
+			progress: 0,
+			isActive: false,
+			totalSteps: 0,
+			currentStep: 0,
+			lessonName: "No lesson loaded",
+			lessonData: null,
+			settings: null,
+			activeQuestion: null,
+			students: [],
+			timeRemaining: null,
+			floatingWindowCount: 0,
+		};
+	}
 
-   start() {
-      this.app.get("/", (req, res) => {
-         res.sendFile(path.join(__dirname, "../client-viewer.html"));
-      });
+	async start() {
+		this.app.get("/", (req, res) => {
+			res.sendFile(path.join(__dirname, "../remote.html"));
+		});
+		this.app.use(express.static(__dirname + "/../shared/"));
 
-      // serve other static files (like styles.css)
-      this.app.use(express.static(__dirname + "/../shared/"));
+		this.server = http.createServer(this.app);
+		this.protocol = "http";
 
-      // setup WebSocket on the same server
-      this.wss = new WebSocket.Server({ server: this.server });
+		this.wss = new WebSocket.Server({ server: this.server });
+		this.wss.on("connection", (ws) => {
+			console.log("Client connected: " + ws._socket.remoteAddress);
+			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
+			ws.on("message", (message) => {
+				try {
+					const data = JSON.parse(message);
+					this.handleClientMessage(data);
+				} catch (err) {
+					console.error("Error parsing client message:", err);
+				}
+			});
+		});
 
-      this.wss.on("connection", (ws) => {
-         console.log("Client connected: " + ws._socket.remoteAddress);
-         ws.send(JSON.stringify({ type: "state", data: this.currentState }));
-         
-         ws.on('message', (message) => {
-            try {
-               const data = JSON.parse(message);
-               this.handleClientMessage(data);
-            } catch (err) {
-               console.error('Error parsing client message:', err);
-            }
-         });
-      });
+		this.server.listen(this.port, () => {
+			console.log("LEO Server Started");
+			this.printLocalIPs();
+		});
+	}
 
-      this.server.listen(this.port, () => {
-         console.log("LEO Server Started");
-         this.printLocalIPs();
-      });
-   }
+	printLocalIPs() {
+		const interfaces = os.networkInterfaces();
+		Object.keys(interfaces).forEach((ifname) => {
+			interfaces[ifname].forEach((iface) => {
+				if (iface.family === "IPv4" && !iface.internal) {
+					const url = `http://${iface.address}:${this.port}`;
+					console.log(`Client Viewer URL: ${url}`);
+					qrcode.generate(url);
+				}
+			});
+		});
+	}
 
-   printLocalIPs() {
-      const interfaces = os.networkInterfaces();
+	broadcast(data) {
+		if (!this.wss) return;
+		const message = JSON.stringify(data);
+		this.wss.clients.forEach((client) => {
+			if (client.readyState === WebSocket.OPEN) client.send(message);
+		});
+	}
 
-      Object.keys(interfaces).forEach((ifname) => {
-         interfaces[ifname].forEach((iface) => {
-            if (iface.family === "IPv4" && !iface.internal) {
-               const url = `http://${iface.address}:${this.port}`;
-               console.log(`Client Viewer URL: ${url}`);
-               qrcode.generate(url);
-            }
-         });
-      });
-   }
+	updateLessonData(lessonData) {
+		this.currentState.lessonData = lessonData;
+		this.broadcast({ type: "lesson-data", data: lessonData });
+	}
 
-   broadcast(data) {
-      if (!this.wss) return;
-      const message = JSON.stringify(data);
-      this.wss.clients.forEach((client) => {
-         if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-         }
-      });
-   }
+	updateCursor(currentStep) {
+		this.currentState.currentStep = currentStep;
+		this.broadcast({ type: "cursor", data: { currentStep } });
+	}
 
-   updateLessonData(lessonData) {
-      this.currentState.lessonData = lessonData;
+	updateProgress(currentStep, totalSteps) {
+		this.currentState.currentStep = currentStep;
+		this.currentState.totalSteps = totalSteps;
+		this.currentState.progress =
+			totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+		this.broadcast({
+			type: "progress",
+			data: {
+				progress: this.currentState.progress,
+				currentStep,
+				totalSteps,
+			},
+		});
+	}
 
-      this.broadcast({
-         type: "lesson-data",
-         data: lessonData,
-      });
-   }
+	updateActiveState(isActive) {
+		this.currentState.isActive = isActive;
+		this.broadcast({ type: "active", data: { isActive } });
+	}
 
-   updateCursor(currentStep) {
-      this.currentState.currentStep = currentStep;
+	updateLessonName(lessonName) {
+		this.currentState.lessonName = lessonName;
+		this.broadcast({ type: "lesson", data: { lessonName } });
+	}
 
-      this.broadcast({
-         type: "cursor",
-         data: { currentStep },
-      });
-   }
+	updateSettings(settings) {
+		this.currentState.settings = settings;
+		this.broadcast({ type: "settings", data: settings });
+	}
 
-   updateProgress(currentStep, totalSteps) {
-      this.currentState.currentStep = currentStep;
-      this.currentState.totalSteps = totalSteps;
-      this.currentState.progress =
-         totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+	updateStudents(students) {
+		this.currentState.students = students || [];
+		this.broadcast({
+			type: "students",
+			data: { students: this.currentState.students },
+		});
+	}
 
-      this.broadcast({
-         type: "progress",
-         data: {
-            progress: this.currentState.progress,
-            currentStep,
-            totalSteps,
-         },
-      });
-   }
+	broadcastQuestionStarted(question, students, bgColor) {
+		this.currentState.activeQuestion = question;
+		if (students && students.length) this.currentState.students = students;
+		this.broadcast({
+			type: "question-started",
+			data: { question, students: this.currentState.students, bgColor },
+		});
+	}
 
-   updateTimer(timeRemaining) {
-      this.currentState.timeRemaining = timeRemaining;
+	broadcastQuestionEnded() {
+		this.currentState.activeQuestion = null;
+		this.broadcast({ type: "question-ended", data: {} });
+	}
 
-      this.broadcast({
-         type: "timer",
-         data: { timeRemaining },
-      });
-   }
+	updateTimer(timeRemaining) {
+		this.currentState.timeRemaining = timeRemaining;
+		this.broadcast({ type: "timer-tick", data: { timeRemaining } });
+	}
 
-   updateActiveState(isActive) {
-      this.currentState.isActive = isActive;
+	clearTimer() {
+		this.currentState.timeRemaining = null;
+		this.broadcast({ type: "timer-stopped", data: {} });
+	}
 
-      this.broadcast({
-         type: "active",
-         data: { isActive },
-      });
-   }
+	broadcastFloatingWindowOpened() {
+		this.currentState.floatingWindowCount =
+			(this.currentState.floatingWindowCount || 0) + 1;
+		if (this.currentState.floatingWindowCount === 1) {
+			this.broadcast({ type: "floating-window-opened", data: {} });
+		}
+	}
 
-   updateLessonName(lessonName) {
-      this.currentState.lessonName = lessonName;
+	signalFloatingWindowOpen() {
+		this.broadcast({ type: "floating-window-opened", data: {} });
+	}
 
-      this.broadcast({
-         type: "lesson",
-         data: { lessonName },
-      });
-   }
+	broadcastFloatingWindowClosed() {
+		this.currentState.floatingWindowCount = Math.max(
+			0,
+			(this.currentState.floatingWindowCount || 0) - 1,
+		);
+		if (this.currentState.floatingWindowCount === 0) {
+			this.broadcast({ type: "floating-window-closed", data: {} });
+		}
+	}
 
-   updateSettings(settings) {
-      this.currentState.settings = settings;
+	handleClientMessage(message) {
+		const { type, data } = message;
+		if (type === "toggle-active") {
+			this.emit("client-toggle-active");
+		} else if (type === "jump-to") {
+			this.emit("client-jump-to", data.stepIndex);
+		} else if (type === "interaction") {
+			this.emit("client-interaction", data.interactionType);
+		} else if (type === "student-answered") {
+			this.emit("client-student-answered", data.studentName);
+		} else if (type === "student-interaction") {
+			this.emit(
+				"client-student-interaction",
+				data.interactionType,
+				data.studentName,
+				data.questionText || null,
+				data.openedAt || null,
+				data.closedAt || null,
+			);
+		} else if (type === "show-student-interaction") {
+			this.emit(
+				"client-show-student-interaction",
+				data.interactionType,
+				data.studentName,
+				data.questionText || null,
+				data.openedAt || null,
+			);
+		} else if (type === "close-student-interaction") {
+			this.emit(
+				"client-close-student-interaction",
+				data.interactionType,
+				data.studentName,
+				data.questionText || null,
+				data.openedAt || null,
+				data.closedAt || null,
+			);
+		} else if (type === "mouse-move") {
+			this.emit("client-mouse-move", data.dx, data.dy);
+		} else if (type === "window-drag") {
+			this.emit("client-window-drag", data.dx, data.dy);
+		} else if (type === "window-resize") {
+			this.emit(
+				"client-window-resize",
+				data.scaleX ?? data.scale ?? 1,
+				data.scaleY ?? data.scale ?? 1,
+			);
+		} else if (type === "window-pinch") {
+			this.emit(
+				"client-window-pinch",
+				data.scale ?? 1,
+				data.dx ?? 0,
+				data.dy ?? 0,
+			);
+		} else if (type === "mouse-click") {
+			this.emit("client-mouse-click", data.button);
+		} else if (type === "mouse-scroll") {
+			this.emit("client-mouse-scroll", data.dy);
+		} else if (type === "mouse-drag-start") {
+			this.emit("client-mouse-drag-start");
+		} else if (type === "mouse-drag-end") {
+			this.emit("client-mouse-drag-end");
+		} else if (type === "timer-start") {
+			this.emit("client-timer-start");
+		} else if (type === "timer-stop") {
+			this.emit("client-timer-stop");
+		} else if (type === "timer-adjust") {
+			this.emit("client-timer-adjust", data.minutes);
+		} else if (type === "remote-key-press") {
+			this.emit("client-remote-key-press");
+		} else if (type === "dismiss-question") {
+			this.emit("client-dismiss-question");
+		}
+	}
 
-      this.broadcast({
-         type: "settings",
-         data: settings,
-      });
-   }
-
-   handleClientMessage(message) {
-      const { type, data } = message;
-      
-      if (type === 'toggle-active') {
-         this.emit('client-toggle-active');
-      } else if (type === 'jump-to') {
-         this.emit('client-jump-to', data.stepIndex);
-      } else if (type === 'interaction') {
-         this.emit('client-interaction', data.interactionType);
-      }
-   }
+	async getServerInfo() {
+		const interfaces = os.networkInterfaces();
+		const serverInfos = [];
+		for (const ifname of Object.keys(interfaces)) {
+			for (const iface of interfaces[ifname]) {
+				if (iface.family === "IPv4" && !iface.internal) {
+					const url = `http://${iface.address}:${this.port}`;
+					try {
+						const qrCodeDataUrl = await QRCode.toDataURL(url, {
+							width: 300,
+							margin: 2,
+							color: { dark: "#000000", light: "#ffffff" },
+						});
+						serverInfos.push({ url, qrCodeDataUrl });
+					} catch (err) {
+						console.error("Error generating QR code:", err);
+					}
+				}
+			}
+		}
+		return serverInfos;
+	}
 }
 
 module.exports = LEOBroadcastServer;

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>LEO Remote</title>
+		<link rel="icon" href="icon.ico" type="image/x-icon" />
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body class="mobile-view side-right">
+		<div id="mobile-header">
+			<div class="header-main-row">
+				<button
+					id="toggleBtn"
+					class="interaction-btn btn-start"
+					onclick="toggleActive()"
+				>
+					▶︎
+				</button>
+				<div id="timerSection">
+					<button
+						id="timerStartBtn"
+						class="timer-btn"
+						onclick="startTimer()"
+						title="Start Timer"
+					>
+						⏱️
+					</button>
+					<div id="timerControls" class="timer-controls">
+						<button
+							class="timer-btn"
+							onclick="adjustTimer(-10)"
+							title="-10 min"
+						>
+							–
+						</button>
+						<span
+							id="timerDisplay"
+							class="timer-display"
+							onclick="stopTimer()"
+							title="Click to stop"
+						></span>
+						<button
+							class="timer-btn"
+							onclick="adjustTimer(10)"
+							title="+10 min"
+						>
+							+
+						</button>
+					</div>
+				</div>
+			</div>
+			<div class="progress-bar" id="progressBar"></div>
+		</div>
+
+		<div id="lesson-container">
+			<div class="empty-state">Connecting to LEO...</div>
+		</div>
+
+		<div id="touchpadOverlay" class="touchpad-overlay"></div>
+
+		<div id="modeSideBtns" class="mode-side-btns">
+			<button
+				id="modeBtnMouse"
+				class="mode-side-btn"
+				onclick="setTouchpadMode('mouse')"
+				title="Mouse"
+			>
+				<span class="side-btn-emoji">🖱️</span>
+			</button>
+			<button
+				id="modeBtnKeyboard"
+				class="mode-side-btn kb-disabled"
+				onclick="setTouchpadMode('keyboard')"
+				title="Keyboard"
+			>
+				<span class="side-btn-emoji">⌨️</span>
+			</button>
+			<div class="mode-side-divider"></div>
+			<button
+				class="mode-side-btn mode-side-btn-question"
+				onclick="handleInteractionBtn('student-question')"
+				title="Student Question"
+			>
+				<span class="side-btn-emoji">❓</span>
+			</button>
+			<button
+				class="mode-side-btn mode-side-btn-help"
+				onclick="handleInteractionBtn('providing-help')"
+				title="Providing Help"
+			>
+				<span class="side-btn-emoji">🤝</span>
+			</button>
+		</div>
+
+		<div id="questionOverlay" class="overlay">
+			<div class="q-modal">
+				<button class="overlay-close-btn" onclick="hideQuestionOverlay()">
+					✕
+				</button>
+				<div class="q-question-text" id="qText"></div>
+				<div class="q-grid" id="qGrid"></div>
+				<div class="q-answered-row" id="qAnsweredRow">
+					<span id="qAnsweredText"></span>
+					<div class="q-close-bar">
+						<div class="q-close-bar-fill" id="qCloseBarFill"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="interactionOverlay" class="overlay">
+			<div class="i-modal" id="iModal">
+				<button
+					class="overlay-close-btn"
+					onclick="closeInteractionOverlay()"
+				>
+					✕
+				</button>
+				<div class="i-title" id="iTitle">Select student</div>
+				<input
+					type="text"
+					class="i-question-input"
+					id="iQuestionInput"
+					placeholder="Type the question here..."
+					style="display: none"
+				/>
+				<div class="i-grid" id="iGrid"></div>
+			</div>
+		</div>
+
+		<script src="remote/connection.js"></script>
+		<script src="remote/touchpad.js"></script>
+		<script src="remote/timer.js"></script>
+		<script src="remote/lesson.js"></script>
+		<script src="remote/overlays.js"></script>
+		<script src="remote/plugin.js"></script>
+
+		<script>
+			function handleMessage(message) {
+				const { type, data } = message;
+				switch (type) {
+					case "state":
+						updateAllState(data);
+						break;
+					case "lesson-data":
+						updateLessonData(data);
+						break;
+					case "cursor":
+						updateCursor(data);
+						break;
+					case "progress":
+						updateProgress(data);
+						break;
+					case "settings":
+						applySettings(data);
+						break;
+					case "active":
+						updateActiveState(data.isActive);
+						setAutoTypingActive(data.isActive);
+						break;
+					case "students":
+						setStudents(data.students);
+						break;
+					case "question-started":
+						showQuestionOverlay(
+							data.question,
+							data.students,
+							data.bgColor,
+						);
+						break;
+					case "question-ended":
+						hideQuestionOverlay();
+						break;
+					case "timer-tick":
+						showTimerRunning(data.timeRemaining);
+						break;
+					case "timer-stopped":
+						showTimerStopped();
+						break;
+				}
+			}
+
+			function updateAllState(state) {
+				updateProgress(state);
+				if (state.isActive !== undefined) {
+					updateActiveState(state.isActive);
+					setAutoTypingActive(state.isActive);
+				}
+				if (state.settings) applySettings(state.settings);
+				if (state.lessonData) updateLessonData(state.lessonData);
+				if (state.currentStep !== undefined)
+					updateCursor({ currentStep: state.currentStep });
+				if (state.students) setStudents(state.students);
+				if (state.activeQuestion)
+					showQuestionOverlay(
+						state.activeQuestion,
+						state.students || [],
+						null,
+					);
+				if (state.timeRemaining != null)
+					showTimerRunning(state.timeRemaining);
+				else showTimerStopped();
+			}
+
+			setMessageHandler(handleMessage);
+			initTouchpad();
+			setTimeout(connect, 500);
+		</script>
+	</body>
+</html>

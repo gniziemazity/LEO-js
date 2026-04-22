@@ -1,0 +1,530 @@
+{
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": true,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "DOCTYPE",
+        "label": "missing",
+        "start": 2,
+        "end": 9
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 76,
+        "end": 83
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 84,
+        "end": 86
+      },
+      {
+        "token": "ID",
+        "label": "comment",
+        "start": 87,
+        "end": 89
+      },
+      {
+        "token": "425px",
+        "label": "missing",
+        "start": 122,
+        "end": 127
+      },
+      {
+        "token": "display",
+        "label": "missing",
+        "start": 133,
+        "end": 140
+      },
+      {
+        "token": "flex",
+        "label": "missing",
+        "start": 142,
+        "end": 146
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 184,
+        "end": 187
+      },
+      {
+        "token": "class",
+        "label": "comment",
+        "start": 188,
+        "end": 193
+      },
+      {
+        "token": "commented",
+        "label": "comment",
+        "start": 250,
+        "end": 259
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 260,
+        "end": 267
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 270,
+        "end": 273
+      },
+      {
+        "token": "in",
+        "label": "comment",
+        "start": 274,
+        "end": 276
+      },
+      {
+        "token": "use",
+        "label": "comment",
+        "start": 277,
+        "end": 280
+      },
+      {
+        "token": "just",
+        "label": "comment",
+        "start": 283,
+        "end": 287
+      },
+      {
+        "token": "an",
+        "label": "comment",
+        "start": 288,
+        "end": 290
+      },
+      {
+        "token": "example",
+        "label": "comment",
+        "start": 291,
+        "end": 298
+      },
+      {
+        "token": "margin",
+        "label": "comment",
+        "start": 303,
+        "end": 309
+      },
+      {
+        "token": "10px",
+        "label": "comment",
+        "start": 311,
+        "end": 315
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 321,
+        "end": 328
+      },
+      {
+        "token": "5px",
+        "label": "comment",
+        "start": 330,
+        "end": 333
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 397,
+        "end": 401
+      },
+      {
+        "token": "includes",
+        "label": "comment",
+        "start": 402,
+        "end": 410
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 411,
+        "end": 418
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 419,
+        "end": 422
+      },
+      {
+        "token": "border",
+        "label": "comment",
+        "start": 423,
+        "end": 429
+      },
+      {
+        "token": ".left-offset",
+        "label": "missing",
+        "start": 544,
+        "end": 556
+      },
+      {
+        "token": "margin-left",
+        "label": "missing",
+        "start": 563,
+        "end": 574
+      },
+      {
+        "token": "25px",
+        "label": "missing",
+        "start": 576,
+        "end": 580
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 960,
+        "end": 971
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 1516,
+        "end": 1527
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 2072,
+        "end": 2083
+      },
+      {
+        "token": "left-offset",
+        "label": "missing",
+        "start": 2628,
+        "end": 2639
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 2899,
+        "end": 2902
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 2903,
+        "end": 2907
+      },
+      {
+        "token": "Inline",
+        "label": "comment",
+        "start": 2908,
+        "end": 2914
+      },
+      {
+        "token": "Style",
+        "label": "comment",
+        "start": 2915,
+        "end": 2920
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 2922,
+        "end": 2925
+      },
+      {
+        "token": "recommended",
+        "label": "comment",
+        "start": 2926,
+        "end": 2937
+      },
+      {
+        "token": "<div",
+        "label": "comment",
+        "start": 2941,
+        "end": 2945
+      },
+      {
+        "token": "style",
+        "label": "comment",
+        "start": 2946,
+        "end": 2951
+      },
+      {
+        "token": "height",
+        "label": "comment",
+        "start": 2953,
+        "end": 2959
+      },
+      {
+        "token": "50px",
+        "label": "comment",
+        "start": 2961,
+        "end": 2965
+      },
+      {
+        "token": "background-color",
+        "label": "comment",
+        "start": 2970,
+        "end": 2986
+      },
+      {
+        "token": "black",
+        "label": "comment",
+        "start": 2988,
+        "end": 2993
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 2998,
+        "end": 3003
+      },
+      {
+        "token": "50px",
+        "label": "comment",
+        "start": 3005,
+        "end": 3009
+      },
+      {
+        "token": "</div",
+        "label": "comment",
+        "start": 3015,
+        "end": 3020
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 3017,
+        "end": 3020
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "doctype",
+        "label": "extra",
+        "start": 2,
+        "end": 9
+      },
+      {
+        "token": "400px",
+        "label": "extra_star",
+        "start": 135,
+        "end": 140
+      },
+      {
+        "token": "front-size",
+        "label": "comment",
+        "start": 160,
+        "end": 170
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 166,
+        "end": 170
+      },
+      {
+        "token": "0",
+        "label": "comment",
+        "start": 172,
+        "end": 173
+      },
+      {
+        "token": "background-color",
+        "label": "comment",
+        "start": 262,
+        "end": 278
+      },
+      {
+        "token": "black",
+        "label": "comment",
+        "start": 280,
+        "end": 285
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 383,
+        "end": 390
+      },
+      {
+        "token": "5px",
+        "label": "comment",
+        "start": 392,
+        "end": 395
+      },
+      {
+        "token": "display",
+        "label": "extra_star",
+        "start": 455,
+        "end": 462
+      },
+      {
+        "token": "inline-block",
+        "label": "extra_star",
+        "start": 464,
+        "end": 476
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 3545,
+        "end": 3548
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 3549,
+        "end": 3553
+      },
+      {
+        "token": "inlinestyle",
+        "label": "comment",
+        "start": 3554,
+        "end": 3565
+      },
+      {
+        "token": "<body",
+        "label": "extra",
+        "start": 3578,
+        "end": 3583
+      },
+      {
+        "token": "style",
+        "label": "extra",
+        "start": 3584,
+        "end": 3589
+      },
+      {
+        "token": "background-color",
+        "label": "extra_star",
+        "start": 3604,
+        "end": 3620
+      },
+      {
+        "token": "black",
+        "label": "extra_star",
+        "start": 3622,
+        "end": 3627
+      },
+      {
+        "token": "width",
+        "label": "extra",
+        "start": 3641,
+        "end": 3646
+      },
+      {
+        "token": "50px",
+        "label": "extra",
+        "start": 3648,
+        "end": 3652
+      },
+      {
+        "token": "height",
+        "label": "extra",
+        "start": 3666,
+        "end": 3672
+      },
+      {
+        "token": "50px",
+        "label": "extra",
+        "start": 3674,
+        "end": 3678
+      },
+      {
+        "token": "Chess",
+        "label": "extra",
+        "start": 3694,
+        "end": 3699
+      },
+      {
+        "token": "Board",
+        "label": "extra",
+        "start": 3700,
+        "end": 3705
+      },
+      {
+        "token": "<a",
+        "label": "extra",
+        "start": 3729,
+        "end": 3731
+      },
+      {
+        "token": "href",
+        "label": "extra",
+        "start": 3732,
+        "end": 3736
+      },
+      {
+        "token": "https",
+        "label": "extra",
+        "start": 3738,
+        "end": 3743
+      },
+      {
+        "token": "www",
+        "label": "extra",
+        "start": 3746,
+        "end": 3749
+      },
+      {
+        "token": "w3schools",
+        "label": "extra",
+        "start": 3750,
+        "end": 3759
+      },
+      {
+        "token": "com",
+        "label": "extra",
+        "start": 3760,
+        "end": 3763
+      },
+      {
+        "token": "Visit",
+        "label": "extra",
+        "start": 3779,
+        "end": 3784
+      },
+      {
+        "token": "W3Schools",
+        "label": "extra",
+        "start": 3785,
+        "end": 3794
+      },
+      {
+        "token": "com",
+        "label": "extra",
+        "start": 3795,
+        "end": 3798
+      },
+      {
+        "token": "</a",
+        "label": "extra",
+        "start": 3808,
+        "end": 3811
+      },
+      {
+        "token": "</body",
+        "label": "extra",
+        "start": 3818,
+        "end": 3824
+      },
+      {
+        "token": "</div",
+        "label": "extra",
+        "start": 3834,
+        "end": 3839
+      },
+      {
+        "token": "div",
+        "label": "extra_star",
+        "start": 3836,
+        "end": 3839
+      }
+    ]
+  },
+  "score": 95.8
+}

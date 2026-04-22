@@ -1,0 +1,435 @@
+# Occurrences: 422
+# Removed    : 10
+# Unique     : 84
+DOCTYPE	09:34:25
+html	09:34:27
+<html	09:34:58
+</html	09:35:09
+<head	09:36:05
+</head	09:36:07
+<title	09:36:24
+Chess	09:36:34
+Board	09:36:35
+</title	09:36:41
+<body	09:37:17
+</body	09:37:20
+<h1	09:42:48
+Chess	09:42:49
+Board	09:42:50
+</h1	09:42:50
+<a	09:43:40
+</a	09:43:40
+href	09:43:40
+https	09:43:40
+www	09:43:40
+w3schools	09:43:40
+com	09:43:40
+com	09:43:40
+Visit	09:43:40
+W3Schools	09:43:40
+target	09:53:32
+_blank	09:53:34
+<div	09:54:45
+</div	09:54:46
+<div	09:58:39	COMMENT
+</div	09:58:39	COMMENT
+background-color	09:58:39	COMMENT
+width	09:58:39	COMMENT
+height	09:58:39	COMMENT
+50px	09:58:39	COMMENT
+50px	09:58:39	COMMENT
+black	09:58:39	COMMENT
+style	09:58:39	COMMENT
+div	09:59:19	COMMENT
+with	09:59:20	COMMENT
+Inline	09:59:22	COMMENT
+Style	09:59:22	COMMENT
+not	09:59:23	COMMENT
+recommended	09:59:26	COMMENT
+<style	10:01:08
+</style	10:01:13
+div	10:01:29	REMOVED	10:16:00
+width	10:01:53
+height	10:01:53
+50px	10:01:53
+50px	10:01:53
+background-color	10:01:53	REMOVED	10:36:49
+black	10:01:53	REMOVED	10:36:49
+<div	10:03:04
+<div	10:03:04
+<div	10:03:04
+<div	10:03:04
+<div	10:03:04
+<div	10:03:04
+<div	10:03:04
+</div	10:03:04
+</div	10:03:04
+</div	10:03:04
+</div	10:03:04
+</div	10:03:04
+</div	10:03:04
+</div	10:03:04
+margin	10:08:30	COMMENT
+10px	10:08:30	COMMENT
+padding	10:08:30	COMMENT
+5px	10:08:30	COMMENT
+border	10:08:30
+1px	10:08:30
+solid	10:08:30
+gray	10:08:30
+inline-block	10:08:30	REMOVED	10:26:45
+display	10:08:30	REMOVED	10:26:45
+commented	10:09:29	COMMENT
+styling	10:09:31	COMMENT
+not	10:09:33	COMMENT
+in	10:09:33	COMMENT
+use	10:09:34	COMMENT
+just	10:09:36	COMMENT
+an	10:09:36	COMMENT
+example	10:09:38	COMMENT
+<div	10:13:39
+</div	10:13:46
+.cell	10:16:03
+CSS	10:16:14	COMMENT
+class	10:16:15	COMMENT
+class	10:16:44
+cell	10:16:45
+class	10:17:16
+cell	10:17:16
+class	10:17:18
+cell	10:17:18
+class	10:17:20
+cell	10:17:20
+class	10:17:22
+cell	10:17:22
+class	10:17:24
+cell	10:17:24
+class	10:17:26
+cell	10:17:26
+class	10:17:28
+cell	10:17:28
+id	10:19:00
+chess-board	10:19:03
+styling	10:19:20	COMMENT
+by	10:19:21	COMMENT
+ID	10:19:21	COMMENT
+#chess-board	10:19:32
+width	10:19:39
+400px	10:19:40	REMOVED	10:23:07
+font-size	10:20:14	REMOVED	10:26:42
+0	10:20:15	REMOVED	10:26:42
+432px	10:23:09	REMOVED	10:24:27
+box-sizing	10:23:52
+border-box	10:23:53
+size	10:23:59	COMMENT
+includes	10:24:00	COMMENT
+padding	10:24:00	COMMENT
+and	10:24:01	COMMENT
+border	10:24:02	COMMENT
+400px	10:24:29	REMOVED	10:41:01
+display	10:25:49
+flex	10:25:49
+flex-wrap	10:25:52
+wrap	10:25:53
+.light	10:28:17
+background-color	10:28:25
+white	10:28:26
+.dark	10:28:29
+background-color	10:28:45
+black	10:28:46
+light	10:29:09
+dark	10:29:13
+light	10:29:25
+dark	10:29:29
+light	10:29:33
+dark	10:29:37
+light	10:29:41
+dark	10:29:45
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+<div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+</div	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+class	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+cell	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+light	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+dark	10:30:31
+.left-offset	10:39:25
+margin-left	10:39:30
+25px	10:39:32
+left-offset	10:40:21
+left-offset	10:40:38
+left-offset	10:40:42
+left-offset	10:40:46
+425px	10:41:03

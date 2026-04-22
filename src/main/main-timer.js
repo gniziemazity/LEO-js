@@ -1,81 +1,52 @@
-class MainProcessTimer {
-   constructor() {
-      this.interval = null;
-      this.endTime = null;
-      this.isRunning = false;
-   }
+const EventEmitter = require("events");
+const { TIMER_CONFIG } = require("../shared/constants");
 
-   start(minutes, broadcastCallback) {
-      this.stop();
-      
-      this.isRunning = true;
-      this.endTime = Date.now() + (minutes * 60 * 1000);
-      this.broadcastCallback = broadcastCallback;
+class MainProcessTimer extends EventEmitter {
+	constructor() {
+		super();
+		this.endTime = null;
+		this.interval = null;
+	}
 
-      const tick = () => {
-         const remainingMs = this.endTime - Date.now();
-         const seconds = Math.max(0, Math.floor(remainingMs / 1000));
+	start(minutes = TIMER_CONFIG.DEFAULT_MINUTES) {
+		if (this.interval) this.stop(false);
+		this.endTime = Date.now() + minutes * 60 * 1000;
+		this.interval = setInterval(() => this.tick(), 1000);
+		this.tick();
+	}
 
-         const timeString = this.getFormattedTime(seconds);
-         
-         if (this.broadcastCallback) {
-            this.broadcastCallback(timeString);
-         }
+	stop(emit = true) {
+		if (this.interval) {
+			clearInterval(this.interval);
+			this.interval = null;
+		}
+		this.endTime = null;
+		if (emit) this.emit("stopped");
+	}
 
-         if (seconds <= 0) {
-            this.complete();
-         }
-      };
+	adjust(minutes) {
+		if (!this.endTime) return;
+		this.endTime += minutes * 60 * 1000;
+		if (this.getRemainingSeconds() <= 0) {
+			this.stop();
+		} else {
+			this.tick();
+		}
+	}
 
-      tick();
-      this.interval = setInterval(tick, 1000);
-   }
+	tick() {
+		const remaining = this.getRemainingSeconds();
+		if (remaining <= 0) {
+			this.stop();
+			return;
+		}
+		this.emit("tick", remaining);
+	}
 
-   stop() {
-      if (this.interval) {
-         clearInterval(this.interval);
-         this.interval = null;
-      }
-      this.endTime = null;
-      this.isRunning = false;
-   }
-
-   complete() {
-      if (this.broadcastCallback) {
-         this.broadcastCallback(null);
-      }
-      this.stop();
-   }
-
-   adjust(minutes) {
-      if (!this.isRunning || !this.endTime) return;
-
-      this.endTime += minutes * 60 * 1000;
-
-      const remainingMs = this.endTime - Date.now();
-      const seconds = Math.max(0, Math.floor(remainingMs / 1000));
-
-      if (seconds <= 0) {
-         this.complete();
-      } else {
-         const timeString = this.getFormattedTime(seconds);
-         if (this.broadcastCallback) {
-            this.broadcastCallback(timeString);
-         }
-      }
-   }
-
-   getFormattedTime(seconds) {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-
-      if (hours > 0) {
-         return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-      } else {
-         return `${minutes}:${secs.toString().padStart(2, "0")}`;
-      }
-   }
+	getRemainingSeconds() {
+		if (!this.endTime) return 0;
+		return Math.max(0, Math.floor((this.endTime - Date.now()) / 1000));
+	}
 }
 
 module.exports = MainProcessTimer;

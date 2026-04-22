@@ -1,63 +1,62 @@
 class AppState {
-  constructor() {
-    this.mainWindow = null;
-    this.isLocked = false;
-    this.isActive = false;
-    this.isPaused = false;
-    this.isAutoTyping = false;
-    this.lockQueue = [];
-  }
+	constructor() {
+		this.mainWindow = null;
+		this.isLocked = false;
+		this.isActive = false;
+		this.isPaused = false;
+		this.isAutoTyping = false;
+		this.lockQueue = [];
+	}
 
-  reset() {
-    this.isLocked = false;
-    this.isActive = false;
-    this.isPaused = false;
-    this.isAutoTyping = false;
-    this.lockQueue = [];
-  }
+	reset() {
+		this.isLocked = false;
+		this.isActive = false;
+		this.isPaused = false;
+		this.isAutoTyping = false;
+		this.lockQueue = [];
+	}
 
-  lock() {
-    this.isLocked = true;
-  }
+	lock() {
+		this.isLocked = true;
+	}
 
-  unlock() {
-    this.isLocked = false;
-  }
+	unlock() {
+		this.isLocked = false;
+	}
 
-  pause() {
-    this.isPaused = true;
-  }
+	pause() {
+		this.isPaused = true;
+	}
 
-  unpause() {
-    this.isPaused = false;
-  }
+	unpause() {
+		this.isPaused = false;
+	}
 
-  startAutoTyping() {
-    this.isAutoTyping = true;
-  }
+	startAutoTyping() {
+		this.isAutoTyping = true;
+	}
 
-  stopAutoTyping() {
-    this.isAutoTyping = false;
-  }
+	stopAutoTyping() {
+		this.isAutoTyping = false;
+	}
 
-  queueKey(key) {
-    this.lockQueue.push(key);
-  }
+	queueKey(key) {
+		this.lockQueue.push(key);
+	}
 
-  dequeueKey() {
-    return this.lockQueue.shift();
-  }
+	dequeueKey() {
+		return this.lockQueue.shift();
+	}
 
-  hasQueuedKeys() {
-    return this.lockQueue.length > 0;
-  }
+	hasQueuedKeys() {
+		return this.lockQueue.length > 0;
+	}
 
-  clearQueue() {
-    this.lockQueue = [];
-  }
+	clearQueue() {
+		this.lockQueue = [];
+	}
 }
 
-// singleton
 const state = new AppState();
 
 module.exports = state;

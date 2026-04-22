@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Lesson</title>
+</head>
+<body>
+    <div id="container">
+        My first Emmet abbreviations:
+        <ol>
+            <li>! (HTML boilerplate)</li>
+            <li>div#container (div with id)</li>
+            <li>old>li*3 (ordered list with 3 items)</li>
+        </ol>
+        (All followed by Tab / Enter)
+    </div>
+
+    <script src="https://www.radufromfinland.com/dog.js"></script>
+    <script>
+        myNumber = 25.2; // Never define without const, let (or var)
+        console.log(myNumber);
+
+        const myString = "I study at Karelia";
+        console.log(myString);
+
+        let myBoolean = true;
+        var oppositeBoolean = !myBoolean; // var was "replaced" by let and const
+        console.log(myBoolean, oppositeBoolean); // accepts multiple parameters
+        myBoolean = false;
+        oppositeBoolean = !myBoolean;
+        console.log(myBoolean, oppositeBoolean);
+
+        console.log(!42, !"ABC", ![]);
+        console.log(!null, !undefined, !0); // zero is "falsy"
+        
+        // arrays are like Python lists
+        const myArray = [1, 2, 3, "Karelia", true, null];
+        myArray.length = 0;
+        myArray[0] = 9;
+        myArray[1] = 8;
+        myArray[2] = 7;
+        // myArray = [1, 2, 3]; ERROR! Program would fail here!
+        try {
+            myArray = [1, 2, 3];
+        }   catch(err) {
+                console.error(err);
+        }
+        myArray.push(6);
+        myArray.push(11);
+        myArray.sort(function(a, b){ return a - b; });
+        console.log(myArray);
+
+        // objects are like Python dictionaries
+        const dog = {
+            name: "Max",
+            age: 5,
+            furr: "black",
+            eyes: "brown"
+        }
+        console.log(dog);
+        console.table(dog);
+        console.log(dog.name);
+        dog.name = "Charlie";
+        console.log(dog["name"]);
+
+        const anotherDog = new Dog("Rex", 7, "brown", "black");
+        console.log(anotherDog);
+        anotherDog.talk();
+        const canvas = anotherDog.render();
+        container.appendChild(canvas); /*
+            no need for document.getElementById("container")
+            ids that are valid JS names are automatically global variables
+            invalid names:
+             * start with a number
+             *contain spaces or special characters (like -)
+        */
+
+        let a = 5;
+        let b = 2;
+        // operators
+        console.log(a + b);
+        a = "5";
+        console.log(a + b); // concatenation
+        console.log(a - b);
+        console.log(a * b);
+        console.log(a / b);
+        console.log(a & b);
+        console.log(a ** b);
+        console.log(Math.pow(a, b));
+        console.log(Math.sqrt(b));
+        console.log(Math.pow(b, 0.5));
+        console.log(b ** 0.5);
+
+        a = Number(a) + 5;
+        console.log(a);
+        a += 5;
+        a *= 2;
+        a /= 3;
+        a %= 4;
+        a **= 10;
+        console.log(a);
+
+        const s1 = "Welcome to Karelia!";
+        const s2 = 'Welcome to "Karelia!"';
+        const s3 = "Welcome to \"Karelia!\"!"; // escape with \
+        console.log(s1, s2, s3);
+
+        const age = 31;
+        console.log("I am " + age + " years old");
+        console.log(`I am ${age} years old`); // template literal
+
+        let today = new Date();
+        console.log(today);
+        let someDate = new Date("August 24, 2025");
+        console.log(someDate);
+
+        console.log(today.getDay());
+        console.log(someDate.getDay());
+        switch (today.getDay()) {
+            case 1: console.log("Monday"); break;
+            case 2: console.log("Tuesday"); break;
+            case 3: console.log("Wednesday"); break;
+            case 4: console.log("Thursday"); break;
+            case 5: console.log("Friday"); break;
+            default: console.log("Weekend"); break;
+        }
+    </script>
+</body>
+</html>

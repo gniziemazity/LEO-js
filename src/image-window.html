@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Image</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="image-view">
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame">
+			<button id="pinBtn" data-tip="Pin">📌</button>
+			<button class="popup-close-btn" id="closeBtn">✕</button>
+			<img id="imageDisplay" alt="Lesson image" />
+			<div id="errorMsg">Image could not be loaded.</div>
+		</div>
+
+		<script>
+			const { ipcRenderer } = require("electron");
+			let pinned = false;
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape")
+					ipcRenderer.send("force-close-image-window");
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			const pinBtn = document.getElementById("pinBtn");
+			const closeBtn = document.getElementById("closeBtn");
+
+			closeBtn.addEventListener("click", () => {
+				ipcRenderer.send("force-close-image-window");
+			});
+
+			function applyPin() {
+				pinned = true;
+				pinBtn.classList.add("pinned");
+				pinBtn.setAttribute("data-tip", "Pinned");
+				ipcRenderer.send("pin-image-window", true);
+			}
+
+			pinBtn.addEventListener("click", () => {
+				if (pinned) return;
+				applyPin();
+			});
+
+			document
+				.getElementById("imageDisplay")
+				.addEventListener("click", () => {
+					if (pinned) return;
+					applyPin();
+				});
+
+			ipcRenderer.on(
+				"set-image",
+				(event, { imagePath, bgColor, shouldPin }) => {
+					if (bgColor)
+						document.documentElement.style.setProperty("--bg", bgColor);
+
+					const img = document.getElementById("imageDisplay");
+					const err = document.getElementById("errorMsg");
+					err.style.display = "none";
+					img.style.display = "none";
+
+					img.onload = () => {
+						img.style.display = "block";
+						ipcRenderer.send("resize-image-window", {
+							width: img.naturalWidth + 64,
+							height: img.naturalHeight + 64,
+						});
+					};
+					img.onerror = () => {
+						img.style.display = "none";
+						err.style.display = "block";
+					};
+					img.src = "file://" + imagePath;
+
+					if (shouldPin && !pinned) applyPin();
+				},
+			);
+		</script>
+	</body>
+</html>

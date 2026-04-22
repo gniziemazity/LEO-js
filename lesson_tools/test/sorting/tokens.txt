@@ -1,0 +1,199 @@
+# Occurrences: 189
+# Removed    : 7
+# Unique     : 101
+DOCTYPE	10:12:14
+html	10:12:15
+<html	10:12:20
+</html	10:12:23
+<head	10:12:35
+</head	10:12:38
+<title	10:12:44
+Sorting	10:12:45
+Visualizer	10:12:47
+</title	10:12:49
+<body	10:13:00
+</body	10:13:03
+<h1	10:13:08
+Sorting	10:13:13
+Visualizer	10:13:16
+</h1	10:13:18
+<style	10:17:04
+</style	10:17:06
+body	10:17:09
+display	10:17:13
+flex	10:17:14
+justify-content	10:17:18	REMOVED	10:23:58
+center	10:17:20
+<div	10:18:30
+id	10:18:31
+vis	10:18:34
+123456	10:18:40
+</div	10:18:45
+#vis-123456	10:19:55
+width	10:20:04	REMOVED	10:50:08
+200px	10:20:06	REMOVED	10:50:08
+height	10:20:07
+200px	10:20:09
+background-color	10:20:16	REMOVED	10:50:09
+red	10:20:17	REMOVED	10:50:09
+flex-direction	10:22:01
+column	10:22:03
+align-items	10:24:13
+<script	10:27:14
+</script	10:27:17
+global	10:27:41	COMMENT
+variables	10:27:43	COMMENT
+const	10:27:46
+count	10:27:47
+50	10:27:50
+const	10:28:42
+array	10:28:45
+new	10:28:49
+Array	10:28:50
+count	10:28:52
+for	10:30:13
+let	10:30:15
+i	10:30:15
+0	10:30:16
+i	10:30:17
+count	10:30:20
+i	10:30:47
+array	10:31:16
+i	10:31:18
+Math	10:31:30
+random	10:31:31
+numbers	10:31:49	COMMENT
+between	10:31:51	COMMENT
+0	10:31:52	COMMENT
+and	10:31:53	COMMENT
+1	10:31:53	COMMENT
+const	10:37:42
+visualizer	10:37:44
+document	10:37:47
+getElementById	10:38:03
+vis	10:38:19
+123456	10:38:22
+for	10:38:50
+let	10:38:51
+i	10:38:52
+0	10:38:53
+i	10:38:53
+array	10:38:55
+length	10:38:57
+i	10:38:58
+const	10:39:36
+bar	10:39:37
+document	10:39:42
+createElement	10:39:45
+div	10:39:48
+visualizer	10:40:27
+appendChild	10:40:30
+bar	10:40:31
+bar	10:42:30
+classList	10:42:32
+add	10:42:33
+bar	10:42:35
+.bar	10:43:31
+width	10:43:37
+7px	10:43:39
+height	10:43:47
+100%	10:43:48
+background-color	10:44:25
+black	10:44:26
+display	10:47:38
+flex	10:47:39
+margin	10:48:02
+0px	10:48:03
+1px	10:48:07
+bar	10:50:10
+style	10:50:11
+height	10:50:14
+array	10:50:17
+i	10:50:18
+100	10:50:29
+here	10:50:52	COMMENT
+is	10:50:53	COMMENT
+string	10:50:56	COMMENT
+concatenation	10:50:59	COMMENT
+because	10:51:02	COMMENT
+the	10:51:03	COMMENT
+second	10:51:05	COMMENT
+item	10:51:06	COMMENT
+is	10:51:08	COMMENT
+a	10:51:09	COMMENT
+string	10:51:10	COMMENT
+align-items	10:57:30
+flex-end	10:57:30
+function	10:57:37
+bubbleSort	10:57:42
+arr	10:57:49
+do	10:58:33
+var	10:59:12
+swapped	10:59:20
+false	10:59:23
+for	10:59:26
+let	10:59:27
+i	10:59:27
+1	10:59:28
+i	10:59:29
+arr	10:59:30
+length	10:59:32
+i	10:59:32
+if	10:59:41
+arr	10:59:42
+i	10:59:43
+1	10:59:44
+arr	10:59:46
+i	10:59:47
+const	11:00:57
+aux	11:00:58
+arr	11:01:02
+i	11:01:03
+1	11:01:04
+arr	11:01:06
+i	11:01:06
+1	11:01:07
+arr	11:01:09
+i	11:01:10
+arr	11:01:12
+i	11:01:12
+aux	11:01:14
+swapped	11:02:15
+true	11:02:17
+while	11:02:23
+swapped	11:02:25
+bubbleSort	11:04:50	REMOVED	11:08:31
+array	11:04:51	REMOVED	11:08:31
+array	11:08:34
+bubbleSort	11:08:34
+function	11:08:36
+updateBars	11:08:38
+const	11:09:21
+bars	11:09:22
+document	11:09:24
+getElementsByClassName	11:09:28
+bar	11:09:29
+for	11:09:55
+let	11:09:56
+i	11:09:56
+0	11:09:57
+i	11:09:57
+bars	11:09:58
+length	11:10:00
+i	11:10:01
+bars	11:10:05
+i	11:10:06
+style	11:10:08
+height	11:10:09
+array	11:10:13
+i	11:10:14
+100	11:10:15
+updateBars	11:12:30
+await	11:13:47
+new	11:13:53
+Promise	11:13:54
+resolve	11:13:59
+setTimeout	11:14:18
+resolve	11:14:23
+100	11:14:24
+async	11:15:16

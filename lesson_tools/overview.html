@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Grades Overview</title>
+		<link rel="stylesheet" href="shared.css" />
+		<link rel="stylesheet" href="overview.css" />
+	</head>
+	<body>
+		<div id="landing">
+			<h1>Grades Dashboard</h1>
+			<button class="landing-btn-primary" id="open-btn">
+				Open Course Folder
+			</button>
+		</div>
+
+		<div id="toolbar">
+			<button class="active" data-page="students">Students</button>
+			<button data-page="stats">Statistics</button>
+			<button data-page="progress">Progress</button>
+			<div class="sep"></div>
+			<span id="nav-info"></span>
+			<div class="sep"></div>
+			<label style="font-size: 11px; color: #555"
+				>Anonymize:
+				<select
+					id="anon-select"
+					style="
+						font-size: 11px;
+						padding: 2px 4px;
+						border: 1px solid #ccc;
+						border-radius: 3px;
+					"
+					onchange="onAnonChange(this.value)"
+				>
+					<option value="">Show All</option>
+					<option value="name" selected>Name Only</option>
+					<option value="id">ID Only</option>
+				</select>
+			</label>
+		</div>
+
+		<div id="page-students" class="page">
+			<div class="table-wrap"><table id="grades-table"></table></div>
+		</div>
+
+		<div id="page-stats" class="page">
+			<div id="stats-no-data" style="display: none">
+				Run <code>npm run grades-analyze</code> first to generate
+				statistics.
+			</div>
+			<div class="stats-body" id="stats-body"></div>
+		</div>
+
+		<div id="page-progress" class="page">
+			<div class="sort-bar">
+				<span>Sort by:</span>
+				<button class="active" data-sort="name">Name</button>
+				<button data-sort="avg-follow">Avg Follow ↓</button>
+				<button data-sort="total-follow">Total Follow ↓</button>
+				<button data-sort="avg-grade">Avg Grade ↓</button>
+				<button data-sort="total-grade">Total Grade ↓</button>
+			</div>
+			<div class="prog-grid" id="prog-grid"></div>
+		</div>
+
+		<div id="loading">Loading…</div>
+
+		<script src="kla-utils.js"></script>
+		<script src="xlsx.full.min.js"></script>
+		<script src="/src/shared/charts/utils.js"></script>
+		<script src="/src/shared/charts/scatter/scatter-chart.js"></script>
+		<script src="/src/shared/charts/bar/bar-chart.js"></script>
+		<script src="/src/shared/charts/line/line-chart.js"></script>
+		<script src="/src/shared/charts/boxplot/boxplot-chart.js"></script>
+		<script src="diff-utils.js"></script>
+		<script src="overview.js"></script>
+	</body>
+</html>

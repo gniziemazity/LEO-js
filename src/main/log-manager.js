@@ -37,7 +37,6 @@ class LogManager {
 				basename: path.basename(lessonFilePath, ".json"),
 			};
 		} else {
-			// fallback to temp directory
 			return {
 				logsDir: path.join(os.tmpdir(), "leo-logs"),
 				basename: "unnamed_lesson",
@@ -68,24 +67,42 @@ class LogManager {
 
 		this.keyPressLog.push(logEntry);
 
-		// auto-save periodically
 		if (this.keyPressLog.length % this.saveInterval === 0) {
 			this.save();
 		}
 	}
 
-	addInteraction(interactionType, info = null) {
-		if (info) {
-			this.addEntry({
-				interaction: interactionType,
-				info: info,
-			});
-		} else {
-			this.addEntry({
-				interaction: interactionType,
-			});
-		}
+	addInteraction(interactionType, extraFields = null) {
+		const entry = { interaction: interactionType };
+		if (extraFields) Object.assign(entry, extraFields);
+		this.addEntry(entry);
 		this.save();
+	}
+
+	saveArtificialLog(events) {
+		if (!this.currentLessonPath && !this.logFilePath) {
+			console.warn("No lesson path set. Cannot save artificial log.");
+			return;
+		}
+
+		const { logsDir, basename } = this.getLogPaths(this.currentLessonPath);
+		this.ensureLogsDirectory(logsDir);
+
+		const timestamp = this.getTimestamp();
+		const artificialPath = path.join(
+			logsDir,
+			`artificial_${basename}_${timestamp}.json`,
+		);
+
+		const logData = {
+			lessonFile: this.currentLessonPath || "No file loaded",
+			sessionStart: events.length > 0 ? events[0].timestamp : Date.now(),
+			artificial: true,
+			events,
+		};
+
+		fs.writeFileSync(artificialPath, JSON.stringify(logData, null, 2));
+		return artificialPath;
 	}
 
 	save() {
@@ -97,8 +114,7 @@ class LogManager {
 		const logData = {
 			lessonFile: this.currentLessonPath || "No file loaded",
 			sessionStart: this.sessionStartTime,
-			totalKeyPresses: this.keyPressLog.length,
-			keyPresses: this.keyPressLog,
+			events: this.keyPressLog,
 		};
 
 		fs.writeFile(

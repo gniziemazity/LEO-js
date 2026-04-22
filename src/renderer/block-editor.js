@@ -1,73 +1,105 @@
 class BlockEditor {
-   constructor(lessonManager, uiManager, lessonRenderer) {
-      this.lessonManager = lessonManager;
-      this.uiManager = uiManager;
-      this.lessonRenderer = lessonRenderer;
-   }
+	constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
+		this.lessonManager = lessonManager;
+		this.uiManager = uiManager;
+		this.lessonRenderer = lessonRenderer;
+		this.undoManager = undoManager;
+	}
 
-   addBlock(type) {
-      const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-      this.lessonManager.addBlock(type, selectedBlockIndex);
-      this.uiManager.selectBlock(selectedBlockIndex + 1);
-      this.lessonRenderer.render();
-   }
+	addBlock(type, initialText) {
+		if (this.undoManager) {
+			this.undoManager.saveState(`add-${type}-block`);
+		}
 
-   removeBlock() {
-      const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-      if (selectedBlockIndex === null) return;
+		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
+		const newBlockIdx =
+			(selectedBlockIndex === null ? -1 : selectedBlockIndex) + 1;
+		this.lessonManager.addBlock(type, selectedBlockIndex, initialText);
+		this.uiManager.selectBlock(newBlockIdx);
+		this.lessonRenderer.render();
+		this.focusNewBlock(newBlockIdx);
+	}
 
-      this.lessonManager.removeBlock(selectedBlockIndex);
-      this.uiManager.deselectBlock();
-      this.uiManager.selectBlock(selectedBlockIndex - 1);
-      this.lessonRenderer.render();
-   }
+	focusNewBlock(blockIdx) {
+		setTimeout(() => {
+			const blocks = document.querySelectorAll(".block");
+			const target = blocks[blockIdx];
+			if (target && target.contentEditable !== "false") {
+				target.focus();
+				const range = document.createRange();
+				const sel = window.getSelection();
+				range.selectNodeContents(target);
+				range.collapse(false);
+				sel.removeAllRanges();
+				sel.addRange(range);
+			}
+		}, 0);
+	}
 
-   formatBlock() {
-      const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-      if (selectedBlockIndex === null) return;
+	removeBlock() {
+		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
+		if (selectedBlockIndex === null) return;
 
-      const block = this.lessonManager.getBlock(selectedBlockIndex);
-      if (!block || block.type !== "code") return;
+		if (this.undoManager) {
+			this.undoManager.saveState("remove-block");
+		}
 
-      const formatted = this.formatCodeForAutoTyping(block.text);
-      this.lessonManager.updateBlock(selectedBlockIndex, formatted);
-      this.lessonRenderer.render();
-   }
+		this.lessonManager.removeBlock(selectedBlockIndex);
+		this.uiManager.deselectBlock();
+		this.uiManager.selectBlock(selectedBlockIndex - 1);
+		this.lessonRenderer.render();
+	}
 
-   formatCodeForAutoTyping(code) {
-      let text = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	formatBlock() {
+		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
+		if (selectedBlockIndex === null) return;
 
-      text = text.replace(/↑►/g, "");
+		const block = this.lessonManager.getBlock(selectedBlockIndex);
+		if (!block || block.type !== "code") return;
 
-      const tags = ["html", "head", "body", "script", "div"];
+		if (this.undoManager) {
+			this.undoManager.saveState("format-block");
+		}
 
-      tags.forEach((tag) => {
-         const closingTagRegex = new RegExp("</" + tag + ">", "g");
-         text = text.replace(closingTagRegex, "↓►");
+		const formatted = this.formatCodeForAutoTyping(block.text);
+		this.lessonManager.updateBlock(selectedBlockIndex, formatted);
+		this.lessonRenderer.render();
+	}
 
-         const openingTagRegex = new RegExp("<" + tag + ">", "g");
-         text = text.replace(openingTagRegex, `<${tag}>\n</${tag}>↑►`);
-      });
+	formatCodeForAutoTyping(code) {
+		let text = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-      text = text.replace(/ +/g, " ");
-      text = text.replace(/\n /g, "\n");
-      text = text.replace(/\n}/g, "↓►");
-      text = text.replace(/{\n/g, "{\n}↑►\n");
-      text = text.replace(/\n↓►/g, "↓►");
-      text = text.replace(/↓💾/g, "💾");
-      text = text.replace(/↑►↓/g, "↑►");
+		text = text.replace(/↑►/g, "");
 
-      text = text.replace(/<\/html>/g, "↢</html>");
-      text = text.replace(/<\/script>/g, "↢</script>");
+		const tags = ["html", "head", "body", "script", "div"];
 
-      text = text.replace(/(?:↓►)+$/, "");
+		tags.forEach((tag) => {
+			const closingTagRegex = new RegExp("</" + tag + ">", "g");
+			text = text.replace(closingTagRegex, "↓►");
 
-      return text;
-   }
+			const openingTagRegex = new RegExp("<" + tag + ">", "g");
+			text = text.replace(openingTagRegex, `<${tag}>\n</${tag}>↑►`);
+		});
 
-   updateBlockContent(blockIdx, content) {
-      this.lessonManager.updateBlock(blockIdx, content);
-   }
+		text = text.replace(/ +/g, " ");
+		text = text.replace(/\n /g, "\n");
+		text = text.replace(/\n}/g, "↓►");
+		text = text.replace(/{\n/g, "{\n}↑►\n");
+		text = text.replace(/\n↓►/g, "↓►");
+		text = text.replace(/↓💾/g, "💾");
+		text = text.replace(/↑►↓/g, "↑►");
+
+		text = text.replace(/<\/html>/g, "⌫</html>");
+		text = text.replace(/<\/script>/g, "⌫</script>");
+
+		text = text.replace(/(?:↓►)+$/, "");
+
+		return text;
+	}
+
+	updateBlockContent(blockIdx, content) {
+		this.lessonManager.updateBlock(blockIdx, content);
+	}
 }
 
 module.exports = BlockEditor;
