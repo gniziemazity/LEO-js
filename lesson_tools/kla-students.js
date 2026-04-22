@@ -135,7 +135,11 @@ function parseStudentData(
 			name,
 			follow_pct: fd.pct,
 			follow_events: evs,
-			follow_dt: evs[0]?.ts ?? null,
+			follow_dt:
+				(
+					evs.find((e) => e.kind !== "extra" && e.kind !== "extra-star") ??
+					evs[0]
+				)?.ts ?? null,
 			inc_sim: incData[name] ?? null,
 		});
 	}

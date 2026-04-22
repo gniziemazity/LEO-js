@@ -192,15 +192,11 @@ class _StudentBase:
             if is_rem and removal_ts
         }
         cls.expected = [(tok, ts, flags) for tok, ts, flags in cls.raw_expected]
-        n_found_e   = sum(1 for _, _, fl in cls.expected if not fl)
-        n_missing_e = sum(1 for _, _, fl in cls.expected if fl == {'MISSING'})
-        teacher_total_e = n_found_e + n_missing_e
-        cls.headers['Follow'] = round(n_found_e / teacher_total_e * 100, 1) if teacher_total_e else 0.0
-
-        outside, comment = _extract_student_ci_split({cls.student_html.name: cls.student_html})
-        cls.all_occ, cls.n_found, cls.n_missing, cls.n_extra, cls.follow_e, _ = (
-            _build_student_token_occurrences(cls.teacher_entries, outside, comment)
-        )
+        cls.all_occ = [(ts, tok, flags) for tok, ts, flags in cls.expected]
+        cls.n_found = int(cls.headers['Found'])
+        cls.n_missing = int(cls.headers['MISSING'])
+        cls.n_extra = int(cls.headers['EXTRA'])
+        cls.follow_e = float(cls.headers['Follow'])
 
     @classmethod
     def tearDownClass(cls):

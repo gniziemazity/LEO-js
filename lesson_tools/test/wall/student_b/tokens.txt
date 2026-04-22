@@ -1,7 +1,9 @@
 # Found            : 62
 # MISSING          : 360
 # EXTRA            : 13
-# Follow (E)       : 16.1 %
+# Follow (E)       : 14.8 %
+#chess-board	10:19:32	MISSING
+#Chess-Board	00:00:00	EXTRA
 DOCTYPE	09:34:25
 html	09:34:27
 <html	09:34:58
@@ -109,7 +111,6 @@ chess-board	10:19:03
 styling	10:19:20	COMMENT	MISSING
 by	10:19:21	COMMENT	MISSING
 ID	10:19:21	COMMENT	MISSING
-#chess-board	10:19:32	MISSING
 width	10:19:39
 box-sizing	10:23:52
 border-box	10:23:53
@@ -118,10 +119,13 @@ includes	10:24:00	COMMENT	MISSING
 padding	10:24:00	COMMENT	MISSING
 and	10:24:01	COMMENT	MISSING
 border	10:24:02	COMMENT	MISSING
+432px	10:24:27	EXTRA*
 display	10:25:49
 flex	10:25:49
 flex-wrap	10:25:52
 wrap	10:25:53
+display	10:26:45	EXTRA*
+inline-block	10:26:45	EXTRA*
 .light	10:28:17
 background-color	10:28:25
 white	10:28:26
@@ -416,6 +420,8 @@ dark	10:30:31	MISSING
 dark	10:30:31	MISSING
 dark	10:30:31	MISSING
 dark	10:30:31	MISSING
+background-color	10:36:49	EXTRA*
+black	10:36:49	EXTRA*
 .left-offset	10:39:25	MISSING
 margin-left	10:39:30	MISSING
 25px	10:39:32	MISSING
@@ -424,16 +430,10 @@ left-offset	10:40:38	MISSING
 left-offset	10:40:42	MISSING
 left-offset	10:40:46	MISSING
 425px	10:41:03	MISSING
-#Chess-Board	00:00:00	EXTRA
 10px	00:00:00	EXTRA
-432px	00:00:00	EXTRA
 5px	00:00:00	EXTRA
-background-color	00:00:00	EXTRA
-black	00:00:00	EXTRA
 board	00:00:00	EXTRA
 chess	00:00:00	EXTRA
-display	00:00:00	EXTRA
-inline-block	00:00:00	EXTRA
 margin	00:00:00	EXTRA
 padding	00:00:00	EXTRA
 visit	00:00:00	EXTRA

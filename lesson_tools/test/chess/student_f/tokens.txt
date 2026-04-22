@@ -1,7 +1,8 @@
 # Found            : 269
 # MISSING          : 186
 # EXTRA            : 9
-# Follow (E)       : 58.8 %
+# Follow (E)       : 57.1 %
+#chess-board	12:03:35
 DOCTYPE	11:53:34
 html	11:53:35
 <html	11:53:45
@@ -45,7 +46,6 @@ white	12:02:47
 .dark	12:02:51
 background-color	12:02:55
 gray	12:02:56
-#chess-board	12:03:35
 width	12:03:53
 400px	12:03:55
 height	12:03:58
@@ -379,6 +379,7 @@ p2	12:16:05
 png	12:16:06
 img	12:17:42
 width	12:17:46
+height	12:18:30	EXTRA*
 50%	12:20:15
 display	12:24:00
 flex	12:24:01
@@ -401,7 +402,8 @@ invert	12:27:04	MISSING
 </script	12:32:57
 function	12:33:12
 handleClick	12:33:15
-element	12:33:31
+element	12:33:31	MISSING
+element	12:35:18	EXTRA*
 element	12:35:29
 style	12:35:30
 border	12:35:31
@@ -422,7 +424,7 @@ cell	12:40:07	MISSING
 of	12:40:07
 cells	12:40:08
 cell	12:41:01	MISSING
-onclick	12:41:03
+onclick	12:41:03	MISSING
 handleClick	12:41:05
 cell	12:41:05	MISSING
 function	12:42:53
@@ -457,12 +459,12 @@ element	12:53:30	MISSING
 children	12:53:32	MISSING
 0	12:53:32	MISSING
 let	12:56:53	MISSING
+this	12:56:54	EXTRA*
+handleClick	12:56:55	EXTRA*
+onclick	12:56:58	EXTRA*
 50%	00:00:00	EXTRA
 chess	00:00:00	EXTRA
 getElement	00:00:00	EXTRA
 grid-template-coloumns	00:00:00	EXTRA
-handleClick	00:00:00	EXTRA
-height	00:00:00	EXTRA
 onClick	00:00:00	EXTRA
 sBYClassName	00:00:00	EXTRA
-this	00:00:00	EXTRA

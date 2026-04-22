@@ -1,7 +1,12 @@
 # Found            : 218
 # MISSING          : 4
 # EXTRA            : 5
-# Follow (E)       : 99.5 %
+# Follow (E)       : 98.5 %
+#map	09:18:51
+#marker	09:20:14
+#280	09:23:47
+#mapContainer	09:26:33
+#camera	09:34:16
 <html	09:14:23
 <head	09:14:23
 <meta	09:14:23
@@ -57,7 +62,6 @@ map	09:18:03
 png	09:18:27
 id	09:18:33
 map	09:18:39
-#map	09:18:51
 width	09:19:00
 100%	09:19:05
 margin	09:19:42
@@ -66,7 +70,6 @@ margin	09:19:42
 id	09:19:51
 marker	09:19:59
 </div	09:20:03
-#marker	09:20:14
 width	09:20:23
 3vw	09:20:28
 3%	09:20:34	COMMENT
@@ -97,13 +100,14 @@ the	09:23:10	COMMENT
 size	09:23:15	COMMENT
 root	09:23:31
 theme	09:23:42
-#280	09:23:47
 CSS	09:23:54	COMMENT
 variable	09:24:02	COMMENT
 var	09:24:15
 theme	09:24:22
 var	09:24:34
 theme	09:24:40
+background-color	09:24:46	EXTRA*
+red	09:24:46	EXTRA*
 position	09:24:56
 absolute	09:25:04
 top	09:25:09
@@ -118,7 +122,6 @@ translate	09:25:39
 </div	09:26:16
 id	09:26:16
 mapContainer	09:26:16
-#mapContainer	09:26:33
 position	09:26:45
 relative	09:26:53
 <script	09:27:06
@@ -175,7 +178,6 @@ javascript	09:33:37
 id	09:33:52
 camera	09:34:00
 </div	09:34:04
-#camera	09:34:16
 width	09:34:26
 100%	09:34:31
 const	09:34:45
@@ -224,8 +226,6 @@ display	09:41:21
 block	09:41:28
 display	09:41:41
 none	09:41:46
-background-color	00:00:00	EXTRA
 doesnot	00:00:00	COMMENT	EXTRA
 onClick	00:00:00	EXTRA
-red	00:00:00	EXTRA
 viewpoint	00:00:00	COMMENT	EXTRA

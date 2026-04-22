@@ -251,7 +251,6 @@ def _build_student_token_occurrences(
 
     consumed = {True: Counter(), False: Counter()}
     all_occ: List[Tuple[str, str, set]] = []
-
     for tok, ts_str, is_comment in teacher_occ:
         pool = student_comment if is_comment else student_outside
         cons = consumed[is_comment]
@@ -1137,6 +1136,7 @@ def _update_tokens_txt_extra_star(
     lines = tokens_path.read_text(encoding='utf-8').splitlines()
 
     extra_avail: Counter = Counter()
+    extra_star_existing: Counter = Counter()
     found_count: Counter = Counter()
     n_found_e_orig = 0
     n_missing_e_orig = 0
@@ -1147,6 +1147,8 @@ def _update_tokens_txt_extra_star(
         flags = set(parts[2:]) if len(parts) > 2 else set()
         if flags == {'EXTRA'}:
             extra_avail[parts[0]] += 1
+        elif flags == {'EXTRA*'}:
+            extra_star_existing[parts[0]] += 1
         elif not flags:
             found_count[parts[0]] += 1
             n_found_e_orig += 1
@@ -1155,7 +1157,7 @@ def _update_tokens_txt_extra_star(
 
     steal_from_found: Counter = Counter()
     for tok, needed in extra_star_counts.items():
-        deficit = max(0, needed - extra_avail[tok])
+        deficit = max(0, needed - (extra_avail[tok] + extra_star_existing[tok]))
         if deficit > 0:
             steal_from_found[tok] = min(deficit, found_count.get(tok, 0))
 
@@ -1166,6 +1168,13 @@ def _update_tokens_txt_extra_star(
     n_extra_star = sum(extra_star_counts.values())
     corrected_score = (round(max(0.0, (n_found_e - n_extra_star) / teacher_total_e * 100), 1)
                        if teacher_total_e else 0.0)
+
+    def _parse_ts_key(ts_str: str):
+        try:
+            h, m, s = ts_str.split(':')
+            return int(h), int(m), int(s)
+        except Exception:
+            return (99, 99, 99)
 
     extra_star_used: Counter = Counter()
     found_stolen: Counter = Counter()
@@ -1181,7 +1190,9 @@ def _update_tokens_txt_extra_star(
         parts = line.split('\t')
         tok = parts[0]
         flags = set(parts[2:]) if len(parts) > 2 else set()
-        if flags == {'EXTRA'} and extra_star_used[tok] < extra_star_counts.get(tok, 0):
+        if flags == {'EXTRA*'}:
+            new_lines.append(line)
+        elif flags == {'EXTRA'} and extra_star_used[tok] < extra_star_counts.get(tok, 0):
             extra_star_used[tok] += 1
             ts = (removal_ts_by_token.get(tok, parts[1])
                   if removal_ts_by_token else parts[1])
@@ -1196,7 +1207,24 @@ def _update_tokens_txt_extra_star(
             new_lines.append(line)
 
     new_lines.extend(new_extra_star_appended)
-    tokens_path.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
+
+    headers = [ln for ln in new_lines if ln.startswith('#')]
+    body = [ln for ln in new_lines if ln and not ln.startswith('#')]
+
+    regular_rows = []
+    tail_extras = []
+    for idx, line in enumerate(body):
+        parts = line.split('\t')
+        ts = parts[1] if len(parts) > 1 else '99:99:99'
+        flags = set(parts[2:]) if len(parts) > 2 else set()
+        if ts == '00:00:00' and 'EXTRA' in flags and 'EXTRA*' not in flags:
+            tail_extras.append((idx, line))
+        else:
+            regular_rows.append((_parse_ts_key(ts), idx, line))
+
+    regular_rows.sort(key=lambda x: (x[0], x[1]))
+    ordered_body = [line for _, _, line in regular_rows] + [line for _, line in tail_extras]
+    tokens_path.write_text('\n'.join(headers + ordered_body) + '\n', encoding='utf-8')
     return corrected_score, extra_star_counts, steal_from_found
 
 
@@ -1433,9 +1461,14 @@ class TokenLogMixin:
                 for tok, _, _, is_rem, removal_ts in teacher_entries
                 if is_rem and removal_ts
             }
-            corrected_score, extra_star_counts, steal_from_found = _update_tokens_txt_extra_star(
-                out_path, diff_marks, removal_ts_by_token
-            )
+            if removal_ts_by_token:
+                corrected_score, extra_star_counts, steal_from_found = _update_tokens_txt_extra_star(
+                    out_path, diff_marks, removal_ts_by_token
+                )
+            else:
+                corrected_score = follow_e_pct
+                extra_star_counts = Counter()
+                steal_from_found = Counter()
             diff_marks['score'] = corrected_score
             self._student_token_stats[sid]['follow_e'] = corrected_score
 

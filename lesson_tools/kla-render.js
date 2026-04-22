@@ -455,7 +455,9 @@ function drawChart3(ctx, p, students, L) {
 		const jitter = _shake
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
-		const evs = (s.follow_events || []).filter((e) => e.ts != null);
+		const evs = (s.follow_events || []).filter(
+			(e) => e.ts != null && e.kind !== "extra" && e.kind !== "extra-star",
+		);
 		if (!evs.length) continue;
 		const sorted = [...evs].sort((a, b) => a.ts - b.ts);
 		const clusters = [];

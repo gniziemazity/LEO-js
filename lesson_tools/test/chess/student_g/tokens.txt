@@ -1,7 +1,8 @@
 # Found            : 435
 # MISSING          : 20
 # EXTRA            : 66
-# Follow (E)       : 95.8 %
+# Follow (E)       : 95.1 %
+#chess-board	12:03:35
 DOCTYPE	11:53:34
 html	11:53:35
 <html	11:53:45
@@ -45,7 +46,6 @@ white	12:02:47
 .dark	12:02:51
 background-color	12:02:55
 gray	12:02:56	MISSING
-#chess-board	12:03:35
 width	12:03:53
 400px	12:03:55
 height	12:03:58
@@ -457,6 +457,9 @@ element	12:53:30
 children	12:53:32
 0	12:53:32
 let	12:56:53	MISSING
+this	12:56:54	EXTRA*
+handleClick	12:56:55	EXTRA*
+onclick	12:56:58	EXTRA*
 2	00:00:00	COMMENT	EXTRA
 3	00:00:00	COMMENT	EXTRA
 4	00:00:00	COMMENT	EXTRA
@@ -505,8 +508,6 @@ class	00:00:00	EXTRA
 class	00:00:00	EXTRA
 getElementById	00:00:00	EXTRA
 grey	00:00:00	EXTRA
-handleClick	00:00:00	EXTRA
-onclick	00:00:00	EXTRA
 replaceChild	00:00:00	EXTRA
 return	00:00:00	EXTRA
 row	00:00:00	EXTRA
@@ -521,5 +522,4 @@ selectedpice	00:00:00	EXTRA
 selectedpice	00:00:00	EXTRA
 selectedpice	00:00:00	EXTRA
 selectedpiece	00:00:00	EXTRA
-this	00:00:00	EXTRA
 this	00:00:00	EXTRA

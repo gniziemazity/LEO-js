@@ -21,6 +21,7 @@ from utils.token_log import (
     _build_lcs_star_diff_marks,
     _colors_to_position_marks,
     _build_ghost_contexts,
+    _update_tokens_txt_extra_star,
     _CONTEXT_K,
     _GHOST_K,
     ts_to_local,
@@ -154,6 +155,52 @@ def regen_student_tokens(case_dir: Path, student_name: str) -> None:
             flag_str = "\t".join(sorted(flags))
             suffix   = f"\t{flag_str}" if flag_str else ""
             fh.write(f"{token}\t{ts}{suffix}\n")
+
+    teacher_files = {}
+    for f in sorted(case_dir.iterdir()):
+        ext = f.suffix.lower()
+        if ext in (".html", ".htm", ".css", ".js"):
+            teacher_files[f.name] = f
+
+    reco_dir = case_dir / "reconstructed"
+    if reco_dir.is_dir():
+        for f in sorted(reco_dir.iterdir()):
+            ext = f.suffix.lower()
+            if ext in (".html", ".htm", ".css", ".js"):
+                teacher_files[f.name] = f
+
+    reco_html = case_dir / "reconstructed.html"
+    if reco_html.exists():
+        teacher_files["reconstructed.html"] = reco_html
+
+    removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+    ghost_ctx = None
+    log_path = case_dir / "log.json"
+    if log_path.exists() and removed_keys and _sm._ALL_EXTRA_STAR:
+        events = _load_events(log_path)
+        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
+
+    tf_colors, sf_colors = _build_contextual_diff_marks(
+        teacher_files, stu_files, teacher_entries,
+        stu_outside, stu_comment,
+        context_k=_CONTEXT_K,
+        ghost_contexts=ghost_ctx,
+    )
+    diff_marks = {
+        "format_version": 4,
+        "token_matching": "context-cosine-hungarian",
+        "case_sensitive": True,
+        "teacher_files": _colors_to_position_marks(teacher_files, tf_colors),
+        "student_files": _colors_to_position_marks(stu_files, sf_colors),
+    }
+    removal_ts_by_token = {
+        tok: removal_ts
+        for tok, _, _, is_rem, removal_ts in teacher_entries
+        if is_rem and removal_ts
+    }
+    if removal_ts_by_token:
+        _update_tokens_txt_extra_star(out, diff_marks, removal_ts_by_token)
+
     print(f"  {case_dir.name}/{student_name}/tokens.txt  (found={n_found}, miss={n_missing}, extra={n_extra})")
 
 

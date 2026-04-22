@@ -1,7 +1,8 @@
 # Found            : 186
 # MISSING          : 3
 # EXTRA            : 69
-# Follow (E)       : 100.0 %
+# Follow (E)       : 98.8 %
+#vis-123456	10:19:55
 DOCTYPE	10:12:14
 html	10:12:15
 <html	10:12:20
@@ -29,9 +30,8 @@ id	10:18:31
 vis	10:18:34
 123456	10:18:40
 </div	10:18:45
-#vis-123456	10:19:55
 height	10:20:07
-200px	10:20:09
+200px	10:20:09	MISSING
 flex-direction	10:22:01
 column	10:22:03
 align-items	10:24:13
@@ -101,6 +101,7 @@ flex	10:47:39
 margin	10:48:02
 0px	10:48:03
 1px	10:48:07
+200px	10:50:08	EXTRA*
 bar	10:50:10
 style	10:50:11
 height	10:50:14
