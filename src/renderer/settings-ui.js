@@ -72,6 +72,10 @@ class SettingsUI {
 	}
 
 	loadIntoModal(settings) {
+		// Platform setting
+		document.getElementById("platformSelect").value =
+			settings.platform || "windows";
+
 		document.getElementById("typingHotkeys").value =
 			settings.hotkeys.typing.join("");
 		document.getElementById("toggleActiveKey").value =
@@ -145,6 +149,7 @@ class SettingsUI {
 		const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
 
 		const settings = {
+			platform: document.getElementById("platformSelect").value,
 			hotkeys: {
 				typing: typingHotkeys,
 				toggleActive: document.getElementById("toggleActiveKey").value,
