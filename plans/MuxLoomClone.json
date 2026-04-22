@@ -1,0 +1,238 @@
+[
+  {
+    "type": "comment",
+    "text": "BUILD A LOOM CLONE WITH NEXT.JS AND MUX\n\nThis plan helps record the full tutorial.\n\nBefore starting:\n1. Have terminal ready\n2. Have VS Code open\n3. Have browser ready for mux.com\n\nStart in TERMINAL for project creation."
+  },
+  {
+    "type": "comment",
+    "text": "INTRO (spoken, no typing):\n\nIn this course, we're going to build a fully functional screen recording platform — basically our own clone of Loom. We'll use Next.js 15 and Mux.\n\nBefore we dive into code, let me explain why video is traditionally hard and what Mux solves for us.\n\n[Explain: encoding, HLS streaming, adaptive bitrate, CDN distribution]\n\nMux handles all of this automatically — we upload a raw file, and Mux transcodes it, generates HLS streams, stores it on their CDN, and gives us a playback URL.\n\nThanks to Mux for providing a grant to make this course possible."
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 1: PROJECT SETUP\n\nLet's create a new Next.js project. In terminal, run this command.\n\nAccept all the defaults when prompted (TypeScript, Tailwind, App Router, etc.)"
+  },
+  {
+    "type": "code",
+    "text": "npx create-next-app@latest screen-recorder"
+  },
+  {
+    "type": "comment",
+    "text": "Wait for the project to be created, then cd into it."
+  },
+  {
+    "type": "code",
+    "text": "cd screen-recorder"
+  },
+  {
+    "type": "comment",
+    "text": "Now install our dependencies:\n- @mux/mux-node — The official Mux SDK for Node.js\n- @mux/mux-player-react — Mux's React video player\n- @mux/ai — For generating summaries and tags\n- lucide-react — Icon library"
+  },
+  {
+    "type": "code",
+    "text": "npm install @mux/mux-node @mux/mux-player-react @mux/ai lucide-react"
+  },
+  {
+    "type": "comment",
+    "text": "SETTING UP MUX\n\nNow go to mux.com and sign up or log in.\n\n1. Go to Settings → Access Tokens\n2. Generate new token\n3. Give it only 'Mux Video - Read and Write' permissions\n4. Copy the Token ID and Token Secret\n\n(Show this on screen)"
+  },
+  {
+    "type": "comment",
+    "text": "ENVIRONMENT VARIABLES\n\nCreate .env.local in the project root.\nPaste your Mux credentials here."
+  },
+  {
+    "type": "code",
+    "text": "MUX_TOKEN_ID=your-token-id-here\nMUX_TOKEN_SECRET=your-token-secret-here💾"
+  },
+  {
+    "type": "comment",
+    "text": "Start the dev server to verify setup works."
+  },
+  {
+    "type": "code",
+    "text": "npm run dev"
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 2: ARCHITECTURE (spoken)\n\nBefore we write code, let's understand the architecture.\n\nWe're using the 'Direct Upload' pattern:\n1. User clicks Upload\n2. Our server asks Mux for a signed URL\n3. Browser uploads directly to Mux\n4. Our server never touches the video file\n\nThis is more efficient and secure.\n\nWe'll also use Server Components and Client Components appropriately — Server for API calls, Client for interactivity."
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 3: SERVER ACTIONS\n\nLet's build our backend first.\nCreate app/actions.ts\n\nThe 'use server' directive tells Next.js these are Server Actions."
+  },
+  {
+    "type": "code",
+    "text": "'use server';\n\nimport Mux from '@mux/mux-node';\n\nconst mux = new Mux({\ntokenId: process.env.MUX_TOKEN_ID,\ntokenSecret: process.env.MUX_TOKEN_SECRET,\n});💾"
+  },
+  {
+    "type": "comment",
+    "text": "Now let's add the createUploadUrl function.\n\nThis requests a direct upload URL from Mux.\n\nExplain each setting:\n- playback_policy: 'public' means anyone with the URL can watch\n- video_quality: 'plus' enables AI features and MP4 downloads\n- generated_subtitles: auto-transcription using Whisper\n- cors_origin: allows browser uploads"
+  },
+  {
+    "type": "code",
+    "text": "\n\nexport async function createUploadUrl() {\nconst upload = await mux.video.uploads.create({\nnew_asset_settings: {\nplayback_policy: ['public'],\nvideo_quality: 'plus',\nmp4_support: 'standard',\ninput: [\n{\ngenerated_subtitles: [\n{ language_code: 'en', name: 'English (Auto)' }\n]\n}\n]\n},\ncors_origin: '*',\n});\n\nreturn upload;\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Add the function to check upload status.\n\nMux needs time to process — transcode, generate HLS streams, run transcription.\nWe poll this function until processing completes."
+  },
+  {
+    "type": "code",
+    "text": "\n\nexport async function getAssetIdFromUpload(uploadId: string) {\nconst upload = await mux.video.uploads.retrieve(uploadId);\n\nif (upload.asset_id) {\nconst asset = await mux.video.assets.retrieve(upload.asset_id);\nreturn { \nplaybackId: asset.playback_ids?.[0]?.id,\nstatus: asset.status \n};\n}\n\nreturn { status: 'waiting' };\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Add function to list all videos for the dashboard."
+  },
+  {
+    "type": "code",
+    "text": "\n\nexport async function listVideos() {\ntry {\nconst assets = await mux.video.assets.list({ \nlimit: 25,\n});\nreturn assets.data;\n} catch (e) {\nconsole.error(\"Error listing videos\", e);\nreturn [];\n}\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Now the comprehensive getAssetStatus function.\n\nThis fetches video status AND parses the transcript.\nIt finds the subtitle track, fetches the VTT file, and parses it into JSON."
+  },
+  {
+    "type": "code",
+    "text": "\n\nfunction formatVttTime(timestamp: string) {\nreturn timestamp.split('.')[0]; \n}\n\nexport async function getAssetStatus(playbackId: string) {\ntry {\nconst assets = await mux.video.assets.list({ limit: 100 });\nconst asset = assets.data.find(a => \na.playback_ids?.some(p => p.id === playbackId)\n);\n\nif (!asset) return { status: 'errored', transcript: [] };\n\nlet transcript: { time: string; text: string }[] = [];\nlet transcriptStatus = 'preparing'; \n\nif (asset.status === 'ready' && asset.tracks) {\nconst textTrack = asset.tracks.find(\nt => t.type === 'text' && t.text_type === 'subtitles'\n);\n\nif (textTrack && textTrack.status === 'ready') {\ntranscriptStatus = 'ready';\n\nconst vttUrl = `https://stream.mux.com/${playbackId}/text/${textTrack.id}.vtt`;\nconst response = await fetch(vttUrl);\nconst vttText = await response.text();\n\nconst blocks = vttText.split('\\n\\n');\n\ntranscript = blocks.reduce((acc: { time: string; text: string }[], block) => {\nconst lines = block.split('\\n');\nif (lines.length >= 2 && lines[1].includes('-->')) {\nconst time = formatVttTime(lines[1].split(' --> ')[0]);\nconst text = lines.slice(2).join(' '); \nif (text.trim()) acc.push({ time, text });\n}\nreturn acc;\n}, []);\n} \n}\n\nreturn { \nstatus: asset.status, \ntranscriptStatus, \ntranscript \n};\n} catch (e) {\nreturn { status: 'errored', transcriptStatus: 'errored', transcript: [] };\n}\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 4: SCREEN RECORDER COMPONENT\n\nNow let's build the heart of our app — the screen recorder.\n\nCreate components/ScreenRecorder.tsx\n\nThis is a 'use client' component because it uses browser APIs and React hooks."
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport { useState, useRef } from 'react';\nimport { useRouter } from 'next/navigation';\nimport { createUploadUrl, getAssetIdFromUpload } from '@/app/actions';\nimport { Loader2, StopCircle, Monitor } from 'lucide-react';💾"
+  },
+  {
+    "type": "comment",
+    "text": "Set up the component with state and refs.\n\nWe use useState for UI state, useRef for things that shouldn't trigger re-renders."
+  },
+  {
+    "type": "code",
+    "text": "\n\nexport default function ScreenRecorder() {\nconst [isRecording, setIsRecording] = useState(false);\nconst [isUploading, setIsUploading] = useState(false);\nconst [mediaBlob, setMediaBlob] = useState<Blob | null>(null);\n\nconst mediaRecorderRef = useRef<MediaRecorder | null>(null);\nconst chunksRef = useRef<Blob[]>([]);\nconst screenStreamRef = useRef<MediaStream | null>(null);\nconst micStreamRef = useRef<MediaStream | null>(null);\nconst liveVideoRef = useRef<HTMLVideoElement>(null);\n\nconst router = useRouter();💾"
+  },
+  {
+    "type": "comment",
+    "text": "Now the startRecording function.\n\nKey insight: browsers treat screen and microphone as separate streams.\nWe capture both and merge them into one MediaStream.\n\ngetDisplayMedia = screen capture\ngetUserMedia = microphone"
+  },
+  {
+    "type": "code",
+    "text": "\n\nconst startRecording = async () => {\ntry {\n// Step 1: Capture the screen\nconst screenStream = await navigator.mediaDevices.getDisplayMedia({\nvideo: true,\naudio: false,\n});\n\n// Step 2: Capture the microphone\nconst micStream = await navigator.mediaDevices.getUserMedia({\naudio: { \nechoCancellation: true, \nnoiseSuppression: true,\nsampleRate: 44100,\n},\nvideo: false,\n});\n\n// Step 3: Store references for cleanup\nscreenStreamRef.current = screenStream;\nmicStreamRef.current = micStream;\n\n// Step 4: Merge the streams\nconst combinedStream = new MediaStream([\n...screenStream.getVideoTracks(),\n...micStream.getAudioTracks(),\n]);\n\n// Step 5: Show live preview\nif (liveVideoRef.current) {\nliveVideoRef.current.srcObject = combinedStream;\n}\n\n// Step 6: Set up the recorder\nconst mediaRecorder = new MediaRecorder(combinedStream, { \nmimeType: 'video/webm; codecs=vp9' \n});\n\nmediaRecorderRef.current = mediaRecorder;\nchunksRef.current = [];\n\n// Step 7: Collect chunks as they're recorded\nmediaRecorder.ondataavailable = (event) => {\nif (event.data.size > 0) chunksRef.current.push(event.data);\n};\n\n// Step 8: Handle recording completion\nmediaRecorder.onstop = () => {\nconst blob = new Blob(chunksRef.current, { type: 'video/webm' });\nsetMediaBlob(blob);\n\nif (liveVideoRef.current) {\nliveVideoRef.current.srcObject = null;\n}\n\n// Critical: Stop all tracks\nscreenStreamRef.current?.getTracks().forEach(t => t.stop());\nmicStreamRef.current?.getTracks().forEach(t => t.stop());\n};\n\n// Step 9: Start recording\nmediaRecorder.start();\nsetIsRecording(true);\n\n// Step 10: Handle native \"Stop sharing\" button\nscreenStream.getVideoTracks()[0].onended = stopRecording;\n\n} catch (err) {\nconsole.error('Error starting recording:', err);\n}\n};💾"
+  },
+  {
+    "type": "comment",
+    "text": "Add stopRecording function."
+  },
+  {
+    "type": "code",
+    "text": "\n\nconst stopRecording = () => {\nif (mediaRecorderRef.current && isRecording) {\nmediaRecorderRef.current.stop();\nsetIsRecording(false);\n}\n};💾"
+  },
+  {
+    "type": "comment",
+    "text": "Add handleUpload function.\n\nThis is the direct upload pattern:\n1. Get signed URL from our server\n2. Upload directly to Mux (not through our server!)\n3. Poll until processing completes\n4. Redirect to video page"
+  },
+  {
+    "type": "code",
+    "text": "\n\nconst handleUpload = async () => {\nif (!mediaBlob) return;\n\nsetIsUploading(true);\n\ntry {\n// Step 1: Get a signed upload URL from our server\nconst uploadConfig = await createUploadUrl();\n\n// Step 2: Upload directly to Mux (not through our server!)\nawait fetch(uploadConfig.url, { \nmethod: 'PUT', \nbody: mediaBlob \n});\n\n// Step 3: Poll until processing completes\nwhile (true) {\nconst result = await getAssetIdFromUpload(uploadConfig.id);\nif (result.playbackId) {\nrouter.push(`/video/${result.playbackId}`);\nbreak;\n}\nawait new Promise(r => setTimeout(r, 1000));\n}\n} catch (err) {\nconsole.error('Upload failed', err);\nsetIsUploading(false);\n}\n};💾"
+  },
+  {
+    "type": "comment",
+    "text": "Now the UI render function.\n\nNote the 'muted' attribute on the preview video — critical to prevent feedback screech!"
+  },
+  {
+    "type": "code",
+    "text": "\n\nreturn (\n<div className=\"flex flex-col items-center gap-6 p-8 bg-slate-900 rounded-xl border border-slate-700 w-full max-w-md shadow-2xl\">\n<h2 className=\"text-2xl font-bold text-white\">\n{isRecording ? \"Recording...\" : \"New Recording\"}\n</h2>\n\n{/* Preview Area */}\n<div className=\"w-full aspect-video bg-black rounded-lg border border-slate-800 flex items-center justify-center relative overflow-hidden\">\n\n{/* Live Preview (while recording) */}\n<video \nref={liveVideoRef}\nautoPlay\nplaysInline\nmuted\nclassName={`w-full h-full object-cover ${isRecording ? 'block' : 'hidden'}`}\n/>\n\n{/* Recording Ready State */}\n{!isRecording && mediaBlob && (\n<div className=\"text-emerald-400 flex flex-col items-center\">\n<Monitor className=\"w-12 h-12 mb-2\" />\n<span>Recording Ready</span>\n</div>\n)}\n\n{/* Idle State */}\n{!isRecording && !mediaBlob && (\n<div className=\"text-slate-600 flex flex-col items-center\">\n<Monitor className=\"w-12 h-12 mb-2 opacity-50\" />\n<span>Preview Area</span>\n</div>\n)}\n\n{/* Recording Indicator */}\n{isRecording && (\n<div className=\"absolute top-4 right-4 animate-pulse\">\n<div className=\"w-3 h-3 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.6)]\" />\n</div>\n)}\n</div>\n\n{/* Controls */}\n<div className=\"flex w-full gap-4\">\n{!isRecording && !mediaBlob && (\n<button \nonClick={startRecording} \nclassName=\"w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium\"\n>\nStart Recording\n</button>\n)}\n\n{isRecording && (\n<button \nonClick={stopRecording} \nclassName=\"w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex justify-center items-center gap-2\"\n>\n<StopCircle className=\"w-5 h-5\" /> Stop Recording\n</button>\n)}\n\n{mediaBlob && (\n<button \nonClick={handleUpload} \ndisabled={isUploading} \nclassName=\"w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium flex justify-center items-center gap-2 disabled:opacity-50\"\n>\n{isUploading ? <Loader2 className=\"animate-spin w-5 h-5\" /> : 'Upload & Share'}\n</button>\n)}\n</div>\n</div>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 5: HOME PAGE\n\nReplace app/page.tsx with our home page."
+  },
+  {
+    "type": "code",
+    "text": "import ScreenRecorder from '@/components/ScreenRecorder';\nimport Link from 'next/link';\nimport { LayoutGrid, Video } from 'lucide-react';\n\nexport default function Home() {\nreturn (\n<main className=\"min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative\">\n\n{/* Navigation to Dashboard */}\n<div className=\"absolute top-6 right-6 z-20\">\n<Link \nhref=\"/dashboard\" \nclassName=\"flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-full transition-all text-sm font-medium group\"\n>\n<LayoutGrid className=\"w-4 h-4 group-hover:text-white transition\" />\n<span className=\"hidden sm:inline\">My Recordings</span>\n</Link>\n</div>\n\n<div className=\"z-10 w-full max-w-2xl flex flex-col items-center gap-8\">\n\n{/* Header */}\n<div className=\"text-center space-y-2\">\n<div className=\"inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 shadow-lg shadow-blue-900/20 mb-2\">\n<Video className=\"w-6 h-6 text-white\" />\n</div>\n<h1 className=\"text-3xl md:text-4xl font-extrabold text-white tracking-tight\">\nLoom Clone\n</h1>\n<p className=\"text-slate-400 text-sm md:text-base\">\nNext.js 15 + Mux + AI Transcripts\n</p>\n</div>\n\n{/* Screen Recorder */}\n<ScreenRecorder />\n\n</div>\n</main>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Test the app so far!\n\nRun npm run dev, open localhost:3000.\nClick Start Recording, pick a screen, allow mic.\nStop Recording, then Upload & Share.\n\nYou'll be redirected to /video/[id] which doesn't exist yet. Let's build that."
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 6: MUX PLAYER COMPONENT\n\nCreate components/MuxPlayerWrapper.tsx\n\nMux Player gives us:\n- Zero config HLS\n- Auto quality switching\n- Built-in captions\n- Thumbnail previews"
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport MuxPlayer from '@mux/mux-player-react';\n\ninterface MuxPlayerWrapperProps {\nplaybackId: string;\ntitle?: string;\n}\n\nexport default function MuxPlayerWrapper({ playbackId, title }: MuxPlayerWrapperProps) {\nreturn (\n<MuxPlayer\nplaybackId={playbackId}\nmetadata={{\nvideo_title: title || 'Screen Recording',\n}}\nstreamType=\"on-demand\"\nautoPlay={false}\naccentColor=\"#3b82f6\"\n/>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Create components/ShareButton.tsx"
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport { useState } from 'react';\nimport { Share2, Check } from 'lucide-react';\n\nexport default function ShareButton() {\nconst [copied, setCopied] = useState(false);\n\nconst handleShare = () => {\nnavigator.clipboard.writeText(window.location.href);\nsetCopied(true);\nsetTimeout(() => setCopied(false), 2000);\n};\n\nreturn (\n<button \nonClick={handleShare}\nclassName=\"flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition\"\n>\n{copied ? <Check className=\"w-4 h-4\" /> : <Share2 className=\"w-4 h-4\" />}\n{copied ? 'Copied Link!' : 'Share Video'}\n</button>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Create components/VideoStatusPoller.tsx\n\nThis polls the server and refreshes when video/transcript is ready."
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport { useEffect } from 'react';\nimport { useRouter } from 'next/navigation';\nimport { getAssetStatus } from '@/app/actions';\nimport { Loader2 } from 'lucide-react';\n\nexport default function VideoStatusPoller({ \nid, \nisVideoReady \n}: { \nid: string; \nisVideoReady: boolean;\n}) {\nconst router = useRouter();\n\nuseEffect(() => {\nconst checkStatus = async () => {\nconst { status, transcriptStatus } = await getAssetStatus(id);\n\nif (!isVideoReady && status === 'ready') {\nrouter.refresh();\n}\n\nif (isVideoReady && transcriptStatus === 'ready') {\nrouter.refresh();\n}\n};\n\nconst interval = setInterval(checkStatus, 3000);\nreturn () => clearInterval(interval);\n}, [id, isVideoReady, router]);\n\nif (isVideoReady) return null;\n\nreturn (\n<div className=\"w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-900\">\n<Loader2 className=\"w-8 h-8 mb-4 animate-spin text-blue-500\" />\n<p>Processing Video...</p>\n</div>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Create the video page.\n\nFirst create the folder: app/video/[id]/\nThen create page.tsx inside it."
+  },
+  {
+    "type": "code",
+    "text": "import Link from 'next/link';\nimport { getAssetStatus } from '@/app/actions';\nimport MuxPlayerWrapper from '@/components/MuxPlayerWrapper';\nimport VideoStatusPoller from '@/components/VideoStatusPoller';\nimport ShareButton from '@/components/ShareButton';\nimport { ArrowLeft, Download } from 'lucide-react';\n\nexport default async function VideoPage({ \nparams \n}: { \nparams: Promise<{ id: string }> \n}) {\nconst { id: playbackId } = await params;\nconst { status, transcriptStatus, transcript } = await getAssetStatus(playbackId);\n\nconst isVideoReady = status === 'ready';\nconst isTranscriptReady = transcriptStatus === 'ready';\n\nconst downloadUrl = `https://stream.mux.com/${playbackId}/high.mp4?download=screen-recording.mp4`;\n\nreturn (\n<main className=\"min-h-screen bg-slate-950 p-6 md:p-12 text-slate-200\">\n<div className=\"max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8\">\n\n{/* Navigation */}\n<div className=\"lg:col-span-3 mb-2\">\n<Link \nhref=\"/\" \nclassName=\"inline-flex items-center gap-2 text-slate-400 hover:text-white transition text-sm font-medium py-2 px-3 rounded-lg hover:bg-slate-900\"\n>\n<ArrowLeft className=\"w-4 h-4\" /> \nRecord New Video\n</Link>\n</div>\n\n{/* Left Column: Video Player */}\n<div className=\"lg:col-span-2 space-y-6\">\n<div className=\"bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 aspect-video relative\">\n{isVideoReady ? (\n<>\n<MuxPlayerWrapper playbackId={playbackId} />\n{!isTranscriptReady && <VideoStatusPoller id={playbackId} isVideoReady={true} />}\n</>\n) : (\n<VideoStatusPoller id={playbackId} isVideoReady={false} />\n)}\n</div>\n\n{/* Action Buttons */}\n<div className=\"flex justify-between items-center bg-slate-900 p-6 rounded-xl border border-slate-800\">\n<h1 className=\"text-xl font-bold text-white\">Screen Recording</h1>\n<div className=\"flex gap-3\">\n<ShareButton />\n{isVideoReady && (\n<a \nhref={downloadUrl}\ntarget=\"_blank\"\nrel=\"noopener noreferrer\"\nclassName=\"flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition\"\n>\n<Download className=\"w-4 h-4\" /> Download\n</a>\n)}\n</div>\n</div>\n</div>\n\n{/* Right Column: Transcript */}\n<div className=\"bg-slate-900 p-6 rounded-2xl border border-slate-800 h-[600px] flex flex-col\">\n<h3 className=\"font-semibold text-white mb-4\">✨ AI Transcript</h3>\n\n<div className=\"flex-1 overflow-y-auto space-y-4 pr-2\">\n{isTranscriptReady ? (\ntranscript.length > 0 ? (\ntranscript.map((line, i) => (\n<div key={i} className=\"group p-2 rounded hover:bg-slate-800 transition\">\n<span className=\"text-xs text-blue-500 font-mono block mb-1\">{line.time}</span>\n<p className=\"text-sm text-slate-300\">{line.text}</p>\n</div>\n))\n) : (\n<p className=\"text-slate-500 italic text-sm\">No speech detected.</p>\n)\n) : (\n<div className=\"flex flex-col items-center justify-center h-40 text-slate-500 gap-2\">\n<span className=\"animate-spin\">⏳</span>\n<p className=\"text-sm\">Generating Transcript...</p>\n</div>\n)}\n</div>\n</div>\n\n</div>\n</main>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 7: DASHBOARD\n\nCreate components/VideoThumbnail.tsx\n\nThis shows a static image, and an animated GIF on hover."
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport { useState } from 'react';\nimport Image from 'next/image';\n\nexport default function VideoThumbnail({ playbackId }: { playbackId: string }) {\nconst [isHovered, setIsHovered] = useState(false);\nconst [hasError, setHasError] = useState(false);\n\nconst posterUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0`;\nconst gifUrl = `https://image.mux.com/${playbackId}/animated.gif?width=320`;\n\nif (hasError) {\nreturn (\n<div className=\"w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-sm\">\nNo preview\n</div>\n);\n}\n\nreturn (\n<div \nclassName=\"w-full h-full relative\"\nonMouseEnter={() => setIsHovered(true)}\nonMouseLeave={() => setIsHovered(false)}\n>\n<Image \nsrc={isHovered ? gifUrl : posterUrl}\nalt=\"Video thumbnail\"\nfill\nunoptimized\nonError={() => setHasError(true)}\nclassName={`object-cover transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-90'}`}\n/>\n</div>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Create app/dashboard/page.tsx"
+  },
+  {
+    "type": "code",
+    "text": "import Link from 'next/link';\nimport { listVideos } from '@/app/actions';\nimport { ArrowLeft } from 'lucide-react';\nimport VideoThumbnail from '@/components/VideoThumbnail';\n\nexport const dynamic = 'force-dynamic';\n\nexport default async function DashboardPage() {\nconst videos = await listVideos();\n\nreturn (\n<main className=\"min-h-screen bg-slate-950 p-6 md:p-12 text-slate-200\">\n<div className=\"max-w-6xl mx-auto\">\n<div className=\"flex justify-between items-center mb-8\">\n<h1 className=\"text-3xl font-bold text-white\">My Recordings</h1>\n<Link href=\"/\" className=\"flex items-center gap-2 text-blue-400 hover:text-white transition text-sm\">\n<ArrowLeft className=\"w-4 h-4\" /> Back to Recorder\n</Link>\n</div>\n\n{videos.length === 0 ? (\n<div className=\"text-center py-20 text-slate-500\">\n<p className=\"text-lg mb-4\">No recordings yet.</p>\n<Link href=\"/\" className=\"text-blue-400 hover:text-blue-300\">\nCreate your first recording →\n</Link>\n</div>\n) : (\n<div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\">\n{videos.map((video) => (\n<div key={video.id} className=\"bg-slate-900 rounded-xl border border-slate-800 overflow-hidden hover:border-slate-700 transition group\">\n<Link href={`/video/${video.playback_ids?.[0]?.id}`} className=\"block relative aspect-video bg-black\">\n{video.status === 'ready' && video.playback_ids?.[0] ? (\n<VideoThumbnail playbackId={video.playback_ids[0].id} />\n) : (\n<div className=\"w-full h-full flex items-center justify-center text-slate-500 text-xs\">\nProcessing...\n</div>\n)}\n</Link>\n\n<div className=\"p-4\">\n<p className=\"text-sm text-slate-300\">\n{new Date(Number(video.created_at) * 1000).toLocaleDateString()}\n</p>\n</div>\n</div>\n))}\n</div>\n)}\n</div>\n</main>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Configure image domains in next.config.ts"
+  },
+  {
+    "type": "code",
+    "text": "import type { NextConfig } from \"next\";\n\nconst nextConfig: NextConfig = {\nimages: {\nremotePatterns: [\n{\nprotocol: 'https',\nhostname: 'image.mux.com',\n},\n],\n},\n};\n\nexport default nextConfig;💾"
+  },
+  {
+    "type": "comment",
+    "text": "SECTION 9: AI SUMMARIES\n\nAdd the generateVideoSummary function to app/actions.ts\n\nThis uses @mux/ai to generate titles, summaries, and tags."
+  },
+  {
+    "type": "code",
+    "text": "\n\nexport async function generateVideoSummary(playbackId: string) {\ntry {\nconst assets = await mux.video.assets.list({ limit: 100 });\nconst asset = assets.data.find(a => \na.playback_ids?.some(p => p.id === playbackId)\n);\n\nif (!asset) {\nthrow new Error('Asset not found');\n}\n\nconst { getSummaryAndTags } = await import('@mux/ai/workflows');\n\nconst result = await getSummaryAndTags(asset.id, {\ntone: 'professional',\n});\n\nreturn {\ntitle: result.title,\nsummary: result.description,\ntags: result.tags,\n};\n} catch (error) {\nconsole.error('Error generating summary:', error);\nreturn null;\n}\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Create components/VideoSummary.tsx"
+  },
+  {
+    "type": "code",
+    "text": "'use client';\n\nimport { useState } from 'react';\nimport { generateVideoSummary } from '@/app/actions';\nimport { Sparkles, Loader2 } from 'lucide-react';\n\ninterface SummaryData {\ntitle: string;\nsummary: string;\ntags: string[];\n}\n\nexport default function VideoSummary({ playbackId }: { playbackId: string }) {\nconst [summary, setSummary] = useState<SummaryData | null>(null);\nconst [isGenerating, setIsGenerating] = useState(false);\nconst [error, setError] = useState(false);\n\nconst handleGenerate = async () => {\nsetIsGenerating(true);\nsetError(false);\n\nconst result = await generateVideoSummary(playbackId);\n\nif (result) {\nsetSummary(result);\n} else {\nsetError(true);\n}\n\nsetIsGenerating(false);\n};\n\nif (summary) {\nreturn (\n<div className=\"bg-slate-800 p-6 rounded-xl border border-slate-700\">\n<h3 className=\"text-lg font-bold text-white mb-2\">{summary.title}</h3>\n<p className=\"text-slate-300 text-sm leading-relaxed mb-4\">{summary.summary}</p>\n<div className=\"flex flex-wrap gap-2\">\n{summary.tags.map((tag) => (\n<span \nkey={tag} \nclassName=\"bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs font-medium\"\n>\n#{tag}\n</span>\n))}\n</div>\n</div>\n);\n}\n\nreturn (\n<button\nonClick={handleGenerate}\ndisabled={isGenerating}\nclassName=\"w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg font-medium transition\"\n>\n{isGenerating ? (\n<>\n<Loader2 className=\"w-4 h-4 animate-spin\" />\nAnalyzing Video...\n</>\n) : error ? (\n'Try Again'\n) : (\n<>\n<Sparkles className=\"w-4 h-4\" />\nGenerate AI Summary\n</>\n)}\n</button>\n);\n}💾"
+  },
+  {
+    "type": "comment",
+    "text": "Update the video page to include VideoSummary.\n\nAdd this import at the top:\nimport VideoSummary from '@/components/VideoSummary';\n\nAdd this after the action buttons div:\n{/* AI Summary */}\n{isVideoReady && isTranscriptReady && (\n  <div className=\"mt-6\">\n    <VideoSummary playbackId={playbackId} />\n  </div>\n)}"
+  },
+  {
+    "type": "comment",
+    "text": "WRAP UP (spoken):\n\nWe built a fully functional screen recording platform with:\n- Custom screen + microphone recording\n- Direct uploads to Mux\n- AI-powered transcription with captions\n- AI-generated summaries and tags\n- Mux Player with quality switching\n- Animated GIF thumbnails\n- MP4 downloads\n- Shareable video pages\n\nThe combination of Next.js and Mux lets a single developer build what used to require a whole team.\n\nThanks for coding along!"
+  }
+]
