@@ -1,7 +1,7 @@
 # Found            : 409
 # MISSING          : 13
 # EXTRA            : 10
-# Follow (E)       : 97.4 %
+# Follow (E)       : 97.7 %
 DOCTYPE	09:34:25
 html	09:34:27
 <html	09:34:58
@@ -425,7 +425,7 @@ left-offset	10:40:42	MISSING
 left-offset	10:40:46	MISSING
 425px	10:41:03	MISSING
 0px	10:41:03	COMMENT	EXTRA
-400px	10:41:01	EXTRA*
+400px	10:41:03	EXTRA
 W3schools	10:41:03	EXTRA
 display	10:41:03	COMMENT	EXTRA
 font-size	10:41:03	COMMENT	EXTRA

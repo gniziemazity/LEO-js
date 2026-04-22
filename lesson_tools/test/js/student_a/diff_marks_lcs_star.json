@@ -1,0 +1,950 @@
+{
+  "format_version": 4,
+  "token_matching": "token-lcs-star",
+  "case_sensitive": true,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "ol",
+        "label": "missing",
+        "start": 338,
+        "end": 340
+      },
+      {
+        "token": "all",
+        "label": "missing",
+        "start": 392,
+        "end": 395
+      },
+      {
+        "token": "never",
+        "label": "comment",
+        "start": 532,
+        "end": 537
+      },
+      {
+        "token": "define",
+        "label": "comment",
+        "start": 538,
+        "end": 544
+      },
+      {
+        "token": "without",
+        "label": "comment",
+        "start": 545,
+        "end": 552
+      },
+      {
+        "token": "const",
+        "label": "comment",
+        "start": 553,
+        "end": 558
+      },
+      {
+        "token": "let",
+        "label": "comment",
+        "start": 560,
+        "end": 563
+      },
+      {
+        "token": "or",
+        "label": "comment",
+        "start": 565,
+        "end": 567
+      },
+      {
+        "token": "var",
+        "label": "comment",
+        "start": 568,
+        "end": 571
+      },
+      {
+        "token": "var",
+        "label": "comment",
+        "start": 736,
+        "end": 739
+      },
+      {
+        "token": "was",
+        "label": "comment",
+        "start": 740,
+        "end": 743
+      },
+      {
+        "token": "replaced",
+        "label": "comment",
+        "start": 745,
+        "end": 753
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 755,
+        "end": 757
+      },
+      {
+        "token": "let",
+        "label": "comment",
+        "start": 758,
+        "end": 761
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 762,
+        "end": 765
+      },
+      {
+        "token": "const",
+        "label": "comment",
+        "start": 766,
+        "end": 771
+      },
+      {
+        "token": "accepts",
+        "label": "comment",
+        "start": 819,
+        "end": 826
+      },
+      {
+        "token": "multiple",
+        "label": "comment",
+        "start": 827,
+        "end": 835
+      },
+      {
+        "token": "parameters",
+        "label": "comment",
+        "start": 836,
+        "end": 846
+      },
+      {
+        "token": "zero",
+        "label": "comment",
+        "start": 1026,
+        "end": 1030
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 1031,
+        "end": 1033
+      },
+      {
+        "token": "falsy",
+        "label": "comment",
+        "start": 1035,
+        "end": 1040
+      },
+      {
+        "token": "arrays",
+        "label": "comment",
+        "start": 1052,
+        "end": 1058
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1059,
+        "end": 1062
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 1063,
+        "end": 1067
+      },
+      {
+        "token": "Python",
+        "label": "comment",
+        "start": 1068,
+        "end": 1074
+      },
+      {
+        "token": "lists",
+        "label": "comment",
+        "start": 1075,
+        "end": 1080
+      },
+      {
+        "token": "myArray",
+        "label": "comment",
+        "start": 1220,
+        "end": 1227
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 1231,
+        "end": 1232
+      },
+      {
+        "token": "2",
+        "label": "comment",
+        "start": 1234,
+        "end": 1235
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 1237,
+        "end": 1238
+      },
+      {
+        "token": "ERROR",
+        "label": "comment",
+        "start": 1241,
+        "end": 1246
+      },
+      {
+        "token": "Program",
+        "label": "comment",
+        "start": 1248,
+        "end": 1255
+      },
+      {
+        "token": "would",
+        "label": "comment",
+        "start": 1256,
+        "end": 1261
+      },
+      {
+        "token": "fail",
+        "label": "comment",
+        "start": 1262,
+        "end": 1266
+      },
+      {
+        "token": "here",
+        "label": "comment",
+        "start": 1267,
+        "end": 1271
+      },
+      {
+        "token": "objects",
+        "label": "comment",
+        "start": 1480,
+        "end": 1487
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1488,
+        "end": 1491
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 1492,
+        "end": 1496
+      },
+      {
+        "token": "Python",
+        "label": "comment",
+        "start": 1497,
+        "end": 1503
+      },
+      {
+        "token": "dictionaries",
+        "label": "comment",
+        "start": 1504,
+        "end": 1516
+      },
+      {
+        "token": "no",
+        "label": "comment",
+        "start": 1924,
+        "end": 1926
+      },
+      {
+        "token": "need",
+        "label": "comment",
+        "start": 1927,
+        "end": 1931
+      },
+      {
+        "token": "for",
+        "label": "comment",
+        "start": 1932,
+        "end": 1935
+      },
+      {
+        "token": "document",
+        "label": "comment",
+        "start": 1936,
+        "end": 1944
+      },
+      {
+        "token": "getElementById",
+        "label": "comment",
+        "start": 1945,
+        "end": 1959
+      },
+      {
+        "token": "container",
+        "label": "comment",
+        "start": 1961,
+        "end": 1970
+      },
+      {
+        "token": "ids",
+        "label": "comment",
+        "start": 1977,
+        "end": 1980
+      },
+      {
+        "token": "that",
+        "label": "comment",
+        "start": 1981,
+        "end": 1985
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1986,
+        "end": 1989
+      },
+      {
+        "token": "valid",
+        "label": "comment",
+        "start": 1990,
+        "end": 1995
+      },
+      {
+        "token": "JS",
+        "label": "comment",
+        "start": 1996,
+        "end": 1998
+      },
+      {
+        "token": "names",
+        "label": "comment",
+        "start": 1999,
+        "end": 2004
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 2005,
+        "end": 2008
+      },
+      {
+        "token": "automatically",
+        "label": "comment",
+        "start": 2009,
+        "end": 2022
+      },
+      {
+        "token": "global",
+        "label": "comment",
+        "start": 2023,
+        "end": 2029
+      },
+      {
+        "token": "variables",
+        "label": "comment",
+        "start": 2030,
+        "end": 2039
+      },
+      {
+        "token": "invalid",
+        "label": "comment",
+        "start": 2044,
+        "end": 2051
+      },
+      {
+        "token": "names",
+        "label": "comment",
+        "start": 2052,
+        "end": 2057
+      },
+      {
+        "token": "start",
+        "label": "comment",
+        "start": 2066,
+        "end": 2071
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 2072,
+        "end": 2076
+      },
+      {
+        "token": "a",
+        "label": "comment",
+        "start": 2077,
+        "end": 2078
+      },
+      {
+        "token": "number",
+        "label": "comment",
+        "start": 2079,
+        "end": 2085
+      },
+      {
+        "token": "contain",
+        "label": "comment",
+        "start": 2093,
+        "end": 2100
+      },
+      {
+        "token": "spaces",
+        "label": "comment",
+        "start": 2101,
+        "end": 2107
+      },
+      {
+        "token": "or",
+        "label": "comment",
+        "start": 2108,
+        "end": 2110
+      },
+      {
+        "token": "special",
+        "label": "comment",
+        "start": 2111,
+        "end": 2118
+      },
+      {
+        "token": "characters",
+        "label": "comment",
+        "start": 2119,
+        "end": 2129
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 2131,
+        "end": 2135
+      },
+      {
+        "token": "operators",
+        "label": "comment",
+        "start": 2183,
+        "end": 2192
+      },
+      {
+        "token": "concatenation",
+        "label": "comment",
+        "start": 2254,
+        "end": 2267
+      },
+      {
+        "token": "escaping",
+        "label": "comment",
+        "start": 2751,
+        "end": 2759
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 2760,
+        "end": 2764
+      },
+      {
+        "token": "36",
+        "label": "missing",
+        "start": 2814,
+        "end": 2816
+      },
+      {
+        "token": "template",
+        "label": "comment",
+        "start": 2908,
+        "end": 2916
+      },
+      {
+        "token": "literal",
+        "label": "comment",
+        "start": 2917,
+        "end": 2924
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "old",
+        "label": "extra",
+        "start": 377,
+        "end": 380
+      },
+      {
+        "token": "All",
+        "label": "extra",
+        "start": 442,
+        "end": 445
+      },
+      {
+        "token": "Never",
+        "label": "comment",
+        "start": 591,
+        "end": 596
+      },
+      {
+        "token": "define",
+        "label": "comment",
+        "start": 597,
+        "end": 603
+      },
+      {
+        "token": "without",
+        "label": "comment",
+        "start": 604,
+        "end": 611
+      },
+      {
+        "token": "const",
+        "label": "comment",
+        "start": 612,
+        "end": 617
+      },
+      {
+        "token": "let",
+        "label": "comment",
+        "start": 619,
+        "end": 622
+      },
+      {
+        "token": "or",
+        "label": "comment",
+        "start": 624,
+        "end": 626
+      },
+      {
+        "token": "var",
+        "label": "comment",
+        "start": 627,
+        "end": 630
+      },
+      {
+        "token": "var",
+        "label": "comment",
+        "start": 818,
+        "end": 821
+      },
+      {
+        "token": "was",
+        "label": "comment",
+        "start": 822,
+        "end": 825
+      },
+      {
+        "token": "replaced",
+        "label": "comment",
+        "start": 827,
+        "end": 835
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 837,
+        "end": 839
+      },
+      {
+        "token": "let",
+        "label": "comment",
+        "start": 840,
+        "end": 843
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 844,
+        "end": 847
+      },
+      {
+        "token": "const",
+        "label": "comment",
+        "start": 848,
+        "end": 853
+      },
+      {
+        "token": "accepts",
+        "label": "comment",
+        "start": 906,
+        "end": 913
+      },
+      {
+        "token": "multiple",
+        "label": "comment",
+        "start": 914,
+        "end": 922
+      },
+      {
+        "token": "parameters",
+        "label": "comment",
+        "start": 923,
+        "end": 933
+      },
+      {
+        "token": "zero",
+        "label": "comment",
+        "start": 1135,
+        "end": 1139
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 1140,
+        "end": 1142
+      },
+      {
+        "token": "falsy",
+        "label": "comment",
+        "start": 1144,
+        "end": 1149
+      },
+      {
+        "token": "arrays",
+        "label": "comment",
+        "start": 1171,
+        "end": 1177
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1178,
+        "end": 1181
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 1182,
+        "end": 1186
+      },
+      {
+        "token": "Python",
+        "label": "comment",
+        "start": 1187,
+        "end": 1193
+      },
+      {
+        "token": "lists",
+        "label": "comment",
+        "start": 1194,
+        "end": 1199
+      },
+      {
+        "token": "myArray",
+        "label": "comment",
+        "start": 1369,
+        "end": 1376
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 1380,
+        "end": 1381
+      },
+      {
+        "token": "2",
+        "label": "comment",
+        "start": 1383,
+        "end": 1384
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 1386,
+        "end": 1387
+      },
+      {
+        "token": "ERROR",
+        "label": "comment",
+        "start": 1390,
+        "end": 1395
+      },
+      {
+        "token": "Program",
+        "label": "comment",
+        "start": 1397,
+        "end": 1404
+      },
+      {
+        "token": "would",
+        "label": "comment",
+        "start": 1405,
+        "end": 1410
+      },
+      {
+        "token": "fail",
+        "label": "comment",
+        "start": 1411,
+        "end": 1415
+      },
+      {
+        "token": "here",
+        "label": "comment",
+        "start": 1416,
+        "end": 1420
+      },
+      {
+        "token": "objects",
+        "label": "comment",
+        "start": 1688,
+        "end": 1695
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1696,
+        "end": 1699
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 1700,
+        "end": 1704
+      },
+      {
+        "token": "Python",
+        "label": "comment",
+        "start": 1705,
+        "end": 1711
+      },
+      {
+        "token": "dictionaries",
+        "label": "comment",
+        "start": 1712,
+        "end": 1724
+      },
+      {
+        "token": "no",
+        "label": "comment",
+        "start": 2227,
+        "end": 2229
+      },
+      {
+        "token": "need",
+        "label": "comment",
+        "start": 2230,
+        "end": 2234
+      },
+      {
+        "token": "for",
+        "label": "comment",
+        "start": 2235,
+        "end": 2238
+      },
+      {
+        "token": "document",
+        "label": "comment",
+        "start": 2239,
+        "end": 2247
+      },
+      {
+        "token": "getElementById",
+        "label": "comment",
+        "start": 2248,
+        "end": 2262
+      },
+      {
+        "token": "container",
+        "label": "comment",
+        "start": 2264,
+        "end": 2273
+      },
+      {
+        "token": "ids",
+        "label": "comment",
+        "start": 2288,
+        "end": 2291
+      },
+      {
+        "token": "that",
+        "label": "comment",
+        "start": 2292,
+        "end": 2296
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 2297,
+        "end": 2300
+      },
+      {
+        "token": "valid",
+        "label": "comment",
+        "start": 2301,
+        "end": 2306
+      },
+      {
+        "token": "JS",
+        "label": "comment",
+        "start": 2307,
+        "end": 2309
+      },
+      {
+        "token": "names",
+        "label": "comment",
+        "start": 2310,
+        "end": 2315
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 2316,
+        "end": 2319
+      },
+      {
+        "token": "automatically",
+        "label": "comment",
+        "start": 2320,
+        "end": 2333
+      },
+      {
+        "token": "global",
+        "label": "comment",
+        "start": 2334,
+        "end": 2340
+      },
+      {
+        "token": "variables",
+        "label": "comment",
+        "start": 2341,
+        "end": 2350
+      },
+      {
+        "token": "invalid",
+        "label": "comment",
+        "start": 2363,
+        "end": 2370
+      },
+      {
+        "token": "names",
+        "label": "comment",
+        "start": 2371,
+        "end": 2376
+      },
+      {
+        "token": "start",
+        "label": "comment",
+        "start": 2393,
+        "end": 2398
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 2399,
+        "end": 2403
+      },
+      {
+        "token": "a",
+        "label": "comment",
+        "start": 2404,
+        "end": 2405
+      },
+      {
+        "token": "number",
+        "label": "comment",
+        "start": 2406,
+        "end": 2412
+      },
+      {
+        "token": "contain",
+        "label": "comment",
+        "start": 2427,
+        "end": 2434
+      },
+      {
+        "token": "spaces",
+        "label": "comment",
+        "start": 2435,
+        "end": 2441
+      },
+      {
+        "token": "or",
+        "label": "comment",
+        "start": 2442,
+        "end": 2444
+      },
+      {
+        "token": "special",
+        "label": "comment",
+        "start": 2445,
+        "end": 2452
+      },
+      {
+        "token": "characters",
+        "label": "comment",
+        "start": 2453,
+        "end": 2463
+      },
+      {
+        "token": "like",
+        "label": "comment",
+        "start": 2465,
+        "end": 2469
+      },
+      {
+        "token": "operators",
+        "label": "comment",
+        "start": 2534,
+        "end": 2543
+      },
+      {
+        "token": "concatenation",
+        "label": "comment",
+        "start": 2620,
+        "end": 2633
+      },
+      {
+        "token": "escape",
+        "label": "comment",
+        "start": 3212,
+        "end": 3218
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 3219,
+        "end": 3223
+      },
+      {
+        "token": "31",
+        "label": "extra",
+        "start": 3280,
+        "end": 3282
+      },
+      {
+        "token": "template",
+        "label": "comment",
+        "start": 3384,
+        "end": 3392
+      },
+      {
+        "token": "literal",
+        "label": "comment",
+        "start": 3393,
+        "end": 3400
+      },
+      {
+        "token": "getDay",
+        "label": "extra",
+        "start": 3572,
+        "end": 3578
+      },
+      {
+        "token": "console",
+        "label": "extra",
+        "start": 3591,
+        "end": 3598
+      },
+      {
+        "token": "log",
+        "label": "extra",
+        "start": 3599,
+        "end": 3602
+      },
+      {
+        "token": "someDate",
+        "label": "extra",
+        "start": 3603,
+        "end": 3611
+      }
+    ]
+  },
+  "score": 99.2
+}

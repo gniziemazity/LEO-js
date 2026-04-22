@@ -262,7 +262,7 @@
       },
       {
         "token": "432px",
-        "label": "extra",
+        "label": "extra_star",
         "start": 167,
         "end": 172
       },
@@ -490,5 +490,5 @@
       }
     ]
   },
-  "score": 99.2
+  "score": 99.0
 }

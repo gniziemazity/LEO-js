@@ -1,6 +1,6 @@
 {
   "format_version": 4,
-  "token_matching": "context-cosine-hungarian",
+  "token_matching": "token-lcs-star",
   "case_sensitive": true,
   "teacher_files": {
     "reconstructed.html": [
@@ -9,6 +9,18 @@
         "label": "missing",
         "start": 2,
         "end": 9
+      },
+      {
+        "token": "align-items",
+        "label": "missing",
+        "start": 138,
+        "end": 149
+      },
+      {
+        "token": "center",
+        "label": "missing",
+        "start": 151,
+        "end": 157
       },
       {
         "token": "align-items",
@@ -93,18 +105,6 @@
         "label": "missing",
         "start": 811,
         "end": 822
-      },
-      {
-        "token": "array",
-        "label": "missing",
-        "start": 882,
-        "end": 887
-      },
-      {
-        "token": "100",
-        "label": "missing",
-        "start": 893,
-        "end": 896
       },
       {
         "token": "here",
@@ -311,6 +311,12 @@
         "end": 1191
       },
       {
+        "token": "100",
+        "label": "missing",
+        "start": 1195,
+        "end": 1198
+      },
+      {
         "token": "async",
         "label": "missing",
         "start": 1224,
@@ -333,6 +339,18 @@
         "label": "missing",
         "start": 1542,
         "end": 1545
+      },
+      {
+        "token": "swapped",
+        "label": "missing",
+        "start": 1556,
+        "end": 1563
+      },
+      {
+        "token": "true",
+        "label": "missing",
+        "start": 1566,
+        "end": 1570
       }
     ]
   },
@@ -343,6 +361,18 @@
         "label": "extra",
         "start": 0,
         "end": 8
+      },
+      {
+        "token": "align-items",
+        "label": "extra",
+        "start": 186,
+        "end": 197
+      },
+      {
+        "token": "center",
+        "label": "extra",
+        "start": 198,
+        "end": 204
       },
       {
         "token": "width",
@@ -387,6 +417,12 @@
         "end": 847
       },
       {
+        "token": "<count",
+        "label": "extra",
+        "start": 981,
+        "end": 987
+      },
+      {
         "token": "numbers",
         "label": "comment",
         "start": 1044,
@@ -417,6 +453,12 @@
         "end": 1067
       },
       {
+        "token": "<array",
+        "label": "extra",
+        "start": 1194,
+        "end": 1200
+      },
+      {
         "token": "crateElement",
         "label": "extra",
         "start": 1258,
@@ -427,12 +469,6 @@
         "label": "extra",
         "start": 1310,
         "end": 1321
-      },
-      {
-        "token": "array",
-        "label": "extra_star",
-        "start": 1413,
-        "end": 1418
       },
       {
         "token": "here",
@@ -507,6 +543,18 @@
         "end": 1963
       },
       {
+        "token": "swapped",
+        "label": "extra",
+        "start": 2004,
+        "end": 2011
+      },
+      {
+        "token": "true",
+        "label": "extra",
+        "start": 2012,
+        "end": 2016
+      },
+      {
         "token": "promise",
         "label": "extra",
         "start": 2106,
@@ -520,5 +568,5 @@
       }
     ]
   },
-  "score": 77.8
+  "score": 74.3
 }

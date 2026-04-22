@@ -1,7 +1,7 @@
 # Found            : 420
 # MISSING          : 2
 # EXTRA            : 4
-# Follow (E)       : 99.2 %
+# Follow (E)       : 99.7 %
 DOCTYPE	09:34:25
 html	09:34:27
 <html	09:34:58
@@ -426,5 +426,5 @@ left-offset	10:40:46
 425px	10:41:03	MISSING
 432px	10:41:03	EXTRA
 Styling	10:41:03	COMMENT	EXTRA
-background-color	10:36:49	EXTRA*
-black	10:36:49	EXTRA*
+background-color	10:41:03	EXTRA
+black	10:41:03	EXTRA

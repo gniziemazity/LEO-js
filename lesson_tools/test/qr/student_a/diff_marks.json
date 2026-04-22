@@ -1,0 +1,222 @@
+{
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": true,
+  "teacher_files": {
+    "123456.css": [
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 27,
+        "end": 30
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 31,
+        "end": 39
+      },
+      {
+        "token": "3%",
+        "label": "comment",
+        "start": 234,
+        "end": 236
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 237,
+        "end": 239
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 240,
+        "end": 243
+      },
+      {
+        "token": "viewport",
+        "label": "comment",
+        "start": 244,
+        "end": 252
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 253,
+        "end": 258
+      },
+      {
+        "token": "does",
+        "label": "comment",
+        "start": 360,
+        "end": 364
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 365,
+        "end": 368
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 369,
+        "end": 375
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 376,
+        "end": 379
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 380,
+        "end": 384
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 417,
+        "end": 424
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 425,
+        "end": 428
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 429,
+        "end": 433
+      }
+    ],
+    "reconstructed.html": [
+      {
+        "token": "onclick",
+        "label": "missing",
+        "start": 388,
+        "end": 395
+      }
+    ]
+  },
+  "student_files": {
+    "123456.css": [
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 29,
+        "end": 32
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 33,
+        "end": 41
+      },
+      {
+        "token": "background-color",
+        "label": "extra_star",
+        "start": 229,
+        "end": 245
+      },
+      {
+        "token": "color",
+        "label": "extra",
+        "start": 240,
+        "end": 245
+      },
+      {
+        "token": "red",
+        "label": "extra_star",
+        "start": 247,
+        "end": 250
+      },
+      {
+        "token": "3%",
+        "label": "comment",
+        "start": 284,
+        "end": 286
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 287,
+        "end": 289
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 290,
+        "end": 293
+      },
+      {
+        "token": "viewpoint",
+        "label": "comment",
+        "start": 294,
+        "end": 303
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 304,
+        "end": 309
+      },
+      {
+        "token": "doesnot",
+        "label": "comment",
+        "start": 422,
+        "end": 429
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 430,
+        "end": 436
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 437,
+        "end": 440
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 441,
+        "end": 445
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 480,
+        "end": 487
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 488,
+        "end": 491
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 492,
+        "end": 496
+      }
+    ],
+    "index.html": [
+      {
+        "token": "onClick",
+        "label": "extra",
+        "start": 395,
+        "end": 402
+      }
+    ]
+  },
+  "score": 98.6
+}

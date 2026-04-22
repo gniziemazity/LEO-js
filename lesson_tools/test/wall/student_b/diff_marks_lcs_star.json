@@ -1,6 +1,6 @@
 {
   "format_version": 4,
-  "token_matching": "context-cosine-hungarian",
+  "token_matching": "token-lcs-star",
   "case_sensitive": true,
   "teacher_files": {
     "reconstructed.html": [
@@ -9,6 +9,12 @@
         "label": "missing",
         "start": 40,
         "end": 45
+      },
+      {
+        "token": "Board",
+        "label": "missing",
+        "start": 46,
+        "end": 51
       },
       {
         "token": "styling",
@@ -32,12 +38,6 @@
         "token": "#chess-board",
         "label": "missing",
         "start": 96,
-        "end": 108
-      },
-      {
-        "token": "chess-board",
-        "label": "missing",
-        "start": 97,
         "end": 108
       },
       {
@@ -181,36 +181,6 @@
       {
         "token": "<div",
         "label": "missing",
-        "start": 700,
-        "end": 704
-      },
-      {
-        "token": "class",
-        "label": "missing",
-        "start": 705,
-        "end": 710
-      },
-      {
-        "token": "cell",
-        "label": "missing",
-        "start": 712,
-        "end": 716
-      },
-      {
-        "token": "</div",
-        "label": "missing",
-        "start": 723,
-        "end": 728
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 725,
-        "end": 728
-      },
-      {
-        "token": "<div",
-        "label": "missing",
         "start": 733,
         "end": 737
       },
@@ -236,12 +206,6 @@
         "token": "</div",
         "label": "missing",
         "start": 757,
-        "end": 762
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 759,
         "end": 762
       },
       {
@@ -275,12 +239,6 @@
         "end": 795
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 792,
-        "end": 795
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 800,
@@ -308,12 +266,6 @@
         "token": "</div",
         "label": "missing",
         "start": 824,
-        "end": 829
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 826,
         "end": 829
       },
       {
@@ -347,12 +299,6 @@
         "end": 862
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 859,
-        "end": 862
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 867,
@@ -383,12 +329,6 @@
         "end": 896
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 893,
-        "end": 896
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 901,
@@ -416,12 +356,6 @@
         "token": "</div",
         "label": "missing",
         "start": 924,
-        "end": 929
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 926,
         "end": 929
       },
       {
@@ -461,12 +395,6 @@
         "end": 978
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 975,
-        "end": 978
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 983,
@@ -494,12 +422,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1007,
-        "end": 1012
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1009,
         "end": 1012
       },
       {
@@ -533,12 +455,6 @@
         "end": 1045
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1042,
-        "end": 1045
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1050,
@@ -566,12 +482,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1074,
-        "end": 1079
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1076,
         "end": 1079
       },
       {
@@ -605,12 +515,6 @@
         "end": 1112
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1109,
-        "end": 1112
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1117,
@@ -638,12 +542,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1141,
-        "end": 1146
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1143,
         "end": 1146
       },
       {
@@ -677,12 +575,6 @@
         "end": 1179
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1176,
-        "end": 1179
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1184,
@@ -710,12 +602,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1208,
-        "end": 1213
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1210,
         "end": 1213
       },
       {
@@ -749,12 +635,6 @@
         "end": 1251
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1248,
-        "end": 1251
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1256,
@@ -782,12 +662,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1279,
-        "end": 1284
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1281,
         "end": 1284
       },
       {
@@ -821,12 +695,6 @@
         "end": 1318
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1315,
-        "end": 1318
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1323,
@@ -854,12 +722,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1346,
-        "end": 1351
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1348,
         "end": 1351
       },
       {
@@ -893,12 +755,6 @@
         "end": 1385
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1382,
-        "end": 1385
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1390,
@@ -926,12 +782,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1413,
-        "end": 1418
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1415,
         "end": 1418
       },
       {
@@ -965,12 +815,6 @@
         "end": 1452
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1449,
-        "end": 1452
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1457,
@@ -998,12 +842,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1480,
-        "end": 1485
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1482,
         "end": 1485
       },
       {
@@ -1043,12 +881,6 @@
         "end": 1534
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1531,
-        "end": 1534
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1539,
@@ -1076,12 +908,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1563,
-        "end": 1568
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1565,
         "end": 1568
       },
       {
@@ -1115,12 +941,6 @@
         "end": 1601
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1598,
-        "end": 1601
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1606,
@@ -1148,12 +968,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1630,
-        "end": 1635
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1632,
         "end": 1635
       },
       {
@@ -1187,12 +1001,6 @@
         "end": 1668
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1665,
-        "end": 1668
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1673,
@@ -1220,12 +1028,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1697,
-        "end": 1702
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1699,
         "end": 1702
       },
       {
@@ -1259,12 +1061,6 @@
         "end": 1735
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1732,
-        "end": 1735
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1740,
@@ -1292,12 +1088,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1764,
-        "end": 1769
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1766,
         "end": 1769
       },
       {
@@ -1331,12 +1121,6 @@
         "end": 1807
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1804,
-        "end": 1807
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1812,
@@ -1364,12 +1148,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1835,
-        "end": 1840
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1837,
         "end": 1840
       },
       {
@@ -1403,12 +1181,6 @@
         "end": 1874
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1871,
-        "end": 1874
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1879,
@@ -1436,12 +1208,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1902,
-        "end": 1907
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1904,
         "end": 1907
       },
       {
@@ -1475,12 +1241,6 @@
         "end": 1941
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 1938,
-        "end": 1941
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 1946,
@@ -1508,12 +1268,6 @@
         "token": "</div",
         "label": "missing",
         "start": 1969,
-        "end": 1974
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 1971,
         "end": 1974
       },
       {
@@ -1547,12 +1301,6 @@
         "end": 2008
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2005,
-        "end": 2008
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2013,
@@ -1580,12 +1328,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2036,
-        "end": 2041
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2038,
         "end": 2041
       },
       {
@@ -1625,12 +1367,6 @@
         "end": 2090
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2087,
-        "end": 2090
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2095,
@@ -1658,12 +1394,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2119,
-        "end": 2124
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2121,
         "end": 2124
       },
       {
@@ -1697,12 +1427,6 @@
         "end": 2157
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2154,
-        "end": 2157
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2162,
@@ -1730,12 +1454,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2186,
-        "end": 2191
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2188,
         "end": 2191
       },
       {
@@ -1769,12 +1487,6 @@
         "end": 2224
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2221,
-        "end": 2224
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2229,
@@ -1802,12 +1514,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2253,
-        "end": 2258
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2255,
         "end": 2258
       },
       {
@@ -1841,12 +1547,6 @@
         "end": 2291
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2288,
-        "end": 2291
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2296,
@@ -1874,12 +1574,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2320,
-        "end": 2325
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2322,
         "end": 2325
       },
       {
@@ -1913,12 +1607,6 @@
         "end": 2363
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2360,
-        "end": 2363
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2368,
@@ -1946,12 +1634,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2391,
-        "end": 2396
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2393,
         "end": 2396
       },
       {
@@ -1985,12 +1667,6 @@
         "end": 2430
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2427,
-        "end": 2430
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2435,
@@ -2018,12 +1694,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2458,
-        "end": 2463
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2460,
         "end": 2463
       },
       {
@@ -2057,12 +1727,6 @@
         "end": 2497
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2494,
-        "end": 2497
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2502,
@@ -2090,12 +1754,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2525,
-        "end": 2530
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2527,
         "end": 2530
       },
       {
@@ -2129,12 +1787,6 @@
         "end": 2564
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2561,
-        "end": 2564
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2569,
@@ -2162,12 +1814,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2592,
-        "end": 2597
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2594,
         "end": 2597
       },
       {
@@ -2207,12 +1853,6 @@
         "end": 2646
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2643,
-        "end": 2646
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2651,
@@ -2240,12 +1880,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2675,
-        "end": 2680
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2677,
         "end": 2680
       },
       {
@@ -2279,12 +1913,6 @@
         "end": 2713
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2710,
-        "end": 2713
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2718,
@@ -2312,12 +1940,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2742,
-        "end": 2747
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2744,
         "end": 2747
       },
       {
@@ -2351,12 +1973,6 @@
         "end": 2780
       },
       {
-        "token": "div",
-        "label": "missing",
-        "start": 2777,
-        "end": 2780
-      },
-      {
         "token": "<div",
         "label": "missing",
         "start": 2785,
@@ -2384,12 +2000,6 @@
         "token": "</div",
         "label": "missing",
         "start": 2809,
-        "end": 2814
-      },
-      {
-        "token": "div",
-        "label": "missing",
-        "start": 2811,
         "end": 2814
       },
       {
@@ -2423,10 +2033,22 @@
         "end": 2847
       },
       {
-        "token": "div",
+        "token": "<div",
         "label": "missing",
-        "start": 2844,
-        "end": 2847
+        "start": 2852,
+        "end": 2856
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 2857,
+        "end": 2862
+      },
+      {
+        "token": "cell",
+        "label": "missing",
+        "start": 2864,
+        "end": 2868
       },
       {
         "token": "light",
@@ -2441,10 +2063,10 @@
         "end": 2881
       },
       {
-        "token": "div",
+        "token": "</div",
         "label": "missing",
-        "start": 2878,
-        "end": 2881
+        "start": 2885,
+        "end": 2890
       },
       {
         "token": "div",
@@ -2537,12 +2159,6 @@
         "end": 3020
       },
       {
-        "token": "div",
-        "label": "comment",
-        "start": 3017,
-        "end": 3020
-      },
-      {
         "token": "Visit",
         "label": "missing",
         "start": 3084,
@@ -2557,6 +2173,12 @@
         "label": "extra",
         "start": 49,
         "end": 54
+      },
+      {
+        "token": "board",
+        "label": "extra",
+        "start": 55,
+        "end": 60
       },
       {
         "token": "#Chess-Board",

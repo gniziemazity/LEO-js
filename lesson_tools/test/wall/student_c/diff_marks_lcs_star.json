@@ -1,15 +1,9 @@
 {
   "format_version": 4,
-  "token_matching": "context-cosine-hungarian",
+  "token_matching": "token-lcs-star",
   "case_sensitive": true,
   "teacher_files": {
     "reconstructed.html": [
-      {
-        "token": "DOCTYPE",
-        "label": "missing",
-        "start": 2,
-        "end": 9
-      },
       {
         "token": "styling",
         "label": "comment",
@@ -33,18 +27,6 @@
         "label": "missing",
         "start": 122,
         "end": 127
-      },
-      {
-        "token": "display",
-        "label": "missing",
-        "start": 133,
-        "end": 140
-      },
-      {
-        "token": "flex",
-        "label": "missing",
-        "start": 142,
-        "end": 146
       },
       {
         "token": "CSS",
@@ -293,238 +275,274 @@
         "end": 3020
       },
       {
-        "token": "div",
-        "label": "comment",
-        "start": 3017,
-        "end": 3020
+        "token": "W3Schools",
+        "label": "missing",
+        "start": 3090,
+        "end": 3099
       }
     ]
   },
   "student_files": {
     "index.html": [
       {
-        "token": "doctype",
-        "label": "extra",
-        "start": 2,
-        "end": 9
+        "token": "styling",
+        "label": "comment",
+        "start": 99,
+        "end": 106
+      },
+      {
+        "token": "by",
+        "label": "comment",
+        "start": 107,
+        "end": 109
+      },
+      {
+        "token": "id",
+        "label": "comment",
+        "start": 110,
+        "end": 112
       },
       {
         "token": "400px",
         "label": "extra_star",
-        "start": 135,
-        "end": 140
+        "start": 164,
+        "end": 169
       },
       {
-        "token": "front-size",
+        "token": "font-size",
         "label": "comment",
-        "start": 160,
-        "end": 170
+        "start": 189,
+        "end": 198
       },
       {
-        "token": "size",
+        "token": "0px",
         "label": "comment",
-        "start": 166,
-        "end": 170
+        "start": 200,
+        "end": 203
       },
       {
-        "token": "0",
+        "token": "CSS",
         "label": "comment",
-        "start": 172,
-        "end": 173
+        "start": 299,
+        "end": 302
       },
       {
-        "token": "background-color",
+        "token": "class",
         "label": "comment",
-        "start": 262,
-        "end": 278
+        "start": 303,
+        "end": 308
       },
       {
-        "token": "black",
+        "token": "commented",
         "label": "comment",
-        "start": 280,
-        "end": 285
+        "start": 408,
+        "end": 417
+      },
+      {
+        "token": "styling",
+        "label": "comment",
+        "start": 418,
+        "end": 425
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 428,
+        "end": 431
+      },
+      {
+        "token": "in",
+        "label": "comment",
+        "start": 432,
+        "end": 434
+      },
+      {
+        "token": "use",
+        "label": "comment",
+        "start": 435,
+        "end": 438
+      },
+      {
+        "token": "just",
+        "label": "comment",
+        "start": 441,
+        "end": 445
+      },
+      {
+        "token": "an",
+        "label": "comment",
+        "start": 446,
+        "end": 448
+      },
+      {
+        "token": "example",
+        "label": "comment",
+        "start": 449,
+        "end": 456
+      },
+      {
+        "token": "margin",
+        "label": "comment",
+        "start": 473,
+        "end": 479
+      },
+      {
+        "token": "10px",
+        "label": "comment",
+        "start": 481,
+        "end": 485
       },
       {
         "token": "padding",
         "label": "comment",
-        "start": 383,
-        "end": 390
+        "start": 503,
+        "end": 510
       },
       {
         "token": "5px",
         "label": "comment",
-        "start": 392,
-        "end": 395
+        "start": 512,
+        "end": 515
       },
       {
         "token": "display",
-        "label": "extra_star",
-        "start": 455,
-        "end": 462
+        "label": "comment",
+        "start": 577,
+        "end": 584
       },
       {
         "token": "inline-block",
-        "label": "extra_star",
-        "start": 464,
-        "end": 476
+        "label": "comment",
+        "start": 586,
+        "end": 598
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 645,
+        "end": 649
+      },
+      {
+        "token": "includes",
+        "label": "comment",
+        "start": 650,
+        "end": 658
+      },
+      {
+        "token": "padding",
+        "label": "comment",
+        "start": 659,
+        "end": 666
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 667,
+        "end": 670
+      },
+      {
+        "token": "border",
+        "label": "comment",
+        "start": 671,
+        "end": 677
       },
       {
         "token": "div",
         "label": "comment",
-        "start": 3545,
-        "end": 3548
+        "start": 3827,
+        "end": 3830
       },
       {
         "token": "with",
         "label": "comment",
-        "start": 3549,
-        "end": 3553
+        "start": 3831,
+        "end": 3835
       },
       {
-        "token": "inlinestyle",
+        "token": "inline",
         "label": "comment",
-        "start": 3554,
-        "end": 3565
-      },
-      {
-        "token": "<body",
-        "label": "extra",
-        "start": 3578,
-        "end": 3583
+        "start": 3836,
+        "end": 3842
       },
       {
         "token": "style",
-        "label": "extra",
-        "start": 3584,
-        "end": 3589
+        "label": "comment",
+        "start": 3843,
+        "end": 3848
       },
       {
-        "token": "background-color",
-        "label": "extra_star",
-        "start": 3604,
-        "end": 3620
+        "token": "not",
+        "label": "comment",
+        "start": 3850,
+        "end": 3853
       },
       {
-        "token": "black",
-        "label": "extra_star",
-        "start": 3622,
-        "end": 3627
+        "token": "recomended",
+        "label": "comment",
+        "start": 3854,
+        "end": 3864
       },
       {
-        "token": "width",
-        "label": "extra",
-        "start": 3641,
-        "end": 3646
+        "token": "<div",
+        "label": "comment",
+        "start": 3874,
+        "end": 3878
       },
       {
-        "token": "50px",
-        "label": "extra",
-        "start": 3648,
-        "end": 3652
+        "token": "style",
+        "label": "comment",
+        "start": 3879,
+        "end": 3884
       },
       {
         "token": "height",
-        "label": "extra",
-        "start": 3666,
-        "end": 3672
+        "label": "comment",
+        "start": 3899,
+        "end": 3905
       },
       {
         "token": "50px",
-        "label": "extra",
-        "start": 3674,
-        "end": 3678
+        "label": "comment",
+        "start": 3907,
+        "end": 3911
       },
       {
-        "token": "Chess",
-        "label": "extra",
-        "start": 3694,
-        "end": 3699
+        "token": "background-color",
+        "label": "comment",
+        "start": 3925,
+        "end": 3941
       },
       {
-        "token": "Board",
-        "label": "extra",
-        "start": 3700,
-        "end": 3705
+        "token": "black",
+        "label": "comment",
+        "start": 3943,
+        "end": 3948
       },
       {
-        "token": "<a",
-        "label": "extra",
-        "start": 3729,
-        "end": 3731
+        "token": "width",
+        "label": "comment",
+        "start": 3962,
+        "end": 3967
       },
       {
-        "token": "href",
-        "label": "extra",
-        "start": 3732,
-        "end": 3736
-      },
-      {
-        "token": "https",
-        "label": "extra",
-        "start": 3738,
-        "end": 3743
-      },
-      {
-        "token": "www",
-        "label": "extra",
-        "start": 3746,
-        "end": 3749
-      },
-      {
-        "token": "w3schools",
-        "label": "extra",
-        "start": 3750,
-        "end": 3759
-      },
-      {
-        "token": "com",
-        "label": "extra",
-        "start": 3760,
-        "end": 3763
-      },
-      {
-        "token": "Visit",
-        "label": "extra",
-        "start": 3779,
-        "end": 3784
-      },
-      {
-        "token": "W3Schools",
-        "label": "extra",
-        "start": 3785,
-        "end": 3794
-      },
-      {
-        "token": "com",
-        "label": "extra",
-        "start": 3795,
-        "end": 3798
-      },
-      {
-        "token": "</a",
-        "label": "extra",
-        "start": 3808,
-        "end": 3811
-      },
-      {
-        "token": "</body",
-        "label": "extra",
-        "start": 3818,
-        "end": 3824
+        "token": "50px",
+        "label": "comment",
+        "start": 3969,
+        "end": 3973
       },
       {
         "token": "</div",
-        "label": "extra",
-        "start": 3834,
-        "end": 3839
+        "label": "comment",
+        "start": 3985,
+        "end": 3990
       },
       {
-        "token": "div",
-        "label": "extra_star",
-        "start": 3836,
-        "end": 3839
+        "token": "W3schools",
+        "label": "extra",
+        "start": 4076,
+        "end": 4085
       }
     ]
   },
-  "score": 95.8
+  "score": 97.4
 }

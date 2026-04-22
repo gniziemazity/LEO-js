@@ -1,7 +1,7 @@
 # Found            : 453
 # MISSING          : 2
 # EXTRA            : 33
-# Follow (E)       : 99.3 %
+# Follow (E)       : 100.0 %
 DOCTYPE	11:53:34
 html	11:53:35
 <html	11:53:45
@@ -463,8 +463,8 @@ let	12:56:53
 <img	12:56:53	EXTRA
 <img	12:56:53	EXTRA
 <img	12:56:53	EXTRA
-handleClick	12:56:55	EXTRA*
-onclick	12:56:58	EXTRA*
+handleClick	12:56:53	EXTRA
+onclick	12:56:53	EXTRA
 p2	12:56:53	EXTRA
 p3	12:56:53	EXTRA
 p4	12:56:53	EXTRA
@@ -489,4 +489,4 @@ src	12:56:53	EXTRA
 src	12:56:53	EXTRA
 src	12:56:53	EXTRA
 src	12:56:53	EXTRA
-this	12:56:54	EXTRA*
+this	12:56:53	EXTRA

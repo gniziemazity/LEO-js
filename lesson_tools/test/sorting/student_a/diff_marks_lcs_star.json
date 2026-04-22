@@ -1,14 +1,20 @@
 {
   "format_version": 4,
-  "token_matching": "context-cosine-hungarian",
+  "token_matching": "token-lcs-star",
   "case_sensitive": true,
   "teacher_files": {
     "reconstructed.html": [
       {
-        "token": "200px",
+        "token": "align-items",
         "label": "missing",
-        "start": 197,
-        "end": 202
+        "start": 138,
+        "end": 149
+      },
+      {
+        "token": "center",
+        "label": "missing",
+        "start": 151,
+        "end": 157
       },
       {
         "token": "global",
@@ -117,11 +123,35 @@
         "label": "comment",
         "start": 983,
         "end": 989
+      },
+      {
+        "token": "swapped",
+        "label": "missing",
+        "start": 1556,
+        "end": 1563
+      },
+      {
+        "token": "true",
+        "label": "missing",
+        "start": 1566,
+        "end": 1570
       }
     ]
   },
   "student_files": {
     "index.html": [
+      {
+        "token": "align-items",
+        "label": "extra",
+        "start": 149,
+        "end": 160
+      },
+      {
+        "token": "center",
+        "label": "extra",
+        "start": 162,
+        "end": 168
+      },
       {
         "token": "aligns",
         "label": "comment",
@@ -145,12 +175,6 @@
         "label": "comment",
         "start": 191,
         "end": 197
-      },
-      {
-        "token": "200px",
-        "label": "extra_star",
-        "start": 297,
-        "end": 302
       },
       {
         "token": "global",
@@ -585,6 +609,18 @@
         "end": 2290
       },
       {
+        "token": "swapped",
+        "label": "extra",
+        "start": 2322,
+        "end": 2329
+      },
+      {
+        "token": "true",
+        "label": "extra",
+        "start": 2332,
+        "end": 2336
+      },
+      {
         "token": "this",
         "label": "comment",
         "start": 2466,
@@ -634,5 +670,5 @@
       }
     ]
   },
-  "score": 99.4
+  "score": 97.7
 }

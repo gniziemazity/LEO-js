@@ -301,22 +301,19 @@ def _context_vector(
     tokens_seq: List[str],
     pos: int,
     k: int,
-    comment_flags: List[bool] = None,
     exclude_positions: set = None,
 ) -> Counter:
     vec = Counter()
     if exclude_positions:
-        # Expanding window: when a neighbor is excluded or in a comment,
-        # look further to fill k slots on each side.
         left, right = pos - 1, pos + 1
         left_count = right_count = 0
         while left_count < k and left >= 0:
-            if not ((comment_flags is not None and comment_flags[left]) or left in exclude_positions):
+            if left not in exclude_positions:
                 vec[tokens_seq[left]] += 1
                 left_count += 1
             left -= 1
         while right_count < k and right < len(tokens_seq):
-            if not ((comment_flags is not None and comment_flags[right]) or right in exclude_positions):
+            if right not in exclude_positions:
                 vec[tokens_seq[right]] += 1
                 right_count += 1
             right += 1
@@ -324,11 +321,8 @@ def _context_vector(
         lo = max(0, pos - k)
         hi = min(len(tokens_seq), pos + k + 1)
         for i in range(lo, hi):
-            if i == pos:
-                continue
-            if comment_flags is not None and comment_flags[i]:
-                continue
-            vec[tokens_seq[i]] += 1
+            if i != pos:
+                vec[tokens_seq[i]] += 1
     return vec
 
 
@@ -473,10 +467,16 @@ def _build_ghost_contexts(
             toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(''.join(seg2)))
         del_ts_co_tokens[dt] = toks
 
-    reconstructed_at = {
-        dt: [m.group() for text in texts.values() for m in _sm._CSS_TOKEN_RE.finditer(text)]
-        for dt, texts in reconstruct_all_headless_at_timestamps(all_events, sorted(relevant_del_ts)).items()
-    }
+    reconstructed_at: Dict[int, List[str]] = {}
+    for dt, texts in reconstruct_all_headless_at_timestamps(all_events, sorted(relevant_del_ts)).items():
+        toks: List[str] = []
+        for tab_key, text in texts.items():
+            ext = Path(tab_key).suffix.lower() or '.html'
+            c_starts, c_ends = _comment_ranges_for_ext(text, ext)
+            for m in _sm._CSS_TOKEN_RE.finditer(text):
+                if not _pos_in_comment(m.start(), c_starts, c_ends):
+                    toks.append(m.group())
+        reconstructed_at[dt] = toks
 
     def _pick_pos(positions: List[int], seq: List[str], co_toks: Counter) -> int:
         if len(positions) == 1 or not co_toks:
@@ -549,8 +549,6 @@ def _locate_token(
     t_seq: List[str],
     k: int,
     ghost_ctx_vecs: List[Counter] = None,
-    s_flags: List[bool] = None,
-    t_flags: List[bool] = None,
     s_exclude: set = None,
 ) -> Tuple[set, set, set, set]:
     n_s = len(s_positions)
@@ -560,7 +558,7 @@ def _locate_token(
     if n_s == 0:
         return set(), set(range(n_t)), set(), set()
 
-    s_ctx = [_context_vector(s_seq, p, k, s_flags, s_exclude) for p in s_positions]
+    s_ctx = [_context_vector(s_seq, p, k, s_exclude) for p in s_positions]
 
     if n_g:
         tok_keep = (frozenset(t for v in ghost_ctx_vecs for t in v)
@@ -581,7 +579,7 @@ def _locate_token(
         return set(), set(), set(range(n_s)), set()
 
     if n_t > 0:
-        t_ctx = [_context_vector(t_seq, p, k, t_flags) for p in t_positions]
+        t_ctx = [_context_vector(t_seq, p, k) for p in t_positions]
     else:
         t_ctx = []
 
@@ -643,9 +641,10 @@ def _collect_occurrences(files_by_ext: dict, token_keys: set) -> Tuple[List[dict
 
     occs.sort(key=lambda x: (x['file_order'], x['pos'], x['token']))
     seq = []
-    for i, oc in enumerate(occs):
-        oc['seq_idx'] = i
-        seq.append(oc['token'])
+    for oc in occs:
+        if not oc['is_comment']:
+            oc['seq_idx'] = len(seq)
+            seq.append(oc['token'])
     return occs, counts
 
 
@@ -674,10 +673,8 @@ def _build_contextual_diff_marks(
     for oc in student_occs:
         student_by_token.setdefault(oc['token'], []).append(oc)
 
-    teacher_seq = [oc['token'] for oc in teacher_occs]
-    student_seq = [oc['token'] for oc in student_occs]
-    teacher_flags = [oc['is_comment'] for oc in teacher_occs]
-    student_flags = [oc['is_comment'] for oc in student_occs]
+    teacher_seq = [oc['token'] for oc in teacher_occs if not oc['is_comment']]
+    student_seq = [oc['token'] for oc in student_occs if not oc['is_comment']]
 
     d_counts = Counter(
         tok
@@ -713,8 +710,6 @@ def _build_contextual_diff_marks(
                 [x['seq_idx'] for x in t_out_pre],
                 student_seq, teacher_seq, context_k,
                 ghost_ctx_vecs=ghost_vecs,
-                s_flags=student_flags,
-                t_flags=teacher_flags,
             )
             for i in pre_es:
                 pre_extra_star_positions.add(s_out_pre[i]['seq_idx'])
@@ -735,8 +730,6 @@ def _build_contextual_diff_marks(
         _mso, missing_to, extra_so, extra_star_so = _locate_token(
             s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
             ghost_ctx_vecs=ghost_vecs,
-            s_flags=student_flags,
-            t_flags=teacher_flags,
             s_exclude=s_excl,
         )
 

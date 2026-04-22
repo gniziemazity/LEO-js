@@ -1,7 +1,7 @@
 # Found            : 381
 # MISSING          : 41
 # EXTRA            : 28
-# Follow (E)       : 96.1 %
+# Follow (E)       : 97.4 %
 DOCTYPE	09:34:25	MISSING
 html	09:34:27
 <html	09:34:58
@@ -118,7 +118,7 @@ includes	10:24:00	COMMENT	MISSING
 padding	10:24:00	COMMENT	MISSING
 and	10:24:01	COMMENT	MISSING
 border	10:24:02	COMMENT	MISSING
-display	10:25:49	MISSING
+display	10:25:49
 flex	10:25:49	MISSING
 flex-wrap	10:25:52
 wrap	10:25:53
@@ -437,8 +437,8 @@ Board	10:41:03	EXTRA
 Chess	10:41:03	EXTRA
 Visit	10:41:03	EXTRA
 W3Schools	10:41:03	EXTRA
-background-color	10:36:49	EXTRA*
-black	10:36:49	EXTRA*
+background-color	10:41:03	EXTRA
+black	10:41:03	EXTRA
 com	10:41:03	EXTRA
 com	10:41:03	EXTRA
 doctype	10:41:03	EXTRA
@@ -446,10 +446,9 @@ front-size	10:41:03	COMMENT	EXTRA
 height	10:41:03	EXTRA
 href	10:41:03	EXTRA
 https	10:41:03	EXTRA
-inline-block	10:26:45	EXTRA*
+inline-block	10:41:03	EXTRA
 inlinestyle	10:41:03	COMMENT	EXTRA
 style	10:41:03	EXTRA
 w3schools	10:41:03	EXTRA
 width	10:41:03	EXTRA
 www	10:41:03	EXTRA
-display	10:26:45	EXTRA*

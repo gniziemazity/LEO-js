@@ -1,0 +1,231 @@
+# Found            : 218
+# MISSING          : 4
+# EXTRA            : 5
+# Follow (E)       : 99.5 %
+<html	09:14:23
+<head	09:14:23
+<meta	09:14:23
+<meta	09:14:23
+<title	09:14:23
+</title	09:14:23
+</head	09:14:23
+<body	09:14:23
+</body	09:14:23
+</html	09:14:23
+device-width	09:14:23
+initial-scale	09:14:23
+DOCTYPE	09:14:23
+html	09:14:23
+lang	09:14:23
+en	09:14:23
+charset	09:14:23
+UTF	09:14:23
+8	09:14:23
+name	09:14:23
+viewport	09:14:23
+content	09:14:23
+width	09:14:23
+1.0	09:14:23
+QR	09:14:27
+Positioning	09:14:37
+<h1	09:14:45
+</h1	09:14:48
+QR	09:14:50
+Positioning	09:15:00
+<link	09:15:10
+rel	09:15:13
+stylesheet	09:15:25
+href	09:15:30
+123456	09:15:39
+css	09:15:42
+body	09:15:53
+display	09:16:04
+flex	09:16:09
+flex-direction	09:16:23
+column	09:16:29
+align-items	09:16:41
+center	09:16:47
+h1	09:16:56
+font-family	09:17:11
+Arial	09:17:17
+color	09:17:25
+<img	09:17:41
+src	09:17:44
+map	09:17:50
+alt	09:17:58
+map	09:18:03
+png	09:18:27
+id	09:18:33
+map	09:18:39
+#map	09:18:51
+width	09:19:00
+100%	09:19:05
+margin	09:19:42
+0	09:19:42
+<div	09:19:48
+id	09:19:51
+marker	09:19:59
+</div	09:20:03
+#marker	09:20:14
+width	09:20:23
+3vw	09:20:28
+3%	09:20:34	COMMENT
+of	09:20:36	COMMENT
+the	09:20:40	COMMENT
+viewport	09:20:47	COMMENT	MISSING
+width	09:20:52	COMMENT
+height	09:21:01
+3vw	09:21:05
+background-color	09:21:21
+black	09:21:27
+border-radius	09:21:40
+50%	09:21:45
+outline	09:21:53
+5px	09:21:58
+solid	09:22:03
+does	09:22:16	COMMENT	MISSING
+not	09:22:19	COMMENT	MISSING
+affect	09:22:25	COMMENT
+the	09:22:28	COMMENT
+size	09:22:33	COMMENT
+border	09:22:42
+5px	09:22:46
+solid	09:22:52
+white	09:22:57
+affects	09:23:07	COMMENT
+the	09:23:10	COMMENT
+size	09:23:15	COMMENT
+root	09:23:31
+theme	09:23:42
+#280	09:23:47
+CSS	09:23:54	COMMENT
+variable	09:24:02	COMMENT
+var	09:24:15
+theme	09:24:22
+var	09:24:34
+theme	09:24:40
+position	09:24:56
+absolute	09:25:04
+top	09:25:09
+0	09:25:11
+left	09:25:16
+0	09:25:19
+transform	09:25:29
+translate	09:25:39
+-50%	09:25:43
+-50%	09:25:48
+<div	09:26:16
+</div	09:26:16
+id	09:26:16
+mapContainer	09:26:16
+#mapContainer	09:26:33
+position	09:26:45
+relative	09:26:53
+<script	09:27:06
+src	09:27:10
+123456	09:27:18
+js	09:27:21
+</script	09:27:25
+function	09:27:34
+showMarkerAt	09:27:46
+top	09:27:49
+left	09:27:54
+marker	09:28:05
+style	09:28:11
+top	09:28:15
+top	09:28:20
+marker	09:28:28
+style	09:28:33
+left	09:28:37
+left	09:28:43
+<button	09:29:22
+id	09:29:24
+btn	09:29:30
+onclick	09:29:38	MISSING
+toggleScanner	09:29:52
+</button	09:29:58
+SCAN	09:30:02
+let	09:30:14
+scannerOn	09:30:22
+false	09:30:29
+function	09:30:39
+toggleScanner	09:30:51
+scannerOn	09:31:05
+scannerOn	09:31:16
+if	09:31:20
+scannerOn	09:31:29
+btn	09:31:39
+innerText	09:31:48
+CANCEL	09:31:57
+else	09:32:04
+btn	09:32:12
+innerText	09:32:21
+SCAN	09:32:28
+<script	09:32:43
+src	09:32:46
+https	09:32:54
+unpkg	09:33:01
+com	09:33:04
+html5-qrcode	09:33:16
+type	09:33:21
+text	09:33:28
+javascript	09:33:37
+</script	09:33:41
+<div	09:33:49
+id	09:33:52
+camera	09:34:00
+</div	09:34:04
+#camera	09:34:16
+width	09:34:26
+100%	09:34:31
+const	09:34:45
+reader	09:34:51
+new	09:34:56
+Html5Qrcode	09:35:06
+camera	09:35:13
+startScanner	09:35:30
+stopScanner	09:35:45
+function	09:36:00
+startScanner	09:36:11
+reader	09:36:23
+start	09:36:28
+facingMode	09:36:43
+environment	09:36:55
+function	09:37:09
+text	09:37:15
+catch	09:37:45
+function	09:37:52
+err	09:37:57
+console	09:38:09
+error	09:38:14
+err	09:38:17
+function	09:38:31
+stopScanner	09:38:41
+reader	09:38:53
+stop	09:38:57
+const	09:39:10
+place	09:39:15
+JSON	09:39:21
+parse	09:39:27
+text	09:39:31
+showMarkerAt	09:39:44
+place	09:39:49
+top	09:39:52
+place	09:39:58
+left	09:40:03
+toggleScanner	09:40:16
+mapContainer	09:40:33
+style	09:40:39
+display	09:40:45
+none	09:40:52
+mapContainer	09:41:09
+style	09:41:14
+display	09:41:21
+block	09:41:28
+display	09:41:41
+none	09:41:46
+background-color	09:41:46	EXTRA
+doesnot	09:41:46	COMMENT	EXTRA
+onClick	09:41:46	EXTRA
+red	09:41:46	EXTRA
+viewpoint	09:41:46	COMMENT	EXTRA

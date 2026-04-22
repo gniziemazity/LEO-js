@@ -1,11 +1,11 @@
-# Found            : 451
-# MISSING          : 4
-# EXTRA            : 31
-# Follow (E)       : 99.6 %
-DOCTYPE	11:53:34	MISSING
+# Found            : 435
+# MISSING          : 20
+# EXTRA            : 66
+# Follow (E)       : 95.8 %
+DOCTYPE	11:53:34
 html	11:53:35
 <html	11:53:45
-</html	11:53:51
+</html	11:53:51	MISSING
 <head	11:54:15
 </head	11:54:17
 <title	11:54:34
@@ -13,7 +13,7 @@ Chess	11:54:35
 123456	11:54:38
 </title	11:54:40
 <body	11:54:53
-</body	11:54:55
+</body	11:54:55	MISSING
 <h1	11:56:34
 Chess	11:56:36
 Game	11:56:37
@@ -57,7 +57,7 @@ repeat	12:04:38
 8	12:04:38
 1fr	12:04:39
 1	12:05:03	COMMENT
-fraction	12:05:06	COMMENT
+fraction	12:05:06	COMMENT	MISSING
 grid-template-columns	12:05:16
 repeat	12:05:19
 8	12:05:19
@@ -379,7 +379,7 @@ p2	12:16:05
 png	12:16:06
 img	12:17:42
 width	12:17:46
-50%	12:20:15
+50%	12:20:15	MISSING
 display	12:24:00
 flex	12:24:01
 align-items	12:24:02
@@ -392,11 +392,11 @@ pieces	12:25:36
 p5	12:25:37
 png	12:25:37
 class	12:26:40
-invert-color	12:26:42
-.invert-color	12:27:01
-filter	12:27:03
-invert	12:27:04
-100%	12:27:05
+invert-color	12:26:42	MISSING
+.invert-color	12:27:01	MISSING
+filter	12:27:03	MISSING
+invert	12:27:04	MISSING
+100%	12:27:05	MISSING
 <script	12:32:51
 </script	12:32:57
 function	12:33:12
@@ -411,7 +411,7 @@ red	12:35:34
 const	12:37:48
 cells	12:37:50
 document	12:37:53
-getElementsByClassName	12:37:56
+getElementsByClassName	12:37:56	MISSING
 cell	12:37:57
 console	12:38:39
 log	12:38:40
@@ -426,38 +426,49 @@ onclick	12:41:03
 handleClick	12:41:05
 cell	12:41:05
 function	12:42:53
-anonymous	12:43:02	COMMENT	MISSING
-function	12:43:04	COMMENT	MISSING
+anonymous	12:43:02	COMMENT
+function	12:43:04	COMMENT
 for	12:45:10
 const	12:45:11
 cell	12:45:12
 of	12:45:12
-cells	12:45:13
+cells	12:45:13	MISSING
 cell	12:45:15
 style	12:45:16
 border	12:45:17
-selectedPiece	12:51:24
+selectedPiece	12:51:24	MISSING
 null	12:51:25
 if	12:52:09
-selectedPiece	12:52:11
+selectedPiece	12:52:11	MISSING
 null	12:52:12
 element	12:52:17
-replaceChildren	12:52:19
-selectedPiece	12:52:27
-selectedPiece	12:52:30
-null	12:52:31
+replaceChildren	12:52:19	MISSING
+selectedPiece	12:52:27	MISSING
+selectedPiece	12:52:30	MISSING
+null	12:52:31	MISSING
 else	12:53:21
 if	12:53:21
 element	12:53:22
 children	12:53:24
 length	12:53:25
 0	12:53:25
-selectedPiece	12:53:29
+selectedPiece	12:53:29	MISSING
 element	12:53:30
 children	12:53:32
 0	12:53:32
-let	12:56:53
-4px	12:56:53	EXTRA
+let	12:56:53	MISSING
+2	12:56:53	COMMENT	EXTRA
+3	12:56:53	COMMENT	EXTRA
+4	12:56:53	COMMENT	EXTRA
+5	12:56:53	COMMENT	EXTRA
+6	12:56:53	COMMENT	EXTRA
+60%	12:56:53	EXTRA
+7	12:56:53	COMMENT	EXTRA
+8	12:56:53	COMMENT	EXTRA
+</div	12:56:53	EXTRA
+</div	12:56:53	EXTRA
+</div	12:56:53	EXTRA
+</div	12:56:53	EXTRA
 </div	12:56:53	EXTRA
 </div	12:56:53	EXTRA
 </div	12:56:53	EXTRA
@@ -466,25 +477,49 @@ let	12:56:53
 <div	12:56:53	EXTRA
 <div	12:56:53	EXTRA
 <div	12:56:53	EXTRA
-Doctype	12:56:53	EXTRA
-border	12:56:53	EXTRA
-cell	12:56:53	EXTRA
-cell	12:56:53	EXTRA
-cell	12:56:53	EXTRA
-cell	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+<div	12:56:53	EXTRA
+Game	12:56:53	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+Row	12:56:53	COMMENT	EXTRA
+black	12:56:53	EXTRA
+board	12:56:53	EXTRA
 class	12:56:53	EXTRA
 class	12:56:53	EXTRA
 class	12:56:53	EXTRA
 class	12:56:53	EXTRA
-dark	12:56:53	EXTRA
-dark	12:56:53	EXTRA
-element	12:56:53	EXTRA
+class	12:56:53	EXTRA
+class	12:56:53	EXTRA
+class	12:56:53	EXTRA
+class	12:56:53	EXTRA
+getElementById	12:56:53	EXTRA
 grey	12:56:53	EXTRA
 handleClick	12:56:53	EXTRA
-light	12:56:53	EXTRA
-light	12:56:53	EXTRA
 onclick	12:56:53	EXTRA
-red	12:56:53	EXTRA
-solid	12:56:53	EXTRA
-style	12:56:53	EXTRA
+replaceChild	12:56:53	EXTRA
+return	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+row	12:56:53	EXTRA
+selectedpice	12:56:53	EXTRA
+selectedpice	12:56:53	EXTRA
+selectedpice	12:56:53	EXTRA
+selectedpiece	12:56:53	EXTRA
+this	12:56:53	EXTRA
 this	12:56:53	EXTRA

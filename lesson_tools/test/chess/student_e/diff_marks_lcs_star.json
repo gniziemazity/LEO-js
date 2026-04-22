@@ -1,6 +1,6 @@
 {
   "format_version": 4,
-  "token_matching": "context-cosine-hungarian",
+  "token_matching": "token-lcs-star",
   "case_sensitive": true,
   "teacher_files": {
     "reconstructed.html": [
@@ -11,16 +11,34 @@
         "end": 52
       },
       {
+        "token": ".cell",
+        "label": "missing",
+        "start": 74,
+        "end": 79
+      },
+      {
+        "token": "border",
+        "label": "missing",
+        "start": 88,
+        "end": 94
+      },
+      {
         "token": "2px",
         "label": "missing",
         "start": 96,
         "end": 99
       },
       {
-        "token": "display",
+        "token": "solid",
         "label": "missing",
-        "start": 118,
-        "end": 125
+        "start": 100,
+        "end": 105
+      },
+      {
+        "token": "black",
+        "label": "missing",
+        "start": 106,
+        "end": 111
       },
       {
         "token": "align-items",
@@ -47,6 +65,30 @@
         "end": 185
       },
       {
+        "token": "gray",
+        "label": "missing",
+        "start": 265,
+        "end": 269
+      },
+      {
+        "token": "#chess-board",
+        "label": "missing",
+        "start": 281,
+        "end": 293
+      },
+      {
+        "token": "width",
+        "label": "missing",
+        "start": 300,
+        "end": 305
+      },
+      {
+        "token": "400px",
+        "label": "missing",
+        "start": 307,
+        "end": 312
+      },
+      {
         "token": "height",
         "label": "missing",
         "start": 318,
@@ -57,6 +99,12 @@
         "label": "missing",
         "start": 326,
         "end": 331
+      },
+      {
+        "token": "display",
+        "label": "missing",
+        "start": 337,
+        "end": 344
       },
       {
         "token": "grid",
@@ -131,6 +179,12 @@
         "end": 467
       },
       {
+        "token": "width",
+        "label": "missing",
+        "start": 474,
+        "end": 479
+      },
+      {
         "token": "50%",
         "label": "missing",
         "start": 481,
@@ -197,12 +251,6 @@
         "end": 675
       },
       {
-        "token": "class",
-        "label": "missing",
-        "start": 698,
-        "end": 703
-      },
-      {
         "token": "<img",
         "label": "missing",
         "start": 721,
@@ -231,6 +279,12 @@
         "label": "missing",
         "start": 741,
         "end": 744
+      },
+      {
+        "token": "class",
+        "label": "missing",
+        "start": 746,
+        "end": 751
       },
       {
         "token": "invert-color",
@@ -627,15 +681,27 @@
         "end": 113
       },
       {
+        "token": "#chess-board",
+        "label": "extra",
+        "start": 129,
+        "end": 141
+      },
+      {
+        "token": "width",
+        "label": "extra",
+        "start": 160,
+        "end": 165
+      },
+      {
+        "token": "400px",
+        "label": "extra",
+        "start": 167,
+        "end": 172
+      },
+      {
         "token": "flex-wrap",
         "label": "extra",
         "start": 221,
-        "end": 230
-      },
-      {
-        "token": "wrap",
-        "label": "extra",
-        "start": 226,
         "end": 230
       },
       {
@@ -657,6 +723,12 @@
         "end": 276
       },
       {
+        "token": ".cell",
+        "label": "extra",
+        "start": 292,
+        "end": 297
+      },
+      {
         "token": "height",
         "label": "extra_star",
         "start": 316,
@@ -669,16 +741,40 @@
         "end": 328
       },
       {
+        "token": "width",
+        "label": "extra",
+        "start": 346,
+        "end": 351
+      },
+      {
         "token": "50px",
         "label": "extra",
         "start": 353,
         "end": 357
       },
       {
+        "token": "border",
+        "label": "extra",
+        "start": 393,
+        "end": 399
+      },
+      {
         "token": "1px",
         "label": "extra",
         "start": 401,
         "end": 404
+      },
+      {
+        "token": "solid",
+        "label": "extra",
+        "start": 405,
+        "end": 410
+      },
+      {
+        "token": "gray",
+        "label": "extra",
+        "start": 411,
+        "end": 415
       },
       {
         "token": "box-sizing",
@@ -693,6 +789,12 @@
         "end": 455
       },
       {
+        "token": "black",
+        "label": "extra",
+        "start": 602,
+        "end": 607
+      },
+      {
         "token": "Board",
         "label": "extra",
         "start": 681,
@@ -701,28 +803,28 @@
       {
         "token": "<div",
         "label": "extra",
-        "start": 733,
-        "end": 737
+        "start": 692,
+        "end": 696
       },
       {
         "token": "id",
         "label": "extra",
-        "start": 738,
-        "end": 740
+        "start": 697,
+        "end": 699
       },
       {
         "token": "chess-board",
         "label": "extra",
-        "start": 742,
-        "end": 753
+        "start": 701,
+        "end": 712
       },
       {
         "token": "<div",
         "label": "extra",
-        "start": 768,
-        "end": 772
+        "start": 719,
+        "end": 723
       }
     ]
   },
-  "score": 78.9
+  "score": 76.7
 }

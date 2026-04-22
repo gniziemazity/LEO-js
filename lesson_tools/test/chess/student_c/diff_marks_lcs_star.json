@@ -1,0 +1,272 @@
+{
+  "format_version": 4,
+  "token_matching": "token-lcs-star",
+  "case_sensitive": true,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "DOCTYPE",
+        "label": "missing",
+        "start": 2,
+        "end": 9
+      },
+      {
+        "token": "center",
+        "label": "missing",
+        "start": 150,
+        "end": 156
+      },
+      {
+        "token": "justify-content",
+        "label": "missing",
+        "start": 162,
+        "end": 177
+      },
+      {
+        "token": "gray",
+        "label": "missing",
+        "start": 265,
+        "end": 269
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 395,
+        "end": 396
+      },
+      {
+        "token": "fraction",
+        "label": "comment",
+        "start": 397,
+        "end": 405
+      },
+      {
+        "token": "anonymous",
+        "label": "comment",
+        "start": 3086,
+        "end": 3095
+      },
+      {
+        "token": "function",
+        "label": "comment",
+        "start": 3096,
+        "end": 3104
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "Doctype",
+        "label": "extra",
+        "start": 2,
+        "end": 9
+      },
+      {
+        "token": "justify-content",
+        "label": "extra",
+        "start": 194,
+        "end": 209
+      },
+      {
+        "token": "center",
+        "label": "extra",
+        "start": 211,
+        "end": 217
+      },
+      {
+        "token": "grey",
+        "label": "extra",
+        "start": 353,
+        "end": 357
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 534,
+        "end": 535
+      },
+      {
+        "token": "fraction",
+        "label": "comment",
+        "start": 536,
+        "end": 544
+      },
+      {
+        "token": "onclick",
+        "label": "extra_star",
+        "start": 891,
+        "end": 898
+      },
+      {
+        "token": "handleClick",
+        "label": "extra_star",
+        "start": 900,
+        "end": 911
+      },
+      {
+        "token": "this",
+        "label": "extra_star",
+        "start": 912,
+        "end": 916
+      },
+      {
+        "token": "dark",
+        "label": "extra",
+        "start": 3091,
+        "end": 3095
+      },
+      {
+        "token": "</div",
+        "label": "extra",
+        "start": 3097,
+        "end": 3102
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 3116,
+        "end": 3120
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3121,
+        "end": 3126
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 3128,
+        "end": 3132
+      },
+      {
+        "token": "light",
+        "label": "extra",
+        "start": 3133,
+        "end": 3138
+      },
+      {
+        "token": "</div",
+        "label": "extra",
+        "start": 3140,
+        "end": 3145
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 3159,
+        "end": 3163
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3164,
+        "end": 3169
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 3171,
+        "end": 3175
+      },
+      {
+        "token": "dark",
+        "label": "extra",
+        "start": 3176,
+        "end": 3180
+      },
+      {
+        "token": "</div",
+        "label": "extra",
+        "start": 3182,
+        "end": 3187
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 3201,
+        "end": 3205
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3206,
+        "end": 3211
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 3213,
+        "end": 3217
+      },
+      {
+        "token": "light",
+        "label": "extra",
+        "start": 3218,
+        "end": 3223
+      },
+      {
+        "token": "</div",
+        "label": "extra",
+        "start": 3225,
+        "end": 3230
+      },
+      {
+        "token": "<div",
+        "label": "extra",
+        "start": 3245,
+        "end": 3249
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3250,
+        "end": 3255
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 3257,
+        "end": 3261
+      },
+      {
+        "token": "element",
+        "label": "extra",
+        "start": 4749,
+        "end": 4756
+      },
+      {
+        "token": "style",
+        "label": "extra",
+        "start": 4757,
+        "end": 4762
+      },
+      {
+        "token": "border",
+        "label": "extra",
+        "start": 4763,
+        "end": 4769
+      },
+      {
+        "token": "4px",
+        "label": "extra",
+        "start": 4773,
+        "end": 4776
+      },
+      {
+        "token": "solid",
+        "label": "extra",
+        "start": 4777,
+        "end": 4782
+      },
+      {
+        "token": "red",
+        "label": "extra",
+        "start": 4783,
+        "end": 4786
+      }
+    ]
+  },
+  "score": 98.4
+}
