@@ -19,7 +19,7 @@
 		"students": "node lesson_tools/open.js students.html anon=name",
 		"students-full": "node lesson_tools/open.js students.html",
 		"students-anon": "node lesson_tools/open.js students.html anon=id",
-		"main": "py lesson_tools/main.py --extra-star",
+		"main": "py lesson_tools/main.py",
 		"main-no-star": "py lesson_tools/main.py",
 		"charts": "py lesson_tools/charts.py",
 		"test": "npm run test:py && npm run test:js",

@@ -238,38 +238,37 @@ def _extract_student_ci_split(stu_files: dict):
 
 def _build_student_token_occurrences(
     teacher_entries: list,
-    student_ci_outside: Counter,
-    student_ci_comment: Counter,
+    student_outside: Counter,
+    student_comment: Counter,
 ) -> Tuple[list, int, int, int, float, dict]:
     teacher_occ = [
         (tok, ts_str, is_comment)
         for tok, ts_str, is_comment, is_removed, *_ in teacher_entries
         if not is_removed
     ]
-    student_ci_total = student_ci_outside + student_ci_comment
+    student_total = student_outside + student_comment
     last_ts = teacher_occ[-1][1] if teacher_occ else '00:00:00'
 
     consumed = {True: Counter(), False: Counter()}
     all_occ: List[Tuple[str, str, set]] = []
 
     for tok, ts_str, is_comment in teacher_occ:
-        ci_key = tok
-        pool = student_ci_comment if is_comment else student_ci_outside
+        pool = student_comment if is_comment else student_outside
         cons = consumed[is_comment]
-        if cons[ci_key] < pool.get(ci_key, 0):
-            cons[ci_key] += 1
+        if cons[tok] < pool.get(tok, 0):
+            cons[tok] += 1
             all_occ.append((ts_str, tok, {'COMMENT'} if is_comment else set()))
         else:
             base_flags: set = {'COMMENT'} if is_comment else set()
             all_occ.append((ts_str, tok, base_flags | {'MISSING'}))
 
-    for ci_key in sorted(student_ci_total):
-        extra_outside = student_ci_outside[ci_key] - consumed[False][ci_key]
-        extra_comment = student_ci_comment[ci_key] - consumed[True][ci_key]
+    for tok in sorted(student_total):
+        extra_outside = student_outside[tok] - consumed[False][tok]
+        extra_comment = student_comment[tok] - consumed[True][tok]
         for _ in range(max(0, extra_outside)):
-            all_occ.append((last_ts, ci_key, {'EXTRA'}))
+            all_occ.append((last_ts, tok, {'EXTRA'}))
         for _ in range(max(0, extra_comment)):
-            all_occ.append((last_ts, ci_key, {'COMMENT', 'EXTRA'}))
+            all_occ.append((last_ts, tok, {'COMMENT', 'EXTRA'}))
 
     all_occ.sort(key=lambda x: x[0])
 
@@ -416,20 +415,16 @@ def _build_ghost_contexts(
     token_keys: set,
     k: int = _GHOST_K,
 ) -> Dict[str, List[Counter]]:
-    from .lv_editor import reconstruct_all_headless
+    from .lv_editor import reconstruct_all_headless_at_timestamps
 
     _, deleted = replay_with_timestamps_all(all_events)
     if not deleted:
         return {}
 
-    del_ts_char_count: Counter = Counter(del_ts for _, _, del_ts, _ in deleted)
-
-    sorted_deleted = sorted(deleted, key=lambda x: x[3])
-
     del_token_occs: Dict[str, List[Tuple[int, int]]] = {}
     seg: List[Tuple[int, str, int, int]] = []
 
-    def _flush_occ_seg(s: list) -> None:
+    def _flush_seg(s: list) -> None:
         if not s:
             return
         text = ''.join(ch for _, ch, _, _ in s)
@@ -437,43 +432,19 @@ def _build_ghost_contexts(
             tok = m.group()
             if tok not in token_keys:
                 continue
-            rel_end = m.end() - 1
-            _, _, ins_ts, del_ts = s[rel_end]
+            _, _, ins_ts, del_ts = s[m.end() - 1]
             del_token_occs.setdefault(tok, []).append((ins_ts, del_ts))
 
-    for ch, ins_ts, del_ts, idx in sorted_deleted:
+    for ch, ins_ts, del_ts, idx in sorted(deleted, key=lambda x: x[3]):
         if ch in ('\n', '\r'):
-            _flush_occ_seg(seg)
+            _flush_seg(seg)
             seg = []
         else:
             seg.append((idx, ch, ins_ts, del_ts))
-    _flush_occ_seg(seg)
+    _flush_seg(seg)
 
     if not del_token_occs:
         return {}
-
-    del_ts_groups: Dict[int, List[Tuple]] = {}
-    for ch, ins_ts, del_ts, idx in deleted:
-        if del_ts_char_count[del_ts] > 1:
-            del_ts_groups.setdefault(del_ts, []).append((idx, ch))
-
-    del_ts_co_tokens: Dict[int, List[str]] = {}
-    for dt, chars in del_ts_groups.items():
-        chars.sort()
-        batch_toks: List[str] = []
-        seg2: List[str] = []
-        for _, ch in chars:
-            if ch in ('\n', '\r'):
-                if seg2:
-                    text = ''.join(seg2)
-                    batch_toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(text))
-                    seg2 = []
-            else:
-                seg2.append(ch)
-        if seg2:
-            text = ''.join(seg2)
-            batch_toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(text))
-        del_ts_co_tokens[dt] = batch_toks
 
     relevant_del_ts = {
         del_ts
@@ -481,15 +452,43 @@ def _build_ghost_contexts(
         for _ins_ts, del_ts in del_token_occs.get(tok, [])
     }
 
-    reconstructed_at: Dict[int, List[str]] = {}
-    for dt in sorted(relevant_del_ts):
-        filtered = [e for e in all_events if e.get('timestamp', 0) < dt]
-        texts = reconstruct_all_headless(filtered)
-        seq: List[str] = []
-        for text in texts.values():
-            for m in _sm._CSS_TOKEN_RE.finditer(text):
-                seq.append(m.group())
-        reconstructed_at[dt] = seq
+    batch_chars: Dict[int, List[Tuple]] = {}
+    for ch, ins_ts, del_ts, idx in deleted:
+        if del_ts in relevant_del_ts:
+            batch_chars.setdefault(del_ts, []).append((idx, ch))
+
+    del_ts_co_tokens: Dict[int, List[str]] = {}
+    for dt, chars in batch_chars.items():
+        chars.sort()
+        toks: List[str] = []
+        seg2: List[str] = []
+        for _, ch in chars:
+            if ch in ('\n', '\r'):
+                if seg2:
+                    toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(''.join(seg2)))
+                    seg2 = []
+            else:
+                seg2.append(ch)
+        if seg2:
+            toks.extend(m.group() for m in _sm._CSS_TOKEN_RE.finditer(''.join(seg2)))
+        del_ts_co_tokens[dt] = toks
+
+    reconstructed_at = {
+        dt: [m.group() for text in texts.values() for m in _sm._CSS_TOKEN_RE.finditer(text)]
+        for dt, texts in reconstruct_all_headless_at_timestamps(all_events, sorted(relevant_del_ts)).items()
+    }
+
+    def _pick_pos(positions: List[int], seq: List[str], co_toks: Counter) -> int:
+        if len(positions) == 1 or not co_toks:
+            return positions[0]
+        best_pos, best_score = positions[0], -1
+        for pos in positions:
+            lo, hi = max(0, pos - k), min(len(seq), pos + k + 1)
+            neighbors = Counter(seq[lo:pos] + seq[pos + 1:hi])
+            score = sum(min(neighbors[t], v) for t, v in co_toks.items())
+            if score > best_score:
+                best_score, best_pos = score, pos
+        return best_pos
 
     ghost_ctxs: Dict[str, List[Counter]] = {}
     for tok in token_keys:
@@ -501,42 +500,14 @@ def _build_ghost_contexts(
                 vecs.append(Counter())
                 continue
 
-            if del_ts_char_count[del_ts] > 1:
-                co_toks = Counter(del_ts_co_tokens.get(del_ts, []))
-                del co_toks[tok]
+            co_toks = Counter(del_ts_co_tokens.get(del_ts, []))
+            del co_toks[tok]
 
-                n_co = len(co_toks)
-
-                if n_co >= 2 and len(positions) > 1:
-                    best_pos, best_score = positions[0], -1
-                    for pos in positions:
-                        lo = max(0, pos - k)
-                        hi = min(len(seq), pos + k + 1)
-                        neighbors = Counter(seq[lo:pos] + seq[pos + 1:hi])
-                        score = sum(min(neighbors[t], v) for t, v in co_toks.items())
-                        if score > best_score:
-                            best_score, best_pos = score, pos
-                    batch_seq = list(co_toks.elements()) + [tok]
-                    pos_in_batch = batch_seq.index(tok)
-                    vecs.append(_context_vector(batch_seq, pos_in_batch, k))
-                    continue
-                else:
-                    if co_toks and len(positions) > 1:
-                        best_pos, best_score = positions[0], -1
-                        for pos in positions:
-                            lo = max(0, pos - k)
-                            hi = min(len(seq), pos + k + 1)
-                            neighbors = Counter(seq[lo:pos] + seq[pos + 1:hi])
-                            score = sum(min(neighbors[t], v) for t, v in co_toks.items())
-                            if score > best_score:
-                                best_score, best_pos = score, pos
-                        pos_to_use = best_pos
-                    else:
-                        pos_to_use = positions[0]
+            if len(co_toks) >= 2 and len(positions) > 1:
+                batch_seq = list(co_toks.elements()) + [tok]
+                vecs.append(_context_vector(batch_seq, len(batch_seq) - 1, k))
             else:
-                pos_to_use = positions[0]
-
-            vecs.append(_context_vector(seq, pos_to_use, k))
+                vecs.append(_context_vector(seq, _pick_pos(positions, seq, co_toks), k))
 
         if vecs:
             ghost_ctxs[tok] = vecs
@@ -544,14 +515,31 @@ def _build_ghost_contexts(
     return ghost_ctxs
 
 
-def _extra_star_from_ghost(
+def _ghost_star_idxs(
+    extra_pairs: List[Tuple[int, str]],
     s_seq: List[str],
-    pos: int,
-    ghost_vecs: List[Counter],
-    s_flags: List[bool] = None,
-) -> bool:
-    s_ctx = _context_vector(s_seq, pos, _GHOST_K, s_flags)
-    return max((_cosine_similarity_sparse(s_ctx, gv) for gv in ghost_vecs), default=0.0) >= _GHOST_SIM_THRESHOLD
+    ghost_contexts: Dict[str, List[Counter]],
+    k: int,
+) -> set:
+    if not ghost_contexts or not _sm._ALL_EXTRA_STAR or not extra_pairs:
+        return set()
+
+    by_tok: Dict[str, List[Tuple[int, int]]] = {}  # tok → [(pair_idx, seq_idx)]
+    for pair_idx, (seq_idx, tok) in enumerate(extra_pairs):
+        if tok in ghost_contexts:
+            by_tok.setdefault(tok, []).append((pair_idx, seq_idx))
+
+    star_pair_idxs: set = set()
+    for tok, items in by_tok.items():
+        positions = [seq_idx for _, seq_idx in items]
+        _, _, _, es = _locate_token(
+            positions, [], s_seq, [], k,
+            ghost_ctx_vecs=ghost_contexts[tok],
+        )
+        for rank in es:
+            star_pair_idxs.add(items[rank][0])
+
+    return star_pair_idxs
 
 
 def _locate_token(
@@ -573,7 +561,20 @@ def _locate_token(
         return set(), set(range(n_t)), set(), set()
 
     s_ctx = [_context_vector(s_seq, p, k, s_flags, s_exclude) for p in s_positions]
-    s_ctx_narrow = [_context_vector(s_seq, p, _GHOST_K, s_flags) for p in s_positions] if n_g else []
+
+    if n_g:
+        tok_keep = (frozenset(t for v in ghost_ctx_vecs for t in v)
+                    | {s_seq[p] for p in s_positions if p < len(s_seq)})
+        filt_items = [(i, t) for i, t in enumerate(s_seq) if t in tok_keep]
+        filt_seq_g = [t for _, t in filt_items]
+        orig_to_filt_g = {i: fi for fi, (i, _) in enumerate(filt_items)}
+        s_ctx_narrow = [
+            _context_vector(filt_seq_g, orig_to_filt_g[p], _GHOST_K)
+            if p in orig_to_filt_g else Counter()
+            for p in s_positions
+        ]
+    else:
+        s_ctx_narrow = []
 
     n_cols = n_t + n_g
     if n_cols == 0:
@@ -601,7 +602,7 @@ def _locate_token(
             matched_s.add(si)
             matched_t.add(col)
         else:
-            if _extra_star_from_ghost(s_seq, s_positions[si], ghost_ctx_vecs, s_flags):
+            if _sm._ALL_EXTRA_STAR and sim[si][col] >= _GHOST_SIM_THRESHOLD:
                 extra_star.add(si)
 
     missing_t = {j for j in range(n_t) if j not in matched_t}
@@ -652,16 +653,16 @@ def _build_contextual_diff_marks(
     teacher_files: dict,
     student_files: dict,
     teacher_entries: list,
-    student_ci_outside: Counter,
-    student_ci_comment: Counter,
+    student_outside: Counter,
+    student_comment: Counter,
     context_k: int = _CONTEXT_K,
     ghost_contexts: Dict[str, List[Counter]] = None,
 ) -> Tuple[dict, dict]:
     token_keys = set()
     for entry in teacher_entries:
         token_keys.add(entry[0])
-    token_keys.update(student_ci_outside.keys())
-    token_keys.update(student_ci_comment.keys())
+    token_keys.update(student_outside.keys())
+    token_keys.update(student_comment.keys())
 
     teacher_occs, teacher_counts = _collect_occurrences(teacher_files, token_keys)
     student_occs, student_counts = _collect_occurrences(student_files, token_keys)
@@ -730,8 +731,6 @@ def _build_contextual_diff_marks(
         t_out_pos = [x['seq_idx'] for x in t_out]
         s_out_pos = [x['seq_idx'] for x in s_out]
         ghost_vecs = (ghost_contexts or {}).get(tok)
-        # Only apply exclusions for non-ghost tokens: ghost tokens need full context
-        # to match their own ghost vectors, and are already handled in the pre-pass.
         s_excl = pre_extra_star_positions if (pre_extra_star_positions and ghost_vecs is None) else None
         _mso, missing_to, extra_so, extra_star_so = _locate_token(
             s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
@@ -843,7 +842,7 @@ def _tokenize_file_ordered(text: str, ext: str) -> List[Tuple[int, str]]:
         for m in _sm._STYLE_TAG_CONTENT_RE.finditer(text):
             css_only.append((m.start(1), m.end(1)))
     matches = _sm._extract_matches_with_priority(text, has_css, css_only)
-    return [(pos, tok) for pos, tok, cs in matches]
+    return sorted([(pos, tok) for pos, tok, cs in matches], key=lambda x: x[0])
 
 
 def _match_files_by_name_then_ext(
@@ -897,11 +896,19 @@ def _build_lcs_token_diff_marks(
             except Exception:
                 pass
 
-        t_toks = _tokenize_file_ordered(t_text, ext)
-        s_toks = _tokenize_file_ordered(s_text, ext) if s_text else []
+        t_all = _tokenize_file_ordered(t_text, ext)
+        s_all = _tokenize_file_ordered(s_text, ext) if s_text else []
 
-        t_seq = [tok for _, tok in t_toks]
-        s_seq = [tok for _, tok in s_toks]
+        t_cs, t_ce = _comment_ranges_for_ext(t_text, ext)
+        s_cs, s_ce = _comment_ranges_for_ext(s_text, ext) if s_text else ([], [])
+
+        t_nc = [(pos, tok) for pos, tok in t_all if not _pos_in_comment(pos, t_cs, t_ce)]
+        t_cm = [(pos, tok) for pos, tok in t_all if _pos_in_comment(pos, t_cs, t_ce)]
+        s_nc = [(pos, tok) for pos, tok in s_all if not _pos_in_comment(pos, s_cs, s_ce)]
+        s_cm = [(pos, tok) for pos, tok in s_all if _pos_in_comment(pos, s_cs, s_ce)]
+
+        t_seq = [tok for _, tok in t_nc]
+        s_seq = [tok for _, tok in s_nc]
         n_total += len(t_seq)
 
         sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
@@ -914,14 +921,21 @@ def _build_lcs_token_diff_marks(
             if tag in ('delete', 'replace'):
                 n_missing += i2 - i1
                 for i in range(i1, i2):
-                    pos, tok = t_toks[i]
+                    pos, tok = t_nc[i]
                     t_marks.append({'token': tok, 'label': 'missing',
                                     'start': pos, 'end': pos + len(tok)})
             if tag in ('insert', 'replace'):
                 for j in range(j1, j2):
-                    pos, tok = s_toks[j]
+                    pos, tok = s_nc[j]
                     s_marks.append({'token': tok, 'label': 'extra',
                                     'start': pos, 'end': pos + len(tok)})
+
+        for pos, tok in t_cm:
+            t_marks.append({'token': tok, 'label': 'comment',
+                            'start': pos, 'end': pos + len(tok)})
+        for pos, tok in s_cm:
+            s_marks.append({'token': tok, 'label': 'comment',
+                            'start': pos, 'end': pos + len(tok)})
 
         fname = Path(t_name).name
         s_fname = s_path.name if s_path else fname
@@ -979,7 +993,7 @@ def _build_lcs_star_diff_marks(
         sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
 
         t_marks: List[dict] = []
-        s_marks: List[dict] = []
+        extra_nc_idxs: List[int] = []  # s_nc indices of LCS-extra non-comment tokens
 
         for tag, i1, i2, j1, j2 in sm.get_opcodes():
             if tag == 'equal':
@@ -992,21 +1006,29 @@ def _build_lcs_star_diff_marks(
                                     'start': pos, 'end': pos + len(tok)})
             if tag in ('insert', 'replace'):
                 for j in range(j1, j2):
-                    pos, tok = s_nc[j]
-                    label = 'extra'
-                    if ghost_contexts is not None:
-                        ghost_vecs = ghost_contexts.get(tok)
-                        if ghost_vecs and _extra_star_from_ghost(s_seq, j, ghost_vecs):
-                            label = 'extra_star'
-                            n_extra_star_count += 1
-                    else:
-                        remaining = removal_counts.get(tok, 0) - used_star[tok]
-                        if remaining > 0:
-                            label = 'extra_star'
-                            used_star[tok] += 1
-                            n_extra_star_count += 1
-                    s_marks.append({'token': tok, 'label': label,
-                                    'start': pos, 'end': pos + len(tok)})
+                    extra_nc_idxs.append(j)
+
+        extra_star_set: set = set()  # indices into extra_nc_idxs
+        if ghost_contexts is not None:
+            extra_pairs = [(j, s_nc[j][1]) for j in extra_nc_idxs]
+            ghost_ranks = _ghost_star_idxs(extra_pairs, s_seq, ghost_contexts, _GHOST_K)
+            extra_star_set = ghost_ranks  # ghost_ranks are indices into extra_pairs = extra_nc_idxs
+        elif _sm._ALL_EXTRA_STAR:
+            for k_idx, j in enumerate(extra_nc_idxs):
+                tok = s_nc[j][1]
+                remaining = removal_counts.get(tok, 0) - used_star[tok]
+                if remaining > 0:
+                    extra_star_set.add(k_idx)
+                    used_star[tok] += 1
+
+        s_marks: List[dict] = []
+        for k_idx, j in enumerate(extra_nc_idxs):
+            pos, tok = s_nc[j]
+            label = 'extra_star' if k_idx in extra_star_set else 'extra'
+            if label == 'extra_star':
+                n_extra_star_count += 1
+            s_marks.append({'token': tok, 'label': label,
+                            'start': pos, 'end': pos + len(tok)})
 
         for pos, tok in t_cm:
             t_marks.append({'token': tok, 'label': 'comment',
@@ -1195,24 +1217,24 @@ class TokenLogMixin:
         all_events = getattr(self, '_lesson_all_events', None) or (
             self._lesson_keypresses + self._lesson_code_inserts
         )
-        kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display = (
+        kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
             reconstruct_tokens_from_keylog_full(all_events, has_css=has_css)
         )
 
-        if not kw_ts_cs and not removed_kw_ts_ci:
+        if not kw_ts and not removed_kw_ts:
             print('  Keyword log skipped \u2014 no key-log data.')
             return
 
         all_occ: List[Tuple[int, int, str, bool, bool]] = []
 
-        for ci_key, ts_list in kw_ts_ci.items():
-            occ_sorted = sorted(ci_occ_with_display.get(ci_key, []))
-            comment_ts_set = set(kw_ts_ci_comment.get(ci_key, []))
+        for tok, ts_list in kw_ts.items():
+            occ_sorted = sorted(occ_with_display.get(tok, []))
+            comment_ts_set = set(kw_ts_comment.get(tok, []))
             for ts, disp in occ_sorted:
                 all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
 
-        for ci_key, ts_list in removed_kw_ts_ci.items():
-            disp = upper_to_display.get(ci_key, ci_key)
+        for tok, ts_list in removed_kw_ts.items():
+            disp = upper_to_display.get(tok, tok)
             for ins_ts, del_ts in ts_list:
                 all_occ.append((ins_ts, del_ts, disp, False, True))
 
@@ -1229,7 +1251,7 @@ class TokenLogMixin:
         with open(out_path, 'w', encoding='utf-8') as fh:
             fh.write(f'# Occurrences: {n_typed}\n')
             fh.write(f'# Removed    : {n_removed}\n')
-            fh.write(f'# Unique     : {len(kw_ts_ci)}\n')
+            fh.write(f'# Unique     : {len(kw_ts)}\n')
             for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
                 flags: List[str] = []
                 if is_comment:
@@ -1242,7 +1264,7 @@ class TokenLogMixin:
                 fh.write(f'{token}\t{ts_to_local(ins_ts)}{file_col}{suffix}{removal_col}\n')
 
         print(f'  Written: correct/{out_path.name}  ({n_typed} occurrences, '
-              f'{n_removed} removed, {len(kw_ts_cs)} unique)')
+              f'{n_removed} removed, {len(kw_ts)} unique)')
 
         reco_files = get_reconstructed_files(all_events)
         if reco_files:
@@ -1273,6 +1295,7 @@ class TokenLogMixin:
                     n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
                     print(f'  Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
                           f'have deletion-batch context')
+        self._ghost_contexts = ghost_contexts
 
         written = 0
         for student_dir in sorted(names_dir.iterdir()):
@@ -1292,9 +1315,9 @@ class TokenLogMixin:
             if not stu_files:
                 continue
 
-            student_ci_outside, student_ci_comment = _extract_student_ci_split(stu_files)
+            student_outside, student_comment = _extract_student_ci_split(stu_files)
             all_occ, n_found, n_missing, n_extra, follow_e_pct, consumed = _build_student_token_occurrences(
-                teacher_entries, student_ci_outside, student_ci_comment
+                teacher_entries, student_outside, student_comment
             )
 
             n_found_e   = sum(1 for _, _, fl in all_occ if not fl)
@@ -1366,8 +1389,8 @@ class TokenLogMixin:
                     teacher_code_files,
                     stu_files,
                     teacher_entries,
-                    student_ci_outside,
-                    student_ci_comment,
+                    student_outside,
+                    student_comment,
                     ghost_contexts=ghost_contexts,
                 )
             except Exception:
@@ -1493,6 +1516,29 @@ class TokenLogMixin:
             diff_path = anon_dir / 'diff_marks.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+
+            try:
+                tf_colors_no_star, sf_colors_no_star = _build_contextual_diff_marks(
+                    teacher_code_files,
+                    stu_files,
+                    teacher_entries,
+                    student_outside,
+                    student_comment,
+                    ghost_contexts=None,
+                )
+            except Exception:
+                tf_colors_no_star, sf_colors_no_star = {}, {}
+            diff_marks_contextual = {
+                'format_version': 4,
+                'token_matching': 'context-cosine-hungarian',
+                'case_sensitive': True,
+                'score': follow_e_pct,
+                'teacher_files': _colors_to_position_marks(teacher_code_files, tf_colors_no_star),
+                'student_files': _colors_to_position_marks(stu_files, sf_colors_no_star),
+            }
+            contextual_path = anon_dir / 'diff_marks_contextual.json'
+            with open(contextual_path, 'w', encoding='utf-8') as fh:
+                json.dump(diff_marks_contextual, fh, ensure_ascii=False, indent=2)
 
             written += 1
 
@@ -1665,7 +1711,8 @@ class TokenLogMixin:
             filename='diff_marks_myers.json',
         )
 
-    def write_lcs_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_lcs_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None,
+                                   filename: str = 'diff_marks_lcs_star.json') -> None:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         removal_counts: Counter = Counter()
         teacher_entries = []
@@ -1675,13 +1722,14 @@ class TokenLogMixin:
                 if is_removed:
                     removal_counts[tok] += 1
 
-        ghost_contexts = None
-        if _sm._ALL_EXTRA_STAR and teacher_entries:
+        ghost_contexts = getattr(self, '_ghost_contexts', None)
+        if ghost_contexts is None and _sm._ALL_EXTRA_STAR and teacher_entries:
             all_events = getattr(self, '_lesson_all_events', None)
             if all_events:
                 removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
                 if removed_keys:
                     ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
+                    self._ghost_contexts = ghost_contexts
 
         build_fn = functools.partial(
             _build_lcs_star_diff_marks,
@@ -1693,5 +1741,5 @@ class TokenLogMixin:
             build_fn,
             'token-lcs-star',
             'LCS* token diff marks',
-            filename='diff_marks_lcs_star.json',
+            filename=filename,
         )

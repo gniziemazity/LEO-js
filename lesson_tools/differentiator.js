@@ -111,6 +111,7 @@ function loadFilesFromInput(files, side) {
 
 	const MODE_SUFFIX = {
 		"": "",
+		contextual: "_contextual",
 		"token-lcs": "_lcs",
 		"token-lcs-star": "_lcs_star",
 		"line-myers": "_myers",

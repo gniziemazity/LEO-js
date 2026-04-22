@@ -514,7 +514,7 @@ def main() -> None:
         checker.write_keyword_log()
         checker.write_student_token_files(names_dir, anon_names_dir)
     else:
-        checker.write_similarity_diff_marks(names_dir, anon_names_dir)
+        checker.write_lcs_star_diff_marks(names_dir, anon_names_dir, filename='diff_marks.json')
     checker.write_lcs_diff_marks(names_dir, anon_names_dir)
     checker.write_lcs_star_diff_marks(names_dir, anon_names_dir)
     checker.write_myers_diff_marks(names_dir, anon_names_dir)

@@ -18,9 +18,9 @@ from utils.token_log import (
     _extract_student_ci_split,
     _build_student_token_occurrences,
     _build_contextual_diff_marks,
+    _build_lcs_star_diff_marks,
     _colors_to_position_marks,
     _build_ghost_contexts,
-    _update_tokens_txt_extra_star,
     _CONTEXT_K,
     _GHOST_K,
     ts_to_local,
@@ -63,18 +63,18 @@ def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
         return
 
     events = _load_events(log_path)
-    kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display = (
+    kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
         reconstruct_tokens_from_keylog_full(events, has_css=has_css)
     )
 
     all_occ = []
-    for ci_key in kw_ts_ci:
-        occ_sorted = sorted(ci_occ_with_display.get(ci_key, []))
-        comment_ts_set = set(kw_ts_ci_comment.get(ci_key, []))
+    for tok in kw_ts:
+        occ_sorted = sorted(occ_with_display.get(tok, []))
+        comment_ts_set = set(kw_ts_comment.get(tok, []))
         for ts, disp in occ_sorted:
             all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
-    for ci_key, ts_list in removed_kw_ts_ci.items():
-        disp = upper_to_display.get(ci_key, ci_key)
+    for tok, ts_list in removed_kw_ts.items():
+        disp = upper_to_display.get(tok, tok)
         for ins_ts, del_ts in ts_list:
             all_occ.append((ins_ts, del_ts, disp, False, True))
     all_occ.sort(key=lambda x: x[0])
@@ -89,7 +89,7 @@ def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(f"# Occurrences: {n_typed}\n")
         fh.write(f"# Removed    : {n_removed}\n")
-        fh.write(f"# Unique     : {len(kw_ts_ci)}\n")
+        fh.write(f"# Unique     : {len(kw_ts)}\n")
         for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
             flags = []
             if is_comment:
@@ -100,7 +100,7 @@ def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
             removal_col = f"\t{ts_to_local(del_ts)}" if is_removed else ""
             flag_col    = ("\t" + "\t".join(flags)) if flags else ""
             fh.write(f"{token}\t{ts_to_local(ins_ts)}{file_col}{flag_col}{removal_col}\n")
-    print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {len(kw_ts_ci)} unique)")
+    print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {len(kw_ts)} unique)")
 
 
 def regen_reconstructed(case_dir: Path) -> None:
@@ -215,10 +215,16 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
         "teacher_files": _colors_to_position_marks(teacher_files, tf_colors),
         "student_files": _colors_to_position_marks(stu_files, sf_colors),
     }
-    corrected_score, _, _ = _update_tokens_txt_extra_star(
-        student_dir / "tokens.txt", diff_marks,
-        {tok: removal_ts for tok, _, _, is_rem, removal_ts in teacher_entries if is_rem and removal_ts},
+
+    n_extra_star = sum(
+        1 for marks in diff_marks["student_files"].values()
+        for m in marks if m.get("label") == "extra_star"
     )
+    n_found_e = sum(1 for _, _, fl in all_occ if not fl)
+    n_missing_e = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
+    teacher_total_e = n_found_e + n_missing_e
+    corrected_score = (round(max(0.0, (n_found_e - n_extra_star) / teacher_total_e * 100), 1)
+                       if teacher_total_e else 0.0)
     diff_marks["score"] = corrected_score
 
     diff_path = student_dir / "diff_marks.json"
@@ -228,10 +234,61 @@ def regen_diff_marks(case_dir: Path, student_name: str) -> None:
     print(f"  {case_dir.name}/{student_name}/diff_marks.json")
 
 
+def regen_lcs_star_diff_marks(case_dir: Path, student_name: str) -> None:
+    teacher_tokens_path = case_dir / "tokens.txt"
+    if not teacher_tokens_path.exists():
+        print(f"  SKIP lcs_star (no teacher tokens.txt): {case_dir.name}/{student_name}")
+        return
+
+    teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
+
+    teacher_files = {}
+    for f in sorted(case_dir.iterdir()):
+        ext = f.suffix.lower()
+        if ext in (".html", ".htm", ".css", ".js"):
+            teacher_files[f.name] = f
+
+    reco_html = case_dir / "reconstructed.html"
+    if reco_html.exists():
+        teacher_files["reconstructed.html"] = reco_html
+
+    student_dir = case_dir / student_name
+    stu_files = {}
+    for f in sorted(student_dir.iterdir()):
+        ext = f.suffix.lower()
+        if ext in (".html", ".htm", ".css", ".js"):
+            stu_files[f.name] = f
+
+    removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+    ghost_ctx = None
+    log_path = case_dir / "log.json"
+    if log_path.exists() and removed_keys and _sm._ALL_EXTRA_STAR:
+        events = _load_events(log_path)
+        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
+
+    t_files, s_files, score = _build_lcs_star_diff_marks(
+        teacher_files, stu_files, {}, ghost_ctx,
+    )
+
+    diff_marks = {
+        "format_version": 4,
+        "token_matching": "token-lcs-star",
+        "case_sensitive": True,
+        "teacher_files": t_files,
+        "student_files": s_files,
+    }
+    if score is not None:
+        diff_marks["score"] = score
+
+    diff_path = student_dir / "diff_marks_lcs_star.json"
+    with open(diff_path, "w", encoding="utf-8") as fh:
+        json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+
+    print(f"  {case_dir.name}/{student_name}/diff_marks_lcs_star.json")
+
+
 def main():
     print("Regenerating test fixtures...\n")
-
-    _sm._ALL_EXTRA_STAR = True
 
     for dir_name, has_css, regen_reco in _CASES:
         case_dir = _TEST / dir_name
@@ -252,6 +309,12 @@ def main():
         case_dir = _TEST / dir_name
         for student_dir in _student_dirs(case_dir):
             regen_diff_marks(case_dir, student_dir.name)
+
+    print("\n[diff_marks_lcs_star]")
+    for dir_name, _, _ in _CASES:
+        case_dir = _TEST / dir_name
+        for student_dir in _student_dirs(case_dir):
+            regen_lcs_star_diff_marks(case_dir, student_dir.name)
 
     print("\nDone.")
 

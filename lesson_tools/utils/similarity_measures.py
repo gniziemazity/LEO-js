@@ -1,7 +1,6 @@
 import csv
 import difflib
 import io
-import os
 import re
 import zipfile
 from collections import Counter
@@ -14,7 +13,7 @@ from .lv_editor import (
     replay_with_timestamps, replay_with_timestamps_all,
 )
 
-_ALL_EXTRA_STAR: bool = os.environ.get('STUDENT_ANALYTICS_EXTRA_STAR', '0') == '1'
+_ALL_EXTRA_STAR: bool = True
 
 def normalize_code(code: str) -> List[str]:
     return [line.strip() for line in code.split('\n') if line.strip()]
@@ -311,8 +310,7 @@ def reconstruct_tokens_from_keylog_full(
 ) -> Tuple[
     Dict[str, List[int]],
     Dict[str, List[int]],
-    Dict[str, List[int]],
-    Dict[str, List[int]],
+    Dict[str, List[Tuple[int, int]]],
     Dict[str, str],
     Dict[str, List[Tuple[int, str]]],
 ]:
@@ -480,11 +478,10 @@ def _reconstruct_tokens_core(
         css_only_regions.append((m.start(1), m.end(1)))
     css_only_regions.extend(css_file_regions)
 
-    kw_ts_cs: Dict[str, List[int]] = {}
-    kw_ts_ci: Dict[str, List[int]] = {}
-    kw_ts_ci_comment: Dict[str, List[int]] = {}
+    kw_ts: Dict[str, List[int]] = {}
+    kw_ts_comment: Dict[str, List[int]] = {}
     upper_to_display: Dict[str, str] = {}
-    ci_occ_with_display: Dict[str, List[Tuple[int, str]]] = {}
+    occ_with_display: Dict[str, List[Tuple[int, str]]] = {}
 
     f_matches = _extract_matches_with_priority(final_text, has_css, css_only_regions)
 
@@ -493,15 +490,14 @@ def _reconstruct_tokens_core(
         ts = char_ts_final[f_end]
         is_comment = bool(comment_mask_final[f_end])
 
-        kw_ts_cs.setdefault(tok, []).append(ts)
-        kw_ts_ci.setdefault(tok, []).append(ts)
+        kw_ts.setdefault(tok, []).append(ts)
         if tok not in upper_to_display:
             upper_to_display[tok] = tok
-        ci_occ_with_display.setdefault(tok, []).append((ts, tok))
+        occ_with_display.setdefault(tok, []).append((ts, tok))
         if is_comment:
-            kw_ts_ci_comment.setdefault(tok, []).append(ts)
+            kw_ts_comment.setdefault(tok, []).append(ts)
 
-    removed_kw_ts_ci: Dict[str, List[Tuple[int, int]]] = {}
+    removed_kw_ts: Dict[str, List[Tuple[int, int]]] = {}
     removed_upper_to_display: Dict[str, str] = {}
 
     if deleted:
@@ -518,7 +514,7 @@ def _reconstruct_tokens_core(
                 end_rel = s_rel + len(tok) - 1
                 ins_ts = seg_chars[end_rel][1]
                 del_ts = seg_chars[end_rel][2]
-                removed_kw_ts_ci.setdefault(tok, []).append((ins_ts, del_ts))
+                removed_kw_ts.setdefault(tok, []).append((ins_ts, del_ts))
                 if tok not in removed_upper_to_display:
                     removed_upper_to_display[tok] = tok
             seg_chars.clear()
@@ -534,7 +530,7 @@ def _reconstruct_tokens_core(
         if upper not in upper_to_display:
             upper_to_display[upper] = display
 
-    return kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display
+    return kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display
 
 
 def get_reconstructed_files(events: List[dict]) -> dict:

@@ -15,12 +15,7 @@ from utils.folder_utils import select_project_folder
 
 _parser = argparse.ArgumentParser(description='Student analytics grading pipeline')
 _parser.add_argument('project', nargs='?', help='Project folder path or name under lessons/')
-_parser.add_argument('--extra-star', action='store_true',
-                     help='Mark teacher-removed tokens found in student code as EXTRA* '
-                          'instead of plain EXTRA')
 _args = _parser.parse_args()
-
-ALL_EXTRA_STAR = _args.extra_star
 
 STEPS = [
     ("1. Extract submissions",    "extract"),
@@ -39,7 +34,6 @@ def run_step(label: str, module: str, project_dir: Path) -> bool:
     print(separator)
 
     env = os.environ.copy()
-    env['STUDENT_ANALYTICS_EXTRA_STAR'] = '1' if ALL_EXTRA_STAR else '0'
     result = subprocess.run(
         [sys.executable, "-m", f"utils.{module}", str(project_dir)],
         cwd=str(ROOT_DIR),

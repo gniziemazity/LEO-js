@@ -17,6 +17,7 @@ from utils.token_log import (
     _build_student_token_occurrences,
     _build_contextual_diff_marks,
     _build_ghost_contexts,
+    _build_lcs_star_diff_marks,
     _extract_student_ci_split,
     _parse_teacher_tokens,
     _CONTEXT_K,
@@ -87,18 +88,18 @@ def _parse_student_tokens_file(path: Path):
 
 
 def _build_token_occurrences(events: list, has_css: bool) -> list:
-    kw_ts_cs, kw_ts_ci, kw_ts_ci_comment, removed_kw_ts_ci, upper_to_display, ci_occ_with_display = (
+    kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
         reconstruct_tokens_from_keylog_full(events, has_css=has_css)
     )
 
     occ = []
-    for upper in kw_ts_ci:
-        occ_sorted = sorted(ci_occ_with_display.get(upper, []))
-        comment_ts = set(kw_ts_ci_comment.get(upper, []))
+    for upper in kw_ts:
+        occ_sorted = sorted(occ_with_display.get(upper, []))
+        comment_ts = set(kw_ts_comment.get(upper, []))
         for ts, disp in occ_sorted:
             occ.append((ts, disp, ts in comment_ts, False))
 
-    for upper, ts_list in removed_kw_ts_ci.items():
+    for upper, ts_list in removed_kw_ts.items():
         disp = upper_to_display.get(upper, upper)
         for ins_ts, del_ts in ts_list:
             occ.append((ins_ts, disp, False, True))
@@ -131,7 +132,7 @@ class _ReconstructionBase:
         cls.events = _load_events(cls.log_file)
         cls.headers, cls.expected = _parse_tokens_file(cls.tokens_file)
         cls.occ = _build_token_occurrences(cls.events, cls.has_css)
-        _kw_ts_cs, cls.kw_ts_ci, *_ = reconstruct_tokens_from_keylog_full(cls.events, has_css=cls.has_css)
+        cls.kw_ts, *_ = reconstruct_tokens_from_keylog_full(cls.events, has_css=cls.has_css)
 
     @classmethod
     def tearDownClass(cls):
@@ -151,7 +152,7 @@ class _ReconstructionBase:
         self.assertEqual(n, self.headers['Removed'])
 
     def test_unique_token_count(self):
-        self.assertEqual(len(self.kw_ts_ci), self.headers['Unique'])
+        self.assertEqual(len(self.kw_ts), self.headers['Unique'])
 
     def test_token_sequence_and_flags(self):
         actual = [(tok, is_comment, is_removed)
@@ -183,7 +184,6 @@ class _StudentBase:
 
     @classmethod
     def setUpClass(cls):
-        _sm._ALL_EXTRA_STAR = True
         _teacher_headers, cls.teacher_entries = _parse_tokens_file(cls.teacher_tokens_file)
         cls.headers, cls.raw_expected = _parse_student_tokens_file(cls.tokens_file)
         cls.removal_ts_by_token = {
@@ -191,21 +191,7 @@ class _StudentBase:
             for tok, _, _, is_rem, removal_ts in cls.teacher_entries
             if is_rem and removal_ts
         }
-        tokens_with_missing    = {tok for tok, _, fl in cls.raw_expected if fl == {'MISSING'}}
-        tokens_with_extra_star = {tok for tok, _, fl in cls.raw_expected if fl == {'EXTRA*'}}
-        steal_tokens = tokens_with_missing & tokens_with_extra_star
-        teacher_occ = [ts for _, ts, _, is_rem, *_ in cls.teacher_entries if not is_rem]
-        last_ts = teacher_occ[-1] if teacher_occ else '00:00:00'
-        cls.expected = []
-        for tok, ts, flags in cls.raw_expected:
-            if tok in steal_tokens and flags == {'MISSING'}:
-                cls.expected.append((tok, ts, set()))
-            elif tok in steal_tokens and flags == {'EXTRA*'}:
-                pass  # not in all_occ
-            elif 'EXTRA*' in flags:
-                cls.expected.append((tok, last_ts, flags - {'EXTRA*'} | {'EXTRA'}))
-            else:
-                cls.expected.append((tok, ts, flags))
+        cls.expected = [(tok, ts, flags) for tok, ts, flags in cls.raw_expected]
         n_found_e   = sum(1 for _, _, fl in cls.expected if not fl)
         n_missing_e = sum(1 for _, _, fl in cls.expected if fl == {'MISSING'})
         teacher_total_e = n_found_e + n_missing_e
@@ -218,7 +204,7 @@ class _StudentBase:
 
     @classmethod
     def tearDownClass(cls):
-        _sm._ALL_EXTRA_STAR = False
+        pass
 
     def test_found_count(self):
         self.assertEqual(self.n_found, int(self.headers['Found']))
@@ -353,7 +339,6 @@ class TestChessGameStudentBTokens(_StudentBase, unittest.TestCase):
 class TestChessGameStudentBDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        _sm._ALL_EXTRA_STAR = True
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
@@ -370,7 +355,7 @@ class TestChessGameStudentBDiffMarks(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _sm._ALL_EXTRA_STAR = False
+        pass
 
     def test_this_is_extra_star(self):
         self.assertEqual(self.student_index.get('this'), ['extra_star'])
@@ -462,7 +447,6 @@ class TestChessGameStudentETokens(_StudentBase, unittest.TestCase):
 class TestChessGameStudentEDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        _sm._ALL_EXTRA_STAR = True
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
@@ -480,10 +464,10 @@ class TestChessGameStudentEDiffMarks(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _sm._ALL_EXTRA_STAR = False
+        pass
 
-    def test_height_is_extra(self):
-        self.assertEqual(self.student_index.get('height'), ['extra'])
+    def test_height_is_extra_star(self):
+        self.assertEqual(self.student_index.get('height'), ['extra_star'])
 
     def test_50px_first_two_are_extra(self):
         labels = self.student_index.get('50px', [])
@@ -523,7 +507,6 @@ class TestChessGameStudentFTokens(_StudentBase, unittest.TestCase):
 class TestChessGameStudentFDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        _sm._ALL_EXTRA_STAR = True
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
         teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
@@ -541,7 +524,7 @@ class TestChessGameStudentFDiffMarks(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _sm._ALL_EXTRA_STAR = False
+        pass
 
     def test_onclick_is_extra_star(self):
         labels = self.student_index.get('onclick', [])
@@ -562,7 +545,6 @@ class TestChessGameStudentFDiffMarks(unittest.TestCase):
 class TestSortingStudentBDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        _sm._ALL_EXTRA_STAR = True
         sorting = _TEST / 'sorting'
         cls.events = _load_events(sorting / 'log.json')
         teacher_entries = _parse_teacher_tokens(sorting / 'tokens.txt')
@@ -580,7 +562,7 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _sm._ALL_EXTRA_STAR = False
+        pass
 
     def test_width_first_occurrence_is_extra_star(self):
         labels = self.student_index.get('width', [])
@@ -627,6 +609,71 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
 
     def test_async_is_missing(self):
         self.assertEqual(self.teacher_index.get('async'), ['missing'])
+
+
+class TestQRStudentADiffMarks(unittest.TestCase):
+    """Contextual diff_marks for qr/student_a — background-color must be extra_star."""
+    @classmethod
+    def setUpClass(cls):
+        qr = _TEST / 'qr'
+        student_dir = qr / 'student_a'
+        teacher_entries = _parse_teacher_tokens(qr / 'tokens.txt')
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        events = _load_events(qr / 'log.json')
+        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
+        teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
+                         '123456.css': qr / '123456.css',
+                         '123456.js': qr / '123456.js'}
+        stu_files = {f.name: f for f in sorted(student_dir.iterdir())
+                     if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
+        stu_outside, stu_comment = _extract_student_ci_split(stu_files)
+        _, cls.sf_colors = _build_contextual_diff_marks(
+            teacher_files, stu_files, teacher_entries,
+            stu_outside, stu_comment, context_k=_CONTEXT_K, ghost_contexts=ghost_ctx,
+        )
+        cls.student_css = cls.sf_colors.get('123456.css', {})
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def test_background_color_is_extra_star(self):
+        labels = self.student_css.get('background-color', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'extra_star')
+
+
+class TestQRStudentALCSStarDiffMarks(unittest.TestCase):
+    """LCS* diff_marks for qr/student_a — background-color must also be extra_star."""
+    @classmethod
+    def setUpClass(cls):
+        qr = _TEST / 'qr'
+        student_dir = qr / 'student_a'
+        teacher_entries = _parse_teacher_tokens(qr / 'tokens.txt')
+        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
+        events = _load_events(qr / 'log.json')
+        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
+        teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
+                         '123456.css': qr / '123456.css',
+                         '123456.js': qr / '123456.js'}
+        stu_files = {f.name: f for f in sorted(student_dir.iterdir())
+                     if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
+        _, s_files, _ = _build_lcs_star_diff_marks(
+            teacher_files, stu_files, {}, ghost_ctx,
+        )
+        cls.student_css_marks = [m for m in s_files.get('123456.css', [])
+                                  if m.get('token', '').lower() == 'background-color']
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def test_background_color_is_extra_star(self):
+        self.assertGreaterEqual(len(self.student_css_marks), 1)
+        self.assertEqual(self.student_css_marks[0]['label'], 'extra_star')
+
+    def test_background_color_position(self):
+        self.assertEqual(self.student_css_marks[0]['start'], 229)
 
 
 if __name__ == '__main__':
