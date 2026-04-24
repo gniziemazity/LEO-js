@@ -1,0 +1,444 @@
+{
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": true,
+  "score": 99.8,
+  "teacher_files": {
+    "123456.css": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 24,
+        "end": 25
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 25,
+        "end": 26
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 27,
+        "end": 30
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 31,
+        "end": 39
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 40,
+        "end": 41
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 41,
+        "end": 42
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 231,
+        "end": 232
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 232,
+        "end": 233
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 234,
+        "end": 235
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 235,
+        "end": 236
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 237,
+        "end": 239
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 240,
+        "end": 243
+      },
+      {
+        "token": "viewport",
+        "label": "comment",
+        "start": 244,
+        "end": 252
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 253,
+        "end": 258
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 259,
+        "end": 260
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 260,
+        "end": 261
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 357,
+        "end": 358
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 358,
+        "end": 359
+      },
+      {
+        "token": "does",
+        "label": "comment",
+        "start": 360,
+        "end": 364
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 365,
+        "end": 368
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 369,
+        "end": 375
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 376,
+        "end": 379
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 380,
+        "end": 384
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 385,
+        "end": 386
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 386,
+        "end": 387
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 414,
+        "end": 415
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 415,
+        "end": 416
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 417,
+        "end": 424
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 425,
+        "end": 428
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 429,
+        "end": 433
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 434,
+        "end": 435
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 435,
+        "end": 436
+      }
+    ],
+    "reconstructed.html": [
+      {
+        "token": "onclick",
+        "label": "missing",
+        "start": 388,
+        "end": 395
+      }
+    ]
+  },
+  "student_files": {
+    "123456.css": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 26,
+        "end": 27
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 27,
+        "end": 28
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 29,
+        "end": 32
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 33,
+        "end": 41
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 41,
+        "end": 42
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 42,
+        "end": 43
+      },
+      {
+        "token": "background",
+        "label": "extra",
+        "start": 229,
+        "end": 239
+      },
+      {
+        "token": "-",
+        "label": "extra",
+        "start": 239,
+        "end": 240
+      },
+      {
+        "token": "color",
+        "label": "extra",
+        "start": 240,
+        "end": 245
+      },
+      {
+        "token": ":",
+        "label": "extra",
+        "start": 245,
+        "end": 246
+      },
+      {
+        "token": "red",
+        "label": "extra",
+        "start": 247,
+        "end": 250
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 250,
+        "end": 251
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 281,
+        "end": 282
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 282,
+        "end": 283
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 284,
+        "end": 285
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 285,
+        "end": 286
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 287,
+        "end": 289
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 290,
+        "end": 293
+      },
+      {
+        "token": "viewpoint",
+        "label": "comment",
+        "start": 294,
+        "end": 303
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 304,
+        "end": 309
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 310,
+        "end": 311
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 311,
+        "end": 312
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 419,
+        "end": 420
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 420,
+        "end": 421
+      },
+      {
+        "token": "doesnot",
+        "label": "comment",
+        "start": 422,
+        "end": 429
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 430,
+        "end": 436
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 437,
+        "end": 440
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 441,
+        "end": 445
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 445,
+        "end": 446
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 446,
+        "end": 447
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 477,
+        "end": 478
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 478,
+        "end": 479
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 480,
+        "end": 487
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 488,
+        "end": 491
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 492,
+        "end": 496
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 496,
+        "end": 497
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 497,
+        "end": 498
+      }
+    ],
+    "index.html": [
+      {
+        "token": "onClick",
+        "label": "extra",
+        "start": 395,
+        "end": 402
+      }
+    ]
+  }
+}

@@ -1,0 +1,1412 @@
+{
+  "format_version": 4,
+  "token_matching": "context-cosine-hungarian",
+  "case_sensitive": true,
+  "score": 97.5,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "gray",
+        "label": "missing",
+        "start": 265,
+        "end": 269
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 392,
+        "end": 393
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 393,
+        "end": 394
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 395,
+        "end": 396
+      },
+      {
+        "token": "fraction",
+        "label": "comment",
+        "start": 397,
+        "end": 405
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 406,
+        "end": 407
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 407,
+        "end": 408
+      },
+      {
+        "token": "50",
+        "label": "missing",
+        "start": 481,
+        "end": 483
+      },
+      {
+        "token": "}",
+        "label": "missing",
+        "start": 489,
+        "end": 490
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 498,
+        "end": 499
+      },
+      {
+        "token": "invert",
+        "label": "missing",
+        "start": 499,
+        "end": 505
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 505,
+        "end": 506
+      },
+      {
+        "token": "color",
+        "label": "missing",
+        "start": 506,
+        "end": 511
+      },
+      {
+        "token": "{",
+        "label": "missing",
+        "start": 512,
+        "end": 513
+      },
+      {
+        "token": "filter",
+        "label": "missing",
+        "start": 518,
+        "end": 524
+      },
+      {
+        "token": ":",
+        "label": "missing",
+        "start": 524,
+        "end": 525
+      },
+      {
+        "token": "invert",
+        "label": "missing",
+        "start": 526,
+        "end": 532
+      },
+      {
+        "token": "100",
+        "label": "missing",
+        "start": 533,
+        "end": 536
+      },
+      {
+        "token": "%",
+        "label": "missing",
+        "start": 536,
+        "end": 537
+      },
+      {
+        "token": "invert",
+        "label": "missing",
+        "start": 753,
+        "end": 759
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 759,
+        "end": 760
+      },
+      {
+        "token": "color",
+        "label": "missing",
+        "start": 760,
+        "end": 765
+      },
+      {
+        "token": "let",
+        "label": "missing",
+        "start": 2908,
+        "end": 2911
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 2912,
+        "end": 2925
+      },
+      {
+        "token": "null",
+        "label": "missing",
+        "start": 2928,
+        "end": 2932
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 2932,
+        "end": 2933
+      },
+      {
+        "token": "cells",
+        "label": "missing",
+        "start": 2943,
+        "end": 2948
+      },
+      {
+        "token": "getElementsByClassName",
+        "label": "missing",
+        "start": 2960,
+        "end": 2982
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3083,
+        "end": 3084
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3084,
+        "end": 3085
+      },
+      {
+        "token": "anonymous",
+        "label": "comment",
+        "start": 3086,
+        "end": 3095
+      },
+      {
+        "token": "function",
+        "label": "comment",
+        "start": 3096,
+        "end": 3104
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3256,
+        "end": 3269
+      },
+      {
+        "token": "replaceChildren",
+        "label": "missing",
+        "start": 3294,
+        "end": 3309
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3310,
+        "end": 3323
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3331,
+        "end": 3344
+      },
+      {
+        "token": "selectedPiece",
+        "label": "missing",
+        "start": 3404,
+        "end": 3417
+      },
+      {
+        "token": "body",
+        "label": "missing",
+        "start": 3512,
+        "end": 3516
+      },
+      {
+        "token": "html",
+        "label": "missing",
+        "start": 3520,
+        "end": 3524
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "Game",
+        "label": "extra",
+        "start": 47,
+        "end": 51
+      },
+      {
+        "token": "grey",
+        "label": "extra",
+        "start": 532,
+        "end": 536
+      },
+      {
+        "token": "60",
+        "label": "extra",
+        "start": 584,
+        "end": 586
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 678,
+        "end": 679
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 679,
+        "end": 680
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 680,
+        "end": 681
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 681,
+        "end": 682
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 683,
+        "end": 686
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 687,
+        "end": 688
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 689,
+        "end": 690
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 690,
+        "end": 691
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 691,
+        "end": 692
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 700,
+        "end": 705
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 705,
+        "end": 706
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 706,
+        "end": 707
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 707,
+        "end": 710
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 710,
+        "end": 711
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 717,
+        "end": 718
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 718,
+        "end": 721
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 739,
+        "end": 740
+      },
+      {
+        "token": "onclick",
+        "label": "extra",
+        "start": 740,
+        "end": 747
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 749,
+        "end": 750
+      },
+      {
+        "token": "handleClick",
+        "label": "extra",
+        "start": 750,
+        "end": 761
+      },
+      {
+        "token": "this",
+        "label": "extra",
+        "start": 762,
+        "end": 766
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 767,
+        "end": 768
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 768,
+        "end": 769
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 769,
+        "end": 770
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 770,
+        "end": 771
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 771,
+        "end": 774
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 774,
+        "end": 775
+      },
+      {
+        "token": "black",
+        "label": "extra",
+        "start": 852,
+        "end": 857
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 859,
+        "end": 860
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 860,
+        "end": 861
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 861,
+        "end": 864
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 864,
+        "end": 865
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 901,
+        "end": 902
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 902,
+        "end": 903
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 914,
+        "end": 915
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 1175,
+        "end": 1176
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 1176,
+        "end": 1177
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1177,
+        "end": 1178
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1178,
+        "end": 1179
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 1180,
+        "end": 1183
+      },
+      {
+        "token": "2",
+        "label": "comment",
+        "start": 1184,
+        "end": 1185
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1186,
+        "end": 1187
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1187,
+        "end": 1188
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 1188,
+        "end": 1189
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1202,
+        "end": 1203
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 1203,
+        "end": 1206
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1206,
+        "end": 1207
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 1213,
+        "end": 1214
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 1214,
+        "end": 1217
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 1218,
+        "end": 1223
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 1223,
+        "end": 1224
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 1489,
+        "end": 1492
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 1492,
+        "end": 1493
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 1497,
+        "end": 1498
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 1498,
+        "end": 1499
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1499,
+        "end": 1500
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1500,
+        "end": 1501
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 1502,
+        "end": 1505
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 1506,
+        "end": 1507
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1508,
+        "end": 1509
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1509,
+        "end": 1510
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 1510,
+        "end": 1511
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1525,
+        "end": 1526
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 1526,
+        "end": 1529
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1529,
+        "end": 1530
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 1530,
+        "end": 1531
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 1536,
+        "end": 1537
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 1537,
+        "end": 1540
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 1812,
+        "end": 1815
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 1815,
+        "end": 1816
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 1820,
+        "end": 1821
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 1821,
+        "end": 1822
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1822,
+        "end": 1823
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1823,
+        "end": 1824
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 1825,
+        "end": 1828
+      },
+      {
+        "token": "4",
+        "label": "comment",
+        "start": 1829,
+        "end": 1830
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1831,
+        "end": 1832
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 1832,
+        "end": 1833
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 1833,
+        "end": 1834
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1848,
+        "end": 1849
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 1849,
+        "end": 1852
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 1852,
+        "end": 1853
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 1853,
+        "end": 1854
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 1859,
+        "end": 1860
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 1860,
+        "end": 1863
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 1864,
+        "end": 1869
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 1869,
+        "end": 1870
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2133,
+        "end": 2134
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2135,
+        "end": 2138
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 2143,
+        "end": 2144
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 2144,
+        "end": 2145
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2145,
+        "end": 2146
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2146,
+        "end": 2147
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 2148,
+        "end": 2151
+      },
+      {
+        "token": "5",
+        "label": "comment",
+        "start": 2152,
+        "end": 2153
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2154,
+        "end": 2155
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2155,
+        "end": 2156
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 2156,
+        "end": 2157
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 2171,
+        "end": 2172
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 2172,
+        "end": 2175
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 2175,
+        "end": 2176
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 2176,
+        "end": 2177
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2182,
+        "end": 2183
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2183,
+        "end": 2186
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 2187,
+        "end": 2192
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 2192,
+        "end": 2193
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2449,
+        "end": 2452
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 2452,
+        "end": 2453
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2456,
+        "end": 2457
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 2457,
+        "end": 2458
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2458,
+        "end": 2461
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 2466,
+        "end": 2467
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 2467,
+        "end": 2468
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2468,
+        "end": 2469
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2469,
+        "end": 2470
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 2471,
+        "end": 2474
+      },
+      {
+        "token": "6",
+        "label": "comment",
+        "start": 2475,
+        "end": 2476
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2477,
+        "end": 2478
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2478,
+        "end": 2479
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 2479,
+        "end": 2480
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2483,
+        "end": 2484
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 2495,
+        "end": 2498
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 2498,
+        "end": 2499
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 2499,
+        "end": 2500
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2505,
+        "end": 2506
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2506,
+        "end": 2509
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 2510,
+        "end": 2515
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 2515,
+        "end": 2516
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 2775,
+        "end": 2776
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2779,
+        "end": 2780
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 2780,
+        "end": 2781
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2781,
+        "end": 2784
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 2789,
+        "end": 2790
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 2790,
+        "end": 2791
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2791,
+        "end": 2792
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2792,
+        "end": 2793
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 2794,
+        "end": 2797
+      },
+      {
+        "token": "7",
+        "label": "comment",
+        "start": 2798,
+        "end": 2799
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2800,
+        "end": 2801
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2801,
+        "end": 2802
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 2802,
+        "end": 2803
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 2817,
+        "end": 2818
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 2818,
+        "end": 2821
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 2821,
+        "end": 2822
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 2822,
+        "end": 2823
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 2828,
+        "end": 2829
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 2829,
+        "end": 2832
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 2833,
+        "end": 2838
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 2838,
+        "end": 2839
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3095,
+        "end": 3098
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3098,
+        "end": 3099
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 3102,
+        "end": 3103
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3103,
+        "end": 3104
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3104,
+        "end": 3107
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3107,
+        "end": 3108
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 3112,
+        "end": 3113
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 3113,
+        "end": 3114
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3114,
+        "end": 3115
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3115,
+        "end": 3116
+      },
+      {
+        "token": "Row",
+        "label": "comment",
+        "start": 3117,
+        "end": 3120
+      },
+      {
+        "token": "8",
+        "label": "comment",
+        "start": 3121,
+        "end": 3122
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3123,
+        "end": 3124
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3124,
+        "end": 3125
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 3125,
+        "end": 3126
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 3129,
+        "end": 3130
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3134,
+        "end": 3139
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3139,
+        "end": 3140
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3140,
+        "end": 3141
+      },
+      {
+        "token": "row",
+        "label": "extra",
+        "start": 3141,
+        "end": 3144
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3144,
+        "end": 3145
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3145,
+        "end": 3146
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 3151,
+        "end": 3152
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3152,
+        "end": 3155
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3156,
+        "end": 3161
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3161,
+        "end": 3162
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3418,
+        "end": 3421
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3442,
+        "end": 3443
+      },
+      {
+        "token": "board",
+        "label": "extra",
+        "start": 3454,
+        "end": 3459
+      },
+      {
+        "token": "getElementById",
+        "label": "extra",
+        "start": 3471,
+        "end": 3485
+      },
+      {
+        "token": "this",
+        "label": "extra",
+        "start": 3599,
+        "end": 3603
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3617,
+        "end": 3618
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3618,
+        "end": 3619
+      },
+      {
+        "token": "anonymous",
+        "label": "comment",
+        "start": 3619,
+        "end": 3628
+      },
+      {
+        "token": "function",
+        "label": "comment",
+        "start": 3629,
+        "end": 3637
+      },
+      {
+        "token": "selectedpice",
+        "label": "extra",
+        "start": 3777,
+        "end": 3789
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3792,
+        "end": 3793
+      },
+      {
+        "token": "replaceChild",
+        "label": "extra",
+        "start": 3822,
+        "end": 3834
+      },
+      {
+        "token": "selectedpice",
+        "label": "extra",
+        "start": 3835,
+        "end": 3847
+      },
+      {
+        "token": "selectedpice",
+        "label": "extra",
+        "start": 3862,
+        "end": 3874
+      },
+      {
+        "token": "selectedpiece",
+        "label": "extra",
+        "start": 3945,
+        "end": 3958
+      },
+      {
+        "token": "return",
+        "label": "extra",
+        "start": 4046,
+        "end": 4052
+      }
+    ]
+  }
+}

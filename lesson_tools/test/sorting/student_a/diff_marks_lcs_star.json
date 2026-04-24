@@ -5,16 +5,52 @@
   "teacher_files": {
     "reconstructed.html": [
       {
-        "token": "align-items",
+        "token": ";",
+        "label": "missing",
+        "start": 132,
+        "end": 133
+      },
+      {
+        "token": "align",
         "label": "missing",
         "start": 138,
+        "end": 143
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 143,
+        "end": 144
+      },
+      {
+        "token": "items",
+        "label": "missing",
+        "start": 144,
         "end": 149
+      },
+      {
+        "token": ":",
+        "label": "missing",
+        "start": 149,
+        "end": 150
       },
       {
         "token": "center",
         "label": "missing",
         "start": 151,
         "end": 157
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 460,
+        "end": 461
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 461,
+        "end": 462
       },
       {
         "token": "global",
@@ -27,6 +63,18 @@
         "label": "comment",
         "start": 470,
         "end": 479
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 607,
+        "end": 608
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 608,
+        "end": 609
       },
       {
         "token": "numbers",
@@ -57,6 +105,30 @@
         "label": "comment",
         "start": 632,
         "end": 633
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 857,
+        "end": 858
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 904,
+        "end": 905
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 905,
+        "end": 906
+      },
+      {
+        "token": "+",
+        "label": "comment",
+        "start": 907,
+        "end": 908
       },
       {
         "token": "here",
@@ -107,6 +179,24 @@
         "end": 973
       },
       {
+        "token": "\"",
+        "label": "comment",
+        "start": 974,
+        "end": 975
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 975,
+        "end": 976
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 976,
+        "end": 977
+      },
+      {
         "token": "is",
         "label": "comment",
         "start": 978,
@@ -125,10 +215,34 @@
         "end": 989
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 990,
+        "end": 991
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 991,
+        "end": 992
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1547,
+        "end": 1548
+      },
+      {
         "token": "swapped",
         "label": "missing",
         "start": 1556,
         "end": 1563
+      },
+      {
+        "token": "=",
+        "label": "missing",
+        "start": 1564,
+        "end": 1565
       },
       {
         "token": "true",
@@ -141,16 +255,52 @@
   "student_files": {
     "index.html": [
       {
-        "token": "align-items",
+        "token": "align",
         "label": "extra",
         "start": 149,
+        "end": 154
+      },
+      {
+        "token": "-",
+        "label": "extra_star",
+        "start": 154,
+        "end": 155
+      },
+      {
+        "token": "items",
+        "label": "extra",
+        "start": 155,
         "end": 160
+      },
+      {
+        "token": ":",
+        "label": "extra_star",
+        "start": 160,
+        "end": 161
       },
       {
         "token": "center",
         "label": "extra",
         "start": 162,
         "end": 168
+      },
+      {
+        "token": ";",
+        "label": "extra_star",
+        "start": 168,
+        "end": 169
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 170,
+        "end": 171
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 171,
+        "end": 172
       },
       {
         "token": "aligns",
@@ -177,6 +327,30 @@
         "end": 197
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 198,
+        "end": 199
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 199,
+        "end": 200
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 683,
+        "end": 684
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 684,
+        "end": 685
+      },
+      {
         "token": "global",
         "label": "comment",
         "start": 686,
@@ -187,6 +361,18 @@
         "label": "comment",
         "start": 693,
         "end": 702
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 733,
+        "end": 734
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 734,
+        "end": 735
       },
       {
         "token": "an",
@@ -217,6 +403,30 @@
         "label": "comment",
         "start": 753,
         "end": 758
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 758,
+        "end": 759
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 759,
+        "end": 760
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 894,
+        "end": 895
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 895,
+        "end": 896
       },
       {
         "token": "generates",
@@ -255,6 +465,18 @@
         "end": 930
       },
       {
+        "token": "/",
+        "label": "comment",
+        "start": 1141,
+        "end": 1142
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1142,
+        "end": 1143
+      },
+      {
         "token": "while",
         "label": "comment",
         "start": 1144,
@@ -291,6 +513,30 @@
         "end": 1176
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 1176,
+        "end": 1177
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1177,
+        "end": 1178
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1223,
+        "end": 1224
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1224,
+        "end": 1225
+      },
+      {
         "token": "now",
         "label": "comment",
         "start": 1225,
@@ -319,6 +565,30 @@
         "label": "comment",
         "start": 1243,
         "end": 1247
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1247,
+        "end": 1248
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1248,
+        "end": 1249
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1348,
+        "end": 1349
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1349,
+        "end": 1350
       },
       {
         "token": "plus",
@@ -381,6 +651,24 @@
         "end": 1424
       },
       {
+        "token": "\"",
+        "label": "comment",
+        "start": 1425,
+        "end": 1426
+      },
+      {
+        "token": "&",
+        "label": "comment",
+        "start": 1426,
+        "end": 1427
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 1427,
+        "end": 1428
+      },
+      {
         "token": "is",
         "label": "comment",
         "start": 1429,
@@ -397,6 +685,36 @@
         "label": "comment",
         "start": 1434,
         "end": 1440
+      },
+      {
+        "token": ".",
+        "label": "comment",
+        "start": 1440,
+        "end": 1441
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1442,
+        "end": 1443
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1443,
+        "end": 1444
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1856,
+        "end": 1857
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1857,
+        "end": 1858
       },
       {
         "token": "very",
@@ -459,6 +777,12 @@
         "end": 1902
       },
       {
+        "token": ",",
+        "label": "comment",
+        "start": 1902,
+        "end": 1903
+      },
+      {
         "token": "FYI",
         "label": "comment",
         "start": 1904,
@@ -487,6 +811,30 @@
         "label": "comment",
         "start": 1923,
         "end": 1927
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1927,
+        "end": 1928
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1928,
+        "end": 1929
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1989,
+        "end": 1990
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1990,
+        "end": 1991
       },
       {
         "token": "var",
@@ -531,6 +879,12 @@
         "end": 2021
       },
       {
+        "token": ",",
+        "label": "comment",
+        "start": 2021,
+        "end": 2022
+      },
+      {
         "token": "new",
         "label": "comment",
         "start": 2023,
@@ -565,6 +919,36 @@
         "label": "comment",
         "start": 2046,
         "end": 2051
+      },
+      {
+        "token": ".",
+        "label": "comment",
+        "start": 2051,
+        "end": 2052
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2052,
+        "end": 2053
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2053,
+        "end": 2054
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2243,
+        "end": 2244
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2244,
+        "end": 2245
       },
       {
         "token": "these",
@@ -609,16 +993,52 @@
         "end": 2290
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 2291,
+        "end": 2292
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2292,
+        "end": 2293
+      },
+      {
         "token": "swapped",
         "label": "extra",
         "start": 2322,
         "end": 2329
       },
       {
+        "token": "=",
+        "label": "extra",
+        "start": 2330,
+        "end": 2331
+      },
+      {
         "token": "true",
         "label": "extra",
         "start": 2332,
         "end": 2336
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 2336,
+        "end": 2337
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2464,
+        "end": 2465
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2465,
+        "end": 2466
       },
       {
         "token": "this",
@@ -667,8 +1087,20 @@
         "label": "comment",
         "start": 2500,
         "end": 2505
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2505,
+        "end": 2506
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2506,
+        "end": 2507
       }
     ]
   },
-  "score": 97.7
+  "score": 96.7
 }

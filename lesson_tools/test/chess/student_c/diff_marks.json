@@ -8,13 +8,27 @@
         "token": "DOCTYPE",
         "label": "missing",
         "start": 2,
-        "end": 9
+        "end": 9,
+        "timestamp": "11:53:34"
       },
       {
         "token": "gray",
         "label": "missing",
         "start": 265,
-        "end": 269
+        "end": 269,
+        "timestamp": "12:02:56"
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 392,
+        "end": 393
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 393,
+        "end": 394
       },
       {
         "token": "1",
@@ -27,6 +41,30 @@
         "label": "comment",
         "start": 397,
         "end": 405
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 406,
+        "end": 407
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 407,
+        "end": 408
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3083,
+        "end": 3084
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3084,
+        "end": 3085
       },
       {
         "token": "anonymous",
@@ -57,6 +95,18 @@
         "end": 357
       },
       {
+        "token": "/",
+        "label": "comment",
+        "start": 532,
+        "end": 533
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 533,
+        "end": 534
+      },
+      {
         "token": "1",
         "label": "comment",
         "start": 534,
@@ -69,10 +119,58 @@
         "end": 544
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 544,
+        "end": 545
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 545,
+        "end": 546
+      },
+      {
+        "token": "=",
+        "label": "extra_star",
+        "start": 877,
+        "end": 878
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 879,
+        "end": 883
+      },
+      {
+        "token": "light",
+        "label": "extra",
+        "start": 884,
+        "end": 889
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 889,
+        "end": 890
+      },
+      {
         "token": "onclick",
         "label": "extra_star",
         "start": 891,
         "end": 898
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 898,
+        "end": 899
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 899,
+        "end": 900
       },
       {
         "token": "handleClick",
@@ -81,51 +179,75 @@
         "end": 911
       },
       {
+        "token": "(",
+        "label": "extra_star",
+        "start": 911,
+        "end": 912
+      },
+      {
         "token": "this",
         "label": "extra_star",
         "start": 912,
         "end": 916
       },
       {
-        "token": "</div",
-        "label": "extra",
-        "start": 3694,
-        "end": 3699
+        "token": ")",
+        "label": "extra_star",
+        "start": 916,
+        "end": 917
       },
       {
-        "token": "<div",
+        "token": ";",
         "label": "extra",
-        "start": 3713,
-        "end": 3717
+        "start": 917,
+        "end": 918
       },
       {
-        "token": "class",
+        "token": "\"",
         "label": "extra",
-        "start": 3718,
-        "end": 3723
+        "start": 918,
+        "end": 919
       },
       {
-        "token": "cell",
+        "token": ">",
         "label": "extra",
-        "start": 3725,
-        "end": 3729
+        "start": 3736,
+        "end": 3737
       },
       {
-        "token": "light",
-        "label": "extra",
-        "start": 3730,
-        "end": 3735
-      },
-      {
-        "token": "</div",
+        "token": "<",
         "label": "extra",
         "start": 3737,
+        "end": 3738
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3738,
+        "end": 3739
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3739,
         "end": 3742
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3742,
+        "end": 3743
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3756,
+        "end": 3757
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3757,
         "end": 3760
       },
       {
@@ -133,6 +255,18 @@
         "label": "extra",
         "start": 3761,
         "end": 3766
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3766,
+        "end": 3767
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 3767,
+        "end": 3768
       },
       {
         "token": "cell",
@@ -147,15 +281,51 @@
         "end": 3777
       },
       {
-        "token": "</div",
+        "token": "\"",
+        "label": "extra",
+        "start": 3777,
+        "end": 3778
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3778,
+        "end": 3779
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3779,
+        "end": 3780
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3780,
+        "end": 3781
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3781,
         "end": 3784
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3784,
+        "end": 3785
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3798,
+        "end": 3799
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3799,
         "end": 3802
       },
       {
@@ -165,27 +335,51 @@
         "end": 3808
       },
       {
-        "token": "cell",
+        "token": "\"",
         "label": "extra",
-        "start": 3810,
-        "end": 3814
+        "start": 3820,
+        "end": 3821
       },
       {
-        "token": "light",
+        "token": ">",
         "label": "extra",
-        "start": 3815,
-        "end": 3820
+        "start": 3821,
+        "end": 3822
       },
       {
-        "token": "</div",
+        "token": "<",
         "label": "extra",
         "start": 3822,
+        "end": 3823
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3823,
+        "end": 3824
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3824,
         "end": 3827
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3827,
+        "end": 3828
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3841,
+        "end": 3842
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3842,
         "end": 3845
       },
       {
@@ -193,6 +387,18 @@
         "label": "extra",
         "start": 3846,
         "end": 3851
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3851,
+        "end": 3852
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 3852,
+        "end": 3853
       },
       {
         "token": "cell",
@@ -207,10 +413,88 @@
         "end": 3862
       },
       {
-        "token": "4px",
+        "token": "\"",
         "label": "extra",
-        "start": 4699,
-        "end": 4702
+        "start": 3862,
+        "end": 3863
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3863,
+        "end": 3864
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 3864,
+        "end": 3865
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3865,
+        "end": 3866
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3866,
+        "end": 3869
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3869,
+        "end": 3870
+      },
+      {
+        "token": "<",
+        "label": "extra",
+        "start": 3883,
+        "end": 3884
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3884,
+        "end": 3887
+      },
+      {
+        "token": "class",
+        "label": "extra",
+        "start": 3888,
+        "end": 3893
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3893,
+        "end": 3894
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3894,
+        "end": 3895
+      },
+      {
+        "token": "cell",
+        "label": "extra",
+        "start": 3895,
+        "end": 3899
+      },
+      {
+        "token": "light",
+        "label": "extra",
+        "start": 3900,
+        "end": 3905
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3905,
+        "end": 3906
       },
       {
         "token": "solid",
@@ -225,10 +509,28 @@
         "end": 4712
       },
       {
-        "token": "element",
+        "token": "\"",
         "label": "extra",
+        "start": 4712,
+        "end": 4713
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 4713,
+        "end": 4714
+      },
+      {
+        "token": "element",
+        "label": "extra_star",
         "start": 4749,
         "end": 4756
+      },
+      {
+        "token": ".",
+        "label": "extra",
+        "start": 4756,
+        "end": 4757
       },
       {
         "token": "style",
@@ -237,12 +539,36 @@
         "end": 4762
       },
       {
+        "token": ".",
+        "label": "extra",
+        "start": 4762,
+        "end": 4763
+      },
+      {
         "token": "border",
         "label": "extra",
         "start": 4763,
         "end": 4769
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 4770,
+        "end": 4771
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 4772,
+        "end": 4773
+      },
+      {
+        "token": "4px",
+        "label": "extra",
+        "start": 4773,
+        "end": 4776
       }
     ]
   },
-  "score": 98.9
+  "score": 99.1
 }

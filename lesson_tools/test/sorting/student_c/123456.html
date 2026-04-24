@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Sorting Visualizer</title>
+        <style>
+            body {
+                display: flex;
+                align-items: center;
+                flex-direction: column;
+            }
+            #vis-123456 {
+                width: 200px;
+                height: 200px;
+                background-color: red;
+                align-items: flex-end;
+            }
+            .bar {
+                width: 7px;
+                height: 100%;
+                background-color: black;
+                margin: 0px 1px;
+            }
+            </style>
+    </head>
+    <body>
+        <h1>Sorting Visualizer</h1>
+        <div id="vis-123456"></div>
+        <script>
+            // global variables
+            const count = 50;
+            const array = new Array(count);
+
+            for (let i =0; i < count; i++) {
+                 array[i] = Math.random(); // numbers between 0 and 1
+            }
+
+           
+
+            const visualizer = document.getElementById("vis-123456");
+            for (let i = 0; i < array.length; i++) {
+                const bar = document.createElement("div");
+                visualizer.appendChild(bar);
+                bar.classList.add("bar");
+                bar.style.height = array[i] * 100 + "%"; /* + here isstring concatentation becausethe second item "%" is a string */
+            }
+
+             bubbleSort(array);
+
+            function updateBars() {
+                const bars = document.getElementsByClassName("bar");
+                for (let i = 0; i < bars.length; i++) {
+                    bars[i].style.height = array[i] * 100 + "%";
+                }
+            }
+
+            async function bubbleSort(arr) {
+                do {
+                    var swapped = false;
+                    for (let i = 1; i <arr.length; i++) {
+                        if (arr[i - 1] > arr[i]) {
+                            const aux = arr[i - 1];
+                            arr[i - 1] = arr[i];
+                            arr[i] = aux;
+                            swapped = true;
+                            updateBars();
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+        } while (swapped);
+     }
+          </script>
+          </body>
+          </html>

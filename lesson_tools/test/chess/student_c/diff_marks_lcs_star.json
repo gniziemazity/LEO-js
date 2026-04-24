@@ -11,15 +11,39 @@
         "end": 9
       },
       {
+        "token": ":",
+        "label": "missing",
+        "start": 148,
+        "end": 149
+      },
+      {
         "token": "center",
         "label": "missing",
         "start": 150,
         "end": 156
       },
       {
-        "token": "justify-content",
+        "token": ";",
+        "label": "missing",
+        "start": 156,
+        "end": 157
+      },
+      {
+        "token": "justify",
         "label": "missing",
         "start": 162,
+        "end": 169
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 169,
+        "end": 170
+      },
+      {
+        "token": "content",
+        "label": "missing",
+        "start": 170,
         "end": 177
       },
       {
@@ -27,6 +51,18 @@
         "label": "missing",
         "start": 265,
         "end": 269
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 392,
+        "end": 393
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 393,
+        "end": 394
       },
       {
         "token": "1",
@@ -39,6 +75,30 @@
         "label": "comment",
         "start": 397,
         "end": 405
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 406,
+        "end": 407
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 407,
+        "end": 408
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3083,
+        "end": 3084
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3084,
+        "end": 3085
       },
       {
         "token": "anonymous",
@@ -63,10 +123,28 @@
         "end": 9
       },
       {
-        "token": "justify-content",
+        "token": "justify",
         "label": "extra",
         "start": 194,
+        "end": 201
+      },
+      {
+        "token": "-",
+        "label": "extra",
+        "start": 201,
+        "end": 202
+      },
+      {
+        "token": "content",
+        "label": "extra",
+        "start": 202,
         "end": 209
+      },
+      {
+        "token": ":",
+        "label": "extra",
+        "start": 209,
+        "end": 210
       },
       {
         "token": "center",
@@ -75,10 +153,28 @@
         "end": 217
       },
       {
+        "token": ";",
+        "label": "extra_star",
+        "start": 217,
+        "end": 218
+      },
+      {
         "token": "grey",
         "label": "extra",
         "start": 353,
         "end": 357
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 532,
+        "end": 533
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 533,
+        "end": 534
       },
       {
         "token": "1",
@@ -93,10 +189,40 @@
         "end": 544
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 544,
+        "end": 545
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 545,
+        "end": 546
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 889,
+        "end": 890
+      },
+      {
         "token": "onclick",
         "label": "extra_star",
         "start": 891,
         "end": 898
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 898,
+        "end": 899
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 899,
+        "end": 900
       },
       {
         "token": "handleClick",
@@ -105,10 +231,28 @@
         "end": 911
       },
       {
+        "token": "(",
+        "label": "extra_star",
+        "start": 911,
+        "end": 912
+      },
+      {
         "token": "this",
         "label": "extra_star",
         "start": 912,
         "end": 916
+      },
+      {
+        "token": ")",
+        "label": "extra_star",
+        "start": 916,
+        "end": 917
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 917,
+        "end": 918
       },
       {
         "token": "dark",
@@ -117,15 +261,51 @@
         "end": 3095
       },
       {
-        "token": "</div",
+        "token": "\"",
+        "label": "extra",
+        "start": 3095,
+        "end": 3096
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3096,
+        "end": 3097
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3097,
+        "end": 3098
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3098,
+        "end": 3099
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3099,
         "end": 3102
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3102,
+        "end": 3103
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3116,
+        "end": 3117
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3117,
         "end": 3120
       },
       {
@@ -133,6 +313,18 @@
         "label": "extra",
         "start": 3121,
         "end": 3126
+      },
+      {
+        "token": "=",
+        "label": "extra_star",
+        "start": 3126,
+        "end": 3127
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 3127,
+        "end": 3128
       },
       {
         "token": "cell",
@@ -147,15 +339,51 @@
         "end": 3138
       },
       {
-        "token": "</div",
+        "token": "\"",
+        "label": "extra",
+        "start": 3138,
+        "end": 3139
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3139,
+        "end": 3140
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3140,
+        "end": 3141
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3141,
+        "end": 3142
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3142,
         "end": 3145
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3145,
+        "end": 3146
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3159,
+        "end": 3160
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3160,
         "end": 3163
       },
       {
@@ -163,6 +391,18 @@
         "label": "extra",
         "start": 3164,
         "end": 3169
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3169,
+        "end": 3170
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 3170,
+        "end": 3171
       },
       {
         "token": "cell",
@@ -177,15 +417,51 @@
         "end": 3180
       },
       {
-        "token": "</div",
+        "token": "\"",
+        "label": "extra",
+        "start": 3180,
+        "end": 3181
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3181,
+        "end": 3182
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3182,
+        "end": 3183
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3183,
+        "end": 3184
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3184,
         "end": 3187
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3187,
+        "end": 3188
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3201,
+        "end": 3202
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3202,
         "end": 3205
       },
       {
@@ -193,6 +469,18 @@
         "label": "extra",
         "start": 3206,
         "end": 3211
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 3211,
+        "end": 3212
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3212,
+        "end": 3213
       },
       {
         "token": "cell",
@@ -207,15 +495,51 @@
         "end": 3223
       },
       {
-        "token": "</div",
+        "token": "\"",
+        "label": "extra",
+        "start": 3223,
+        "end": 3224
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 3224,
+        "end": 3225
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3225,
+        "end": 3226
+      },
+      {
+        "token": "/",
+        "label": "extra",
+        "start": 3226,
+        "end": 3227
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3227,
         "end": 3230
       },
       {
-        "token": "<div",
+        "token": ">",
+        "label": "extra",
+        "start": 3230,
+        "end": 3231
+      },
+      {
+        "token": "<",
         "label": "extra",
         "start": 3245,
+        "end": 3246
+      },
+      {
+        "token": "div",
+        "label": "extra",
+        "start": 3246,
         "end": 3249
       },
       {
@@ -225,6 +549,18 @@
         "end": 3255
       },
       {
+        "token": "=",
+        "label": "extra",
+        "start": 3255,
+        "end": 3256
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 3256,
+        "end": 3257
+      },
+      {
         "token": "cell",
         "label": "extra",
         "start": 3257,
@@ -232,9 +568,15 @@
       },
       {
         "token": "element",
-        "label": "extra",
+        "label": "extra_star",
         "start": 4749,
         "end": 4756
+      },
+      {
+        "token": ".",
+        "label": "extra",
+        "start": 4756,
+        "end": 4757
       },
       {
         "token": "style",
@@ -243,10 +585,28 @@
         "end": 4762
       },
       {
+        "token": ".",
+        "label": "extra",
+        "start": 4762,
+        "end": 4763
+      },
+      {
         "token": "border",
         "label": "extra",
         "start": 4763,
         "end": 4769
+      },
+      {
+        "token": "=",
+        "label": "extra",
+        "start": 4770,
+        "end": 4771
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 4772,
+        "end": 4773
       },
       {
         "token": "4px",
@@ -265,8 +625,20 @@
         "label": "extra",
         "start": 4783,
         "end": 4786
+      },
+      {
+        "token": "\"",
+        "label": "extra",
+        "start": 4786,
+        "end": 4787
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 4787,
+        "end": 4788
       }
     ]
   },
-  "score": 98.4
+  "score": 98.5
 }

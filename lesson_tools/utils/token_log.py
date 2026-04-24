@@ -282,8 +282,7 @@ def _hungarian_max(weights: List[List[float]]) -> List[Tuple[int, int]]:
 _CONTEXT_K = 6   # neighbor window for teacher/student context vectors
 _GHOST_K   = 6   # neighbor window for ghost context vectors (and narrow student comparison)
 _GHOST_SIM_THRESHOLD = 0.5  # minimum cosine similarity to ghost context to assign extra_star (Hungarian mode only)
-_GHOST_STAR_MUTUAL = os.environ.get('STUDENT_ANALYTICS_GHOST_MUTUAL', '0') == '1'
-
+_GHOST_STAR_MUTUAL = os.environ.get('STUDENT_ANALYTICS_GHOST_MUTUAL', '1') == '1'
 
 def _build_ghost_contexts(
     all_events: list,

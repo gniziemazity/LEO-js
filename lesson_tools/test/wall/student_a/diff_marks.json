@@ -5,6 +5,18 @@
   "teacher_files": {
     "reconstructed.html": [
       {
+        "token": "/",
+        "label": "comment",
+        "start": 73,
+        "end": 74
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 74,
+        "end": 75
+      },
+      {
         "token": "styling",
         "label": "comment",
         "start": 76,
@@ -23,10 +35,35 @@
         "end": 89
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 90,
+        "end": 91
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 91,
+        "end": 92
+      },
+      {
         "token": "425px",
         "label": "missing",
         "start": 122,
-        "end": 127
+        "end": 127,
+        "timestamp": "10:41:03"
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 181,
+        "end": 182
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 182,
+        "end": 183
       },
       {
         "token": "CSS",
@@ -41,6 +78,30 @@
         "end": 193
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 194,
+        "end": 195
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 195,
+        "end": 196
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 247,
+        "end": 248
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 248,
+        "end": 249
+      },
+      {
         "token": "commented",
         "label": "comment",
         "start": 250,
@@ -51,6 +112,12 @@
         "label": "comment",
         "start": 260,
         "end": 267
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 268,
+        "end": 269
       },
       {
         "token": "not",
@@ -69,6 +136,12 @@
         "label": "comment",
         "start": 277,
         "end": 280
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 281,
+        "end": 282
       },
       {
         "token": "just",
@@ -95,10 +168,22 @@
         "end": 309
       },
       {
+        "token": ":",
+        "label": "comment",
+        "start": 309,
+        "end": 310
+      },
+      {
         "token": "10px",
         "label": "comment",
         "start": 311,
         "end": 315
+      },
+      {
+        "token": ";",
+        "label": "comment",
+        "start": 315,
+        "end": 316
       },
       {
         "token": "padding",
@@ -107,10 +192,46 @@
         "end": 328
       },
       {
+        "token": ":",
+        "label": "comment",
+        "start": 328,
+        "end": 329
+      },
+      {
         "token": "5px",
         "label": "comment",
         "start": 330,
         "end": 333
+      },
+      {
+        "token": ";",
+        "label": "comment",
+        "start": 333,
+        "end": 334
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 335,
+        "end": 336
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 336,
+        "end": 337
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 394,
+        "end": 395
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 395,
+        "end": 396
       },
       {
         "token": "size",
@@ -143,6 +264,42 @@
         "end": 429
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 430,
+        "end": 431
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 431,
+        "end": 432
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 2894,
+        "end": 2895
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 2895,
+        "end": 2896
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2896,
+        "end": 2897
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2897,
+        "end": 2898
+      },
+      {
         "token": "div",
         "label": "comment",
         "start": 2899,
@@ -167,6 +324,12 @@
         "end": 2920
       },
       {
+        "token": "(",
+        "label": "comment",
+        "start": 2921,
+        "end": 2922
+      },
+      {
         "token": "not",
         "label": "comment",
         "start": 2922,
@@ -179,9 +342,21 @@
         "end": 2937
       },
       {
-        "token": "<div",
+        "token": ")",
+        "label": "comment",
+        "start": 2937,
+        "end": 2938
+      },
+      {
+        "token": "<",
         "label": "comment",
         "start": 2941,
+        "end": 2942
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 2942,
         "end": 2945
       },
       {
@@ -191,10 +366,28 @@
         "end": 2951
       },
       {
+        "token": "=",
+        "label": "comment",
+        "start": 2951,
+        "end": 2952
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 2952,
+        "end": 2953
+      },
+      {
         "token": "height",
         "label": "comment",
         "start": 2953,
         "end": 2959
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 2959,
+        "end": 2960
       },
       {
         "token": "50px",
@@ -203,10 +396,34 @@
         "end": 2965
       },
       {
-        "token": "background-color",
+        "token": ";",
+        "label": "comment",
+        "start": 2965,
+        "end": 2966
+      },
+      {
+        "token": "background",
         "label": "comment",
         "start": 2970,
+        "end": 2980
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 2980,
+        "end": 2981
+      },
+      {
+        "token": "color",
+        "label": "comment",
+        "start": 2981,
         "end": 2986
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 2986,
+        "end": 2987
       },
       {
         "token": "black",
@@ -215,10 +432,22 @@
         "end": 2993
       },
       {
+        "token": ";",
+        "label": "comment",
+        "start": 2993,
+        "end": 2994
+      },
+      {
         "token": "width",
         "label": "comment",
         "start": 2998,
         "end": 3003
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 3003,
+        "end": 3004
       },
       {
         "token": "50px",
@@ -227,21 +456,81 @@
         "end": 3009
       },
       {
-        "token": "</div",
+        "token": ";",
+        "label": "comment",
+        "start": 3009,
+        "end": 3010
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 3010,
+        "end": 3011
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 3014,
+        "end": 3015
+      },
+      {
+        "token": "<",
         "label": "comment",
         "start": 3015,
-        "end": 3020
+        "end": 3016
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3016,
+        "end": 3017
       },
       {
         "token": "div",
         "label": "comment",
         "start": 3017,
         "end": 3020
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 3020,
+        "end": 3021
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3022,
+        "end": 3023
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3023,
+        "end": 3024
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 3024,
+        "end": 3025
       }
     ]
   },
   "student_files": {
     "index.html": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 97,
+        "end": 98
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 98,
+        "end": 99
+      },
       {
         "token": "Styling",
         "label": "comment",
@@ -261,10 +550,34 @@
         "end": 113
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 114,
+        "end": 115
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 115,
+        "end": 116
+      },
+      {
         "token": "432px",
         "label": "extra_star",
         "start": 167,
         "end": 172
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 264,
+        "end": 265
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 265,
+        "end": 266
       },
       {
         "token": "CSS",
@@ -279,16 +592,64 @@
         "end": 276
       },
       {
-        "token": "background-color",
+        "token": "*",
+        "label": "comment",
+        "start": 277,
+        "end": 278
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 278,
+        "end": 279
+      },
+      {
+        "token": "background",
         "label": "extra_star",
         "start": 346,
+        "end": 356
+      },
+      {
+        "token": "-",
+        "label": "extra_star",
+        "start": 356,
+        "end": 357
+      },
+      {
+        "token": "color",
+        "label": "extra_star",
+        "start": 357,
         "end": 362
+      },
+      {
+        "token": ":",
+        "label": "extra_star",
+        "start": 362,
+        "end": 363
       },
       {
         "token": "black",
         "label": "extra_star",
         "start": 364,
         "end": 369
+      },
+      {
+        "token": ";",
+        "label": "extra_star",
+        "start": 369,
+        "end": 370
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 417,
+        "end": 418
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 418,
+        "end": 419
       },
       {
         "token": "commented",
@@ -301,6 +662,12 @@
         "label": "comment",
         "start": 430,
         "end": 437
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 438,
+        "end": 439
       },
       {
         "token": "not",
@@ -319,6 +686,12 @@
         "label": "comment",
         "start": 447,
         "end": 450
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 450,
+        "end": 451
       },
       {
         "token": "just",
@@ -345,10 +718,22 @@
         "end": 492
       },
       {
+        "token": ":",
+        "label": "comment",
+        "start": 492,
+        "end": 493
+      },
+      {
         "token": "10px",
         "label": "comment",
         "start": 494,
         "end": 498
+      },
+      {
+        "token": ";",
+        "label": "comment",
+        "start": 498,
+        "end": 499
       },
       {
         "token": "padding",
@@ -357,10 +742,46 @@
         "end": 523
       },
       {
+        "token": ":",
+        "label": "comment",
+        "start": 523,
+        "end": 524
+      },
+      {
         "token": "5px",
         "label": "comment",
         "start": 525,
         "end": 528
+      },
+      {
+        "token": ";",
+        "label": "comment",
+        "start": 528,
+        "end": 529
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 530,
+        "end": 531
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 531,
+        "end": 532
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 613,
+        "end": 614
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 614,
+        "end": 615
       },
       {
         "token": "size",
@@ -393,6 +814,42 @@
         "end": 648
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 649,
+        "end": 650
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 650,
+        "end": 651
+      },
+      {
+        "token": "<",
+        "label": "comment",
+        "start": 3841,
+        "end": 3842
+      },
+      {
+        "token": "!",
+        "label": "comment",
+        "start": 3842,
+        "end": 3843
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3843,
+        "end": 3844
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3844,
+        "end": 3845
+      },
+      {
         "token": "div",
         "label": "comment",
         "start": 3846,
@@ -417,6 +874,12 @@
         "end": 3867
       },
       {
+        "token": "(",
+        "label": "comment",
+        "start": 3868,
+        "end": 3869
+      },
+      {
         "token": "not",
         "label": "comment",
         "start": 3869,
@@ -429,9 +892,21 @@
         "end": 3884
       },
       {
-        "token": "<div",
+        "token": ")",
+        "label": "comment",
+        "start": 3884,
+        "end": 3885
+      },
+      {
+        "token": "<",
         "label": "comment",
         "start": 3895,
+        "end": 3896
+      },
+      {
+        "token": "div",
+        "label": "comment",
+        "start": 3896,
         "end": 3899
       },
       {
@@ -441,10 +916,28 @@
         "end": 3905
       },
       {
+        "token": "=",
+        "label": "comment",
+        "start": 3905,
+        "end": 3906
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 3906,
+        "end": 3907
+      },
+      {
         "token": "height",
         "label": "comment",
         "start": 3920,
         "end": 3926
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 3926,
+        "end": 3927
       },
       {
         "token": "50px",
@@ -453,10 +946,34 @@
         "end": 3932
       },
       {
-        "token": "background-color",
+        "token": ";",
+        "label": "comment",
+        "start": 3932,
+        "end": 3933
+      },
+      {
+        "token": "background",
         "label": "comment",
         "start": 3946,
+        "end": 3956
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 3956,
+        "end": 3957
+      },
+      {
+        "token": "color",
+        "label": "comment",
+        "start": 3957,
         "end": 3962
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 3962,
+        "end": 3963
       },
       {
         "token": "black",
@@ -465,10 +982,22 @@
         "end": 3969
       },
       {
+        "token": ";",
+        "label": "comment",
+        "start": 3969,
+        "end": 3970
+      },
+      {
         "token": "width",
         "label": "comment",
         "start": 3983,
         "end": 3988
+      },
+      {
+        "token": ":",
+        "label": "comment",
+        "start": 3988,
+        "end": 3989
       },
       {
         "token": "50px",
@@ -477,18 +1006,66 @@
         "end": 3994
       },
       {
-        "token": "</div",
+        "token": ";",
+        "label": "comment",
+        "start": 3994,
+        "end": 3995
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 4004,
+        "end": 4005
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 4005,
+        "end": 4006
+      },
+      {
+        "token": "<",
         "label": "comment",
         "start": 4006,
-        "end": 4011
+        "end": 4007
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 4007,
+        "end": 4008
       },
       {
         "token": "div",
         "label": "comment",
         "start": 4008,
         "end": 4011
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 4011,
+        "end": 4012
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 4013,
+        "end": 4014
+      },
+      {
+        "token": "-",
+        "label": "comment",
+        "start": 4014,
+        "end": 4015
+      },
+      {
+        "token": ">",
+        "label": "comment",
+        "start": 4015,
+        "end": 4016
       }
     ]
   },
-  "score": 99.0
+  "score": 99.2
 }

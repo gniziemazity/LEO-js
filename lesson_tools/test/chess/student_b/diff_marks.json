@@ -5,6 +5,18 @@
   "teacher_files": {
     "reconstructed.html": [
       {
+        "token": "/",
+        "label": "comment",
+        "start": 392,
+        "end": 393
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 393,
+        "end": 394
+      },
+      {
         "token": "1",
         "label": "comment",
         "start": 395,
@@ -15,6 +27,30 @@
         "label": "comment",
         "start": 397,
         "end": 405
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 406,
+        "end": 407
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 407,
+        "end": 408
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3083,
+        "end": 3084
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 3084,
+        "end": 3085
       },
       {
         "token": "anonymous",
@@ -33,6 +69,18 @@
   "student_files": {
     "index.html": [
       {
+        "token": "/",
+        "label": "comment",
+        "start": 533,
+        "end": 534
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 534,
+        "end": 535
+      },
+      {
         "token": "1",
         "label": "comment",
         "start": 536,
@@ -45,10 +93,34 @@
         "end": 546
       },
       {
+        "token": "*",
+        "label": "comment",
+        "start": 547,
+        "end": 548
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 548,
+        "end": 549
+      },
+      {
         "token": "onclick",
         "label": "extra_star",
         "start": 896,
         "end": 903
+      },
+      {
+        "token": "=",
+        "label": "extra_star",
+        "start": 903,
+        "end": 904
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 904,
+        "end": 905
       },
       {
         "token": "handleClick",
@@ -57,10 +129,46 @@
         "end": 916
       },
       {
+        "token": "(",
+        "label": "extra_star",
+        "start": 916,
+        "end": 917
+      },
+      {
         "token": "this",
         "label": "extra_star",
         "start": 917,
         "end": 921
+      },
+      {
+        "token": ")",
+        "label": "extra_star",
+        "start": 921,
+        "end": 922
+      },
+      {
+        "token": ";",
+        "label": "extra",
+        "start": 922,
+        "end": 923
+      },
+      {
+        "token": "\"",
+        "label": "extra_star",
+        "start": 923,
+        "end": 924
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 4005,
+        "end": 4006
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 4006,
+        "end": 4007
       },
       {
         "token": "anonymous",
