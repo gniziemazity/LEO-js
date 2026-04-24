@@ -25,10 +25,14 @@ async function openDiffWindow(student, mode = null) {
 
 		const MODE_SUFFIX = {
 			"": "",
-			contextual: "_contextual",
+			leo: "_leo",
 			"token-lcs": "_lcs",
 			"token-lcs-star": "_lcs_star",
-			"line-myers": "_myers",
+			"line-ro": "_ro",
+			"line-ro-star": "_ro_star",
+			"line-vscode": "_vscode",
+			"line-vscode-star": "_vscode_star",
+			"context-first": "_context_first",
 		};
 
 		const loadDiffMarks = async (filename) => {

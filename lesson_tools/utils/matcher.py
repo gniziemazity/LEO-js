@@ -25,16 +25,19 @@ Quick start
 
 Algorithms
 ----------
-'contextual_star'  Context-cosine-Hungarian per-occurrence matching with
+'leo_star'         LEO context-cosine-Hungarian per-occurrence matching with
                    extra* promotion (default). Requires a keylog or
                    teacher_tokens_file with removal data for extra* labels;
                    falls back gracefully without them.
-'contextual'       Same algorithm but ghost contexts are disabled — no
+'leo'              Same algorithm but ghost contexts are disabled — no
                    extra_star labels are ever produced.
 'lcs_star'         Token LCS excluding comments; extra tokens that match
                    teacher-removed tokens are labelled extra_star.
 'lcs'              Token-level LCS (order-sensitive, comments excluded).
-'myers'            Line-level Myers diff (coarsest, fastest).
+'ro'               Line-level Ratcliff/Obershelp diff (coarsest, fastest).
+'ro_star'          R/O diff with extra* promotion for teacher-deleted tokens.
+'vscode'           Line-level diff using VS Code's DefaultLinesDiffComputer.
+'vscode_star'      VS Code diff with extra* promotion for teacher-deleted tokens.
 
 Improving contextual / lcs_star accuracy
 -----------------------------------------
@@ -55,14 +58,18 @@ from typing import Dict, Optional, Union
 
 from . import similarity_measures as _sm
 from .token_log import (
-    _build_contextual_diff_marks,
+    _apply_ghost_star_to_diff_marks,
+    _build_leo_diff_marks,
     _build_ghost_contexts,
     _build_lcs_star_diff_marks,
     _build_lcs_token_diff_marks,
-    _build_myers_diff_marks,
+    _build_ro_diff_marks,
+    _build_ro_star_diff_marks,
+    _build_vscode_diff_marks,
+    _build_vscode_star_diff_marks,
     _colors_to_position_marks,
     _comment_ranges_for_ext,
-    _extract_student_ci_split,
+    _extract_student_tokens,
     _parse_teacher_tokens,
     _pos_in_comment,
     _tokenize_file_ordered,
@@ -75,7 +82,7 @@ _FORMAT_VERSION = 4
 def compare(
     teacher: Optional[FilesArg],
     student: FilesArg,
-    algorithm: str = 'contextual_star',
+    algorithm: str = 'leo_star',
     *,
     teacher_tokens_file: Union[str, Path, None] = None,
     keylog_events: Optional[list] = None,
@@ -94,8 +101,9 @@ def compare(
     student:
         Same structure for the student's submission.
     algorithm:
-        Matching algorithm — one of ``'contextual_star'`` (default),
-        ``'contextual'``, ``'lcs_star'``, ``'lcs'``, or ``'myers'``.
+        Matching algorithm — one of ``'leo_star'`` (default),
+        ``'leo'``, ``'lcs_star'``, ``'lcs'``, ``'ro'``, ``'ro_star'``,
+        ``'vscode'``, or ``'vscode_star'``.
     teacher_tokens_file:
         Optional path to a ``tokens.txt`` file from the LEO pipeline.
         Improves contextual and lcs_star accuracy by providing teacher
@@ -156,9 +164,35 @@ def _dispatch(
         t, s, score = _build_lcs_token_diff_marks(teacher_paths, student_paths)
         return _wrap('token-lcs', t, s, score)
 
-    if alg == 'myers':
-        t, s, score = _build_myers_diff_marks(teacher_paths, student_paths)
-        return _wrap('line-myers', t, s, score)
+    if alg in ('ro', 'myers'):
+        t, s, score, alignments = _build_ro_diff_marks(teacher_paths, student_paths)
+        return _wrap('line-ro', t, s, score, alignments)
+
+    if alg == 'vscode':
+        t, s, score, alignments = _build_vscode_diff_marks(teacher_paths, student_paths)
+        return _wrap('line-vscode', t, s, score, alignments)
+
+    if alg == 'vscode_star':
+        ghost_contexts = None
+        if teacher_tokens_file is not None:
+            entries = _parse_teacher_tokens(Path(teacher_tokens_file))
+            removed_keys = {tok for tok, _, _, is_rem, *_ in entries if is_rem}
+            if removed_keys and keylog_events:
+                ghost_contexts = _build_ghost_contexts(keylog_events, removed_keys)
+        t, s, score, alignments = _build_vscode_star_diff_marks(
+            teacher_paths, student_paths, ghost_contexts)
+        return _wrap('line-vscode-star', t, s, score, alignments)
+
+    if alg == 'ro_star':
+        ghost_contexts = None
+        if teacher_tokens_file is not None:
+            entries = _parse_teacher_tokens(Path(teacher_tokens_file))
+            removed_keys = {tok for tok, _, _, is_rem, *_ in entries if is_rem}
+            if removed_keys and keylog_events:
+                ghost_contexts = _build_ghost_contexts(keylog_events, removed_keys)
+        t, s, score, alignments = _build_ro_star_diff_marks(
+            teacher_paths, student_paths, ghost_contexts)
+        return _wrap('line-ro-star', t, s, score, alignments)
 
     if alg == 'lcs_star':
         removal_counts: Counter = Counter()
@@ -168,7 +202,7 @@ def _dispatch(
             for tok, _, _, is_removed, _ in entries:
                 if is_removed:
                     removal_counts[tok] += 1
-            if keylog_events and _sm._ALL_EXTRA_STAR:
+            if keylog_events:
                 removed_keys = {tok for tok, _, _, is_rem, *_ in entries if is_rem}
                 if removed_keys:
                     ghost_contexts = _build_ghost_contexts(keylog_events, removed_keys)
@@ -177,29 +211,32 @@ def _dispatch(
         )
         return _wrap('token-lcs-star', t, s, score)
 
-    if alg in ('contextual_star', 'contextual'):
+    if alg in ('leo_star', 'leo', 'contextual_star', 'contextual'):
         if teacher_tokens_file is not None:
             teacher_entries = _parse_teacher_tokens(Path(teacher_tokens_file))
         else:
             teacher_entries = _teacher_entries_from_files(teacher_paths)
-        student_outside, student_comment = _extract_student_ci_split(student_paths)
+        student_outside, student_comment = _extract_student_tokens(student_paths)
         ghost_contexts = None
-        if alg == 'contextual_star' and keylog_events and _sm._ALL_EXTRA_STAR:
+        if alg in ('leo_star', 'contextual_star') and keylog_events:
             removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
             if removed_keys:
                 ghost_contexts = _build_ghost_contexts(keylog_events, removed_keys)
-        t_colors, s_colors = _build_contextual_diff_marks(
+        t_colors, s_colors = _build_leo_diff_marks(
             teacher_paths, student_paths,
             teacher_entries, student_outside, student_comment,
-            ghost_contexts=ghost_contexts,
         )
         t = _colors_to_position_marks(teacher_paths, t_colors)
         s = _colors_to_position_marks(student_paths, s_colors)
-        return _wrap('context-cosine-hungarian', t, s, score=None)
+        diff = _wrap('leo', t, s, score=None)
+        if alg in ('leo_star', 'contextual_star') and ghost_contexts:
+            _apply_ghost_star_to_diff_marks(diff, student_paths, ghost_contexts)
+        return diff
 
     raise ValueError(
         f"Unknown algorithm {algorithm!r}. "
-        "Choose from: 'contextual_star', 'contextual', 'lcs_star', 'lcs', 'myers'."
+        "Choose from: 'leo_star', 'leo', 'lcs_star', 'lcs', "
+        "'ro', 'ro_star', 'vscode', 'vscode_star'."
     )
 
 
@@ -223,6 +260,7 @@ def _wrap(
     teacher_files: dict,
     student_files: dict,
     score: Optional[float],
+    alignments: Optional[dict] = None,
 ) -> dict:
     result: dict = {
         'format_version': _FORMAT_VERSION,
@@ -233,4 +271,6 @@ def _wrap(
     }
     if score is not None:
         result['score'] = score
+    if alignments is not None:
+        result['alignments'] = alignments
     return result

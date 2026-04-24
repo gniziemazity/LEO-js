@@ -383,10 +383,7 @@ class ExcelReportMixin:
                 continue
             inc_vals.append(fd['inc_sim'])
             if ext == '.html':
-                t_html_css = (self.teacher_html_outside_css_by_ext.get(ext, Counter())
-                              or self.teacher_html_outside_by_ext.get(ext, Counter()))
-                teacher_ext = (t_html_css
-                               + self.teacher_script_outside_by_ext.get(ext, Counter()))
+                teacher_ext = self.teacher_outside_by_ext.get(ext, Counter())
             elif ext == '.css':
                 teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
             else:
@@ -415,20 +412,12 @@ class ExcelReportMixin:
         if _ts_denom:
             return _ts_denom
         teacher_outside = (
-            sum(self.teacher_html_outside_css_by_ext.values(), Counter())
-            + self.teacher_outside_by_ext.get('.css', Counter())
-            + sum(self.teacher_script_outside_by_ext.values(), Counter())
-            + self.teacher_outside_by_ext.get('.js', Counter())
+            sum(self.teacher_outside_by_ext.values(), Counter())
         )
         return max(1, sum(teacher_outside.values()))
 
     def _teacher_aggregates(self) -> Dict:
-        outside_all = (
-            sum(self.teacher_html_outside_css_by_ext.values(), Counter())
-            + sum(self.teacher_script_outside_by_ext.values(), Counter())
-            + self.teacher_outside_by_ext.get('.css', Counter())
-            + self.teacher_outside_by_ext.get('.js', Counter())
-        )
+        outside_all = sum(self.teacher_outside_by_ext.values(), Counter())
         inside_all = sum(self.teacher_inside_by_ext.values(), Counter())
         return {
             'outside_all': outside_all,

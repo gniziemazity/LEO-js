@@ -22,7 +22,9 @@ let _allMarks = {};
 let _defaultTeacherMarks = null;
 let _defaultStudentMarks = null;
 let _titleBase = null;
-let _imageUris = {}; // basename → data: URI for preview image inlining
+let _imageUris = {};
+let _studentEditMode = false;
+let _editedStudentFiles = {};
 
 window.addEventListener("DOMContentLoaded", () => {
 	const params = new URLSearchParams(location.search);
@@ -111,10 +113,14 @@ function loadFilesFromInput(files, side) {
 
 	const MODE_SUFFIX = {
 		"": "",
-		contextual: "_contextual",
+		leo: "_leo",
 		"token-lcs": "_lcs",
 		"token-lcs-star": "_lcs_star",
-		"line-myers": "_myers",
+		"line-ro": "_ro",
+		"line-ro-star": "_ro_star",
+		"line-vscode": "_vscode",
+		"line-vscode-star": "_vscode_star",
+		"context-first": "_context_first",
 	};
 
 	for (const file of files) {
@@ -163,6 +169,72 @@ function loadFilesFromInput(files, side) {
 	}
 }
 
+let _syncingScroll = false;
+
+function _lineStartOffsets(text) {
+	const starts = [0];
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === "\n") starts.push(i + 1);
+	}
+	return starts;
+}
+
+function _renderAligned(text, alignment, fileMarks, sideIdx) {
+	const normText = text.replace(/\r\n/g, "\n");
+	const lines = normText.split("\n");
+	const lineStarts = _lineStartOffsets(normText);
+	const sortedMarks = (fileMarks || [])
+		.slice()
+		.sort((a, b) => a.start - b.start);
+
+	const parts = [];
+	for (const pair of alignment) {
+		const lineIdx = pair[sideIdx];
+		if (lineIdx === null) {
+			parts.push('<div class="diff-spacer">​</div>');
+		} else {
+			const lineStart = lineStarts[lineIdx] ?? normText.length;
+			const lineEnd =
+				lineIdx + 1 < lineStarts.length
+					? lineStarts[lineIdx + 1]
+					: normText.length;
+			const lineText = lines[lineIdx] ?? "";
+			const lineMarks = sortedMarks
+				.filter((m) => m.start >= lineStart && m.start < lineEnd)
+				.map((m) => ({
+					...m,
+					start: m.start - lineStart,
+					end: Math.min(m.end, lineEnd) - lineStart,
+				}));
+			parts.push(
+				`<div class="diff-line">${diffColorizePositions(lineText, lineMarks)}</div>`,
+			);
+		}
+	}
+	return parts.join("");
+}
+
+function _setupScrollSync() {
+	for (const side of ["teacher", "student"]) {
+		const wrap = document.getElementById(`code-${side}`);
+		if (!wrap) continue;
+		wrap.querySelectorAll(".code-pane").forEach((pane, i) => {
+			pane.addEventListener("scroll", () => {
+				if (_syncingScroll) return;
+				const otherSide = side === "teacher" ? "student" : "teacher";
+				const otherWrap = document.getElementById(`code-${otherSide}`);
+				if (!otherWrap) return;
+				const otherPanes = otherWrap.querySelectorAll(".code-pane");
+				if (otherPanes[i]) {
+					_syncingScroll = true;
+					otherPanes[i].scrollTop = pane.scrollTop;
+					_syncingScroll = false;
+				}
+			});
+		});
+	}
+}
+
 function renderPanel(side, files, marks) {
 	if (!files || !Object.keys(files).length) return;
 
@@ -180,7 +252,6 @@ function renderPanel(side, files, marks) {
 		if (bottomBar) bottomBar.style.display = "flex";
 	}
 
-	// reset preview state when reloading
 	if (previewFrame) {
 		previewFrame.style.display = "none";
 		if (side === "teacher" && previewBtn) {
@@ -189,6 +260,11 @@ function renderPanel(side, files, marks) {
 		}
 	}
 	codeWrap.style.display = "";
+
+	const modeData = _allMarks[_diffMode ?? ""];
+	const allAlignments =
+		modeData?.alignments ?? _allMarks["line-vscode"]?.alignments ?? null;
+	const sideIdx = side === "teacher" ? 0 : 1;
 
 	const allNames = Object.keys(files).filter((n) =>
 		/\.(html|css|js)$/i.test(n),
@@ -218,14 +294,32 @@ function renderPanel(side, files, marks) {
 		pane.className = "code-pane" + (i === 0 ? " active" : "");
 
 		const text = files[name] || "";
-		const fileMarks = marks ? marks[name] || null : null;
-		const html = Array.isArray(fileMarks)
-			? diffColorizePositions(text, fileMarks)
-			: escHtml(text);
 
-		pane.innerHTML = `<pre>${html}</pre>`;
+		if (side === "student" && _studentEditMode) {
+			const ta = document.createElement("textarea");
+			ta.className = "edit-textarea";
+			ta.value = _editedStudentFiles[name] ?? text;
+			ta.dataset.fname = name;
+			ta.addEventListener("input", () => {
+				_editedStudentFiles[ta.dataset.fname] = ta.value;
+			});
+			pane.appendChild(ta);
+		} else {
+			const fileMarks = marks ? marks[name] || null : null;
+			const alignment = allAlignments ? (allAlignments[name] ?? null) : null;
+			if (alignment) {
+				pane.innerHTML = `<div class="code-aligned">${_renderAligned(text, alignment, fileMarks, sideIdx)}</div>`;
+			} else {
+				const html = Array.isArray(fileMarks)
+					? diffColorizePositions(text, fileMarks)
+					: escHtml(text);
+				pane.innerHTML = `<pre>${html}</pre>`;
+			}
+		}
 		codeWrap.appendChild(pane);
 	});
+
+	_setupScrollSync();
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {
 		const files = side === "teacher" ? _teacherFiles : _studentFiles;
@@ -358,6 +452,20 @@ function _updateTitleScore(modeKey) {
 	document.title = newTitle;
 }
 
+function toggleEditMode() {
+	_studentEditMode = !_studentEditMode;
+	const btn = document.getElementById("btn-edit");
+	if (btn) {
+		btn.classList.toggle("active", _studentEditMode);
+		btn.textContent = _studentEditMode ? "✏️ Editing" : "✏️ Edit";
+	}
+	if (_studentFiles) {
+		const saved = _saveState("student");
+		renderPanel("student", _studentFiles, _studentMarks);
+		_restoreState("student", saved);
+	}
+}
+
 function togglePreview() {
 	const btn = document.getElementById("btn-preview");
 	const isPreview = btn && btn.classList.contains("active");
@@ -373,7 +481,11 @@ function togglePreview() {
 			if (iframe) iframe.style.display = "none";
 			codeWrap.style.display = "";
 		} else {
-			const files = side === "teacher" ? _teacherFiles : _studentFiles;
+			const baseFiles = side === "teacher" ? _teacherFiles : _studentFiles;
+			const files =
+				side === "student" && Object.keys(_editedStudentFiles).length
+					? { ...baseFiles, ..._editedStudentFiles }
+					: baseFiles;
 			if (!files || !Object.keys(files).length) continue;
 			if (iframe) {
 				updatePreview(side, files, iframe);

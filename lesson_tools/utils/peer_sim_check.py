@@ -10,8 +10,7 @@ from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
     normalize_code,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
-    split_code_tokens, split_css_tokens, split_html_tokens, calculate_containment,
-    get_html_outside_css,
+    split_code_tokens, calculate_containment,
     save_xlsx, open_csv_encoded,
 )
 
@@ -23,13 +22,6 @@ _BLACK_BORDER = Border(
 
 
 def _read_split(raw: str, ext: str) -> Tuple[Counter, Counter]:
-    if ext == '.html':
-        html_outside_css = get_html_outside_css(raw)
-        _, script_outside, inside = split_html_tokens(raw)
-        outside = html_outside_css + script_outside
-        return outside, inside
-    if ext == '.css':
-        return split_css_tokens(raw)
     return split_code_tokens(raw)
 
 

@@ -2,10 +2,14 @@
 
 const DIFF_MARKS_FILES = {
 	"": "diff_marks.json",
-	contextual: "diff_marks_contextual.json",
+	leo: "diff_marks_leo.json",
 	"token-lcs": "diff_marks_lcs.json",
 	"token-lcs-star": "diff_marks_lcs_star.json",
-	"line-myers": "diff_marks_myers.json",
+	"line-ro": "diff_marks_ro.json",
+	"line-ro-star": "diff_marks_ro_star.json",
+	"line-vscode": "diff_marks_vscode.json",
+	"line-vscode-star": "diff_marks_vscode_star.json",
+	"context-first": "diff_marks_context_first.json",
 };
 
 function openDifferentiator(
