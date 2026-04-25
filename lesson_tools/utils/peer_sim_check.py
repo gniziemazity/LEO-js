@@ -7,6 +7,7 @@ from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
+    normalize_code,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, calculate_containment,
     save_xlsx,
