@@ -1,8 +1,7 @@
 # Found            : 452
 # MISSING          : 7
-# EXTRA            : 11
+# EXTRA            : 3
 # Follow (E)       : 97.7 %
-#	10:19:53
 <	10:12:09
 !	10:12:12
 DOCTYPE	10:12:14
@@ -78,6 +77,7 @@ vis	10:18:34
 /	10:18:44
 div	10:18:45
 >	10:18:45
+#	10:19:53
 vis	10:19:54
 -	10:19:54
 123456	10:19:55
@@ -238,22 +238,21 @@ color	10:44:25
 :	10:44:25
 black	10:44:26
 ;	10:44:26
-:	10:47:38
 display	10:47:38	MISSING
-flex	10:47:39
-;	10:47:39
+:	10:47:38
 flex	10:47:39	MISSING
+;	10:47:39
 margin	10:48:02
 :	10:48:02
 0px	10:48:03
 1px	10:48:07
 ;	10:48:07
-200px	10:50:08	EXTRA*
 width	10:50:08	EXTRA*
--	10:50:09	EXTRA*
-:	10:50:09	EXTRA*
+200px	10:50:08	EXTRA*
 background	10:50:09	EXTRA*
+-	10:50:09	EXTRA*
 color	10:50:09	EXTRA*
+:	10:50:09	EXTRA*
 red	10:50:09	EXTRA*
 bar	10:50:10
 .	10:50:10
@@ -292,6 +291,7 @@ string	10:51:10	COMMENT	MISSING
 *	10:51:11	COMMENT
 /	10:51:11	COMMENT
 :	10:57:30
+flex	10:57:30
 ;	10:57:30
 -	10:57:30
 -	10:57:30
@@ -469,6 +469,6 @@ resolve	11:14:23
 )	11:14:31
 ;	11:14:32
 async	11:15:16
-becausethe	00:00:00	COMMENT	EXTRA
-concatentation	00:00:00	COMMENT	EXTRA
 isstring	00:00:00	COMMENT	EXTRA
+concatentation	00:00:00	COMMENT	EXTRA
+becausethe	00:00:00	COMMENT	EXTRA

@@ -1,8 +1,7 @@
 # Found            : 1186
 # MISSING          : 0
-# EXTRA            : 9
+# EXTRA            : 1
 # Follow (E)       : 99.3 %
-#	12:03:32
 <	11:53:32
 !	11:53:33
 DOCTYPE	11:53:34
@@ -124,6 +123,7 @@ color	12:02:55
 :	12:02:55
 gray	12:02:56
 ;	12:02:56
+#	12:03:32
 chess	12:03:34
 -	12:03:34
 board	12:03:35
@@ -1066,6 +1066,7 @@ element	12:33:31
 }	12:33:32
 (	12:35:18	EXTRA*
 )	12:35:18	EXTRA*
+;	12:35:18	EXTRA*
 element	12:35:29
 .	12:35:29
 style	12:35:30
@@ -1191,9 +1192,8 @@ children	12:53:32
 }	12:53:34
 let	12:56:53
 "	12:56:53	EXTRA*
-"	12:56:53	EXTRA*
 this	12:56:54	EXTRA*
 handleClick	12:56:55	EXTRA*
 =	12:56:57	EXTRA*
 onclick	12:56:58	EXTRA*
-;	00:00:00	EXTRA
+"	00:00:00	EXTRA

@@ -1,8 +1,7 @@
 # Found            : 1098
 # MISSING          : 4
-# EXTRA            : 10
+# EXTRA            : 1
 # Follow (E)       : 99.2 %
-#	10:19:24
 <	09:34:18
 !	09:34:18
 DOCTYPE	09:34:25
@@ -288,6 +287,7 @@ by	10:19:21	COMMENT
 ID	10:19:21	COMMENT
 *	10:19:22	COMMENT
 /	10:19:22	COMMENT
+#	10:19:24
 chess	10:19:31
 -	10:19:31
 board	10:19:32
@@ -1082,8 +1082,8 @@ div	10:30:31
 "	10:30:31
 "	10:30:31
 background	10:36:49	EXTRA*
-black	10:36:49	EXTRA*
 color	10:36:49	EXTRA*
+black	10:36:49	EXTRA*
 .	10:39:22
 left	10:39:23
 -	10:39:23
@@ -1109,8 +1109,6 @@ offset	10:40:42
 left	10:40:46
 offset	10:40:46
 ;	10:41:01	EXTRA*
-;	10:41:03
 425px	10:41:03	MISSING
-:	00:00:00	EXTRA
-;	00:00:00	EXTRA
+;	10:41:03
 Styling	00:00:00	COMMENT	EXTRA

@@ -1,8 +1,7 @@
 # Found            : 967
 # MISSING          : 83
-# EXTRA            : 50
+# EXTRA            : 49
 # Follow (E)       : 93.9 %
-#	12:30:47
 <	12:24:11
 <	12:24:11
 <	12:24:11
@@ -14,7 +13,7 @@
 <	12:24:11
 <	12:24:11
 <	12:24:11
-!	12:24:11
+!	12:24:11	MISSING
 DOCTYPE	12:24:11
 html	12:24:11
 html	12:24:11
@@ -31,7 +30,7 @@ html	12:24:11
 >	12:24:11
 >	12:24:11
 lang	12:24:11
-=	12:24:11
+=	12:24:11	MISSING
 =	12:24:11
 =	12:24:11
 =	12:24:11
@@ -51,6 +50,7 @@ head	12:24:11
 meta	12:24:11
 meta	12:24:11
 charset	12:24:11
+UTF	12:24:11	MISSING
 -	12:24:11
 -	12:24:11
 -	12:24:11
@@ -75,9 +75,6 @@ title	12:24:11
 /	12:24:11
 body	12:24:11
 body	12:24:11
-!	12:24:11	MISSING
-UTF	12:24:11	MISSING
-=	12:24:11	MISSING
 JavaScript	12:24:24	MISSING
 Lesson	12:24:25	MISSING
 <	12:27:54
@@ -113,25 +110,25 @@ abbreviations	12:29:01
 >	12:29:38
 >	12:29:38
 >	12:29:38
-/	12:29:38
-/	12:29:38
-/	12:29:38
-/	12:29:38
-ol	12:29:38
-ol	12:29:38
-li	12:29:38
-li	12:29:38
-li	12:29:38
-li	12:29:38
-li	12:29:38
-li	12:29:38
 /	12:29:38	MISSING
+/	12:29:38
+/	12:29:38
+/	12:29:38
+ol	12:29:38
+ol	12:29:38
+li	12:29:38
+li	12:29:38
+li	12:29:38
+li	12:29:38
+li	12:29:38
+li	12:29:38
 !	12:30:40
 (	12:30:42
 HTML	12:30:43
 boilerplate	12:30:45
 )	12:30:45
 div	12:30:47
+#	12:30:47
 container	12:30:48
 (	12:30:49
 div	12:30:50
@@ -154,8 +151,8 @@ items	12:31:06
 all	12:31:09
 followed	12:31:10
 by	12:31:11
-/	12:31:12
 Tab	12:31:12	MISSING
+/	12:31:12
 Enter	12:31:14
 )	12:31:14
 <	12:32:51
@@ -197,9 +194,8 @@ myString	12:35:27
 I	12:35:30
 study	12:35:31
 at	12:35:31
-Karelia	12:35:33
-"	12:35:33
 Karelia	12:35:33	MISSING
+"	12:35:33
 ;	12:35:38
 console	12:35:40
 .	12:35:40
@@ -318,6 +314,7 @@ myArray	12:46:40
 3	12:46:52
 ,	12:46:54
 "	12:46:56
+Karelia	12:46:59
 "	12:46:59
 ,	12:47:00
 true	12:47:02
@@ -332,21 +329,17 @@ log	12:47:22
 myArray	12:47:24
 )	12:47:24
 ;	12:47:24
-;	12:47:24	MISSING
 myArray	12:48:11
-.	12:48:11
-myArray	12:48:11	MISSING
+.	12:48:11	MISSING
 length	12:48:14	MISSING
-=	12:48:17
-0	12:48:17
+=	12:48:17	MISSING
 0	12:48:17	MISSING
-;	12:48:18
-myArray	12:48:36
+;	12:48:18	MISSING
+myArray	12:48:36	MISSING
 [	12:48:36
 0	12:48:36
 ]	12:48:41
 =	12:48:42
-=	12:48:42	MISSING
 9	12:48:43
 ;	12:48:44
 myArray	12:48:47
@@ -411,7 +404,6 @@ log	12:53:22	EXTRA*
 error	12:53:23	MISSING
 myArray	12:56:12
 .	12:56:12
-.	12:56:12	MISSING
 push	12:56:13
 (	12:56:13
 6	12:56:13
@@ -423,6 +415,7 @@ sort	12:57:46
 (	12:57:46
 )	12:57:46
 ;	12:57:47
+myArray	12:58:07
 .	12:58:07
 push	12:58:08
 (	12:58:08
@@ -458,8 +451,8 @@ dog	13:05:03
 name	13:05:07
 :	13:05:07
 "	13:05:08
-"	13:05:08
 Max	13:05:08	MISSING
+"	13:05:08
 ,	13:05:10
 age	13:05:11
 :	13:05:11
@@ -476,7 +469,6 @@ eyes	13:05:22
 "	13:05:23
 brown	13:05:24
 "	13:05:24
-;	13:05:37
 ;	13:05:37	MISSING
 console	13:05:40
 .	13:05:40
@@ -497,7 +489,7 @@ console	13:07:06
 log	13:07:07
 (	13:07:07
 dog	13:07:08
-.	13:07:09
+.	13:07:09	MISSING
 name	13:07:10
 )	13:07:10
 ;	13:07:10
@@ -506,8 +498,8 @@ dog	13:07:35
 name	13:07:36
 =	13:07:37
 "	13:07:37
-"	13:07:39
 Charlie	13:07:39	MISSING
+"	13:07:39
 ;	13:07:45
 console	13:07:50
 .	13:07:50
@@ -527,13 +519,12 @@ src	13:09:19
 =	13:09:20
 "	13:09:27
 "	13:09:27
-:	13:09:28
 https	13:09:28	MISSING
+:	13:09:28
 /	13:09:31
 /	13:09:31
 www	13:09:33
 .	13:09:34
-.	13:09:34	MISSING
 radufromfinland	13:09:39
 .	13:09:39
 com	13:09:41
@@ -547,9 +538,8 @@ js	13:09:44
 /	13:09:45
 script	13:09:45
 const	13:10:52
-anotherDog	13:10:55
-=	13:10:55
 anotherDog	13:10:55	MISSING
+=	13:10:55
 new	13:10:57
 Dog	13:10:58
 (	13:10:58
@@ -584,6 +574,7 @@ talk	13:12:33
 const	13:13:13
 canvas	13:13:15
 =	13:13:15
+anotherDog	13:13:17
 .	13:13:18
 render	13:13:19
 (	13:13:19
@@ -675,7 +666,6 @@ a	13:20:16
 +	13:20:16
 b	13:20:16
 )	13:20:17
-;	13:20:17
 ;	13:20:17	MISSING
 /	13:20:24	COMMENT
 /	13:20:25	COMMENT
@@ -758,12 +748,11 @@ log	13:23:16
 (	13:23:16
 Math	13:23:17
 .	13:23:17
+pow	13:23:18	MISSING
 (	13:23:18
 b	13:23:18
-pow	13:23:18	MISSING
 ,	13:23:19
 0	13:23:20
-.	13:23:20
 .	13:23:20	MISSING
 5	13:23:21
 )	13:23:21
@@ -776,9 +765,9 @@ log	13:23:34
 b	13:23:34
 *	13:23:35
 *	13:23:35
-.	13:23:37
-5	13:23:37
+0	13:23:37
 .	13:23:37	MISSING
+5	13:23:37
 )	13:23:38
 ;	13:23:38
 a	13:24:24
@@ -806,25 +795,22 @@ a	13:25:54
 *	13:25:54
 =	13:25:55
 2	13:25:56
-;	13:25:57
 ;	13:25:57	MISSING
 a	13:25:59
+/	13:26:00
 =	13:26:00
 3	13:26:01
-;	13:26:02
 ;	13:26:02	MISSING
 a	13:26:03
 %	13:26:04
 =	13:26:05
 4	13:26:06
-;	13:26:07
 ;	13:26:07	MISSING
 a	13:26:09
 *	13:26:10
 *	13:26:10
 =	13:26:10
 10	13:26:11
-;	13:26:12
 ;	13:26:12	MISSING
 console	13:26:17
 .	13:26:17
@@ -839,9 +825,9 @@ s1	13:28:10
 "	13:28:12
 Welcome	13:28:13	MISSING
 to	13:28:14
+Karelia	13:28:16	MISSING
 !	13:28:16
 "	13:28:16
-Karelia	13:28:16	MISSING
 ;	13:28:17
 const	13:28:24
 s2	13:28:25
@@ -849,9 +835,9 @@ s2	13:28:25
 '	13:28:26
 Welcome	13:28:27	MISSING
 to	13:28:28
+Karelia	13:28:30	MISSING
 !	13:28:30
 '	13:28:30
-Karelia	13:28:30	MISSING
 ;	13:28:31
 console	13:28:34
 .	13:28:34
@@ -872,9 +858,10 @@ Welcome	13:29:34	MISSING
 to	13:29:35
 \	13:29:35
 "	13:29:36
+Karelia	13:29:38	MISSING
 \	13:29:38
 "	13:29:38
-Karelia	13:29:38	MISSING
+!	13:29:39
 "	13:29:40
 ;	13:29:40
 /	13:29:41	COMMENT	MISSING
@@ -887,8 +874,8 @@ s3	13:29:51
 const	13:30:47
 age	13:30:48
 =	13:30:49
-;	13:30:50
 36	13:30:50	MISSING
+;	13:30:50
 console	13:30:58
 .	13:30:58
 log	13:30:59
@@ -905,7 +892,6 @@ years	13:31:05
 old	13:31:06
 "	13:31:07
 )	13:31:07
-;	13:31:07
 ;	13:31:07	MISSING
 console	13:31:42
 .	13:31:42
@@ -920,8 +906,8 @@ age	13:32:11
 }	13:32:11
 years	13:32:12
 old	13:32:13
-)	13:32:14
 `	13:32:14	MISSING
+)	13:32:14
 ;	13:32:15
 /	13:32:52	COMMENT	MISSING
 /	13:32:52	COMMENT	MISSING
@@ -929,6 +915,7 @@ template	13:32:54	COMMENT	MISSING
 literal	13:32:56	COMMENT	MISSING
 let	13:33:19
 today	13:33:20
+=	13:33:22
 new	13:33:23
 Date	13:33:24
 (	13:33:24
@@ -942,8 +929,8 @@ today	13:33:30
 )	13:33:31
 ;	13:33:31
 let	13:33:48
-someDate	13:33:51
 someDate	13:33:51	MISSING
+=	13:33:51
 new	13:33:52
 Date	13:33:53
 (	13:33:53
@@ -954,14 +941,13 @@ August	13:33:55	MISSING
 2025	13:33:58
 "	13:33:59
 )	13:33:59
-;	13:34:00
 ;	13:34:00	MISSING
 console	13:34:01
 .	13:34:02
 log	13:34:02
 (	13:34:02
+someDate	13:34:04
 )	13:34:04
-;	13:34:05
 ;	13:34:05	MISSING
 console	13:34:46
 .	13:34:46
@@ -992,9 +978,9 @@ console	13:36:15
 log	13:36:16
 (	13:36:16
 "	13:36:16
+Monday	13:36:18	MISSING
 "	13:36:18
 )	13:36:18
-Monday	13:36:18	MISSING
 ;	13:36:19
 case	13:36:25
 2	13:36:26
@@ -1004,101 +990,115 @@ console	13:36:28
 log	13:36:29
 (	13:36:29
 "	13:36:29
+Tuesday	13:36:31	MISSING
 "	13:36:31
 )	13:36:31
-Tuesday	13:36:31	MISSING
+;	13:36:32
 case	13:36:33
 3	13:36:33
 :	13:36:34
 console	13:36:35
+.	13:36:35
 log	13:36:36
 (	13:36:36
 "	13:36:37
-"	13:36:38
 Wednesday	13:36:38	MISSING
+"	13:36:38
 )	13:36:39
+;	13:36:39
 case	13:36:40
 4	13:36:41
 :	13:36:41
 console	13:36:42
+.	13:36:43
 log	13:36:43
 (	13:36:43
 "	13:36:44
+Thursday	13:36:45	MISSING
 "	13:36:45
 )	13:36:45
-Thursday	13:36:45	MISSING
+;	13:36:46
 case	13:36:47
 5	13:36:48
 :	13:36:48
 console	13:36:50
+.	13:36:50
 log	13:36:50
 (	13:36:51
 "	13:36:51
+Friday	13:36:53	MISSING
 "	13:36:53
 )	13:36:53
-Friday	13:36:53	MISSING
+;	13:36:53
 default	13:37:00	MISSING
 :	13:37:05
 console	13:37:07
+.	13:37:07
 log	13:37:08
 (	13:37:08
 "	13:37:09
-"	13:37:10
 Weekend	13:37:10	MISSING
+"	13:37:10
 )	13:37:11
-break	13:38:10
+;	13:37:11	MISSING
+break	13:38:10	MISSING
+;	13:38:10
 break	13:38:13
+;	13:38:13
 break	13:38:15
+;	13:38:15
 break	13:38:17
+;	13:38:17
 break	13:38:20
-;	13:38:20	MISSING
-break	13:38:22	MISSING
+;	13:38:20
+break	13:38:22
+;	13:38:23
 '	00:00:00	COMMENT	EXTRA
-,	00:00:00	EXTRA
-,	00:00:00	EXTRA
-,	00:00:00	EXTRA
-,	00:00:00	EXTRA
--	00:00:00	EXTRA
-21	00:00:00	EXTRA
-EROOR	00:00:00	COMMENT	EXTRA
-Javascript	00:00:00	EXTRA
 amnd	00:00:00	COMMENT	EXTRA
-anpotherDog	00:00:00	EXTRA
 array	00:00:00	COMMENT	EXTRA
 array	00:00:00	COMMENT	EXTRA
-ascaping	00:00:00	COMMENT	EXTRA
-august	00:00:00	EXTRA
-byid	00:00:00	COMMENT	EXTRA
-charlie	00:00:00	EXTRA
-defeault	00:00:00	EXTRA
-dictioneri	00:00:00	COMMENT	EXTRA
-friday	00:00:00	EXTRA
-html	00:00:00	EXTRA
-jas	00:00:00	COMMENT	EXTRA
-karelia	00:00:00	EXTRA
-karelia	00:00:00	EXTRA
-karelia	00:00:00	EXTRA
-karelia	00:00:00	EXTRA
-lesson	00:00:00	EXTRA
-max	00:00:00	EXTRA
-monday	00:00:00	EXTRA
+python	00:00:00	COMMENT	EXTRA
+python	00:00:00	COMMENT	EXTRA
 my	00:00:00	COMMENT	EXTRA
-mynumber	00:00:00	EXTRA
-mynumber	00:00:00	EXTRA
-objkect	00:00:00	COMMENT	EXTRA
-powb	00:00:00	EXTRA
+EROOR	00:00:00	COMMENT	EXTRA
 program	00:00:00	COMMENT	EXTRA
-python	00:00:00	COMMENT	EXTRA
-python	00:00:00	COMMENT	EXTRA
-someData	00:00:00	EXTRA
+objkect	00:00:00	COMMENT	EXTRA
+dictioneri	00:00:00	COMMENT	EXTRA
+byid	00:00:00	COMMENT	EXTRA
+jas	00:00:00	COMMENT	EXTRA
 space	00:00:00	COMMENT	EXTRA
-tab	00:00:00	EXTRA
-thrusday	00:00:00	EXTRA
-tuesday	00:00:00	EXTRA
-underdefined	00:00:00	EXTRA
+ascaping	00:00:00	COMMENT	EXTRA
 utf	00:00:00	EXTRA
+-	00:00:00	EXTRA
+Javascript	00:00:00	EXTRA
+lesson	00:00:00	EXTRA
+tab	00:00:00	EXTRA
+html	00:00:00	EXTRA
+mynumber	00:00:00	EXTRA
+mynumber	00:00:00	EXTRA
+karelia	00:00:00	EXTRA
+underdefined	00:00:00	EXTRA
+,	00:00:00	EXTRA
+max	00:00:00	EXTRA
+,	00:00:00	EXTRA
+charlie	00:00:00	EXTRA
+anpotherDog	00:00:00	EXTRA
+powb	00:00:00	EXTRA
+,	00:00:00	EXTRA
+,	00:00:00	EXTRA
+welcome	00:00:00	EXTRA
+karelia	00:00:00	EXTRA
+welcome	00:00:00	EXTRA
+karelia	00:00:00	EXTRA
+welcome	00:00:00	EXTRA
+karelia	00:00:00	EXTRA
+21	00:00:00	EXTRA
+someData	00:00:00	EXTRA
+august	00:00:00	EXTRA
+monday	00:00:00	EXTRA
+tuesday	00:00:00	EXTRA
 wednesday	00:00:00	EXTRA
+thrusday	00:00:00	EXTRA
+friday	00:00:00	EXTRA
+defeault	00:00:00	EXTRA
 weekwnd	00:00:00	EXTRA
-welcome	00:00:00	EXTRA
-welcome	00:00:00	EXTRA
-welcome	00:00:00	EXTRA
