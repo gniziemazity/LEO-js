@@ -265,7 +265,7 @@ class TestChessBoardStudentCTokens(_StudentBase, unittest.TestCase):
 class TestChessBoardStudentCDiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.diff_marks = _load_json(_TEST / 'wall' / 'student_c' / 'diff_marks.json')
+        cls.diff_marks = _load_json(_TEST / 'wall' / 'student_c' / 'diff_marks_leo_star.json')
         cls.teacher_occs = cls.diff_marks['teacher_files'][
             next(iter(cls.diff_marks['teacher_files']))
         ]
@@ -632,7 +632,7 @@ class TestQRStudentALCSStarDiffMarks(unittest.TestCase):
                          '123456.js': qr / '123456.js'}
         stu_files = {f.name: f for f in sorted(student_dir.iterdir())
                      if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
-        _, s_files, _ = _build_lcs_token_diff_marks(teacher_files, stu_files)
+        _, s_files, *_ = _build_lcs_token_diff_marks(teacher_files, stu_files)
         dm = {'teacher_files': {}, 'student_files': s_files}
         _apply_ghost_star_to_diff_marks(dm, stu_files, ghost_ctx)
         cls.student_css_marks = [m for m in dm['student_files'].get('123456.css', [])

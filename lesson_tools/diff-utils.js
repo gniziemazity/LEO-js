@@ -1,17 +1,16 @@
 "use strict";
 
 const DIFF_MARKS_FILES = {
-	"": "diff_marks.json",
+	"": "diff_marks_leo_star.json",
 	leo: "diff_marks_leo.json",
 	"token-lcs": "diff_marks_lcs.json",
 	"token-lcs-star": "diff_marks_lcs_star.json",
+	"token-lev": "diff_marks_lev.json",
+	"token-lev-star": "diff_marks_lev_star.json",
 	"line-ro": "diff_marks_ro.json",
 	"line-ro-star": "diff_marks_ro_star.json",
-	"line-vscode": "diff_marks_vscode.json",
-	"line-vscode-star": "diff_marks_vscode_star.json",
 	"line-git": "diff_marks_git.json",
 	"line-git-star": "diff_marks_git_star.json",
-	"context-first": "diff_marks_context_first.json",
 };
 
 function openDifferentiator(

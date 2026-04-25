@@ -17,6 +17,14 @@ try:
 except ImportError:
     HAS_PDF = False
 
+_INVALID_FS_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _safe_folder_name(name):
+    cleaned = _INVALID_FS_CHARS.sub("", name).strip().rstrip(".")
+    return cleaned
+
+
 def load_students(csv_path):
     students = {}
 
@@ -28,10 +36,12 @@ def load_students(csv_path):
                     sid = row["Student ID"].strip()
                     name = row["Student Name"].strip()
                     number = row["Student Number"].strip()
+                    alter = (row.get("Alter Ego") or "").strip()
                     students[name] = {
                         "id": sid,
                         "name": name,
                         "number": number,
+                        "alter_ego": alter,
                     }
             break
         except (UnicodeDecodeError, UnicodeError):
@@ -324,6 +334,8 @@ def main():
     matched = 0
     unmatched = 0
 
+    use_alter_ego = os.environ.get("STUDENT_ANALYTICS_USE_ALTER_EGO") == "1"
+
     for folder_name in sorted(student_folders):
         student = match_folder_to_student(folder_name, students)
 
@@ -335,7 +347,10 @@ def main():
         matched += 1
         src_folder = os.path.join(students_dir, folder_name)
 
-        dest_names = os.path.join(anon_names_dir, folder_name)
+        names_folder = folder_name
+        if use_alter_ego and student.get("alter_ego"):
+            names_folder = _safe_folder_name(student["alter_ego"]) or folder_name
+        dest_names = os.path.join(anon_names_dir, names_folder)
         dest_ids = os.path.join(anon_ids_dir, student["id"])
         os.makedirs(dest_names, exist_ok=True)
         os.makedirs(dest_ids, exist_ok=True)

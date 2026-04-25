@@ -1,3 +1,4 @@
+import copy
 import json
 import shutil
 from collections import Counter
@@ -11,28 +12,55 @@ from .similarity_measures import (
 )
 from .token_log import (
     _add_log_metadata,
-    _build_context_first_diff_marks,
     _build_file_ordered_ts_map,
     _build_file_timeline,
     _build_ghost_contexts,
     _build_git_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
+    _build_lev_token_diff_marks,
+    _build_occ_from_diff_marks,
     _build_ro_diff_marks,
     _build_student_file_coloring,
-    _build_student_token_occurrences,
     _build_teacher_file_coloring,
-    _build_vscode_diff_marks,
     _colors_to_position_marks,
     _extract_student_tokens,
     _file_at_ts,
     _parse_teacher_tokens,
-    _update_tokens_txt_extra_star,
-    _update_tokens_txt_missing,
+    _strip_internal_fields,
 )
 
 
+_RECO_EXTS = {'.html', '.htm', '.css', '.js'}
+
+
 class TokenLogMixin:
+    def _resolve_anon_dir(self, student_dir: Path, anon_names_dir: Optional[Path], sid: str) -> Path:
+        if anon_names_dir is None or not anon_names_dir.is_dir():
+            return student_dir
+        display = (self.student_info.get(sid) or {}).get('name')
+        if display and display != student_dir.name:
+            candidate = anon_names_dir / display
+            if candidate.is_dir():
+                return candidate
+        candidate = anon_names_dir / student_dir.name
+        if candidate.is_dir():
+            return candidate
+        return student_dir
+
+    def _get_teacher_code_files(self) -> Dict[str, Path]:
+        all_events = getattr(self, '_lesson_all_events', None)
+        if all_events:
+            reco_dir = self.reference_dir.parent / 'reconstructed'
+            if reco_dir.is_dir():
+                files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in _RECO_EXTS}
+                if files:
+                    return files
+            reco_html = self.reference_dir / 'reconstructed.html'
+            if reco_html.exists():
+                return {'reconstructed.html': reco_html}
+        return self.get_all_code_files(self.reference_dir)
+
     def write_keyword_log(self) -> None:
         has_css = bool(
             self.teacher_tokens_by_ext.get('.css')
@@ -109,6 +137,11 @@ class TokenLogMixin:
             return
 
         teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
+        removal_ts_by_token = {
+            tok: removal_ts
+            for tok, _, _, is_rem, removal_ts in teacher_entries
+            if is_rem and removal_ts
+        }
 
         all_events = getattr(self, '_lesson_all_events', None)
         ghost_contexts = None
@@ -119,9 +152,17 @@ class TokenLogMixin:
             if removed_keys:
                 ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
                 n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
-                print(f'  Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
+                print(f'Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
                       f'have deletion-batch context')
         self._ghost_contexts = ghost_contexts
+
+        teacher_code_files = self._get_teacher_code_files()
+
+        def _fmt_item(ts_str: str, s: str) -> str:
+            return f'{s} ({ts_str})'
+
+        def _fmt_ctr(c: Counter) -> List[str]:
+            return [f'{t} (x{n})' if n > 1 else t for t, n in sorted(c.items())]
 
         written = 0
         for student_dir in sorted(names_dir.iterdir()):
@@ -131,34 +172,53 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = student_dir
-            if anon_names_dir is not None and anon_names_dir.is_dir():
-                candidate = anon_names_dir / student_dir.name
-                if candidate.is_dir():
-                    anon_dir = candidate
+            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
 
             stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
                 continue
 
-            student_outside, student_comment = _extract_student_tokens(stu_files)
-            all_occ, n_found, n_missing, n_extra, follow_e_pct, _ = _build_student_token_occurrences(
-                teacher_entries, student_outside, student_comment
+            try:
+                t_marks, s_marks, _score, alignments, *_ = _build_leo_diff_marks(
+                    teacher_code_files, stu_files
+                )
+            except Exception:
+                t_marks, s_marks, alignments = {}, {}, None
+
+            diff_marks: dict = {
+                'token_matching': 'leo_star',
+                'teacher_files':  t_marks,
+                'student_files':  s_marks,
+            }
+            if alignments:
+                diff_marks['alignments'] = alignments
+
+            _, ns_score_e, *_ = _build_occ_from_diff_marks(diff_marks, teacher_entries, None)
+            non_star = copy.deepcopy(diff_marks)
+            non_star['token_matching'] = 'leo'
+            non_star['score'] = ns_score_e
+            _strip_internal_fields(non_star)
+            with open(anon_dir / 'diff_marks_leo.json', 'w', encoding='utf-8') as fh:
+                json.dump(non_star, fh, ensure_ascii=False, indent=2)
+
+            if all_events:
+                _add_log_metadata(
+                    diff_marks, all_events, stu_files,
+                    _ghost_contexts=ghost_contexts, _ts_map=ts_map_cached or None,
+                )
+
+            all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_extra_star = (
+                _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
             )
+            diff_marks['score'] = score_e
 
             n_found_e   = sum(1 for _, _, fl in all_occ if not fl)
             n_missing_e = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
             teacher_total_e = n_found_e + n_missing_e
 
-            n_found_c   = sum(1 for _, _, fl in all_occ if fl == {'COMMENT'})
-            n_missing_c = sum(1 for _, _, fl in all_occ if fl == {'MISSING', 'COMMENT'})
-            comment_total = n_found_c + n_missing_c
-            follow_c_pct  = (round(n_found_c / comment_total * 100, 1)
-                             if comment_total else 0.0)
-
-            extra_ctr         = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA'})
-            extra_star_ctr    = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA*'})
-            extra_comment_ctr = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA'})
+            extra_ctr              = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA'})
+            extra_star_ctr         = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA*'})
+            extra_comment_ctr      = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA'})
             extra_star_comment_ctr = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA*'})
 
             _miss_e  = sorted((ts, f'-{tok}')  for ts, tok, fl in all_occ if fl == {'MISSING'})
@@ -166,15 +226,9 @@ class TokenLogMixin:
             _extra   = sorted((ts, f'+{tok}')  for ts, tok, fl in all_occ if fl == {'EXTRA'})
             _extra_s = sorted((ts, f'+{tok}*') for ts, tok, fl in all_occ if fl == {'EXTRA*'})
             _extra_c = sorted((ts, f'+{tok}')  for ts, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA'})
-            _extra_sc= sorted((ts, f'+{tok}*') for ts, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA*'})
+            _extra_sc = sorted((ts, f'+{tok}*') for ts, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA*'})
             _comb_e  = sorted(_miss_e + _extra + _extra_s)
             _comb_c  = sorted(_miss_c + _extra_c + _extra_sc)
-
-            def _fmt_item(ts_str: str, s: str) -> str:
-                return f'{s} ({ts_str})'
-
-            def _fmt_ctr(c: Counter) -> List[str]:
-                return [f'{t} (x{n})' if n > 1 else t for t, n in sorted(c.items())]
 
             self._student_token_stats[sid] = {
                 'found':                 n_found,
@@ -182,18 +236,26 @@ class TokenLogMixin:
                 'extra':                 n_extra,
                 'n_extra_comment':       len(extra_comment_ctr),
                 'teacher_total_e':       teacher_total_e,
-                'follow_e':              follow_e_pct,
-                'follow_c':              follow_c_pct,
+                'follow_e':              score_e,
+                'follow_c':              score_c,
                 'extra_e_text':          ', '.join(_fmt_item(ts, s) for ts, s in _comb_e),
                 'comment_text':          ', '.join(_fmt_item(ts, s) for ts, s in _comb_c),
                 'extra_e_items':         [_fmt_item(ts, s) for ts, s in _comb_e],
                 'comment_items':         [_fmt_item(ts, s) for ts, s in _comb_c],
-                'extra_all':             _fmt_ctr(extra_ctr) + [f'{t}* (x{n})' if n > 1 else f'{t}*' for t, n in sorted(extra_star_ctr.items())],
-                'extra_comment_all':     _fmt_ctr(extra_comment_ctr) + [f'{t}* (x{n})' if n > 1 else f'{t}*' for t, n in sorted(extra_star_comment_ctr.items())],
+                'extra_all':             _fmt_ctr(extra_ctr) + [
+                    f'{t}* (x{n})' if n > 1 else f'{t}*'
+                    for t, n in sorted(extra_star_ctr.items())
+                ],
+                'extra_comment_all':     _fmt_ctr(extra_comment_ctr) + [
+                    f'{t}* (x{n})' if n > 1 else f'{t}*'
+                    for t, n in sorted(extra_star_comment_ctr.items())
+                ],
                 'extra_counter':         extra_ctr,
                 'extra_comment_counter': extra_comment_ctr,
                 'extra_star':            sum(extra_star_ctr.values()),
-                'extra_star_all':         _fmt_ctr({f'{t}*': n for t, n in (extra_star_ctr + extra_star_comment_ctr).items()}),
+                'extra_star_all':        _fmt_ctr(
+                    {f'{t}*': n for t, n in (extra_star_ctr + extra_star_comment_ctr).items()}
+                ),
                 'extra_e_count':         len(_comb_e),
                 'comment_count':         len(_comb_c),
             }
@@ -203,132 +265,23 @@ class TokenLogMixin:
                 fh.write(f'# Found            : {n_found}\n')
                 fh.write(f'# MISSING          : {n_missing}\n')
                 fh.write(f'# EXTRA            : {n_extra}\n')
-                fh.write(f'# Follow (E)       : {follow_e_pct} %\n')
+                fh.write(f'# Follow (E)       : {score_e} %\n')
                 for ts, token, flags in all_occ:
                     flag_str = '\t'.join(sorted(flags))
                     suffix   = f'\t{flag_str}' if flag_str else ''
                     fh.write(f'{token}\t{ts}{suffix}\n')
 
-            teacher_code_files = self.get_all_code_files(self.reference_dir)
-            try:
-                t_marks, s_marks, base_score = _build_leo_diff_marks(teacher_code_files, stu_files)
-            except Exception:
-                t_marks, s_marks, base_score = {}, {}, follow_e_pct
-
-            diff_marks = {
-                'token_matching': 'leo',
-                'case_sensitive': True,
-                'score': base_score if base_score is not None else follow_e_pct,
-                'teacher_files': t_marks,
-                'student_files': s_marks,
-            }
-            _add_log_metadata(
-                diff_marks, all_events, stu_files,
-                _ghost_contexts=ghost_contexts, _ts_map=ts_map_cached or None,
-            )
-            _update_tokens_txt_missing(out_path, diff_marks)
-            corrected_miss_e = sorted(
-                (m['timestamp'], f"-{m['token']}")
-                for marks in diff_marks.get('teacher_files', {}).values()
-                for m in marks
-                if m.get('label') == 'missing' and 'timestamp' in m
-            )
-            if corrected_miss_e:
-                _miss_e = corrected_miss_e
-                _comb_e_corr = sorted(_miss_e + _extra + _extra_s)
-                self._student_token_stats[sid]['extra_e_text']  = ', '.join(_fmt_item(ts, s) for ts, s in _comb_e_corr)
-                self._student_token_stats[sid]['extra_e_items'] = [_fmt_item(ts, s) for ts, s in _comb_e_corr]
-                self._student_token_stats[sid]['extra_e_count'] = len(_comb_e_corr)
-            removal_ts_by_token = {
-                tok: removal_ts
-                for tok, _, _, is_rem, removal_ts in teacher_entries
-                if is_rem and removal_ts
-            }
-            if removal_ts_by_token:
-                corrected_score, extra_star_counts, steal_from_found = _update_tokens_txt_extra_star(
-                    out_path, diff_marks, removal_ts_by_token
-                )
-            else:
-                corrected_score = follow_e_pct
-                extra_star_counts = Counter()
-                steal_from_found = Counter()
-            diff_marks['score'] = corrected_score
-            self._student_token_stats[sid]['follow_e'] = corrected_score
-
             if anon_dir != student_dir:
                 shutil.copy2(out_path, anon_dir / 'tokens.txt')
 
-            if extra_star_counts or steal_from_found:
-                stats = self._student_token_stats[sid]
-
-                stolen_miss_items: list = []
-                stolen_star_items: list = []
-                if steal_from_found:
-                    found_occ_by_tok: dict = {}
-                    for ts_o, tok_o, fl_o in all_occ:
-                        if not fl_o:
-                            found_occ_by_tok.setdefault(tok_o, []).append(ts_o)
-                    for tok_s, n_steal in steal_from_found.items():
-                        found_ts_list = found_occ_by_tok.get(tok_s, [])
-                        for i in range(n_steal):
-                            ts_found = found_ts_list[i] if i < len(found_ts_list) else '00:00:00'
-                            stolen_miss_items.append((ts_found, f'-{tok_s}'))
-                            ts_removal = removal_ts_by_token.get(tok_s, ts_found)
-                            stolen_star_items.append((ts_removal, f'+{tok_s}*'))
-
-                used = Counter()
-                new_comb_e = []
-                for ts, s in sorted(_miss_e + stolen_miss_items + _extra):
-                    if s.startswith('+'):
-                        tok_name = s[1:]
-                        if used[tok_name] < extra_star_counts.get(tok_name, 0):
-                            used[tok_name] += 1
-                            new_ts = removal_ts_by_token.get(tok_name, ts)
-                            new_comb_e.append((new_ts, f'+{tok_name}*'))
-                        else:
-                            new_comb_e.append((ts, s))
-                    else:
-                        new_comb_e.append((ts, s))
-
-                new_comb_e.extend(stolen_star_items)
-                new_comb_e.sort(key=lambda x: x[0])
-
-                def _fmt_item_local(ts_str: str, s: str) -> str:
-                    return f'{s} ({ts_str})'
-
-                stats['extra_e_text']  = ', '.join(_fmt_item_local(ts, s) for ts, s in new_comb_e)
-                stats['extra_e_items'] = [_fmt_item_local(ts, s) for ts, s in new_comb_e]
-                stats['extra_e_count'] = len(new_comb_e)
-
-                remaining_extra = Counter(extra_ctr)
-                new_extra_star_ctr: Counter = Counter()
-                for tok_name, n in extra_star_counts.items():
-                    promoted = min(n, remaining_extra[tok_name])
-                    remaining_extra[tok_name] -= promoted
-                    if remaining_extra[tok_name] <= 0:
-                        del remaining_extra[tok_name]
-                    if promoted:
-                        new_extra_star_ctr[tok_name] += promoted
-                for tok_name, n in steal_from_found.items():
-                    new_extra_star_ctr[tok_name] += n
-
-                stats['extra_all'] = _fmt_ctr(remaining_extra) + [
-                    f'{t}* (x{n})' if n > 1 else f'{t}*'
-                    for t, n in sorted(new_extra_star_ctr.items())
-                ]
-                stats['extra_star']     = sum(new_extra_star_ctr.values())
-                stats['extra_star_all'] = [
-                    f'{t}* (x{n})' if n > 1 else f'{t}*'
-                    for t, n in sorted(new_extra_star_ctr.items())
-                ]
-
-            diff_path = anon_dir / 'diff_marks.json'
-            with open(diff_path, 'w', encoding='utf-8') as fh:
+            _strip_internal_fields(diff_marks)
+            with open(anon_dir / 'diff_marks_leo_star.json', 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
 
             written += 1
 
-        print(f'  Written token files for {written} student(s) in {names_dir.name}/')
+        print(f'Written LEO diff marks for {written} student(s) in {names_dir.name}/')
+        print(f'Written LEO* diff marks for {written} student(s) in {names_dir.name}/')
 
     def write_similarity_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
         teacher_code_files = self.get_all_code_files(self.reference_dir)
@@ -344,11 +297,7 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = student_dir
-            if anon_names_dir is not None and anon_names_dir.is_dir():
-                candidate = anon_names_dir / student_dir.name
-                if candidate.is_dir():
-                    anon_dir = candidate
+            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
 
             stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
@@ -401,15 +350,12 @@ class TokenLogMixin:
 
             teacher_total = sum(teacher_agg.values())
             sim_score = round(sum(found_out.values()) / teacher_total * 100, 1) if teacher_total else None
-            diff_marks = {
-                'token_matching': 'similarity-containment',
-                'case_sensitive': True,
-                'teacher_files': _colors_to_position_marks(teacher_code_files, teacher_colors),
-                'student_files': _colors_to_position_marks(stu_files, student_colors),
-            }
+            diff_marks: dict = {'token_matching': 'similarity-containment'}
             if sim_score is not None:
                 diff_marks['score'] = sim_score
-            diff_path = anon_dir / 'diff_marks.json'
+            diff_marks['teacher_files'] = _colors_to_position_marks(teacher_code_files, teacher_colors)
+            diff_marks['student_files'] = _colors_to_position_marks(stu_files, student_colors)
+            diff_path = anon_dir / 'diff_marks_leo_star.json'
             with open(diff_path, 'w', encoding='utf-8') as fh:
                 json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
             written += 1
@@ -423,17 +369,23 @@ class TokenLogMixin:
         build_fn,
         token_matching: str,
         label: str,
-        filename: str = 'diff_marks.json',
+        filename: str,
+        star_token_matching: Optional[str] = None,
+        star_filename: Optional[str] = None,
+        star_label: Optional[str] = None,
+        include_line_marks: bool = True,
     ) -> None:
-        teacher_code_files = self.get_all_code_files(self.reference_dir)
+        teacher_code_files = self._get_teacher_code_files()
         if not teacher_code_files:
-            print(f'  {label} skipped — no teacher code files found.')
+            print(f'{label} skipped — no teacher code files found.')
             return
 
         all_events = getattr(self, '_lesson_all_events', None)
-        _gc = getattr(self, '_ghost_contexts', None)
+        write_star = star_token_matching is not None and bool(all_events)
+        _gc: Optional[dict] = None
         _tm: Dict[str, List[str]] = {}
-        if all_events:
+        if write_star:
+            _gc = getattr(self, '_ghost_contexts', None)
             _tm = _build_file_ordered_ts_map(all_events)
             if _gc is None:
                 _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(all_events)
@@ -442,6 +394,7 @@ class TokenLogMixin:
                     _gc = _build_ghost_contexts(all_events, removed_keys)
 
         written = 0
+        written_star = 0
         for student_dir in sorted(names_dir.iterdir()):
             if not student_dir.is_dir():
                 continue
@@ -449,11 +402,7 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = student_dir
-            if anon_names_dir is not None and anon_names_dir.is_dir():
-                candidate = anon_names_dir / student_dir.name
-                if candidate.is_dir():
-                    anon_dir = candidate
+            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
 
             stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
@@ -462,7 +411,10 @@ class TokenLogMixin:
             result = build_fn(teacher_code_files, stu_files)
             alignments = None
             line_marks = None
-            if len(result) == 5:
+            teacher_total_nc = None
+            if len(result) == 6:
+                teacher_marks, student_marks, score, alignments, line_marks, teacher_total_nc = result
+            elif len(result) == 5:
                 teacher_marks, student_marks, score, alignments, line_marks = result
             elif len(result) == 4:
                 teacher_marks, student_marks, score, alignments = result
@@ -472,108 +424,105 @@ class TokenLogMixin:
                 teacher_marks, student_marks = result
                 score = None
 
-            diff_marks = {
-                'token_matching': token_matching,
-                'case_sensitive': True,
-                'teacher_files': teacher_marks,
-                'student_files': student_marks,
-            }
+            diff_marks: dict = {'token_matching': token_matching}
             if score is not None:
                 diff_marks['score'] = score
+            diff_marks['teacher_files'] = teacher_marks
+            diff_marks['student_files'] = student_marks
             if alignments is not None:
                 diff_marks['alignments'] = alignments
-            if line_marks:
+            if include_line_marks and line_marks:
                 diff_marks['line_marks'] = line_marks
-            if all_events:
+
+            if write_star:
+                non_star = copy.deepcopy(diff_marks)
+                _strip_internal_fields(non_star)
+                with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
+                    json.dump(non_star, fh, ensure_ascii=False, indent=2)
+                written += 1
+
+                diff_marks['token_matching'] = star_token_matching
                 _add_log_metadata(diff_marks, all_events, stu_files,
                                   _ghost_contexts=_gc, _ts_map=_tm or None)
-            diff_path = anon_dir / filename
-            with open(diff_path, 'w', encoding='utf-8') as fh:
-                json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-            written += 1
+                if teacher_total_nc:
+                    n_extra_star_count = sum(
+                        1 for marks in diff_marks.get('student_files', {}).values()
+                        for m in marks if m.get('label') == 'extra_star'
+                    )
+                    n_missing_nc_star = sum(
+                        1 for marks in diff_marks.get('teacher_files', {}).values()
+                        for m in marks if m.get('label') == 'missing'
+                    )
+                    n_found_nc_star = teacher_total_nc - n_missing_nc_star
+                    diff_marks['score'] = round(
+                        max(0.0, (n_found_nc_star - n_extra_star_count) / teacher_total_nc * 100), 1
+                    )
+                _strip_internal_fields(diff_marks)
+                with open(anon_dir / star_filename, 'w', encoding='utf-8') as fh:
+                    json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+                written_star += 1
+            else:
+                _strip_internal_fields(diff_marks)
+                with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
+                    json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+                written += 1
 
-        print(f'  Written {label} for {written} student(s) in {names_dir.name}/')
+        print(f'Written {label} for {written} student(s) in {names_dir.name}/')
+        if write_star and star_label:
+            print(f'Written {star_label} for {written_star} student(s) in {names_dir.name}/')
+
+    def write_leo_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            _build_leo_diff_marks,
+            'leo', 'LEO diff marks', 'diff_marks_leo.json',
+            include_line_marks=False,
+        )
 
     def write_lcs_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
             names_dir, anon_names_dir,
             _build_lcs_token_diff_marks,
-            'token-lcs',
-            'LCS token diff marks',
-            filename='diff_marks_lcs.json',
+            'lcs', 'LCS diff marks', 'diff_marks_lcs.json',
+            star_token_matching='lcs_star' if all_events else None,
+            star_filename='diff_marks_lcs_star.json' if all_events else None,
+            star_label='LCS* diff marks' if all_events else None,
+            include_line_marks=False,
+        )
+
+    def write_lev_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        all_events = getattr(self, '_lesson_all_events', None)
+        self._write_alt_diff_marks(
+            names_dir, anon_names_dir,
+            _build_lev_token_diff_marks,
+            'lev', 'Lev diff marks', 'diff_marks_lev.json',
+            star_token_matching='lev_star' if all_events else None,
+            star_filename='diff_marks_lev_star.json' if all_events else None,
+            star_label='Lev* diff marks' if all_events else None,
+            include_line_marks=False,
         )
 
     def write_ro_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
             names_dir, anon_names_dir,
             _build_ro_diff_marks,
-            'line-ro',
-            'R/O line diff marks',
-            filename='diff_marks_ro.json',
+            'ro', 'R/O diff marks', 'diff_marks_ro.json',
+            star_token_matching='ro_star' if all_events else None,
+            star_filename='diff_marks_ro_star.json' if all_events else None,
+            star_label='R/O* diff marks' if all_events else None,
         )
 
     write_myers_diff_marks = write_ro_diff_marks
 
-    def write_ro_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_ro_diff_marks,
-            'line-ro-star',
-            'R/O* line diff marks',
-            filename='diff_marks_ro_star.json',
-        )
-
-    def write_vscode_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_vscode_diff_marks,
-            'line-vscode',
-            'VS Code line diff marks',
-            filename='diff_marks_vscode.json',
-        )
-
-    def write_vscode_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_vscode_diff_marks,
-            'line-vscode-star',
-            'VS Code* line diff marks',
-            filename='diff_marks_vscode_star.json',
-        )
-
     def write_git_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+        all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
             names_dir, anon_names_dir,
             _build_git_diff_marks,
-            'line-git',
-            'Git line diff marks',
-            filename='diff_marks_git.json',
-        )
-
-    def write_git_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_git_diff_marks,
-            'line-git-star',
-            'Git* line diff marks',
-            filename='diff_marks_git_star.json',
-        )
-
-    def write_lcs_star_diff_marks(self, names_dir: Path, anon_names_dir: Path = None,
-                                   filename: str = 'diff_marks_lcs_star.json') -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_lcs_token_diff_marks,
-            'token-lcs-star',
-            'LCS* token diff marks',
-            filename=filename,
-        )
-
-    def write_context_first_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
-            _build_context_first_diff_marks,
-            'context-first',
-            'Context-first diff marks',
-            filename='diff_marks_context_first.json',
+            'git', 'Git diff marks', 'diff_marks_git.json',
+            star_token_matching='git_star' if all_events else None,
+            star_filename='diff_marks_git_star.json' if all_events else None,
+            star_label='Git* diff marks' if all_events else None,
         )

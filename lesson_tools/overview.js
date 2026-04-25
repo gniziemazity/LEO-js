@@ -620,12 +620,23 @@ async function openDiff(dirHandle, student, followPct) {
 		}
 
 		const teacherFiles = {};
-		try {
-			const correctDir = await dirHandle.getDirectoryHandle("correct");
-			for await (const [name, entry] of correctDir.entries())
+		const _readCodeFiles = async (dirHandleSrc) => {
+			const out = {};
+			for await (const [name, entry] of dirHandleSrc.entries())
 				if (entry.kind === "file" && /\.(html|css|js)$/i.test(name))
-					teacherFiles[name] = await (await entry.getFile()).text();
+					out[name] = await (await entry.getFile()).text();
+			return out;
+		};
+		try {
+			const recoDir = await dirHandle.getDirectoryHandle("reconstructed");
+			Object.assign(teacherFiles, await _readCodeFiles(recoDir));
 		} catch {}
+		if (!Object.keys(teacherFiles).length) {
+			try {
+				const correctDir = await dirHandle.getDirectoryHandle("correct");
+				Object.assign(teacherFiles, await _readCodeFiles(correctDir));
+			} catch {}
+		}
 
 		const studentFiles = {};
 		const allMarks = {};

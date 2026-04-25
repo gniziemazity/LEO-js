@@ -1,5 +1,4 @@
 ﻿import difflib
-import json
 import math
 import os
 import shutil
@@ -219,6 +218,121 @@ def _build_student_token_occurrences(
     follow_e_pct    = round(n_found_e / teacher_total_e * 100, 1) if teacher_total_e else 0.0
 
     return all_occ, n_found, n_missing, n_extra, follow_e_pct, consumed
+
+
+def _build_occ_from_diff_marks(
+    diff_marks: dict,
+    teacher_entries: list,
+    removal_ts_by_token: dict = None,
+) -> tuple:
+    miss_nc_ts: Counter = Counter()
+    miss_nc_ctr: Counter = Counter()
+    has_ts = False
+    for marks in diff_marks.get('teacher_files', {}).values():
+        for m in marks:
+            if m.get('label') == 'missing':
+                tok = m['token']
+                ts = m.get('timestamp', '')
+                miss_nc_ctr[tok] += 1
+                if ts:
+                    has_ts = True
+                miss_nc_ts[(tok, ts)] += 1
+
+    t_comment_ctr: Counter = Counter()
+    for marks in diff_marks.get('teacher_files', {}).values():
+        for m in marks:
+            if m.get('label') == 'comment':
+                t_comment_ctr[m['token']] += 1
+
+    s_comment_ctr: Counter = Counter()
+    for marks in diff_marks.get('student_files', {}).values():
+        for m in marks:
+            if m.get('label') == 'comment':
+                s_comment_ctr[m['token']] += 1
+
+    all_occ: list = []
+    miss_nc_remaining = Counter(miss_nc_ts)
+    miss_nc_ctr_remaining = Counter(miss_nc_ctr)
+    s_comment_consumed: Counter = Counter()
+
+    for entry in teacher_entries:
+        tok, ts_str, is_comment, is_removed = entry[0], entry[1], entry[2], entry[3]
+        if is_removed:
+            continue
+        if is_comment:
+            if s_comment_consumed[tok] < s_comment_ctr.get(tok, 0):
+                s_comment_consumed[tok] += 1
+                all_occ.append((ts_str, tok, {'COMMENT'}))
+            else:
+                all_occ.append((ts_str, tok, {'MISSING', 'COMMENT'}))
+        else:
+            if has_ts:
+                key = (tok, ts_str)
+                if miss_nc_remaining.get(key, 0) > 0:
+                    miss_nc_remaining[key] -= 1
+                    all_occ.append((ts_str, tok, {'MISSING'}))
+                else:
+                    all_occ.append((ts_str, tok, set()))
+            else:
+                if miss_nc_ctr_remaining.get(tok, 0) > 0:
+                    miss_nc_ctr_remaining[tok] -= 1
+                    all_occ.append((ts_str, tok, {'MISSING'}))
+                else:
+                    all_occ.append((ts_str, tok, set()))
+
+    if has_ts:
+        for (tok, ts), count in miss_nc_remaining.items():
+            if ts:
+                for _ in range(count):
+                    all_occ.append((ts, tok, {'MISSING'}))
+    else:
+        for tok, count in miss_nc_ctr_remaining.items():
+            for _ in range(count):
+                all_occ.append(('00:00:00', tok, {'MISSING'}))
+
+    for tok, s_count in s_comment_ctr.items():
+        extra_c = s_count - s_comment_consumed.get(tok, 0)
+        for _ in range(max(0, extra_c)):
+            all_occ.append(('00:00:00', tok, {'COMMENT', 'EXTRA'}))
+
+    for marks in diff_marks.get('student_files', {}).values():
+        for m in marks:
+            label = m.get('label')
+            tok = m['token']
+            if label == 'extra':
+                all_occ.append(('00:00:00', tok, {'EXTRA'}))
+            elif label == 'extra_star':
+                rem_ts = (removal_ts_by_token or {}).get(tok, '00:00:00')
+                all_occ.append((rem_ts, tok, {'EXTRA*'}))
+
+    def _sort_key(entry: tuple) -> tuple:
+        ts, _, fl = entry
+        is_tail = ts == '00:00:00' and 'EXTRA' in fl and 'EXTRA*' not in fl
+        try:
+            h, m, s = ts.split(':')
+            return (is_tail, int(h), int(m), int(s))
+        except Exception:
+            return (is_tail, 99, 99, 99)
+
+    all_occ.sort(key=_sort_key)
+
+    n_found_e   = sum(1 for _, _, fl in all_occ if not fl)
+    n_missing_e = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
+    n_extra_star = sum(1 for _, _, fl in all_occ if 'EXTRA*' in fl)
+    teacher_total_e = n_found_e + n_missing_e
+    score_e = (round(max(0.0, (n_found_e - n_extra_star) / teacher_total_e * 100), 1)
+               if teacher_total_e else 0.0)
+
+    n_found_c   = sum(1 for _, _, fl in all_occ if fl == {'COMMENT'})
+    n_missing_c = sum(1 for _, _, fl in all_occ if fl == {'MISSING', 'COMMENT'})
+    comment_total = n_found_c + n_missing_c
+    score_c = (round(n_found_c / comment_total * 100, 1) if comment_total else 0.0)
+
+    n_found   = n_found_e + n_found_c
+    n_missing = n_missing_e + n_missing_c
+    n_extra   = sum(1 for _, _, fl in all_occ if 'EXTRA' in fl)
+
+    return all_occ, score_e, score_c, n_found, n_missing, n_extra, n_extra_star
 
 
 def _cosine_similarity_sparse(v1: Counter, v2: Counter) -> float:
@@ -521,11 +635,22 @@ def _collect_occurrences(files_by_ext: dict, token_keys: set = None) -> Tuple[Li
     return occs, counts
 
 
-def _build_contextual_diff_marks(
+def _prune_color_map(file_map: dict) -> dict:
+    out = {}
+    for fn, toks in file_map.items():
+        kept = {tok: arr for tok, arr in toks.items() if any(x is not None for x in arr)}
+        if kept:
+            out[fn] = kept
+    return out
+
+
+def _compute_per_token_matching(
     teacher_files: dict,
     student_files: dict,
-    context_k: int = _CONTEXT_K,
-) -> Tuple[dict, dict]:
+    context_k: int,
+) -> Tuple[dict, dict, int, int]:
+    """Hungarian per-token matching across all files; returns
+    (teacher_colors, student_colors, n_total, n_missing) — colors are unpruned."""
     teacher_occs, teacher_counts = _collect_occurrences(teacher_files)
     student_occs, student_counts = _collect_occurrences(student_files)
 
@@ -553,89 +678,8 @@ def _build_contextual_diff_marks(
         for fn, toks in student_counts.items()
     }
 
-    for tok in token_keys:
-        t_list = teacher_by_token.get(tok, [])
-        s_list = student_by_token.get(tok, [])
-
-        t_out = [x for x in t_list if not x['is_comment']]
-        t_com = [x for x in t_list if x['is_comment']]
-        s_out = [x for x in s_list if not x['is_comment']]
-        s_com = [x for x in s_list if x['is_comment']]
-
-        t_out_pos = [x['seq_idx'] for x in t_out]
-        s_out_pos = [x['seq_idx'] for x in s_out]
-        _mso, missing_to, extra_so = _locate_token(
-            s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
-        )
-
-        for i, oc in enumerate(t_out):
-            arr = teacher_colors[oc['file']][tok]
-            if i in missing_to:
-                arr[oc['file_idx']] = 'missing'
-
-        for oc in t_com:
-            arr = teacher_colors[oc['file']][tok]
-            arr[oc['file_idx']] = 'comment'
-
-        for i, oc in enumerate(s_out):
-            arr = student_colors[oc['file']][tok]
-            if i in extra_so:
-                arr[oc['file_idx']] = 'extra'
-
-        for oc in s_com:
-            arr = student_colors[oc['file']][tok]
-            arr[oc['file_idx']] = 'comment'
-
-    def _prune(file_map: dict) -> dict:
-        out = {}
-        for fn, toks in file_map.items():
-            kept = {tok: arr for tok, arr in toks.items() if any(x is not None for x in arr)}
-            if kept:
-                out[fn] = kept
-        return out
-
-    return _prune(teacher_colors), _prune(student_colors)
-
-
-def _build_leo_diff_marks(
-    teacher_files: dict,
-    student_files: dict,
-    context_k: int = _CONTEXT_K,
-) -> Tuple[dict, dict, Optional[float]]:
-    teacher_occs, teacher_counts = _collect_occurrences(teacher_files)
-    student_occs, _ = _collect_occurrences(student_files)
-
-    token_keys = (
-        {oc['token'] for oc in teacher_occs} |
-        {oc['token'] for oc in student_occs}
-    )
-
-    teacher_by_token: Dict[str, List[dict]] = {}
-    for oc in teacher_occs:
-        teacher_by_token.setdefault(oc['token'], []).append(oc)
-    student_by_token: Dict[str, List[dict]] = {}
-    for oc in student_occs:
-        student_by_token.setdefault(oc['token'], []).append(oc)
-
-    teacher_seq = [oc['token'] for oc in teacher_occs if not oc['is_comment']]
-    student_seq = [oc['token'] for oc in student_occs if not oc['is_comment']]
-
-    teacher_colors = {
-        fn: {tok: [None] * n for tok, n in toks.items()}
-        for fn, toks in teacher_counts.items()
-    }
-    student_counts_local = {}
-    for oc in student_occs:
-        student_counts_local.setdefault(oc['file'], {}).setdefault(oc['token'], 0)
-        student_counts_local[oc['file']][oc['token']] += 1
-    student_colors = {
-        fn: {tok: [None] * n for tok, n in toks.items()}
-        for fn, toks in student_counts_local.items()
-    }
-
     n_total = 0
     n_missing = 0
-
     for tok in token_keys:
         t_list = teacher_by_token.get(tok, [])
         s_list = student_by_token.get(tok, [])
@@ -646,43 +690,54 @@ def _build_leo_diff_marks(
         s_com = [x for x in s_list if x['is_comment']]
 
         n_total += len(t_out)
-        t_out_pos = [x['seq_idx'] for x in t_out]
-        s_out_pos = [x['seq_idx'] for x in s_out]
         _mso, missing_to, extra_so = _locate_token(
-            s_out_pos, t_out_pos, student_seq, teacher_seq, context_k,
+            [x['seq_idx'] for x in s_out],
+            [x['seq_idx'] for x in t_out],
+            student_seq, teacher_seq, context_k,
         )
         n_missing += len(missing_to)
 
         for i, oc in enumerate(t_out):
-            arr = teacher_colors[oc['file']][tok]
             if i in missing_to:
-                arr[oc['file_idx']] = 'missing'
-
+                teacher_colors[oc['file']][tok][oc['file_idx']] = 'missing'
         for oc in t_com:
-            arr = teacher_colors[oc['file']][tok]
-            arr[oc['file_idx']] = 'comment'
-
+            teacher_colors[oc['file']][tok][oc['file_idx']] = 'comment'
         for i, oc in enumerate(s_out):
-            arr = student_colors[oc['file']][tok]
             if i in extra_so:
-                arr[oc['file_idx']] = 'extra'
-
+                student_colors[oc['file']][tok][oc['file_idx']] = 'extra'
         for oc in s_com:
-            arr = student_colors[oc['file']][tok]
-            arr[oc['file_idx']] = 'comment'
+            student_colors[oc['file']][tok][oc['file_idx']] = 'comment'
 
-    def _prune(file_map: dict) -> dict:
-        out = {}
-        for fn, toks in file_map.items():
-            kept = {tok: arr for tok, arr in toks.items() if any(x is not None for x in arr)}
-            if kept:
-                out[fn] = kept
-        return out
+    return teacher_colors, student_colors, n_total, n_missing
 
-    teacher_result = _colors_to_position_marks(teacher_files, _prune(teacher_colors))
-    student_result = _colors_to_position_marks(student_files, _prune(student_colors))
+
+def _build_contextual_diff_marks(
+    teacher_files: dict,
+    student_files: dict,
+    context_k: int = _CONTEXT_K,
+) -> Tuple[dict, dict]:
+    teacher_colors, student_colors, _, _ = _compute_per_token_matching(
+        teacher_files, student_files, context_k,
+    )
+    return _prune_color_map(teacher_colors), _prune_color_map(student_colors)
+
+
+def _build_leo_diff_marks(
+    teacher_files: dict,
+    student_files: dict,
+    context_k: int = _CONTEXT_K,
+) -> Tuple[dict, dict, Optional[float], dict, dict, int]:
+    teacher_colors, student_colors, n_total, n_missing = _compute_per_token_matching(
+        teacher_files, student_files, context_k,
+    )
+    teacher_result = _colors_to_position_marks(teacher_files, _prune_color_map(teacher_colors))
+    student_result = _colors_to_position_marks(student_files, _prune_color_map(student_colors))
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
-    return teacher_result, student_result, score
+    try:
+        _, _, _, alignments, line_marks, *_ = _build_git_diff_marks(teacher_files, student_files)
+    except Exception:
+        alignments, line_marks = {}, {}
+    return teacher_result, student_result, score, alignments, line_marks, n_total
 
 
 def _add_log_metadata(
@@ -704,11 +759,17 @@ def _add_log_metadata(
             if mark.get('label') == 'missing':
                 tok = mark.get('token', '')
                 if tok:
-                    idx = tok_seen[tok]
-                    tok_seen[tok] += 1
+                    stored_idx = mark.pop('_tok_idx', None)
+                    if stored_idx is not None:
+                        idx = stored_idx
+                    else:
+                        idx = tok_seen[tok]
+                        tok_seen[tok] += 1
                     ts_list = ts_map.get(tok, [])
                     if idx < len(ts_list):
                         mark['timestamp'] = ts_list[idx]
+            else:
+                mark.pop('_tok_idx', None)
 
     ghost_contexts = _ghost_contexts
     if ghost_contexts is None:
@@ -777,6 +838,13 @@ def _build_utf16_map(text: str) -> List[int]:
     return u16map
 
 
+def _strip_internal_fields(diff_marks: dict) -> None:
+    for side in ('teacher_files', 'student_files'):
+        for marks in diff_marks.get(side, {}).values():
+            for mark in marks:
+                mark.pop('_tok_idx', None)
+
+
 def _colors_to_position_marks(files_by_ext: dict, colors_map: dict, ts_map: Dict[str, List[str]] = None) -> dict:
     token_keys: set = set()
     for toks in colors_map.values():
@@ -814,10 +882,12 @@ def _colors_to_position_marks(files_by_ext: dict, colors_map: dict, ts_map: Dict
             start = oc['pos']
             end   = oc['pos'] + len(tok)
         mark = {'token': tok, 'label': label, 'start': start, 'end': end}
-        if label == 'missing' and ts_map:
-            ts_list = ts_map.get(tok, [])
-            if gidx < len(ts_list):
-                mark['timestamp'] = ts_list[gidx]
+        if label == 'missing':
+            mark['_tok_idx'] = gidx
+            if ts_map:
+                ts_list = ts_map.get(tok, [])
+                if gidx < len(ts_list):
+                    mark['timestamp'] = ts_list[gidx]
         result.setdefault(oc['file'], []).append(mark)
     for lst in result.values():
         lst.sort(key=lambda x: x['start'])
@@ -832,8 +902,16 @@ def _line_start_offsets(text: str) -> List[int]:
     return starts
 
 
-def _tokenize_file_ordered(text: str, _ext: str = '') -> List[Tuple[int, str]]:
-    return [(m.start(), m.group()) for m in _sm._CHAR_TOKEN_RE.finditer(text)]
+def _make_line_mark(lines_raw, starts, idx, label):
+    line_raw = lines_raw[idx]
+    if not line_raw.strip():
+        return None
+    raw_start = starts[idx]
+    ls = len(line_raw) - len(line_raw.lstrip())
+    le = len(line_raw.rstrip())
+    if raw_start + ls < raw_start + le:
+        return {'label': label, 'start': raw_start + ls, 'end': raw_start + le}
+    return None
 
 
 def _match_files_by_name_then_ext(
@@ -864,10 +942,250 @@ def _match_files_by_name_then_ext(
     return pairs
 
 
-def _build_lcs_token_diff_marks(
+def _read_text_normalized(path: Optional[Path]) -> str:
+    if path is None:
+        return ''
+    try:
+        return path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+    except Exception:
+        return ''
+
+
+def _split_tokens_by_comment(text: str, ext: str = '') -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+    if not text:
+        return [], []
+    starts, ends = _comment_ranges_for_ext(text, ext)
+    nc: List[Tuple[int, str]] = []
+    cm: List[Tuple[int, str]] = []
+    for m in _sm._CHAR_TOKEN_RE.finditer(text):
+        (cm if _pos_in_comment(m.start(), starts, ends) else nc).append((m.start(), m.group()))
+    return nc, cm
+
+
+def _build_token_position_index(text: str) -> Tuple[Dict[str, List[int]], int]:
+    positions: Dict[str, List[int]] = {}
+    n = 0
+    for m in _sm._CHAR_TOKEN_RE.finditer(text):
+        positions.setdefault(m.group(), []).append(m.start())
+        n += 1
+    return positions, n
+
+
+def _missing_mark(pos: int, tok: str, tok_all_positions: Optional[Dict[str, List[int]]] = None) -> dict:
+    mark: dict = {'token': tok, 'label': 'missing', 'start': pos, 'end': pos + len(tok)}
+    if tok_all_positions is not None:
+        positions = tok_all_positions.get(tok, [])
+        mark['_tok_idx'] = bisect.bisect_left(positions, pos)
+    return mark
+
+
+def _extra_mark(pos: int, tok: str) -> dict:
+    return {'token': tok, 'label': 'extra', 'start': pos, 'end': pos + len(tok)}
+
+
+def _comment_pos_mark(pos: int, tok: str) -> dict:
+    return {'token': tok, 'label': 'comment', 'start': pos, 'end': pos + len(tok)}
+
+
+def _line_token_marks(line_text: str, line_off: int, side: str,
+                       tok_all_positions: Optional[Dict[str, List[int]]] = None) -> List[dict]:
+    marks: List[dict] = []
+    for m in _sm._CHAR_TOKEN_RE.finditer(line_text):
+        abs_pos = line_off + m.start()
+        if side == 'teacher':
+            marks.append(_missing_mark(abs_pos, m.group(), tok_all_positions))
+        else:
+            marks.append(_extra_mark(abs_pos, m.group()))
+    return marks
+
+
+def _diff_line_pair_tokens(t_line: str, t_off: int, s_line: str, s_off: int,
+                            tok_all_positions: Dict[str, List[int]]
+                            ) -> Tuple[List[dict], List[dict]]:
+    t_tok_ms = list(_sm._CHAR_TOKEN_RE.finditer(t_line))
+    s_tok_ms = list(_sm._CHAR_TOKEN_RE.finditer(s_line))
+    sm = difflib.SequenceMatcher(
+        None, [m.group() for m in t_tok_ms], [m.group() for m in s_tok_ms],
+        autojunk=False,
+    )
+    t_marks: List[dict] = []
+    s_marks: List[dict] = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == 'equal':
+            continue
+        if tag in ('delete', 'replace'):
+            for ti in range(i1, i2):
+                m = t_tok_ms[ti]
+                t_marks.append(_missing_mark(t_off + m.start(), m.group(), tok_all_positions))
+        if tag in ('insert', 'replace'):
+            for tj in range(j1, j2):
+                m = s_tok_ms[tj]
+                s_marks.append(_extra_mark(s_off + m.start(), m.group()))
+    return t_marks, s_marks
+
+
+def _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
+                                t_lines_raw, t_starts, t_i, tok_all_positions) -> None:
+    alignment.append([t_i, None])
+    if t_i >= len(t_lines_raw):
+        return
+    lm = _make_line_mark(t_lines_raw, t_starts, t_i, 'missing')
+    if lm:
+        t_line_ms.append(lm)
+    t_off = t_starts[t_i] if t_i < len(t_starts) else 0
+    t_marks.extend(_line_token_marks(t_lines_raw[t_i], t_off, 'teacher', tok_all_positions))
+
+
+def _add_unpaired_student_line(alignment, s_marks, s_line_ms,
+                                s_lines_raw, s_starts, s_j) -> None:
+    alignment.append([None, s_j])
+    if s_j >= len(s_lines_raw):
+        return
+    lm = _make_line_mark(s_lines_raw, s_starts, s_j, 'extra')
+    if lm:
+        s_line_ms.append(lm)
+    s_off = s_starts[s_j] if s_j < len(s_starts) else 0
+    s_marks.extend(_line_token_marks(s_lines_raw[s_j], s_off, 'student'))
+
+
+def _add_paired_line_block(alignment, t_marks, s_marks,
+                            t_lines_raw, s_lines_raw, t_starts, s_starts,
+                            t_start, s_start, n_paired, tok_all_positions) -> None:
+    for k in range(n_paired):
+        t_i, s_j = t_start + k, s_start + k
+        alignment.append([t_i, s_j])
+        if t_i >= len(t_lines_raw) or s_j >= len(s_lines_raw):
+            continue
+        t_off = t_starts[t_i] if t_i < len(t_starts) else 0
+        s_off = s_starts[s_j] if s_j < len(s_starts) else 0
+        tm, sm = _diff_line_pair_tokens(
+            t_lines_raw[t_i], t_off, s_lines_raw[s_j], s_off, tok_all_positions
+        )
+        t_marks.extend(tm)
+        s_marks.extend(sm)
+
+
+def _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
+                        t_lines_raw, s_lines_raw, t_starts, s_starts,
+                        t_start, n_t, s_start, n_s, tok_all_positions) -> None:
+    n_paired = min(n_t, n_s)
+    _add_paired_line_block(alignment, t_marks, s_marks,
+                            t_lines_raw, s_lines_raw, t_starts, s_starts,
+                            t_start, s_start, n_paired, tok_all_positions)
+    for k in range(n_paired, n_t):
+        _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
+                                    t_lines_raw, t_starts, t_start + k, tok_all_positions)
+    for k in range(n_paired, n_s):
+        _add_unpaired_student_line(alignment, s_marks, s_line_ms,
+                                    s_lines_raw, s_starts, s_start + k)
+
+
+def _finalize_per_file_diff(per_file_results, n_total
+                             ) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]],
+                                        Optional[float], Dict[str, list], dict, int]:
+    teacher_result: Dict[str, List[dict]] = {}
+    student_result: Dict[str, List[dict]] = {}
+    alignments: Dict[str, list] = {}
+    t_line_by_file: Dict[str, List[dict]] = {}
+    s_line_by_file: Dict[str, List[dict]] = {}
+
+    for fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment in per_file_results:
+        if t_marks:
+            teacher_result[fname] = t_marks
+        if s_marks:
+            student_result[s_fname] = s_marks
+        if t_line_ms:
+            t_line_by_file[fname] = t_line_ms
+        if s_line_ms:
+            s_line_by_file[s_fname] = s_line_ms
+        if alignment is not None:
+            alignments[fname] = alignment
+            if s_fname != fname:
+                alignments[s_fname] = alignment
+
+    n_missing = sum(1 for marks in teacher_result.values() for m in marks if m.get('label') == 'missing')
+    score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
+    line_marks: dict = {}
+    if t_line_by_file:
+        line_marks['teacher_files'] = t_line_by_file
+    if s_line_by_file:
+        line_marks['student_files'] = s_line_by_file
+    return teacher_result, student_result, score, alignments, line_marks, n_total
+
+
+def _lcs_opcodes(a: List[str], b: List[str]):
+    return difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
+
+
+def _levenshtein_opcodes(a: List[str], b: List[str]):
+    """Edit-distance traceback in difflib.get_opcodes() format.
+
+    Each op is (tag, i1, i2, j1, j2) with tag in {'equal','replace','delete','insert'}.
+    Consecutive single-step ops of the same tag are coalesced into ranges.
+    """
+    m, n = len(a), len(b)
+    if m == 0:
+        return [('insert', 0, 0, 0, n)] if n else []
+    if n == 0:
+        return [('delete', 0, m, 0, 0)] if m else []
+
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+    for i in range(1, m + 1):
+        ai = a[i - 1]
+        prev = dp[i - 1]
+        cur = dp[i]
+        for j in range(1, n + 1):
+            if ai == b[j - 1]:
+                cur[j] = prev[j - 1]
+            else:
+                cur[j] = 1 + min(prev[j - 1], prev[j], cur[j - 1])
+
+    steps: List[Tuple[str, int, int]] = []
+    i, j = m, n
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and a[i - 1] == b[j - 1]:
+            steps.append(('equal', 1, 1)); i -= 1; j -= 1
+        elif i > 0 and j > 0 and dp[i][j] == dp[i - 1][j - 1] + 1:
+            steps.append(('replace', 1, 1)); i -= 1; j -= 1
+        elif i > 0 and dp[i][j] == dp[i - 1][j] + 1:
+            steps.append(('delete', 1, 0)); i -= 1
+        else:
+            steps.append(('insert', 0, 1)); j -= 1
+    steps.reverse()
+
+    ops: List[Tuple[str, int, int, int, int]] = []
+    ti = sj = 0
+    cur_tag = None
+    cur_dt = cur_ds = 0
+    for tag, dt, ds in steps:
+        if tag == cur_tag:
+            cur_dt += dt
+            cur_ds += ds
+        else:
+            if cur_tag is not None:
+                ops.append((cur_tag, ti, ti + cur_dt, sj, sj + cur_ds))
+                ti += cur_dt
+                sj += cur_ds
+            cur_tag, cur_dt, cur_ds = tag, dt, ds
+    if cur_tag is not None:
+        ops.append((cur_tag, ti, ti + cur_dt, sj, sj + cur_ds))
+    return ops
+
+
+def _build_token_seq_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
+    opcodes_fn,
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    """Per-file token-sequence diff driver shared by LCS and Levenshtein.
+
+    Comments are excluded from matching (marked with the 'comment' label, like LCS).
+    `opcodes_fn(t_seq, s_seq)` must return difflib.get_opcodes()-compatible tuples.
+    """
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
     n_total = 0
@@ -875,58 +1193,38 @@ def _build_lcs_token_diff_marks(
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
         ext = Path(t_name).suffix.lower()
-        try:
-            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-        except Exception:
+        t_text = _read_text_normalized(t_path)
+        s_text = _read_text_normalized(s_path) if s_path else ''
+        if not t_text:
             continue
 
-        s_text = ''
-        if s_path:
-            try:
-                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-            except Exception:
-                pass
-
-        t_all = _tokenize_file_ordered(t_text, ext)
-        s_all = _tokenize_file_ordered(s_text, ext) if s_text else []
-
-        t_cs, t_ce = _comment_ranges_for_ext(t_text, ext)
-        s_cs, s_ce = _comment_ranges_for_ext(s_text, ext) if s_text else ([], [])
-
-        t_nc = [(pos, tok) for pos, tok in t_all if not _pos_in_comment(pos, t_cs, t_ce)]
-        t_cm = [(pos, tok) for pos, tok in t_all if _pos_in_comment(pos, t_cs, t_ce)]
-        s_nc = [(pos, tok) for pos, tok in s_all if not _pos_in_comment(pos, s_cs, s_ce)]
-        s_cm = [(pos, tok) for pos, tok in s_all if _pos_in_comment(pos, s_cs, s_ce)]
+        t_nc, t_cm = _split_tokens_by_comment(t_text, ext)
+        s_nc, s_cm = _split_tokens_by_comment(s_text, ext)
+        tok_all_positions, _ = _build_token_position_index(t_text)
 
         t_seq = [tok for _, tok in t_nc]
         s_seq = [tok for _, tok in s_nc]
         n_total += len(t_seq)
 
-        sm = difflib.SequenceMatcher(None, t_seq, s_seq, autojunk=False)
-
         t_marks: List[dict] = []
         s_marks: List[dict] = []
-        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        for tag, i1, i2, j1, j2 in opcodes_fn(t_seq, s_seq):
             if tag == 'equal':
                 continue
             if tag in ('delete', 'replace'):
                 n_missing += i2 - i1
                 for i in range(i1, i2):
                     pos, tok = t_nc[i]
-                    t_marks.append({'token': tok, 'label': 'missing',
-                                    'start': pos, 'end': pos + len(tok)})
+                    t_marks.append(_missing_mark(pos, tok, tok_all_positions))
             if tag in ('insert', 'replace'):
                 for j in range(j1, j2):
                     pos, tok = s_nc[j]
-                    s_marks.append({'token': tok, 'label': 'extra',
-                                    'start': pos, 'end': pos + len(tok)})
+                    s_marks.append(_extra_mark(pos, tok))
 
         for pos, tok in t_cm:
-            t_marks.append({'token': tok, 'label': 'comment',
-                            'start': pos, 'end': pos + len(tok)})
+            t_marks.append(_comment_pos_mark(pos, tok))
         for pos, tok in s_cm:
-            s_marks.append({'token': tok, 'label': 'comment',
-                            'start': pos, 'end': pos + len(tok)})
+            s_marks.append(_comment_pos_mark(pos, tok))
 
         fname = Path(t_name).name
         s_fname = s_path.name if s_path else fname
@@ -936,7 +1234,25 @@ def _build_lcs_token_diff_marks(
             student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
 
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
-    return teacher_result, student_result, score
+    try:
+        _, _, _, alignments, line_marks, *_ = _build_git_diff_marks(teacher_files, student_files)
+    except Exception:
+        alignments, line_marks = {}, {}
+    return teacher_result, student_result, score, alignments, line_marks, n_total
+
+
+def _build_lcs_token_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    return _build_token_seq_diff_marks(teacher_files, student_files, _lcs_opcodes)
+
+
+def _build_lev_token_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    return _build_token_seq_diff_marks(teacher_files, student_files, _levenshtein_opcodes)
 
 
 def _apply_ghost_star_to_diff_marks(
@@ -1000,356 +1316,26 @@ def _apply_ghost_star_to_diff_marks(
             student_marks[fname][mark_idx]['label'] = 'extra_star'
 
 
-def _build_context_first_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-    k = 1
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float]]:
-    teacher_result: Dict[str, List[dict]] = {}
-    student_result: Dict[str, List[dict]] = {}
-    n_total = 0
-    n_matched = 0
-
-    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        ext = Path(t_name).suffix.lower()
-        try:
-            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-        except Exception:
-            continue
-
-        s_text = ''
-        if s_path:
-            try:
-                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-            except Exception:
-                pass
-
-        t_all = _tokenize_file_ordered(t_text, ext)
-        s_all = _tokenize_file_ordered(s_text, ext) if s_text else []
-
-        t_cs, t_ce = _comment_ranges_for_ext(t_text, ext)
-        s_cs, s_ce = _comment_ranges_for_ext(s_text, ext) if s_text else ([], [])
-
-        t_nc = [(pos, tok) for pos, tok in t_all if not _pos_in_comment(pos, t_cs, t_ce)]
-        t_cm = [(pos, tok) for pos, tok in t_all if _pos_in_comment(pos, t_cs, t_ce)]
-        s_nc = [(pos, tok) for pos, tok in s_all if not _pos_in_comment(pos, s_cs, s_ce)]
-        s_cm = [(pos, tok) for pos, tok in s_all if _pos_in_comment(pos, s_cs, s_ce)]
-
-        t_seq = [tok for _, tok in t_nc]
-        s_seq = [tok for _, tok in s_nc]
-        n_total += len(t_seq)
-
-        def _left_key(seq: List[str], i: int) -> tuple:
-            return tuple(seq[max(0, i - k):i])
-
-        def _right_key(seq: List[str], i: int) -> tuple:
-            return tuple(seq[i + 1:i + k + 1])
-
-        t_by_left: Dict[tuple, List[int]] = {}
-        t_by_right: Dict[tuple, List[int]] = {}
-        for i in range(len(t_seq)):
-            t_by_left.setdefault((t_seq[i], _left_key(t_seq, i)), []).append(i)
-            t_by_right.setdefault((t_seq[i], _right_key(t_seq, i)), []).append(i)
-
-        s_by_left: Dict[tuple, List[int]] = {}
-        s_by_right: Dict[tuple, List[int]] = {}
-        for i in range(len(s_seq)):
-            s_by_left.setdefault((s_seq[i], _left_key(s_seq, i)), []).append(i)
-            s_by_right.setdefault((s_seq[i], _right_key(s_seq, i)), []).append(i)
-
-        matched_t: set = set()
-        matched_s: set = set()
-
-        for key in set(t_by_left) & set(s_by_left):
-            t_list = [i for i in t_by_left[key] if i not in matched_t]
-            s_list = [i for i in s_by_left[key] if i not in matched_s]
-            n = min(len(t_list), len(s_list))
-            for idx in range(n):
-                matched_t.add(t_list[idx])
-                matched_s.add(s_list[idx])
-
-        for key in set(t_by_right) & set(s_by_right):
-            t_list = [i for i in t_by_right[key] if i not in matched_t]
-            s_list = [i for i in s_by_right[key] if i not in matched_s]
-            n = min(len(t_list), len(s_list))
-            for idx in range(n):
-                matched_t.add(t_list[idx])
-                matched_s.add(s_list[idx])
-
-        n_matched += len(matched_t)
-
-        t_marks: List[dict] = []
-        for i, (pos, tok) in enumerate(t_nc):
-            if i not in matched_t:
-                t_marks.append({'token': tok, 'label': 'missing',
-                                'start': pos, 'end': pos + len(tok)})
-        for pos, tok in t_cm:
-            t_marks.append({'token': tok, 'label': 'comment',
-                            'start': pos, 'end': pos + len(tok)})
-
-        s_marks: List[dict] = []
-        for i, (pos, tok) in enumerate(s_nc):
-            if i not in matched_s:
-                s_marks.append({'token': tok, 'label': 'extra',
-                                'start': pos, 'end': pos + len(tok)})
-        for pos, tok in s_cm:
-            s_marks.append({'token': tok, 'label': 'comment',
-                            'start': pos, 'end': pos + len(tok)})
-
-        fname = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
-        if t_marks:
-            teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
-        if s_marks:
-            student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
-
-    score = round(n_matched / n_total * 100, 1) if n_total else None
-    return teacher_result, student_result, score
-
-
-def _make_line_mark(lines_raw, starts, idx, label):
-    line_raw = lines_raw[idx]
-    if not line_raw.strip():
-        return None
-    raw_start = starts[idx]
-    ls = len(line_raw) - len(line_raw.lstrip())
-    le = len(line_raw.rstrip())
-    if raw_start + ls < raw_start + le:
-        return {'label': label, 'start': raw_start + ls, 'end': raw_start + le}
-    return None
-
-
 def _build_ro_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict]:
-    teacher_result:    Dict[str, List[dict]] = {}
-    student_result:    Dict[str, List[dict]] = {}
-    alignments:        Dict[str, list]        = {}
-    t_line_by_file:    Dict[str, List[dict]] = {}
-    s_line_by_file:    Dict[str, List[dict]] = {}
-    n_total_lines  = 0
-    n_missing_lines = 0
-
-    _tok_re = _sm._CHAR_TOKEN_RE
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    n_total = 0
+    per_file_results: List[tuple] = []
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        try:
-            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-        except Exception:
+        t_text = _read_text_normalized(t_path)
+        s_text = _read_text_normalized(s_path) if s_path else ''
+        if not t_text:
             continue
 
-        s_text = ''
-        if s_path:
-            try:
-                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-            except Exception:
-                pass
-
         t_lines_raw = t_text.splitlines()
-        s_lines_raw = s_text.splitlines() if s_text else []
-        n_total_lines += sum(1 for l in t_lines_raw if l.strip())
+        s_lines_raw = s_text.splitlines()
+        t_starts    = _line_start_offsets(t_text)
+        s_starts    = _line_start_offsets(s_text) if s_text else []
 
-        t_norm   = [l.strip() for l in t_lines_raw]
-        s_norm   = [l.strip() for l in s_lines_raw]
-        t_starts = _line_start_offsets(t_text)
-        s_starts = _line_start_offsets(s_text) if s_text else []
-
-        sm          = difflib.SequenceMatcher(None, t_norm, s_norm, autojunk=False)
-        t_marks:    List[dict] = []
-        s_marks:    List[dict] = []
-        t_line_ms:  List[dict] = []
-        s_line_ms:  List[dict] = []
-        alignment:  list       = []
-
-        for tag, i1, i2, j1, j2 in sm.get_opcodes():
-            if tag == 'equal':
-                for k in range(i2 - i1):
-                    alignment.append([i1 + k, j1 + k])
-
-            elif tag == 'delete':
-                for i in range(i1, i2):
-                    alignment.append([i, None])
-                    if t_lines_raw[i].strip():
-                        n_missing_lines += 1
-                        lm = _make_line_mark(t_lines_raw, t_starts, i, 'missing')
-                        if lm:
-                            t_line_ms.append(lm)
-
-            elif tag == 'insert':
-                for j in range(j1, j2):
-                    alignment.append([None, j])
-                    lm = _make_line_mark(s_lines_raw, s_starts, j, 'extra')
-                    if lm:
-                        s_line_ms.append(lm)
-
-            elif tag == 'replace':
-                n_t, n_s   = i2 - i1, j2 - j1
-                n_paired   = min(n_t, n_s)
-
-                for k in range(n_paired):
-                    t_i, s_j = i1 + k, j1 + k
-                    alignment.append([t_i, s_j])
-                    if t_lines_raw[t_i].strip():
-                        n_missing_lines += 1
-                    t_off = t_starts[t_i]
-                    s_off = s_starts[s_j]
-                    t_tok_ms = list(_tok_re.finditer(t_lines_raw[t_i]))
-                    s_tok_ms = list(_tok_re.finditer(s_lines_raw[s_j]))
-                    tok_sm   = difflib.SequenceMatcher(
-                        None, [m.group() for m in t_tok_ms],
-                        [m.group() for m in s_tok_ms], autojunk=False)
-                    for ttag, ti1, ti2, tj1, tj2 in tok_sm.get_opcodes():
-                        if ttag == 'equal':
-                            continue
-                        if ttag in ('delete', 'replace'):
-                            for ti in range(ti1, ti2):
-                                m = t_tok_ms[ti]
-                                t_marks.append({'token': m.group(), 'label': 'missing',
-                                                'start': t_off + m.start(),
-                                                'end':   t_off + m.end()})
-                        if ttag in ('insert', 'replace'):
-                            for tj in range(tj1, tj2):
-                                m = s_tok_ms[tj]
-                                s_marks.append({'token': m.group(), 'label': 'extra',
-                                                'start': s_off + m.start(),
-                                                'end':   s_off + m.end()})
-
-                for k in range(n_paired, n_t):
-                    t_i = i1 + k
-                    alignment.append([t_i, None])
-                    if t_lines_raw[t_i].strip():
-                        n_missing_lines += 1
-                        lm = _make_line_mark(t_lines_raw, t_starts, t_i, 'missing')
-                        if lm:
-                            t_line_ms.append(lm)
-
-                for k in range(n_paired, n_s):
-                    s_j = j1 + k
-                    alignment.append([None, s_j])
-                    lm = _make_line_mark(s_lines_raw, s_starts, s_j, 'extra')
-                    if lm:
-                        s_line_ms.append(lm)
-
-        fname  = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
-        if t_marks:
-            teacher_result[fname] = t_marks
-        if s_marks:
-            student_result[s_fname] = s_marks
-        if t_line_ms:
-            t_line_by_file[fname] = t_line_ms
-        if s_line_ms:
-            s_line_by_file[s_fname] = s_line_ms
-        alignments[fname] = alignment
-        if s_fname != fname:
-            alignments[s_fname] = alignment
-
-    score = round((n_total_lines - n_missing_lines) / n_total_lines * 100, 1) if n_total_lines else None
-    line_marks = {}
-    if t_line_by_file:
-        line_marks['teacher_files'] = t_line_by_file
-    if s_line_by_file:
-        line_marks['student_files'] = s_line_by_file
-    return teacher_result, student_result, score, alignments, line_marks
-
-
-_build_myers_diff_marks = _build_ro_diff_marks
-
-
-import subprocess as _subprocess
-
-_VSCODE_DIFF_SCRIPT = Path(__file__).resolve().parent.parent / 'vscode_diff.js'
-
-
-def _build_vscode_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict]:
-    input_data = {
-        'teacherFiles': {
-            name: path.read_text(encoding='utf-8', errors='ignore')
-            for name, path in teacher_files.items()
-        },
-        'studentFiles': {
-            name: path.read_text(encoding='utf-8', errors='ignore')
-            for name, path in student_files.items()
-        },
-    }
-    result = _subprocess.run(
-        ['node', str(_VSCODE_DIFF_SCRIPT)],
-        input=json.dumps(input_data),
-        capture_output=True,
-        text=True,
-        encoding='utf-8',
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f'vscode_diff.js failed: {result.stderr.strip()}')
-    output = json.loads(result.stdout)
-    return (
-        output.get('teacher_files', {}),
-        output.get('student_files', {}),
-        output.get('score'),
-        output.get('alignments', {}),
-        output.get('line_marks', {}),
-    )
-
-
-import re as _re
-
-_GIT_HUNK_RE = _re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
-
-
-def _build_git_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict]:
-    teacher_result: Dict[str, List[dict]] = {}
-    student_result: Dict[str, List[dict]] = {}
-    alignments:     Dict[str, list]        = {}
-    t_line_by_file: Dict[str, List[dict]] = {}
-    s_line_by_file: Dict[str, List[dict]] = {}
-    n_total_lines  = 0
-    n_missing_lines = 0
-
-    _tok_re = _sm._CHAR_TOKEN_RE
-
-    def _git_hunks(t_path, s_path):
-        result = _subprocess.run(
-            ['git', 'diff', '--no-index', '--unified=0', '-w',
-             str(t_path), str(s_path)],
-            capture_output=True, text=True, encoding='utf-8',
-        )
-        hunks = []
-        for line in result.stdout.splitlines():
-            m = _GIT_HUNK_RE.match(line)
-            if m:
-                i1 = int(m.group(1))
-                ic = int(m.group(2)) if m.group(2) is not None else 1
-                j1 = int(m.group(3))
-                jc = int(m.group(4)) if m.group(4) is not None else 1
-                hunks.append((i1, ic, j1, jc))
-        return hunks
-
-    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        try:
-            t_text = t_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-        except Exception:
-            continue
-
-        s_text = ''
-        if s_path:
-            try:
-                s_text = s_path.read_text(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-            except Exception:
-                pass
-
-        t_lines_raw = t_text.splitlines()
-        s_lines_raw = s_text.splitlines() if s_text else []
-        n_total_lines += sum(1 for l in t_lines_raw if l.strip())
-
-        t_starts = _line_start_offsets(t_text)
-        s_starts = _line_start_offsets(s_text) if s_text else []
+        tok_all_positions, file_n = _build_token_position_index(t_text)
+        n_total += file_n
 
         t_marks:   List[dict] = []
         s_marks:   List[dict] = []
@@ -1357,94 +1343,106 @@ def _build_git_diff_marks(
         s_line_ms: List[dict] = []
         alignment: list       = []
 
-        hunks = _git_hunks(t_path, s_path) if s_path else []
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None,
+            [l.strip() for l in t_lines_raw],
+            [l.strip() for l in s_lines_raw],
+            autojunk=False,
+        ).get_opcodes():
+            if tag == 'equal':
+                for k in range(i2 - i1):
+                    alignment.append([i1 + k, j1 + k])
+            elif tag == 'delete':
+                for i in range(i1, i2):
+                    _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
+                                                t_lines_raw, t_starts, i, tok_all_positions)
+            elif tag == 'insert':
+                for j in range(j1, j2):
+                    _add_unpaired_student_line(alignment, s_marks, s_line_ms,
+                                                s_lines_raw, s_starts, j)
+            elif tag == 'replace':
+                _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
+                                    t_lines_raw, s_lines_raw, t_starts, s_starts,
+                                    i1, i2 - i1, j1, j2 - j1, tok_all_positions)
 
-        t_cursor = 0
-        s_cursor = 0
+        fname   = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
+
+    return _finalize_per_file_diff(per_file_results, n_total)
+
+
+_build_myers_diff_marks = _build_ro_diff_marks
+
+
+import subprocess as _subprocess
+import re as _re
+
+_GIT_HUNK_RE = _re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
+
+
+def _git_diff_hunks(t_path: Path, s_path: Path) -> List[Tuple[int, int, int, int]]:
+    result = _subprocess.run(
+        ['git', 'diff', '--no-index', '--unified=0', '-w',
+         str(t_path), str(s_path)],
+        capture_output=True, text=True, encoding='utf-8',
+    )
+    hunks: List[Tuple[int, int, int, int]] = []
+    for line in result.stdout.splitlines():
+        m = _GIT_HUNK_RE.match(line)
+        if m:
+            i1 = int(m.group(1))
+            ic = int(m.group(2)) if m.group(2) is not None else 1
+            j1 = int(m.group(3))
+            jc = int(m.group(4)) if m.group(4) is not None else 1
+            hunks.append((i1, ic, j1, jc))
+    return hunks
+
+
+def _build_git_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    n_total = 0
+    per_file_results: List[tuple] = []
+
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
+        t_text = _read_text_normalized(t_path)
+        s_text = _read_text_normalized(s_path) if s_path else ''
+        if not t_text:
+            continue
+
+        t_lines_raw = t_text.splitlines()
+        s_lines_raw = s_text.splitlines()
+        t_starts    = _line_start_offsets(t_text)
+        s_starts    = _line_start_offsets(s_text) if s_text else []
+
+        tok_all_positions, file_n = _build_token_position_index(t_text)
+        n_total += file_n
+
+        t_marks:   List[dict] = []
+        s_marks:   List[dict] = []
+        t_line_ms: List[dict] = []
+        s_line_ms: List[dict] = []
+        alignment: list       = []
+
+        hunks = _git_diff_hunks(t_path, s_path) if s_path else []
+        t_cursor = s_cursor = 0
 
         for i1_raw, ic, j1_raw, jc in hunks:
-            t_end = (i1_raw - 1) if ic > 0 else i1_raw
-            s_end = (j1_raw - 1) if jc > 0 else j1_raw
+            t_end    = (i1_raw - 1) if ic > 0 else i1_raw
+            s_end    = (j1_raw - 1) if jc > 0 else j1_raw
             eq_count = t_end - t_cursor
             for k in range(eq_count):
                 alignment.append([t_cursor + k, s_cursor + k])
             t_cursor += eq_count
             s_cursor += eq_count
 
-            t_hunk_start = t_end
-            s_hunk_start = s_end
-            n_t = ic
-            n_s = jc
-            n_paired = min(n_t, n_s)
-
-            if n_t > 0 and n_s > 0:
-                for k in range(n_paired):
-                    t_i = t_hunk_start + k
-                    s_j = s_hunk_start + k
-                    alignment.append([t_i, s_j])
-                    if t_i < len(t_lines_raw) and t_lines_raw[t_i].strip():
-                        n_missing_lines += 1
-                    if t_i < len(t_lines_raw) and s_j < len(s_lines_raw):
-                        t_off = t_starts[t_i] if t_i < len(t_starts) else 0
-                        s_off = s_starts[s_j] if s_j < len(s_starts) else 0
-                        t_tok_ms = list(_tok_re.finditer(t_lines_raw[t_i]))
-                        s_tok_ms = list(_tok_re.finditer(s_lines_raw[s_j]))
-                        tok_sm = difflib.SequenceMatcher(
-                            None, [m.group() for m in t_tok_ms],
-                            [m.group() for m in s_tok_ms], autojunk=False)
-                        for ttag, ti1, ti2, tj1, tj2 in tok_sm.get_opcodes():
-                            if ttag == 'equal':
-                                continue
-                            if ttag in ('delete', 'replace'):
-                                for ti in range(ti1, ti2):
-                                    m = t_tok_ms[ti]
-                                    t_marks.append({'token': m.group(), 'label': 'missing',
-                                                    'start': t_off + m.start(),
-                                                    'end':   t_off + m.end()})
-                            if ttag in ('insert', 'replace'):
-                                for tj in range(tj1, tj2):
-                                    m = s_tok_ms[tj]
-                                    s_marks.append({'token': m.group(), 'label': 'extra',
-                                                    'start': s_off + m.start(),
-                                                    'end':   s_off + m.end()})
-
-                for k in range(n_paired, n_t):
-                    t_i = t_hunk_start + k
-                    alignment.append([t_i, None])
-                    if t_i < len(t_lines_raw) and t_lines_raw[t_i].strip():
-                        n_missing_lines += 1
-                        lm = _make_line_mark(t_lines_raw, t_starts, t_i, 'missing')
-                        if lm:
-                            t_line_ms.append(lm)
-
-                for k in range(n_paired, n_s):
-                    s_j = s_hunk_start + k
-                    alignment.append([None, s_j])
-                    if s_j < len(s_lines_raw):
-                        lm = _make_line_mark(s_lines_raw, s_starts, s_j, 'extra')
-                        if lm:
-                            s_line_ms.append(lm)
-
-            elif n_t > 0:
-                for k in range(n_t):
-                    t_i = t_hunk_start + k
-                    alignment.append([t_i, None])
-                    if t_i < len(t_lines_raw) and t_lines_raw[t_i].strip():
-                        n_missing_lines += 1
-                        lm = _make_line_mark(t_lines_raw, t_starts, t_i, 'missing')
-                        if lm:
-                            t_line_ms.append(lm)
-            else:
-                for k in range(n_s):
-                    s_j = s_hunk_start + k
-                    alignment.append([None, s_j])
-                    if s_j < len(s_lines_raw):
-                        lm = _make_line_mark(s_lines_raw, s_starts, s_j, 'extra')
-                        if lm:
-                            s_line_ms.append(lm)
-
-            t_cursor = t_hunk_start + n_t
-            s_cursor = s_hunk_start + n_s
+            _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
+                                t_lines_raw, s_lines_raw, t_starts, s_starts,
+                                t_end, ic, s_end, jc, tok_all_positions)
+            t_cursor = t_end + ic
+            s_cursor = s_end + jc
 
         while t_cursor < len(t_lines_raw) or s_cursor < len(s_lines_raw):
             t_val = t_cursor if t_cursor < len(t_lines_raw) else None
@@ -1457,25 +1455,9 @@ def _build_git_diff_marks(
 
         fname   = Path(t_name).name
         s_fname = s_path.name if s_path else fname
-        if t_marks:
-            teacher_result[fname] = t_marks
-        if s_marks:
-            student_result[s_fname] = s_marks
-        if t_line_ms:
-            t_line_by_file[fname] = t_line_ms
-        if s_line_ms:
-            s_line_by_file[s_fname] = s_line_ms
-        alignments[fname] = alignment
-        if s_fname != fname:
-            alignments[s_fname] = alignment
+        per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
 
-    score = round((n_total_lines - n_missing_lines) / n_total_lines * 100, 1) if n_total_lines else None
-    line_marks = {}
-    if t_line_by_file:
-        line_marks['teacher_files'] = t_line_by_file
-    if s_line_by_file:
-        line_marks['student_files'] = s_line_by_file
-    return teacher_result, student_result, score, alignments, line_marks
+    return _finalize_per_file_diff(per_file_results, n_total)
 
 
 

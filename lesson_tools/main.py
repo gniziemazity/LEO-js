@@ -16,6 +16,7 @@ from utils.folder_utils import select_project_folder
 _parser = argparse.ArgumentParser(description='Student analytics grading pipeline')
 _parser.add_argument('project', nargs='?', help='Project folder path or name under lessons/')
 _parser.add_argument('--no-ghost-mutual', action='store_true', help='Use Hungarian+threshold for extra_star instead of mutual best match')
+_parser.add_argument('--anon', action='store_true', help='Use the "Alter Ego" column from students.csv as the student name in all generated Excel files')
 _args = _parser.parse_args()
 
 STEPS = [
@@ -47,6 +48,8 @@ def run_step(label: str, module: str, project_dir: Path) -> bool:
 def main():
     if _args.no_ghost_mutual:
         os.environ['STUDENT_ANALYTICS_GHOST_MUTUAL'] = '0'
+    if _args.anon:
+        os.environ['STUDENT_ANALYTICS_USE_ALTER_EGO'] = '1'
 
     if _args.project:
         project_dir = Path(_args.project)

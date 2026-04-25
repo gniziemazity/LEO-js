@@ -1,6 +1,8 @@
 /.claude/*
 __pycache__/
 *.pyc
+/.venv/
+/venv/
 /CLAUDE.md
 /lesson_tools/CLAUDE.md
 /node_modules/

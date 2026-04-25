@@ -2,8 +2,8 @@
 matcher.py — Standalone code diff / matching module.
 
 Compare teacher and student code files and produce diff marks compatible
-with differentiator.html (the ``diff_marks.json`` format) — without any
-LEO or grading-pipeline infrastructure.
+with differentiator.html (the ``diff_marks_<method>.json`` format) — without
+any LEO grading-pipeline infrastructure.
 
 Quick start
 -----------
@@ -13,39 +13,33 @@ Quick start
 >>> marks = compare(
 ...     teacher=None,
 ...     student={'index.html': Path('submission/index.html')},
-...     keylog_file=Path('log.json'),           # teacher files reconstructed automatically
-...     teacher_tokens_file=Path('tokens.txt'), # optional; improves accuracy
+...     keylog_file=Path('log.json'),    # teacher files reconstructed automatically
 ... )
 
 # Or compare plain files directly (no keylog):
 >>> marks = compare(
 ...     teacher={'index.html': Path('ref/index.html')},
 ...     student={'index.html': Path('submission/index.html')},
-... )  # algorithm defaults to 'contextual_star'
+... )  # algorithm defaults to 'leo_star'
 
-Algorithms
-----------
-'leo_star'         LEO context-cosine-Hungarian per-occurrence matching with
-                   extra* promotion (default). Requires a keylog or
-                   teacher_tokens_file with removal data for extra* labels;
-                   falls back gracefully without them.
-'leo'              Same algorithm but ghost contexts are disabled — no
-                   extra_star labels are ever produced.
-'lcs_star'         Token LCS excluding comments; extra tokens that match
-                   teacher-removed tokens are labelled extra_star.
-'lcs'              Token-level LCS (order-sensitive, comments excluded).
-'ro'               Line-level Ratcliff/Obershelp diff (coarsest, fastest).
-'ro_star'          R/O diff with extra* promotion for teacher-deleted tokens.
-'vscode'           Line-level diff using VS Code's DefaultLinesDiffComputer.
-'vscode_star'      VS Code diff with extra* promotion for teacher-deleted tokens.
+Algorithms (each plain method has a `_star` variant that promotes
+``extra`` → ``extra_star`` for tokens whose context resembles a token the
+teacher typed and later deleted; star variants require a keylog):
 
-Improving contextual / lcs_star accuracy
------------------------------------------
-Both algorithms benefit from a ``teacher_tokens_file`` (the ``tokens.txt``
-produced by the LEO pipeline) which records teacher typing order and which
-tokens were later deleted.  Providing ``keylog_events`` (raw list from
-``log.json``) further enables *ghost context* reconstruction for removed
-tokens.  Neither is required — the module falls back gracefully.
+'leo_star' / 'leo'   Per-token Hungarian matching on cosine-similar contexts.
+                     Comments excluded from matching, marked as ``comment``.
+'lcs_star' / 'lcs'   ``difflib.SequenceMatcher`` (Ratcliff/Obershelp) on the
+                     non-comment token sequence. Comments marked as ``comment``.
+'lev_star' / 'lev'   Levenshtein edit-distance traceback on the non-comment
+                     token sequence. Same comment handling as LCS.
+'ro_star'  / 'ro'    ``difflib.SequenceMatcher`` on stripped lines + per-line
+                     token-level diff. Treats comments as regular tokens.
+'git_star' / 'git'   ``git diff --no-index --unified=0 -w`` + per-line
+                     token-level diff. Treats comments as regular tokens.
+
+See ``ideas/differentiator-algorithm.md`` for the full algorithm description.
+
+SUPPORTED_METHODS — single authoritative list used by all callers.
 """
 
 from __future__ import annotations
@@ -60,12 +54,26 @@ from .token_log import (
     _add_log_metadata,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
+    _build_lev_token_diff_marks,
     _build_ro_diff_marks,
-    _build_vscode_diff_marks,
     _build_git_diff_marks,
+    _strip_internal_fields,
 )
 
 FilesArg = Dict[str, Union[str, Path]]
+
+SUPPORTED_METHODS = [
+    'leo_star',
+    'leo',
+    'lcs_star',
+    'lcs',
+    'lev_star',
+    'lev',
+    'git_star',
+    'git',
+    'ro_star',
+    'ro',
+]
 
 
 def compare(
@@ -73,7 +81,6 @@ def compare(
     student: FilesArg,
     algorithm: str = 'leo_star',
     *,
-    teacher_tokens_file: Union[str, Path, None] = None,
     keylog_events: Optional[list] = None,
     keylog_file: Union[str, Path, None] = None,
 ) -> dict:
@@ -83,40 +90,32 @@ def compare(
     ----------
     teacher:
         ``{filename: Path}`` mapping for the teacher's reference files.
-        Keys are canonical filenames (e.g. ``'index.html'``); values are
-        ``Path`` objects (or strings) pointing to the actual files.
-        May be ``None`` when ``keylog_file`` is given — in that case the
-        teacher files are reconstructed from the keylog.
+        May be ``None`` when ``keylog_file`` is given.
     student:
         Same structure for the student's submission.
     algorithm:
-        Matching algorithm — one of ``'leo_star'`` (default),
-        ``'leo'``, ``'lcs_star'``, ``'lcs'``, ``'ro'``, ``'ro_star'``,
-        ``'vscode'``, or ``'vscode_star'``.
-    teacher_tokens_file:
-        Optional path to a ``tokens.txt`` file from the LEO pipeline.
-        Improves contextual and lcs_star accuracy by providing teacher
-        typing order and token-removal information.
+        Matching algorithm — one of the values in ``SUPPORTED_METHODS``
+        (default ``'leo_star'``).
     keylog_events:
-        Optional raw keylog event list (loaded from ``log.json``). Enables
-        ghost-context reconstruction for removed teacher tokens.
+        Optional raw keylog event list (loaded from ``log.json``). Required
+        for any ``*_star`` algorithm to actually promote ``extra_star``.
     keylog_file:
-        Optional path to a ``log.json`` file.  When given, the teacher files
-        are reconstructed from the keylog events and ``keylog_events`` is
-        derived automatically.  ``teacher`` may be ``None`` in this case.
+        Optional path to a ``log.json`` file. When given, the teacher's code
+        is reconstructed from it and ``teacher`` is ignored.
 
     Returns
     -------
     dict
-        A ``diff_marks.json``-compatible dict. Write it to disk and open
-        with ``npm run diff`` to visualise the result.
+        A ``diff_marks_<method>.json``-compatible dict with keys
+        ``token_matching``, ``score``, ``teacher_files``, ``student_files``,
+        and (for line-based methods) ``alignments`` and ``line_marks``.
     """
     if keylog_file is not None:
         with open(keylog_file, encoding='utf-8') as fh:
             log_data = json.load(fh)
         events = log_data.get('events', log_data) if isinstance(log_data, dict) else log_data
         keylog_events = events
-        reconstructed = _sm.get_reconstructed_files(events)  # {tab_key: text}
+        reconstructed = _sm.get_reconstructed_files(events)
         _tmpdir = tempfile.TemporaryDirectory()
         tmp_root = Path(_tmpdir.name)
         teacher_paths: Dict[str, Path] = {}
@@ -132,79 +131,51 @@ def compare(
     student_paths = {name: Path(p) for name, p in student.items()}
 
     try:
-        return _dispatch(
-            teacher_paths, student_paths, algorithm,
-            teacher_tokens_file, keylog_events,
-        )
+        result = _dispatch(teacher_paths, student_paths, algorithm, keylog_events)
+        _strip_internal_fields(result)
+        return result
     finally:
         if _tmpdir is not None:
             _tmpdir.cleanup()
+
+_BUILDERS = {
+    'leo': _build_leo_diff_marks,
+    'lcs': _build_lcs_token_diff_marks,
+    'lev': _build_lev_token_diff_marks,
+    'ro':  _build_ro_diff_marks,
+    'git': _build_git_diff_marks,
+}
+
+_ALIASES = {
+    'myers':           'ro',
+    'contextual':      'leo',
+    'contextual_star': 'leo_star',
+}
+
 
 def _dispatch(
     teacher_paths: Dict[str, Path],
     student_paths: Dict[str, Path],
     algorithm: str,
-    teacher_tokens_file,
     keylog_events,
 ) -> dict:
     alg = algorithm.lower().replace('-', '_')
+    alg = _ALIASES.get(alg, alg)
+    base = alg[:-5] if alg.endswith('_star') else alg
+    is_star = alg.endswith('_star')
 
-    if alg == 'lcs':
-        t, s, score = _build_lcs_token_diff_marks(teacher_paths, student_paths)
-        return _wrap('token-lcs', t, s, score)
+    builder = _BUILDERS.get(base)
+    if builder is None:
+        raise ValueError(
+            f"Unknown algorithm {algorithm!r}. "
+            f"Choose from: {', '.join(repr(m) for m in SUPPORTED_METHODS)}."
+        )
 
-    if alg in ('ro', 'myers'):
-        t, s, score, alignments, line_marks = _build_ro_diff_marks(teacher_paths, student_paths)
-        return _wrap('line-ro', t, s, score, alignments, line_marks)
-
-    if alg == 'vscode':
-        t, s, score, alignments, line_marks = _build_vscode_diff_marks(teacher_paths, student_paths)
-        return _wrap('line-vscode', t, s, score, alignments, line_marks)
-
-    if alg == 'git':
-        t, s, score, alignments, line_marks = _build_git_diff_marks(teacher_paths, student_paths)
-        return _wrap('line-git', t, s, score, alignments, line_marks)
-
-    if alg == 'git_star':
-        t, s, score, alignments, line_marks = _build_git_diff_marks(teacher_paths, student_paths)
-        diff = _wrap('line-git-star', t, s, score, alignments, line_marks)
-        if keylog_events:
-            _add_log_metadata(diff, keylog_events, student_paths)
-        return diff
-
-    if alg == 'vscode_star':
-        t, s, score, alignments, line_marks = _build_vscode_diff_marks(teacher_paths, student_paths)
-        diff = _wrap('line-vscode-star', t, s, score, alignments, line_marks)
-        if keylog_events:
-            _add_log_metadata(diff, keylog_events, student_paths)
-        return diff
-
-    if alg == 'ro_star':
-        t, s, score, alignments, line_marks = _build_ro_diff_marks(teacher_paths, student_paths)
-        diff = _wrap('line-ro-star', t, s, score, alignments, line_marks)
-        if keylog_events:
-            _add_log_metadata(diff, keylog_events, student_paths)
-        return diff
-
-    if alg == 'lcs_star':
-        t, s, score = _build_lcs_token_diff_marks(teacher_paths, student_paths)
-        diff = _wrap('token-lcs-star', t, s, score)
-        if keylog_events:
-            _add_log_metadata(diff, keylog_events, student_paths)
-        return diff
-
-    if alg in ('leo_star', 'leo', 'contextual_star', 'contextual'):
-        t, s, score = _build_leo_diff_marks(teacher_paths, student_paths)
-        diff = _wrap('leo', t, s, score)
-        if alg in ('leo_star', 'contextual_star') and keylog_events:
-            _add_log_metadata(diff, keylog_events, student_paths)
-        return diff
-
-    raise ValueError(
-        f"Unknown algorithm {algorithm!r}. "
-        "Choose from: 'leo_star', 'leo', 'lcs_star', 'lcs', "
-        "'ro', 'ro_star', 'vscode', 'vscode_star', 'git', 'git_star'."
-    )
+    t, s, score, alignments, line_marks, *_ = builder(teacher_paths, student_paths)
+    diff = _wrap(alg, t, s, score, alignments, line_marks)
+    if is_star and keylog_events:
+        _add_log_metadata(diff, keylog_events, student_paths)
+    return diff
 
 
 def _wrap(
@@ -215,15 +186,12 @@ def _wrap(
     alignments: Optional[dict] = None,
     line_marks: Optional[dict] = None,
 ) -> dict:
-    result: dict = {
-        'token_matching': token_matching,
-        'case_sensitive': True,
-        'teacher_files': teacher_files,
-        'student_files': student_files,
-    }
+    result: dict = {'token_matching': token_matching}
     if score is not None:
         result['score'] = score
-    if alignments is not None:
+    result['teacher_files'] = teacher_files
+    result['student_files'] = student_files
+    if alignments:
         result['alignments'] = alignments
     if line_marks:
         result['line_marks'] = line_marks

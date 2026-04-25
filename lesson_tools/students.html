@@ -902,9 +902,16 @@
 							? student.followPct.toFixed(1) + "%"
 							: "N/A";
 
-					const teacherEntries = [..._allFiles.entries()].filter(
+					const recoEntries = [..._allFiles.entries()].filter(
+						([p]) =>
+							/^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
+					);
+					const correctEntries = [..._allFiles.entries()].filter(
 						([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
 					);
+					const teacherEntries = recoEntries.length
+						? recoEntries
+						: correctEntries;
 					const studentDir = (student.name + "/").toLowerCase();
 					const anonBase = "anon_names/";
 					const studentEntries = [..._allFiles.entries()].filter(

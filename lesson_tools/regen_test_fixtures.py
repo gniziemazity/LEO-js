@@ -13,11 +13,10 @@ from utils.token_log import (
     _build_file_timeline,
     _file_at_ts,
     _parse_teacher_tokens,
-    _extract_student_tokens,
-    _build_student_token_occurrences,
     _build_leo_diff_marks,
     _add_log_metadata,
-    _apply_diff_to_occurrences,
+    _build_occ_from_diff_marks,
+    _strip_internal_fields,
     ts_to_local,
 )
 
@@ -153,16 +152,15 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         print(f"  SKIP (no code files): {case_dir.name}/{student_name}")
         return
 
-    stu_outside, stu_comment = _extract_student_tokens(stu_files)
-    all_occ, n_found, n_missing, n_extra, _, _ = _build_student_token_occurrences(
-        teacher_entries, stu_outside, stu_comment
-    )
+    removal_ts_by_token = {
+        tok: removal_ts
+        for tok, _, _, is_rem, removal_ts in teacher_entries
+        if is_rem and removal_ts
+    }
 
-    t_marks, s_marks, _ = _build_leo_diff_marks(teacher_files, stu_files)
+    t_marks, s_marks, _, alignments, _, _ = _build_leo_diff_marks(teacher_files, stu_files)
 
     diff_marks = {
-        "token_matching": "leo",
-        "case_sensitive": True,
         "teacher_files": t_marks,
         "student_files": s_marks,
     }
@@ -171,34 +169,37 @@ def regen_student(case_dir: Path, student_name: str) -> None:
     if log_path.exists():
         _add_log_metadata(diff_marks, _load_events(log_path), stu_files)
 
-    removal_ts_by_token = {
-        tok: removal_ts
-        for tok, _, _, is_rem, removal_ts in teacher_entries
-        if is_rem and removal_ts
-    }
-
-    all_occ, score = _apply_diff_to_occurrences(
-        all_occ, diff_marks, removal_ts_by_token or None
+    all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_extra_star = (
+        _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
     )
-    diff_marks["score"] = score
+
+    diff_marks_out = {
+        "token_matching": "leo_star",
+        "score": score_e,
+        "teacher_files": diff_marks["teacher_files"],
+        "student_files": diff_marks["student_files"],
+    }
+    if alignments:
+        diff_marks_out["alignments"] = alignments
+    _strip_internal_fields(diff_marks_out)
 
     out = student_dir / "tokens.txt"
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(f"# Found            : {n_found}\n")
         fh.write(f"# MISSING          : {n_missing}\n")
         fh.write(f"# EXTRA            : {n_extra}\n")
-        fh.write(f"# Follow (E)       : {score} %\n")
+        fh.write(f"# Follow (E)       : {score_e} %\n")
         for ts, token, flags in all_occ:
             flag_str = "\t".join(sorted(flags))
             suffix   = f"\t{flag_str}" if flag_str else ""
             fh.write(f"{token}\t{ts}{suffix}\n")
 
-    diff_path = student_dir / "diff_marks.json"
+    diff_path = student_dir / "diff_marks_leo_star.json"
     with open(diff_path, "w", encoding="utf-8") as fh:
-        json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+        json.dump(diff_marks_out, fh, ensure_ascii=False, indent=2)
 
-    print(f"  {case_dir.name}/{student_name}/tokens.txt + diff_marks.json"
-          f"  (found={n_found}, miss={n_missing}, extra={n_extra}, score={score})")
+    print(f"  {case_dir.name}/{student_name}/tokens.txt + diff_marks_leo_star.json"
+          f"  (found={n_found}, miss={n_missing}, extra={n_extra}, score={score_e})")
 
 
 def main():

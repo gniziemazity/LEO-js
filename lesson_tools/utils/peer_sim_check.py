@@ -1,4 +1,3 @@
-import csv
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -8,10 +7,9 @@ from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
-    normalize_code,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, calculate_containment,
-    save_xlsx, open_csv_encoded,
+    save_xlsx,
 )
 
 _HEADER_ROW_HEIGHT = 50
@@ -67,7 +65,7 @@ def _extra_comment(cA: Counter, cB: Counter, name_a: str) -> Optional[Comment]:
 
 class PeerSimilarityChecker:
     def __init__(self, students_dir: str, teacher_dir: str,
-                 start_dir: str = None, students_csv: str = None):
+                 start_dir: str = None):
         self.students_dir = Path(students_dir)
         self.teacher_dir  = Path(teacher_dir)
         self.start_dir    = Path(start_dir) if start_dir else None
@@ -78,17 +76,6 @@ class PeerSimilarityChecker:
         self.baseline_outside: Dict[str, Counter] = {}
         self.baseline_inside:  Dict[str, Counter] = {}
         self.extensions = ['.html', '.css', '.js']
-        self.name_to_id: Dict[str, str] = {}
-        if students_csv:
-            p = Path(students_csv)
-            if p.exists():
-                open_csv_encoded(
-                    p,
-                    lambda row: self.name_to_id.__setitem__(
-                        row['Student Name'].strip(), row['Student ID'].strip()
-                    ),
-                    reset_fn=self.name_to_id.clear,
-                )
 
     def _read_file(self, directory: Path, ext: str) -> Optional[str]:
         files = list(directory.glob(f'*{ext}'))
@@ -169,24 +156,21 @@ class PeerSimilarityChecker:
         wb: Workbook,
         title: str,
         student_names: List[str],
-        name_to_id: Optional[Dict],
-        has_ids: bool,
         scorer: Callable[[str, str], Tuple[Optional[float], Optional[Comment]]],
     ) -> None:
-        off = 3 if has_ids else 2
-        ws  = wb.create_sheet(title=title)
-        self._init_matrix_header(ws, student_names, name_to_id)
+        ws = wb.create_sheet(title=title)
+        self._init_matrix_header(ws, student_names)
         for r, sA in enumerate(student_names):
             for c, sB in enumerate(student_names):
                 if sA == sB:
                     continue
-                cell = ws.cell(row=r + off, column=c + off)
+                cell = ws.cell(row=r + 2, column=c + 2)
                 cell.alignment = Alignment(horizontal='center')
                 value, comment = scorer(sA, sB)
                 cell.value = value
                 if comment:
                     cell.comment = comment
-        self._format_asymmetric_sheet(ws, student_names, has_ids)
+        self._format_asymmetric_sheet(ws, student_names)
 
     def generate_matrix_report(self, output_file: str) -> None:
         if not self.student_data:
@@ -197,8 +181,6 @@ class PeerSimilarityChecker:
             wb.remove(wb['Sheet'])
 
         student_names = sorted(self.student_data.keys())
-        has_ids    = bool(self.name_to_id)
-        name_to_id = self.name_to_id if has_ids else None
         active_exts = [ext for ext in self.extensions
                        if any(self.student_data[n].get(ext) is not None
                               for n in self.student_data)] or self.extensions
@@ -245,57 +227,39 @@ class PeerSimilarityChecker:
             ('Extra',     _score_extra),
             ('Extra (C)', _score_extra_c),
         ]:
-            self._fill_matrix_sheet(wb, title, student_names, name_to_id, has_ids, scorer)
+            self._fill_matrix_sheet(wb, title, student_names, scorer)
 
         save_xlsx(wb, output_file)
         print(f"Report saved to {output_file}")
 
 
     @staticmethod
-    def _init_matrix_header(ws, student_names, name_to_id=None):
-        off = 3 if name_to_id else 2
+    def _init_matrix_header(ws, student_names):
         ws.row_dimensions[1].height = _HEADER_ROW_HEIGHT
-        if name_to_id:
-            ws.row_dimensions[2].height = _HEADER_ROW_HEIGHT
-            for idx, name in enumerate(student_names):
-                sid = name_to_id.get(name, '')
-                for row, val in [(1, sid), (2, name)]:
-                    c = ws.cell(row=row, column=idx + 3, value=val)
-                    c.font = Font(bold=True)
-                    c.alignment = Alignment(text_rotation=90, vertical='bottom',
-                                            horizontal='center')
-                ws.cell(row=idx + 3, column=1, value=sid).font  = Font(bold=True)
-                ws.cell(row=idx + 3, column=2, value=name).font = Font(bold=True)
-        else:
-            for idx, name in enumerate(student_names):
-                c = ws.cell(row=1, column=idx + 2, value=name)
-                c.font = Font(bold=True)
-                c.alignment = Alignment(text_rotation=90, vertical='bottom',
-                                        horizontal='center')
-                ws.cell(row=idx + 2, column=1, value=name).font = Font(bold=True)
+        for idx, name in enumerate(student_names):
+            c = ws.cell(row=1, column=idx + 2, value=name)
+            c.font = Font(bold=True)
+            c.alignment = Alignment(text_rotation=90, vertical='bottom',
+                                    horizontal='center')
+            ws.cell(row=idx + 2, column=1, value=name).font = Font(bold=True)
 
     @staticmethod
-    def _format_asymmetric_sheet(ws, student_names, has_ids=False):
-        off = 3 if has_ids else 2
-        n   = len(student_names)
-        data_col    = ws.cell(row=1, column=off).column_letter
-        max_col_ltr = ws.cell(row=1, column=n + off - 1).column_letter
-        max_row     = n + off - 1
-        ws.freeze_panes = f'{data_col}{off}'
+    def _format_asymmetric_sheet(ws, student_names):
+        n = len(student_names)
+        data_col    = ws.cell(row=1, column=2).column_letter
+        max_col_ltr = ws.cell(row=1, column=n + 1).column_letter
+        max_row     = n + 1
+        ws.freeze_panes = f'{data_col}2'
         ws.conditional_formatting.add(
-            f'{data_col}{off}:{max_col_ltr}{max_row}',
+            f'{data_col}2:{max_col_ltr}{max_row}',
             ColorScaleRule(start_type='num', start_value=0, start_color='FFFFFF',
                            end_type='max', end_color='F8696B'),
         )
-        if has_ids:
-            ws.column_dimensions['A'].width = 6
-            ws.column_dimensions['B'].width = 20
-        else:
-            ws.column_dimensions['A'].width = 20
-        for col_idx in range(off, n + off):
+        ws.column_dimensions['A'].width = 20
+        for col_idx in range(2, n + 2):
             ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 6
-        for row_cells in ws.iter_rows(min_row=off, max_row=max_row,
-                                      min_col=off, max_col=n + off - 1):
+        for row_cells in ws.iter_rows(min_row=2, max_row=max_row,
+                                      min_col=2, max_col=n + 1):
             for cell in row_cells:
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = '0'
@@ -308,11 +272,9 @@ def main():
     if len(sys.argv) < 2:
         print('Usage: peer_sim_check.py <project_dir>'); sys.exit(1)
     current_dir    = Path(sys.argv[1]).resolve()
-    scripts_dir    = Path(__file__).resolve().parent
     anon_names_dir = current_dir / 'anon_names'
     correct_dir    = current_dir / 'correct'
     start_dir      = current_dir / 'start'
-    students_csv   = current_dir.parent.parent / 'students.csv'
 
     if not correct_dir.exists():
         print(f"Missing: {correct_dir}"); sys.exit(1)
@@ -321,7 +283,6 @@ def main():
         checker = PeerSimilarityChecker(
             str(anon_names_dir), str(correct_dir),
             start_dir=str(start_dir) if start_dir.exists() else None,
-            students_csv=str(students_csv) if students_csv.exists() else None,
         )
         folder_name = current_dir.name
         checker.generate_matrix_report(

@@ -149,21 +149,12 @@
 				color: #fff;
 				border-color: #007acc;
 			}
-			.edit-textarea {
-				width: 100%;
-				height: 100%;
-				box-sizing: border-box;
-				font-family: Consolas, "Courier New", monospace;
-				font-size: 12px;
-				line-height: 1.5;
-				color: #333;
-				background: #fff;
-				border: none;
+			.code-aligned[contenteditable] {
 				outline: none;
-				padding: 8px;
-				resize: none;
-				tab-size: 4;
-				-moz-tab-size: 4;
+				caret-color: #007acc;
+			}
+			.code-aligned[contenteditable]:focus {
+				background: #fffefa;
 			}
 
 			#bottom-bar {
@@ -203,13 +194,12 @@
 				<option value="leo">LEO</option>
 				<option value="token-lcs">LCS</option>
 				<option value="token-lcs-star">LCS*</option>
+				<option value="token-lev">Lev</option>
+				<option value="token-lev-star">Lev*</option>
 				<option value="line-ro">R/O</option>
 				<option value="line-ro-star">R/O*</option>
-				<option value="line-vscode">VS Code</option>
-				<option value="line-vscode-star">VS Code*</option>
 				<option value="line-git">Git</option>
 				<option value="line-git-star">Git*</option>
-				<option value="context-first">Context-First</option>
 			</select>
 			<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
 				⬜ Preview

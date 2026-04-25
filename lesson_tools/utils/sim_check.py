@@ -1,4 +1,5 @@
 import csv
+import os
 import shutil
 import sys
 from collections import Counter
@@ -59,13 +60,25 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self._load_students()
 
     def _load_students(self) -> None:
+        use_alter_ego = os.environ.get('STUDENT_ANALYTICS_USE_ALTER_EGO') == '1'
+
         def _handle(row):
             sid = row['Student ID'].strip()
+            real_name = row['Student Name'].strip()
+            display_name = real_name
+            if use_alter_ego:
+                alter = (row.get('Alter Ego') or '').strip()
+                if alter:
+                    display_name = alter
             self.student_info[sid] = {
-                'name':   row['Student Name'].strip(),
+                'name':   display_name,
                 'number': row['Student Number'].strip(),
             }
-            self.name_to_id[row['Student Name'].strip()] = sid
+            # Folder names on disk match the real student name; map both so
+            # student_dir lookups still succeed.
+            self.name_to_id[real_name] = sid
+            if display_name != real_name:
+                self.name_to_id[display_name] = sid
 
         open_csv_encoded(
             self.students_csv, _handle,
@@ -383,16 +396,11 @@ def main() -> None:
         checker.write_keyword_log()
         checker.write_student_token_files(names_dir, anon_names_dir)
     else:
-        checker.write_lcs_star_diff_marks(names_dir, anon_names_dir, filename='diff_marks.json')
+        checker.write_leo_diff_marks(names_dir, anon_names_dir)
     checker.write_lcs_diff_marks(names_dir, anon_names_dir)
-    checker.write_lcs_star_diff_marks(names_dir, anon_names_dir)
+    checker.write_lev_diff_marks(names_dir, anon_names_dir)
     checker.write_ro_diff_marks(names_dir, anon_names_dir)
-    checker.write_ro_star_diff_marks(names_dir, anon_names_dir)
-    checker.write_vscode_diff_marks(names_dir, anon_names_dir)
-    checker.write_vscode_star_diff_marks(names_dir, anon_names_dir)
     checker.write_git_diff_marks(names_dir, anon_names_dir)
-    checker.write_git_star_diff_marks(names_dir, anon_names_dir)
-    checker.write_context_first_diff_marks(names_dir, anon_names_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

@@ -19,13 +19,23 @@ let _studentFiles = null;
 let _teacherMarks = null;
 let _studentMarks = null;
 let _allMarks = {};
-let _defaultTeacherMarks = null;
-let _defaultStudentMarks = null;
+let _currentMarksEntry = null;
 let _titleBase = null;
 let _imageUris = {};
 let _studentEditMode = false;
 let _editedStudentFiles = {};
 let _studentModified = new Set();
+
+function _resolveMarksEntry() {
+	const modeKey = _diffMode ?? "";
+	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
+}
+
+function _applyCurrentMarks() {
+	_currentMarksEntry = _resolveMarksEntry();
+	_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
+	_studentMarks = _currentMarksEntry?.student_files ?? null;
+}
 
 window.addEventListener("DOMContentLoaded", () => {
 	const params = new URLSearchParams(location.search);
@@ -40,18 +50,7 @@ window.addEventListener("DOMContentLoaded", () => {
 		modeSelect.addEventListener("change", () => {
 			_diffMode = modeSelect.value || null;
 			_applyDiffModeLabel();
-			const modeKey = _diffMode ?? "";
-			const entry = _allMarks[modeKey];
-			if (entry !== undefined) {
-				_teacherMarks = entry ? entry.teacher_files || null : null;
-				_studentMarks = entry ? entry.student_files || null : null;
-			} else if (!_diffMode) {
-				_teacherMarks = _defaultTeacherMarks;
-				_studentMarks = _defaultStudentMarks;
-			} else {
-				_teacherMarks = null;
-				_studentMarks = null;
-			}
+			_applyCurrentMarks();
 			const savedTeacher = _saveState("teacher");
 			const savedStudent = _saveState("student");
 			if (_teacherFiles)
@@ -60,7 +59,7 @@ window.addEventListener("DOMContentLoaded", () => {
 				renderPanel("student", _studentFiles, _studentMarks);
 			_restoreState("teacher", savedTeacher);
 			_restoreState("student", savedStudent);
-			_updateTitleScore(modeKey);
+			_updateTitleScore();
 		});
 	}
 
@@ -74,17 +73,17 @@ window.addEventListener("DOMContentLoaded", () => {
 			_imageUris = data.imageUris || {};
 			if (data.allMarks) {
 				_allMarks = data.allMarks;
-				const marks =
-					_allMarks[_diffMode ?? ""] ??
-					Object.values(_allMarks)[0] ??
-					null;
-				_teacherMarks = marks ? marks.teacher_files || null : null;
-				_studentMarks = marks ? marks.student_files || null : null;
+				_applyCurrentMarks();
 			} else {
-				_defaultTeacherMarks = data.teacherMarks || null;
-				_defaultStudentMarks = data.studentMarks || null;
-				_teacherMarks = _defaultTeacherMarks;
-				_studentMarks = _defaultStudentMarks;
+				_currentMarksEntry =
+					data.teacherMarks || data.studentMarks
+						? {
+								teacher_files: data.teacherMarks || null,
+								student_files: data.studentMarks || null,
+							}
+						: null;
+				_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
+				_studentMarks = _currentMarksEntry?.student_files ?? null;
 			}
 
 			if (data.title) document.title = data.title;
@@ -94,6 +93,7 @@ window.addEventListener("DOMContentLoaded", () => {
 			document.getElementById("title-student").textContent = titleText;
 			renderPanel("teacher", _teacherFiles, _teacherMarks);
 			renderPanel("student", _studentFiles, _studentMarks);
+			_updateTitleScore();
 		} catch (e) {
 			console.error("[Differentiator] Failed to parse diff data", e);
 		}
@@ -113,17 +113,16 @@ function loadFilesFromInput(files, side) {
 	if (!pending) return;
 
 	const MODE_SUFFIX = {
-		"": "",
+		"": "_leo_star",
 		leo: "_leo",
 		"token-lcs": "_lcs",
 		"token-lcs-star": "_lcs_star",
+		"token-lev": "_lev",
+		"token-lev-star": "_lev_star",
 		"line-ro": "_ro",
 		"line-ro-star": "_ro_star",
-		"line-vscode": "_vscode",
-		"line-vscode-star": "_vscode_star",
 		"line-git": "_git",
 		"line-git-star": "_git_star",
-		"context-first": "_context_first",
 	};
 
 	for (const file of files) {
@@ -144,28 +143,15 @@ function loadFilesFromInput(files, side) {
 			}
 			pending--;
 			if (pending === 0) {
-				const marks =
-					_allMarks[_diffMode ?? ""] ??
-					Object.values(_allMarks)[0] ??
-					null;
-				const sideMarks = marks
-					? (side === "teacher"
-							? marks.teacher_files
-							: marks.student_files) || null
-					: null;
-
-				if (side === "teacher") {
-					_teacherFiles = texts;
-					_teacherMarks = sideMarks;
-				} else {
-					_studentFiles = texts;
-					_studentMarks = sideMarks;
-				}
+				_applyCurrentMarks();
+				if (side === "teacher") _teacherFiles = texts;
+				else _studentFiles = texts;
 				renderPanel(
 					side,
 					side === "teacher" ? _teacherFiles : _studentFiles,
-					sideMarks,
+					side === "teacher" ? _teacherMarks : _studentMarks,
 				);
+				_updateTitleScore();
 			}
 		};
 		reader.readAsText(file);
@@ -209,9 +195,11 @@ function _renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks) {
 					start: m.start - lineStart,
 					end: Math.min(m.end, lineEnd) - lineStart,
 				}));
-			const bgMark = lineFileMarks && lineFileMarks.find(
-				(lm) => lm.start >= lineStart && lm.start < lineEnd,
-			);
+			const bgMark =
+				lineFileMarks &&
+				lineFileMarks.find(
+					(lm) => lm.start >= lineStart && lm.start < lineEnd,
+				);
 			const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 			const style = bg ? ` style="background-color:${bg}"` : "";
 			parts.push(
@@ -245,9 +233,11 @@ function _renderFlat(text, fileMarks, lineFileMarks) {
 				start: m.start - lineStart,
 				end: Math.min(m.end, lineEnd) - lineStart,
 			}));
-		const bgMark = lineFileMarks && lineFileMarks.find(
-			(lm) => lm.start >= lineStart && lm.start < lineEnd,
-		);
+		const bgMark =
+			lineFileMarks &&
+			lineFileMarks.find(
+				(lm) => lm.start >= lineStart && lm.start < lineEnd,
+			);
 		const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 		const style = bg ? ` style="background-color:${bg}"` : "";
 		parts.push(
@@ -304,14 +294,14 @@ function renderPanel(side, files, marks) {
 	}
 	codeWrap.style.display = "";
 
-	const modeData = _allMarks[_diffMode ?? ""];
-	const allAlignments =
-		modeData?.alignments ?? _allMarks["line-vscode"]?.alignments ?? null;
+	const modeData = _currentMarksEntry;
+	const allAlignments = modeData?.alignments ?? null;
 	const sideIdx = side === "teacher" ? 0 : 1;
 	const allLineMks = modeData?.line_marks ?? null;
-	const sideLineMks = side === "teacher"
-		? allLineMks?.teacher_files ?? null
-		: allLineMks?.student_files ?? null;
+	const sideLineMks =
+		side === "teacher"
+			? (allLineMks?.teacher_files ?? null)
+			: (allLineMks?.student_files ?? null);
 
 	const allNames = Object.keys(files).filter((n) =>
 		/\.(html|css|js)$/i.test(n),
@@ -342,50 +332,39 @@ function renderPanel(side, files, marks) {
 
 		const text = files[name] || "";
 
-		if (side === "student" && _studentEditMode) {
-			const ta = document.createElement("textarea");
-			ta.className = "edit-textarea";
-			ta.dataset.fname = name;
-			if (_editedStudentFiles[name] === undefined) {
-				const alignment = allAlignments
-					? allAlignments[name] ?? null
-					: null;
-				if (alignment) {
-					const rawLines = text.replace(/\r\n/g, "\n").split("\n");
-					_editedStudentFiles[name] = alignment
-						.map(([, sIdx]) =>
-							sIdx === null ? "" : rawLines[sIdx] ?? "",
-						)
-						.join("\n");
-				} else {
-					_editedStudentFiles[name] = text;
-				}
-			}
-			ta.value = _editedStudentFiles[name];
-			ta.addEventListener("input", () => {
-				_editedStudentFiles[ta.dataset.fname] = ta.value;
-				_studentModified.add(ta.dataset.fname);
+		const fileMarks = marks ? (marks[name] ?? null) : null;
+		const lineFileMarks = sideLineMks ? (sideLineMks[name] ?? null) : null;
+		const alignment = allAlignments ? (allAlignments[name] ?? null) : null;
+		const isStudentEdit = side === "student" && _studentEditMode;
+		const isEdited = side === "student" && _studentModified.has(name);
+
+		if (isStudentEdit && _editedStudentFiles[name] === undefined) {
+			_editedStudentFiles[name] = text;
+		}
+		const sourceText =
+			isStudentEdit || isEdited ? (_editedStudentFiles[name] ?? text) : text;
+		const hasMarks = Array.isArray(fileMarks) || lineFileMarks;
+
+		if (isStudentEdit) {
+			pane.innerHTML = `<div class="code-aligned" contenteditable="plaintext-only" spellcheck="false">${
+				hasMarks
+					? _renderFlat(sourceText, fileMarks, lineFileMarks)
+					: escHtml(sourceText)
+			}</div>`;
+			const editable = pane.querySelector("[contenteditable]");
+			editable.addEventListener("input", () => {
+				_editedStudentFiles[name] = _readEditableText(editable);
+				_studentModified.add(name);
+				_refreshPreviewIfActive();
 			});
-			pane.appendChild(ta);
+		} else if (isEdited) {
+			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
+		} else if (alignment) {
+			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks)}</div>`;
+		} else if (hasMarks) {
+			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks)}</div>`;
 		} else {
-			const isEdited =
-				side === "student" && _studentModified.has(name);
-			if (isEdited) {
-				pane.innerHTML = `<pre>${escHtml(_editedStudentFiles[name])}</pre>`;
-			} else {
-				const fileMarks = marks ? marks[name] || null : null;
-				const lineFileMarks = sideLineMks ? sideLineMks[name] ?? null : null;
-				const alignment = allAlignments
-					? allAlignments[name] ?? null
-					: null;
-				if (alignment) {
-					pane.innerHTML = `<div class="code-aligned">${_renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks)}</div>`;
-				} else if (Array.isArray(fileMarks) || lineFileMarks) {
-					pane.innerHTML = `<div class="code-aligned">${_renderFlat(text, fileMarks, lineFileMarks)}</div>`;
-				} else {
-					pane.innerHTML = `<pre>${escHtml(text)}</pre>`;
-				}
-			}
+			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
 		}
 		codeWrap.appendChild(pane);
 	});
@@ -435,7 +414,9 @@ function escHtml(s) {
 
 function diffColorizePositions(text, posMarks) {
 	if (!posMarks || !posMarks.length) return escHtml(text);
-	const colored = posMarks.filter((m) => m.label && DIFF_LABEL_COLORS[m.label]);
+	const colored = posMarks.filter(
+		(m) => m.label && DIFF_LABEL_COLORS[m.label],
+	);
 	if (!colored.length) return escHtml(text);
 
 	const normText = text.replace(/\r\n/g, "\n");
@@ -503,10 +484,9 @@ function _restoreState(side, saved) {
 	}
 }
 
-function _updateTitleScore(modeKey) {
+function _updateTitleScore() {
 	if (!_titleBase) return;
-	const marks = _allMarks[modeKey ?? ""];
-	const score = marks != null ? marks.score : undefined;
+	const score = _currentMarksEntry?.score;
 	const suffix = score != null ? ` (${Number(score).toFixed(1)}%)` : "";
 	const newTitle = _titleBase + suffix;
 	const el = document.getElementById("title-student");
@@ -567,6 +547,25 @@ function togglePreview() {
 		}
 	}
 	localStorage.setItem("diff-preview-mode", isPreview ? "code" : "preview");
+}
+
+function _readEditableText(el) {
+	return el.innerText.replace(/\r\n/g, "\n");
+}
+
+function _refreshPreviewIfActive() {
+	if (localStorage.getItem("diff-preview-mode") !== "preview") return;
+	for (const side of ["teacher", "student"]) {
+		const iframe = document.getElementById(`preview-${side}`);
+		if (!iframe || iframe.style.display === "none") continue;
+		const baseFiles = side === "teacher" ? _teacherFiles : _studentFiles;
+		const files =
+			side === "student" && _studentModified.size
+				? { ...baseFiles, ..._editedStudentFiles }
+				: baseFiles;
+		if (files && Object.keys(files).length)
+			updatePreview(side, files, iframe);
+	}
 }
 
 function updatePreview(side, files, iframe) {

@@ -14,9 +14,13 @@ async function openDiffWindow(student, mode = null) {
 			"/"
 		).toLowerCase();
 
-		const teacherEntries = [..._allFiles.entries()].filter(
+		const recoEntries = [..._allFiles.entries()].filter(
+			([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
+		);
+		const correctEntries = [..._allFiles.entries()].filter(
 			([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
 		);
+		const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
 		const studentEntries = [..._allFiles.entries()].filter(
 			([p]) =>
 				p.toLowerCase().startsWith(studentDir) &&
@@ -24,17 +28,16 @@ async function openDiffWindow(student, mode = null) {
 		);
 
 		const MODE_SUFFIX = {
-			"": "",
+			"": "_leo_star",
 			leo: "_leo",
 			"token-lcs": "_lcs",
 			"token-lcs-star": "_lcs_star",
+			"token-lev": "_lev",
+			"token-lev-star": "_lev_star",
 			"line-ro": "_ro",
 			"line-ro-star": "_ro_star",
-			"line-vscode": "_vscode",
-			"line-vscode-star": "_vscode_star",
 			"line-git": "_git",
 			"line-git-star": "_git_star",
-			"context-first": "_context_first",
 		};
 
 		const loadDiffMarks = async (filename) => {
