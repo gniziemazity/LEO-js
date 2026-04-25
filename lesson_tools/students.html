@@ -439,19 +439,24 @@
 					showLoading(false);
 					return;
 				}
-				let remarksFile = null,
-					simFile = null;
-				for (const f of files) {
-					const n = f.name.toLowerCase();
-					if (n.includes("grades")) remarksFile = f;
-					else if (n.includes("remarks") && !remarksFile) remarksFile = f;
-					else if (
-						n.includes("similarity") ||
-						n.includes("teacher_sim") ||
-						n.includes("sim")
-					)
-						simFile = f;
-				}
+				const xlsxFiles = files.filter((f) =>
+					f.name.toLowerCase().endsWith(".xlsx"),
+				);
+				const _ts = (f) => {
+					const m = f.name.match(/_(\d{8,})/);
+					return m ? Number(m[1]) : f.lastModified || 0;
+				};
+				const gradesFiles = xlsxFiles
+					.filter((f) => /grades/i.test(f.name))
+					.sort((a, b) => _ts(b) - _ts(a));
+				const remarksFiles = xlsxFiles
+					.filter((f) => /remarks/i.test(f.name))
+					.sort((a, b) => _ts(b) - _ts(a));
+				const remarksFile = gradesFiles[0] || remarksFiles[0] || null;
+				const simFile =
+					xlsxFiles.find((f) => /teacher_similarity/i.test(f.name)) ||
+					xlsxFiles.find((f) => /similarity/i.test(f.name)) ||
+					null;
 				if (!remarksFile) {
 					showLoading(false);
 					alert(
