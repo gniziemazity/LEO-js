@@ -1,14 +1,10 @@
-import copy
 import csv
-import json
 import shutil
 import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
-
-from openpyxl import load_workbook
 
 from .similarity_measures import (
     calculate_char_histogram_similarity,
@@ -17,10 +13,11 @@ from .similarity_measures import (
     extract_tokens,
     normalize_code,
     open_csv_encoded,
-    save_xlsx,
     split_code_tokens,
 )
-from .token_log import TokenLogMixin
+from .grade_merge import merge_existing_grades
+from .lesson_log import load_lesson_log
+from .token_log_mixin import TokenLogMixin
 from .report_excel import ExcelReportMixin
 
 
@@ -111,34 +108,17 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 self.not_expected_items.clear()
 
     def load_lesson_json(self, project_dir: Path) -> None:
-        json_files = list(project_dir.glob('*.json'))
-        if len(json_files) != 1:
-            if json_files:
-                print(f'  Note: found {len(json_files)} JSON files in {project_dir.name}, '
-                      f'skipping lesson timestamps (expected exactly 1).')
+        data, message = load_lesson_log(project_dir)
+        if message:
+            print(message)
+        if data is None:
             return
-        try:
-            with open(json_files[0], 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if 'events' not in data or 'sessionStart' not in data:
-                return
-            evs = data['events']
-            self._lesson_all_events    = evs
-            self._lesson_keypresses    = [e for e in evs if 'char' in e]
-            self._lesson_code_inserts  = [e for e in evs if 'code_insert' in e]
-            self._lesson_interactions  = [e for e in evs if 'interaction' in e]
-            self._lesson_session_start = data['sessionStart']
-            _active_editor = 'main'
-            for e in evs:
-                if 'switch_editor' in e:
-                    _active_editor = e['switch_editor']
-                elif 'char' in e or 'code_insert' in e or 'anchor' in e:
-                    e['editor'] = _active_editor
-            print(f'  Loaded lesson log: {json_files[0].name} '
-                  f'({len(self._lesson_keypresses)} keypresses, '
-                  f'{len(self._lesson_code_inserts)} code inserts)')
-        except Exception as e:
-            print(f'  Warning: could not load lesson JSON: {e}')
+
+        self._lesson_all_events = data.all_events
+        self._lesson_keypresses = data.keypresses
+        self._lesson_code_inserts = data.code_inserts
+        self._lesson_interactions = data.interactions
+        self._lesson_session_start = data.session_start
 
 
     def get_code_files(self, directory: Path) -> Dict[str, Path]:
@@ -410,6 +390,8 @@ def main() -> None:
     checker.write_ro_star_diff_marks(names_dir, anon_names_dir)
     checker.write_vscode_diff_marks(names_dir, anon_names_dir)
     checker.write_vscode_star_diff_marks(names_dir, anon_names_dir)
+    checker.write_git_diff_marks(names_dir, anon_names_dir)
+    checker.write_git_star_diff_marks(names_dir, anon_names_dir)
     checker.write_context_first_diff_marks(names_dir, anon_names_dir)
 
     checker.generate_excel_report(
@@ -421,65 +403,11 @@ def main() -> None:
     grades_ts   = int(datetime.now().timestamp())
     grades_path = current_dir / f'grades_{folder_name}_{grades_ts}.xlsx'
     shutil.copy2(str(remarks_path), str(grades_path))
-    _merge_existing_grades(current_dir, folder_name, grades_path)
+    merge_existing_grades(current_dir, folder_name, grades_path)
 
     print(f'Done — teacher_similarity_{folder_name}.xlsx, '
           f'remarks_{folder_name}.xlsx and '
           f'grades_{folder_name}_{grades_ts}.xlsx generated.')
-
-
-def _merge_existing_grades(current_dir: Path, folder_name: str, grades_path: Path) -> None:
-    existing = sorted(
-        (p for p in current_dir.glob(f'grades_{folder_name}_*.xlsx') if p != grades_path),
-        key=lambda p: p.stat().st_mtime, reverse=True,
-    )
-    if not existing:
-        return
-    try:
-        src_wb = load_workbook(existing[0])
-        dst_wb = load_workbook(grades_path)
-        sheet  = 'Remarks'
-        if sheet not in src_wb.sheetnames or sheet not in dst_wb.sheetnames:
-            return
-        src_ws, dst_ws = src_wb[sheet], dst_wb[sheet]
-
-        def _hdr(ws, *names):
-            return {c.value: c.column for c in ws[1] if c.value in names}
-
-        src_c = _hdr(src_ws, 'Obs', 'Grade', 'Comments')
-        dst_c = _hdr(dst_ws, 'Obs', 'Grade', 'Comments')
-        if not (src_c and dst_c):
-            return
-
-        src_map = {
-            str(row[0].value): {n: row[col - 1] for n, col in src_c.items()}
-            for row in src_ws.iter_rows(min_row=2)
-            if row[0].value is not None
-        }
-        for row in dst_ws.iter_rows(min_row=2):
-            sid = str(row[0].value) if row[0].value is not None else None
-            if sid not in src_map:
-                continue
-            for name, dst_col in dst_c.items():
-                sc = src_map[sid].get(name)
-                if sc is None:
-                    continue
-                dc = row[dst_col - 1]
-                dc.value = sc.value
-                if sc.has_style:
-                    import copy
-                    dc.font          = copy.copy(sc.font)
-                    dc.fill          = copy.copy(sc.fill)
-                    dc.border        = copy.copy(sc.border)
-                    dc.alignment     = copy.copy(sc.alignment)
-                    dc.number_format = sc.number_format
-
-        save_xlsx(dst_wb, str(grades_path), vml_source=str(grades_path))
-        print(f'  Merged grades from: {existing[0].name}')
-        existing[0].unlink()
-        print(f'  Deleted: {existing[0].name}')
-    except Exception as e:
-        print(f'  Warning: could not merge existing grades: {e}')
 
 
 if __name__ == '__main__':

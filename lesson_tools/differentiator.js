@@ -25,6 +25,7 @@ let _titleBase = null;
 let _imageUris = {};
 let _studentEditMode = false;
 let _editedStudentFiles = {};
+let _studentModified = new Set();
 
 window.addEventListener("DOMContentLoaded", () => {
 	const params = new URLSearchParams(location.search);
@@ -120,6 +121,8 @@ function loadFilesFromInput(files, side) {
 		"line-ro-star": "_ro_star",
 		"line-vscode": "_vscode",
 		"line-vscode-star": "_vscode_star",
+		"line-git": "_git",
+		"line-git-star": "_git_star",
 		"context-first": "_context_first",
 	};
 
@@ -179,7 +182,7 @@ function _lineStartOffsets(text) {
 	return starts;
 }
 
-function _renderAligned(text, alignment, fileMarks, sideIdx) {
+function _renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks) {
 	const normText = text.replace(/\r\n/g, "\n");
 	const lines = normText.split("\n");
 	const lineStarts = _lineStartOffsets(normText);
@@ -206,10 +209,50 @@ function _renderAligned(text, alignment, fileMarks, sideIdx) {
 					start: m.start - lineStart,
 					end: Math.min(m.end, lineEnd) - lineStart,
 				}));
+			const bgMark = lineFileMarks && lineFileMarks.find(
+				(lm) => lm.start >= lineStart && lm.start < lineEnd,
+			);
+			const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
+			const style = bg ? ` style="background-color:${bg}"` : "";
 			parts.push(
-				`<div class="diff-line">${diffColorizePositions(lineText, lineMarks)}</div>`,
+				`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks)}</div>`,
 			);
 		}
+	}
+	return parts.join("");
+}
+
+function _renderFlat(text, fileMarks, lineFileMarks) {
+	const normText = text.replace(/\r\n/g, "\n");
+	const lines = normText.split("\n");
+	const lineStarts = _lineStartOffsets(normText);
+	const sortedMarks = (fileMarks || [])
+		.slice()
+		.sort((a, b) => a.start - b.start);
+
+	const parts = [];
+	for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+		const lineStart = lineStarts[lineIdx] ?? normText.length;
+		const lineEnd =
+			lineIdx + 1 < lineStarts.length
+				? lineStarts[lineIdx + 1]
+				: normText.length;
+		const lineText = lines[lineIdx] ?? "";
+		const lineMarks = sortedMarks
+			.filter((m) => m.start >= lineStart && m.start < lineEnd)
+			.map((m) => ({
+				...m,
+				start: m.start - lineStart,
+				end: Math.min(m.end, lineEnd) - lineStart,
+			}));
+		const bgMark = lineFileMarks && lineFileMarks.find(
+			(lm) => lm.start >= lineStart && lm.start < lineEnd,
+		);
+		const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
+		const style = bg ? ` style="background-color:${bg}"` : "";
+		parts.push(
+			`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks)}</div>`,
+		);
 	}
 	return parts.join("");
 }
@@ -265,6 +308,10 @@ function renderPanel(side, files, marks) {
 	const allAlignments =
 		modeData?.alignments ?? _allMarks["line-vscode"]?.alignments ?? null;
 	const sideIdx = side === "teacher" ? 0 : 1;
+	const allLineMks = modeData?.line_marks ?? null;
+	const sideLineMks = side === "teacher"
+		? allLineMks?.teacher_files ?? null
+		: allLineMks?.student_files ?? null;
 
 	const allNames = Object.keys(files).filter((n) =>
 		/\.(html|css|js)$/i.test(n),
@@ -298,22 +345,46 @@ function renderPanel(side, files, marks) {
 		if (side === "student" && _studentEditMode) {
 			const ta = document.createElement("textarea");
 			ta.className = "edit-textarea";
-			ta.value = _editedStudentFiles[name] ?? text;
 			ta.dataset.fname = name;
+			if (_editedStudentFiles[name] === undefined) {
+				const alignment = allAlignments
+					? allAlignments[name] ?? null
+					: null;
+				if (alignment) {
+					const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+					_editedStudentFiles[name] = alignment
+						.map(([, sIdx]) =>
+							sIdx === null ? "" : rawLines[sIdx] ?? "",
+						)
+						.join("\n");
+				} else {
+					_editedStudentFiles[name] = text;
+				}
+			}
+			ta.value = _editedStudentFiles[name];
 			ta.addEventListener("input", () => {
 				_editedStudentFiles[ta.dataset.fname] = ta.value;
+				_studentModified.add(ta.dataset.fname);
 			});
 			pane.appendChild(ta);
 		} else {
-			const fileMarks = marks ? marks[name] || null : null;
-			const alignment = allAlignments ? (allAlignments[name] ?? null) : null;
-			if (alignment) {
-				pane.innerHTML = `<div class="code-aligned">${_renderAligned(text, alignment, fileMarks, sideIdx)}</div>`;
+			const isEdited =
+				side === "student" && _studentModified.has(name);
+			if (isEdited) {
+				pane.innerHTML = `<pre>${escHtml(_editedStudentFiles[name])}</pre>`;
 			} else {
-				const html = Array.isArray(fileMarks)
-					? diffColorizePositions(text, fileMarks)
-					: escHtml(text);
-				pane.innerHTML = `<pre>${html}</pre>`;
+				const fileMarks = marks ? marks[name] || null : null;
+				const lineFileMarks = sideLineMks ? sideLineMks[name] ?? null : null;
+				const alignment = allAlignments
+					? allAlignments[name] ?? null
+					: null;
+				if (alignment) {
+					pane.innerHTML = `<div class="code-aligned">${_renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks)}</div>`;
+				} else if (Array.isArray(fileMarks) || lineFileMarks) {
+					pane.innerHTML = `<div class="code-aligned">${_renderFlat(text, fileMarks, lineFileMarks)}</div>`;
+				} else {
+					pane.innerHTML = `<pre>${escHtml(text)}</pre>`;
+				}
 			}
 		}
 		codeWrap.appendChild(pane);
@@ -364,11 +435,7 @@ function escHtml(s) {
 
 function diffColorizePositions(text, posMarks) {
 	if (!posMarks || !posMarks.length) return escHtml(text);
-	const colored = posMarks.filter(
-		(m) =>
-			m.label &&
-			(DIFF_LABEL_COLORS[m.label] || DIFF_LINE_BG_COLORS[m.label]),
-	);
+	const colored = posMarks.filter((m) => m.label && DIFF_LABEL_COLORS[m.label]);
 	if (!colored.length) return escHtml(text);
 
 	const normText = text.replace(/\r\n/g, "\n");
@@ -387,13 +454,8 @@ function diffColorizePositions(text, posMarks) {
 		pos = 0;
 	for (const m of kept) {
 		out += escHtml(normText.slice(pos, m.start));
-		if (m.line && DIFF_LINE_BG_COLORS[m.label]) {
-			const bg = DIFF_LINE_BG_COLORS[m.label];
-			out += `<span style="background-color:${bg}">${escHtml(normText.slice(m.start, m.end))}</span>`;
-		} else {
-			const color = DIFF_LABEL_COLORS[m.label];
-			out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
-		}
+		const color = DIFF_LABEL_COLORS[m.label];
+		out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
 		pos = m.end;
 	}
 	out += escHtml(normText.slice(pos));
@@ -483,7 +545,7 @@ function togglePreview() {
 		} else {
 			const baseFiles = side === "teacher" ? _teacherFiles : _studentFiles;
 			const files =
-				side === "student" && Object.keys(_editedStudentFiles).length
+				side === "student" && _studentModified.size
 					? { ...baseFiles, ..._editedStudentFiles }
 					: baseFiles;
 			if (!files || !Object.keys(files).length) continue;

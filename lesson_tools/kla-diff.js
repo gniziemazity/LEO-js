@@ -32,6 +32,8 @@ async function openDiffWindow(student, mode = null) {
 			"line-ro-star": "_ro_star",
 			"line-vscode": "_vscode",
 			"line-vscode-star": "_vscode_star",
+			"line-git": "_git",
+			"line-git-star": "_git_star",
 			"context-first": "_context_first",
 		};
 

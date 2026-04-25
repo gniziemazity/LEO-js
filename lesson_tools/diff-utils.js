@@ -9,6 +9,8 @@ const DIFF_MARKS_FILES = {
 	"line-ro-star": "diff_marks_ro_star.json",
 	"line-vscode": "diff_marks_vscode.json",
 	"line-vscode-star": "diff_marks_vscode_star.json",
+	"line-git": "diff_marks_git.json",
+	"line-git-star": "diff_marks_git_star.json",
 	"context-first": "diff_marks_context_first.json",
 };
 

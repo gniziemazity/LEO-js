@@ -17,6 +17,33 @@ function rangeToOffset(lineStarts, lineNumber, column) {
 	return lineStarts[idx] + column - 1;
 }
 
+function normalizeTokenMarks(marks, normText, lineStarts) {
+	const result = [];
+	for (const m of marks) {
+		let pos = m.start;
+		let li = 0;
+		while (li + 1 < lineStarts.length && lineStarts[li + 1] <= pos) li++;
+		while (pos < m.end) {
+			const lineEnd =
+				li + 1 < lineStarts.length ? lineStarts[li + 1] : normText.length;
+			const segEnd = Math.min(m.end, lineEnd);
+			const segEndNoNl =
+				segEnd > pos && normText[segEnd - 1] === "\n" ? segEnd - 1 : segEnd;
+			if (segEndNoNl > pos && normText.slice(pos, segEndNoNl).trim()) {
+				result.push({
+					...m,
+					token: normText.slice(pos, segEndNoNl),
+					start: pos,
+					end: segEndNoNl,
+				});
+			}
+			pos = lineEnd;
+			li++;
+		}
+	}
+	return result;
+}
+
 function addLineMark(marks, lineStarts, lines, lineIdx, label) {
 	const lineRaw = lines[lineIdx];
 	if (!lineRaw || !lineRaw.trim()) return;
@@ -25,7 +52,7 @@ function addLineMark(marks, lineStarts, lines, lineIdx, label) {
 	const le = lineRaw.trimEnd().length;
 	const start = rawStart + ls;
 	const end = rawStart + le;
-	if (start < end) marks.push({ label, start, end, line: true });
+	if (start < end) marks.push({ label, start, end });
 }
 
 function computeFileDiff(tText, sText) {
@@ -47,6 +74,8 @@ function computeFileDiff(tText, sText) {
 
 	const tMarks = [];
 	const sMarks = [];
+	const tLineMarks = [];
+	const sLineMarks = [];
 	const alignment = [];
 	let nMissing = 0;
 	let tCursor = 0;
@@ -103,18 +132,24 @@ function computeFileDiff(tText, sText) {
 				}
 			} else {
 				for (let i = 0; i < nOrig; i++)
-					addLineMark(tMarks, tStarts, tLines, origStart + i, "missing");
+					addLineMark(
+						tLineMarks,
+						tStarts,
+						tLines,
+						origStart + i,
+						"missing",
+					);
 				for (let i = 0; i < nMod; i++)
-					addLineMark(sMarks, sStarts, sLines, modStart + i, "extra");
+					addLineMark(sLineMarks, sStarts, sLines, modStart + i, "extra");
 			}
 		} else if (nOrig > 0) {
 			for (let i = 0; i < nOrig; i++) {
 				if (tLines[origStart + i].trim()) nMissing++;
-				addLineMark(tMarks, tStarts, tLines, origStart + i, "missing");
+				addLineMark(tLineMarks, tStarts, tLines, origStart + i, "missing");
 			}
 		} else {
 			for (let i = 0; i < nMod; i++)
-				addLineMark(sMarks, sStarts, sLines, modStart + i, "extra");
+				addLineMark(sLineMarks, sStarts, sLines, modStart + i, "extra");
 		}
 
 		for (let i = 0; i < nPaired; i++)
@@ -140,7 +175,16 @@ function computeFileDiff(tText, sText) {
 		nTotal > 0
 			? Math.round(((nTotal - nMissing) / nTotal) * 1000) / 10
 			: null;
-	return { tMarks, sMarks, alignment, score, nTotal, nMissing };
+	return {
+		tMarks: normalizeTokenMarks(tMarks, tNorm, tStarts),
+		sMarks: normalizeTokenMarks(sMarks, sNorm, sStarts),
+		tLineMarks,
+		sLineMarks,
+		alignment,
+		score,
+		nTotal,
+		nMissing,
+	};
 }
 
 let raw = "";
@@ -156,6 +200,8 @@ process.stdin.on("end", () => {
 
 		const teacherResult = {};
 		const studentResult = {};
+		const teacherLineMarks = {};
+		const studentLineMarks = {};
 		const alignments = {};
 		let totalTeacher = 0;
 		let totalMissing = 0;
@@ -170,12 +216,21 @@ process.stdin.on("end", () => {
 			}
 			const tText = teacherFiles[tName] || "";
 			const sText = sName ? studentFiles[sName] : "";
-			const { tMarks, sMarks, alignment, nTotal, nMissing } =
-				computeFileDiff(tText, sText);
+			const {
+				tMarks,
+				sMarks,
+				tLineMarks,
+				sLineMarks,
+				alignment,
+				nTotal,
+				nMissing,
+			} = computeFileDiff(tText, sText);
 
 			if (tMarks.length) teacherResult[tName] = tMarks;
 			const resolvedSName = sName || tName;
 			if (sMarks.length) studentResult[resolvedSName] = sMarks;
+			if (tLineMarks.length) teacherLineMarks[tName] = tLineMarks;
+			if (sLineMarks.length) studentLineMarks[resolvedSName] = sLineMarks;
 			alignments[tName] = alignment;
 			if (resolvedSName !== tName) alignments[resolvedSName] = alignment;
 			totalTeacher += nTotal;
@@ -190,12 +245,15 @@ process.stdin.on("end", () => {
 				: null;
 
 		const output = {
-			format_version: 4,
 			token_matching: "line-vscode",
 			case_sensitive: true,
 			teacher_files: teacherResult,
 			student_files: studentResult,
 			alignments,
+			line_marks: {
+				teacher_files: teacherLineMarks,
+				student_files: studentLineMarks,
+			},
 		};
 		if (score !== null) output.score = score;
 		process.stdout.write(JSON.stringify(output));

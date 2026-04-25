@@ -21,7 +21,7 @@ _BLACK_BORDER = Border(
 )
 
 
-def _read_split(raw: str, ext: str) -> Tuple[Counter, Counter]:
+def _read_split(raw: str) -> Tuple[Counter, Counter]:
     return split_code_tokens(raw)
 
 
@@ -103,14 +103,14 @@ class PeerSimilarityChecker:
 
             if src_raw is not None:
                 self.baseline_outside[ext], self.baseline_inside[ext] = \
-                    _read_split(src_raw, ext)
+                    _read_split(src_raw)
             else:
                 self.baseline_outside[ext] = Counter()
                 self.baseline_inside[ext]  = Counter()
 
             t_raw = self._read_file(self.teacher_dir, ext)
             if t_raw is not None:
-                t_out, t_ins = _read_split(t_raw, ext)
+                t_out, t_ins = _read_split(t_raw)
                 for tok, cnt in t_out.items():
                     if cnt > self.baseline_outside[ext].get(tok, 0):
                         self.baseline_outside[ext][tok] = cnt
@@ -138,7 +138,7 @@ class PeerSimilarityChecker:
                     raw = self._read_file(s_dir, ext)
                     self.student_data[name][ext] = normalize_code(raw) if raw else None
                     if raw:
-                        out, _ = _read_split(raw, ext)
+                        out, _ = _read_split(raw)
                         full_outside += out
                 self.student_outside_full[name] = full_outside
                 continue
@@ -153,19 +153,10 @@ class PeerSimilarityChecker:
                     continue
                 try:
                     self.student_data[name][ext] = normalize_code(raw)
-                    out, ins = _read_split(raw, ext)
-                    if ext in ('.html', '.css'):
-                        self.student_extra_outside[name][ext] = (
-                            out - self.baseline_outside[ext]
-                        )
-                        self.student_extra_inside[name][ext] = (
-                            ins - self.baseline_inside[ext]
-                        )
-                        full_outside += out
-                    else:
-                        self.student_extra_outside[name][ext] = out - self.baseline_outside[ext]
-                        self.student_extra_inside[name][ext]  = ins - self.baseline_inside[ext]
-                        full_outside += out
+                    out, ins = _read_split(raw)
+                    self.student_extra_outside[name][ext] = out - self.baseline_outside[ext]
+                    self.student_extra_inside[name][ext] = ins - self.baseline_inside[ext]
+                    full_outside += out
                 except Exception:
                     self.student_data[name][ext]          = None
                     self.student_extra_outside[name][ext] = Counter()

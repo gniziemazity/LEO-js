@@ -22,7 +22,7 @@ def find_files_in_directory():
                 data = json.load(f)
                 if 'events' in data and isinstance(data['events'], list):
                     json_files.append(full_path)
-        except:
+        except (json.JSONDecodeError, OSError, ValueError):
             pass
     return json_files[0] if len(json_files) == 1 else None
 
@@ -97,10 +97,9 @@ def main():
             manager.frame.Maximize(True)
         elif hasattr(manager, 'full_screen_toggle'):
             manager.full_screen_toggle()
-    except:
-        pass
+    except Exception:
 
-    plt.show()
+        plt.show()
 
 
 if __name__ == "__main__":

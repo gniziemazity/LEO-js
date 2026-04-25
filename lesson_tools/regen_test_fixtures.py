@@ -16,14 +16,8 @@ from utils.token_log import (
     _extract_student_tokens,
     _build_student_token_occurrences,
     _build_leo_diff_marks,
-    _build_lcs_diff_marks,
-    _apply_ghost_star_to_diff_marks,
-    _build_context_first_diff_marks,
-    _colors_to_position_marks,
-    _build_ghost_contexts,
+    _add_log_metadata,
     _apply_diff_to_occurrences,
-    _CONTEXT_K,
-    _GHOST_K,
     ts_to_local,
 )
 
@@ -43,7 +37,6 @@ _CODE_EXTS = {".html", ".htm", ".css", ".js"}
 
 
 def _student_dirs(case_dir: Path) -> list[Path]:
-    """Return sorted student_* subdirectories that contain at least one code file."""
     result = []
     for d in sorted(case_dir.iterdir()):
         if d.is_dir() and d.name.startswith("student_"):
@@ -79,14 +72,6 @@ def _collect_student_files(student_dir: Path) -> dict:
         for f in sorted(student_dir.iterdir())
         if f.suffix.lower() in _CODE_EXTS
     }
-
-
-def _load_ghost_contexts(case_dir: Path, teacher_entries: list) -> dict | None:
-    removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-    log_path = case_dir / "log.json"
-    if log_path.exists() and removed_keys:
-        return _build_ghost_contexts(_load_events(log_path), removed_keys, k=_GHOST_K)
-    return None
 
 
 def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
@@ -173,28 +158,18 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         teacher_entries, stu_outside, stu_comment
     )
 
-    ghost_ctx = _load_ghost_contexts(case_dir, teacher_entries)
-
-    tf_colors, sf_colors = _build_contextual_diff_marks(
-        teacher_files, stu_files, teacher_entries,
-        stu_outside, stu_comment,
-        context_k=_CONTEXT_K,
-    )
-
-    ts_map: dict = {}
-    for _tok, _ts, _is_c, _is_r, *_ in teacher_entries:
-        if not _is_r:
-            ts_map.setdefault(_tok, []).append(_ts)
+    t_marks, s_marks, _ = _build_leo_diff_marks(teacher_files, stu_files)
 
     diff_marks = {
-        "format_version": 4,
-        "token_matching": "context-cosine-hungarian",
+        "token_matching": "leo",
         "case_sensitive": True,
-        "teacher_files": _colors_to_position_marks(teacher_files, tf_colors, ts_map=ts_map),
-        "student_files": _colors_to_position_marks(stu_files, sf_colors),
+        "teacher_files": t_marks,
+        "student_files": s_marks,
     }
 
-    _apply_ghost_star_to_diff_marks(diff_marks, stu_files, ghost_ctx)
+    log_path = case_dir / "log.json"
+    if log_path.exists():
+        _add_log_metadata(diff_marks, _load_events(log_path), stu_files)
 
     removal_ts_by_token = {
         tok: removal_ts
@@ -226,101 +201,6 @@ def regen_student(case_dir: Path, student_name: str) -> None:
           f"  (found={n_found}, miss={n_missing}, extra={n_extra}, score={score})")
 
 
-def regen_lcs_star_diff_marks(case_dir: Path, student_name: str) -> None:
-    teacher_tokens_path = case_dir / "tokens.txt"
-    if not teacher_tokens_path.exists():
-        print(f"  SKIP lcs_star (no teacher tokens.txt): {case_dir.name}/{student_name}")
-        return
-
-    teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
-    teacher_files   = _collect_teacher_files(case_dir)
-    stu_files       = _collect_student_files(case_dir / student_name)
-    ghost_ctx       = _load_ghost_contexts(case_dir, teacher_entries)
-
-    t_files, s_files, n_total, n_missing = _build_lcs_diff_marks(teacher_files, stu_files)
-
-    diff_marks = {
-        "format_version": 4,
-        "token_matching": "token-lcs-star",
-        "case_sensitive": True,
-        "teacher_files": t_files,
-        "student_files": s_files,
-    }
-
-    _apply_ghost_star_to_diff_marks(diff_marks, stu_files, ghost_ctx)
-
-    n_star = sum(1 for marks in diff_marks["student_files"].values()
-                 for m in marks if m.get("label") == "extra_star")
-    score = round(max(0.0, (n_total - n_missing - n_star) / n_total * 100), 1) if n_total else None
-    if score is not None:
-        diff_marks["score"] = score
-
-    diff_path = (case_dir / student_name) / "diff_marks_lcs_star.json"
-    with open(diff_path, "w", encoding="utf-8") as fh:
-        json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-
-    print(f"  {case_dir.name}/{student_name}/diff_marks_lcs_star.json")
-
-
-def regen_leo_diff_marks(case_dir: Path, student_name: str) -> None:
-    teacher_tokens_path = case_dir / "tokens.txt"
-    if not teacher_tokens_path.exists():
-        print(f"  SKIP leo (no teacher tokens.txt): {case_dir.name}/{student_name}")
-        return
-
-    teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
-    teacher_files   = _collect_teacher_files(case_dir)
-    stu_files       = _collect_student_files(case_dir / student_name)
-
-    stu_outside, stu_comment = _extract_student_tokens(stu_files)
-    _, _, _, _, follow_e_pct, _ = _build_student_token_occurrences(
-        teacher_entries, stu_outside, stu_comment
-    )
-
-    tf_colors, sf_colors = _build_leo_diff_marks(
-        teacher_files, stu_files, teacher_entries,
-        stu_outside, stu_comment,
-    )
-
-    diff_marks = {
-        "format_version": 4,
-        "token_matching": "leo",
-        "case_sensitive": True,
-        "score": follow_e_pct,
-        "teacher_files": _colors_to_position_marks(teacher_files, tf_colors),
-        "student_files": _colors_to_position_marks(stu_files, sf_colors),
-    }
-
-    diff_path = (case_dir / student_name) / "diff_marks_leo.json"
-    with open(diff_path, "w", encoding="utf-8") as fh:
-        json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-
-    print(f"  {case_dir.name}/{student_name}/diff_marks_leo.json")
-
-
-def regen_context_first_diff_marks(case_dir: Path, student_name: str) -> None:
-    teacher_files = _collect_teacher_files(case_dir)
-    stu_files     = _collect_student_files(case_dir / student_name)
-
-    t_files, s_files, score = _build_context_first_diff_marks(teacher_files, stu_files)
-
-    diff_marks = {
-        "format_version": 4,
-        "token_matching": "context-first",
-        "case_sensitive": True,
-        "teacher_files": t_files,
-        "student_files": s_files,
-    }
-    if score is not None:
-        diff_marks["score"] = score
-
-    diff_path = (case_dir / student_name) / "diff_marks_context_first.json"
-    with open(diff_path, "w", encoding="utf-8") as fh:
-        json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-
-    print(f"  {case_dir.name}/{student_name}/diff_marks_context_first.json")
-
-
 def main():
     print("Regenerating test fixtures...\n")
 
@@ -338,25 +218,7 @@ def main():
 
         print()
 
-    print("[diff_marks_lcs_star]")
-    for dir_name, _, _ in _CASES:
-        case_dir = _TEST / dir_name
-        for student_dir in _student_dirs(case_dir):
-            regen_lcs_star_diff_marks(case_dir, student_dir.name)
-
-    print("\n[diff_marks_leo]")
-    for dir_name, _, _ in _CASES:
-        case_dir = _TEST / dir_name
-        for student_dir in _student_dirs(case_dir):
-            regen_leo_diff_marks(case_dir, student_dir.name)
-
-    print("\n[diff_marks_context_first]")
-    for dir_name, _, _ in _CASES:
-        case_dir = _TEST / dir_name
-        for student_dir in _student_dirs(case_dir):
-            regen_context_first_diff_marks(case_dir, student_dir.name)
-
-    print("\nDone.")
+    print("Done.")
 
 
 if __name__ == "__main__":
