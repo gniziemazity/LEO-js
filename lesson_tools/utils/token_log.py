@@ -302,7 +302,7 @@ def _build_occ_from_diff_marks(
             if label == 'extra':
                 all_occ.append(('00:00:00', tok, {'EXTRA'}))
             elif label == 'extra_star':
-                rem_ts = (removal_ts_by_token or {}).get(tok, '00:00:00')
+                rem_ts = m.get('removal_ts') or (removal_ts_by_token or {}).get(tok, '00:00:00')
                 all_occ.append((rem_ts, tok, {'EXTRA*'}))
 
     def _sort_key(entry: tuple) -> tuple:
@@ -392,16 +392,14 @@ def _hungarian_max(weights: List[List[float]]) -> List[Tuple[int, int]]:
     return list(zip(rows.tolist(), cols.tolist()))
 
 
-_CONTEXT_K = 6   # neighbor window for teacher/student context vectors
-_GHOST_K   = 6   # neighbor window for ghost context vectors (and narrow student comparison)
-_GHOST_SIM_THRESHOLD = 0.5  # minimum cosine similarity to ghost context to assign extra_star (Hungarian mode only)
-_GHOST_STAR_MUTUAL = os.environ.get('STUDENT_ANALYTICS_GHOST_MUTUAL', '1') == '1'
+_CONTEXT_K = 20   # neighbor window for teacher/student context vectors
+_GHOST_K   = 2   # neighbor window for ghost context vectors (and narrow student comparison)
 
 def _build_ghost_contexts(
     all_events: list,
     token_keys: set,
     k: int = _GHOST_K,
-) -> Dict[str, List[Counter]]:
+) -> Dict[str, List[Tuple[int, Counter]]]:
     from .lv_editor import reconstruct_all_headless_at_timestamps
 
     _tok_re = _sm._CHAR_TOKEN_RE
@@ -411,25 +409,33 @@ def _build_ghost_contexts(
         return {}
 
     del_token_occs: Dict[str, List[Tuple[int, int]]] = {}
+    del_ts_co_tokens: Dict[int, List[str]] = {}
     seg: List[Tuple[int, str, int, int]] = []
 
     def _flush_seg(s: list) -> None:
         if not s:
             return
         text = ''.join(ch for _, ch, _, _ in s)
+        seg_tokens = [m.group() for m in _tok_re.finditer(text)]
         for m in _tok_re.finditer(text):
             tok = m.group()
             if tok not in token_keys:
                 continue
             _, _, ins_ts, del_ts = s[m.end() - 1]
             del_token_occs.setdefault(tok, []).append((ins_ts, del_ts))
+            del_ts_co_tokens[del_ts] = seg_tokens
 
+    last_idx: Optional[int] = None
     for ch, ins_ts, del_ts, idx in sorted(deleted, key=lambda x: x[3]):
+        if last_idx is not None and idx != last_idx + 1:
+            _flush_seg(seg)
+            seg = []
         if ch in ('\n', '\r'):
             _flush_seg(seg)
             seg = []
         else:
             seg.append((idx, ch, ins_ts, del_ts))
+        last_idx = idx
     _flush_seg(seg)
 
     if not del_token_occs:
@@ -440,27 +446,6 @@ def _build_ghost_contexts(
         for tok in token_keys
         for _ins_ts, del_ts in del_token_occs.get(tok, [])
     }
-
-    batch_chars: Dict[int, List[Tuple]] = {}
-    for ch, ins_ts, del_ts, idx in deleted:
-        if del_ts in relevant_del_ts:
-            batch_chars.setdefault(del_ts, []).append((idx, ch))
-
-    del_ts_co_tokens: Dict[int, List[str]] = {}
-    for dt, chars in batch_chars.items():
-        chars.sort()
-        toks: List[str] = []
-        seg2: List[str] = []
-        for _, ch in chars:
-            if ch in ('\n', '\r'):
-                if seg2:
-                    toks.extend(m.group() for m in _tok_re.finditer(''.join(seg2)))
-                    seg2 = []
-            else:
-                seg2.append(ch)
-        if seg2:
-            toks.extend(m.group() for m in _tok_re.finditer(''.join(seg2)))
-        del_ts_co_tokens[dt] = toks
 
     reconstructed_at: Dict[int, List[str]] = {}
     for dt, texts in reconstruct_all_headless_at_timestamps(all_events, sorted(relevant_del_ts)).items():
@@ -485,24 +470,23 @@ def _build_ghost_contexts(
                 best_score, best_pos = score, pos
         return best_pos
 
-    ghost_ctxs: Dict[str, List[Counter]] = {}
+    ghost_ctxs: Dict[str, List[Tuple[int, Counter]]] = {}
     for tok in token_keys:
-        vecs: List[Counter] = []
+        vecs: List[Tuple[int, Counter]] = []
         for _ins_ts, del_ts in del_token_occs.get(tok, []):
-            seq = reconstructed_at.get(del_ts, [])
-            positions = [i for i, t in enumerate(seq) if t == tok]
-            if not positions:
-                vecs.append(Counter())
-                continue
-
             co_toks = Counter(del_ts_co_tokens.get(del_ts, []))
             del co_toks[tok]
 
-            if len(co_toks) >= 2 and len(positions) > 1:
-                batch_seq = list(co_toks.elements()) + [tok]
-                vecs.append(_context_vector(batch_seq, len(batch_seq) - 1, k))
-            else:
-                vecs.append(_context_vector(seq, _pick_pos(positions, seq, co_toks), k))
+            if len(co_toks) >= 3:
+                vecs.append((del_ts, co_toks))
+                continue
+
+            seq = reconstructed_at.get(del_ts, [])
+            positions = [i for i, t in enumerate(seq) if t == tok]
+            if not positions:
+                vecs.append((del_ts, Counter()))
+                continue
+            vecs.append((del_ts, _context_vector(seq, _pick_pos(positions, seq, co_toks), k)))
 
         if vecs:
             ghost_ctxs[tok] = vecs
@@ -513,51 +497,58 @@ def _build_ghost_contexts(
 def _ghost_star_idxs(
     extra_pairs: List[Tuple[int, str]],
     s_seq: List[str],
-    ghost_contexts: Dict[str, List[Counter]],
+    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
     k: int,
-) -> set:
+) -> Dict[int, int]:
     if not ghost_contexts or not extra_pairs:
-        return set()
+        return {}
 
     by_tok: Dict[str, List[Tuple[int, int]]] = {}
     for pair_idx, (seq_idx, tok) in enumerate(extra_pairs):
         if tok in ghost_contexts:
             by_tok.setdefault(tok, []).append((pair_idx, seq_idx))
 
-    star_pair_idxs: set = set()
+    star_assignments: Dict[int, int] = {}
     for tok, items in by_tok.items():
-        ghost_vecs = ghost_contexts[tok]
+        groups: List[Tuple[Counter, List[int]]] = []  # (vec, [del_ts, ...])
+        for dt, vec in ghost_contexts[tok]:
+            for gvec, gdts in groups:
+                if gvec == vec:
+                    gdts.append(dt)
+                    break
+            else:
+                groups.append((vec, [dt]))
+
         positions = [seq_idx for _, seq_idx in items]
+        n_e, n_g = len(positions), len(groups)
+        if n_e == 0 or n_g == 0:
+            continue
 
-        tok_keep = frozenset(t for v in ghost_vecs for t in v) | {tok}
-        filt_items = [(i, t) for i, t in enumerate(s_seq) if t in tok_keep]
-        filt_seq = [t for _, t in filt_items]
-        orig_to_filt = {i: fi for fi, (i, _) in enumerate(filt_items)}
-
-        s_ctx = [
-            _context_vector(filt_seq, orig_to_filt[p], k)
-            if p in orig_to_filt else Counter()
-            for p in positions
-        ]
-
+        s_ctx = [_context_vector(s_seq, p, k) for p in positions]
         sim = [
-            [_cosine_similarity_sparse(s_ctx[i], ghost_vecs[j]) for j in range(len(ghost_vecs))]
-            for i in range(len(positions))
+            [_cosine_similarity_sparse(s_ctx[i], groups[g][0]) for g in range(n_g)]
+            for i in range(n_e)
         ]
 
-        if _GHOST_STAR_MUTUAL:
-            n_e, n_g = len(positions), len(ghost_vecs)
-            best_ghost = [max(range(n_g), key=lambda j: sim[i][j]) for i in range(n_e)]
-            best_extra = [max(range(n_e), key=lambda ii: sim[ii][j]) for j in range(n_g)]
-            for i, j in enumerate(best_ghost):
-                if sim[i][j] > 0 and best_extra[j] == i:
-                    star_pair_idxs.add(items[i][0])
-        else:
-            for si, gj in _hungarian_max(sim):
-                if sim[si][gj] >= _GHOST_SIM_THRESHOLD:
-                    star_pair_idxs.add(items[si][0])
+        best_group = [max(range(n_g), key=lambda g: sim[i][g]) for i in range(n_e)]
+        group_top: List[set] = []
+        for g, (_gvec, gdts) in enumerate(groups):
+            m_g = len(gdts)
+            ranked = sorted(range(n_e), key=lambda i: sim[i][g], reverse=True)
+            group_top.append({i for i in ranked[:m_g] if sim[i][g] > 0})
 
-    return star_pair_idxs
+        per_group: Dict[int, List[int]] = {}
+        for i, g in enumerate(best_group):
+            if i in group_top[g]:
+                per_group.setdefault(g, []).append(i)
+
+        for g, matched in per_group.items():
+            matched.sort(key=lambda i: positions[i])
+            sorted_ts = sorted(groups[g][1])
+            for i, ts in zip(matched, sorted_ts):
+                star_assignments[items[i][0]] = ts
+
+    return star_assignments
 
 
 def _locate_token(
@@ -778,22 +769,17 @@ def _add_log_metadata(
         if removed_keys:
             ghost_contexts = _build_ghost_contexts(events, removed_keys)
     if ghost_contexts:
-        _apply_ghost_star_to_diff_marks(diff_marks, student_files, ghost_contexts)
+        _apply_ghost_star_to_diff_marks(
+            diff_marks, student_files, ghost_contexts,
+        )
 
 
 def _apply_ghost_star_to_colors(
     student_colors: dict,
     student_files: Dict[str, Path],
-    ghost_contexts: Dict[str, List[Counter]],
+    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
     k: int = _GHOST_K,
 ) -> None:
-    """Promote 'extra' â†’ 'extra_star' in the colors-map format. Modifies in-place.
-
-    The colors map is {filename: {token: [label|None, ...]}} where each label
-    corresponds to the occurrence of that token at its file_idx (all occurrences,
-    comment and non-comment). Rebuilds the student non-comment sequence to compute
-    the same ghost-context matching used by _apply_ghost_star_to_diff_marks.
-    """
     if not ghost_contexts:
         return
 
@@ -1258,14 +1244,9 @@ def _build_lev_token_diff_marks(
 def _apply_ghost_star_to_diff_marks(
     diff_marks: dict,
     student_files: Dict[str, Path],
-    ghost_contexts: Dict[str, List[Counter]],
+    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
     k: int = _GHOST_K,
 ) -> None:
-    """Promote 'extra' â†’ 'extra_star' in diff_marks['student_files']. Modifies in-place.
-
-    Works on position-mark format produced by _build_leo_diff_marks
-    (via _colors_to_position_marks) and _build_lcs_token_diff_marks.
-    """
     if not ghost_contexts:
         return
     student_marks = diff_marks.get('student_files', {})
@@ -1311,9 +1292,13 @@ def _apply_ghost_star_to_diff_marks(
                     extra_update.append((fname, mark_idx))
 
     if extra_pairs:
-        for pair_idx in _ghost_star_idxs(extra_pairs, s_seq, ghost_contexts, k):
+        for pair_idx, del_ts in _ghost_star_idxs(
+            extra_pairs, s_seq, ghost_contexts, k,
+        ).items():
             fname, mark_idx = extra_update[pair_idx]
-            student_marks[fname][mark_idx]['label'] = 'extra_star'
+            mark = student_marks[fname][mark_idx]
+            mark['label'] = 'extra_star'
+            mark['removal_ts'] = ts_to_local(del_ts)
 
 
 def _build_ro_diff_marks(

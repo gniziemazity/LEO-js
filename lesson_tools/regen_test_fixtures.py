@@ -167,7 +167,9 @@ def regen_student(case_dir: Path, student_name: str) -> None:
 
     log_path = case_dir / "log.json"
     if log_path.exists():
-        _add_log_metadata(diff_marks, _load_events(log_path), stu_files)
+        _add_log_metadata(
+            diff_marks, _load_events(log_path), stu_files,
+        )
 
     all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_extra_star = (
         _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)

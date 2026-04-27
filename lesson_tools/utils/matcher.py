@@ -120,7 +120,12 @@ def compare(
         tmp_root = Path(_tmpdir.name)
         teacher_paths: Dict[str, Path] = {}
         for tab_key, text in reconstructed.items():
-            fname = Path(tab_key).name if '/' in tab_key or '\\' in tab_key else tab_key
+            if tab_key == 'MAIN':
+                fname = 'reconstructed.html'
+            elif '/' in tab_key or '\\' in tab_key:
+                fname = Path(tab_key).name
+            else:
+                fname = tab_key
             p = tmp_root / fname
             p.write_text(text, encoding='utf-8')
             teacher_paths[fname] = p
@@ -174,7 +179,9 @@ def _dispatch(
     t, s, score, alignments, line_marks, *_ = builder(teacher_paths, student_paths)
     diff = _wrap(alg, t, s, score, alignments, line_marks)
     if is_star and keylog_events:
-        _add_log_metadata(diff, keylog_events, student_paths)
+        _add_log_metadata(
+            diff, keylog_events, student_paths,
+        )
     return diff
 
 

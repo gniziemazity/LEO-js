@@ -510,7 +510,7 @@ class ExcelReportMixin:
             if itype == 'teacher-question':
                 raw = ev.get('answered_by', '') or ''
                 names = (
-                    [s.strip() for s in raw if str(s).strip()]
+                    [str(s).strip() for s in raw if str(s).strip()]
                     if isinstance(raw, list)
                     else [p.strip() for p in str(raw).split(',') if p.strip()]
                 )

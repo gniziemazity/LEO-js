@@ -187,11 +187,10 @@ class _StudentBase:
     def setUpClass(cls):
         _teacher_headers, cls.teacher_entries = _parse_tokens_file(cls.teacher_tokens_file)
         cls.headers, cls.raw_expected = _parse_student_tokens_file(cls.tokens_file)
-        cls.removal_ts_by_token = {
-            tok: removal_ts
-            for tok, _, _, is_rem, removal_ts in cls.teacher_entries
-            if is_rem and removal_ts
-        }
+        cls.removal_ts_by_token: Dict[str, set] = {}
+        for tok, _, _, is_rem, removal_ts in cls.teacher_entries:
+            if is_rem and removal_ts:
+                cls.removal_ts_by_token.setdefault(tok, set()).add(removal_ts)
         cls.expected = [(tok, ts, flags) for tok, ts, flags in cls.raw_expected]
         cls.all_occ = [(ts, tok, flags) for tok, ts, flags in cls.expected]
         cls.n_found = int(cls.headers['Found'])
@@ -226,14 +225,13 @@ class _StudentBase:
         self.assertEqual(actual, expected)
 
     def test_extra_star_timestamps(self):
-        """Each EXTRA* entry in the fixture must have the teacher's removal timestamp."""
         for tok, ts, flags in self.raw_expected:
             if flags == {'EXTRA*'}:
-                expected_ts = self.removal_ts_by_token.get(tok)
-                if expected_ts:
-                    self.assertEqual(
-                        ts, expected_ts,
-                        f"EXTRA* token '{tok}' has ts {ts!r}, expected removal ts {expected_ts!r}",
+                allowed = self.removal_ts_by_token.get(tok)
+                if allowed:
+                    self.assertIn(
+                        ts, allowed,
+                        f"EXTRA* token '{tok}' has ts {ts!r}, expected one of {sorted(allowed)!r}",
                     )
 
 
