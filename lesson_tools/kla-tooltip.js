@@ -3,6 +3,42 @@
 const tooltipEl = document.getElementById("tooltip");
 let _pinned = null;
 
+function getStudentNameFromInteraction(field) {
+	if (typeof field === "number") {
+		const resolved = _studentIdMap[field] || `ID ${field}`;
+		console.log(
+			`[DEBUG] getStudentNameFromInteraction(${field}): _studentIdMap[${field}] = ${_studentIdMap[field]} => resolved to "${resolved}"`,
+		);
+		return resolved;
+	}
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		if (!trimmed) return "";
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
+			const resolved = _studentIdMap[asNum] || `ID ${asNum}`;
+			console.log(
+				`[DEBUG] getStudentNameFromInteraction("${field}"): parsed as number ${asNum}, _studentIdMap[${asNum}] = ${_studentIdMap[asNum]} => resolved to "${resolved}"`,
+			);
+			return resolved;
+		}
+		console.log(
+			`[DEBUG] getStudentNameFromInteraction("${field}"): not a number, returning as-is`,
+		);
+		return trimmed;
+	}
+	console.log(
+		`[DEBUG] getStudentNameFromInteraction(${field}): unrecognized type, returning null`,
+	);
+	return null;
+}
+
+function matchesStudentName(interactionField, studentName) {
+	const interactionName = getStudentNameFromInteraction(interactionField);
+	if (!interactionName || !studentName) return false;
+	return interactionName.trim() === studentName.trim();
+}
+
 function setupHover(c1, c2, c3, p, L) {
 	for (const [canvas, id] of [
 		[c1, "c1"],
@@ -349,21 +385,25 @@ function formatHit(hit, simple = false) {
 			const interTypes = [];
 			if (_p) {
 				const answered = (_p.interactions["teacher-question"] || []).filter(
-					(q) => q.answered_by && q.answered_by.includes(s.name),
+					(q) =>
+						q.answered_by &&
+						q.answered_by.some((field) =>
+							matchesStudentName(field, s.name),
+						),
 				);
 				for (const q of answered)
 					interTypes.push(
 						`<span style="color:${INTERACTION_COLORS["teacher-question"].hex}">Answered: ${escHtml(q.info || "?")}</span>`,
 					);
 				const asked = (_p.interactions["student-question"] || []).filter(
-					(q) => q.asked_by && q.asked_by.trim() === s.name,
+					(q) => q.asked_by && matchesStudentName(q.asked_by, s.name),
 				);
 				for (const q of asked)
 					interTypes.push(
 						`<span style="color:${INTERACTION_COLORS["student-question"].hex}">Asked: ${escHtml(q.info || "?")}</span>`,
 					);
 				const helped = (_p.interactions["providing-help"] || []).filter(
-					(q) => q.student && q.student.trim() === s.name,
+					(q) => q.student && matchesStudentName(q.student, s.name),
 				);
 				if (helped.length)
 					interTypes.push(
@@ -440,16 +480,26 @@ function formatHitSimple(hit) {
 			const clr = INTERACTION_COLORS[hit.itype]?.hex;
 			if (hit.itype === "teacher-question") {
 				let h = `<span style="color:${clr}">❓ ${escHtml(q.info || "")}</span>`;
-				if (q.answered_by && q.answered_by.length)
-					h += `\nAnswered by: ${q.answered_by.map(escHtml).join(", ")}`;
+				if (q.answered_by && q.answered_by.length) {
+					const names = q.answered_by.map((field) =>
+						getStudentNameFromInteraction(field),
+					);
+					h += `\nAnswered by: ${names.map(escHtml).join(", ")}`;
+				}
 				return h;
 			} else if (hit.itype === "student-question") {
 				let h = `<span style="color:${clr}">🙋 ${escHtml(q.info || "")}</span>`;
-				if (q.asked_by) h += `\nAsked by: ${escHtml(q.asked_by)}`;
+				if (q.asked_by) {
+					const name = getStudentNameFromInteraction(q.asked_by);
+					h += `\nAsked by: ${escHtml(name)}`;
+				}
 				return h;
 			} else if (hit.itype === "providing-help") {
 				let h = `<span style="color:${clr}">🤝 Providing Help</span>`;
-				if (q.student) h += `\nStudent: ${escHtml(q.student)}`;
+				if (q.student) {
+					const name = getStudentNameFromInteraction(q.student);
+					h += `\nStudent: ${escHtml(name)}`;
+				}
 				return h;
 			}
 			return "";

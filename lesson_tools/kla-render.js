@@ -108,6 +108,36 @@ const BAR_COLORS = {
 	move: THEME.orange,
 };
 
+function resolveInteractionStudent(field) {
+	if (typeof field === "number") {
+		const resolved = _studentIdMap?.[field] || null;
+		console.log(
+			`[DEBUG] resolveInteractionStudent(${field}): _studentIdMap[${field}] = ${resolved}`,
+		);
+		return resolved;
+	}
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		if (!trimmed) return null;
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
+			const resolved = _studentIdMap?.[asNum] || null;
+			console.log(
+				`[DEBUG] resolveInteractionStudent("${field}"): parsed as number ${asNum}, _studentIdMap[${asNum}] = ${resolved}`,
+			);
+			return resolved;
+		}
+		console.log(
+			`[DEBUG] resolveInteractionStudent("${field}"): not a number, returning as-is`,
+		);
+		return trimmed;
+	}
+	console.log(
+		`[DEBUG] resolveInteractionStudent(${field}): unrecognized type, returning null`,
+	);
+	return null;
+}
+
 const _chart2Visible = {
 	chars: true,
 	inserts: true,
@@ -491,14 +521,17 @@ function drawChart3(ctx, p, students, L) {
 		asking = new Set(),
 		helping = new Set();
 	for (const q of p.interactions["teacher-question"])
-		for (const name of q.answered_by) answering.add(name);
+		for (const field of q.answered_by) {
+			const name = resolveInteractionStudent(field);
+			if (name) answering.add(name);
+		}
 	for (const q of p.interactions["student-question"]) {
-		const nm = q.asked_by.trim();
-		if (nm) asking.add(nm);
+		const nm = resolveInteractionStudent(q.asked_by) || "";
+		if (nm.trim()) asking.add(nm.trim());
 	}
 	for (const q of p.interactions["providing-help"]) {
-		const nm = q.student.trim();
-		if (nm) helping.add(nm);
+		const nm = resolveInteractionStudent(q.student) || "";
+		if (nm.trim()) helping.add(nm.trim());
 	}
 
 	for (const s of students) {

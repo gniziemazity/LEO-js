@@ -29,13 +29,16 @@ async function loadXlsxFiles(files) {
 			readAsArray(simFile),
 		]);
 		const sessionDate = new Date(_p.sessionStart * 1000);
-		_students = parseStudentData(
+		const result = parseStudentData(
 			rBuf,
 			sBuf,
 			sessionDate,
 			_p.sessionStart,
 			_p.sessionEnd,
 		);
+		_students = result.students;
+		_studentIdMap = result.idMap;
+		console.log("[DEBUG] Loaded student ID map:", _studentIdMap);
 		if (!_students.length) {
 			showLoading(false);
 			return;
@@ -75,6 +78,25 @@ function parseStudentData(
 		throw new Error(
 			'remarks.xlsx: missing "Student" or "Follow (E)" columns',
 		);
+
+	const idMap = {};
+	console.log(
+		"[DEBUG] Extracting ID map from remarks: column A=ID, column B=Name",
+	);
+	for (let i = 1; i < rowsR.length; i++) {
+		const row = rowsR[i];
+		const idVal = row[0];
+		const nameVal = row[1];
+		if (idVal != null && nameVal != null) {
+			const id = Number(idVal);
+			const name = String(nameVal).trim();
+			if (Number.isInteger(id) && id > 0 && name) {
+				idMap[id] = name;
+				console.log(`[DEBUG]   ID ${id} -> "${name}"`);
+			}
+		}
+	}
+	console.log("[DEBUG] Final ID map:", idMap);
 
 	const followData = {};
 	for (let i = 1; i < rowsR.length; i++) {
@@ -143,7 +165,7 @@ function parseStudentData(
 			inc_sim: incData[name] ?? null,
 		});
 	}
-	return students;
+	return { students, idMap };
 }
 
 function parseFollowLabel(label) {

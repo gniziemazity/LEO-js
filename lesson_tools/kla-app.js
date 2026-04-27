@@ -3,6 +3,7 @@
 let _pendingXlsx = [];
 let _allFiles = new Map();
 let _dirHandle = null;
+let _studentIdMap = {};
 
 const landingEl = document.getElementById("landing");
 
@@ -157,6 +158,7 @@ async function _readImageUris(fileMap) {
 async function loadJsonData(file, data) {
 	document.title = "Dashboard: " + file.name.replace(/\.json$/i, "");
 	_zoomMin = _zoomMax = null;
+	_studentIdMap = {};
 	const p = processData(data);
 	if (!p) {
 		showLoading(false);
@@ -185,6 +187,7 @@ async function loadJsonData(file, data) {
 	}
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";
+
 	scheduleRender();
 	if (_pendingXlsx.length) {
 		loadXlsxFiles(_pendingXlsx);

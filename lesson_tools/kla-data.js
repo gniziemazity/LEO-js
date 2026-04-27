@@ -261,19 +261,37 @@ function extractInteractions(events) {
 		"student-question": [],
 		"providing-help": [],
 	};
+
+	function parseField(fieldValue) {
+		if (fieldValue == null) return "";
+		if (typeof fieldValue === "number") return fieldValue;
+		const str = String(fieldValue).trim();
+		if (!str) return "";
+		const n = Number(str);
+		return Number.isInteger(n) && String(n) === str ? n : str;
+	}
+
 	for (const ev of events) {
 		if (ev.interaction && res[ev.interaction]) {
+			const answeredByRaw = ev.answered_by;
+			const answeredBy = Array.isArray(answeredByRaw)
+				? answeredByRaw
+				: answeredByRaw != null
+					? String(answeredByRaw)
+							.split(",")
+							.map((s) => s.trim())
+							.filter((s) => s !== "")
+							.map((s) => {
+								const n = Number(s);
+								return Number.isInteger(n) && String(n) === s ? n : s;
+							})
+					: [];
 			res[ev.interaction].push({
 				timestamp: ev.timestamp / 1000,
 				info: ev.info || "",
-				asked_by: ev.asked_by || "",
-				answered_by: ev.answered_by
-					? String(ev.answered_by)
-							.split(",")
-							.map((s) => s.trim())
-							.filter(Boolean)
-					: [],
-				student: ev.student || "",
+				asked_by: parseField(ev.asked_by),
+				answered_by: answeredBy,
+				student: parseField(ev.student),
 				closed_at: ev.closed_at != null ? ev.closed_at / 1000 : null,
 			});
 		}

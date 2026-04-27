@@ -68,7 +68,8 @@ function showQuestionOverlay(question, students, bgColor) {
 }
 
 function onStudentAnswered(name) {
-	sendMessage("student-answered", { studentName: name });
+	const studentId = name ? currentStudents.indexOf(name) + 1 : null;
+	sendMessage("student-answered", { studentName: studentId });
 
 	document.getElementById("questionOverlay").classList.remove("active");
 	setInteractionBtnsVisible(true);
@@ -142,9 +143,10 @@ function showInteractionOverlay(title, students, type) {
 }
 
 function onStudentSelected(name, type, questionText) {
+	const studentId = currentStudents.indexOf(name) + 1;
 	const msgData = {
 		interactionType: type,
-		studentName: name,
+		studentName: studentId,
 		questionText: questionText || null,
 		openedAt: interactionOpenedAt,
 	};
