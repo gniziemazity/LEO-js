@@ -28,6 +28,8 @@ class HeadlessEditor:
         self._char_ts:  list = []
         self._char_idx: list = []
         self._deleted_chars: list = []
+        self._idx_to_anchor: dict = {}
+        self._auto_dedent_idxs: set = set()
 
     def get_text(self) -> str:
         return "".join(self._chars)
@@ -37,6 +39,65 @@ class HeadlessEditor:
 
     def get_deleted_with_timestamps(self) -> list:
         return list(self._deleted_chars)
+
+    def get_text_with_ghosts(self) -> tuple:
+        import bisect as _bisect
+        text = "".join(self._chars)
+        if not self._deleted_chars:
+            return text, []
+
+        surv_by_anchor: dict = {}
+        for pos, gidx in enumerate(self._char_idx):
+            anc = self._idx_to_anchor.get(gidx)
+            surv_by_anchor.setdefault(anc, []).append((gidx, pos))
+        for anc in surv_by_anchor:
+            surv_by_anchor[anc].sort(key=lambda t: t[0])
+
+        surv_idx_to_pos = {idx: pos for pos, idx in enumerate(self._char_idx)}
+        sorted_all_surv_idxs = sorted(surv_idx_to_pos.keys())
+
+        placements: dict = {}
+        for ch, ins_ts, del_ts, gidx in self._deleted_chars:
+            if gidx in self._auto_dedent_idxs:
+                continue
+            anc = self._idx_to_anchor.get(gidx)
+            anc_survs = surv_by_anchor.get(anc, [])
+            idxs = [s[0] for s in anc_survs]
+            i = _bisect.bisect_left(idxs, gidx)
+            if i > 0:
+                placement_pos = anc_survs[i - 1][1] + 1
+            elif i < len(anc_survs):
+                placement_pos = anc_survs[i][1]
+            elif anc is not None and anc in self._anchors:
+                placement_pos = self._anchors[anc]
+            else:
+                j = _bisect.bisect_left(sorted_all_surv_idxs, gidx)
+                if j > 0:
+                    placement_pos = surv_idx_to_pos[sorted_all_surv_idxs[j - 1]] + 1
+                else:
+                    placement_pos = 0
+            placements.setdefault(placement_pos, []).append((gidx, ch, ins_ts, del_ts))
+
+        ranges = []
+        for pos, items in placements.items():
+            items.sort(key=lambda t: t[0])
+            blob = "".join(c for _, c, _, _ in items)
+            if not blob.strip():
+                continue
+            char_del_ts = [t[3] for t in items]
+            char_before = self._chars[pos - 1] if pos > 0 else "\n"
+            if char_before == "\n" and not blob.endswith("\n"):
+                blob = blob + "\n"
+                char_del_ts.append(max(char_del_ts))
+            ranges.append({
+                'pos':         pos,
+                'text':        blob,
+                'ins_ts':      min(t for _, _, t, _ in items),
+                'del_ts':      max(t for _, _, _, t in items),
+                'char_del_ts': char_del_ts,
+            })
+        ranges.sort(key=lambda g: g['pos'])
+        return text, ranges
 
     def _line_start(self, pos=None) -> int:
         if pos is None: pos = self._cur
@@ -77,6 +138,7 @@ class HeadlessEditor:
         if self._track_ts:
             self._char_ts.insert(self._cur, self._cur_ts)
             self._char_idx.insert(self._cur, self._next_idx)
+            self._idx_to_anchor[self._next_idx] = self._following_anchor
             self._next_idx += 1
         self._shift_anchors_after(self._cur, 1)
         self._cur += 1
@@ -265,8 +327,10 @@ class HeadlessEditor:
         n = len(before) - len(nb)
         if self._track_ts:
             for i in range(ls, ls + n):
+                idx = self._char_idx[i]
                 self._deleted_chars.append(
-                    (self._chars[i], self._char_ts[i], self._cur_ts, self._char_idx[i]))
+                    (self._chars[i], self._char_ts[i], self._cur_ts, idx))
+                self._auto_dedent_idxs.add(idx)
             del self._char_ts[ls: ls + n]
             del self._char_idx[ls: ls + n]
         del self._chars[ls: ls + n]
@@ -419,6 +483,14 @@ def reconstruct_html_headless(events: list) -> str:
 
 def reconstruct_all_headless(events: list) -> dict:
     return {k: ed.get_text() for k, ed in _replay_headless_multi(events).items()}
+
+
+def reconstruct_all_with_ghosts(events: list) -> dict:
+    out: dict = {}
+    for k, ed in _replay_headless_multi(events, track_timestamps=True).items():
+        text, ranges = ed.get_text_with_ghosts()
+        out[k] = {'text': text, 'ghosts': ranges}
+    return out
 
 
 def reconstruct_all_headless_at_timestamps(events: list, timestamps: list) -> dict:

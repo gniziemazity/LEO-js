@@ -158,18 +158,23 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         if is_rem and removal_ts
     }
 
-    t_marks, s_marks, _, alignments, _, _ = _build_leo_diff_marks(teacher_files, stu_files)
+    log_path = case_dir / "log.json"
+    events = _load_events(log_path) if log_path.exists() else None
+
+    t_marks, s_marks, _, alignments, _, _, leo_assignments = _build_leo_diff_marks(
+        teacher_files, stu_files, events=events,
+    )
 
     diff_marks = {
+        "token_matching": "leo_star",
         "teacher_files": t_marks,
         "student_files": s_marks,
     }
+    if leo_assignments:
+        diff_marks["leo_assignments"] = leo_assignments
 
-    log_path = case_dir / "log.json"
-    if log_path.exists():
-        _add_log_metadata(
-            diff_marks, _load_events(log_path), stu_files,
-        )
+    if events:
+        _add_log_metadata(diff_marks, events, stu_files)
 
     all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_extra_star = (
         _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
@@ -183,6 +188,10 @@ def regen_student(case_dir: Path, student_name: str) -> None:
     }
     if alignments:
         diff_marks_out["alignments"] = alignments
+    if leo_assignments:
+        diff_marks_out["leo_assignments"] = leo_assignments
+    if "teacher_ghosts" in diff_marks:
+        diff_marks_out["teacher_ghosts"] = diff_marks["teacher_ghosts"]
     _strip_internal_fields(diff_marks_out)
 
     out = student_dir / "tokens.txt"

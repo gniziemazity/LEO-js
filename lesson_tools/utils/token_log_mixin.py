@@ -14,7 +14,6 @@ from .token_log import (
     _add_log_metadata,
     _build_file_ordered_ts_map,
     _build_file_timeline,
-    _build_ghost_contexts,
     _build_git_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
@@ -144,17 +143,9 @@ class TokenLogMixin:
         }
 
         all_events = getattr(self, '_lesson_all_events', None)
-        ghost_contexts = None
         ts_map_cached: Dict[str, List[str]] = {}
         if all_events:
             ts_map_cached = _build_file_ordered_ts_map(all_events)
-            removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-            if removed_keys:
-                ghost_contexts = _build_ghost_contexts(all_events, removed_keys)
-                n_with_ctx = sum(1 for k in removed_keys if k in ghost_contexts)
-                print(f'Ghost contexts: {n_with_ctx}/{len(removed_keys)} removed tokens '
-                      f'have deletion-batch context')
-        self._ghost_contexts = ghost_contexts
 
         teacher_code_files = self._get_teacher_code_files()
 
@@ -179,11 +170,13 @@ class TokenLogMixin:
                 continue
 
             try:
-                t_marks, s_marks, _score, alignments, *_ = _build_leo_diff_marks(
-                    teacher_code_files, stu_files
+                t_marks, s_marks, _score, alignments, _line_marks, _n_total, leo_assignments = (
+                    _build_leo_diff_marks(
+                        teacher_code_files, stu_files, events=all_events,
+                    )
                 )
             except Exception:
-                t_marks, s_marks, alignments = {}, {}, None
+                t_marks, s_marks, alignments, leo_assignments = {}, {}, None, None
 
             diff_marks: dict = {
                 'token_matching': 'leo_star',
@@ -192,9 +185,16 @@ class TokenLogMixin:
             }
             if alignments:
                 diff_marks['alignments'] = alignments
+            if leo_assignments:
+                diff_marks['leo_assignments'] = leo_assignments
 
-            _, ns_score_e, *_ = _build_occ_from_diff_marks(diff_marks, teacher_entries, None)
             non_star = copy.deepcopy(diff_marks)
+            for marks in non_star.get('student_files', {}).values():
+                for m in marks:
+                    if m.get('label') == 'extra_star':
+                        m['label'] = 'extra'
+                        m.pop('removal_ts', None)
+            _, ns_score_e, *_ = _build_occ_from_diff_marks(non_star, teacher_entries, None)
             non_star['token_matching'] = 'leo'
             non_star['score'] = ns_score_e
             _strip_internal_fields(non_star)
@@ -204,7 +204,7 @@ class TokenLogMixin:
             if all_events:
                 _add_log_metadata(
                     diff_marks, all_events, stu_files,
-                    _ghost_contexts=ghost_contexts, _ts_map=ts_map_cached or None,
+                    _ts_map=ts_map_cached or None,
                 )
 
             all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_extra_star = (
@@ -382,16 +382,9 @@ class TokenLogMixin:
 
         all_events = getattr(self, '_lesson_all_events', None)
         write_star = star_token_matching is not None and bool(all_events)
-        _gc: Optional[dict] = None
         _tm: Dict[str, List[str]] = {}
         if write_star:
-            _gc = getattr(self, '_ghost_contexts', None)
             _tm = _build_file_ordered_ts_map(all_events)
-            if _gc is None:
-                _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(all_events)
-                removed_keys = set(removed_kw_ts.keys())
-                if removed_keys:
-                    _gc = _build_ghost_contexts(all_events, removed_keys)
 
         written = 0
         written_star = 0
@@ -412,7 +405,10 @@ class TokenLogMixin:
             alignments = None
             line_marks = None
             teacher_total_nc = None
-            if len(result) == 6:
+            leo_assignments = None
+            if len(result) == 7:
+                teacher_marks, student_marks, score, alignments, line_marks, teacher_total_nc, leo_assignments = result
+            elif len(result) == 6:
                 teacher_marks, student_marks, score, alignments, line_marks, teacher_total_nc = result
             elif len(result) == 5:
                 teacher_marks, student_marks, score, alignments, line_marks = result
@@ -433,6 +429,8 @@ class TokenLogMixin:
                 diff_marks['alignments'] = alignments
             if include_line_marks and line_marks:
                 diff_marks['line_marks'] = line_marks
+            if leo_assignments:
+                diff_marks['leo_assignments'] = leo_assignments
 
             if write_star:
                 non_star = copy.deepcopy(diff_marks)
@@ -443,7 +441,7 @@ class TokenLogMixin:
 
                 diff_marks['token_matching'] = star_token_matching
                 _add_log_metadata(diff_marks, all_events, stu_files,
-                                  _ghost_contexts=_gc, _ts_map=_tm or None)
+                                  _ts_map=_tm or None)
                 if teacher_total_nc:
                     n_extra_star_count = sum(
                         1 for marks in diff_marks.get('student_files', {}).values()

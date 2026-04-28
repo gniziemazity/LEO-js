@@ -176,8 +176,11 @@ def _dispatch(
             f"Choose from: {', '.join(repr(m) for m in SUPPORTED_METHODS)}."
         )
 
-    t, s, score, alignments, line_marks, *_ = builder(teacher_paths, student_paths)
+    result = builder(teacher_paths, student_paths)
+    t, s, score, alignments, line_marks = result[:5]
     diff = _wrap(alg, t, s, score, alignments, line_marks)
+    if len(result) >= 7 and result[6]:
+        diff['leo_assignments'] = result[6]
     if is_star and keylog_events:
         _add_log_metadata(
             diff, keylog_events, student_paths,

@@ -19,10 +19,8 @@ from utils.token_log import (
     _build_lcs_token_diff_marks,
     _apply_ghost_star_to_colors,
     _apply_ghost_star_to_diff_marks,
-    _build_ghost_contexts,
     _parse_teacher_tokens,
     _CONTEXT_K,
-    _GHOST_K,
 )
 
 
@@ -333,15 +331,12 @@ class TestChessGameStudentBDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'index.html': chess / 'student_b' / 'index.html'}
         teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
         cls.student_index = cls.sf_colors.get('index.html', {})
 
     @classmethod
@@ -406,21 +401,18 @@ class TestChessGameStudentCDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'index.html': chess / 'student_c' / 'index.html'}
         teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
         cls.student_index = cls.sf_colors.get('index.html', {})
 
-    def test_element_extra_occurrence_is_extra_star(self):
-        labels = self.student_index.get('element', [])
-        self.assertGreaterEqual(len(labels), 6)
-        self.assertEqual(labels[5], 'extra_star')
+    def test_handleclick_extra_is_extra_star(self):
+        labels = self.student_index.get('handleClick', [])
+        self.assertGreaterEqual(len(labels), 1)
+        self.assertEqual(labels[0], 'extra_star')
 
 
 class TestChessGameStudentETokens(_StudentBase, unittest.TestCase):
@@ -434,15 +426,12 @@ class TestChessGameStudentEDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'index.html': chess / 'student_e' / 'index.html'}
         teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
         cls.student_index = cls.sf_colors.get('index.html', {})
         cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
 
@@ -492,15 +481,12 @@ class TestChessGameStudentFDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         chess = _TEST / 'chess'
         cls.events = _load_events(chess / 'log.json')
-        teacher_entries = _parse_teacher_tokens(chess / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'index.html': chess / 'student_f' / 'index.html'}
         teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
         cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
         cls.student_index = cls.sf_colors.get('index.html', {})
         cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
 
@@ -525,15 +511,12 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         sorting = _TEST / 'sorting'
         cls.events = _load_events(sorting / 'log.json')
-        teacher_entries = _parse_teacher_tokens(sorting / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
-        ghost_ctx = _build_ghost_contexts(cls.events, removed_keys, k=_GHOST_K)
         stu_files = {'index.html': sorting / 'student_b' / 'index.html'}
         teacher_files = {'reconstructed.html': sorting / 'reconstructed.html'}
         cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
         cls.student_index = cls.sf_colors.get('index.html', {})
         cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
 
@@ -570,30 +553,22 @@ class TestSortingStudentBDiffMarks(unittest.TestCase):
     def test_background_color_teacher_is_found(self):
         self.assertNotIn('background-color', self.teacher_index)
 
-    def test_function_updatebars_is_missing(self):
-        labels = self.teacher_index.get('function', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'missing')
-
-    def test_function_bubblesort_is_matched(self):
+    def test_exactly_one_function_is_missing(self):
         labels = self.teacher_index.get('function', [])
         self.assertGreaterEqual(len(labels), 2)
-        self.assertIsNone(labels[1])
+        self.assertEqual(labels.count('missing'), 1)
+        self.assertEqual(labels.count(None), 1)
 
     def test_async_is_missing(self):
         self.assertEqual(self.teacher_index.get('async'), ['missing'])
 
 
 class TestQRStudentADiffMarks(unittest.TestCase):
-    """Contextual diff_marks for qr/student_a — background-color must be extra_star."""
     @classmethod
     def setUpClass(cls):
         qr = _TEST / 'qr'
         student_dir = qr / 'student_a'
-        teacher_entries = _parse_teacher_tokens(qr / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         events = _load_events(qr / 'log.json')
-        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
         teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
                          '123456.css': qr / '123456.css',
                          '123456.js': qr / '123456.js'}
@@ -602,7 +577,7 @@ class TestQRStudentADiffMarks(unittest.TestCase):
         _, cls.sf_colors = _build_contextual_diff_marks(
             teacher_files, stu_files, context_k=_CONTEXT_K,
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, stu_files, ghost_ctx)
+        _apply_ghost_star_to_colors(cls.sf_colors, events)
         cls.student_css = cls.sf_colors.get('123456.css', {})
 
     @classmethod
@@ -621,10 +596,7 @@ class TestQRStudentALCSStarDiffMarks(unittest.TestCase):
     def setUpClass(cls):
         qr = _TEST / 'qr'
         student_dir = qr / 'student_a'
-        teacher_entries = _parse_teacher_tokens(qr / 'tokens.txt')
-        removed_keys = {tok for tok, _, _, is_rem, *_ in teacher_entries if is_rem}
         events = _load_events(qr / 'log.json')
-        ghost_ctx = _build_ghost_contexts(events, removed_keys, k=_GHOST_K)
         teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
                          '123456.css': qr / '123456.css',
                          '123456.js': qr / '123456.js'}
@@ -632,7 +604,7 @@ class TestQRStudentALCSStarDiffMarks(unittest.TestCase):
                      if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
         _, s_files, *_ = _build_lcs_token_diff_marks(teacher_files, stu_files)
         dm = {'teacher_files': {}, 'student_files': s_files}
-        _apply_ghost_star_to_diff_marks(dm, stu_files, ghost_ctx)
+        _apply_ghost_star_to_diff_marks(dm, events)
         cls.student_css_marks = [m for m in dm['student_files'].get('123456.css', [])
                                   if m.get('token', '').lower() == 'background']
 

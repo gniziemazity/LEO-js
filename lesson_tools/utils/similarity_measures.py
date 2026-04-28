@@ -1,4 +1,5 @@
 import csv
+from bisect import bisect_right
 import difflib
 import io
 import re
@@ -40,16 +41,41 @@ _COMMENT_RE = re.compile(
 )
 
 
+def _comment_ranges(text: str) -> Tuple[List[int], List[int]]:
+    starts: List[int] = []
+    ends: List[int] = []
+    for match in _COMMENT_RE.finditer(text):
+        starts.append(match.start())
+        ends.append(match.end())
+    return starts, ends
+
+
+def _pos_in_comment(pos: int, starts: List[int], ends: List[int]) -> bool:
+    idx = bisect_right(starts, pos) - 1
+    return idx >= 0 and ends[idx] > pos
+
+
+def iter_code_tokens(text: str):
+    starts, ends = _comment_ranges(text)
+    for match in _CHAR_TOKEN_RE.finditer(text):
+        pos = match.start()
+        yield pos, match.group(), _pos_in_comment(pos, starts, ends)
+
+
 def extract_tokens(lines: List[str]) -> Counter:
     text = ' '.join(lines)
-    return Counter(_CHAR_TOKEN_RE.findall(text))
+    return Counter(tok for _, tok, _ in iter_code_tokens(text))
 
 def split_code_tokens(text: str) -> Tuple[Counter, Counter]:
-    outside_text = _COMMENT_RE.sub(' ', text)
-    inside_text  = ' '.join(m.group() for m in _COMMENT_RE.finditer(text))
-    return Counter(_CHAR_TOKEN_RE.findall(outside_text)), Counter(_CHAR_TOKEN_RE.findall(inside_text))
+    outside: Counter = Counter()
+    inside: Counter = Counter()
+    for _, tok, is_comment in iter_code_tokens(text):
+        if is_comment:
+            inside[tok] += 1
+        else:
+            outside[tok] += 1
+    return outside, inside
 
-# All file types use the same tokenization
 split_css_tokens = split_code_tokens
 
 def split_html_tokens(text: str) -> Tuple[Counter, Counter, Counter]:

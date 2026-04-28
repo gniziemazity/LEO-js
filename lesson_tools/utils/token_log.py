@@ -2,7 +2,7 @@
 import math
 import os
 import shutil
-from collections import Counter
+from collections import Counter, deque
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -12,13 +12,12 @@ from scipy.optimize import linear_sum_assignment
 from . import similarity_measures as _sm
 
 from .similarity_measures import (
-    _COMMENT_RE,
     get_reconstructed_files,
     reconstruct_tokens_from_keylog_full,
     split_code_tokens,
     ts_to_local,
 )
-from .lv_editor import replay_with_timestamps_all
+from .lv_editor import replay_with_timestamps_all, reconstruct_all_with_ghosts
 
 
 _FILE_EXTS = (".js", ".css", ".html", ".htm")
@@ -83,26 +82,10 @@ def _parse_teacher_tokens(path: Path) -> List[Tuple[str, str, bool, bool, str]]:
     return entries
 
 
-def _comment_ranges_for_ext(text: str, _ext: str = ''):
-    starts, ends = [], []
-    for m in _COMMENT_RE.finditer(text):
-        starts.append(m.start())
-        ends.append(m.end())
-    return starts, ends
-
-
-def _pos_in_comment(pos: int, starts: list, ends: list) -> bool:
-    idx = bisect.bisect_right(starts, pos) - 1
-    return idx >= 0 and ends[idx] > pos
-
-
 def _scan_file_tokens(text: str, ext: str) -> Dict[str, List[Tuple[int, bool]]]:
-    c_starts, c_ends = _comment_ranges_for_ext(text, ext)
     result: Dict[str, List[Tuple[int, bool]]] = {}
-    for m in _sm._CHAR_TOKEN_RE.finditer(text):
-        tok = m.group()
-        pos = m.start()
-        result.setdefault(tok, []).append((pos, _pos_in_comment(pos, c_starts, c_ends)))
+    for pos, tok, is_comment in _sm.iter_code_tokens(text):
+        result.setdefault(tok, []).append((pos, is_comment))
     return result
 
 
@@ -348,32 +331,31 @@ def _cosine_similarity_sparse(v1: Counter, v2: Counter) -> float:
     return dot / (n1 * n2)
 
 
+_CONTEXT_K = 18 
+_CONTEXT_DECAY         = 0.85
+_NEIGHBOR_BOOST        = 3.0
+_GHOST_MATCH_THRESHOLD = 0.6
+
+
 def _context_vector(
     tokens_seq: List[str],
     pos: int,
     k: int,
-    exclude_positions: set = None,
+    decay: float = _CONTEXT_DECAY,
+    neighbor_boost: float = _NEIGHBOR_BOOST,
 ) -> Counter:
-    vec = Counter()
-    if exclude_positions:
-        left, right = pos - 1, pos + 1
-        left_count = right_count = 0
-        while left_count < k and left >= 0:
-            if left not in exclude_positions:
-                vec[tokens_seq[left]] += 1
-                left_count += 1
-            left -= 1
-        while right_count < k and right < len(tokens_seq):
-            if right not in exclude_positions:
-                vec[tokens_seq[right]] += 1
-                right_count += 1
-            right += 1
-    else:
-        lo = max(0, pos - k)
-        hi = min(len(tokens_seq), pos + k + 1)
-        for i in range(lo, hi):
-            if i != pos:
-                vec[tokens_seq[i]] += 1
+    vec: Counter = Counter()
+    lo = max(0, pos - k)
+    hi = min(len(tokens_seq), pos + k + 1)
+    for i in range(lo, hi):
+        if i == pos:
+            continue
+        d = abs(i - pos)
+        vec[tokens_seq[i]] += decay ** d
+    if pos > 0:
+        vec[("L1", tokens_seq[pos - 1])] += neighbor_boost
+    if pos + 1 < len(tokens_seq):
+        vec[("R1", tokens_seq[pos + 1])] += neighbor_boost
     return vec
 
 
@@ -392,163 +374,27 @@ def _hungarian_max(weights: List[List[float]]) -> List[Tuple[int, int]]:
     return list(zip(rows.tolist(), cols.tolist()))
 
 
-_CONTEXT_K = 20   # neighbor window for teacher/student context vectors
-_GHOST_K   = 2   # neighbor window for ghost context vectors (and narrow student comparison)
-
-def _build_ghost_contexts(
-    all_events: list,
-    token_keys: set,
-    k: int = _GHOST_K,
-) -> Dict[str, List[Tuple[int, Counter]]]:
-    from .lv_editor import reconstruct_all_headless_at_timestamps
-
-    _tok_re = _sm._CHAR_TOKEN_RE
-
-    _, deleted = replay_with_timestamps_all(all_events)
-    if not deleted:
+def _collect_teacher_ghosts(events: list) -> Dict[str, list]:
+    if not events:
         return {}
-
-    del_token_occs: Dict[str, List[Tuple[int, int]]] = {}
-    del_ts_co_tokens: Dict[int, List[str]] = {}
-    seg: List[Tuple[int, str, int, int]] = []
-
-    def _flush_seg(s: list) -> None:
-        if not s:
-            return
-        text = ''.join(ch for _, ch, _, _ in s)
-        seg_tokens = [m.group() for m in _tok_re.finditer(text)]
-        for m in _tok_re.finditer(text):
-            tok = m.group()
-            if tok not in token_keys:
-                continue
-            _, _, ins_ts, del_ts = s[m.end() - 1]
-            del_token_occs.setdefault(tok, []).append((ins_ts, del_ts))
-            del_ts_co_tokens[del_ts] = seg_tokens
-
-    last_idx: Optional[int] = None
-    for ch, ins_ts, del_ts, idx in sorted(deleted, key=lambda x: x[3]):
-        if last_idx is not None and idx != last_idx + 1:
-            _flush_seg(seg)
-            seg = []
-        if ch in ('\n', '\r'):
-            _flush_seg(seg)
-            seg = []
-        else:
-            seg.append((idx, ch, ins_ts, del_ts))
-        last_idx = idx
-    _flush_seg(seg)
-
-    if not del_token_occs:
-        return {}
-
-    relevant_del_ts = {
-        del_ts
-        for tok in token_keys
-        for _ins_ts, del_ts in del_token_occs.get(tok, [])
-    }
-
-    reconstructed_at: Dict[int, List[str]] = {}
-    for dt, texts in reconstruct_all_headless_at_timestamps(all_events, sorted(relevant_del_ts)).items():
-        toks: List[str] = []
-        for tab_key, text in texts.items():
-            ext = Path(tab_key).suffix.lower() or '.html'
-            c_starts, c_ends = _comment_ranges_for_ext(text, ext)
-            for m in _tok_re.finditer(text):
-                if not _pos_in_comment(m.start(), c_starts, c_ends):
-                    toks.append(m.group())
-        reconstructed_at[dt] = toks
-
-    def _pick_pos(positions: List[int], seq: List[str], co_toks: Counter) -> int:
-        if len(positions) == 1 or not co_toks:
-            return positions[0]
-        best_pos, best_score = positions[0], -1
-        for pos in positions:
-            lo, hi = max(0, pos - k), min(len(seq), pos + k + 1)
-            neighbors = Counter(seq[lo:pos] + seq[pos + 1:hi])
-            score = sum(min(neighbors[t], v) for t, v in co_toks.items())
-            if score > best_score:
-                best_score, best_pos = score, pos
-        return best_pos
-
-    ghost_ctxs: Dict[str, List[Tuple[int, Counter]]] = {}
-    for tok in token_keys:
-        vecs: List[Tuple[int, Counter]] = []
-        for _ins_ts, del_ts in del_token_occs.get(tok, []):
-            co_toks = Counter(del_ts_co_tokens.get(del_ts, []))
-            del co_toks[tok]
-
-            if len(co_toks) >= 3:
-                vecs.append((del_ts, co_toks))
-                continue
-
-            seq = reconstructed_at.get(del_ts, [])
-            positions = [i for i, t in enumerate(seq) if t == tok]
-            if not positions:
-                vecs.append((del_ts, Counter()))
-                continue
-            vecs.append((del_ts, _context_vector(seq, _pick_pos(positions, seq, co_toks), k)))
-
-        if vecs:
-            ghost_ctxs[tok] = vecs
-
-    return ghost_ctxs
-
-
-def _ghost_star_idxs(
-    extra_pairs: List[Tuple[int, str]],
-    s_seq: List[str],
-    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
-    k: int,
-) -> Dict[int, int]:
-    if not ghost_contexts or not extra_pairs:
-        return {}
-
-    by_tok: Dict[str, List[Tuple[int, int]]] = {}
-    for pair_idx, (seq_idx, tok) in enumerate(extra_pairs):
-        if tok in ghost_contexts:
-            by_tok.setdefault(tok, []).append((pair_idx, seq_idx))
-
-    star_assignments: Dict[int, int] = {}
-    for tok, items in by_tok.items():
-        groups: List[Tuple[Counter, List[int]]] = []  # (vec, [del_ts, ...])
-        for dt, vec in ghost_contexts[tok]:
-            for gvec, gdts in groups:
-                if gvec == vec:
-                    gdts.append(dt)
-                    break
-            else:
-                groups.append((vec, [dt]))
-
-        positions = [seq_idx for _, seq_idx in items]
-        n_e, n_g = len(positions), len(groups)
-        if n_e == 0 or n_g == 0:
+    out: Dict[str, list] = {}
+    for tab_key, info in reconstruct_all_with_ghosts(events).items():
+        if not info['ghosts']:
             continue
+        fname = 'reconstructed.html' if tab_key == 'MAIN' else tab_key
+        out[fname] = info['ghosts']
+    return out
 
-        s_ctx = [_context_vector(s_seq, p, k) for p in positions]
-        sim = [
-            [_cosine_similarity_sparse(s_ctx[i], groups[g][0]) for g in range(n_g)]
-            for i in range(n_e)
-        ]
 
-        best_group = [max(range(n_g), key=lambda g: sim[i][g]) for i in range(n_e)]
-        group_top: List[set] = []
-        for g, (_gvec, gdts) in enumerate(groups):
-            m_g = len(gdts)
-            ranked = sorted(range(n_e), key=lambda i: sim[i][g], reverse=True)
-            group_top.append({i for i in ranked[:m_g] if sim[i][g] > 0})
-
-        per_group: Dict[int, List[int]] = {}
-        for i, g in enumerate(best_group):
-            if i in group_top[g]:
-                per_group.setdefault(g, []).append(i)
-
-        for g, matched in per_group.items():
-            matched.sort(key=lambda i: positions[i])
-            sorted_ts = sorted(groups[g][1])
-            for i, ts in zip(matched, sorted_ts):
-                star_assignments[items[i][0]] = ts
-
-    return star_assignments
+def _build_ghost_token_budget(events: list) -> Dict[str, deque]:
+    if not events:
+        return {}
+    _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(events)
+    by_token: Dict[str, list] = {}
+    for tok, occs in removed_kw_ts.items():
+        for _ins_ts, del_ts in occs:
+            by_token.setdefault(tok, []).append(del_ts)
+    return {tok: deque(sorted(ts_list)) for tok, ts_list in by_token.items()}
 
 
 def _locate_token(
@@ -557,35 +403,41 @@ def _locate_token(
     s_seq: List[str],
     t_seq: List[str],
     k: int,
-) -> Tuple[set, set, set]:
+) -> dict:
     n_s = len(s_positions)
     n_t = len(t_positions)
-
-    if n_s == 0:
-        return set(), set(range(n_t)), set()
-    if n_t == 0:
-        return set(), set(), set(range(n_s))
-
     s_ctx = [_context_vector(s_seq, p, k) for p in s_positions]
     t_ctx = [_context_vector(t_seq, p, k) for p in t_positions]
+
+    if n_s == 0 or n_t == 0:
+        return {
+            'matched_s': set(),
+            'missing_t': set(range(n_t)) if n_s == 0 else set(),
+            'extra': set(range(n_s)) if n_t == 0 else set(),
+            'sim': [],
+            'pairs': [],
+            's_ctx': s_ctx,
+            't_ctx': t_ctx,
+        }
 
     sim = [
         [_cosine_similarity_sparse(s_ctx[i], t_ctx[j]) for j in range(n_t)]
         for i in range(n_s)
     ]
-
     pairs = _hungarian_max(sim)
-
-    matched_s: set = set()
-    matched_t: set = set()
-    for si, col in pairs:
-        matched_s.add(si)
-        matched_t.add(col)
-
+    matched_s: set = {si for si, _ in pairs}
+    matched_t: set = {col for _, col in pairs}
     missing_t = {j for j in range(n_t) if j not in matched_t}
     extra = {i for i in range(n_s) if i not in matched_s}
-
-    return matched_s, missing_t, extra
+    return {
+        'matched_s': matched_s,
+        'missing_t': missing_t,
+        'extra': extra,
+        'sim': sim,
+        'pairs': pairs,
+        's_ctx': s_ctx,
+        't_ctx': t_ctx,
+    }
 
 
 def _collect_occurrences(files_by_ext: dict, token_keys: set = None) -> Tuple[List[dict], Dict[str, Dict[str, int]]]:
@@ -639,9 +491,8 @@ def _compute_per_token_matching(
     teacher_files: dict,
     student_files: dict,
     context_k: int,
-) -> Tuple[dict, dict, int, int]:
-    """Hungarian per-token matching across all files; returns
-    (teacher_colors, student_colors, n_total, n_missing) — colors are unpruned."""
+    teacher_ghosts: Optional[Dict[str, list]] = None,
+) -> Tuple[dict, dict, int, int, dict]:
     teacher_occs, teacher_counts = _collect_occurrences(teacher_files)
     student_occs, student_counts = _collect_occurrences(student_files)
 
@@ -660,6 +511,21 @@ def _compute_per_token_matching(
     teacher_seq = [oc['token'] for oc in teacher_occs if not oc['is_comment']]
     student_seq = [oc['token'] for oc in student_occs if not oc['is_comment']]
 
+    teacher_seq_aug: Optional[list] = None
+    seq_idx_to_aug: Optional[Dict[int, int]] = None
+    teacher_match_seq = teacher_seq
+    ghost_instances: List[dict] = []
+    ghost_by_token: Dict[str, List[dict]] = {}
+    if teacher_ghosts:
+        teacher_seq_aug, seq_idx_to_aug, ghost_instances = _build_teacher_seq_aug(
+            teacher_occs, teacher_ghosts,
+        )
+        teacher_match_seq = [
+            t if isinstance(t, str) else t[0] for t in teacher_seq_aug
+        ]
+        for inst in ghost_instances:
+            ghost_by_token.setdefault(inst['token'], []).append(inst)
+
     teacher_colors = {
         fn: {tok: [None] * n for tok, n in toks.items()}
         for fn, toks in teacher_counts.items()
@@ -669,6 +535,8 @@ def _compute_per_token_matching(
         for fn, toks in student_counts.items()
     }
 
+    tokens_data: Dict[str, dict] = {}
+    extra_star_meta: Dict[Tuple[str, str, int], int] = {}
     n_total = 0
     n_missing = 0
     for tok in token_keys:
@@ -677,16 +545,50 @@ def _compute_per_token_matching(
 
         t_out = [x for x in t_list if not x['is_comment']]
         t_com = [x for x in t_list if x['is_comment']]
+        t_ghost = ghost_by_token.get(tok, [])
         s_out = [x for x in s_list if not x['is_comment']]
         s_com = [x for x in s_list if x['is_comment']]
 
         n_total += len(t_out)
-        _mso, missing_to, extra_so = _locate_token(
-            [x['seq_idx'] for x in s_out],
-            [x['seq_idx'] for x in t_out],
-            student_seq, teacher_seq, context_k,
+        n_t_surv = len(t_out)
+        s_idxs = [x['seq_idx'] for x in s_out]
+        t_surv_idxs = [
+            seq_idx_to_aug[x['seq_idx']] if seq_idx_to_aug else x['seq_idx']
+            for x in t_out
+        ]
+        t_ghost_idxs = [x['seq_idx_aug'] for x in t_ghost]
+
+        res1 = _locate_token(
+            s_idxs, t_surv_idxs,
+            student_seq, teacher_match_seq, context_k,
         )
+        phase1_pairs = list(res1.get('pairs', []))
+        missing_to = res1['missing_t']  # surv-only unmatched
+        matched_s_p1 = {si for si, _ in phase1_pairs}
+        unmatched_s = [i for i in range(len(s_out)) if i not in matched_s_p1]
+
+        phase2_pairs: List[Tuple[int, int]] = []
+        extra_so: set = set(unmatched_s)
+        if unmatched_s and t_ghost_idxs:
+            u_s_idxs = [s_idxs[i] for i in unmatched_s]
+            res2 = _locate_token(
+                u_s_idxs, t_ghost_idxs,
+                student_seq, teacher_match_seq, context_k,
+            )
+            sim2 = res2.get('sim') or []
+            for i_local, j in res2.get('pairs', []):
+                cos = sim2[i_local][j] if sim2 and i_local < len(sim2) and j < len(sim2[i_local]) else 0.0
+                if cos < _GHOST_MATCH_THRESHOLD:
+                    continue
+                i_global = unmatched_s[i_local]
+                phase2_pairs.append((i_global, n_t_surv + j))
+                extra_so.discard(i_global)
+
         n_missing += len(missing_to)
+
+        all_pairs = phase1_pairs + phase2_pairs
+        teacher_match_idx: Dict[int, int] = {tj: si for si, tj in all_pairs}
+        student_match_idx: Dict[int, int] = {si: tj for si, tj in all_pairs}
 
         for i, oc in enumerate(t_out):
             if i in missing_to:
@@ -696,10 +598,62 @@ def _compute_per_token_matching(
         for i, oc in enumerate(s_out):
             if i in extra_so:
                 student_colors[oc['file']][tok][oc['file_idx']] = 'extra'
+            else:
+                tj = student_match_idx.get(i)
+                if tj is not None and tj >= n_t_surv:
+                    student_colors[oc['file']][tok][oc['file_idx']] = 'extra_star'
+                    ghost_inst = t_ghost[tj - n_t_surv]
+                    extra_star_meta[(oc['file'], tok, oc['file_idx'])] = ghost_inst['del_ts']
         for oc in s_com:
             student_colors[oc['file']][tok][oc['file_idx']] = 'comment'
 
-    return teacher_colors, student_colors, n_total, n_missing
+        ghost_matched = any(tj >= n_t_surv for tj in teacher_match_idx)
+        has_label = bool(missing_to) or bool(extra_so) or ghost_matched
+        if has_label:
+            tokens_data[tok] = {
+                'teacher': [
+                    {'file': oc['file'], 'pos': oc['pos'], 'seq_idx': oc['seq_idx'],
+                     'label': 'missing' if i in missing_to else None,
+                     **({'seq_idx_aug': seq_idx_to_aug[oc['seq_idx']]}
+                        if seq_idx_to_aug else {}),
+                     **({'match_idx': teacher_match_idx[i]}
+                        if i in teacher_match_idx else {})}
+                    for i, oc in enumerate(t_out)
+                ] + [
+                    {'file': inst['file'], 'pos': inst['blob_pos'],
+                     'blob_offset': inst['blob_offset'],
+                     'ghost': True,
+                     'del_ts': inst['del_ts'],
+                     'seq_idx_aug': inst['seq_idx_aug'],
+                     **({'match_idx': teacher_match_idx[n_t_surv + j]}
+                        if (n_t_surv + j) in teacher_match_idx else {})}
+                    for j, inst in enumerate(t_ghost)
+                ],
+                'student': [
+                    {'file': oc['file'], 'pos': oc['pos'], 'seq_idx': oc['seq_idx'],
+                     'label': (
+                         'extra' if i in extra_so
+                         else 'extra_star' if (student_match_idx.get(i, -1) >= n_t_surv)
+                         else None
+                     ),
+                     **({'match_idx': student_match_idx[i]}
+                        if i in student_match_idx else {})}
+                    for i, oc in enumerate(s_out)
+                ],
+            }
+
+    assignments = {
+        'k': context_k,
+        'decay': _CONTEXT_DECAY,
+        'neighbor_boost': _NEIGHBOR_BOOST,
+        'teacher_seq': teacher_seq,
+        'student_seq': student_seq,
+        'tokens': tokens_data,
+    } if tokens_data else {}
+    if assignments and teacher_seq_aug is not None:
+        assignments['teacher_seq_aug'] = teacher_seq_aug
+
+    return teacher_colors, student_colors, n_total, n_missing, assignments, extra_star_meta
 
 
 def _build_contextual_diff_marks(
@@ -707,7 +661,7 @@ def _build_contextual_diff_marks(
     student_files: dict,
     context_k: int = _CONTEXT_K,
 ) -> Tuple[dict, dict]:
-    teacher_colors, student_colors, _, _ = _compute_per_token_matching(
+    teacher_colors, student_colors, _, _, _, _ = _compute_per_token_matching(
         teacher_files, student_files, context_k,
     )
     return _prune_color_map(teacher_colors), _prune_color_map(student_colors)
@@ -717,18 +671,28 @@ def _build_leo_diff_marks(
     teacher_files: dict,
     student_files: dict,
     context_k: int = _CONTEXT_K,
-) -> Tuple[dict, dict, Optional[float], dict, dict, int]:
-    teacher_colors, student_colors, n_total, n_missing = _compute_per_token_matching(
-        teacher_files, student_files, context_k,
+    events: Optional[list] = None,
+) -> Tuple[dict, dict, Optional[float], dict, dict, int, dict]:
+    teacher_ghosts = _collect_teacher_ghosts(events) if events else None
+    teacher_colors, student_colors, n_total, n_missing, assignments, extra_star_meta = (
+        _compute_per_token_matching(
+            teacher_files, student_files, context_k,
+            teacher_ghosts=teacher_ghosts or None,
+        )
     )
-    teacher_result = _colors_to_position_marks(teacher_files, _prune_color_map(teacher_colors))
-    student_result = _colors_to_position_marks(student_files, _prune_color_map(student_colors))
+    teacher_result = _colors_to_position_marks(
+        teacher_files, _prune_color_map(teacher_colors),
+    )
+    student_result = _colors_to_position_marks(
+        student_files, _prune_color_map(student_colors),
+        extra_star_meta=extra_star_meta or None,
+    )
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
     try:
         _, _, _, alignments, line_marks, *_ = _build_git_diff_marks(teacher_files, student_files)
     except Exception:
         alignments, line_marks = {}, {}
-    return teacher_result, student_result, score, alignments, line_marks, n_total
+    return teacher_result, student_result, score, alignments, line_marks, n_total, assignments
 
 
 def _add_log_metadata(
@@ -762,56 +726,100 @@ def _add_log_metadata(
             else:
                 mark.pop('_tok_idx', None)
 
-    ghost_contexts = _ghost_contexts
-    if ghost_contexts is None:
-        _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(events, has_css=has_css)
-        removed_keys = set(removed_kw_ts.keys())
-        if removed_keys:
-            ghost_contexts = _build_ghost_contexts(events, removed_keys)
-    if ghost_contexts:
-        _apply_ghost_star_to_diff_marks(
-            diff_marks, student_files, ghost_contexts,
+    method = (diff_marks.get('token_matching') or '')
+    if not method.startswith('leo'):
+        _apply_ghost_star_to_diff_marks(diff_marks, events)
+    teacher_ghosts = _collect_teacher_ghosts(events)
+    if teacher_ghosts:
+        diff_marks['teacher_ghosts'] = teacher_ghosts
+
+
+def _build_teacher_seq_aug(
+    teacher_occs: List[dict],
+    teacher_ghosts: Dict[str, list],
+) -> Tuple[list, Dict[int, int], List[dict]]:
+    file_order_map: Dict[str, int] = {}
+    for oc in teacher_occs:
+        file_order_map.setdefault(oc['file'], oc['file_order'])
+
+    surv_entries = [
+        (oc['file_order'], oc['pos'], 1, 0, oc['seq_idx'], oc['token'])
+        for oc in teacher_occs if not oc['is_comment']
+    ]
+
+    ghost_entries: List[tuple] = []
+    g_counter = 0
+    for fname, ghosts in teacher_ghosts.items():
+        forder = file_order_map.get(fname, 1_000_000)
+        for g in ghosts:
+            base_pos = g['pos']
+            blob_del_ts = g['del_ts']
+            char_del_ts = g.get('char_del_ts')
+            for m in _sm._CHAR_TOKEN_RE.finditer(g['text']):
+                end_rel = m.end() - 1
+                tok_del_ts = (
+                    char_del_ts[end_rel]
+                    if char_del_ts and end_rel < len(char_del_ts)
+                    else blob_del_ts
+                )
+                ghost_entries.append((
+                    forder, base_pos, 0, g_counter,
+                    m.group(), m.start(), fname, tok_del_ts,
+                ))
+                g_counter += 1
+    ghost_entries.sort()
+
+    aug_seq: List = []
+    seq_idx_to_aug: Dict[int, int] = {}
+    ghost_instances: List[dict] = []
+    si = gi = 0
+    while si < len(surv_entries) or gi < len(ghost_entries):
+        take_surv = (
+            si < len(surv_entries) and (
+                gi >= len(ghost_entries)
+                or (surv_entries[si][0], surv_entries[si][1], surv_entries[si][2])
+                    <= (ghost_entries[gi][0], ghost_entries[gi][1], ghost_entries[gi][2])
+            )
         )
+        if take_surv:
+            s = surv_entries[si]
+            seq_idx_to_aug[s[4]] = len(aug_seq)
+            aug_seq.append(s[5])
+            si += 1
+        else:
+            g = ghost_entries[gi]
+            ghost_instances.append({
+                'file':         g[6],
+                'token':        g[4],
+                'blob_pos':     g[1],
+                'blob_offset':  g[5],
+                'del_ts':       g[7],
+                'seq_idx_aug':  len(aug_seq),
+            })
+            aug_seq.append([g[4]])
+            gi += 1
+
+    return aug_seq, seq_idx_to_aug, ghost_instances
 
 
 def _apply_ghost_star_to_colors(
     student_colors: dict,
-    student_files: Dict[str, Path],
-    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
-    k: int = _GHOST_K,
+    events: list,
 ) -> None:
-    if not ghost_contexts:
+    budget = _build_ghost_token_budget(events)
+    if not budget:
         return
-
-    s_seq: List[str] = []
-    extra_pairs: List[Tuple[int, str]] = []
-    extra_info: List[Tuple[str, str, int]] = []  # (fname, token, file_idx)
-
-    for _, path in student_files.items():
-        fname = path.name
-        try:
-            raw = path.read_text(encoding='utf-8', errors='ignore')
-        except Exception:
-            continue
-        c_starts, c_ends = _comment_ranges_for_ext(raw)
-        tok_seen: Counter = Counter()
-        for m in _sm._CHAR_TOKEN_RE.finditer(raw):
-            tok = m.group()
-            fidx = tok_seen[tok]
-            tok_seen[tok] += 1
-            if _pos_in_comment(m.start(), c_starts, c_ends):
+    for fname in sorted(student_colors):
+        toks = student_colors[fname]
+        for tok in sorted(toks):
+            if tok not in budget or not budget[tok]:
                 continue
-            seq_idx = len(s_seq)
-            s_seq.append(tok)
-            labels = student_colors.get(fname, {}).get(tok)
-            if labels and fidx < len(labels) and labels[fidx] == 'extra':
-                extra_pairs.append((seq_idx, tok))
-                extra_info.append((fname, tok, fidx))
-
-    if extra_pairs:
-        for pair_idx in _ghost_star_idxs(extra_pairs, s_seq, ghost_contexts, k):
-            fname, tok, fidx = extra_info[pair_idx]
-            student_colors[fname][tok][fidx] = 'extra_star'
+            labels = toks[tok]
+            for i, label in enumerate(labels):
+                if label != 'extra' or not budget[tok]:
+                    continue
+                budget[tok].popleft()
+                labels[i] = 'extra_star'
 
 
 def _build_utf16_map(text: str) -> List[int]:
@@ -831,7 +839,12 @@ def _strip_internal_fields(diff_marks: dict) -> None:
                 mark.pop('_tok_idx', None)
 
 
-def _colors_to_position_marks(files_by_ext: dict, colors_map: dict, ts_map: Dict[str, List[str]] = None) -> dict:
+def _colors_to_position_marks(
+    files_by_ext: dict,
+    colors_map: dict,
+    ts_map: Dict[str, List[str]] = None,
+    extra_star_meta: Optional[Dict[Tuple[str, str, int], int]] = None,
+) -> dict:
     token_keys: set = set()
     for toks in colors_map.values():
         token_keys.update(toks.keys())
@@ -874,6 +887,10 @@ def _colors_to_position_marks(files_by_ext: dict, colors_map: dict, ts_map: Dict
                 ts_list = ts_map.get(tok, [])
                 if gidx < len(ts_list):
                     mark['timestamp'] = ts_list[gidx]
+        elif label == 'extra_star' and extra_star_meta:
+            del_ts = extra_star_meta.get((oc['file'], tok, oc['file_idx']))
+            if del_ts is not None:
+                mark['removal_ts'] = ts_to_local(del_ts)
         result.setdefault(oc['file'], []).append(mark)
     for lst in result.values():
         lst.sort(key=lambda x: x['start'])
@@ -940,19 +957,18 @@ def _read_text_normalized(path: Optional[Path]) -> str:
 def _split_tokens_by_comment(text: str, ext: str = '') -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
     if not text:
         return [], []
-    starts, ends = _comment_ranges_for_ext(text, ext)
     nc: List[Tuple[int, str]] = []
     cm: List[Tuple[int, str]] = []
-    for m in _sm._CHAR_TOKEN_RE.finditer(text):
-        (cm if _pos_in_comment(m.start(), starts, ends) else nc).append((m.start(), m.group()))
+    for pos, tok, is_comment in _sm.iter_code_tokens(text):
+        (cm if is_comment else nc).append((pos, tok))
     return nc, cm
 
 
 def _build_token_position_index(text: str) -> Tuple[Dict[str, List[int]], int]:
     positions: Dict[str, List[int]] = {}
     n = 0
-    for m in _sm._CHAR_TOKEN_RE.finditer(text):
-        positions.setdefault(m.group(), []).append(m.start())
+    for pos, tok, _ in _sm.iter_code_tokens(text):
+        positions.setdefault(tok, []).append(pos)
         n += 1
     return positions, n
 
@@ -1104,16 +1120,11 @@ def _lcs_opcodes(a: List[str], b: List[str]):
 
 
 def _levenshtein_opcodes(a: List[str], b: List[str]):
-    """Edit-distance traceback in difflib.get_opcodes() format.
-
-    Each op is (tag, i1, i2, j1, j2) with tag in {'equal','replace','delete','insert'}.
-    Consecutive single-step ops of the same tag are coalesced into ranges.
-    """
     m, n = len(a), len(b)
     if m == 0:
-        return [('insert', 0, 0, 0, n)] if n else []
+        return [('insert', 0, 0, j, j + 1) for j in range(n)]
     if n == 0:
-        return [('delete', 0, m, 0, 0)] if m else []
+        return [('delete', i, i + 1, 0, 0) for i in range(m)]
 
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     for i in range(m + 1):
@@ -1130,35 +1141,18 @@ def _levenshtein_opcodes(a: List[str], b: List[str]):
             else:
                 cur[j] = 1 + min(prev[j - 1], prev[j], cur[j - 1])
 
-    steps: List[Tuple[str, int, int]] = []
+    ops: List[Tuple[str, int, int, int, int]] = []
     i, j = m, n
     while i > 0 or j > 0:
         if i > 0 and j > 0 and a[i - 1] == b[j - 1]:
-            steps.append(('equal', 1, 1)); i -= 1; j -= 1
+            ops.append(('equal', i - 1, i, j - 1, j)); i -= 1; j -= 1
         elif i > 0 and j > 0 and dp[i][j] == dp[i - 1][j - 1] + 1:
-            steps.append(('replace', 1, 1)); i -= 1; j -= 1
+            ops.append(('replace', i - 1, i, j - 1, j)); i -= 1; j -= 1
         elif i > 0 and dp[i][j] == dp[i - 1][j] + 1:
-            steps.append(('delete', 1, 0)); i -= 1
+            ops.append(('delete', i - 1, i, j, j)); i -= 1
         else:
-            steps.append(('insert', 0, 1)); j -= 1
-    steps.reverse()
-
-    ops: List[Tuple[str, int, int, int, int]] = []
-    ti = sj = 0
-    cur_tag = None
-    cur_dt = cur_ds = 0
-    for tag, dt, ds in steps:
-        if tag == cur_tag:
-            cur_dt += dt
-            cur_ds += ds
-        else:
-            if cur_tag is not None:
-                ops.append((cur_tag, ti, ti + cur_dt, sj, sj + cur_ds))
-                ti += cur_dt
-                sj += cur_ds
-            cur_tag, cur_dt, cur_ds = tag, dt, ds
-    if cur_tag is not None:
-        ops.append((cur_tag, ti, ti + cur_dt, sj, sj + cur_ds))
+            ops.append(('insert', i, i, j - 1, j)); j -= 1
+    ops.reverse()
     return ops
 
 
@@ -1167,11 +1161,6 @@ def _build_token_seq_diff_marks(
     student_files: Dict[str, Path],
     opcodes_fn,
 ) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
-    """Per-file token-sequence diff driver shared by LCS and Levenshtein.
-
-    Comments are excluded from matching (marked with the 'comment' label, like LCS).
-    `opcodes_fn(t_seq, s_seq)` must return difflib.get_opcodes()-compatible tuples.
-    """
     teacher_result: Dict[str, List[dict]] = {}
     student_result: Dict[str, List[dict]] = {}
     n_total = 0
@@ -1243,60 +1232,25 @@ def _build_lev_token_diff_marks(
 
 def _apply_ghost_star_to_diff_marks(
     diff_marks: dict,
-    student_files: Dict[str, Path],
-    ghost_contexts: Dict[str, List[Tuple[int, Counter]]],
-    k: int = _GHOST_K,
+    events: list,
 ) -> None:
-    if not ghost_contexts:
+    if not events:
         return
     student_marks = diff_marks.get('student_files', {})
     if not student_marks:
         return
+    budget = _build_ghost_token_budget(events)
+    if not budget:
+        return
 
-    s_seq: List[str] = []
-    extra_pairs: List[Tuple[int, str]] = []
-    extra_update: List[Tuple[str, int]] = []  # (fname, mark_idx) per pair
-
-    for _, path in student_files.items():
-        fname = path.name
-        try:
-            raw = path.read_text(encoding='utf-8', errors='ignore')
-        except Exception:
-            continue
-        c_starts, c_ends = _comment_ranges_for_ext(raw)
-        u16map = _build_utf16_map(raw) if any(ord(c) > 0xFFFF for c in raw) else None
-
-        extra_by_pos: Dict[Tuple[int, str], int] = {}
-        for mark_idx, mark in enumerate(student_marks.get(fname, [])):
-            if mark.get('label') == 'extra' and not mark.get('line'):
-                if mark.get('token'):
-                    extra_by_pos[(mark['start'], mark['token'])] = mark_idx
-                else:
-                    span = raw[mark['start']:mark['end']]
-                    for sm in _sm._CHAR_TOKEN_RE.finditer(span):
-                        extra_by_pos[(mark['start'] + sm.start(), sm.group())] = mark_idx
-
-        for m in _sm._CHAR_TOKEN_RE.finditer(raw):
-            if _pos_in_comment(m.start(), c_starts, c_ends):
+    for fname in sorted(student_marks):
+        for mark in student_marks[fname]:
+            if mark.get('label') != 'extra' or mark.get('line'):
                 continue
-            tok = m.group()
-            seq_idx = len(s_seq)
-            s_seq.append(tok)
-            if extra_by_pos:
-                u16_pos = u16map[m.start()] if u16map else m.start()
-                mark_idx = extra_by_pos.pop((u16_pos, tok), None)
-                if mark_idx is None and u16map:
-                    mark_idx = extra_by_pos.pop((m.start(), tok), None)
-                if mark_idx is not None:
-                    extra_pairs.append((seq_idx, tok))
-                    extra_update.append((fname, mark_idx))
-
-    if extra_pairs:
-        for pair_idx, del_ts in _ghost_star_idxs(
-            extra_pairs, s_seq, ghost_contexts, k,
-        ).items():
-            fname, mark_idx = extra_update[pair_idx]
-            mark = student_marks[fname][mark_idx]
+            tok = mark.get('token')
+            if not tok or tok not in budget or not budget[tok]:
+                continue
+            del_ts = budget[tok].popleft()
             mark['label'] = 'extra_star'
             mark['removal_ts'] = ts_to_local(del_ts)
 

@@ -4,7 +4,7 @@ const DIFF_LABEL_COLORS = {
 	missing: "#e00",
 	comment: "#4a4",
 	extra: "#00c",
-	extra_star: "#a000c0",
+	extra_star: "#3aa0e0",
 	extra_comment: "#080",
 };
 
@@ -168,13 +168,21 @@ function _lineStartOffsets(text) {
 	return starts;
 }
 
-function _renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks) {
+function _renderAligned(
+	text,
+	alignment,
+	fileMarks,
+	sideIdx,
+	lineFileMarks,
+	fileName,
+) {
+	const side = sideIdx === 0 ? "teacher" : "student";
 	const normText = text.replace(/\r\n/g, "\n");
 	const lines = normText.split("\n");
 	const lineStarts = _lineStartOffsets(normText);
-	const sortedMarks = (fileMarks || [])
-		.slice()
-		.sort((a, b) => a.start - b.start);
+	const synthMarks = _synthesizeLeoMarks(side, fileName);
+	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
+	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
 
 	const parts = [];
 	for (const pair of alignment) {
@@ -186,15 +194,19 @@ function _renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks) {
 			const lineEnd =
 				lineIdx + 1 < lineStarts.length
 					? lineStarts[lineIdx + 1]
-					: normText.length;
+					: normText.length + 1;
 			const lineText = lines[lineIdx] ?? "";
 			const lineMarks = sortedMarks
 				.filter((m) => m.start >= lineStart && m.start < lineEnd)
 				.map((m) => ({
 					...m,
+					_abs_start: m.start,
 					start: m.start - lineStart,
 					end: Math.min(m.end, lineEnd) - lineStart,
 				}));
+			const lineGhosts = fileGhosts
+				.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
+				.map((g) => ({ ...g, pos: g.pos - lineStart }));
 			const bgMark =
 				lineFileMarks &&
 				lineFileMarks.find(
@@ -203,20 +215,20 @@ function _renderAligned(text, alignment, fileMarks, sideIdx, lineFileMarks) {
 			const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 			const style = bg ? ` style="background-color:${bg}"` : "";
 			parts.push(
-				`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks)}</div>`,
+				`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts)}</div>`,
 			);
 		}
 	}
 	return parts.join("");
 }
 
-function _renderFlat(text, fileMarks, lineFileMarks) {
+function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 	const normText = text.replace(/\r\n/g, "\n");
 	const lines = normText.split("\n");
 	const lineStarts = _lineStartOffsets(normText);
-	const sortedMarks = (fileMarks || [])
-		.slice()
-		.sort((a, b) => a.start - b.start);
+	const synthMarks = _synthesizeLeoMarks(side, fileName);
+	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
+	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
 
 	const parts = [];
 	for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
@@ -224,15 +236,19 @@ function _renderFlat(text, fileMarks, lineFileMarks) {
 		const lineEnd =
 			lineIdx + 1 < lineStarts.length
 				? lineStarts[lineIdx + 1]
-				: normText.length;
+				: normText.length + 1;
 		const lineText = lines[lineIdx] ?? "";
 		const lineMarks = sortedMarks
 			.filter((m) => m.start >= lineStart && m.start < lineEnd)
 			.map((m) => ({
 				...m,
+				_abs_start: m.start,
 				start: m.start - lineStart,
 				end: Math.min(m.end, lineEnd) - lineStart,
 			}));
+		const lineGhosts = fileGhosts
+			.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
+			.map((g) => ({ ...g, pos: g.pos - lineStart }));
 		const bgMark =
 			lineFileMarks &&
 			lineFileMarks.find(
@@ -241,10 +257,15 @@ function _renderFlat(text, fileMarks, lineFileMarks) {
 		const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 		const style = bg ? ` style="background-color:${bg}"` : "";
 		parts.push(
-			`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks)}</div>`,
+			`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts)}</div>`,
 		);
 	}
 	return parts.join("");
+}
+
+function _getFileGhosts(fileName) {
+	const map = _currentMarksEntry?.teacher_ghosts;
+	return (map && map[fileName]) || [];
 }
 
 function _setupScrollSync() {
@@ -348,7 +369,7 @@ function renderPanel(side, files, marks) {
 		if (isStudentEdit) {
 			pane.innerHTML = `<div class="code-aligned" contenteditable="plaintext-only" spellcheck="false">${
 				hasMarks
-					? _renderFlat(sourceText, fileMarks, lineFileMarks)
+					? _renderFlat(sourceText, fileMarks, lineFileMarks, side, name)
 					: escHtml(sourceText)
 			}</div>`;
 			const editable = pane.querySelector("[contenteditable]");
@@ -360,9 +381,9 @@ function renderPanel(side, files, marks) {
 		} else if (isEdited) {
 			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
 		} else if (alignment) {
-			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks)}</div>`;
+			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name)}</div>`;
 		} else if (hasMarks) {
-			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks)}</div>`;
+			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks, side, name)}</div>`;
 		} else {
 			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
 		}
@@ -412,36 +433,453 @@ function escHtml(s) {
 		.replace(/>/g, "&gt;");
 }
 
-function diffColorizePositions(text, posMarks) {
-	if (!posMarks || !posMarks.length) return escHtml(text);
-	const colored = posMarks.filter(
-		(m) => m.label && DIFF_LABEL_COLORS[m.label],
-	);
-	if (!colored.length) return escHtml(text);
+function escAttr(s) {
+	return escHtml(s).replace(/"/g, "&quot;");
+}
+
+function _synthesizeLeoMarks(side, fileName) {
+	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
+	if (!tokens || !fileName) return [];
+	const out = [];
+	for (const [tok, data] of Object.entries(tokens)) {
+		const list = side === "teacher" ? data.teacher : data.student;
+		for (const inst of list) {
+			if (inst.file === fileName) {
+				out.push({
+					token: tok,
+					label: inst.label || null,
+					start: inst.pos,
+					end: inst.pos + tok.length,
+					_synth: true,
+				});
+			}
+		}
+	}
+	return out;
+}
+
+function _mergeMarks(realMarks, synthMarks) {
+	const byStart = new Map();
+	for (const m of synthMarks) byStart.set(m.start, m);
+	for (const m of realMarks || []) byStart.set(m.start, m);
+	return [...byStart.values()].sort((a, b) => a.start - b.start);
+}
+
+function diffColorizePositions(text, posMarks, side, ghosts) {
+	const ghostList = ghosts || [];
+	if ((!posMarks || !posMarks.length) && !ghostList.length)
+		return escHtml(text);
+	const hasAssignments = !!_currentMarksEntry?.leo_assignments?.tokens;
+	const tokensTbl = hasAssignments
+		? _currentMarksEntry.leo_assignments.tokens
+		: null;
+
+	const wrappable = (posMarks || []).filter((m) => {
+		if (m.label && DIFF_LABEL_COLORS[m.label]) return true;
+		if (tokensTbl && side && m.token && tokensTbl[m.token]) return true;
+		return false;
+	});
+	if (!wrappable.length && !ghostList.length) return escHtml(text);
 
 	const normText = text.replace(/\r\n/g, "\n");
 
-	colored.sort((a, b) => a.start - b.start || b.end - a.end);
+	wrappable.sort((a, b) => a.start - b.start || b.end - a.end);
 	const kept = [];
 	let lastEnd = 0;
-	for (const m of colored) {
+	for (const m of wrappable) {
 		if (m.start >= lastEnd) {
 			kept.push(m);
 			lastEnd = m.end;
 		}
 	}
 
+	const events = [];
+	for (const m of kept) {
+		events.push({ pos: m.start, kind: "open", mark: m });
+		events.push({ pos: m.end, kind: "close" });
+	}
+	for (const g of ghostList) {
+		events.push({ pos: g.pos, kind: "ghost", ghost: g });
+	}
+	const ord = { close: 0, ghost: 1, open: 2 };
+	events.sort((a, b) => a.pos - b.pos || ord[a.kind] - ord[b.kind]);
+
 	let out = "",
 		pos = 0;
-	for (const m of kept) {
-		out += escHtml(normText.slice(pos, m.start));
-		const color = DIFF_LABEL_COLORS[m.label];
-		out += `<span style="color:${color};font-weight:bold">${escHtml(normText.slice(m.start, m.end))}</span>`;
-		pos = m.end;
+	for (const ev of events) {
+		if (ev.pos > pos) {
+			out += escHtml(normText.slice(pos, ev.pos));
+			pos = ev.pos;
+		}
+		if (ev.kind === "open") {
+			const m = ev.mark;
+			const color =
+				m.label && DIFF_LABEL_COLORS[m.label]
+					? DIFF_LABEL_COLORS[m.label]
+					: null;
+			const styleAttr = color
+				? ` style="color:${color};font-weight:bold"`
+				: "";
+			const absPos = m._abs_start ?? m.start;
+			const leoAttrs =
+				tokensTbl && side && m.token && tokensTbl[m.token]
+					? ` class="leo-mark" data-leo-token="${escAttr(m.token)}" data-leo-side="${side}" data-leo-pos="${absPos}"`
+					: "";
+			out += `<span${leoAttrs}${styleAttr}>`;
+		} else if (ev.kind === "close") {
+			out += "</span>";
+		} else {
+			out += _renderGhostBlob(ev.ghost, tokensTbl);
+		}
 	}
-	out += escHtml(normText.slice(pos));
+	if (pos < normText.length) {
+		out += escHtml(normText.slice(pos));
+	}
 	return out;
 }
+
+const _GHOST_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+
+function _renderGhostBlob(ghost, tokensTbl) {
+	const text = ghost.text;
+	const blobPos = ghost.pos;
+	let out = '<span class="diff-ghost">';
+	let lastEnd = 0;
+	_GHOST_TOKEN_RE.lastIndex = 0;
+	let m;
+	while ((m = _GHOST_TOKEN_RE.exec(text)) !== null) {
+		if (m.index > lastEnd) out += escHtml(text.slice(lastEnd, m.index));
+		const tok = m[0];
+		const offset = m.index;
+		if (tokensTbl && tokensTbl[tok]) {
+			out +=
+				`<span class="leo-mark" data-leo-token="${escAttr(tok)}"` +
+				` data-leo-side="teacher" data-leo-pos="${blobPos}"` +
+				` data-leo-ghost-offset="${offset}">${escHtml(tok)}</span>`;
+		} else {
+			out += escHtml(tok);
+		}
+		lastEnd = m.index + tok.length;
+	}
+	if (lastEnd < text.length) out += escHtml(text.slice(lastEnd));
+	out += "</span>";
+	return out;
+}
+
+function _labelColor(label) {
+	if (label === "missing") return "#e00";
+	if (label === "extra") return "#00c";
+	if (label === "extra_star") return "#3aa0e0";
+	return "#666";
+}
+
+function _ctxSlice(inst, side) {
+	const la = _currentMarksEntry?.leo_assignments;
+	if (!la || !inst) return null;
+	const useAug =
+		side === "teacher" &&
+		Array.isArray(la.teacher_seq_aug) &&
+		Number.isInteger(inst.seq_idx_aug);
+	const seq = useAug
+		? la.teacher_seq_aug
+		: side === "teacher"
+			? la.teacher_seq
+			: la.student_seq;
+	const idx = useAug ? inst.seq_idx_aug : inst.seq_idx;
+	const k = la.k ?? 40;
+	if (!seq || idx == null) return null;
+	const lo = Math.max(0, idx - k);
+	const hi = Math.min(seq.length, idx + k + 1);
+	return {
+		before: seq.slice(lo, idx),
+		after: seq.slice(idx + 1, hi),
+	};
+}
+
+function _instContextVector(inst, sideName) {
+	const la = _currentMarksEntry?.leo_assignments;
+	if (!la) return null;
+	const k = la.k ?? 18;
+	const decay = typeof la.decay === "number" ? la.decay : 0.85;
+	const boost =
+		typeof la.neighbor_boost === "number" ? la.neighbor_boost : 3.0;
+	let seq, idx;
+	if (sideName === "teacher") {
+		const aug = Array.isArray(la.teacher_seq_aug) ? la.teacher_seq_aug : null;
+		if (aug && Number.isInteger(inst.seq_idx_aug)) {
+			seq = aug.map((t) => (Array.isArray(t) ? t[0] : t));
+			idx = inst.seq_idx_aug;
+		} else {
+			seq = la.teacher_seq;
+			idx = inst.seq_idx;
+		}
+	} else {
+		seq = la.student_seq;
+		idx = inst.seq_idx;
+	}
+	if (!seq || !Number.isInteger(idx)) return null;
+	return _buildContextVector(seq, idx, k, decay, boost);
+}
+
+function _buildContextVector(seq, idx, k, decay, neighborBoost) {
+	const vec = new Map();
+	const lo = Math.max(0, idx - k);
+	const hi = Math.min(seq.length, idx + k + 1);
+	for (let i = lo; i < hi; i++) {
+		if (i === idx) continue;
+		const tok = seq[i];
+		const w = Math.pow(decay, Math.abs(i - idx));
+		vec.set(tok, (vec.get(tok) || 0) + w);
+	}
+	if (idx > 0) {
+		const key = `\x00L1\x00${seq[idx - 1]}`;
+		vec.set(key, (vec.get(key) || 0) + neighborBoost);
+	}
+	if (idx + 1 < seq.length) {
+		const key = `\x00R1\x00${seq[idx + 1]}`;
+		vec.set(key, (vec.get(key) || 0) + neighborBoost);
+	}
+	return vec;
+}
+
+function _cosineSim(v1, v2) {
+	if (!v1 || !v2 || v1.size === 0 || v2.size === 0) return 0;
+	let dot = 0,
+		n1 = 0,
+		n2 = 0;
+	for (const [k, val] of v1) {
+		n1 += val * val;
+		const o = v2.get(k);
+		if (o) dot += val * o;
+	}
+	for (const val of v2.values()) n2 += val * val;
+	if (!dot || !n1 || !n2) return 0;
+	return dot / (Math.sqrt(n1) * Math.sqrt(n2));
+}
+
+function _findInstIdx(list, pos, ghostOffset) {
+	if (!list) return -1;
+	if (ghostOffset != null) {
+		return list.findIndex(
+			(x) => x.ghost && x.pos === pos && x.blob_offset === ghostOffset,
+		);
+	}
+	return list.findIndex((x) => !x.ghost && x.pos === pos);
+}
+
+function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
+	const tEsc = escHtml(token);
+
+	const teachers = data.teacher;
+	const students = data.student;
+	const thisList = side === "teacher" ? teachers : students;
+	const thisIdx = _findInstIdx(thisList, pos, ghostOffset);
+	const thisInst = thisIdx >= 0 ? thisList[thisIdx] : null;
+	const matchedOtherIdx =
+		thisInst && Number.isInteger(thisInst.match_idx)
+			? thisInst.match_idx
+			: -1;
+
+	const clickedCtx = thisInst ? _instContextVector(thisInst, side) : null;
+
+	const labelClass = (inst) =>
+		inst.ghost
+			? "leo-row-ghost"
+			: inst.label === "missing"
+				? "leo-row-missing"
+				: inst.label === "extra"
+					? "leo-row-extra"
+					: inst.label === "extra_star"
+						? "leo-row-extra-star"
+						: "";
+
+	const renderRow = (inst, sideName, highlight, score) => {
+		const ctx = _ctxSlice(inst, sideName);
+		const before = ctx ? ctx.before.map(_fmtCtxToken).join(" ") : "";
+		const after = ctx ? ctx.after.map(_fmtCtxToken).join(" ") : "";
+		const lblColor = inst.ghost ? "#888" : _labelColor(inst.label);
+		const cls =
+			`leo-row ${labelClass(inst)}${highlight ? " leo-this" : ""}`.trim();
+		const scoreCell =
+			score == null
+				? '<span class="leo-score">—</span>'
+				: `<span class="leo-score">${(score * 100).toFixed(0)}%</span>`;
+		return (
+			`<div class="${cls}">` +
+			scoreCell +
+			`<span class="leo-before">${before}</span>` +
+			`<span class="leo-center" style="color:${lblColor}">${tEsc}</span>` +
+			`<span class="leo-after">${after}</span>` +
+			`</div>`
+		);
+	};
+
+	const sepRow = '<div class="leo-row leo-sep">⋯</div>';
+	const renderSection = (list, sideName, anchorOrigIdxs) => {
+		// Compute per-row score (cosine vs clicked-token context).
+		const scored = list.map((inst, i) => ({
+			inst,
+			origIdx: i,
+			score: clickedCtx
+				? _cosineSim(clickedCtx, _instContextVector(inst, sideName))
+				: null,
+		}));
+		// Sort the OTHER side by score desc; keep the clicked side in source order.
+		const sortByScore = sideName !== side && clickedCtx;
+		const order = sortByScore
+			? scored
+					.slice()
+					.sort(
+						(a, b) =>
+							(b.score ?? -1) - (a.score ?? -1) || a.origIdx - b.origIdx,
+					)
+			: scored;
+		// Translate anchor original-indices to positions in the (possibly sorted) order.
+		const anchorPositions = anchorOrigIdxs
+			.filter((i) => i != null && i >= 0)
+			.map((i) => order.findIndex((s) => s.origIdx === i))
+			.filter((p) => p >= 0);
+		const visible = _selectVisibleRows(order.length, anchorPositions);
+		const out = [];
+		let prev = -1;
+		for (const p of visible) {
+			if (prev >= 0 && p > prev + 1) out.push(sepRow);
+			const { inst, origIdx, score } = order[p];
+			const isThis = sideName === side && origIdx === thisIdx;
+			const isMatched = sideName !== side && origIdx === matchedOtherIdx;
+			out.push(renderRow(inst, sideName, isThis || isMatched, score));
+			prev = p;
+		}
+		return out.join("");
+	};
+
+	const nTeacherSurv = teachers.filter((t) => !t.ghost).length;
+	const nTeacherGhost = teachers.length - nTeacherSurv;
+	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
+	let html = `<div class="leo-title">${tEsc} <span class="leo-sub">— ${nTeacherSurv} teacher${ghostNote} / ${students.length} student instances</span></div>`;
+	if (teachers.length) {
+		const anchors = side === "teacher" ? [thisIdx] : [matchedOtherIdx];
+		html += '<div class="leo-section-title">Teacher</div>';
+		html += renderSection(teachers, "teacher", anchors);
+	}
+	if (students.length) {
+		const anchors = side === "student" ? [thisIdx] : [matchedOtherIdx];
+		html += '<div class="leo-section-title">Student</div>';
+		html += renderSection(students, "student", anchors);
+	}
+	return html;
+}
+
+function _selectVisibleRows(n, anchors) {
+	if (n <= 10) return Array.from({ length: n }, (_, i) => i);
+	const set = new Set();
+	for (let i = 0; i < 5; i++) set.add(i);
+	for (let i = n - 5; i < n; i++) set.add(i);
+	for (const a of anchors) {
+		if (Number.isInteger(a) && a >= 0 && a < n) set.add(a);
+	}
+	return [...set].sort((a, b) => a - b);
+}
+
+function _fmtCtxToken(t) {
+	if (Array.isArray(t))
+		return `<span class="leo-ghost-tok">${escHtml(t[0])}</span>`;
+	return escHtml(t);
+}
+
+let _leoTip = null;
+function _ensureLeoTooltip() {
+	if (_leoTip) return _leoTip;
+	_leoTip = document.createElement("div");
+	_leoTip.id = "leo-tooltip";
+	document.body.appendChild(_leoTip);
+	return _leoTip;
+}
+
+function _showLeoTooltip(target) {
+	const token = target.getAttribute("data-leo-token");
+	const side = target.getAttribute("data-leo-side");
+	const pos = parseInt(target.getAttribute("data-leo-pos"), 10);
+	const ghostOffsetAttr = target.getAttribute("data-leo-ghost-offset");
+	const ghostOffset =
+		ghostOffsetAttr != null ? parseInt(ghostOffsetAttr, 10) : null;
+	if (!token || !side || Number.isNaN(pos)) return;
+	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
+	const data = tokens && tokens[token];
+	if (!data) return;
+	_clearLeoHighlights();
+	_applyLeoHighlights(target, data, side, pos, ghostOffset);
+	const tip = _ensureLeoTooltip();
+	tip.innerHTML = _renderLeoTooltip(token, data, side, pos, ghostOffset);
+	tip.style.display = "block";
+	const r = target.getBoundingClientRect();
+	const tw = tip.offsetWidth;
+	const th = tip.offsetHeight;
+	let left = r.left;
+	let top = r.bottom + 6;
+	if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+	if (top + th > window.innerHeight - 8) top = r.top - th - 6;
+	tip.style.left = `${Math.max(8, left)}px`;
+	tip.style.top = `${Math.max(8, top)}px`;
+}
+
+function _hideLeoTooltip() {
+	if (_leoTip) _leoTip.style.display = "none";
+	_clearLeoHighlights();
+}
+
+let _leoHighlighted = [];
+function _clearLeoHighlights() {
+	for (const el of _leoHighlighted)
+		el.classList.remove("leo-highlight-active");
+	_leoHighlighted = [];
+}
+
+function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
+	target.classList.add("leo-highlight-active");
+	_leoHighlighted.push(target);
+	const list = side === "teacher" ? data.teacher : data.student;
+	const idx = _findInstIdx(list, pos, ghostOffset);
+	const inst = idx >= 0 ? list[idx] : null;
+	if (!inst || !Number.isInteger(inst.match_idx)) return;
+	const otherSide = side === "teacher" ? "student" : "teacher";
+	const otherList = otherSide === "teacher" ? data.teacher : data.student;
+	const matched = otherList && otherList[inst.match_idx];
+	if (!matched) return;
+	const token = target.getAttribute("data-leo-token");
+	const wrap = document.getElementById(`code-${otherSide}`);
+	if (!wrap) return;
+	let sel;
+	if (matched.ghost) {
+		sel =
+			`.leo-mark[data-leo-side="${otherSide}"]` +
+			`[data-leo-pos="${matched.pos}"]` +
+			`[data-leo-ghost-offset="${matched.blob_offset}"]`;
+	} else {
+		sel =
+			`.leo-mark[data-leo-side="${otherSide}"]` +
+			`[data-leo-pos="${matched.pos}"]:not([data-leo-ghost-offset])`;
+	}
+	for (const el of wrap.querySelectorAll(sel)) {
+		if (el.getAttribute("data-leo-token") !== token) continue;
+		el.classList.add("leo-highlight-active");
+		_leoHighlighted.push(el);
+	}
+}
+
+document.addEventListener("mousedown", (ev) => {
+	if (ev.button !== 0) return;
+	const mark = ev.target.closest && ev.target.closest(".leo-mark");
+	if (mark) {
+		ev.preventDefault();
+		_showLeoTooltip(mark);
+		return;
+	}
+	if (_leoTip && _leoTip.style.display === "block") {
+		if (ev.target.closest && ev.target.closest("#leo-tooltip")) return;
+		_hideLeoTooltip();
+	}
+});
 
 function _applyDiffModeLabel() {}
 

@@ -432,7 +432,7 @@ function formatHit(hit, simple = false) {
 							ev.kind === "missing"
 								? "#e53935"
 								: ev.kind === "extra-star"
-									? "#8e24aa"
+									? "#3aa0e0"
 									: "#1e88e5";
 						const label = escHtml(ev.token || ev.label);
 						const suffix = n > 1 ? `<b>×${n}</b>` : "";
