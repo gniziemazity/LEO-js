@@ -26,6 +26,57 @@ let _studentEditMode = false;
 let _editedStudentFiles = {};
 let _studentModified = new Set();
 
+const DIFF_MODE_OPTIONS = [
+	{ key: "leo", label: "LEO" },
+	{ key: "", label: "LEO*" },
+	{ key: "token-lcs", label: "LCS" },
+	{ key: "token-lcs-star", label: "LCS*" },
+	{ key: "token-lev", label: "Lev" },
+	{ key: "token-lev-star", label: "Lev*" },
+	{ key: "line-ro", label: "R/O" },
+	{ key: "line-ro-star", label: "R/O*" },
+	{ key: "line-git", label: "Git" },
+	{ key: "line-git-star", label: "Git*" },
+];
+
+function _hasOwn(obj, key) {
+	return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function _getPreferredModeKey(allMarks, requestedMode = null) {
+	if (requestedMode != null && _hasOwn(allMarks, requestedMode)) {
+		return requestedMode;
+	}
+	if (_hasOwn(allMarks, "")) {
+		return "";
+	}
+	if (_hasOwn(allMarks, "leo")) {
+		return "leo";
+	}
+	return Object.keys(allMarks)[0] ?? null;
+}
+
+function _refreshModeSelect() {
+	const modeSelect = document.getElementById("mode-select");
+	if (!modeSelect) return;
+
+	const availableKeys = new Set(Object.keys(_allMarks));
+	modeSelect.innerHTML = "";
+
+	for (const optionDef of DIFF_MODE_OPTIONS) {
+		if (!availableKeys.has(optionDef.key)) continue;
+		const option = document.createElement("option");
+		option.value = optionDef.key;
+		option.textContent = optionDef.label;
+		modeSelect.appendChild(option);
+	}
+
+	const nextMode = _getPreferredModeKey(_allMarks, _diffMode);
+	_diffMode = nextMode;
+	modeSelect.disabled = modeSelect.options.length <= 1;
+	modeSelect.value = nextMode ?? "";
+}
+
 function _resolveMarksEntry() {
 	const modeKey = _diffMode ?? "";
 	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
@@ -42,11 +93,9 @@ window.addEventListener("DOMContentLoaded", () => {
 	const key = params.get("key") || "diffData";
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
-	_applyDiffModeLabel();
 
 	const modeSelect = document.getElementById("mode-select");
 	if (modeSelect) {
-		if (_diffMode) modeSelect.value = _diffMode;
 		modeSelect.addEventListener("change", () => {
 			_diffMode = modeSelect.value || null;
 			_applyDiffModeLabel();
@@ -73,6 +122,8 @@ window.addEventListener("DOMContentLoaded", () => {
 			_imageUris = data.imageUris || {};
 			if (data.allMarks) {
 				_allMarks = data.allMarks;
+				_diffMode = _getPreferredModeKey(_allMarks, data.mode ?? _diffMode);
+				_refreshModeSelect();
 				_applyCurrentMarks();
 			} else {
 				_currentMarksEntry =
@@ -143,6 +194,7 @@ function loadFilesFromInput(files, side) {
 			}
 			pending--;
 			if (pending === 0) {
+				_refreshModeSelect();
 				_applyCurrentMarks();
 				if (side === "teacher") _teacherFiles = texts;
 				else _studentFiles = texts;
@@ -289,6 +341,32 @@ function _setupScrollSync() {
 	}
 }
 
+function _syncAlignedRowHeights() {
+	const teacherWrap = document.getElementById("code-teacher");
+	const studentWrap = document.getElementById("code-student");
+	if (!teacherWrap || !studentWrap) return;
+	const tPane = teacherWrap.querySelector(".code-pane.active");
+	const sPane = studentWrap.querySelector(".code-pane.active");
+	if (!tPane || !sPane) return;
+	const tRows = tPane.querySelectorAll(".diff-line, .diff-spacer");
+	const sRows = sPane.querySelectorAll(".diff-line, .diff-spacer");
+	const n = Math.min(tRows.length, sRows.length);
+	for (let i = 0; i < n; i++) {
+		tRows[i].style.minHeight = "";
+		sRows[i].style.minHeight = "";
+	}
+	void tPane.offsetHeight;
+	for (let i = 0; i < n; i++) {
+		const th = tRows[i].getBoundingClientRect().height;
+		const sh = sRows[i].getBoundingClientRect().height;
+		const mx = Math.max(th, sh);
+		if (mx > 0) {
+			tRows[i].style.minHeight = `${mx}px`;
+			sRows[i].style.minHeight = `${mx}px`;
+		}
+	}
+}
+
 function renderPanel(side, files, marks) {
 	if (!files || !Object.keys(files).length) return;
 
@@ -391,6 +469,7 @@ function renderPanel(side, files, marks) {
 	});
 
 	_setupScrollSync();
+	requestAnimationFrame(_syncAlignedRowHeights);
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {
 		const files = side === "teacher" ? _teacherFiles : _studentFiles;
@@ -522,7 +601,7 @@ function diffColorizePositions(text, posMarks, side, ghosts) {
 				: "";
 			const absPos = m._abs_start ?? m.start;
 			const leoAttrs =
-				tokensTbl && side && m.token && tokensTbl[m.token]
+				m.token && (color || (tokensTbl && tokensTbl[m.token]))
 					? ` class="leo-mark" data-leo-token="${escAttr(m.token)}" data-leo-side="${side}" data-leo-pos="${absPos}"`
 					: "";
 			out += `<span${leoAttrs}${styleAttr}>`;
@@ -548,7 +627,8 @@ function _renderGhostBlob(ghost, tokensTbl) {
 	_GHOST_TOKEN_RE.lastIndex = 0;
 	let m;
 	while ((m = _GHOST_TOKEN_RE.exec(text)) !== null) {
-		if (m.index > lastEnd) out += escHtml(text.slice(lastEnd, m.index));
+		if (m.index > lastEnd)
+			out += _ghostWhitespaceHtml(text.slice(lastEnd, m.index));
 		const tok = m[0];
 		const offset = m.index;
 		if (tokensTbl && tokensTbl[tok]) {
@@ -561,9 +641,13 @@ function _renderGhostBlob(ghost, tokensTbl) {
 		}
 		lastEnd = m.index + tok.length;
 	}
-	if (lastEnd < text.length) out += escHtml(text.slice(lastEnd));
+	if (lastEnd < text.length) out += _ghostWhitespaceHtml(text.slice(lastEnd));
 	out += "</span>";
 	return out;
+}
+
+function _ghostWhitespaceHtml(s) {
+	return escHtml(s);
 }
 
 function _labelColor(label) {
@@ -796,6 +880,31 @@ function _ensureLeoTooltip() {
 	return _leoTip;
 }
 
+function _findMarkAtPos(side, token, pos) {
+	const marks = side === "teacher" ? _teacherMarks : _studentMarks;
+	if (!marks) return null;
+	for (const fileMarks of Object.values(marks)) {
+		for (const m of fileMarks) {
+			if (m.token === token && m.start === pos) return m;
+		}
+	}
+	return null;
+}
+
+function _renderSimpleTooltip(token, mark) {
+	const tEsc = escHtml(token);
+	const label = mark.label || "matched";
+	const color = DIFF_LABEL_COLORS[label] || "#666";
+	let html = `<div class="leo-title"><span style="color:${color};font-weight:bold">${tEsc}</span> <span class="leo-sub">— ${escHtml(label)}</span></div>`;
+	if (mark.timestamp) {
+		html += `<div class="leo-row"><span class="leo-sub">teacher typed: ${escHtml(mark.timestamp)}</span></div>`;
+	}
+	if (mark.removal_ts) {
+		html += `<div class="leo-row"><span class="leo-sub">teacher removed: ${escHtml(mark.removal_ts)}</span></div>`;
+	}
+	return html;
+}
+
 function _showLeoTooltip(target) {
 	const token = target.getAttribute("data-leo-token");
 	const side = target.getAttribute("data-leo-side");
@@ -806,10 +915,28 @@ function _showLeoTooltip(target) {
 	if (!token || !side || Number.isNaN(pos)) return;
 	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
 	const data = tokens && tokens[token];
-	if (!data) return;
+	const tip = _ensureLeoTooltip();
+	if (!data) {
+		const mark = _findMarkAtPos(side, token, pos);
+		if (!mark) return;
+		_clearLeoHighlights();
+		target.classList.add("leo-highlight-active");
+		_leoHighlighted.push(target);
+		tip.innerHTML = _renderSimpleTooltip(token, mark);
+		tip.style.display = "block";
+		const r = target.getBoundingClientRect();
+		const tw = tip.offsetWidth;
+		const th = tip.offsetHeight;
+		let left = r.left;
+		let top = r.bottom + 6;
+		if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+		if (top + th > window.innerHeight - 8) top = r.top - th - 6;
+		tip.style.left = `${Math.max(8, left)}px`;
+		tip.style.top = `${Math.max(8, top)}px`;
+		return;
+	}
 	_clearLeoHighlights();
 	_applyLeoHighlights(target, data, side, pos, ghostOffset);
-	const tip = _ensureLeoTooltip();
 	tip.innerHTML = _renderLeoTooltip(token, data, side, pos, ghostOffset);
 	tip.style.display = "block";
 	const r = target.getBoundingClientRect();

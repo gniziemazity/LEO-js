@@ -189,13 +189,8 @@ class TokenLogMixin:
                 diff_marks['leo_assignments'] = leo_assignments
 
             non_star = copy.deepcopy(diff_marks)
-            for marks in non_star.get('student_files', {}).values():
-                for m in marks:
-                    if m.get('label') == 'extra_star':
-                        m['label'] = 'extra'
-                        m.pop('removal_ts', None)
-            _, ns_score_e, *_ = _build_occ_from_diff_marks(non_star, teacher_entries, None)
             non_star['token_matching'] = 'leo'
+            _, ns_score_e, *_ = _build_occ_from_diff_marks(non_star, teacher_entries, None)
             non_star['score'] = ns_score_e
             _strip_internal_fields(non_star)
             with open(anon_dir / 'diff_marks_leo.json', 'w', encoding='utf-8') as fh:
@@ -204,6 +199,7 @@ class TokenLogMixin:
             if all_events:
                 _add_log_metadata(
                     diff_marks, all_events, stu_files,
+                    teacher_files=teacher_code_files,
                     _ts_map=ts_map_cached or None,
                 )
 
@@ -441,6 +437,7 @@ class TokenLogMixin:
 
                 diff_marks['token_matching'] = star_token_matching
                 _add_log_metadata(diff_marks, all_events, stu_files,
+                                  teacher_files=teacher_code_files,
                                   _ts_map=_tm or None)
                 if teacher_total_nc:
                     n_extra_star_count = sum(

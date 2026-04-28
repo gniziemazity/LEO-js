@@ -111,9 +111,6 @@ const BAR_COLORS = {
 function resolveInteractionStudent(field) {
 	if (typeof field === "number") {
 		const resolved = _studentIdMap?.[field] || null;
-		console.log(
-			`[DEBUG] resolveInteractionStudent(${field}): _studentIdMap[${field}] = ${resolved}`,
-		);
 		return resolved;
 	}
 	if (typeof field === "string") {
@@ -122,19 +119,10 @@ function resolveInteractionStudent(field) {
 		const asNum = Number(trimmed);
 		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
 			const resolved = _studentIdMap?.[asNum] || null;
-			console.log(
-				`[DEBUG] resolveInteractionStudent("${field}"): parsed as number ${asNum}, _studentIdMap[${asNum}] = ${resolved}`,
-			);
 			return resolved;
 		}
-		console.log(
-			`[DEBUG] resolveInteractionStudent("${field}"): not a number, returning as-is`,
-		);
 		return trimmed;
 	}
-	console.log(
-		`[DEBUG] resolveInteractionStudent(${field}): unrecognized type, returning null`,
-	);
 	return null;
 }
 

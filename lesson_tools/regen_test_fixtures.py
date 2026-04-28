@@ -174,7 +174,7 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         diff_marks["leo_assignments"] = leo_assignments
 
     if events:
-        _add_log_metadata(diff_marks, events, stu_files)
+        _add_log_metadata(diff_marks, events, stu_files, teacher_files=teacher_files)
 
     all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_extra_star = (
         _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)

@@ -69,7 +69,12 @@ async function openDiffWindow(student, mode = null) {
 			const marks = await loadDiffMarks(`diff_marks${sfx}.json`);
 			if (marks) allMarks[m] = marks;
 		}
-		const defaultMarks = allMarks[""] ?? Object.values(allMarks)[0] ?? null;
+		const defaultMode = Object.prototype.hasOwnProperty.call(allMarks, "")
+			? ""
+			: Object.prototype.hasOwnProperty.call(allMarks, "leo")
+				? "leo"
+				: (Object.keys(allMarks)[0] ?? null);
+		const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
 
 		const teacherFiles = {};
 		for (const [, file] of teacherEntries)
@@ -98,6 +103,7 @@ async function openDiffWindow(student, mode = null) {
 				teacherFiles,
 				studentFiles,
 				imageUris,
+				mode: defaultMode,
 				teacherMarks: defaultMarks
 					? defaultMarks.teacher_files || {}
 					: null,

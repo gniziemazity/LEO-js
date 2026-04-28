@@ -536,7 +536,6 @@ def _compute_per_token_matching(
     }
 
     tokens_data: Dict[str, dict] = {}
-    extra_star_meta: Dict[Tuple[str, str, int], int] = {}
     n_total = 0
     n_missing = 0
     for tok in token_keys:
@@ -550,45 +549,25 @@ def _compute_per_token_matching(
         s_com = [x for x in s_list if x['is_comment']]
 
         n_total += len(t_out)
-        n_t_surv = len(t_out)
         s_idxs = [x['seq_idx'] for x in s_out]
         t_surv_idxs = [
             seq_idx_to_aug[x['seq_idx']] if seq_idx_to_aug else x['seq_idx']
             for x in t_out
         ]
-        t_ghost_idxs = [x['seq_idx_aug'] for x in t_ghost]
 
-        res1 = _locate_token(
+        res = _locate_token(
             s_idxs, t_surv_idxs,
             student_seq, teacher_match_seq, context_k,
         )
-        phase1_pairs = list(res1.get('pairs', []))
-        missing_to = res1['missing_t']  # surv-only unmatched
-        matched_s_p1 = {si for si, _ in phase1_pairs}
-        unmatched_s = [i for i in range(len(s_out)) if i not in matched_s_p1]
-
-        phase2_pairs: List[Tuple[int, int]] = []
-        extra_so: set = set(unmatched_s)
-        if unmatched_s and t_ghost_idxs:
-            u_s_idxs = [s_idxs[i] for i in unmatched_s]
-            res2 = _locate_token(
-                u_s_idxs, t_ghost_idxs,
-                student_seq, teacher_match_seq, context_k,
-            )
-            sim2 = res2.get('sim') or []
-            for i_local, j in res2.get('pairs', []):
-                cos = sim2[i_local][j] if sim2 and i_local < len(sim2) and j < len(sim2[i_local]) else 0.0
-                if cos < _GHOST_MATCH_THRESHOLD:
-                    continue
-                i_global = unmatched_s[i_local]
-                phase2_pairs.append((i_global, n_t_surv + j))
-                extra_so.discard(i_global)
+        pairs = list(res.get('pairs', []))
+        missing_to = res['missing_t']
+        matched_s = {si for si, _ in pairs}
+        extra_so = {i for i in range(len(s_out)) if i not in matched_s}
 
         n_missing += len(missing_to)
 
-        all_pairs = phase1_pairs + phase2_pairs
-        teacher_match_idx: Dict[int, int] = {tj: si for si, tj in all_pairs}
-        student_match_idx: Dict[int, int] = {si: tj for si, tj in all_pairs}
+        teacher_match_idx: Dict[int, int] = {tj: si for si, tj in pairs}
+        student_match_idx: Dict[int, int] = {si: tj for si, tj in pairs}
 
         for i, oc in enumerate(t_out):
             if i in missing_to:
@@ -598,17 +577,10 @@ def _compute_per_token_matching(
         for i, oc in enumerate(s_out):
             if i in extra_so:
                 student_colors[oc['file']][tok][oc['file_idx']] = 'extra'
-            else:
-                tj = student_match_idx.get(i)
-                if tj is not None and tj >= n_t_surv:
-                    student_colors[oc['file']][tok][oc['file_idx']] = 'extra_star'
-                    ghost_inst = t_ghost[tj - n_t_surv]
-                    extra_star_meta[(oc['file'], tok, oc['file_idx'])] = ghost_inst['del_ts']
         for oc in s_com:
             student_colors[oc['file']][tok][oc['file_idx']] = 'comment'
 
-        ghost_matched = any(tj >= n_t_surv for tj in teacher_match_idx)
-        has_label = bool(missing_to) or bool(extra_so) or ghost_matched
+        has_label = bool(missing_to) or bool(extra_so) or bool(t_ghost)
         if has_label:
             tokens_data[tok] = {
                 'teacher': [
@@ -624,18 +596,12 @@ def _compute_per_token_matching(
                      'blob_offset': inst['blob_offset'],
                      'ghost': True,
                      'del_ts': inst['del_ts'],
-                     'seq_idx_aug': inst['seq_idx_aug'],
-                     **({'match_idx': teacher_match_idx[n_t_surv + j]}
-                        if (n_t_surv + j) in teacher_match_idx else {})}
-                    for j, inst in enumerate(t_ghost)
+                     'seq_idx_aug': inst['seq_idx_aug']}
+                    for inst in t_ghost
                 ],
                 'student': [
                     {'file': oc['file'], 'pos': oc['pos'], 'seq_idx': oc['seq_idx'],
-                     'label': (
-                         'extra' if i in extra_so
-                         else 'extra_star' if (student_match_idx.get(i, -1) >= n_t_surv)
-                         else None
-                     ),
+                     'label': 'extra' if i in extra_so else None,
                      **({'match_idx': student_match_idx[i]}
                         if i in student_match_idx else {})}
                     for i, oc in enumerate(s_out)
@@ -653,7 +619,7 @@ def _compute_per_token_matching(
     if assignments and teacher_seq_aug is not None:
         assignments['teacher_seq_aug'] = teacher_seq_aug
 
-    return teacher_colors, student_colors, n_total, n_missing, assignments, extra_star_meta
+    return teacher_colors, student_colors, n_total, n_missing, assignments
 
 
 def _build_contextual_diff_marks(
@@ -661,7 +627,7 @@ def _build_contextual_diff_marks(
     student_files: dict,
     context_k: int = _CONTEXT_K,
 ) -> Tuple[dict, dict]:
-    teacher_colors, student_colors, _, _, _, _ = _compute_per_token_matching(
+    teacher_colors, student_colors, _, _, _ = _compute_per_token_matching(
         teacher_files, student_files, context_k,
     )
     return _prune_color_map(teacher_colors), _prune_color_map(student_colors)
@@ -674,7 +640,7 @@ def _build_leo_diff_marks(
     events: Optional[list] = None,
 ) -> Tuple[dict, dict, Optional[float], dict, dict, int, dict]:
     teacher_ghosts = _collect_teacher_ghosts(events) if events else None
-    teacher_colors, student_colors, n_total, n_missing, assignments, extra_star_meta = (
+    teacher_colors, student_colors, n_total, n_missing, assignments = (
         _compute_per_token_matching(
             teacher_files, student_files, context_k,
             teacher_ghosts=teacher_ghosts or None,
@@ -685,7 +651,6 @@ def _build_leo_diff_marks(
     )
     student_result = _colors_to_position_marks(
         student_files, _prune_color_map(student_colors),
-        extra_star_meta=extra_star_meta or None,
     )
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
     try:
@@ -699,6 +664,7 @@ def _add_log_metadata(
     diff_marks: dict,
     events: list,
     student_files: Dict[str, Path],
+    teacher_files: Optional[Dict[str, Path]] = None,
     has_css: bool = True,
     _ghost_contexts: dict = None,
     _ts_map: dict = None,
@@ -726,9 +692,14 @@ def _add_log_metadata(
             else:
                 mark.pop('_tok_idx', None)
 
-    method = (diff_marks.get('token_matching') or '')
-    if not method.startswith('leo'):
-        _apply_ghost_star_to_diff_marks(diff_marks, events)
+    if 'leo_assignments' not in diff_marks and teacher_files:
+        assignments = _build_assignments_for_post_pass(
+            teacher_files, student_files, diff_marks, events,
+        )
+        if assignments:
+            diff_marks['leo_assignments'] = assignments
+
+    _apply_leo_ghost_star_to_diff_marks(diff_marks, events)
     teacher_ghosts = _collect_teacher_ghosts(events)
     if teacher_ghosts:
         diff_marks['teacher_ghosts'] = teacher_ghosts
@@ -1253,6 +1224,177 @@ def _apply_ghost_star_to_diff_marks(
             del_ts = budget[tok].popleft()
             mark['label'] = 'extra_star'
             mark['removal_ts'] = ts_to_local(del_ts)
+
+
+def _apply_leo_ghost_star_to_diff_marks(
+    diff_marks: dict,
+    events: list,
+) -> None:
+    if not events:
+        return
+    la = diff_marks.get('leo_assignments') or {}
+    tokens_data = la.get('tokens') or {}
+    teacher_seq_aug = la.get('teacher_seq_aug')
+    if not tokens_data or not teacher_seq_aug:
+        return
+    teacher_match_seq = [
+        t if isinstance(t, str) else t[0] for t in teacher_seq_aug
+    ]
+    student_seq = la.get('student_seq', [])
+    k     = la.get('k', _CONTEXT_K)
+    decay = la.get('decay', _CONTEXT_DECAY)
+    boost = la.get('neighbor_boost', _NEIGHBOR_BOOST)
+
+    student_marks = diff_marks.get('student_files', {})
+    mark_index: Dict[Tuple[str, int, str], dict] = {}
+    for fname, marks in student_marks.items():
+        for m in marks:
+            mark_index[(fname, m.get('start'), m.get('token'))] = m
+
+    for tok, td in tokens_data.items():
+        students = td.get('student', [])
+        teachers = td.get('teacher', [])
+        extras = [(i, s) for i, s in enumerate(students) if s.get('label') == 'extra']
+        ghosts = [(j, t) for j, t in enumerate(teachers) if t.get('ghost')]
+        if not extras or not ghosts:
+            continue
+
+        s_ctxs = [
+            _context_vector(student_seq, s.get('seq_idx'), k, decay, boost)
+            for _, s in extras
+        ]
+        g_ctxs = [
+            _context_vector(teacher_match_seq, g.get('seq_idx_aug'), k, decay, boost)
+            for _, g in ghosts
+        ]
+        sim = [
+            [_cosine_similarity_sparse(sc, gc) for gc in g_ctxs]
+            for sc in s_ctxs
+        ]
+        if not sim or not sim[0]:
+            continue
+        pairs = _hungarian_max(sim)
+
+        for s_local, g_local in pairs:
+            cos = sim[s_local][g_local]
+            if cos < _GHOST_MATCH_THRESHOLD:
+                continue
+            s_idx, s_inst = extras[s_local]
+            g_idx, g_inst = ghosts[g_local]
+            s_inst['label']     = 'extra_star'
+            s_inst['match_idx'] = g_idx
+            g_inst['match_idx'] = s_idx
+            mark = mark_index.get(
+                (s_inst.get('file'), s_inst.get('pos'), tok),
+            )
+            if mark is not None:
+                mark['label'] = 'extra_star'
+                del_ts = g_inst.get('del_ts')
+                if del_ts is not None:
+                    mark['removal_ts'] = ts_to_local(del_ts)
+
+
+def _build_assignments_for_post_pass(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+    diff_marks: dict,
+    events: Optional[list],
+) -> Optional[dict]:
+    teacher_occs, _ = _collect_occurrences(teacher_files)
+    student_occs, _ = _collect_occurrences(student_files)
+    teacher_seq = [oc['token'] for oc in teacher_occs if not oc['is_comment']]
+    student_seq = [oc['token'] for oc in student_occs if not oc['is_comment']]
+
+    teacher_seq_aug: Optional[list] = None
+    seq_idx_to_aug: Optional[Dict[int, int]] = None
+    ghost_instances: List[dict] = []
+    teacher_ghosts = _collect_teacher_ghosts(events) if events else {}
+    if teacher_ghosts:
+        teacher_seq_aug, seq_idx_to_aug, ghost_instances = _build_teacher_seq_aug(
+            teacher_occs, teacher_ghosts,
+        )
+
+    student_by_tok: Dict[str, List[dict]] = {}
+    for oc in student_occs:
+        if oc['is_comment']:
+            continue
+        student_by_tok.setdefault(oc['token'], []).append(oc)
+    teacher_by_tok: Dict[str, List[dict]] = {}
+    for oc in teacher_occs:
+        if oc['is_comment']:
+            continue
+        teacher_by_tok.setdefault(oc['token'], []).append(oc)
+    ghost_by_tok: Dict[str, List[dict]] = {}
+    for inst in ghost_instances:
+        ghost_by_tok.setdefault(inst['token'], []).append(inst)
+
+    extras_by_key: set = set()
+    for fname, marks in diff_marks.get('student_files', {}).items():
+        for m in marks:
+            if m.get('label') == 'extra' and not m.get('line') and m.get('token'):
+                extras_by_key.add((fname, m.get('start'), m['token']))
+    missings_by_key: set = set()
+    for fname, marks in diff_marks.get('teacher_files', {}).items():
+        for m in marks:
+            if m.get('label') == 'missing' and not m.get('line') and m.get('token'):
+                missings_by_key.add((fname, m.get('start'), m['token']))
+
+    tokens_data: Dict[str, dict] = {}
+    all_tokens = set(student_by_tok) | set(teacher_by_tok) | set(ghost_by_tok)
+    for tok in all_tokens:
+        students = student_by_tok.get(tok, [])
+        teachers = teacher_by_tok.get(tok, [])
+        ghosts = ghost_by_tok.get(tok, [])
+
+        student_entries = []
+        any_extra = False
+        for s in students:
+            label = 'extra' if (s['file'], s['pos'], tok) in extras_by_key else None
+            if label == 'extra':
+                any_extra = True
+            student_entries.append({
+                'file': s['file'], 'pos': s['pos'],
+                'seq_idx': s['seq_idx'], 'label': label,
+            })
+
+        teacher_entries: List[dict] = []
+        any_missing = False
+        for t in teachers:
+            label = 'missing' if (t['file'], t['pos'], tok) in missings_by_key else None
+            if label == 'missing':
+                any_missing = True
+            entry = {
+                'file': t['file'], 'pos': t['pos'],
+                'seq_idx': t['seq_idx'], 'label': label,
+            }
+            if seq_idx_to_aug:
+                entry['seq_idx_aug'] = seq_idx_to_aug[t['seq_idx']]
+            teacher_entries.append(entry)
+        for g in ghosts:
+            teacher_entries.append({
+                'file': g['file'], 'pos': g['blob_pos'],
+                'blob_offset': g['blob_offset'],
+                'ghost': True, 'del_ts': g['del_ts'],
+                'seq_idx_aug': g['seq_idx_aug'],
+            })
+
+        if not (any_extra or any_missing or ghosts):
+            continue
+        tokens_data[tok] = {'teacher': teacher_entries, 'student': student_entries}
+
+    if not tokens_data:
+        return None
+    assignments = {
+        'k': _CONTEXT_K,
+        'decay': _CONTEXT_DECAY,
+        'neighbor_boost': _NEIGHBOR_BOOST,
+        'teacher_seq': teacher_seq,
+        'student_seq': student_seq,
+        'tokens': tokens_data,
+    }
+    if teacher_seq_aug is not None:
+        assignments['teacher_seq_aug'] = teacher_seq_aug
+    return assignments
 
 
 def _build_ro_diff_marks(

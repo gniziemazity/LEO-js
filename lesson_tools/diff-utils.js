@@ -20,7 +20,12 @@ function openDifferentiator(
 	imageUris,
 	title,
 ) {
-	const defaultMarks = allMarks[""] ?? Object.values(allMarks)[0] ?? null;
+	const defaultMode = Object.prototype.hasOwnProperty.call(allMarks || {}, "")
+		? ""
+		: Object.prototype.hasOwnProperty.call(allMarks || {}, "leo")
+			? "leo"
+			: (Object.keys(allMarks || {})[0] ?? null);
+	const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
 	const dataKey = "diffData_" + Date.now() + "_" + ((Math.random() * 1e6) | 0);
 	localStorage.setItem(
 		dataKey,
@@ -29,6 +34,7 @@ function openDifferentiator(
 			studentFiles,
 			imageUris: imageUris ?? {},
 			allMarks,
+			mode: defaultMode,
 			teacherMarks: defaultMarks?.teacher_files ?? null,
 			studentMarks: defaultMarks?.student_files ?? null,
 			caseSensitive: defaultMarks?.case_sensitive === true,

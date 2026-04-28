@@ -38,7 +38,6 @@ async function loadXlsxFiles(files) {
 		);
 		_students = result.students;
 		_studentIdMap = result.idMap;
-		console.log("[DEBUG] Loaded student ID map:", _studentIdMap);
 		if (!_students.length) {
 			showLoading(false);
 			return;
@@ -80,9 +79,6 @@ function parseStudentData(
 		);
 
 	const idMap = {};
-	console.log(
-		"[DEBUG] Extracting ID map from remarks: column A=ID, column B=Name",
-	);
 	for (let i = 1; i < rowsR.length; i++) {
 		const row = rowsR[i];
 		const idVal = row[0];
@@ -92,11 +88,9 @@ function parseStudentData(
 			const name = String(nameVal).trim();
 			if (Number.isInteger(id) && id > 0 && name) {
 				idMap[id] = name;
-				console.log(`[DEBUG]   ID ${id} -> "${name}"`);
 			}
 		}
 	}
-	console.log("[DEBUG] Final ID map:", idMap);
 
 	const followData = {};
 	for (let i = 1; i < rowsR.length; i++) {

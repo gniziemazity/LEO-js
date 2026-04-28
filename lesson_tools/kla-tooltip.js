@@ -6,9 +6,6 @@ let _pinned = null;
 function getStudentNameFromInteraction(field) {
 	if (typeof field === "number") {
 		const resolved = _studentIdMap[field] || `ID ${field}`;
-		console.log(
-			`[DEBUG] getStudentNameFromInteraction(${field}): _studentIdMap[${field}] = ${_studentIdMap[field]} => resolved to "${resolved}"`,
-		);
 		return resolved;
 	}
 	if (typeof field === "string") {
@@ -17,19 +14,10 @@ function getStudentNameFromInteraction(field) {
 		const asNum = Number(trimmed);
 		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
 			const resolved = _studentIdMap[asNum] || `ID ${asNum}`;
-			console.log(
-				`[DEBUG] getStudentNameFromInteraction("${field}"): parsed as number ${asNum}, _studentIdMap[${asNum}] = ${_studentIdMap[asNum]} => resolved to "${resolved}"`,
-			);
 			return resolved;
 		}
-		console.log(
-			`[DEBUG] getStudentNameFromInteraction("${field}"): not a number, returning as-is`,
-		);
 		return trimmed;
 	}
-	console.log(
-		`[DEBUG] getStudentNameFromInteraction(${field}): unrecognized type, returning null`,
-	);
 	return null;
 }
 

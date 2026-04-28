@@ -122,6 +122,12 @@
 				font-weight: normal !important;
 				background: rgba(0, 0, 0, 0.02);
 			}
+			.diff-ghost-nl {
+				display: inline-block;
+				margin: 0 4px;
+				font-weight: 600;
+				color: #999;
+			}
 			.diff-spacer {
 				display: block;
 				min-height: 1.5em;
@@ -324,18 +330,7 @@
 	</head>
 	<body>
 		<div id="bottom-bar">
-			<select id="mode-select">
-				<option value="">LEO*</option>
-				<option value="leo">LEO</option>
-				<option value="token-lcs">LCS</option>
-				<option value="token-lcs-star">LCS*</option>
-				<option value="token-lev">Lev</option>
-				<option value="token-lev-star">Lev*</option>
-				<option value="line-ro">R/O</option>
-				<option value="line-ro-star">R/O*</option>
-				<option value="line-git">Git</option>
-				<option value="line-git-star">Git*</option>
-			</select>
+			<select id="mode-select"></select>
 			<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
 				⬜ Preview
 			</button>
