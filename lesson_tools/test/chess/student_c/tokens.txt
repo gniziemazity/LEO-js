@@ -1,7 +1,7 @@
 # Found            : 1180
 # MISSING          : 6
-# EXTRA            : 66
-# Follow (E)       : 99.1 %
+# EXTRA            : 63
+# Follow (E)       : 98.8 %
 <	11:53:32
 !	11:53:33
 DOCTYPE	11:53:34	MISSING
@@ -1064,6 +1064,9 @@ element	12:33:31
 )	12:33:31
 {	12:33:31
 }	12:33:32
+element	12:35:18	EXTRA*
+.	12:35:18	EXTRA*
+;	12:35:18	EXTRA*
 element	12:35:29
 .	12:35:29
 style	12:35:30
@@ -1251,10 +1254,8 @@ cell	00:00:00	EXTRA
 dark	00:00:00	EXTRA
 "	00:00:00	EXTRA
 >	00:00:00	EXTRA
-element	00:00:00	EXTRA
 .	00:00:00	EXTRA
 style	00:00:00	EXTRA
-.	00:00:00	EXTRA
 border	00:00:00	EXTRA
 =	00:00:00	EXTRA
 "	00:00:00	EXTRA
@@ -1262,4 +1263,3 @@ border	00:00:00	EXTRA
 solid	00:00:00	EXTRA
 red	00:00:00	EXTRA
 "	00:00:00	EXTRA
-;	00:00:00	EXTRA

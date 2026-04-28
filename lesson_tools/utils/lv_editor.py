@@ -473,12 +473,8 @@ def _replay_headless_multi(events: list, track_timestamps: bool = False) -> dict
     return editors
 
 
-def _replay_headless(events: list, track_timestamps: bool = False) -> "HeadlessEditor":
-    return _replay_headless_multi(events, track_timestamps)["MAIN"]
-
-
 def reconstruct_html_headless(events: list) -> str:
-    return _replay_headless(events).get_text()
+    return _replay_headless_multi(events)["MAIN"].get_text()
 
 
 def reconstruct_all_headless(events: list) -> dict:
@@ -491,80 +487,6 @@ def reconstruct_all_with_ghosts(events: list) -> dict:
         text, ranges = ed.get_text_with_ghosts()
         out[k] = {'text': text, 'ghosts': ranges}
     return out
-
-
-def reconstruct_all_headless_at_timestamps(events: list, timestamps: list) -> dict:
-    if not timestamps:
-        return {}
-
-    ts_sorted = sorted(set(timestamps))
-    ts_idx = 0
-    result: dict = {}
-
-    editors: dict = {"MAIN": HeadlessEditor()}
-    active          = "MAIN"
-    current_context = "main"
-
-    def _snapshot() -> dict:
-        return {k: ed.get_text() for k, ed in editors.items()}
-
-    for ev in sorted(events, key=lambda e: e.get("timestamp", 0)):
-        ev_ts = ev.get("timestamp", 0)
-
-        while ts_idx < len(ts_sorted) and ts_sorted[ts_idx] <= ev_ts:
-            result[ts_sorted[ts_idx]] = _snapshot()
-            ts_idx += 1
-        if ts_idx >= len(ts_sorted):
-            break  # all snapshots collected — no need to replay further
-
-        if "move_to" in ev:
-            t = ev["move_to"]
-            if t in ("DEV", "dev"):
-                current_context = "dev"
-            elif t in ("MAIN", "main"):
-                current_context = "main"
-                active = "MAIN"
-            elif any(t.lower().endswith(ext) for ext in _FILE_EXTS):
-                current_context = "main"
-                active = t
-                if active not in editors:
-                    editors[active] = HeadlessEditor()
-            else:
-                editors[active].move_to_anchor(t)
-            continue
-        if "switch_editor" in ev:
-            val = ev["switch_editor"]
-            current_context = "dev" if val in ("dev", "DEV") else "main"
-            if current_context == "main":
-                active = "MAIN"
-            continue
-        if "interaction" in ev or current_context != "main":
-            continue
-
-        ed = editors[active]
-        if "char" in ev:
-            ed.handle_char(ev["char"])
-        elif "anchor" in ev:
-            ed.set_anchor(ev["anchor"])
-        elif "move" in ev:
-            ed.move_to_anchor(ev["move"])
-        elif "jump_to" in ev:
-            ed.move_to_anchor(ev["jump_to"])
-        elif "code_insert" in ev:
-            ed.handle_code_insert(ev["code_insert"])
-
-    if ts_idx < len(ts_sorted):
-        snap = _snapshot()
-        while ts_idx < len(ts_sorted):
-            result[ts_sorted[ts_idx]] = snap
-            ts_idx += 1
-
-    return result
-
-
-def replay_with_timestamps(events: list):
-    ed = _replay_headless(events, track_timestamps=True)
-    return ed.get_surviving_with_timestamps(), ed.get_deleted_with_timestamps()
 
 
 def replay_with_timestamps_all(events: list):

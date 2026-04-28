@@ -5,19 +5,14 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(_ROOT))
 
-from utils.similarity_measures import (
-    reconstruct_tokens_from_keylog_full,
-    get_reconstructed_files,
-)
+from utils.lv_editor import reconstruct_all_headless
 from utils.token_log import (
-    _build_file_timeline,
-    _file_at_ts,
     _parse_teacher_tokens,
     _build_leo_diff_marks,
     _add_log_metadata,
     _build_occ_from_diff_marks,
     _strip_internal_fields,
-    ts_to_local,
+    _write_teacher_tokens_file,
 )
 
 _TEST = _ROOT / "test"
@@ -80,44 +75,10 @@ def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
         return
 
     events = _load_events(log_path)
-    kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
-        reconstruct_tokens_from_keylog_full(events, has_css=has_css)
+    n_typed, n_removed, n_unique = _write_teacher_tokens_file(
+        events, case_dir / "tokens.txt", has_css=has_css,
     )
-
-    all_occ = []
-    for tok in kw_ts:
-        occ_sorted = sorted(occ_with_display.get(tok, []))
-        comment_ts_set = set(kw_ts_comment.get(tok, []))
-        for ts, disp in occ_sorted:
-            all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
-    for tok, ts_list in removed_kw_ts.items():
-        disp = upper_to_display.get(tok, tok)
-        for ins_ts, del_ts in ts_list:
-            all_occ.append((ins_ts, del_ts, disp, False, True))
-    all_occ.sort(key=lambda x: x[0])
-
-    n_typed   = sum(1 for *_, is_removed in all_occ if not is_removed)
-    n_removed = sum(1 for *_, is_removed in all_occ if is_removed)
-
-    file_timeline   = _build_file_timeline(events)
-    has_multi_files = {f for _, f in file_timeline} - {"MAIN"}
-
-    out = case_dir / "tokens.txt"
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(f"# Occurrences: {n_typed}\n")
-        fh.write(f"# Removed    : {n_removed}\n")
-        fh.write(f"# Unique     : {len(kw_ts)}\n")
-        for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
-            flags = []
-            if is_comment:
-                flags.append("COMMENT")
-            if is_removed:
-                flags.append("REMOVED")
-            file_col    = f"\t{_file_at_ts(ins_ts, file_timeline)}" if has_multi_files else ""
-            removal_col = f"\t{ts_to_local(del_ts)}" if is_removed else ""
-            flag_col    = ("\t" + "\t".join(flags)) if flags else ""
-            fh.write(f"{token}\t{ts_to_local(ins_ts)}{file_col}{flag_col}{removal_col}\n")
-    print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {len(kw_ts)} unique)")
+    print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {n_unique} unique)")
 
 
 def regen_reconstructed(case_dir: Path) -> None:
@@ -125,7 +86,7 @@ def regen_reconstructed(case_dir: Path) -> None:
     if not log_path.exists():
         return
     events = _load_events(log_path)
-    reco_files = get_reconstructed_files(events)
+    reco_files = reconstruct_all_headless(events)
     for tab_key, text in reco_files.items():
         name = "reconstructed.html" if tab_key == "MAIN" else tab_key
         out = case_dir / name

@@ -87,7 +87,7 @@ height	10:20:07
 :	10:20:07
 200px	10:20:09
 ;	10:20:09
-flex	10:21:58
+flex	10:21:58	MISSING
 -	10:21:58
 direction	10:22:01
 :	10:22:01
@@ -240,7 +240,7 @@ black	10:44:26
 ;	10:44:26
 display	10:47:38	MISSING
 :	10:47:38
-flex	10:47:39	MISSING
+flex	10:47:39
 ;	10:47:39
 margin	10:48:02
 :	10:48:02
@@ -248,9 +248,9 @@ margin	10:48:02
 1px	10:48:07
 ;	10:48:07
 width	10:50:08	EXTRA*
-:	10:50:08	EXTRA*
 200px	10:50:08	EXTRA*
-;	10:50:08	EXTRA*
+:	10:50:09	EXTRA*
+;	10:50:09	EXTRA*
 background	10:50:09	EXTRA*
 -	10:50:09	EXTRA*
 color	10:50:09	EXTRA*

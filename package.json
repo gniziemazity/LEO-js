@@ -18,7 +18,6 @@
 		"students-anon": "node lesson_tools/open.js students.html anon=id",
 		"main": "python lesson_tools/main.py",
 		"main-anon": "python lesson_tools/main.py --anon",
-		"main-hungarian": "python lesson_tools/main.py --no-ghost-mutual",
 		"charts": "python lesson_tools/charts.py",
 		"test": "npm run test:py && npm run test:js",
 		"test:py": "cd lesson_tools && python -m unittest discover -v",

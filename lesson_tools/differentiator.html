@@ -161,12 +161,19 @@
 				color: #fff;
 				border-color: #007acc;
 			}
-			.code-aligned[contenteditable] {
+			.btn-edit:disabled {
+				cursor: default;
+			}
+			.btn-edit:disabled:hover {
+				background: #007acc;
+				color: #fff;
+				border-color: #007acc;
+			}
+			.code-aligned[contenteditable="plaintext-only"],
+			.code-aligned[contenteditable="true"] {
 				outline: none;
 				caret-color: #007acc;
-			}
-			.code-aligned[contenteditable]:focus {
-				background: #fffefa;
+				background: #fffbe6;
 			}
 
 			#bottom-bar {

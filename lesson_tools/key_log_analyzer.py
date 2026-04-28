@@ -1,3 +1,6 @@
+"""
+Tkinter-based key-press analyzer. Alternative to the LEO dashboard (dashboard.html).
+"""
 import json
 import os
 import tkinter as tk

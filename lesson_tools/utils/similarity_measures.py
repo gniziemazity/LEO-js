@@ -9,10 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
-from .lv_editor import (
-    reconstruct_html_headless, reconstruct_all_headless,
-    replay_with_timestamps, replay_with_timestamps_all,
-)
+from .lv_editor import reconstruct_all_headless, replay_with_timestamps_all
 
 _CHAR_TOKEN_RE = re.compile(r'[a-zA-Z0-9]+|[^\s]')
 
@@ -76,40 +73,8 @@ def split_code_tokens(text: str) -> Tuple[Counter, Counter]:
             outside[tok] += 1
     return outside, inside
 
-split_css_tokens = split_code_tokens
-
-def split_html_tokens(text: str) -> Tuple[Counter, Counter, Counter]:
-    """Compatibility shim: returns (outside, Counter(), inside) same as split_code_tokens."""
-    outside, inside = split_code_tokens(text)
-    return outside, Counter(), inside
-
-def get_html_outside_css(text: str) -> Counter:
-    return split_code_tokens(text)[0]
-
-
-
-def tokenise_follow_style(text: str) -> Counter:
-    return split_code_tokens(text)[0]
-
-def split_follow_tokens_html(html: str) -> Tuple[Counter, Counter]:
-    return split_code_tokens(html)
-
 
 def reconstruct_tokens_from_keylog_full(
-    events: List[dict],
-    has_css: bool = True,
-) -> Tuple[
-    Dict[str, List[int]],
-    Dict[str, List[int]],
-    Dict[str, List[Tuple[int, int]]],
-    Dict[str, str],
-    Dict[str, List[Tuple[int, str]]],
-]:
-    return _reconstruct_tokens_core(events, has_css)
-
-
-
-def _reconstruct_tokens_core(
     events: List[dict],
     has_css: bool = True,
 ) -> Tuple[
@@ -183,10 +148,6 @@ def _reconstruct_tokens_core(
             upper_to_display[upper] = display
 
     return kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display
-
-
-def get_reconstructed_files(events: List[dict]) -> dict:
-    return reconstruct_all_headless(events)
 
 
 def calculate_containment(a: Counter, b: Counter) -> float:

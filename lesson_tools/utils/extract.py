@@ -11,8 +11,7 @@ def rename_folder(folder_path):
     folder_name = os.path.basename(folder_path)
     new_name = folder_name.split('_')[0]
     new_folder_path = os.path.join(os.path.dirname(folder_path), new_name)
-    
-    print(folder_path, new_folder_path)
+
     try:
         if folder_path != new_folder_path:
             os.rename(folder_path, new_folder_path)

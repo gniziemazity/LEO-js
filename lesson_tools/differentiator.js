@@ -240,7 +240,7 @@ function _renderAligned(
 	for (const pair of alignment) {
 		const lineIdx = pair[sideIdx];
 		if (lineIdx === null) {
-			parts.push('<div class="diff-spacer">​</div>');
+			parts.push('<div class="diff-spacer" contenteditable="false">​</div>');
 		} else {
 			const lineStart = lineStarts[lineIdx] ?? normText.length;
 			const lineEnd =
@@ -445,11 +445,17 @@ function renderPanel(side, files, marks) {
 		const hasMarks = Array.isArray(fileMarks) || lineFileMarks;
 
 		if (isStudentEdit) {
-			pane.innerHTML = `<div class="code-aligned" contenteditable="plaintext-only" spellcheck="false">${
-				hasMarks
-					? _renderFlat(sourceText, fileMarks, lineFileMarks, side, name)
-					: escHtml(sourceText)
-			}</div>`;
+			let body;
+			if (alignment) {
+				body = _renderAligned(
+					sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name,
+				);
+			} else if (hasMarks) {
+				body = _renderFlat(sourceText, fileMarks, lineFileMarks, side, name);
+			} else {
+				body = escHtml(sourceText);
+			}
+			pane.innerHTML = `<div class="code-aligned" contenteditable="plaintext-only" spellcheck="false">${body}</div>`;
 			const editable = pane.querySelector("[contenteditable]");
 			editable.addEventListener("input", () => {
 				_editedStudentFiles[name] = _readEditableText(editable);
@@ -800,7 +806,10 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 
 	const sepRow = '<div class="leo-row leo-sep">⋯</div>';
 	const renderSection = (list, sideName, anchorOrigIdxs) => {
-		// Compute per-row score (cosine vs clicked-token context).
+		if (sideName === side) {
+			if (thisIdx < 0 || thisIdx >= list.length) return "";
+			return renderRow(list[thisIdx], sideName, true, null);
+		}
 		const scored = list.map((inst, i) => ({
 			inst,
 			origIdx: i,
@@ -808,9 +817,7 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 				? _cosineSim(clickedCtx, _instContextVector(inst, sideName))
 				: null,
 		}));
-		// Sort the OTHER side by score desc; keep the clicked side in source order.
-		const sortByScore = sideName !== side && clickedCtx;
-		const order = sortByScore
+		const order = clickedCtx
 			? scored
 					.slice()
 					.sort(
@@ -818,7 +825,6 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 							(b.score ?? -1) - (a.score ?? -1) || a.origIdx - b.origIdx,
 					)
 			: scored;
-		// Translate anchor original-indices to positions in the (possibly sorted) order.
 		const anchorPositions = anchorOrigIdxs
 			.filter((i) => i != null && i >= 0)
 			.map((i) => order.findIndex((s) => s.origIdx === i))
@@ -829,9 +835,8 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		for (const p of visible) {
 			if (prev >= 0 && p > prev + 1) out.push(sepRow);
 			const { inst, origIdx, score } = order[p];
-			const isThis = sideName === side && origIdx === thisIdx;
-			const isMatched = sideName !== side && origIdx === matchedOtherIdx;
-			out.push(renderRow(inst, sideName, isThis || isMatched, score));
+			const isMatched = origIdx === matchedOtherIdx;
+			out.push(renderRow(inst, sideName, isMatched, score));
 			prev = p;
 		}
 		return out.join("");
@@ -855,10 +860,10 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 }
 
 function _selectVisibleRows(n, anchors) {
-	if (n <= 10) return Array.from({ length: n }, (_, i) => i);
+	if (n <= 20) return Array.from({ length: n }, (_, i) => i);
 	const set = new Set();
-	for (let i = 0; i < 5; i++) set.add(i);
-	for (let i = n - 5; i < n; i++) set.add(i);
+	for (let i = 0; i < 10; i++) set.add(i);
+	for (let i = n - 10; i < n; i++) set.add(i);
 	for (const a of anchors) {
 		if (Number.isInteger(a) && a >= 0 && a < n) set.add(a);
 	}
@@ -996,6 +1001,11 @@ function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 
 document.addEventListener("mousedown", (ev) => {
 	if (ev.button !== 0) return;
+	if (
+		ev.target.closest &&
+		ev.target.closest(".code-aligned[contenteditable]")
+	)
+		return;
 	const mark = ev.target.closest && ev.target.closest(".leo-mark");
 	if (mark) {
 		ev.preventDefault();
@@ -1060,16 +1070,18 @@ function _updateTitleScore() {
 }
 
 function toggleEditMode() {
-	_studentEditMode = !_studentEditMode;
+	if (_studentEditMode) return;
+	_studentEditMode = true;
 	const btn = document.getElementById("btn-edit");
 	if (btn) {
-		btn.classList.toggle("active", _studentEditMode);
-		btn.textContent = _studentEditMode ? "✏️ Editing" : "✏️ Edit";
+		btn.classList.add("active");
+		btn.textContent = "✏️ Editing";
+		btn.disabled = true;
 	}
 	if (_studentFiles) {
 		const saved = _saveState("student");
 		renderPanel("student", _studentFiles, _studentMarks);
-		_restoreState("student", saved);
+		requestAnimationFrame(() => _restoreState("student", saved));
 	}
 }
 
@@ -1115,7 +1127,19 @@ function togglePreview() {
 }
 
 function _readEditableText(el) {
-	return el.innerText.replace(/\r\n/g, "\n");
+	const hasSpacers = el.querySelector(".diff-spacer") !== null;
+	if (!hasSpacers) return el.innerText.replace(/\r\n/g, "\n");
+	const lines = [];
+	for (const node of el.childNodes) {
+		if (node.nodeType === 1) {
+			if (node.classList?.contains("diff-spacer")) continue;
+			lines.push(node.textContent || "");
+		} else if (node.nodeType === 3) {
+			const txt = node.textContent || "";
+			if (txt) lines.push(txt);
+		}
+	}
+	return lines.join("\n").replace(/​/g, "").replace(/\r\n/g, "\n");
 }
 
 function _refreshPreviewIfActive() {

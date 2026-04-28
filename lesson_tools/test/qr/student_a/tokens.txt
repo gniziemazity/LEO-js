@@ -272,10 +272,10 @@ var	09:24:34
 theme	09:24:40
 )	09:24:41
 ;	09:24:42
+:	09:24:46	EXTRA*
 background	09:24:46	EXTRA*
 -	09:24:46	EXTRA*
 color	09:24:46	EXTRA*
-:	09:24:46	EXTRA*
 red	09:24:46	EXTRA*
 ;	09:24:46	EXTRA*
 position	09:24:56

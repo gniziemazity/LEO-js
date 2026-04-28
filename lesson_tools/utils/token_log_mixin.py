@@ -5,28 +5,20 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .similarity_measures import (
-    get_reconstructed_files,
-    reconstruct_tokens_from_keylog_full,
-    ts_to_local,
-)
+from .lv_editor import reconstruct_all_headless
 from .token_log import (
     _add_log_metadata,
+    _assemble_diff_marks,
     _build_file_ordered_ts_map,
-    _build_file_timeline,
     _build_git_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
     _build_lev_token_diff_marks,
     _build_occ_from_diff_marks,
     _build_ro_diff_marks,
-    _build_student_file_coloring,
-    _build_teacher_file_coloring,
-    _colors_to_position_marks,
-    _extract_student_tokens,
-    _file_at_ts,
     _parse_teacher_tokens,
     _strip_internal_fields,
+    _write_teacher_tokens_file,
 )
 
 
@@ -69,56 +61,18 @@ class TokenLogMixin:
         all_events = getattr(self, '_lesson_all_events', None) or (
             self._lesson_keypresses + self._lesson_code_inserts
         )
-        kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
-            reconstruct_tokens_from_keylog_full(all_events, has_css=has_css)
+        out_path = self.reference_dir / 'tokens.txt'
+        n_typed, n_removed, n_unique = _write_teacher_tokens_file(
+            all_events, out_path, has_css=has_css,
         )
-
-        if not kw_ts and not removed_kw_ts:
+        if not n_typed and not n_removed:
             print('  Keyword log skipped \u2014 no key-log data.')
             return
 
-        all_occ: List[Tuple[int, int, str, bool, bool]] = []
-
-        for tok, ts_list in kw_ts.items():
-            occ_sorted = sorted(occ_with_display.get(tok, []))
-            comment_ts_set = set(kw_ts_comment.get(tok, []))
-            for ts, disp in occ_sorted:
-                all_occ.append((ts, 0, disp, ts in comment_ts_set, False))
-
-        for tok, ts_list in removed_kw_ts.items():
-            disp = upper_to_display.get(tok, tok)
-            for ins_ts, del_ts in ts_list:
-                all_occ.append((ins_ts, del_ts, disp, False, True))
-
-        all_occ.sort(key=lambda x: x[0])
-
-        n_typed   = sum(1 for _, _, _, _, is_removed in all_occ if not is_removed)
-        n_removed = sum(1 for _, _, _, _, is_removed in all_occ if is_removed)
-
-        file_timeline   = _build_file_timeline(all_events)
-        active_files    = {f for _, f in file_timeline}
-        has_multi_files = active_files - {"MAIN"}
-
-        out_path = self.reference_dir / 'tokens.txt'
-        with open(out_path, 'w', encoding='utf-8') as fh:
-            fh.write(f'# Occurrences: {n_typed}\n')
-            fh.write(f'# Removed    : {n_removed}\n')
-            fh.write(f'# Unique     : {len(kw_ts)}\n')
-            for ins_ts, del_ts, token, is_comment, is_removed in all_occ:
-                flags: List[str] = []
-                if is_comment:
-                    flags.append('COMMENT')
-                if is_removed:
-                    flags.append('REMOVED')
-                file_col    = f'\t{_file_at_ts(ins_ts, file_timeline)}' if has_multi_files else ''
-                removal_col = f'\t{ts_to_local(del_ts)}' if is_removed else ''
-                suffix      = ('\t' + '\t'.join(flags)) if flags else ''
-                fh.write(f'{token}\t{ts_to_local(ins_ts)}{file_col}{suffix}{removal_col}\n')
-
         print(f'  Written: correct/{out_path.name}  ({n_typed} occurrences, '
-              f'{n_removed} removed, {len(kw_ts)} unique)')
+              f'{n_removed} removed, {n_unique} unique)')
 
-        reco_files = get_reconstructed_files(all_events)
+        reco_files = reconstruct_all_headless(all_events)
         if reco_files:
             reco_dir = self.reference_dir.parent / 'reconstructed'
             reco_dir.mkdir(exist_ok=True)
@@ -279,85 +233,6 @@ class TokenLogMixin:
         print(f'Written LEO diff marks for {written} student(s) in {names_dir.name}/')
         print(f'Written LEO* diff marks for {written} student(s) in {names_dir.name}/')
 
-    def write_similarity_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
-        teacher_code_files = self.get_all_code_files(self.reference_dir)
-        if not teacher_code_files:
-            print('  Similarity diff marks skipped — no teacher code files found.')
-            return
-
-        written = 0
-        for student_dir in sorted(names_dir.iterdir()):
-            if not student_dir.is_dir():
-                continue
-            sid = self.name_to_id.get(student_dir.name)
-            if sid is None or sid not in self.results:
-                continue
-
-            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
-
-            stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
-            if not stu_files:
-                continue
-
-            data = self.results.get(sid, {})
-            if not data or not data.get('files_compared'):
-                continue
-
-            teacher_agg: Counter = Counter()
-            for ext in ['.html', '.css', '.js']:
-                teacher_agg += self.teacher_outside_by_ext.get(ext, Counter())
-            student_agg, _ = _extract_student_tokens(stu_files)
-
-            miss_budget: Dict[str, int] = {
-                tok: teacher_agg[tok] - student_agg.get(tok, 0)
-                for tok in teacher_agg
-                if teacher_agg[tok] > student_agg.get(tok, 0)
-            }
-            found_out: Dict[str, int] = dict(teacher_agg & student_agg)
-            extra_budget: Dict[str, int] = dict(student_agg - teacher_agg)
-
-            teacher_colors: Dict[str, dict] = {}
-            for t_name, t_path in teacher_code_files.items():
-                t_ext = Path(t_name).suffix.lower()
-                try:
-                    raw = t_path.read_text(encoding='utf-8', errors='ignore')
-                    _, file_comm = _extract_student_tokens({t_name: t_path})
-                    result = _build_teacher_file_coloring(raw, t_ext, miss_budget, dict(file_comm))
-                    if result:
-                        teacher_colors[t_path.name] = result
-                except Exception:
-                    pass
-
-            student_colors: Dict[str, dict] = {}
-            for s_name, s_path in stu_files.items():
-                s_ext = Path(s_name).suffix.lower()
-                try:
-                    raw = s_path.read_text(encoding='utf-8', errors='ignore')
-                    _, file_comm = _extract_student_tokens({s_name: s_path})
-                    result = _build_student_file_coloring(
-                        raw, s_ext,
-                        found_out, dict(file_comm),
-                        {}, extra_budget, {}
-                    )
-                    if result:
-                        student_colors[s_path.name] = result
-                except Exception:
-                    pass
-
-            teacher_total = sum(teacher_agg.values())
-            sim_score = round(sum(found_out.values()) / teacher_total * 100, 1) if teacher_total else None
-            diff_marks: dict = {'token_matching': 'similarity-containment'}
-            if sim_score is not None:
-                diff_marks['score'] = sim_score
-            diff_marks['teacher_files'] = _colors_to_position_marks(teacher_code_files, teacher_colors)
-            diff_marks['student_files'] = _colors_to_position_marks(stu_files, student_colors)
-            diff_path = anon_dir / 'diff_marks_leo_star.json'
-            with open(diff_path, 'w', encoding='utf-8') as fh:
-                json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-            written += 1
-
-        print(f'  Written similarity diff marks for {written} student(s) in {names_dir.name}/')
-
     def _write_alt_diff_marks(
         self,
         names_dir: Path,
@@ -416,17 +291,12 @@ class TokenLogMixin:
                 teacher_marks, student_marks = result
                 score = None
 
-            diff_marks: dict = {'token_matching': token_matching}
-            if score is not None:
-                diff_marks['score'] = score
-            diff_marks['teacher_files'] = teacher_marks
-            diff_marks['student_files'] = student_marks
-            if alignments is not None:
-                diff_marks['alignments'] = alignments
-            if include_line_marks and line_marks:
-                diff_marks['line_marks'] = line_marks
-            if leo_assignments:
-                diff_marks['leo_assignments'] = leo_assignments
+            diff_marks = _assemble_diff_marks(
+                token_matching, teacher_marks, student_marks, score,
+                alignments=alignments,
+                line_marks=line_marks if include_line_marks else None,
+                leo_assignments=leo_assignments,
+            )
 
             if write_star:
                 non_star = copy.deepcopy(diff_marks)
@@ -508,8 +378,6 @@ class TokenLogMixin:
             star_filename='diff_marks_ro_star.json' if all_events else None,
             star_label='R/O* diff marks' if all_events else None,
         )
-
-    write_myers_diff_marks = write_ro_diff_marks
 
     def write_git_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)

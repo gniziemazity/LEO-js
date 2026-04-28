@@ -5,7 +5,7 @@ import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from .similarity_measures import (
     calculate_char_histogram_similarity,
@@ -361,7 +361,6 @@ def main() -> None:
         sys.exit(1)
 
     current_dir    = Path(sys.argv[1]).resolve()
-    scripts_dir    = Path(__file__).resolve().parent
     correct_dir    = current_dir / 'correct'
     anon_names_dir = current_dir / 'anon_names'
     names_dir      = current_dir / 'students'

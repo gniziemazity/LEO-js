@@ -49,9 +49,10 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from . import similarity_measures as _sm
+from .lv_editor import reconstruct_all_headless
 from .token_log import (
     _add_log_metadata,
+    _assemble_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
     _build_lev_token_diff_marks,
@@ -115,7 +116,7 @@ def compare(
             log_data = json.load(fh)
         events = log_data.get('events', log_data) if isinstance(log_data, dict) else log_data
         keylog_events = events
-        reconstructed = _sm.get_reconstructed_files(events)
+        reconstructed = reconstruct_all_headless(events)
         _tmpdir = tempfile.TemporaryDirectory()
         tmp_root = Path(_tmpdir.name)
         teacher_paths: Dict[str, Path] = {}
@@ -151,12 +152,6 @@ _BUILDERS = {
     'git': _build_git_diff_marks,
 }
 
-_ALIASES = {
-    'myers':           'ro',
-    'contextual':      'leo',
-    'contextual_star': 'leo_star',
-}
-
 
 def _dispatch(
     teacher_paths: Dict[str, Path],
@@ -165,7 +160,6 @@ def _dispatch(
     keylog_events,
 ) -> dict:
     alg = algorithm.lower().replace('-', '_')
-    alg = _ALIASES.get(alg, alg)
     base = alg[:-5] if alg.endswith('_star') else alg
     is_star = alg.endswith('_star')
 
@@ -178,31 +172,12 @@ def _dispatch(
 
     result = builder(teacher_paths, student_paths)
     t, s, score, alignments, line_marks = result[:5]
-    diff = _wrap(alg, t, s, score, alignments, line_marks)
-    if len(result) >= 7 and result[6]:
-        diff['leo_assignments'] = result[6]
+    leo_assignments = result[6] if len(result) >= 7 else None
+    diff = _assemble_diff_marks(
+        alg, t, s, score, alignments, line_marks, leo_assignments,
+    )
     if is_star and keylog_events:
         _add_log_metadata(
             diff, keylog_events, student_paths,
         )
     return diff
-
-
-def _wrap(
-    token_matching: str,
-    teacher_files: dict,
-    student_files: dict,
-    score: Optional[float],
-    alignments: Optional[dict] = None,
-    line_marks: Optional[dict] = None,
-) -> dict:
-    result: dict = {'token_matching': token_matching}
-    if score is not None:
-        result['score'] = score
-    result['teacher_files'] = teacher_files
-    result['student_files'] = student_files
-    if alignments:
-        result['alignments'] = alignments
-    if line_marks:
-        result['line_marks'] = line_marks
-    return result

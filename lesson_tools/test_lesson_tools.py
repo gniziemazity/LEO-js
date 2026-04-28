@@ -14,7 +14,6 @@ from utils.similarity_measures import (
     reconstruct_tokens_from_keylog_full,
 )
 from utils.token_log import (
-    _build_student_token_occurrences,
     _build_contextual_diff_marks,
     _build_lcs_token_diff_marks,
     _apply_ghost_star_to_colors,
@@ -35,30 +34,7 @@ def _load_json(path: Path):
 
 
 def _parse_tokens_file(path: Path):
-    headers: dict = {}
-    entries: list = []
-    with open(path, encoding='utf-8') as f:
-        for line in f:
-            stripped = line.rstrip('\n')
-            if stripped.startswith('# '):
-                for key in ('Occurrences', 'Removed', 'Unique'):
-                    if stripped.startswith(f'# {key}'):
-                        headers[key] = int(stripped.split(':')[1].strip())
-            elif stripped:
-                parts = stripped.split('\t')
-                tok      = parts[0]
-                time_str = parts[1] if len(parts) > 1 else ''
-                is_removed = 'REMOVED' in parts[2:]
-                removal_ts_str = ''
-                if is_removed:
-                    try:
-                        removed_idx = parts.index('REMOVED')
-                        if removed_idx + 1 < len(parts):
-                            removal_ts_str = parts[removed_idx + 1]
-                    except ValueError:
-                        pass
-                entries.append((tok, time_str, 'COMMENT' in parts[2:], is_removed, removal_ts_str))
-    return headers, entries
+    return _parse_teacher_tokens(path, return_headers=True)
 
 
 def _parse_student_tokens_file(path: Path):

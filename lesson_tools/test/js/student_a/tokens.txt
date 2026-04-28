@@ -1,7 +1,7 @@
 # Found            : 1043
 # MISSING          : 7
-# EXTRA            : 17
-# Follow (E)       : 99.5 %
+# EXTRA            : 16
+# Follow (E)       : 99.4 %
 <	12:24:11
 <	12:24:11
 <	12:24:11
@@ -400,6 +400,7 @@ console	12:52:12
 err	12:52:14
 )	12:52:14
 ;	12:52:14
+log	12:53:22	EXTRA*
 error	12:53:23
 myArray	12:56:12
 .	12:56:12
@@ -1056,16 +1057,15 @@ Never	00:00:00	COMMENT	EXTRA
 escape	00:00:00	COMMENT	EXTRA
 old	00:00:00	EXTRA
 All	00:00:00	EXTRA
-.	00:00:00	EXTRA
-console	00:00:00	EXTRA
 &	00:00:00	EXTRA
 !	00:00:00	EXTRA
 31	00:00:00	EXTRA
-(	00:00:00	EXTRA
-)	00:00:00	EXTRA
-)	00:00:00	EXTRA
-log	00:00:00	EXTRA
-(	00:00:00	EXTRA
-someDate	00:00:00	EXTRA
 .	00:00:00	EXTRA
 getDay	00:00:00	EXTRA
+(	00:00:00	EXTRA
+)	00:00:00	EXTRA
+)	00:00:00	EXTRA
+console	00:00:00	EXTRA
+.	00:00:00	EXTRA
+(	00:00:00	EXTRA
+someDate	00:00:00	EXTRA

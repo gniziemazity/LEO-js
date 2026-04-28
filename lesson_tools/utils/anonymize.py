@@ -287,7 +287,6 @@ def main():
         sys.exit(1)
     project_dir = sys.argv[1]
 
-    scripts_dir = os.path.dirname(os.path.abspath(__file__))
     students_csv = os.path.join(project_dir, "..", "..", "students.csv")
     students_dir = os.path.join(project_dir, "students")
     anon_names_dir = os.path.join(project_dir, "anon_names")

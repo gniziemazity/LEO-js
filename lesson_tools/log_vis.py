@@ -1,3 +1,6 @@
+"""
+Tkinter-based simulator. Alternative to the LEO Simulator (simulator.html).
+"""
 import json
 import os
 import re
@@ -32,7 +35,7 @@ from utils.lv_editor import HeadlessEditor, reconstruct_html_headless, find_igno
 from utils.lv_expand import expand_events
 
 
-def text_flat_index(widget, index: str) -> int:
+def _text_flat_index(widget, index: str) -> int:
     result = widget.count("1.0", index, "chars")
     return int(result[0]) if result else 0
 
@@ -777,7 +780,7 @@ class LogVisualizer:
             try:
                 ignored = self._bs_ignored_for_widget(widget)
                 if not ignored:
-                    flat = text_flat_index(widget, "insert")
+                    flat = _text_flat_index(widget, "insert")
                     if flat > 0 and (flat - 1) < len(ts_store):
                         ts_store.pop(flat - 1)
                     widget.delete("insert-1c", tk.INSERT)
@@ -793,7 +796,7 @@ class LogVisualizer:
             _, ts, delay, editor = act
             widget, ts_store = self._editor_widgets(editor)
             try:
-                flat = text_flat_index(widget, "insert")
+                flat = _text_flat_index(widget, "insert")
                 if flat < len(ts_store):
                     ts_store.pop(flat)
                 widget.delete(tk.INSERT, "insert+1c")
@@ -876,8 +879,8 @@ class LogVisualizer:
         after_end   = widget.index(f"{line_end}+1c")
         has_newline = widget.get(line_end, after_end) == "\n"
         del_end     = after_end if has_newline else line_end
-        flat_s = text_flat_index(widget, line_start)
-        flat_e = text_flat_index(widget, del_end)
+        flat_s = _text_flat_index(widget, line_start)
+        flat_e = _text_flat_index(widget, del_end)
         n_del  = flat_e - flat_s
         if n_del > 0 and flat_s < len(ts_store):
             del ts_store[flat_s: flat_s + n_del]
@@ -945,7 +948,7 @@ class LogVisualizer:
                 self._log(ts, "⌫  Backspace (ignored — before closing tag)", "#FFAAAA")
                 return delay
             if widget.index(tk.INSERT) != "1.0":
-                flat = text_flat_index(widget, "insert")
+                flat = _text_flat_index(widget, "insert")
                 if flat > 0 and (flat - 1) < len(ts_store):
                     ts_store.pop(flat - 1)
                 widget.delete("insert-1c", tk.INSERT)
@@ -954,7 +957,7 @@ class LogVisualizer:
 
         if ch in DELETE_FWRD_CHARS:
             try:
-                flat = text_flat_index(widget, "insert")
+                flat = _text_flat_index(widget, "insert")
                 if flat < len(ts_store):
                     ts_store.pop(flat)
                 widget.delete(tk.INSERT, "insert+1c")
@@ -1031,7 +1034,7 @@ class LogVisualizer:
 
     def _insert_auto(self, chars: str, ts: int) -> None:
         for ch in chars:
-            flat = text_flat_index(self.text, "insert")
+            flat = _text_flat_index(self.text, "insert")
             if flat <= len(self.char_ts):
                 self.char_ts.insert(flat, ts)
             else:
@@ -1041,7 +1044,7 @@ class LogVisualizer:
 
     def _insert_char(self, ch: str, ts: int,
                      widget: tk.Text, ts_store: list) -> None:
-        flat = text_flat_index(widget, "insert")
+        flat = _text_flat_index(widget, "insert")
         if flat <= len(ts_store):
             ts_store.insert(flat, ts)
         else:
@@ -1067,7 +1070,7 @@ class LogVisualizer:
 
         for line in range(end_line, start_line - 1, -1):
             pos  = f"{line}.0"
-            flat = text_flat_index(self.text, pos)
+            flat = _text_flat_index(self.text, pos)
             if flat <= len(self.char_ts):
                 self.char_ts.insert(flat, ts)
             else:
@@ -1108,7 +1111,7 @@ class LogVisualizer:
 
         n_remove = len(line_before) - len(new_before)
         for _ in range(n_remove):
-            flat = text_flat_index(self.text, line_start)
+            flat = _text_flat_index(self.text, line_start)
             if flat < len(self.char_ts):
                 self.char_ts.pop(flat)
             self.text.delete(line_start, f"{line_start}+1c")
@@ -1175,7 +1178,7 @@ class LogVisualizer:
     def _on_hover(self, event: tk.Event, widget: tk.Text, ts_store: list) -> None:
         try:
             idx  = widget.index(f"@{event.x},{event.y}")
-            flat = text_flat_index(widget, idx)
+            flat = _text_flat_index(widget, idx)
             ts   = None
             if 0 <= flat < len(ts_store):
                 ts = ts_store[flat]
