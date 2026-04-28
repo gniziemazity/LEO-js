@@ -277,6 +277,7 @@ background	09:24:46	EXTRA*
 color	09:24:46	EXTRA*
 :	09:24:46	EXTRA*
 red	09:24:46	EXTRA*
+;	09:24:46	EXTRA*
 position	09:24:56
 :	09:24:57
 absolute	09:25:04
@@ -549,7 +550,6 @@ stop	09:38:57
 (	09:38:58
 )	09:38:59
 ;	09:39:00
-;	09:39:03	EXTRA*
 const	09:39:10
 place	09:39:15
 =	09:39:17

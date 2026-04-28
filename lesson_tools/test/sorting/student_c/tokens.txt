@@ -248,11 +248,12 @@ margin	10:48:02
 1px	10:48:07
 ;	10:48:07
 width	10:50:08	EXTRA*
+:	10:50:08	EXTRA*
 200px	10:50:08	EXTRA*
+;	10:50:08	EXTRA*
 background	10:50:09	EXTRA*
 -	10:50:09	EXTRA*
 color	10:50:09	EXTRA*
-:	10:50:09	EXTRA*
 red	10:50:09	EXTRA*
 bar	10:50:10
 .	10:50:10
@@ -386,7 +387,6 @@ while	11:02:23
 swapped	11:02:25
 )	11:02:26
 ;	11:02:26
-;	11:08:31	EXTRA*
 ;	11:08:34
 array	11:08:34
 (	11:08:34

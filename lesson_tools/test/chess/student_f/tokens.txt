@@ -1,6 +1,6 @@
 # Found            : 718
 # MISSING          : 468
-# EXTRA            : 7
+# EXTRA            : 8
 # Follow (E)       : 59.9 %
 <	11:53:32
 !	11:53:33
@@ -65,7 +65,7 @@ div	11:58:26
 class	11:58:28
 =	11:58:28
 "	11:58:28
-cell	11:58:29	MISSING
+cell	11:58:29
 light	11:58:30
 "	11:58:30
 >	11:58:31
@@ -513,7 +513,7 @@ cell	12:08:20	MISSING
 cell	12:08:20	MISSING
 cell	12:08:20	MISSING
 cell	12:08:20	MISSING
-cell	12:08:20
+cell	12:08:20	MISSING
 cell	12:08:20
 cell	12:08:20
 cell	12:08:20
@@ -761,7 +761,6 @@ div	12:08:20
 =	12:08:20	MISSING
 =	12:08:20	MISSING
 =	12:08:20	MISSING
-=	12:08:20	MISSING
 =	12:08:20
 =	12:08:20
 =	12:08:20
@@ -793,6 +792,7 @@ div	12:08:20
 =	12:08:20
 =	12:08:20
 =	12:08:20
+=	12:08:20
 "	12:08:20	MISSING
 "	12:08:20	MISSING
 "	12:08:20	MISSING
@@ -853,7 +853,7 @@ div	12:08:20
 "	12:08:20	MISSING
 "	12:08:20	MISSING
 "	12:08:20	MISSING
-"	12:08:20	MISSING
+"	12:08:20
 "	12:08:20
 "	12:08:20
 "	12:08:20
@@ -998,7 +998,6 @@ img	12:17:42
 width	12:17:46
 :	12:17:46
 height	12:18:30	EXTRA*
-:	12:18:30	EXTRA*
 50	12:20:14
 %	12:20:15
 ;	12:20:15
@@ -1033,7 +1032,7 @@ png	12:25:37
 >	12:25:38
 class	12:26:40
 =	12:26:40
-"	12:26:40
+"	12:26:40	MISSING
 invert	12:26:41
 -	12:26:41
 color	12:26:42
@@ -1065,7 +1064,7 @@ handleClick	12:33:15
 element	12:33:31
 )	12:33:31
 {	12:33:31
-}	12:33:32	MISSING
+}	12:33:32
 element	12:35:29
 .	12:35:29
 style	12:35:30
@@ -1133,7 +1132,7 @@ of	12:45:12
 cells	12:45:13
 )	12:45:13
 {	12:45:13
-}	12:45:14
+}	12:45:14	MISSING
 cell	12:45:15
 .	12:45:15
 style	12:45:16
@@ -1144,7 +1143,7 @@ border	12:45:17
 "	12:45:17
 ;	12:45:17
 selectedPiece	12:51:24	MISSING
-=	12:51:25
+=	12:51:25	MISSING
 null	12:51:25	MISSING
 ;	12:51:26	MISSING
 if	12:52:09	MISSING
@@ -1162,7 +1161,7 @@ replaceChildren	12:52:19	MISSING
 (	12:52:20	MISSING
 selectedPiece	12:52:27	MISSING
 )	12:52:27	MISSING
-;	12:52:27	MISSING
+;	12:52:27
 selectedPiece	12:52:30	MISSING
 =	12:52:30	MISSING
 null	12:52:31	MISSING
@@ -1187,12 +1186,13 @@ children	12:53:32	MISSING
 [	12:53:32	MISSING
 0	12:53:32	MISSING
 ]	12:53:32	MISSING
-;	12:53:33
+;	12:53:33	MISSING
 }	12:53:34
 let	12:56:53	MISSING
 this	12:56:54	EXTRA*
 handleClick	12:56:55	EXTRA*
 chess	00:00:00	EXTRA
+:	00:00:00	EXTRA
 coloumns	00:00:00	EXTRA
 50	00:00:00	EXTRA
 '	00:00:00	EXTRA
