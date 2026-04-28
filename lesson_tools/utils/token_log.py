@@ -293,7 +293,7 @@ def _cosine_similarity_sparse(v1: Counter, v2: Counter) -> float:
 
 
 _CONTEXT_K = 18 
-_CONTEXT_DECAY         = 0.999
+_CONTEXT_DECAY         = 0.9
 _NEIGHBOR_BOOST        = 0
 _GHOST_MATCH_THRESHOLD = 0.6
 

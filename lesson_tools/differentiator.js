@@ -258,7 +258,7 @@ function _renderAligned(
 				}));
 			const lineGhosts = fileGhosts
 				.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
-				.map((g) => ({ ...g, pos: g.pos - lineStart }));
+				.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
 			const bgMark =
 				lineFileMarks &&
 				lineFileMarks.find(
@@ -300,7 +300,7 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 			}));
 		const lineGhosts = fileGhosts
 			.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
-			.map((g) => ({ ...g, pos: g.pos - lineStart }));
+			.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
 		const bgMark =
 			lineFileMarks &&
 			lineFileMarks.find(
@@ -448,10 +448,21 @@ function renderPanel(side, files, marks) {
 			let body;
 			if (alignment) {
 				body = _renderAligned(
-					sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name,
+					sourceText,
+					alignment,
+					fileMarks,
+					sideIdx,
+					lineFileMarks,
+					name,
 				);
 			} else if (hasMarks) {
-				body = _renderFlat(sourceText, fileMarks, lineFileMarks, side, name);
+				body = _renderFlat(
+					sourceText,
+					fileMarks,
+					lineFileMarks,
+					side,
+					name,
+				);
 			} else {
 				body = escHtml(sourceText);
 			}
@@ -627,7 +638,7 @@ const _GHOST_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
 
 function _renderGhostBlob(ghost, tokensTbl) {
 	const text = ghost.text;
-	const blobPos = ghost.pos;
+	const blobPos = ghost._abs_pos ?? ghost.pos;
 	let out = '<span class="diff-ghost">';
 	let lastEnd = 0;
 	_GHOST_TOKEN_RE.lastIndex = 0;
@@ -771,6 +782,21 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 			: -1;
 
 	const clickedCtx = thisInst ? _instContextVector(thisInst, side) : null;
+	const clickedCtxSlice = thisInst ? _ctxSlice(thisInst, side) : null;
+	const clickedWindowSet = clickedCtxSlice
+		? new Set([
+				...clickedCtxSlice.before.map((t) => (Array.isArray(t) ? t[0] : t)),
+				...clickedCtxSlice.after.map((t) => (Array.isArray(t) ? t[0] : t)),
+			])
+		: null;
+
+	const _fmtCtxTokenBold = (t) => {
+		const tok = Array.isArray(t) ? t[0] : t;
+		const isMatch = clickedWindowSet && clickedWindowSet.has(tok);
+		if (Array.isArray(t))
+			return `<span class="leo-ghost-tok"${isMatch ? ' style="font-weight:bold;text-decoration:underline"' : ""}>${escHtml(t[0])}</span>`;
+		return isMatch ? `<b><u>${escHtml(t)}</u></b>` : escHtml(t);
+	};
 
 	const labelClass = (inst) =>
 		inst.ghost
@@ -783,10 +809,11 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 						? "leo-row-extra-star"
 						: "";
 
-	const renderRow = (inst, sideName, highlight, score) => {
+	const renderRow = (inst, sideName, highlight, score, isSelf = false) => {
 		const ctx = _ctxSlice(inst, sideName);
-		const before = ctx ? ctx.before.map(_fmtCtxToken).join(" ") : "";
-		const after = ctx ? ctx.after.map(_fmtCtxToken).join(" ") : "";
+		const fmt = isSelf ? _fmtCtxToken : _fmtCtxTokenBold;
+		const before = ctx ? ctx.before.map(fmt).join(" ") : "";
+		const after = ctx ? ctx.after.map(fmt).join(" ") : "";
 		const lblColor = inst.ghost ? "#888" : _labelColor(inst.label);
 		const cls =
 			`leo-row ${labelClass(inst)}${highlight ? " leo-this" : ""}`.trim();
@@ -808,7 +835,7 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 	const renderSection = (list, sideName, anchorOrigIdxs) => {
 		if (sideName === side) {
 			if (thisIdx < 0 || thisIdx >= list.length) return "";
-			return renderRow(list[thisIdx], sideName, true, null);
+			return renderRow(list[thisIdx], sideName, true, null, true);
 		}
 		const scored = list.map((inst, i) => ({
 			inst,
@@ -845,7 +872,7 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 	const nTeacherSurv = teachers.filter((t) => !t.ghost).length;
 	const nTeacherGhost = teachers.length - nTeacherSurv;
 	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
-	let html = `<div class="leo-title">${tEsc} <span class="leo-sub">— ${nTeacherSurv} teacher${ghostNote} / ${students.length} student instances</span></div>`;
+	let html = "";
 	if (teachers.length) {
 		const anchors = side === "teacher" ? [thisIdx] : [matchedOtherIdx];
 		html += '<div class="leo-section-title">Teacher</div>';
@@ -877,11 +904,54 @@ function _fmtCtxToken(t) {
 }
 
 let _leoTip = null;
+let _leoTipBody = null;
+let _leoTipTitle = null;
 function _ensureLeoTooltip() {
 	if (_leoTip) return _leoTip;
 	_leoTip = document.createElement("div");
 	_leoTip.id = "leo-tooltip";
+
+	const header = document.createElement("div");
+	header.id = "leo-tooltip-header";
+	const dragHint = document.createElement("span");
+	dragHint.id = "leo-tooltip-drag-hint";
+	dragHint.textContent = "⠿";
+	header.appendChild(dragHint);
+	_leoTipTitle = document.createElement("span");
+	_leoTipTitle.id = "leo-tooltip-title";
+	header.appendChild(_leoTipTitle);
+	const closeBtn = document.createElement("button");
+	closeBtn.id = "leo-tooltip-close";
+	closeBtn.textContent = "×";
+	closeBtn.addEventListener("click", _hideLeoTooltip);
+	header.appendChild(closeBtn);
+
+	_leoTipBody = document.createElement("div");
+	_leoTipBody.id = "leo-tooltip-body";
+
+	_leoTip.appendChild(header);
+	_leoTip.appendChild(_leoTipBody);
 	document.body.appendChild(_leoTip);
+
+	header.addEventListener("mousedown", (e) => {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		const startX = e.clientX;
+		const startY = e.clientY;
+		const origLeft = parseInt(_leoTip.style.left) || 0;
+		const origTop = parseInt(_leoTip.style.top) || 0;
+		const onMove = (me) => {
+			_leoTip.style.left = `${origLeft + me.clientX - startX}px`;
+			_leoTip.style.top = `${origTop + me.clientY - startY}px`;
+		};
+		const onUp = () => {
+			document.removeEventListener("mousemove", onMove);
+			document.removeEventListener("mouseup", onUp);
+		};
+		document.addEventListener("mousemove", onMove);
+		document.addEventListener("mouseup", onUp);
+	});
+
 	return _leoTip;
 }
 
@@ -900,7 +970,7 @@ function _renderSimpleTooltip(token, mark) {
 	const tEsc = escHtml(token);
 	const label = mark.label || "matched";
 	const color = DIFF_LABEL_COLORS[label] || "#666";
-	let html = `<div class="leo-title"><span style="color:${color};font-weight:bold">${tEsc}</span> <span class="leo-sub">— ${escHtml(label)}</span></div>`;
+	let html = "";
 	if (mark.timestamp) {
 		html += `<div class="leo-row"><span class="leo-sub">teacher typed: ${escHtml(mark.timestamp)}</span></div>`;
 	}
@@ -927,8 +997,11 @@ function _showLeoTooltip(target) {
 		_clearLeoHighlights();
 		target.classList.add("leo-highlight-active");
 		_leoHighlighted.push(target);
-		tip.innerHTML = _renderSimpleTooltip(token, mark);
-		tip.style.display = "block";
+		const label = mark.label || "matched";
+		const color = DIFF_LABEL_COLORS[label] || "#666";
+		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
+		_leoTipBody.innerHTML = _renderSimpleTooltip(token, mark);
+		tip.style.display = "flex";
 		const r = target.getBoundingClientRect();
 		const tw = tip.offsetWidth;
 		const th = tip.offsetHeight;
@@ -942,8 +1015,18 @@ function _showLeoTooltip(target) {
 	}
 	_clearLeoHighlights();
 	_applyLeoHighlights(target, data, side, pos, ghostOffset);
-	tip.innerHTML = _renderLeoTooltip(token, data, side, pos, ghostOffset);
-	tip.style.display = "block";
+	const nTeacherSurv = data.teacher.filter((t) => !t.ghost).length;
+	const nTeacherGhost = data.teacher.length - nTeacherSurv;
+	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
+	_leoTipTitle.innerHTML = `${escHtml(token)} <span class="leo-sub">— ${nTeacherSurv} teacher${ghostNote} / ${data.student.length} student instances</span>`;
+	_leoTipBody.innerHTML = _renderLeoTooltip(
+		token,
+		data,
+		side,
+		pos,
+		ghostOffset,
+	);
+	tip.style.display = "flex";
 	const r = target.getBoundingClientRect();
 	const tw = tip.offsetWidth;
 	const th = tip.offsetHeight;
@@ -1001,10 +1084,7 @@ function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 
 document.addEventListener("mousedown", (ev) => {
 	if (ev.button !== 0) return;
-	if (
-		ev.target.closest &&
-		ev.target.closest(".code-aligned[contenteditable]")
-	)
+	if (ev.target.closest && ev.target.closest(".code-aligned[contenteditable]"))
 		return;
 	const mark = ev.target.closest && ev.target.closest(".leo-mark");
 	if (mark) {
@@ -1012,7 +1092,7 @@ document.addEventListener("mousedown", (ev) => {
 		_showLeoTooltip(mark);
 		return;
 	}
-	if (_leoTip && _leoTip.style.display === "block") {
+	if (_leoTip && _leoTip.style.display === "flex") {
 		if (ev.target.closest && ev.target.closest("#leo-tooltip")) return;
 		_hideLeoTooltip();
 	}
