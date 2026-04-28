@@ -1,7 +1,7 @@
-# Found            : 452
-# MISSING          : 7
+# Found            : 450
+# MISSING          : 9
 # EXTRA            : 3
-# Follow (E)       : 97.7 %
+# Follow (E)       : 96.7 %
 <	10:12:09
 !	10:12:12
 DOCTYPE	10:12:14
@@ -87,7 +87,7 @@ height	10:20:07
 :	10:20:07
 200px	10:20:09
 ;	10:20:09
-flex	10:21:58	MISSING
+flex	10:21:58
 -	10:21:58
 direction	10:22:01
 :	10:22:01
@@ -239,22 +239,24 @@ color	10:44:25
 black	10:44:26
 ;	10:44:26
 display	10:47:38	MISSING
-:	10:47:38
-flex	10:47:39
-;	10:47:39
+:	10:47:38	MISSING
+flex	10:47:39	MISSING
+;	10:47:39	MISSING
 margin	10:48:02
 :	10:48:02
 0px	10:48:03
 1px	10:48:07
 ;	10:48:07
 width	10:50:08	EXTRA*
+:	10:50:08	EXTRA*
 200px	10:50:08	EXTRA*
-:	10:50:09	EXTRA*
-;	10:50:09	EXTRA*
+;	10:50:08	EXTRA*
 background	10:50:09	EXTRA*
 -	10:50:09	EXTRA*
 color	10:50:09	EXTRA*
+:	10:50:09	EXTRA*
 red	10:50:09	EXTRA*
+;	10:50:09	EXTRA*
 bar	10:50:10
 .	10:50:10
 style	10:50:11

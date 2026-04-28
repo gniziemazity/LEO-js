@@ -873,15 +873,14 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 	const nTeacherGhost = teachers.length - nTeacherSurv;
 	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
 	let html = "";
-	if (teachers.length) {
-		const anchors = side === "teacher" ? [thisIdx] : [matchedOtherIdx];
-		html += '<div class="leo-section-title">Teacher</div>';
-		html += renderSection(teachers, "teacher", anchors);
-	}
-	if (students.length) {
-		const anchors = side === "student" ? [thisIdx] : [matchedOtherIdx];
-		html += '<div class="leo-section-title">Student</div>';
-		html += renderSection(students, "student", anchors);
+	const ordered = side === "student" ? ["student", "teacher"] : ["teacher", "student"];
+	for (const sName of ordered) {
+		const list = sName === "teacher" ? teachers : students;
+		if (!list.length) continue;
+		const anchors = sName === side ? [thisIdx] : [matchedOtherIdx];
+		const title = sName === "teacher" ? "Teacher" : "Student";
+		html += `<div class="leo-section-title">${title}</div>`;
+		html += renderSection(list, sName, anchors);
 	}
 	return html;
 }

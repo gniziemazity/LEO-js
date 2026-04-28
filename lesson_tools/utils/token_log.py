@@ -292,8 +292,8 @@ def _cosine_similarity_sparse(v1: Counter, v2: Counter) -> float:
     return dot / (n1 * n2)
 
 
-_CONTEXT_K = 18 
-_CONTEXT_DECAY         = 0.9
+_CONTEXT_K = 10
+_CONTEXT_DECAY         = 0.90
 _NEIGHBOR_BOOST        = 0
 _GHOST_MATCH_THRESHOLD = 0.6
 
@@ -506,25 +506,44 @@ def _compute_per_token_matching(
         s_com = [x for x in s_list if x['is_comment']]
 
         n_total += len(t_out)
+        n_real = len(t_out)
         s_idxs = [x['seq_idx'] for x in s_out]
-        t_surv_idxs = [
+        real_idxs = [
             seq_idx_to_aug[x['seq_idx']] if seq_idx_to_aug else x['seq_idx']
             for x in t_out
         ]
+        ghost_idxs = [g['seq_idx_aug'] for g in t_ghost]
+        t_all_idxs = real_idxs + ghost_idxs
 
         res = _locate_token(
-            s_idxs, t_surv_idxs,
+            s_idxs, t_all_idxs,
             student_seq, teacher_match_seq, context_k,
         )
-        pairs = list(res.get('pairs', []))
-        missing_to = res['missing_t']
-        matched_s = {si for si, _ in pairs}
-        extra_so = {i for i in range(len(s_out)) if i not in matched_s}
+        all_pairs = list(res.get('pairs', []))
+        sim = res.get('sim', [])
+
+        real_pairs: List[Tuple[int, int]] = []
+        ghost_pairs: List[Tuple[int, int]] = []
+        for si, tj in all_pairs:
+            if tj < n_real:
+                real_pairs.append((si, tj))
+            else:
+                gj = tj - n_real
+                cos = sim[si][tj] if sim and si < len(sim) and tj < len(sim[si]) else 0.0
+                if cos >= _GHOST_MATCH_THRESHOLD:
+                    ghost_pairs.append((si, gj))
+
+        matched_real_t = {tj for _, tj in real_pairs}
+        missing_to = {j for j in range(n_real) if j not in matched_real_t}
+        matched_to_real_s = {si for si, _ in real_pairs}
+        extra_so = {i for i in range(len(s_out)) if i not in matched_to_real_s}
 
         n_missing += len(missing_to)
 
-        teacher_match_idx: Dict[int, int] = {tj: si for si, tj in pairs}
-        student_match_idx: Dict[int, int] = {si: tj for si, tj in pairs}
+        teacher_match_idx: Dict[int, int] = {tj: si for si, tj in real_pairs}
+        student_real_match_idx: Dict[int, int] = {si: tj for si, tj in real_pairs}
+        ghost_match_to_s: Dict[int, int] = {gj: si for si, gj in ghost_pairs}
+        student_ghost_match: Dict[int, int] = {si: gj for si, gj in ghost_pairs}
 
         for i, oc in enumerate(t_out):
             if i in missing_to:
@@ -536,6 +555,13 @@ def _compute_per_token_matching(
                 student_colors[oc['file']][tok][oc['file_idx']] = 'extra'
         for oc in s_com:
             student_colors[oc['file']][tok][oc['file_idx']] = 'comment'
+
+        def _student_match_idx(i: int) -> Optional[int]:
+            if i in student_real_match_idx:
+                return student_real_match_idx[i]
+            if i in student_ghost_match:
+                return n_real + student_ghost_match[i]
+            return None
 
         has_label = bool(missing_to) or bool(extra_so) or bool(t_ghost)
         if has_label:
@@ -553,14 +579,16 @@ def _compute_per_token_matching(
                      'blob_offset': inst['blob_offset'],
                      'ghost': True,
                      'del_ts': inst['del_ts'],
-                     'seq_idx_aug': inst['seq_idx_aug']}
-                    for inst in t_ghost
+                     'seq_idx_aug': inst['seq_idx_aug'],
+                     **({'match_idx': ghost_match_to_s[gj]}
+                        if gj in ghost_match_to_s else {})}
+                    for gj, inst in enumerate(t_ghost)
                 ],
                 'student': [
                     {'file': oc['file'], 'pos': oc['pos'], 'seq_idx': oc['seq_idx'],
                      'label': 'extra' if i in extra_so else None,
-                     **({'match_idx': student_match_idx[i]}
-                        if i in student_match_idx else {})}
+                     **({'match_idx': _student_match_idx(i)}
+                        if _student_match_idx(i) is not None else {})}
                     for i, oc in enumerate(s_out)
                 ],
             }
@@ -1228,13 +1256,47 @@ def _apply_leo_ghost_star_to_diff_marks(
         if not extras or not ghosts:
             continue
 
+        def _promote(s_inst: dict, g_inst: dict) -> None:
+            s_inst['label'] = 'extra_star'
+            mark = mark_index.get(
+                (s_inst.get('file'), s_inst.get('pos'), tok),
+            )
+            if mark is not None:
+                mark['label'] = 'extra_star'
+                del_ts = g_inst.get('del_ts')
+                if del_ts is not None:
+                    mark['removal_ts'] = ts_to_local(del_ts)
+
+        pre_matched_ghost_local: set = set()
+        unmatched_extras: List[Tuple[int, dict]] = []
+        for i, s in extras:
+            midx = s.get('match_idx')
+            if midx is not None and 0 <= midx < len(teachers) and teachers[midx].get('ghost'):
+                _promote(s, teachers[midx])
+                for g_local, (j, _) in enumerate(ghosts):
+                    if j == midx:
+                        pre_matched_ghost_local.add(g_local)
+                        break
+            else:
+                unmatched_extras.append((i, s))
+
+        if not unmatched_extras:
+            continue
+        remaining_ghosts = [
+            (g_local, j, t)
+            for g_local, (j, t) in enumerate(ghosts)
+            if g_local not in pre_matched_ghost_local
+        ]
+        if not remaining_ghosts:
+            continue
+
         s_ctxs = [
             _context_vector(student_seq, s.get('seq_idx'), k, decay, boost)
-            for _, s in extras
+            for _, s in unmatched_extras
         ]
         g_ctxs = [
-            _context_vector(teacher_match_seq, g.get('seq_idx_aug'), k, decay, boost)
-            for _, g in ghosts
+            _context_vector(teacher_match_seq, t.get('seq_idx_aug'), k, decay, boost)
+            for _, _, t in remaining_ghosts
         ]
         sim = [
             [_cosine_similarity_sparse(sc, gc) for gc in g_ctxs]
@@ -1248,19 +1310,11 @@ def _apply_leo_ghost_star_to_diff_marks(
             cos = sim[s_local][g_local]
             if cos < _GHOST_MATCH_THRESHOLD:
                 continue
-            s_idx, s_inst = extras[s_local]
-            g_idx, g_inst = ghosts[g_local]
-            s_inst['label']     = 'extra_star'
+            s_idx, s_inst = unmatched_extras[s_local]
+            _, g_idx, g_inst = remaining_ghosts[g_local]
             s_inst['match_idx'] = g_idx
             g_inst['match_idx'] = s_idx
-            mark = mark_index.get(
-                (s_inst.get('file'), s_inst.get('pos'), tok),
-            )
-            if mark is not None:
-                mark['label'] = 'extra_star'
-                del_ts = g_inst.get('del_ts')
-                if del_ts is not None:
-                    mark['removal_ts'] = ts_to_local(del_ts)
+            _promote(s_inst, g_inst)
 
 
 def _build_assignments_for_post_pass(

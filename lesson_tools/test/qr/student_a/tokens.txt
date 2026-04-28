@@ -1,7 +1,7 @@
-# Found            : 587
-# MISSING          : 4
+# Found            : 586
+# MISSING          : 5
 # EXTRA            : 3
-# Follow (E)       : 98.7 %
+# Follow (E)       : 98.4 %
 <	09:14:23
 <	09:14:23
 <	09:14:23
@@ -272,10 +272,10 @@ var	09:24:34
 theme	09:24:40
 )	09:24:41
 ;	09:24:42
-:	09:24:46	EXTRA*
 background	09:24:46	EXTRA*
 -	09:24:46	EXTRA*
 color	09:24:46	EXTRA*
+:	09:24:46	EXTRA*
 red	09:24:46	EXTRA*
 ;	09:24:46	EXTRA*
 position	09:24:56
@@ -550,6 +550,7 @@ stop	09:38:57
 (	09:38:58
 )	09:38:59
 ;	09:39:00
+;	09:39:03	EXTRA*
 const	09:39:10
 place	09:39:15
 =	09:39:17
@@ -574,7 +575,7 @@ left	09:40:03
 toggleScanner	09:40:16
 (	09:40:17
 )	09:40:18
-;	09:40:19
+;	09:40:19	MISSING
 mapContainer	09:40:33
 .	09:40:34
 style	09:40:39

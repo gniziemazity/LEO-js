@@ -1,7 +1,7 @@
-# Found            : 1072
-# MISSING          : 30
+# Found            : 1070
+# MISSING          : 32
 # EXTRA            : 23
-# Follow (E)       : 97.3 %
+# Follow (E)       : 96.9 %
 <	09:34:18
 !	09:34:18
 DOCTYPE	09:34:25
@@ -136,7 +136,7 @@ style	10:01:13
 width	10:01:53
 :	10:01:53
 :	10:01:53
-;	10:01:53
+;	10:01:53	MISSING
 ;	10:01:53
 height	10:01:53
 50px	10:01:53
@@ -295,6 +295,7 @@ board	10:19:32
 }	10:19:37
 width	10:19:39
 :	10:19:39
+400px	10:23:07	EXTRA*
 box	10:23:51
 -	10:23:51
 sizing	10:23:52
@@ -322,22 +323,23 @@ wrap	10:25:52
 :	10:25:52
 wrap	10:25:53
 ;	10:25:53
+;	10:26:42	EXTRA*
 .	10:28:16
 light	10:28:17
 {	10:28:18
-}	10:28:18	MISSING
+}	10:28:18
 background	10:28:24
 -	10:28:24
 color	10:28:25
 :	10:28:25
 white	10:28:26
 ;	10:28:27
-.	10:28:28	MISSING
+.	10:28:28
 dark	10:28:29
-{	10:28:30	MISSING
-}	10:28:30
+{	10:28:30
+}	10:28:30	MISSING
 background	10:28:44
--	10:28:44	MISSING
+-	10:28:44
 color	10:28:45
 :	10:28:45	MISSING
 black	10:28:46
@@ -1078,14 +1080,15 @@ div	10:30:31
 "	10:30:31
 "	10:30:31
 "	10:30:31
-.	10:39:22
+;	10:36:49	EXTRA*
+.	10:39:22	MISSING
 left	10:39:23	MISSING
 -	10:39:23	MISSING
 offset	10:39:25	MISSING
-{	10:39:26
+{	10:39:26	MISSING
 }	10:39:26
 margin	10:39:29	MISSING
--	10:39:29
+-	10:39:29	MISSING
 left	10:39:30	MISSING
 :	10:39:30
 25px	10:39:32	MISSING
@@ -1102,9 +1105,8 @@ offset	10:40:42	MISSING
 -	10:40:46	MISSING
 left	10:40:46	MISSING
 offset	10:40:46	MISSING
-400px	10:41:01	EXTRA*
 425px	10:41:03	MISSING
-;	10:41:03
+;	10:41:03	MISSING
 /	00:00:00	COMMENT	EXTRA
 /	00:00:00	COMMENT	EXTRA
 /	00:00:00	COMMENT	EXTRA

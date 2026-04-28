@@ -1,7 +1,7 @@
-# Found            : 1098
-# MISSING          : 4
+# Found            : 1097
+# MISSING          : 5
 # EXTRA            : 1
-# Follow (E)       : 99.2 %
+# Follow (E)       : 99.0 %
 <	09:34:18
 !	09:34:18
 DOCTYPE	09:34:25
@@ -313,7 +313,6 @@ border	10:24:02	COMMENT
 *	10:24:02	COMMENT
 /	10:24:02	COMMENT
 432px	10:24:27	EXTRA*
-;	10:24:27	EXTRA*
 display	10:25:49
 :	10:25:49
 flex	10:25:49
@@ -324,7 +323,7 @@ wrap	10:25:52
 :	10:25:52
 wrap	10:25:53
 ;	10:25:53
-:	10:26:42	EXTRA*
+;	10:26:42	EXTRA*
 .	10:28:16
 light	10:28:17
 {	10:28:18
@@ -1081,10 +1080,12 @@ div	10:30:31
 "	10:30:31
 "	10:30:31
 "	10:30:31
--	10:36:49	EXTRA*
 background	10:36:49	EXTRA*
+-	10:36:49	EXTRA*
 color	10:36:49	EXTRA*
+:	10:36:49	EXTRA*
 black	10:36:49	EXTRA*
+;	10:36:49	EXTRA*
 .	10:39:22
 left	10:39:23
 -	10:39:23
@@ -1110,5 +1111,5 @@ offset	10:40:42
 left	10:40:46
 offset	10:40:46
 425px	10:41:03	MISSING
-;	10:41:03
+;	10:41:03	MISSING
 Styling	00:00:00	COMMENT	EXTRA
