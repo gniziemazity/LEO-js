@@ -17,14 +17,12 @@ from utils.token_log import (
 
 _TEST = _ROOT / "test"
 
-# (dir_name, has_css, regen_reco)
-# Students are auto-discovered from student_* subdirectories — no hardcoded lists needed.
 _CASES = [
-    ("wall",    True,  True),
-    ("chess",   True,  True),
-    ("js",      True,  True),
-    ("qr",      True,  True),
-    ("sorting", True,  True),
+    ("wall",    True),
+    ("chess",   True),
+    ("js",      True),
+    ("qr",      True),
+    ("sorting", True),
 ]
 
 _CODE_EXTS = {".html", ".htm", ".css", ".js"}
@@ -68,7 +66,7 @@ def _collect_student_files(student_dir: Path) -> dict:
     }
 
 
-def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
+def regen_teacher_tokens(case_dir: Path) -> None:
     log_path = case_dir / "log.json"
     if not log_path.exists():
         print(f"  SKIP (no log.json): {case_dir.name}")
@@ -76,7 +74,7 @@ def regen_teacher_tokens(case_dir: Path, has_css: bool) -> None:
 
     events = _load_events(log_path)
     n_typed, n_removed, n_unique = _write_teacher_tokens_file(
-        events, case_dir / "tokens.txt", has_css=has_css,
+        events, case_dir / "tokens.txt",
     )
     print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {n_unique} unique)")
 
@@ -113,11 +111,10 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         print(f"  SKIP (no code files): {case_dir.name}/{student_name}")
         return
 
-    removal_ts_by_token = {
-        tok: removal_ts
-        for tok, _, _, is_rem, removal_ts in teacher_entries
-        if is_rem and removal_ts
-    }
+    removal_ts_by_token: dict[str, list[str]] = {}
+    for tok, _, _, is_rem, removal_ts in teacher_entries:
+        if is_rem and removal_ts:
+            removal_ts_by_token.setdefault(tok, []).append(removal_ts)
 
     log_path = case_dir / "log.json"
     events = _load_events(log_path) if log_path.exists() else None
@@ -137,7 +134,7 @@ def regen_student(case_dir: Path, student_name: str) -> None:
     if events:
         _add_log_metadata(diff_marks, events, stu_files, teacher_files=teacher_files)
 
-    all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_extra_star = (
+    all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
         _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
     )
 
@@ -177,11 +174,11 @@ def regen_student(case_dir: Path, student_name: str) -> None:
 def main():
     print("Regenerating test fixtures...\n")
 
-    for dir_name, has_css, regen_reco in _CASES:
+    for dir_name, regen_reco in _CASES:
         case_dir = _TEST / dir_name
         print(f"[{dir_name}]")
 
-        regen_teacher_tokens(case_dir, has_css)
+        regen_teacher_tokens(case_dir)
 
         if regen_reco:
             regen_reconstructed(case_dir)

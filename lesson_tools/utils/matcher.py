@@ -23,7 +23,7 @@ Quick start
 ... )  # algorithm defaults to 'leo_star'
 
 Algorithms (each plain method has a `_star` variant that promotes
-``extra`` → ``extra_star`` for tokens whose context resembles a token the
+``extra`` → ``ghost_extra`` for tokens whose context resembles a token the
 teacher typed and later deleted; star variants require a keylog):
 
 'leo_star' / 'leo'   Per-token Hungarian matching on cosine-similar contexts.
@@ -99,7 +99,7 @@ def compare(
         (default ``'leo_star'``).
     keylog_events:
         Optional raw keylog event list (loaded from ``log.json``). Required
-        for any ``*_star`` algorithm to actually promote ``extra_star``.
+        for any ``*_star`` algorithm to actually promote ``ghost_extra``.
     keylog_file:
         Optional path to a ``log.json`` file. When given, the teacher's code
         is reconstructed from it and ``teacher`` is ignored.

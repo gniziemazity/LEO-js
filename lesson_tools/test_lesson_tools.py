@@ -1,5 +1,7 @@
 import json
+import random
 import sys
+import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -14,13 +16,32 @@ from utils.similarity_measures import (
     reconstruct_tokens_from_keylog_full,
 )
 from utils.token_log import (
-    _build_contextual_diff_marks,
+    _add_log_metadata,
+    _assemble_diff_marks,
+    _build_git_diff_marks,
     _build_lcs_token_diff_marks,
-    _apply_ghost_star_to_colors,
-    _apply_ghost_star_to_diff_marks,
+    _build_leo_diff_marks,
+    _build_lev_token_diff_marks,
+    _build_ro_diff_marks,
     _parse_teacher_tokens,
-    _CONTEXT_K,
+    _split_tokens_by_comment,
 )
+
+
+def _student_labels(diff_marks: dict, tok: str) -> list:
+    la = diff_marks.get('leo_assignments', {}).get('tokens', {})
+    return [e.get('label') for e in la.get(tok, {}).get('student', [])]
+
+
+def _teacher_labels(diff_marks: dict, tok: str) -> list:
+    la = diff_marks.get('leo_assignments', {}).get('tokens', {})
+    entries = la.get(tok, {}).get('teacher', [])
+    return [e.get('label') for e in entries if not e.get('ghost')]
+
+
+def _student_marks(diff_marks: dict, fname: str, tok: str) -> list:
+    return [m for m in diff_marks.get('student_files', {}).get(fname, [])
+            if m.get('token') == tok]
 
 
 def _load_events(log_path: Path) -> list:
@@ -62,9 +83,9 @@ def _parse_student_tokens_file(path: Path):
     return headers, entries
 
 
-def _build_token_occurrences(events: list, has_css: bool) -> list:
+def _build_token_occurrences(events: list) -> list:
     kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
-        reconstruct_tokens_from_keylog_full(events, has_css=has_css)
+        reconstruct_tokens_from_keylog_full(events)
     )
 
     occ = []
@@ -100,14 +121,13 @@ class _ReconstructionBase:
     log_file:           Path = None
     reconstructed_file: Path = None
     tokens_file:        Path = None
-    has_css:            bool = True
 
     @classmethod
     def setUpClass(cls):
         cls.events = _load_events(cls.log_file)
         cls.headers, cls.expected = _parse_tokens_file(cls.tokens_file)
-        cls.occ = _build_token_occurrences(cls.events, cls.has_css)
-        cls.kw_ts, *_ = reconstruct_tokens_from_keylog_full(cls.events, has_css=cls.has_css)
+        cls.occ = _build_token_occurrences(cls.events)
+        cls.kw_ts, *_ = reconstruct_tokens_from_keylog_full(cls.events)
 
     @classmethod
     def tearDownClass(cls):
@@ -198,7 +218,7 @@ class _StudentBase:
         expected = [(tok, ts, frozenset(flags)) for tok, ts, flags in self.expected]
         self.assertEqual(actual, expected)
 
-    def test_extra_star_timestamps(self):
+    def test_ghost_extra_timestamps(self):
         for tok, ts, flags in self.raw_expected:
             if flags == {'EXTRA*'}:
                 allowed = self.removal_ts_by_token.get(tok)
@@ -213,31 +233,30 @@ class TestChessBoardReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'wall' / 'log.json'
     reconstructed_file = _TEST / 'wall' / 'reconstructed.html'
     tokens_file        = _TEST / 'wall' / 'tokens.txt'
-    has_css            = True
 
 
-class TestChessBoardStudentATokens(_StudentBase, unittest.TestCase):
+class TestChessBoardStudent78Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'wall' / 'student_a' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_78' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_78' / 'tokens.txt'
 
 
-class TestChessBoardStudentBTokens(_StudentBase, unittest.TestCase):
+class TestChessBoardStudent74Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / 'student_b' / 'index.html'
-    tokens_file         = _TEST / 'wall' / 'student_b' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_74' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_74' / 'tokens.txt'
 
 
-class TestChessBoardStudentCTokens(_StudentBase, unittest.TestCase):
+class TestChessBoardStudent80Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / 'student_c' / 'index.html'
-    tokens_file         = _TEST / 'wall' / 'student_c' / 'tokens.txt'
+    student_html        = _TEST / 'wall' / 'student_80' / 'index.html'
+    tokens_file         = _TEST / 'wall' / 'student_80' / 'tokens.txt'
 
 
-class TestChessBoardStudentCDiffMarks(unittest.TestCase):
+class TestChessBoardStudent80DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.diff_marks = _load_json(_TEST / 'wall' / 'student_c' / 'diff_marks_leo_star.json')
+        cls.diff_marks = _load_json(_TEST / 'wall' / 'student_80' / 'diff_marks_leo_star.json')
         cls.teacher_occs = cls.diff_marks['teacher_files'][
             next(iter(cls.diff_marks['teacher_files']))
         ]
@@ -271,7 +290,7 @@ class TestChessBoardStudentCDiffMarks(unittest.TestCase):
 
     def test_student_extra_example(self):
         labels_400px = [o['label'] for o in self.student_occs if o['token'] == '400px']
-        self.assertEqual(labels_400px, ['extra_star'])
+        self.assertEqual(labels_400px, ['extra'])
 
     def test_student_div_comment_count(self):
         div_comment = [o for o in self.student_occs if o['token'] == 'div' and o['label'] == 'comment']
@@ -287,313 +306,272 @@ class TestChessGameReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'chess' / 'log.json'
     reconstructed_file = _TEST / 'chess' / 'reconstructed.html'
     tokens_file        = _TEST / 'chess' / 'tokens.txt'
-    has_css            = True
 
 
-class TestChessGameStudentATokens(_StudentBase, unittest.TestCase):
+class TestChessGameStudent23Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'chess' / 'student_a' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_23' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_23' / 'tokens.txt'
 
 
-class TestChessGameStudentBTokens(_StudentBase, unittest.TestCase):
+class TestChessGameStudent50Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / 'student_b' / 'index.html'
-    tokens_file         = _TEST / 'chess' / 'student_b' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_50' / 'index.html'
+    tokens_file         = _TEST / 'chess' / 'student_50' / 'tokens.txt'
 
 
-class TestChessGameStudentBDiffMarks(unittest.TestCase):
+class TestChessGameStudent50DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        chess = _TEST / 'chess'
-        cls.events = _load_events(chess / 'log.json')
-        stu_files = {'index.html': chess / 'student_b' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
-        _, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
-        )
-        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
-        cls.student_index = cls.sf_colors.get('index.html', {})
+        cls.dm = _load_json(_TEST / 'chess' / 'student_50' / 'diff_marks_leo_star.json')
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
+    def test_this_is_ghost_extra(self):
+        self.assertEqual(_student_labels(self.dm, 'this'), ['ghost_extra'])
 
-    def test_this_is_extra_star(self):
-        self.assertEqual(self.student_index.get('this'), ['extra_star'])
-
-    def test_onclick_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('onclick', [])
+    def test_onclick_first_occurrence_is_ghost_extra(self):
+        labels = _student_labels(self.dm, 'onclick')
         self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
+        self.assertEqual(labels[0], 'ghost_extra')
 
-    def test_handleclick_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('handleClick', [])
+    def test_handleclick_first_occurrence_is_ghost_extra(self):
+        labels = _student_labels(self.dm, 'handleClick')
         self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
+        self.assertEqual(labels[0], 'ghost_extra')
 
 
-class TestJSStudentATokens(_StudentBase, unittest.TestCase):
+class TestJSStudent78Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'js' / 'tokens.txt'
-    student_html        = _TEST / 'js' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'js' / 'student_a' / 'tokens.txt'
+    student_html        = _TEST / 'js' / 'student_78' / 'index.html'
+    tokens_file         = _TEST / 'js' / 'student_78' / 'tokens.txt'
 
 
-class TestJSStudentBTokens(_StudentBase, unittest.TestCase):
+class TestJSStudent35Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'js' / 'tokens.txt'
-    student_html        = _TEST / 'js' / 'student_b' / 'index.html'
-    tokens_file         = _TEST / 'js' / 'student_b' / 'tokens.txt'
+    student_html        = _TEST / 'js' / 'student_35' / 'index.html'
+    tokens_file         = _TEST / 'js' / 'student_35' / 'tokens.txt'
 
 
 class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'js' / 'log.json'
     reconstructed_file = _TEST / 'js' / 'reconstructed.html'
     tokens_file        = _TEST / 'js' / 'tokens.txt'
-    has_css            = True
 
 
 class TestQRCodeReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'qr' / 'log.json'
     reconstructed_file = _TEST / 'qr' / 'reconstructed.html'
     tokens_file        = _TEST / 'qr' / 'tokens.txt'
-    has_css            = True
 
 
 class TestSortingReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'sorting' / 'log.json'
     reconstructed_file = _TEST / 'sorting' / 'reconstructed.html'
     tokens_file        = _TEST / 'sorting' / 'tokens.txt'
-    has_css            = True
 
 
-class TestSortingStudentATokens(_StudentBase, unittest.TestCase):
+class TestSortingStudent23Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'sorting' / 'tokens.txt'
-    student_html        = _TEST / 'sorting' / 'student_a' / 'index.html'
-    tokens_file         = _TEST / 'sorting' / 'student_a' / 'tokens.txt'
+    student_html        = _TEST / 'sorting' / 'student_23' / 'index.html'
+    tokens_file         = _TEST / 'sorting' / 'student_23' / 'tokens.txt'
 
 
-class TestChessGameStudentCDiffMarks(unittest.TestCase):
+class TestChessGameStudent20DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        chess = _TEST / 'chess'
-        cls.events = _load_events(chess / 'log.json')
-        stu_files = {'index.html': chess / 'student_c' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
-        _, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
-        )
-        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
-        cls.student_index = cls.sf_colors.get('index.html', {})
+        cls.dm = _load_json(_TEST / 'chess' / 'student_20' / 'diff_marks_leo_star.json')
 
-    def test_handleclick_extra_is_extra_star(self):
-        labels = self.student_index.get('handleClick', [])
+    def test_handleclick_extra_is_ghost_extra(self):
+        labels = _student_labels(self.dm, 'handleClick')
         self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
+        self.assertEqual(labels[0], 'ghost_extra')
 
 
-class TestChessGameStudentETokens(_StudentBase, unittest.TestCase):
+class TestChessGameStudent35Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / 'student_e' / 'index.html'
-    tokens_file         = _TEST / 'chess' / 'student_e' / 'tokens.txt'
+    student_html        = _TEST / 'chess' / 'student_35' / '123456.index.html'
+    tokens_file         = _TEST / 'chess' / 'student_35' / 'tokens.txt'
 
 
-class TestChessGameStudentEDiffMarks(unittest.TestCase):
+class TestChessGameStudent35DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        chess = _TEST / 'chess'
-        cls.events = _load_events(chess / 'log.json')
-        stu_files = {'index.html': chess / 'student_e' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
-        cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
-        )
-        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
-        cls.student_index = cls.sf_colors.get('index.html', {})
-        cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
+        cls.dm = _load_json(_TEST / 'chess' / 'student_35' / 'diff_marks_leo_star.json')
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def test_height_is_found(self):
-        self.assertNotIn('height', self.student_index)
-
-    def test_50px_has_extra_star(self):
-        labels = self.student_index.get('50px', [])
-        self.assertGreaterEqual(len(labels), 2)
-        self.assertIn('extra_star', labels)
-
-    def test_board_is_extra(self):
-        labels = self.student_index.get('Board', [])
+    def test_handleclick_is_ghost_extra(self):
+        labels = _student_labels(self.dm, 'handleClick')
         self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra')
+        self.assertEqual(labels[0], 'ghost_extra')
 
-    def test_comment_tokens_are_comment(self):
-        for tok in ('styling', 'by', 'ID'):
-            labels = self.student_index.get(tok, [])
-            self.assertTrue(labels, f'expected at least one occurrence of {tok!r}')
-            self.assertTrue(all(l == 'comment' for l in labels),
-                            f'{tok!r} labels: {labels}')
-
-    def test_script_is_missing_from_teacher(self):
-        labels = self.teacher_index.get('script', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'missing')
-
-    def test_handleclick_is_missing_from_teacher(self):
-        labels = self.teacher_index.get('handleClick', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'missing')
+    def test_handleclick_real_teacher_occurrences_are_matched(self):
+        labels = _teacher_labels(self.dm, 'handleClick')
+        self.assertEqual(labels, [None, None])
 
 
-class TestChessGameStudentFTokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / 'student_f' / 'index.html'
-    tokens_file         = _TEST / 'chess' / 'student_f' / 'tokens.txt'
-
-
-class TestChessGameStudentFDiffMarks(unittest.TestCase):
+class TestSortingStudent66DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        chess = _TEST / 'chess'
-        cls.events = _load_events(chess / 'log.json')
-        stu_files = {'index.html': chess / 'student_f' / 'index.html'}
-        teacher_files = {'reconstructed.html': chess / 'reconstructed.html'}
-        cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
-        )
-        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
-        cls.student_index = cls.sf_colors.get('index.html', {})
-        cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
+        cls.dm = _load_json(_TEST / 'sorting' / 'student_66' / 'diff_marks_leo_star.json')
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def test_onclick_is_found(self):
-        self.assertNotIn('onclick', self.student_index)
-
-    def test_onclick_is_found_by_teacher(self):
-        self.assertNotIn('onclick', self.teacher_index)
-
-    def test_handleclick_is_extra_star(self):
-        labels = self.student_index.get('handleClick', [])
+    def test_width_first_occurrence_is_ghost_extra(self):
+        labels = _student_labels(self.dm, 'width')
         self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
-
-
-class TestSortingStudentBDiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        sorting = _TEST / 'sorting'
-        cls.events = _load_events(sorting / 'log.json')
-        stu_files = {'index.html': sorting / 'student_b' / 'index.html'}
-        teacher_files = {'reconstructed.html': sorting / 'reconstructed.html'}
-        cls.tf_colors, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
-        )
-        _apply_ghost_star_to_colors(cls.sf_colors, cls.events)
-        cls.student_index = cls.sf_colors.get('index.html', {})
-        cls.teacher_index = cls.tf_colors.get('reconstructed.html', {})
-
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def test_width_first_occurrence_is_extra_star(self):
-        labels = self.student_index.get('width', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
+        self.assertEqual(labels[0], 'ghost_extra')
 
     def test_width_second_occurrence_is_matched(self):
-        labels = self.student_index.get('width', [])
+        labels = _student_labels(self.dm, 'width')
         self.assertGreaterEqual(len(labels), 2)
         self.assertIsNone(labels[1])
 
-    def test_200px_first_occurrence_is_matched(self):
-        labels = self.student_index.get('200px', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertIsNone(labels[0])
+    def test_200px_split_is_globally_optimal(self):
+        # Student typed both `width: 200px;` (which the teacher had typed and
+        # deleted) and `height: 200px;` (which the teacher kept). The joint
+        # Hungarian must pair the first 200px with the ghost (ghost_extra) and
+        # the second with the surviving teacher token. See
+        # ideas/differentiator-algorithm.md §7.1 for the design rationale.
+        labels = _student_labels(self.dm, '200px')
+        self.assertEqual(labels, ['ghost_extra', None])
 
-    def test_200px_second_occurrence_is_extra_star(self):
-        labels = self.student_index.get('200px', [])
-        self.assertGreaterEqual(len(labels), 2)
-        self.assertEqual(labels[1], 'extra_star')
+    def test_background_color_student_is_matched(self):
+        self.assertEqual(_student_labels(self.dm, 'background-color'), [])
 
-    def test_background_color_student_is_found(self):
-        self.assertNotIn('background-color', self.student_index)
+    def test_red_is_ghost_extra(self):
+        self.assertEqual(_student_labels(self.dm, 'red'), ['ghost_extra'])
 
-    def test_red_is_extra_star(self):
-        self.assertEqual(self.student_index.get('red'), ['extra_star'])
-
-    def test_background_color_teacher_is_found(self):
-        self.assertNotIn('background-color', self.teacher_index)
+    def test_background_color_teacher_is_matched(self):
+        self.assertEqual(_teacher_labels(self.dm, 'background-color'), [])
 
     def test_exactly_one_function_is_missing(self):
-        labels = self.teacher_index.get('function', [])
+        labels = _teacher_labels(self.dm, 'function')
         self.assertGreaterEqual(len(labels), 2)
         self.assertEqual(labels.count('missing'), 1)
         self.assertEqual(labels.count(None), 1)
 
     def test_async_is_missing(self):
-        self.assertEqual(self.teacher_index.get('async'), ['missing'])
+        self.assertEqual(_teacher_labels(self.dm, 'async'), ['missing'])
 
 
-class TestQRStudentADiffMarks(unittest.TestCase):
+class TestQRStudent31DiffMarks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        qr = _TEST / 'qr'
-        student_dir = qr / 'student_a'
-        events = _load_events(qr / 'log.json')
-        teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
-                         '123456.css': qr / '123456.css',
-                         '123456.js': qr / '123456.js'}
-        stu_files = {f.name: f for f in sorted(student_dir.iterdir())
-                     if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
-        _, cls.sf_colors = _build_contextual_diff_marks(
-            teacher_files, stu_files, context_k=_CONTEXT_K,
+        cls.dm = _load_json(_TEST / 'qr' / 'student_31' / 'diff_marks_leo_star.json')
+
+    def test_background_in_css_is_ghost_extra(self):
+        marks = _student_marks(self.dm, '123456.css', 'background')
+        self.assertGreaterEqual(len(marks), 1)
+        self.assertEqual(marks[0]['label'], 'ghost_extra')
+
+
+def _shuffle_non_comment_tokens(text: str, seed: int) -> str:
+    nc, _ = _split_tokens_by_comment(text)
+    if len(nc) <= 1:
+        return text
+    new_texts = [tok for _, tok in nc]
+    random.Random(seed).shuffle(new_texts)
+    return '\n'.join(new_texts)
+
+
+class TestLEOCountForcedBlindSpot(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        tmp_root = Path(cls._tmp.name)
+
+        teacher_path = _TEST / 'wall' / 'reconstructed.html'
+        text = teacher_path.read_text(encoding='utf-8')
+
+        identical_path = tmp_root / 'identical.html'
+        identical_path.write_text(text, encoding='utf-8')
+
+        shuffled_path = tmp_root / 'shuffled.html'
+        shuffled_path.write_text(_shuffle_non_comment_tokens(text, seed=42),
+                                  encoding='utf-8')
+
+        cls.teacher_files  = {teacher_path.name: teacher_path}
+        cls.identical_files = {teacher_path.name: identical_path}
+        cls.shuffled_files  = {teacher_path.name: shuffled_path}
+        cls.events = _load_events(_TEST / 'wall' / 'log.json')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def _score(self, builder, student_files):
+        return builder(self.teacher_files, student_files)[2]
+
+    def test_baseline_identical_student_scores_100_for_all_methods(self):
+        for builder, name in [
+            (_build_leo_diff_marks,        'leo'),
+            (_build_lcs_token_diff_marks,  'lcs'),
+            (_build_lev_token_diff_marks,  'lev'),
+            (_build_ro_diff_marks,         'ro'),
+            (_build_git_diff_marks,        'git'),
+        ]:
+            with self.subTest(method=name):
+                self.assertEqual(
+                    self._score(builder, self.identical_files), 100.0,
+                    f'{name} should score 100% on identical student',
+                )
+
+    def test_leo_score_unchanged_by_shuffle(self):
+        score = self._score(_build_leo_diff_marks, self.shuffled_files)
+        self.assertEqual(
+            score, 100.0,
+            'LEO is count-forced — shuffling preserves per-token counts '
+            'so every token-type Hungarian fills every slot, no missing/'
+            f'extra emitted, score stays at 100%. Got {score}.',
         )
-        _apply_ghost_star_to_colors(cls.sf_colors, events)
-        cls.student_css = cls.sf_colors.get('123456.css', {})
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
+    def test_position_sensitive_methods_drop_after_shuffle(self):
+        for builder, name in [
+            (_build_lcs_token_diff_marks, 'lcs'),
+            (_build_lev_token_diff_marks, 'lev'),
+            (_build_ro_diff_marks,        'ro'),
+            (_build_git_diff_marks,       'git'),
+        ]:
+            with self.subTest(method=name):
+                score = self._score(builder, self.shuffled_files)
+                self.assertLess(
+                    score, 100.0,
+                    f'{name} should fall below 100% on a shuffled student '
+                    f'(it is position-sensitive); got {score}',
+                )
 
-    def test_background_is_extra_star(self):
-        labels = self.student_css.get('background', [])
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'extra_star')
-
-
-class TestQRStudentALCSStarDiffMarks(unittest.TestCase):
-    """LCS* diff_marks for qr/student_a — background-color must also be extra_star."""
-    @classmethod
-    def setUpClass(cls):
-        qr = _TEST / 'qr'
-        student_dir = qr / 'student_a'
-        events = _load_events(qr / 'log.json')
-        teacher_files = {'reconstructed.html': qr / 'reconstructed.html',
-                         '123456.css': qr / '123456.css',
-                         '123456.js': qr / '123456.js'}
-        stu_files = {f.name: f for f in sorted(student_dir.iterdir())
-                     if f.suffix.lower() in ('.html', '.htm', '.css', '.js')}
-        _, s_files, *_ = _build_lcs_token_diff_marks(teacher_files, stu_files)
-        dm = {'teacher_files': {}, 'student_files': s_files}
-        _apply_ghost_star_to_diff_marks(dm, events)
-        cls.student_css_marks = [m for m in dm['student_files'].get('123456.css', [])
-                                  if m.get('token', '').lower() == 'background']
-
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def test_background_is_extra_star(self):
-        self.assertGreaterEqual(len(self.student_css_marks), 1)
-        self.assertEqual(self.student_css_marks[0]['label'], 'extra_star')
-
-    def test_background_position(self):
-        self.assertEqual(self.student_css_marks[0]['start'], 229)
+    def test_leo_star_deviates_slightly_under_shuffle(self):
+        result = _build_leo_diff_marks(
+            self.teacher_files, self.shuffled_files, events=self.events,
+        )
+        t, s, score, alignments, line_marks, n_total, leo_assignments = result
+        diff = _assemble_diff_marks(
+            'leo_star', t, s, score, alignments, line_marks, leo_assignments,
+        )
+        _add_log_metadata(
+            diff, self.events, self.shuffled_files,
+            teacher_files=self.teacher_files,
+        )
+        n_missing = sum(
+            1 for marks in diff['teacher_files'].values()
+            for m in marks if m.get('label') == 'missing'
+        )
+        n_ghost_extra = sum(
+            1 for marks in diff['student_files'].values()
+            for m in marks if m.get('label') == 'ghost_extra'
+        )
+        score_star = round(
+            max(0.0, (n_total - n_missing - n_ghost_extra) / n_total * 100), 1,
+        )
+        self.assertLess(
+            score_star, 100.0,
+            'LEO* should be < 100% under shuffle: Phase 1 joint Hungarian '
+            'with ghosts can pull real teachers out of pairing; '
+            f'got {score_star} (n_missing={n_missing}, '
+            f'n_ghost_extra={n_ghost_extra}).',
+        )
+        self.assertGreater(
+            score_star, 95.0,
+            'LEO* should still be very high under shuffle (the count-forced '
+            'Hungarian still pairs the vast majority of tokens); '
+            f'got {score_star}.',
+        )
 
 
 if __name__ == '__main__':

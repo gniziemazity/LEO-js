@@ -47,23 +47,15 @@ class TokenLogMixin:
                 files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in _RECO_EXTS}
                 if files:
                     return files
-            reco_html = self.reference_dir / 'reconstructed.html'
-            if reco_html.exists():
-                return {'reconstructed.html': reco_html}
         return self.get_all_code_files(self.reference_dir)
 
     def write_keyword_log(self) -> None:
-        has_css = bool(
-            self.teacher_tokens_by_ext.get('.css')
-            or self.teacher_tokens_by_ext.get('.html')
-        )
-
         all_events = getattr(self, '_lesson_all_events', None) or (
             self._lesson_keypresses + self._lesson_code_inserts
         )
         out_path = self.reference_dir / 'tokens.txt'
         n_typed, n_removed, n_unique = _write_teacher_tokens_file(
-            all_events, out_path, has_css=has_css,
+            all_events, out_path,
         )
         if not n_typed and not n_removed:
             print('  Keyword log skipped \u2014 no key-log data.')
@@ -90,11 +82,10 @@ class TokenLogMixin:
             return
 
         teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
-        removal_ts_by_token = {
-            tok: removal_ts
-            for tok, _, _, is_rem, removal_ts in teacher_entries
-            if is_rem and removal_ts
-        }
+        removal_ts_by_token: Dict[str, List[str]] = {}
+        for tok, _, _, is_rem, removal_ts in teacher_entries:
+            if is_rem and removal_ts:
+                removal_ts_by_token.setdefault(tok, []).append(removal_ts)
 
         all_events = getattr(self, '_lesson_all_events', None)
         ts_map_cached: Dict[str, List[str]] = {}
@@ -157,7 +148,7 @@ class TokenLogMixin:
                     _ts_map=ts_map_cached or None,
                 )
 
-            all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_extra_star = (
+            all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
                 _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
             )
             diff_marks['score'] = score_e
@@ -167,9 +158,9 @@ class TokenLogMixin:
             teacher_total_e = n_found_e + n_missing_e
 
             extra_ctr              = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA'})
-            extra_star_ctr         = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA*'})
+            ghost_extra_ctr         = Counter(tok for _, tok, fl in all_occ if fl == {'EXTRA*'})
             extra_comment_ctr      = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA'})
-            extra_star_comment_ctr = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA*'})
+            ghost_extra_comment_ctr = Counter(tok for _, tok, fl in all_occ if fl == {'COMMENT', 'EXTRA*'})
 
             _miss_e  = sorted((ts, f'-{tok}')  for ts, tok, fl in all_occ if fl == {'MISSING'})
             _miss_c  = sorted((ts, f'-{tok}')  for ts, tok, fl in all_occ if fl == {'MISSING', 'COMMENT'})
@@ -194,17 +185,17 @@ class TokenLogMixin:
                 'comment_items':         [_fmt_item(ts, s) for ts, s in _comb_c],
                 'extra_all':             _fmt_ctr(extra_ctr) + [
                     f'{t}* (x{n})' if n > 1 else f'{t}*'
-                    for t, n in sorted(extra_star_ctr.items())
+                    for t, n in sorted(ghost_extra_ctr.items())
                 ],
                 'extra_comment_all':     _fmt_ctr(extra_comment_ctr) + [
                     f'{t}* (x{n})' if n > 1 else f'{t}*'
-                    for t, n in sorted(extra_star_comment_ctr.items())
+                    for t, n in sorted(ghost_extra_comment_ctr.items())
                 ],
                 'extra_counter':         extra_ctr,
                 'extra_comment_counter': extra_comment_ctr,
-                'extra_star':            sum(extra_star_ctr.values()),
-                'extra_star_all':        _fmt_ctr(
-                    {f'{t}*': n for t, n in (extra_star_ctr + extra_star_comment_ctr).items()}
+                'ghost_extra':            sum(ghost_extra_ctr.values()),
+                'ghost_extra_all':        _fmt_ctr(
+                    {f'{t}*': n for t, n in (ghost_extra_ctr + ghost_extra_comment_ctr).items()}
                 ),
                 'extra_e_count':         len(_comb_e),
                 'comment_count':         len(_comb_c),
@@ -310,9 +301,9 @@ class TokenLogMixin:
                                   teacher_files=teacher_code_files,
                                   _ts_map=_tm or None)
                 if teacher_total_nc:
-                    n_extra_star_count = sum(
+                    n_ghost_extra_count = sum(
                         1 for marks in diff_marks.get('student_files', {}).values()
-                        for m in marks if m.get('label') == 'extra_star'
+                        for m in marks if m.get('label') == 'ghost_extra'
                     )
                     n_missing_nc_star = sum(
                         1 for marks in diff_marks.get('teacher_files', {}).values()
@@ -320,7 +311,7 @@ class TokenLogMixin:
                     )
                     n_found_nc_star = teacher_total_nc - n_missing_nc_star
                     diff_marks['score'] = round(
-                        max(0.0, (n_found_nc_star - n_extra_star_count) / teacher_total_nc * 100), 1
+                        max(0.0, (n_found_nc_star - n_ghost_extra_count) / teacher_total_nc * 100), 1
                     )
                 _strip_internal_fields(diff_marks)
                 with open(anon_dir / star_filename, 'w', encoding='utf-8') as fh:
@@ -389,3 +380,32 @@ class TokenLogMixin:
             star_filename='diff_marks_git_star.json' if all_events else None,
             star_label='Git* diff marks' if all_events else None,
         )
+
+    def copy_truth_diff_marks(
+        self,
+        truth_dir: Path,
+        names_dir: Path,
+        anon_names_dir: Optional[Path],
+    ) -> None:
+        if not truth_dir.is_dir() or not names_dir.is_dir():
+            return
+        if anon_names_dir is None or not anon_names_dir.is_dir():
+            return
+
+        copied = 0
+        for student_dir in sorted(names_dir.iterdir()):
+            if not student_dir.is_dir():
+                continue
+            sid = self.name_to_id.get(student_dir.name)
+            if sid is None:
+                continue
+            src = truth_dir / f'student_{sid}' / 'diff_marks_truth.json'
+            if not src.is_file():
+                continue
+            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
+            shutil.copy2(src, anon_dir / 'diff_marks_truth.json')
+            copied += 1
+
+        if copied:
+            print(f'Copied truth diff marks for {copied} student(s) into '
+                  f'{anon_names_dir.name}/')

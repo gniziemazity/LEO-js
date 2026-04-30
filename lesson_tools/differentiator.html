@@ -45,6 +45,19 @@
 				gap: 8px;
 			}
 
+			#data-source-status {
+				display: none;
+				padding: 1px 6px;
+				font-size: 10px;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.3px;
+				border-radius: 999px;
+				border: 1px solid #bbb;
+				background: #fff;
+				color: #666;
+			}
+
 			.panel-landing {
 				flex: 1;
 				display: flex;
@@ -207,12 +220,49 @@
 
 			.leo-mark {
 				cursor: pointer;
-				user-select: none;
 			}
 			.leo-mark.leo-highlight-active {
 				background-color: rgba(255, 220, 0, 0.45);
 				outline: 1px solid #c79a00;
 				border-radius: 2px;
+			}
+			.swap-paired {
+				cursor: pointer;
+				text-decoration: underline dotted #888;
+				text-underline-offset: 2px;
+			}
+			.swap-paired.swap-partner-active {
+				background-color: rgba(120, 80, 200, 0.25);
+				outline: 1px solid #6a3aa0;
+				border-radius: 2px;
+			}
+			.insert-source {
+				cursor: pointer;
+				text-decoration: underline dotted #c79a00;
+				text-underline-offset: 2px;
+			}
+			.insert-anchor {
+				display: inline-block;
+				cursor: pointer;
+				color: #c79a00;
+				font-size: 9px;
+				line-height: 1;
+				vertical-align: middle;
+				margin: 0 -2px;
+				padding: 0;
+				user-select: none;
+				opacity: 0.7;
+			}
+			.insert-anchor:hover {
+				opacity: 1;
+			}
+			.insert-anchor.insert-active {
+				color: #fff;
+				background-color: #c79a00;
+				border-radius: 2px;
+				opacity: 1;
+				padding: 0 2px;
+				margin: 0;
 			}
 			#leo-tooltip {
 				position: fixed;
@@ -297,6 +347,14 @@
 				outline: 2px solid #000;
 				box-shadow: inset 4px 0 0 #000;
 			}
+			#leo-tooltip .leo-pair {
+				outline: 1px solid #000;
+				margin: 2px 0;
+			}
+			#leo-tooltip .leo-pair.leo-this {
+				outline: 2px solid #000;
+				box-shadow: inset 4px 0 0 #000;
+			}
 			#leo-tooltip .leo-row.leo-row-ghost {
 				font-style: italic;
 				opacity: 0.85;
@@ -333,25 +391,20 @@
 				color: #444;
 				overflow: hidden;
 				white-space: nowrap;
-				min-width: 0;
+				min-width: 80px;
 			}
 			#leo-tooltip .leo-before {
 				text-align: right;
-				mask-image: linear-gradient(to right, transparent 0, black 24px);
-				-webkit-mask-image: linear-gradient(
-					to right,
-					transparent 0,
-					black 24px
-				);
+				direction: rtl;
+				text-overflow: ellipsis;
+			}
+			#leo-tooltip .leo-before > * {
+				direction: ltr;
+				unicode-bidi: embed;
 			}
 			#leo-tooltip .leo-after {
 				text-align: left;
-				mask-image: linear-gradient(to left, transparent 0, black 24px);
-				-webkit-mask-image: linear-gradient(
-					to left,
-					transparent 0,
-					black 24px
-				);
+				text-overflow: ellipsis;
 			}
 			#leo-tooltip .leo-center {
 				flex: 0 0 auto;
@@ -365,6 +418,286 @@
 				color: #aaa;
 				font-style: italic;
 			}
+
+			/* ===== Generate Truth ===== */
+			body.truth-edit-mode #panel-teacher .code-pane.active,
+			body.truth-edit-mode #panel-student .code-pane.active {
+				outline: 2px dashed #a4c4e2;
+				outline-offset: -2px;
+			}
+			body.truth-pair-mode .code-pane.active,
+			body.truth-insert-mode .code-pane.active {
+				cursor: crosshair;
+			}
+			.btn-edit.truth-only-btn,
+			#btn-generate-truth {
+				background: #d6e7f5;
+				border-color: #a4c4e2;
+				color: #245481;
+			}
+			.btn-edit.truth-only-btn:hover,
+			#btn-generate-truth:hover {
+				background: #c0d7ec;
+				border-color: #007acc;
+				color: #007acc;
+			}
+
+			#truth-controls {
+				position: fixed;
+				z-index: 9998;
+				display: none;
+				min-width: 320px;
+				max-width: 500px;
+				background: #fff;
+				border: 1px solid #999;
+				border-radius: 6px;
+				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+				padding: 8px 10px;
+				font-family: ui-monospace, Consolas, monospace;
+				font-size: 12px;
+			}
+			#truth-controls .tc-title {
+				font-weight: 700;
+				color: #555;
+				margin-bottom: 6px;
+				font-size: 11px;
+			}
+			#truth-controls .tc-row {
+				margin: 4px 0;
+				display: flex;
+				gap: 6px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+			#truth-controls .tc-row.tc-existing {
+				font-size: 11px;
+				color: #666;
+				margin-top: 8px;
+				border-top: 1px dashed #ddd;
+				padding-top: 6px;
+			}
+			#truth-controls .tc-mark {
+				font-size: 11px;
+			}
+			#truth-controls .tc-mark-info {
+				flex: 1;
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			#truth-controls button {
+				font-size: 11px;
+				padding: 3px 8px;
+				border: 1px solid #bbb;
+				border-radius: 3px;
+				background: #f8f8f8;
+				cursor: pointer;
+			}
+			#truth-controls button:hover {
+				background: #e8f4ff;
+				border-color: #007acc;
+				color: #007acc;
+			}
+			#truth-controls .tc-btn-add {
+				background: #007acc;
+				color: #fff;
+				border-color: #007acc;
+			}
+			#truth-controls .tc-btn-add:hover {
+				background: #005a9e;
+			}
+			#truth-controls .tc-btn-del {
+				background: #fff5f5;
+				border-color: #d99;
+				color: #c00;
+			}
+			#truth-controls .tc-btn-del:hover {
+				background: #fee;
+			}
+			#truth-controls .tc-btn-missing {
+				background: #e00;
+				color: #fff;
+				border-color: #b00;
+				font-weight: 700;
+			}
+			#truth-controls .tc-btn-missing:hover {
+				background: #c00;
+				color: #fff;
+			}
+			#truth-controls .tc-btn-extra {
+				background: #00c;
+				color: #fff;
+				border-color: #008;
+				font-weight: 700;
+			}
+			#truth-controls .tc-btn-extra:hover {
+				background: #008;
+				color: #fff;
+			}
+			#truth-controls .tc-btn-ghost {
+				background: #3aa0e0;
+				color: #fff;
+				border-color: #2880c0;
+				font-weight: 700;
+			}
+			#truth-controls .tc-btn-ghost:hover {
+				background: #2880c0;
+				color: #fff;
+			}
+			#truth-controls .tc-tokens {
+				font-size: 11px;
+				color: #555;
+				margin: 4px 0;
+				padding: 4px 6px;
+				background: #f5f5f5;
+				border-radius: 3px;
+			}
+			#truth-controls .tc-tokens code {
+				color: #222;
+			}
+			#truth-controls .tc-snap {
+				color: #888;
+				font-weight: normal;
+				font-size: 10.5px;
+			}
+			#truth-controls .tc-close {
+				justify-content: flex-end;
+			}
+			#truth-controls .tc-existing-info {
+				flex: 1;
+				color: #666;
+				font-size: 11px;
+			}
+
+			.truth-float-win#truth-float-win {
+				position: fixed;
+				display: none;
+				flex-direction: column;
+				z-index: 9997;
+				max-width: 90vw;
+				max-height: 80vh;
+				background: #fff;
+				border: 1px solid #999;
+				border-radius: 6px;
+				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+				font-family: ui-monospace, Consolas, monospace;
+				font-size: 11px;
+				min-width: 360px;
+			}
+			.truth-float-win .tw-header {
+				display: flex;
+				align-items: center;
+				cursor: move;
+				background: #f5f5f5;
+				border-bottom: 1px solid #e0e0e0;
+				padding: 2px 6px;
+				border-radius: 6px 6px 0 0;
+				user-select: none;
+			}
+			.truth-float-win .tw-drag {
+				color: #bbb;
+				margin-right: 6px;
+				font-size: 11px;
+			}
+			.truth-float-win .tw-title {
+				flex: 1;
+				font-weight: 700;
+			}
+			.truth-float-win .tw-close {
+				background: none;
+				border: none;
+				cursor: pointer;
+				font-size: 15px;
+				color: #999;
+			}
+			.truth-float-win .tw-close:hover {
+				color: #333;
+			}
+			.truth-float-win .tw-body {
+				overflow: auto;
+				padding: 8px 10px;
+			}
+			.truth-float-win .tw-section-title {
+				font-weight: 700;
+				color: #555;
+				margin: 6px 0 2px;
+			}
+			.truth-float-win .tw-pre {
+				background: #fafafa;
+				border: 1px solid #eee;
+				padding: 6px;
+				white-space: pre;
+				word-wrap: normal;
+				overflow-x: auto;
+				font-family: ui-monospace, Consolas, monospace;
+				font-size: 11px;
+				tab-size: 4;
+				-moz-tab-size: 4;
+			}
+			.truth-float-win .tw-summary-row {
+				padding: 6px 0;
+				border-bottom: 1px dashed #eee;
+			}
+			.truth-float-win .tw-summary-head {
+				font-size: 11px;
+				color: #555;
+				margin-bottom: 2px;
+			}
+			.truth-float-win .tw-summary-suffix {
+				color: #666;
+				margin-left: 6px;
+			}
+			.truth-float-win .tw-summary-pre {
+				background: #fafafa;
+				border: 1px solid #eee;
+				padding: 4px 6px;
+				margin: 2px 0;
+				white-space: pre;
+				word-wrap: normal;
+				overflow-x: auto;
+				font-size: 11px;
+			}
+			.truth-float-win .tw-summary-pair {
+				margin-top: 4px;
+				padding-left: 12px;
+				border-left: 2px solid #ddd;
+			}
+			.truth-float-win .tw-summary-arrow {
+				font-size: 10.5px;
+				color: #666;
+			}
+
+			.truth-float-win .tw-preview-split {
+				display: flex;
+				gap: 8px;
+				min-width: 720px;
+				width: 80vw;
+				max-width: 1400px;
+				min-height: 360px;
+				max-height: 70vh;
+			}
+			.truth-float-win .tw-preview-code,
+			.truth-float-win .tw-preview-render {
+				flex: 1 1 50%;
+				min-width: 0;
+				display: flex;
+				flex-direction: column;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				background: #fff;
+				overflow: hidden;
+			}
+			.truth-float-win .tw-preview-code {
+				overflow: auto;
+				padding: 4px 6px;
+			}
+			.truth-float-win .tw-preview-iframe {
+				flex: 1;
+				width: 100%;
+				border: none;
+				background: #fff;
+			}
 		</style>
 	</head>
 	<body>
@@ -372,9 +705,6 @@
 			<select id="mode-select"></select>
 			<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
 				⬜ Preview
-			</button>
-			<button id="btn-edit" class="btn-edit" onclick="toggleEditMode()">
-				✏️ Edit
 			</button>
 		</div>
 		<div id="diff-root">
@@ -414,6 +744,7 @@
 			<div class="diff-panel" id="panel-student">
 				<div class="panel-header">
 					<span id="title-student">Student</span>
+					<span id="data-source-status"></span>
 					<div class="tab-bar" id="tabs-student"></div>
 				</div>
 				<div class="panel-landing" id="landing-student">
@@ -447,5 +778,6 @@
 		</div>
 		<script src="preview.js"></script>
 		<script src="differentiator.js"></script>
+		<script src="differentiator-truth.js"></script>
 	</body>
 </html>

@@ -157,10 +157,10 @@ def _rich_annotate(ax, data_xy, xytext_pts, ha, rich_segments, header_text, bg_c
             current_row_parts.append(
                 TextArea(f'→{val}', textprops=dict(**fp, color=_COLOR_MOVE))
             )
-        elif kind in ('missing_tok', 'extra_tok', 'missing_count', 'extra_count', 'extra_star'):
+        elif kind in ('missing_tok', 'extra_tok', 'missing_count', 'extra_count', 'ghost_extra'):
             flush_chars()
             color = _COLOR_MISSING_TOK if kind in ('missing_tok', 'missing_count') else _COLOR_EXTRA_TOK
-            weight = 'bold' if kind in ('missing_count', 'extra_count', 'extra_star') else 'normal'
+            weight = 'bold' if kind in ('missing_count', 'extra_count', 'ghost_extra') else 'normal'
             current_row_parts.append(
                 TextArea(val, textprops=dict(**fp, color=color, fontweight=weight))
             )
@@ -212,7 +212,7 @@ def _mismatch_to_rich_segments(all_mismatches):
             kind = 'char'
         parts.append((kind, display))
         if has_star:
-            parts.append(('extra_star', '*'))
+            parts.append(('ghost_extra', '*'))
         if count > 1:
             count_kind = 'missing_count' if kind == 'missing_tok' else ('extra_count' if kind == 'extra_tok' else 'char')
             parts.append((count_kind, f'\u00d7{count}'))
@@ -221,7 +221,7 @@ def _mismatch_to_rich_segments(all_mismatches):
     line_len = 0
     i_tok = 0
     for i, (kind, display) in enumerate(parts):
-        is_count = kind in ('missing_count', 'extra_count', 'extra_star')
+        is_count = kind in ('missing_count', 'extra_count', 'ghost_extra')
         if not is_count:
             if i_tok > 0:
                 if line_len + len(display) + 2 > Config.TOOLTIP_WIDTH:

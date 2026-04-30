@@ -76,7 +76,6 @@ def split_code_tokens(text: str) -> Tuple[Counter, Counter]:
 
 def reconstruct_tokens_from_keylog_full(
     events: List[dict],
-    has_css: bool = True,
 ) -> Tuple[
     Dict[str, List[int]],
     Dict[str, List[int]],

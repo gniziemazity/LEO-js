@@ -4,7 +4,7 @@ const DIFF_LABEL_COLORS = {
 	missing: "#e00",
 	comment: "#4a4",
 	extra: "#00c",
-	extra_star: "#3aa0e0",
+	ghost_extra: "#3aa0e0",
 	extra_comment: "#080",
 };
 
@@ -22,21 +22,21 @@ let _allMarks = {};
 let _currentMarksEntry = null;
 let _titleBase = null;
 let _imageUris = {};
-let _studentEditMode = false;
-let _editedStudentFiles = {};
-let _studentModified = new Set();
+let _diffSessionKey = null;
+let _dataSource = "";
 
 const DIFF_MODE_OPTIONS = [
-	{ key: "leo", label: "LEO" },
+	{ key: "truth", label: "TRUTH" },
 	{ key: "", label: "LEO*" },
-	{ key: "token-lcs", label: "LCS" },
+	{ key: "leo", label: "LEO" },
 	{ key: "token-lcs-star", label: "LCS*" },
-	{ key: "token-lev", label: "Lev" },
+	{ key: "token-lcs", label: "LCS" },
 	{ key: "token-lev-star", label: "Lev*" },
-	{ key: "line-ro", label: "R/O" },
+	{ key: "token-lev", label: "Lev" },
 	{ key: "line-ro-star", label: "R/O*" },
-	{ key: "line-git", label: "Git" },
+	{ key: "line-ro", label: "R/O" },
 	{ key: "line-git-star", label: "Git*" },
+	{ key: "line-git", label: "Git" },
 ];
 
 function _hasOwn(obj, key) {
@@ -44,15 +44,11 @@ function _hasOwn(obj, key) {
 }
 
 function _getPreferredModeKey(allMarks, requestedMode = null) {
-	if (requestedMode != null && _hasOwn(allMarks, requestedMode)) {
+	if (requestedMode != null && _hasOwn(allMarks, requestedMode))
 		return requestedMode;
-	}
-	if (_hasOwn(allMarks, "")) {
-		return "";
-	}
-	if (_hasOwn(allMarks, "leo")) {
-		return "leo";
-	}
+	if (_hasOwn(allMarks, "truth")) return "truth";
+	if (_hasOwn(allMarks, "")) return "";
+	if (_hasOwn(allMarks, "leo")) return "leo";
 	return Object.keys(allMarks)[0] ?? null;
 }
 
@@ -88,9 +84,86 @@ function _applyCurrentMarks() {
 	_studentMarks = _currentMarksEntry?.student_files ?? null;
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+function _serializeDiffState() {
+	return {
+		teacherFiles: _teacherFiles || {},
+		studentFiles: _studentFiles || {},
+		imageUris: _imageUris || {},
+		allMarks: _allMarks || {},
+		mode: _diffMode,
+		teacherMarks: _currentMarksEntry?.teacher_files ?? _teacherMarks ?? null,
+		studentMarks: _currentMarksEntry?.student_files ?? _studentMarks ?? null,
+		title: document.title || null,
+		titleBase: _titleBase,
+		dataSource: _dataSource,
+	};
+}
+
+function _setDataSource(source) {
+	_dataSource = source || "";
+	const el = document.getElementById("data-source-status");
+	if (!el) return;
+	if (!_dataSource) {
+		el.style.display = "none";
+		el.textContent = "";
+		return;
+	}
+	el.textContent = `Data: ${_dataSource}`;
+	el.style.display = "inline-block";
+}
+
+function _persistDiffState() {
+	if (!_diffSessionKey) return;
+	if (!_teacherFiles && !_studentFiles) return;
+	try {
+		sessionStorage.setItem(
+			_diffSessionKey,
+			JSON.stringify(_serializeDiffState()),
+		);
+	} catch {}
+}
+
+function _applyIncomingData(data) {
+	_teacherFiles = data.teacherFiles || {};
+	_studentFiles = data.studentFiles || {};
+	_imageUris = data.imageUris || {};
+	_setDataSource(data.dataSource || "");
+
+	if (data.allMarks) {
+		_allMarks = data.allMarks;
+		_diffMode = _getPreferredModeKey(_allMarks, data.mode ?? _diffMode);
+		_refreshModeSelect();
+		_applyCurrentMarks();
+	} else {
+		_currentMarksEntry =
+			data.teacherMarks || data.studentMarks
+				? {
+						teacher_files: data.teacherMarks || null,
+						student_files: data.studentMarks || null,
+					}
+				: null;
+		_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
+		_studentMarks = _currentMarksEntry?.student_files ?? null;
+	}
+
+	if (data.title) document.title = data.title;
+	const titleText = data.title || "Student";
+	_titleBase =
+		data.titleBase ||
+		titleText.replace(/\s*\([^)]*%\)\s*$/, "").trim() ||
+		titleText;
+	document.getElementById("title-student").textContent = titleText;
+
+	renderPanel("teacher", _teacherFiles, _teacherMarks);
+	renderPanel("student", _studentFiles, _studentMarks);
+	_updateTitleScore();
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
 	const params = new URLSearchParams(location.search);
-	const key = params.get("key") || "diffData";
+	const keyParam = params.get("key");
+	const key = keyParam || "diffData";
+	_diffSessionKey = keyParam ? `differentiatorSession:${keyParam}` : null;
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
 
@@ -109,6 +182,7 @@ window.addEventListener("DOMContentLoaded", () => {
 			_restoreState("teacher", savedTeacher);
 			_restoreState("student", savedStudent);
 			_updateTitleScore();
+			_persistDiffState();
 		});
 	}
 
@@ -117,38 +191,29 @@ window.addEventListener("DOMContentLoaded", () => {
 		localStorage.removeItem(key);
 		try {
 			const data = JSON.parse(raw);
-			_teacherFiles = data.teacherFiles || {};
-			_studentFiles = data.studentFiles || {};
-			_imageUris = data.imageUris || {};
-			if (data.allMarks) {
-				_allMarks = data.allMarks;
-				_diffMode = _getPreferredModeKey(_allMarks, data.mode ?? _diffMode);
-				_refreshModeSelect();
-				_applyCurrentMarks();
-			} else {
-				_currentMarksEntry =
-					data.teacherMarks || data.studentMarks
-						? {
-								teacher_files: data.teacherMarks || null,
-								student_files: data.studentMarks || null,
-							}
-						: null;
-				_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
-				_studentMarks = _currentMarksEntry?.student_files ?? null;
-			}
-
-			if (data.title) document.title = data.title;
-			const titleText = data.title || "Student";
-			_titleBase =
-				titleText.replace(/\s*\([^)]*%\)\s*$/, "").trim() || titleText;
-			document.getElementById("title-student").textContent = titleText;
-			renderPanel("teacher", _teacherFiles, _teacherMarks);
-			renderPanel("student", _studentFiles, _studentMarks);
-			_updateTitleScore();
+			if (!data.dataSource) data.dataSource = "fresh";
+			_applyIncomingData(data);
+			_persistDiffState();
 		} catch (e) {
 			console.error("[Differentiator] Failed to parse diff data", e);
 		}
+	} else if (_diffSessionKey) {
+		const savedRaw = sessionStorage.getItem(_diffSessionKey);
+		if (savedRaw) {
+			try {
+				const saved = JSON.parse(savedRaw);
+				if (!saved.dataSource) saved.dataSource = "cache";
+				_applyIncomingData(saved);
+			} catch (e) {
+				console.error("[Differentiator] Failed to restore session data", e);
+			}
+		}
 	}
+
+	window.addEventListener("beforeunload", _persistDiffState);
+	document.addEventListener("visibilitychange", () => {
+		if (document.visibilityState === "hidden") _persistDiffState();
+	});
 
 	document.getElementById("input-teacher").addEventListener("change", (e) => {
 		loadFilesFromInput(e.target.files, "teacher");
@@ -174,6 +239,7 @@ function loadFilesFromInput(files, side) {
 		"line-ro-star": "_ro_star",
 		"line-git": "_git",
 		"line-git-star": "_git_star",
+		truth: "_truth",
 	};
 
 	for (const file of files) {
@@ -198,12 +264,14 @@ function loadFilesFromInput(files, side) {
 				_applyCurrentMarks();
 				if (side === "teacher") _teacherFiles = texts;
 				else _studentFiles = texts;
+				_setDataSource("manual");
 				renderPanel(
 					side,
 					side === "teacher" ? _teacherFiles : _studentFiles,
 					side === "teacher" ? _teacherMarks : _studentMarks,
 				);
 				_updateTitleScore();
+				_persistDiffState();
 			}
 		};
 		reader.readAsText(file);
@@ -235,6 +303,7 @@ function _renderAligned(
 	const synthMarks = _synthesizeLeoMarks(side, fileName);
 	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
 	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
+	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
 
 	const parts = [];
 	for (const pair of alignment) {
@@ -259,6 +328,9 @@ function _renderAligned(
 			const lineGhosts = fileGhosts
 				.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
 				.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
+			const lineAnchors = fileAnchors
+				.filter((a) => a.pos >= lineStart && a.pos <= lineEnd)
+				.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
 			const bgMark =
 				lineFileMarks &&
 				lineFileMarks.find(
@@ -267,7 +339,7 @@ function _renderAligned(
 			const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 			const style = bg ? ` style="background-color:${bg}"` : "";
 			parts.push(
-				`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts)}</div>`,
+				`<div class="diff-line" data-src-start="${lineStart}"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 			);
 		}
 	}
@@ -281,6 +353,7 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 	const synthMarks = _synthesizeLeoMarks(side, fileName);
 	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
 	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
+	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
 
 	const parts = [];
 	for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
@@ -301,6 +374,9 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 		const lineGhosts = fileGhosts
 			.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
 			.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
+		const lineAnchors = fileAnchors
+			.filter((a) => a.pos >= lineStart && a.pos <= lineEnd)
+			.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
 		const bgMark =
 			lineFileMarks &&
 			lineFileMarks.find(
@@ -309,7 +385,7 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 		const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
 		const style = bg ? ` style="background-color:${bg}"` : "";
 		parts.push(
-			`<div class="diff-line"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts)}</div>`,
+			`<div class="diff-line" data-src-start="${lineStart}"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 		);
 	}
 	return parts.join("");
@@ -318,6 +394,27 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 function _getFileGhosts(fileName) {
 	const map = _currentMarksEntry?.teacher_ghosts;
 	return (map && map[fileName]) || [];
+}
+
+function _getInsertAnchors(studentFileName) {
+	const tFiles = _currentMarksEntry?.teacher_files;
+	if (!tFiles || !studentFileName) return [];
+	const out = [];
+	for (const [tFile, marks] of Object.entries(tFiles)) {
+		for (const m of marks || []) {
+			if (m.label !== "missing") continue;
+			if (m.paired_with) continue;
+			const ia = m.insert_at;
+			if (!ia || ia.file !== studentFileName) continue;
+			out.push({
+				pos: ia.pos,
+				token: m.token,
+				teacher_file: tFile,
+				teacher_pos: m.start,
+			});
+		}
+	}
+	return out;
 }
 
 function _setupScrollSync() {
@@ -428,54 +525,18 @@ function renderPanel(side, files, marks) {
 
 		const pane = document.createElement("div");
 		pane.className = "code-pane" + (i === 0 ? " active" : "");
+		pane.dataset.paneSide = side;
+		pane.dataset.paneFile = name;
 
 		const text = files[name] || "";
 
 		const fileMarks = marks ? (marks[name] ?? null) : null;
 		const lineFileMarks = sideLineMks ? (sideLineMks[name] ?? null) : null;
 		const alignment = allAlignments ? (allAlignments[name] ?? null) : null;
-		const isStudentEdit = side === "student" && _studentEditMode;
-		const isEdited = side === "student" && _studentModified.has(name);
-
-		if (isStudentEdit && _editedStudentFiles[name] === undefined) {
-			_editedStudentFiles[name] = text;
-		}
-		const sourceText =
-			isStudentEdit || isEdited ? (_editedStudentFiles[name] ?? text) : text;
+		const sourceText = text;
 		const hasMarks = Array.isArray(fileMarks) || lineFileMarks;
 
-		if (isStudentEdit) {
-			let body;
-			if (alignment) {
-				body = _renderAligned(
-					sourceText,
-					alignment,
-					fileMarks,
-					sideIdx,
-					lineFileMarks,
-					name,
-				);
-			} else if (hasMarks) {
-				body = _renderFlat(
-					sourceText,
-					fileMarks,
-					lineFileMarks,
-					side,
-					name,
-				);
-			} else {
-				body = escHtml(sourceText);
-			}
-			pane.innerHTML = `<div class="code-aligned" contenteditable="plaintext-only" spellcheck="false">${body}</div>`;
-			const editable = pane.querySelector("[contenteditable]");
-			editable.addEventListener("input", () => {
-				_editedStudentFiles[name] = _readEditableText(editable);
-				_studentModified.add(name);
-				_refreshPreviewIfActive();
-			});
-		} else if (isEdited) {
-			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
-		} else if (alignment) {
+		if (alignment) {
 			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name)}</div>`;
 		} else if (hasMarks) {
 			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks, side, name)}</div>`;
@@ -540,15 +601,15 @@ function _synthesizeLeoMarks(side, fileName) {
 	for (const [tok, data] of Object.entries(tokens)) {
 		const list = side === "teacher" ? data.teacher : data.student;
 		for (const inst of list) {
-			if (inst.file === fileName) {
-				out.push({
-					token: tok,
-					label: inst.label || null,
-					start: inst.pos,
-					end: inst.pos + tok.length,
-					_synth: true,
-				});
-			}
+			if (inst.file !== fileName) continue;
+			if (inst.ghost) continue;
+			out.push({
+				token: tok,
+				label: inst.label || null,
+				start: inst.pos,
+				end: inst.pos + tok.length,
+				_synth: true,
+			});
 		}
 	}
 	return out;
@@ -561,9 +622,14 @@ function _mergeMarks(realMarks, synthMarks) {
 	return [...byStart.values()].sort((a, b) => a.start - b.start);
 }
 
-function diffColorizePositions(text, posMarks, side, ghosts) {
+function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 	const ghostList = ghosts || [];
-	if ((!posMarks || !posMarks.length) && !ghostList.length)
+	const anchorList = anchors || [];
+	if (
+		(!posMarks || !posMarks.length) &&
+		!ghostList.length &&
+		!anchorList.length
+	)
 		return escHtml(text);
 	const hasAssignments = !!_currentMarksEntry?.leo_assignments?.tokens;
 	const tokensTbl = hasAssignments
@@ -575,7 +641,8 @@ function diffColorizePositions(text, posMarks, side, ghosts) {
 		if (tokensTbl && side && m.token && tokensTbl[m.token]) return true;
 		return false;
 	});
-	if (!wrappable.length && !ghostList.length) return escHtml(text);
+	if (!wrappable.length && !ghostList.length && !anchorList.length)
+		return escHtml(text);
 
 	const normText = text.replace(/\r\n/g, "\n");
 
@@ -597,7 +664,10 @@ function diffColorizePositions(text, posMarks, side, ghosts) {
 	for (const g of ghostList) {
 		events.push({ pos: g.pos, kind: "ghost", ghost: g });
 	}
-	const ord = { close: 0, ghost: 1, open: 2 };
+	for (const a of anchorList) {
+		events.push({ pos: a.pos, kind: "anchor", anchor: a });
+	}
+	const ord = { close: 0, anchor: 1, ghost: 2, open: 3 };
 	events.sort((a, b) => a.pos - b.pos || ord[a.kind] - ord[b.kind]);
 
 	let out = "",
@@ -617,15 +687,43 @@ function diffColorizePositions(text, posMarks, side, ghosts) {
 				? ` style="color:${color};font-weight:bold"`
 				: "";
 			const absPos = m._abs_start ?? m.start;
+			const otherSide = side === "teacher" ? "student" : "teacher";
+			const pairedAttrs = m.paired_with
+				? ` data-swap-side="${otherSide}"` +
+					` data-swap-file="${escAttr(m.paired_with.file)}"` +
+					` data-swap-pos="${m.paired_with.start}"` +
+					` data-swap-token="${escAttr(m.paired_with.token)}"`
+				: "";
+			const insertAttrs = m.insert_at
+				? ` data-insert-side="${otherSide}"` +
+					` data-insert-file="${escAttr(m.insert_at.file)}"` +
+					` data-insert-pos="${m.insert_at.pos}"`
+				: "";
+			const leoClass = m.paired_with
+				? "leo-mark swap-paired"
+				: m.insert_at
+					? "leo-mark insert-source"
+					: "leo-mark";
 			const leoAttrs =
-				m.token && (color || (tokensTbl && tokensTbl[m.token]))
-					? ` class="leo-mark" data-leo-token="${escAttr(m.token)}" data-leo-side="${side}" data-leo-pos="${absPos}"`
+				m.token &&
+				m.label !== "comment" &&
+				(color || (tokensTbl && tokensTbl[m.token]))
+					? ` class="${leoClass}" data-leo-token="${escAttr(m.token)}" data-leo-side="${side}" data-leo-pos="${absPos}"${pairedAttrs}${insertAttrs}`
 					: "";
 			out += `<span${leoAttrs}${styleAttr}>`;
 		} else if (ev.kind === "close") {
 			out += "</span>";
-		} else {
+		} else if (ev.kind === "ghost") {
 			out += _renderGhostBlob(ev.ghost, tokensTbl);
+		} else {
+			const a = ev.anchor;
+			const absPos = a._abs_pos ?? a.pos;
+			out +=
+				`<span class="insert-anchor"` +
+				` data-insert-anchor-pos="${absPos}"` +
+				` data-insert-anchor-token="${escAttr(a.token)}"` +
+				` data-insert-anchor-teacher-file="${escAttr(a.teacher_file)}"` +
+				` data-insert-anchor-teacher-pos="${a.teacher_pos}">▾</span>`;
 		}
 	}
 	if (pos < normText.length) {
@@ -670,7 +768,7 @@ function _ghostWhitespaceHtml(s) {
 function _labelColor(label) {
 	if (label === "missing") return "#e00";
 	if (label === "extra") return "#00c";
-	if (label === "extra_star") return "#3aa0e0";
+	if (label === "ghost_extra") return "#3aa0e0";
 	return "#666";
 }
 
@@ -697,13 +795,70 @@ function _ctxSlice(inst, side) {
 	};
 }
 
-function _instContextVector(inst, sideName) {
+function _instHasGhostNeighbours(inst, sideName) {
+	if (sideName !== "teacher") return false;
+	if (inst.ghost) return false;
+	if (!Number.isInteger(inst.seq_idx_aug)) return false;
+	const sv = _strippedTeacherView();
+	if (!sv) return false;
+	const la = _currentMarksEntry?.leo_assignments;
+	const k = la?.k ?? 18;
+	const idx = inst.seq_idx_aug;
+	const lo = Math.max(0, idx - k);
+	const hi = Math.min(sv.isGhostAt.length, idx + k + 1);
+	for (let i = lo; i < hi; i++) {
+		if (i !== idx && sv.isGhostAt[i]) return true;
+	}
+	return false;
+}
+
+function _ctxSliceStripped(inst) {
+	const la = _currentMarksEntry?.leo_assignments;
+	const sv = _strippedTeacherView();
+	if (!la || !sv || !Number.isInteger(inst.seq_idx_aug)) return null;
+	const k = la.k ?? 40;
+	const anchorIdx = sv.augToStripped[inst.seq_idx_aug];
+	const anchorIsGhost = sv.isGhostAt[inst.seq_idx_aug];
+	const seq = sv.strippedSeq;
+	if (anchorIsGhost) {
+		return {
+			before: seq.slice(Math.max(0, anchorIdx - k), anchorIdx),
+			after: seq.slice(anchorIdx, Math.min(seq.length, anchorIdx + k)),
+		};
+	}
+	return {
+		before: seq.slice(Math.max(0, anchorIdx - k), anchorIdx),
+		after: seq.slice(anchorIdx + 1, Math.min(seq.length, anchorIdx + k + 1)),
+	};
+}
+
+function _strippedTeacherView() {
 	const la = _currentMarksEntry?.leo_assignments;
 	if (!la) return null;
-	const k = la.k ?? 18;
-	const decay = typeof la.decay === "number" ? la.decay : 0.85;
-	const boost =
-		typeof la.neighbor_boost === "number" ? la.neighbor_boost : 3.0;
+	if (la.__strippedView !== undefined) return la.__strippedView;
+	const aug = la.teacher_seq_aug;
+	if (!Array.isArray(aug) || !aug.some((t) => Array.isArray(t))) {
+		la.__strippedView = null;
+		return null;
+	}
+	const strippedSeq = [];
+	const augToStripped = [];
+	const isGhostAt = [];
+	for (const t of aug) {
+		const gho = Array.isArray(t);
+		isGhostAt.push(gho);
+		augToStripped.push(strippedSeq.length);
+		if (!gho) strippedSeq.push(t);
+	}
+	la.__strippedView = { strippedSeq, augToStripped, isGhostAt };
+	return la.__strippedView;
+}
+
+function _instContextVectors(inst, sideName) {
+	const la = _currentMarksEntry?.leo_assignments;
+	if (!la) return null;
+	const k = la.k ?? 10;
+	const idf = la.idf || {};
 	let seq, idx;
 	if (sideName === "teacher") {
 		const aug = Array.isArray(la.teacher_seq_aug) ? la.teacher_seq_aug : null;
@@ -719,28 +874,100 @@ function _instContextVector(inst, sideName) {
 		idx = inst.seq_idx;
 	}
 	if (!seq || !Number.isInteger(idx)) return null;
-	return _buildContextVector(seq, idx, k, decay, boost);
+	const primary = _buildContextSplit(seq, idx, k, idf);
+	let alt = null;
+	if (
+		sideName === "teacher" &&
+		!inst.ghost &&
+		Number.isInteger(inst.seq_idx_aug)
+	) {
+		const sv = _strippedTeacherView();
+		if (sv) {
+			alt = _buildStrippedContextSplit(
+				sv.strippedSeq,
+				sv.augToStripped[inst.seq_idx_aug],
+				sv.isGhostAt[inst.seq_idx_aug],
+				k,
+				idf,
+			);
+		}
+	}
+	return { primary, alt };
 }
 
-function _buildContextVector(seq, idx, k, decay, neighborBoost) {
-	const vec = new Map();
-	const lo = Math.max(0, idx - k);
-	const hi = Math.min(seq.length, idx + k + 1);
-	for (let i = lo; i < hi; i++) {
-		if (i === idx) continue;
+// A "context pack": { left, right } — two Maps weighted by IDF (no decay).
+function _buildContextSplit(seq, idx, k, idf) {
+	const left = new Map();
+	const right = new Map();
+	for (let i = Math.max(0, idx - k); i < idx; i++) {
 		const tok = seq[i];
-		const w = Math.pow(decay, Math.abs(i - idx));
-		vec.set(tok, (vec.get(tok) || 0) + w);
+		const w = idf[tok] || 0;
+		if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
 	}
-	if (idx > 0) {
-		const key = `\x00L1\x00${seq[idx - 1]}`;
-		vec.set(key, (vec.get(key) || 0) + neighborBoost);
+	for (let i = idx + 1; i < Math.min(seq.length, idx + k + 1); i++) {
+		const tok = seq[i];
+		const w = idf[tok] || 0;
+		if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
 	}
-	if (idx + 1 < seq.length) {
-		const key = `\x00R1\x00${seq[idx + 1]}`;
-		vec.set(key, (vec.get(key) || 0) + neighborBoost);
+	return { left, right };
+}
+
+function _buildStrippedContextSplit(
+	strippedSeq,
+	anchorIdx,
+	anchorIsGhost,
+	k,
+	idf,
+) {
+	const left = new Map();
+	const right = new Map();
+	const n = strippedSeq.length;
+	if (anchorIsGhost) {
+		for (let off = 1; off <= k; off++) {
+			const i = anchorIdx - off;
+			if (i < 0) break;
+			const tok = strippedSeq[i];
+			const w = idf[tok] || 0;
+			if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
+		}
+		for (let off = 1; off <= k; off++) {
+			const i = anchorIdx - 1 + off;
+			if (i >= n) break;
+			const tok = strippedSeq[i];
+			const w = idf[tok] || 0;
+			if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
+		}
+	} else {
+		for (let i = Math.max(0, anchorIdx - k); i < anchorIdx; i++) {
+			const tok = strippedSeq[i];
+			const w = idf[tok] || 0;
+			if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
+		}
+		for (let i = anchorIdx + 1; i < Math.min(n, anchorIdx + k + 1); i++) {
+			const tok = strippedSeq[i];
+			const w = idf[tok] || 0;
+			if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
+		}
 	}
-	return vec;
+	return { left, right };
+}
+
+// Combined matching score: 0.3 * min(cos_L, cos_R) + 0.7 * max(cos_L, cos_R).
+// Mirrors _combined_context_score in token_log.py. Vectors built with
+// IDF weights from la.idf.
+function _combinedScore(packA, packB) {
+	if (!packA || !packB) return 0;
+	const cLeft = _cosineSim(packA.left, packB.left);
+	const cRight = _cosineSim(packA.right, packB.right);
+	return 0.3 * Math.min(cLeft, cRight) + 0.7 * Math.max(cLeft, cRight);
+}
+
+function _scorePair(ctxA, ctxB) {
+	if (!ctxA || !ctxB) return 0;
+	let best = _combinedScore(ctxA.primary, ctxB.primary);
+	if (ctxA.alt) best = Math.max(best, _combinedScore(ctxA.alt, ctxB.primary));
+	if (ctxB.alt) best = Math.max(best, _combinedScore(ctxA.primary, ctxB.alt));
+	return best;
 }
 
 function _cosineSim(v1, v2) {
@@ -781,12 +1008,18 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 			? thisInst.match_idx
 			: -1;
 
-	const clickedCtx = thisInst ? _instContextVector(thisInst, side) : null;
+	const clickedCtx = thisInst ? _instContextVectors(thisInst, side) : null;
 	const clickedCtxSlice = thisInst ? _ctxSlice(thisInst, side) : null;
+	const clickedCtxSliceStripped =
+		thisInst && _instHasGhostNeighbours(thisInst, side)
+			? _ctxSliceStripped(thisInst)
+			: null;
 	const clickedWindowSet = clickedCtxSlice
 		? new Set([
 				...clickedCtxSlice.before.map((t) => (Array.isArray(t) ? t[0] : t)),
 				...clickedCtxSlice.after.map((t) => (Array.isArray(t) ? t[0] : t)),
+				...(clickedCtxSliceStripped ? clickedCtxSliceStripped.before : []),
+				...(clickedCtxSliceStripped ? clickedCtxSliceStripped.after : []),
 			])
 		: null;
 
@@ -805,12 +1038,11 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 				? "leo-row-missing"
 				: inst.label === "extra"
 					? "leo-row-extra"
-					: inst.label === "extra_star"
+					: inst.label === "ghost_extra"
 						? "leo-row-extra-star"
 						: "";
 
-	const renderRow = (inst, sideName, highlight, score, isSelf = false) => {
-		const ctx = _ctxSlice(inst, sideName);
+	const renderSingleRow = (inst, sideName, ctx, highlight, score, isSelf) => {
 		const fmt = isSelf ? _fmtCtxToken : _fmtCtxTokenBold;
 		const before = ctx ? ctx.before.map(fmt).join(" ") : "";
 		const after = ctx ? ctx.after.map(fmt).join(" ") : "";
@@ -819,7 +1051,7 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 			`leo-row ${labelClass(inst)}${highlight ? " leo-this" : ""}`.trim();
 		const scoreCell =
 			score == null
-				? '<span class="leo-score">—</span>'
+				? '<span class="leo-score"></span>'
 				: `<span class="leo-score">${(score * 100).toFixed(0)}%</span>`;
 		return (
 			`<div class="${cls}">` +
@@ -831,25 +1063,69 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		);
 	};
 
+	const renderRow = (
+		inst,
+		sideName,
+		highlight,
+		score,
+		isSelf = false,
+		scoreAlt = null,
+	) => {
+		const isDual = highlight && _instHasGhostNeighbours(inst, sideName);
+		if (!isDual) {
+			return renderSingleRow(
+				inst,
+				sideName,
+				_ctxSlice(inst, sideName),
+				highlight,
+				score,
+				isSelf,
+			);
+		}
+		const ctxWith = _ctxSlice(inst, sideName);
+		const ctxStripped = _ctxSliceStripped(inst);
+		const cls = `leo-pair${highlight ? " leo-this" : ""}`;
+		return (
+			`<div class="${cls}">` +
+			renderSingleRow(inst, sideName, ctxWith, false, score, isSelf) +
+			renderSingleRow(inst, sideName, ctxStripped, false, scoreAlt, isSelf) +
+			`</div>`
+		);
+	};
+
 	const sepRow = '<div class="leo-row leo-sep">⋯</div>';
 	const renderSection = (list, sideName, anchorOrigIdxs) => {
 		if (sideName === side) {
 			if (thisIdx < 0 || thisIdx >= list.length) return "";
-			return renderRow(list[thisIdx], sideName, true, null, true);
+			return renderRow(list[thisIdx], sideName, true, null, true, null);
 		}
-		const scored = list.map((inst, i) => ({
-			inst,
-			origIdx: i,
-			score: clickedCtx
-				? _cosineSim(clickedCtx, _instContextVector(inst, sideName))
-				: null,
-		}));
+		const scored = list.map((inst, i) => {
+			const ctxs = clickedCtx ? _instContextVectors(inst, sideName) : null;
+			let score = null;
+			let scoreAlt = null;
+			if (clickedCtx && ctxs) {
+				score = _combinedScore(clickedCtx.primary, ctxs.primary);
+				if (ctxs.alt) {
+					scoreAlt = _combinedScore(clickedCtx.primary, ctxs.alt);
+				}
+				if (clickedCtx.alt) {
+					score = Math.max(
+						score,
+						_combinedScore(clickedCtx.alt, ctxs.primary),
+					);
+				}
+			}
+			const sortScore =
+				scoreAlt != null ? Math.max(score ?? 0, scoreAlt) : score;
+			return { inst, origIdx: i, score, scoreAlt, sortScore };
+		});
 		const order = clickedCtx
 			? scored
 					.slice()
 					.sort(
 						(a, b) =>
-							(b.score ?? -1) - (a.score ?? -1) || a.origIdx - b.origIdx,
+							(b.sortScore ?? -1) - (a.sortScore ?? -1) ||
+							a.origIdx - b.origIdx,
 					)
 			: scored;
 		const anchorPositions = anchorOrigIdxs
@@ -861,9 +1137,9 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		let prev = -1;
 		for (const p of visible) {
 			if (prev >= 0 && p > prev + 1) out.push(sepRow);
-			const { inst, origIdx, score } = order[p];
+			const { inst, origIdx, score, scoreAlt } = order[p];
 			const isMatched = origIdx === matchedOtherIdx;
-			out.push(renderRow(inst, sideName, isMatched, score));
+			out.push(renderRow(inst, sideName, isMatched, score, false, scoreAlt));
 			prev = p;
 		}
 		return out.join("");
@@ -873,7 +1149,8 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 	const nTeacherGhost = teachers.length - nTeacherSurv;
 	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
 	let html = "";
-	const ordered = side === "student" ? ["student", "teacher"] : ["teacher", "student"];
+	const ordered =
+		side === "student" ? ["student", "teacher"] : ["teacher", "student"];
 	for (const sName of ordered) {
 		const list = sName === "teacher" ? teachers : students;
 		if (!list.length) continue;
@@ -996,6 +1273,12 @@ function _showLeoTooltip(target) {
 		_clearLeoHighlights();
 		target.classList.add("leo-highlight-active");
 		_leoHighlighted.push(target);
+		if (target.hasAttribute("data-swap-pos")) {
+			_applySwapPartnerHighlight(target);
+		}
+		if (target.hasAttribute("data-insert-pos")) {
+			_applyInsertAnchorHighlight(target);
+		}
 		const label = mark.label || "matched";
 		const color = DIFF_LABEL_COLORS[label] || "#666";
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
@@ -1017,7 +1300,7 @@ function _showLeoTooltip(target) {
 	const nTeacherSurv = data.teacher.filter((t) => !t.ghost).length;
 	const nTeacherGhost = data.teacher.length - nTeacherSurv;
 	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
-	_leoTipTitle.innerHTML = `${escHtml(token)} <span class="leo-sub">— ${nTeacherSurv} teacher${ghostNote} / ${data.student.length} student instances</span>`;
+	_leoTipTitle.innerHTML = `${escHtml(token)} <span class="leo-sub"> &nbsp; ${nTeacherSurv} teacher${ghostNote} / ${data.student.length} student</span>`;
 	_leoTipBody.innerHTML = _renderLeoTooltip(
 		token,
 		data,
@@ -1043,15 +1326,59 @@ function _hideLeoTooltip() {
 }
 
 let _leoHighlighted = [];
+let _swapHighlighted = [];
+let _insertHighlighted = [];
 function _clearLeoHighlights() {
 	for (const el of _leoHighlighted)
 		el.classList.remove("leo-highlight-active");
 	_leoHighlighted = [];
+	for (const el of _swapHighlighted)
+		el.classList.remove("swap-partner-active");
+	_swapHighlighted = [];
+	for (const el of _insertHighlighted) el.classList.remove("insert-active");
+	_insertHighlighted = [];
+}
+
+function _applySwapPartnerHighlight(target) {
+	const otherSide = target.getAttribute("data-swap-side");
+	const partnerPos = target.getAttribute("data-swap-pos");
+	const partnerToken = target.getAttribute("data-swap-token");
+	if (!otherSide || partnerPos == null) return;
+	const wrap = document.getElementById(`code-${otherSide}`);
+	if (!wrap) return;
+	const sel =
+		`.leo-mark[data-leo-side="${otherSide}"]` +
+		`[data-leo-pos="${partnerPos}"]:not([data-leo-ghost-offset])`;
+	for (const el of wrap.querySelectorAll(sel)) {
+		if (partnerToken && el.getAttribute("data-leo-token") !== partnerToken)
+			continue;
+		el.classList.add("swap-partner-active");
+		_swapHighlighted.push(el);
+	}
+}
+
+function _applyInsertAnchorHighlight(target) {
+	const otherSide = target.getAttribute("data-insert-side");
+	const anchorPos = target.getAttribute("data-insert-pos");
+	if (!otherSide || anchorPos == null) return;
+	const wrap = document.getElementById(`code-${otherSide}`);
+	if (!wrap) return;
+	const sel = `.insert-anchor[data-insert-anchor-pos="${anchorPos}"]`;
+	for (const el of wrap.querySelectorAll(sel)) {
+		el.classList.add("insert-active");
+		_insertHighlighted.push(el);
+	}
 }
 
 function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 	target.classList.add("leo-highlight-active");
 	_leoHighlighted.push(target);
+	if (target.hasAttribute("data-swap-pos")) {
+		_applySwapPartnerHighlight(target);
+	}
+	if (target.hasAttribute("data-insert-pos")) {
+		_applyInsertAnchorHighlight(target);
+	}
 	const list = side === "teacher" ? data.teacher : data.student;
 	const idx = _findInstIdx(list, pos, ghostOffset);
 	const inst = idx >= 0 ? list[idx] : null;
@@ -1091,11 +1418,36 @@ document.addEventListener("mousedown", (ev) => {
 		_showLeoTooltip(mark);
 		return;
 	}
+	const anchor = ev.target.closest && ev.target.closest(".insert-anchor");
+	if (anchor) {
+		ev.preventDefault();
+		_showInsertAnchorOrigin(anchor);
+		return;
+	}
 	if (_leoTip && _leoTip.style.display === "flex") {
 		if (ev.target.closest && ev.target.closest("#leo-tooltip")) return;
 		_hideLeoTooltip();
 	}
 });
+
+function _showInsertAnchorOrigin(anchor) {
+	_clearLeoHighlights();
+	anchor.classList.add("insert-active");
+	_insertHighlighted.push(anchor);
+	const tFile = anchor.getAttribute("data-insert-anchor-teacher-file");
+	const tPos = anchor.getAttribute("data-insert-anchor-teacher-pos");
+	if (!tFile || tPos == null) return;
+	const wrap = document.getElementById("code-teacher");
+	if (!wrap) return;
+	const sel =
+		`.leo-mark[data-leo-side="teacher"]` +
+		`[data-leo-pos="${tPos}"]` +
+		`[data-insert-pos]:not([data-leo-ghost-offset])`;
+	for (const el of wrap.querySelectorAll(sel)) {
+		el.classList.add("leo-highlight-active");
+		_leoHighlighted.push(el);
+	}
+}
 
 function _applyDiffModeLabel() {}
 
@@ -1148,22 +1500,6 @@ function _updateTitleScore() {
 	document.title = newTitle;
 }
 
-function toggleEditMode() {
-	if (_studentEditMode) return;
-	_studentEditMode = true;
-	const btn = document.getElementById("btn-edit");
-	if (btn) {
-		btn.classList.add("active");
-		btn.textContent = "✏️ Editing";
-		btn.disabled = true;
-	}
-	if (_studentFiles) {
-		const saved = _saveState("student");
-		renderPanel("student", _studentFiles, _studentMarks);
-		requestAnimationFrame(() => _restoreState("student", saved));
-	}
-}
-
 function togglePreview() {
 	const btn = document.getElementById("btn-preview");
 	const isPreview = btn && btn.classList.contains("active");
@@ -1179,11 +1515,7 @@ function togglePreview() {
 			if (iframe) iframe.style.display = "none";
 			codeWrap.style.display = "";
 		} else {
-			const baseFiles = side === "teacher" ? _teacherFiles : _studentFiles;
-			const files =
-				side === "student" && _studentModified.size
-					? { ...baseFiles, ..._editedStudentFiles }
-					: baseFiles;
+			const files = side === "teacher" ? _teacherFiles : _studentFiles;
 			if (!files || !Object.keys(files).length) continue;
 			if (iframe) {
 				updatePreview(side, files, iframe);
@@ -1203,37 +1535,6 @@ function togglePreview() {
 		}
 	}
 	localStorage.setItem("diff-preview-mode", isPreview ? "code" : "preview");
-}
-
-function _readEditableText(el) {
-	const hasSpacers = el.querySelector(".diff-spacer") !== null;
-	if (!hasSpacers) return el.innerText.replace(/\r\n/g, "\n");
-	const lines = [];
-	for (const node of el.childNodes) {
-		if (node.nodeType === 1) {
-			if (node.classList?.contains("diff-spacer")) continue;
-			lines.push(node.textContent || "");
-		} else if (node.nodeType === 3) {
-			const txt = node.textContent || "";
-			if (txt) lines.push(txt);
-		}
-	}
-	return lines.join("\n").replace(/​/g, "").replace(/\r\n/g, "\n");
-}
-
-function _refreshPreviewIfActive() {
-	if (localStorage.getItem("diff-preview-mode") !== "preview") return;
-	for (const side of ["teacher", "student"]) {
-		const iframe = document.getElementById(`preview-${side}`);
-		if (!iframe || iframe.style.display === "none") continue;
-		const baseFiles = side === "teacher" ? _teacherFiles : _studentFiles;
-		const files =
-			side === "student" && _studentModified.size
-				? { ...baseFiles, ..._editedStudentFiles }
-				: baseFiles;
-		if (files && Object.keys(files).length)
-			updatePreview(side, files, iframe);
-	}
 }
 
 function updatePreview(side, files, iframe) {

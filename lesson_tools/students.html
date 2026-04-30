@@ -253,7 +253,9 @@
 			let _hasInteractions = false;
 			let _followLabel = "FOLLOW";
 			let _allFiles = new Map();
+			let _dirHandle = null;
 			let _anonMode = "";
+			let _shownUnicodeCorruptionWarning = false;
 
 			const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
@@ -326,6 +328,7 @@
 					return false;
 				}
 				showLoading(true);
+				_dirHandle = handle;
 				_allFiles.clear();
 				const files = [];
 				await readDirHandle(handle, "", _allFiles, files);
@@ -375,6 +378,7 @@
 					const dirHandle = await window.showDirectoryPicker(opts);
 					_idbSet("lastDir", dirHandle);
 					showLoading(true);
+					_dirHandle = dirHandle;
 					_allFiles.clear();
 					const files = [];
 					await readDirHandle(dirHandle, "", _allFiles, files);
@@ -571,6 +575,8 @@
 				}
 
 				const students = [];
+				const unicodeCorruptionHits = [];
+				const unicodeRepairHits = [];
 				for (let i = 1; i < rowsR.length; i++) {
 					const row = rowsR[i];
 					const name = String(row[iName] || "").trim();
@@ -599,9 +605,29 @@
 										.join("\n")
 										.trim()
 								: "";
+						const rawVal = String(row[idx] ?? "").trim();
+						const repaired = repairLikelyAstralEmojiFallbacks(rawVal);
+						if (repaired.repairedCount) {
+							unicodeRepairHits.push({
+								rowIndex: i + 1,
+								name,
+								column: colName,
+								before: rawVal,
+								after: repaired.text,
+							});
+						}
+						const val = repaired.text;
+						if (hasLikelyAstralTruncation(val)) {
+							unicodeCorruptionHits.push({
+								rowIndex: i + 1,
+								name,
+								column: colName,
+								value: val,
+							});
+						}
 						return {
 							col: colName,
-							val: String(row[idx] ?? "").trim(),
+							val,
 							note,
 						};
 					});
@@ -632,12 +658,72 @@
 				students.sort((a, b) =>
 					a.id.localeCompare(b.id, undefined, { numeric: true }),
 				);
+				warnLikelyAstralTruncation(
+					unicodeCorruptionHits,
+					unicodeRepairHits,
+				);
 				return {
 					students,
 					remarkCols: remarkCols.map((c) => c.name),
 					hasInteractions: iInteractions !== -1,
 					followLabel: iSimilarity !== -1 ? "SIM" : "FOLLOW",
 				};
+			}
+
+			function hasLikelyAstralTruncation(text) {
+				if (!text) return false;
+				for (const ch of text) {
+					if (isLikelyAstralEmojiFallbackChar(ch)) return true;
+				}
+				return false;
+			}
+
+			function isLikelyAstralEmojiFallbackChar(ch) {
+				if (!ch || ch.length === 0) return false;
+				const cp = ch.codePointAt(0);
+				if (cp < 0xf900 || cp > 0xfaff) return false;
+				const candidate = String.fromCodePoint(0x10000 + cp);
+				return /\p{Extended_Pictographic}/u.test(candidate);
+			}
+
+			function repairLikelyAstralEmojiFallbacks(text) {
+				if (!text) return { text, repairedCount: 0 };
+				let repairedCount = 0;
+				let out = "";
+				for (const ch of text) {
+					if (isLikelyAstralEmojiFallbackChar(ch)) {
+						repairedCount += 1;
+						out += String.fromCodePoint(0x10000 + ch.codePointAt(0));
+					} else {
+						out += ch;
+					}
+				}
+				return { text: out, repairedCount };
+			}
+
+			function warnLikelyAstralTruncation(hits, repairs) {
+				if (
+					_shownUnicodeCorruptionWarning ||
+					(!hits.length && !repairs.length)
+				)
+					return;
+				_shownUnicodeCorruptionWarning = true;
+				const repairedCount = repairs.length;
+				const unrepairedCount = hits.length;
+				const repairedSample = repairs.slice(0, 4);
+				const unrepairedSample = hits.slice(0, 4);
+				if (repairedCount) {
+					console.warn(
+						"[Students] Repaired likely astral emoji fallback glyphs in XLSX values.",
+						{ repairedCount, sample: repairedSample },
+					);
+				}
+				if (unrepairedCount) {
+					console.warn(
+						"[Students] Some possible astral emoji truncations could not be auto-repaired.",
+						{ unrepairedCount, sample: unrepairedSample },
+					);
+				}
 			}
 
 			function findCol(headers, re) {
@@ -897,82 +983,90 @@
 				});
 			}
 
-			async function openDiffForStudent(student) {
-				if (!_allFiles.size) {
-					return;
+			async function _readStudentDiffPayload(student) {
+				const followPct =
+					student.followPct != null
+						? student.followPct.toFixed(1) + "%"
+						: "N/A";
+
+				const fileMap = new Map();
+				if (_dirHandle) {
+					await readDirHandle(_dirHandle, "", fileMap, []);
+				} else {
+					for (const [k, v] of _allFiles) fileMap.set(k, v);
 				}
+
+				const recoEntries = [...fileMap.entries()].filter(
+					([p]) =>
+						/^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
+				);
+				const correctEntries = [...fileMap.entries()].filter(
+					([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
+				);
+				const teacherEntries = recoEntries.length
+					? recoEntries
+					: correctEntries;
+				const studentDir = (student.name + "/").toLowerCase();
+				const anonBase = "anon_names/";
+				const studentEntries = [...fileMap.entries()].filter(
+					([p]) =>
+						p.startsWith(anonBase + studentDir) &&
+						/\.(html|css|js)$/i.test(p),
+				);
+
+				const allMarks = {};
+				for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+					const entry = fileMap.get(anonBase + studentDir + fname);
+					if (entry) {
+						try {
+							allMarks[mode] = JSON.parse(await readText(entry));
+						} catch {}
+					}
+				}
+
+				const teacherFiles = {};
+				for (const [, file] of teacherEntries)
+					teacherFiles[file.name] = await readText(file);
+
+				const studentFiles = {};
+				for (const [, file] of studentEntries)
+					studentFiles[file.name] = await readText(file);
+
+				const imageUris = {};
+				const imageEntries = [...fileMap.entries()].filter(
+					([p]) =>
+						IMAGE_EXT.test(p) &&
+						(/^correct\//i.test(p) ||
+							p.startsWith(anonBase + studentDir)),
+				);
+				for (const [, file] of imageEntries) {
+					if (!imageUris[file.name]) {
+						imageUris[file.name] = await readDataUri(file);
+					}
+				}
+
+				if (
+					!Object.keys(teacherFiles).length &&
+					!Object.keys(studentFiles).length
+				) {
+					throw new Error(
+						`No files found for student "${student.name}". Make sure the folder contains correct/ and anon_names/ subdirectories.`,
+					);
+				}
+
+				return {
+					teacherFiles,
+					studentFiles,
+					allMarks,
+					imageUris,
+					title: `${student.name} (${followPct})`,
+				};
+			}
+
+			async function openDiffForStudent(student) {
+				if (!_allFiles.size) return;
 				try {
-					const followPct =
-						student.followPct != null
-							? student.followPct.toFixed(1) + "%"
-							: "N/A";
-
-					const recoEntries = [..._allFiles.entries()].filter(
-						([p]) =>
-							/^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
-					);
-					const correctEntries = [..._allFiles.entries()].filter(
-						([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
-					);
-					const teacherEntries = recoEntries.length
-						? recoEntries
-						: correctEntries;
-					const studentDir = (student.name + "/").toLowerCase();
-					const anonBase = "anon_names/";
-					const studentEntries = [..._allFiles.entries()].filter(
-						([p]) =>
-							p.startsWith(anonBase + studentDir) &&
-							/\.(html|css|js)$/i.test(p),
-					);
-
-					const allMarks = {};
-					for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
-						const entry = _allFiles.get(anonBase + studentDir + fname);
-						if (entry) {
-							try {
-								allMarks[mode] = JSON.parse(await readText(entry));
-							} catch {}
-						}
-					}
-
-					const teacherFiles = {};
-					for (const [, file] of teacherEntries)
-						teacherFiles[file.name] = await readText(file);
-
-					const studentFiles = {};
-					for (const [, file] of studentEntries)
-						studentFiles[file.name] = await readText(file);
-
-					const imageUris = {};
-					const imageEntries = [..._allFiles.entries()].filter(
-						([p]) =>
-							IMAGE_EXT.test(p) &&
-							(/^correct\//i.test(p) ||
-								p.startsWith(anonBase + studentDir)),
-					);
-					for (const [, file] of imageEntries) {
-						if (!imageUris[file.name]) {
-							imageUris[file.name] = await readDataUri(file);
-						}
-					}
-
-					if (
-						!Object.keys(teacherFiles).length &&
-						!Object.keys(studentFiles).length
-					) {
-						alert(
-							`No files found for student "${student.name}". Make sure the folder contains correct/ and anon_names/ subdirectories.`,
-						);
-						return;
-					}
-
-					openDifferentiator(
-						teacherFiles,
-						studentFiles,
-						allMarks,
-						imageUris,
-						`${student.name} (${followPct})`,
-					);
+					await openDifferentiator(() => _readStudentDiffPayload(student));
 				} catch (err) {
 					console.error("[Students] openDiffForStudent", err);
 					alert("Error opening differentiator: " + err.message);

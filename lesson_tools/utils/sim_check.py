@@ -400,6 +400,7 @@ def main() -> None:
     checker.write_lev_diff_marks(names_dir, anon_names_dir)
     checker.write_ro_diff_marks(names_dir, anon_names_dir)
     checker.write_git_diff_marks(names_dir, anon_names_dir)
+    checker.copy_truth_diff_marks(current_dir / 'truth', names_dir, anon_names_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

@@ -597,86 +597,83 @@ function matchAnonFolder(options, student) {
 		null
 	);
 }
+async function _readOverviewDiffPayload(dirHandle, student, followPct) {
+	let anonName = null;
+	const opts = [];
+	try {
+		const anonDir = await dirHandle.getDirectoryHandle("anon_names");
+		for await (const [n, e] of anonDir.entries())
+			if (e.kind === "directory") opts.push(n);
+	} catch {}
+	anonName = opts.find((o) => o === student.name) ?? null;
+	if (!anonName)
+		anonName =
+			opts.find((o) => o.toLowerCase() === student.name.toLowerCase()) ??
+			null;
+	if (!anonName) anonName = matchAnonFolder(opts, student);
+	if (!anonName)
+		throw new Error(`Cannot find anon folder for "${student.name}".`);
+
+	const teacherFiles = {};
+	const _readCodeFiles = async (dirHandleSrc) => {
+		const out = {};
+		for await (const [name, entry] of dirHandleSrc.entries())
+			if (entry.kind === "file" && /\.(html|css|js)$/i.test(name))
+				out[name] = await (await entry.getFile()).text();
+		return out;
+	};
+	try {
+		const recoDir = await dirHandle.getDirectoryHandle("reconstructed");
+		Object.assign(teacherFiles, await _readCodeFiles(recoDir));
+	} catch {}
+	if (!Object.keys(teacherFiles).length) {
+		try {
+			const correctDir = await dirHandle.getDirectoryHandle("correct");
+			Object.assign(teacherFiles, await _readCodeFiles(correctDir));
+		} catch {}
+	}
+
+	const studentFiles = {};
+	const allMarks = {};
+	try {
+		const anonDir = await dirHandle.getDirectoryHandle("anon_names");
+		const studentDir = await anonDir.getDirectoryHandle(anonName);
+		for await (const [name, entry] of studentDir.entries()) {
+			if (entry.kind !== "file") continue;
+			if (/\.(html|css|js)$/i.test(name))
+				studentFiles[name] = await (await entry.getFile()).text();
+		}
+		for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+			try {
+				const fh = await studentDir.getFileHandle(fname);
+				allMarks[mode] = JSON.parse(await (await fh.getFile()).text());
+			} catch {}
+		}
+	} catch (e) {
+		console.warn("Student dir error:", e.message);
+	}
+
+	if (!Object.keys(teacherFiles).length && !Object.keys(studentFiles).length) {
+		throw new Error(`No code files found for ${student.name}.`);
+	}
+
+	const label = followPct != null ? followPct.toFixed(0) + "%" : "assignment";
+	return {
+		teacherFiles,
+		studentFiles,
+		allMarks,
+		imageUris: {},
+		title: `${escHtml(student.name)} (${escHtml(label)})`,
+	};
+}
+
 async function openDiff(dirHandle, student, followPct) {
 	try {
 		showLoading(true);
-		let anonName = null;
-		const opts = [];
-		try {
-			const anonDir = await dirHandle.getDirectoryHandle("anon_names");
-			for await (const [n, e] of anonDir.entries())
-				if (e.kind === "directory") opts.push(n);
-		} catch {}
-		anonName = opts.find((o) => o === student.name) ?? null;
-		if (!anonName)
-			anonName =
-				opts.find((o) => o.toLowerCase() === student.name.toLowerCase()) ??
-				null;
-		if (!anonName) anonName = matchAnonFolder(opts, student);
-		if (!anonName) {
-			showLoading(false);
-			alert(`Cannot find anon folder for "${student.name}".`);
-			return;
-		}
-
-		const teacherFiles = {};
-		const _readCodeFiles = async (dirHandleSrc) => {
-			const out = {};
-			for await (const [name, entry] of dirHandleSrc.entries())
-				if (entry.kind === "file" && /\.(html|css|js)$/i.test(name))
-					out[name] = await (await entry.getFile()).text();
-			return out;
-		};
-		try {
-			const recoDir = await dirHandle.getDirectoryHandle("reconstructed");
-			Object.assign(teacherFiles, await _readCodeFiles(recoDir));
-		} catch {}
-		if (!Object.keys(teacherFiles).length) {
-			try {
-				const correctDir = await dirHandle.getDirectoryHandle("correct");
-				Object.assign(teacherFiles, await _readCodeFiles(correctDir));
-			} catch {}
-		}
-
-		const studentFiles = {};
-		const allMarks = {};
-		try {
-			const anonDir = await dirHandle.getDirectoryHandle("anon_names");
-			const studentDir = await anonDir.getDirectoryHandle(anonName);
-			for await (const [name, entry] of studentDir.entries()) {
-				if (entry.kind !== "file") continue;
-				if (/\.(html|css|js)$/i.test(name))
-					studentFiles[name] = await (await entry.getFile()).text();
-			}
-			for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
-				try {
-					const fh = await studentDir.getFileHandle(fname);
-					allMarks[mode] = JSON.parse(await (await fh.getFile()).text());
-				} catch {}
-			}
-		} catch (e) {
-			console.warn("Student dir error:", e.message);
-		}
-
-		if (
-			!Object.keys(teacherFiles).length &&
-			!Object.keys(studentFiles).length
-		) {
-			showLoading(false);
-			alert(`No code files found for ${student.name}.`);
-			return;
-		}
-
-		const label =
-			followPct != null ? followPct.toFixed(0) + "%" : "assignment";
-		showLoading(false);
-		openDifferentiator(
-			teacherFiles,
-			studentFiles,
-			allMarks,
-			{},
-			`${escHtml(student.name)} (${escHtml(label)})`,
+		await openDifferentiator(() =>
+			_readOverviewDiffPayload(dirHandle, student, followPct),
 		);
+		showLoading(false);
 	} catch (e) {
 		showLoading(false);
 		alert("Error: " + e.message);

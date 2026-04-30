@@ -3,9 +3,9 @@
 function inlineFilesInHtml(html, filesMap) {
 	if (!html || !filesMap || !Object.keys(filesMap).length) return html;
 	let result = html.replace(
-		/<link\b[^>]*\brel=["']stylesheet["'][^>]*>/gi,
+		/<link\b[^>]*\brel\s*=\s*["']stylesheet["'][^>]*>/gi,
 		(match) => {
-			const m = match.match(/\bhref=["']([^"']+)["']/i);
+			const m = match.match(/\bhref\s*=\s*["']([^"']+)["']/i);
 			if (!m) return match;
 			const basename = m[1].replace(/\\/g, "/").split("/").pop();
 			const content = filesMap[basename];
@@ -13,7 +13,7 @@ function inlineFilesInHtml(html, filesMap) {
 		},
 	);
 	result = result.replace(
-		/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>\s*<\/script>/gi,
+		/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>\s*<\/script>/gi,
 		(match, src) => {
 			const basename = src.replace(/\\/g, "/").split("/").pop();
 			const content = filesMap[basename];
@@ -21,7 +21,7 @@ function inlineFilesInHtml(html, filesMap) {
 		},
 	);
 	result = result.replace(
-		/(<img\b[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi,
+		/(<img\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)/gi,
 		(match, pre, src, post) => {
 			const basename = src.replace(/\\/g, "/").split("/").pop();
 			const dataUri = filesMap[basename];
