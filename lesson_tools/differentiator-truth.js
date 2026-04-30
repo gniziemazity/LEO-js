@@ -72,7 +72,7 @@ function _truthToggle() {
 function _truthEnable() {
 	_truthTokenCache.clear();
 	const baseKey = _diffMode != null && _allMarks[_diffMode] ? _diffMode : null;
-	const base = baseKey ? _allMarks[baseKey] : null;
+	const base = baseKey != null ? _allMarks[baseKey] : null;
 	const seed = {
 		token_matching: "truth",
 		teacher_files: (base && base.teacher_files) || {},
@@ -727,6 +727,46 @@ function _truthDownload() {
 	URL.revokeObjectURL(url);
 }
 
+function _truthBackwardWhitespace(text, pos) {
+	if (pos <= 0 || !/\s/.test(text[pos - 1])) return "";
+	let i = pos;
+	while (i > 0 && /\s/.test(text[i - 1])) i--;
+	return text.slice(i, pos);
+}
+
+function _truthForwardWhitespace(text, pos) {
+	if (pos >= text.length || !/\s/.test(text[pos])) return "";
+	let i = pos;
+	while (i < text.length && /\s/.test(text[i])) i++;
+	return text.slice(pos, i);
+}
+
+function _truthAlignWhitespace(
+	srcText,
+	srcStart,
+	srcEnd,
+	dstText,
+	dstStart,
+	dstEnd,
+) {
+	const srcLead = _truthBackwardWhitespace(srcText, srcStart);
+	const dstLead = _truthBackwardWhitespace(dstText, dstStart);
+	const srcTrail = _truthForwardWhitespace(srcText, srcEnd);
+	const dstTrail = _truthForwardWhitespace(dstText, dstEnd);
+
+	let text = srcText.slice(srcStart, srcEnd);
+	let aStart = dstStart;
+	let aEnd = dstEnd;
+
+	if (srcLead && !dstLead) text = srcLead + text;
+	else if (!srcLead && dstLead) aStart = dstStart - dstLead.length;
+
+	if (srcTrail && !dstTrail) text = text + srcTrail;
+	else if (!srcTrail && dstTrail) aEnd = dstEnd + dstTrail.length;
+
+	return { text, start: aStart, end: aEnd };
+}
+
 function _truthApplyToStudent() {
 	const out = {};
 	const t = _truthMarks();
@@ -736,6 +776,7 @@ function _truthApplyToStudent() {
 
 	for (const sName of studentNames) {
 		let text = _truthSrcText("student", sName);
+		const origText = text;
 		const ops = [];
 		for (const g of groups) {
 			if (
@@ -744,10 +785,19 @@ function _truthApplyToStudent() {
 				g.insertFile === sName
 			) {
 				const tSrc = _truthSrcText("teacher", g.file);
+				const a = _truthAlignWhitespace(
+					tSrc,
+					g.lo,
+					g.hi,
+					origText,
+					g.insertPos,
+					g.insertPos,
+				);
 				ops.push({
-					kind: "insert",
-					pos: g.insertPos,
-					text: tSrc.slice(g.lo, g.hi),
+					kind: "replace",
+					start: a.start,
+					end: a.end,
+					text: a.text,
 				});
 			} else if (
 				g.side === "student" &&
@@ -755,11 +805,19 @@ function _truthApplyToStudent() {
 				g.file === sName
 			) {
 				const tSrc = _truthSrcText("teacher", g.pairFile);
+				const a = _truthAlignWhitespace(
+					tSrc,
+					g.pairLo,
+					g.pairHi,
+					origText,
+					g.lo,
+					g.hi,
+				);
 				ops.push({
 					kind: "replace",
-					start: g.lo,
-					end: g.hi,
-					text: tSrc.slice(g.pairLo, g.pairHi),
+					start: a.start,
+					end: a.end,
+					text: a.text,
 				});
 			} else if (
 				g.side === "student" &&
@@ -919,6 +977,21 @@ function _truthGroupMarks() {
 		const filesObj = t[sideKey] || {};
 		for (const [file, marks] of Object.entries(filesObj)) {
 			const sorted = [...marks].sort((a, b) => a.start - b.start);
+			const allTokens = _truthTokensForFile(side, file);
+			const commentPositions = new Set();
+			for (const m of sorted) {
+				if (m.label === "comment") commentPositions.add(m.start);
+			}
+			const hasObstacleInGap = (lo, hi) => {
+				if (lo >= hi) return false;
+				for (const tok of allTokens) {
+					if (tok.start < lo) continue;
+					if (tok.start >= hi) return false;
+					if (!commentPositions.has(tok.start)) return true;
+				}
+				return false;
+			};
+
 			let cur = null,
 				curKey = null,
 				curExtent = null;
@@ -950,7 +1023,7 @@ function _truthGroupMarks() {
 							m.extent_start === curExtent.start &&
 							m.extent_end === curExtent.end;
 					} else if (m.extent_start == null && curExtent == null) {
-						merge = mLo - cur.hi < 60;
+						merge = !hasObstacleInGap(cur.hi, mLo);
 					}
 				}
 

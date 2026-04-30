@@ -1,0 +1,5063 @@
+{
+  "token_matching": "leo_star",
+  "score": 99.8,
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 460,
+        "end": 461
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 461,
+        "end": 462
+      },
+      {
+        "token": "global",
+        "label": "comment",
+        "start": 463,
+        "end": 469
+      },
+      {
+        "token": "variables",
+        "label": "comment",
+        "start": 470,
+        "end": 479
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 607,
+        "end": 608
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 608,
+        "end": 609
+      },
+      {
+        "token": "numbers",
+        "label": "comment",
+        "start": 610,
+        "end": 617
+      },
+      {
+        "token": "between",
+        "label": "comment",
+        "start": 618,
+        "end": 625
+      },
+      {
+        "token": "0",
+        "label": "comment",
+        "start": 626,
+        "end": 627
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 628,
+        "end": 631
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 632,
+        "end": 633
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 857,
+        "end": 858,
+        "timestamp": "10:42:36",
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1290
+        }
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 904,
+        "end": 905
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 905,
+        "end": 906
+      },
+      {
+        "token": "+",
+        "label": "comment",
+        "start": 907,
+        "end": 908
+      },
+      {
+        "token": "here",
+        "label": "comment",
+        "start": 909,
+        "end": 913
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 914,
+        "end": 916
+      },
+      {
+        "token": "string",
+        "label": "comment",
+        "start": 923,
+        "end": 929
+      },
+      {
+        "token": "concatenation",
+        "label": "comment",
+        "start": 930,
+        "end": 943
+      },
+      {
+        "token": "because",
+        "label": "comment",
+        "start": 944,
+        "end": 951
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 958,
+        "end": 961
+      },
+      {
+        "token": "second",
+        "label": "comment",
+        "start": 962,
+        "end": 968
+      },
+      {
+        "token": "item",
+        "label": "comment",
+        "start": 969,
+        "end": 973
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 974,
+        "end": 975
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 975,
+        "end": 976
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 976,
+        "end": 977
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 978,
+        "end": 980
+      },
+      {
+        "token": "a",
+        "label": "comment",
+        "start": 981,
+        "end": 982
+      },
+      {
+        "token": "string",
+        "label": "comment",
+        "start": 983,
+        "end": 989
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 990,
+        "end": 991
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 991,
+        "end": 992
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 170,
+        "end": 171
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 171,
+        "end": 172
+      },
+      {
+        "token": "aligns",
+        "label": "comment",
+        "start": 173,
+        "end": 179
+      },
+      {
+        "token": "content",
+        "label": "comment",
+        "start": 180,
+        "end": 187
+      },
+      {
+        "token": "on",
+        "label": "comment",
+        "start": 188,
+        "end": 190
+      },
+      {
+        "token": "center",
+        "label": "comment",
+        "start": 191,
+        "end": 197
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 198,
+        "end": 199
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 199,
+        "end": 200
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 683,
+        "end": 684
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 684,
+        "end": 685
+      },
+      {
+        "token": "global",
+        "label": "comment",
+        "start": 686,
+        "end": 692
+      },
+      {
+        "token": "variables",
+        "label": "comment",
+        "start": 693,
+        "end": 702
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 733,
+        "end": 734
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 734,
+        "end": 735
+      },
+      {
+        "token": "an",
+        "label": "comment",
+        "start": 736,
+        "end": 738
+      },
+      {
+        "token": "array",
+        "label": "comment",
+        "start": 739,
+        "end": 744
+      },
+      {
+        "token": "with",
+        "label": "comment",
+        "start": 745,
+        "end": 749
+      },
+      {
+        "token": "50",
+        "label": "comment",
+        "start": 750,
+        "end": 752
+      },
+      {
+        "token": "items",
+        "label": "comment",
+        "start": 753,
+        "end": 758
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 758,
+        "end": 759
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 759,
+        "end": 760
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 894,
+        "end": 895
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 895,
+        "end": 896
+      },
+      {
+        "token": "generates",
+        "label": "comment",
+        "start": 896,
+        "end": 905
+      },
+      {
+        "token": "numbers",
+        "label": "comment",
+        "start": 906,
+        "end": 913
+      },
+      {
+        "token": "bettween",
+        "label": "comment",
+        "start": 914,
+        "end": 922
+      },
+      {
+        "token": "0",
+        "label": "comment",
+        "start": 923,
+        "end": 924
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 925,
+        "end": 928
+      },
+      {
+        "token": "1",
+        "label": "comment",
+        "start": 929,
+        "end": 930
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1141,
+        "end": 1142
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1142,
+        "end": 1143
+      },
+      {
+        "token": "while",
+        "label": "comment",
+        "start": 1144,
+        "end": 1149
+      },
+      {
+        "token": "loop",
+        "label": "comment",
+        "start": 1150,
+        "end": 1154
+      },
+      {
+        "token": "now",
+        "label": "comment",
+        "start": 1155,
+        "end": 1158
+      },
+      {
+        "token": "generates",
+        "label": "comment",
+        "start": 1159,
+        "end": 1168
+      },
+      {
+        "token": "50",
+        "label": "comment",
+        "start": 1169,
+        "end": 1171
+      },
+      {
+        "token": "divs",
+        "label": "comment",
+        "start": 1172,
+        "end": 1176
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1176,
+        "end": 1177
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1177,
+        "end": 1178
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1223,
+        "end": 1224
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1224,
+        "end": 1225
+      },
+      {
+        "token": "now",
+        "label": "comment",
+        "start": 1225,
+        "end": 1228
+      },
+      {
+        "token": "we",
+        "label": "comment",
+        "start": 1229,
+        "end": 1231
+      },
+      {
+        "token": "are",
+        "label": "comment",
+        "start": 1232,
+        "end": 1235
+      },
+      {
+        "token": "adding",
+        "label": "comment",
+        "start": 1236,
+        "end": 1242
+      },
+      {
+        "token": "them",
+        "label": "comment",
+        "start": 1243,
+        "end": 1247
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1247,
+        "end": 1248
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1248,
+        "end": 1249
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1348,
+        "end": 1349
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1349,
+        "end": 1350
+      },
+      {
+        "token": "plus",
+        "label": "comment",
+        "start": 1351,
+        "end": 1355
+      },
+      {
+        "token": "here",
+        "label": "comment",
+        "start": 1356,
+        "end": 1360
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 1361,
+        "end": 1363
+      },
+      {
+        "token": "string",
+        "label": "comment",
+        "start": 1364,
+        "end": 1370
+      },
+      {
+        "token": "contatenation",
+        "label": "comment",
+        "start": 1371,
+        "end": 1384
+      },
+      {
+        "token": "due",
+        "label": "comment",
+        "start": 1385,
+        "end": 1388
+      },
+      {
+        "token": "to",
+        "label": "comment",
+        "start": 1406,
+        "end": 1408
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 1409,
+        "end": 1412
+      },
+      {
+        "token": "second",
+        "label": "comment",
+        "start": 1413,
+        "end": 1419
+      },
+      {
+        "token": "item",
+        "label": "comment",
+        "start": 1420,
+        "end": 1424
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 1425,
+        "end": 1426
+      },
+      {
+        "token": "&",
+        "label": "comment",
+        "start": 1426,
+        "end": 1427
+      },
+      {
+        "token": "\"",
+        "label": "comment",
+        "start": 1427,
+        "end": 1428
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 1429,
+        "end": 1431
+      },
+      {
+        "token": "a",
+        "label": "comment",
+        "start": 1432,
+        "end": 1433
+      },
+      {
+        "token": "string",
+        "label": "comment",
+        "start": 1434,
+        "end": 1440
+      },
+      {
+        "token": ".",
+        "label": "comment",
+        "start": 1440,
+        "end": 1441
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1442,
+        "end": 1443
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1443,
+        "end": 1444
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1856,
+        "end": 1857
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1857,
+        "end": 1858
+      },
+      {
+        "token": "very",
+        "label": "comment",
+        "start": 1858,
+        "end": 1862
+      },
+      {
+        "token": "rare",
+        "label": "comment",
+        "start": 1863,
+        "end": 1867
+      },
+      {
+        "token": "to",
+        "label": "comment",
+        "start": 1868,
+        "end": 1870
+      },
+      {
+        "token": "make",
+        "label": "comment",
+        "start": 1871,
+        "end": 1875
+      },
+      {
+        "token": "a",
+        "label": "comment",
+        "start": 1876,
+        "end": 1877
+      },
+      {
+        "token": "do",
+        "label": "comment",
+        "start": 1878,
+        "end": 1880
+      },
+      {
+        "token": "while",
+        "label": "comment",
+        "start": 1881,
+        "end": 1886
+      },
+      {
+        "token": "loop",
+        "label": "comment",
+        "start": 1887,
+        "end": 1891
+      },
+      {
+        "token": "these",
+        "label": "comment",
+        "start": 1892,
+        "end": 1897
+      },
+      {
+        "token": "days",
+        "label": "comment",
+        "start": 1898,
+        "end": 1902
+      },
+      {
+        "token": ",",
+        "label": "comment",
+        "start": 1902,
+        "end": 1903
+      },
+      {
+        "token": "FYI",
+        "label": "comment",
+        "start": 1904,
+        "end": 1907
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 1908,
+        "end": 1911
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 1912,
+        "end": 1915
+      },
+      {
+        "token": "modern",
+        "label": "comment",
+        "start": 1916,
+        "end": 1922
+      },
+      {
+        "token": "norm",
+        "label": "comment",
+        "start": 1923,
+        "end": 1927
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1927,
+        "end": 1928
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1928,
+        "end": 1929
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 1989,
+        "end": 1990
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 1990,
+        "end": 1991
+      },
+      {
+        "token": "var",
+        "label": "comment",
+        "start": 1991,
+        "end": 1994
+      },
+      {
+        "token": "is",
+        "label": "comment",
+        "start": 1995,
+        "end": 1997
+      },
+      {
+        "token": "mainly",
+        "label": "comment",
+        "start": 1998,
+        "end": 2004
+      },
+      {
+        "token": "used",
+        "label": "comment",
+        "start": 2005,
+        "end": 2009
+      },
+      {
+        "token": "in",
+        "label": "comment",
+        "start": 2010,
+        "end": 2012
+      },
+      {
+        "token": "old",
+        "label": "comment",
+        "start": 2013,
+        "end": 2016
+      },
+      {
+        "token": "code",
+        "label": "comment",
+        "start": 2017,
+        "end": 2021
+      },
+      {
+        "token": ",",
+        "label": "comment",
+        "start": 2021,
+        "end": 2022
+      },
+      {
+        "token": "new",
+        "label": "comment",
+        "start": 2023,
+        "end": 2026
+      },
+      {
+        "token": "stuff",
+        "label": "comment",
+        "start": 2027,
+        "end": 2032
+      },
+      {
+        "token": "uses",
+        "label": "comment",
+        "start": 2033,
+        "end": 2037
+      },
+      {
+        "token": "let",
+        "label": "comment",
+        "start": 2038,
+        "end": 2041
+      },
+      {
+        "token": "and",
+        "label": "comment",
+        "start": 2042,
+        "end": 2045
+      },
+      {
+        "token": "const",
+        "label": "comment",
+        "start": 2046,
+        "end": 2051
+      },
+      {
+        "token": ".",
+        "label": "comment",
+        "start": 2051,
+        "end": 2052
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2052,
+        "end": 2053
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2053,
+        "end": 2054
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2243,
+        "end": 2244
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2244,
+        "end": 2245
+      },
+      {
+        "token": "these",
+        "label": "comment",
+        "start": 2245,
+        "end": 2250
+      },
+      {
+        "token": "three",
+        "label": "comment",
+        "start": 2251,
+        "end": 2256
+      },
+      {
+        "token": "combined",
+        "label": "comment",
+        "start": 2257,
+        "end": 2265
+      },
+      {
+        "token": "will",
+        "label": "comment",
+        "start": 2266,
+        "end": 2270
+      },
+      {
+        "token": "handle",
+        "label": "comment",
+        "start": 2271,
+        "end": 2277
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 2278,
+        "end": 2281
+      },
+      {
+        "token": "swapping",
+        "label": "comment",
+        "start": 2282,
+        "end": 2290
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2291,
+        "end": 2292
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2292,
+        "end": 2293
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2464,
+        "end": 2465
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2465,
+        "end": 2466
+      },
+      {
+        "token": "this",
+        "label": "comment",
+        "start": 2466,
+        "end": 2470
+      },
+      {
+        "token": "sets",
+        "label": "comment",
+        "start": 2471,
+        "end": 2475
+      },
+      {
+        "token": "refresh",
+        "label": "comment",
+        "start": 2476,
+        "end": 2483
+      },
+      {
+        "token": "speed",
+        "label": "comment",
+        "start": 2484,
+        "end": 2489
+      },
+      {
+        "token": "to",
+        "label": "comment",
+        "start": 2490,
+        "end": 2492
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 2493,
+        "end": 2496
+      },
+      {
+        "token": "be",
+        "label": "comment",
+        "start": 2497,
+        "end": 2499
+      },
+      {
+        "token": "insta",
+        "label": "comment",
+        "start": 2500,
+        "end": 2505
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 2505,
+        "end": 2506
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 2506,
+        "end": 2507
+      }
+    ]
+  },
+  "alignments": {
+    "reconstructed.html": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        null,
+        7
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        8,
+        null
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        null
+      ],
+      [
+        11,
+        10
+      ],
+      [
+        12,
+        11
+      ],
+      [
+        13,
+        12
+      ],
+      [
+        14,
+        13
+      ],
+      [
+        15,
+        14
+      ],
+      [
+        16,
+        15
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        18,
+        17
+      ],
+      [
+        19,
+        18
+      ],
+      [
+        20,
+        19
+      ],
+      [
+        21,
+        20
+      ],
+      [
+        null,
+        21
+      ],
+      [
+        22,
+        22
+      ],
+      [
+        23,
+        23
+      ],
+      [
+        24,
+        24
+      ],
+      [
+        25,
+        25
+      ],
+      [
+        26,
+        26
+      ],
+      [
+        27,
+        27
+      ],
+      [
+        28,
+        28
+      ],
+      [
+        29,
+        29
+      ],
+      [
+        30,
+        30
+      ],
+      [
+        31,
+        31
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        33,
+        33
+      ],
+      [
+        34,
+        34
+      ],
+      [
+        35,
+        35
+      ],
+      [
+        36,
+        36
+      ],
+      [
+        null,
+        37
+      ],
+      [
+        37,
+        38
+      ],
+      [
+        38,
+        39
+      ],
+      [
+        39,
+        40
+      ],
+      [
+        40,
+        41
+      ],
+      [
+        41,
+        42
+      ],
+      [
+        42,
+        43
+      ],
+      [
+        43,
+        44
+      ],
+      [
+        44,
+        null
+      ],
+      [
+        45,
+        45
+      ],
+      [
+        46,
+        46
+      ],
+      [
+        47,
+        47
+      ],
+      [
+        48,
+        48
+      ],
+      [
+        49,
+        49
+      ],
+      [
+        50,
+        50
+      ],
+      [
+        51,
+        51
+      ],
+      [
+        52,
+        52
+      ],
+      [
+        53,
+        53
+      ],
+      [
+        54,
+        54
+      ],
+      [
+        55,
+        55
+      ],
+      [
+        56,
+        56
+      ],
+      [
+        57,
+        57
+      ],
+      [
+        58,
+        58
+      ],
+      [
+        59,
+        59
+      ],
+      [
+        60,
+        60
+      ],
+      [
+        61,
+        61
+      ],
+      [
+        62,
+        62
+      ],
+      [
+        63,
+        63
+      ],
+      [
+        64,
+        null
+      ],
+      [
+        65,
+        null
+      ],
+      [
+        66,
+        null
+      ],
+      [
+        67,
+        null
+      ],
+      [
+        68,
+        64
+      ],
+      [
+        null,
+        65
+      ],
+      [
+        null,
+        66
+      ],
+      [
+        69,
+        67
+      ],
+      [
+        70,
+        68
+      ],
+      [
+        71,
+        69
+      ],
+      [
+        null,
+        70
+      ],
+      [
+        72,
+        71
+      ],
+      [
+        null,
+        72
+      ],
+      [
+        73,
+        73
+      ],
+      [
+        null,
+        74
+      ],
+      [
+        null,
+        75
+      ],
+      [
+        74,
+        76
+      ],
+      [
+        null,
+        77
+      ],
+      [
+        75,
+        78
+      ]
+    ],
+    "index.html": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        null,
+        7
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        8,
+        null
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        null
+      ],
+      [
+        11,
+        10
+      ],
+      [
+        12,
+        11
+      ],
+      [
+        13,
+        12
+      ],
+      [
+        14,
+        13
+      ],
+      [
+        15,
+        14
+      ],
+      [
+        16,
+        15
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        18,
+        17
+      ],
+      [
+        19,
+        18
+      ],
+      [
+        20,
+        19
+      ],
+      [
+        21,
+        20
+      ],
+      [
+        null,
+        21
+      ],
+      [
+        22,
+        22
+      ],
+      [
+        23,
+        23
+      ],
+      [
+        24,
+        24
+      ],
+      [
+        25,
+        25
+      ],
+      [
+        26,
+        26
+      ],
+      [
+        27,
+        27
+      ],
+      [
+        28,
+        28
+      ],
+      [
+        29,
+        29
+      ],
+      [
+        30,
+        30
+      ],
+      [
+        31,
+        31
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        33,
+        33
+      ],
+      [
+        34,
+        34
+      ],
+      [
+        35,
+        35
+      ],
+      [
+        36,
+        36
+      ],
+      [
+        null,
+        37
+      ],
+      [
+        37,
+        38
+      ],
+      [
+        38,
+        39
+      ],
+      [
+        39,
+        40
+      ],
+      [
+        40,
+        41
+      ],
+      [
+        41,
+        42
+      ],
+      [
+        42,
+        43
+      ],
+      [
+        43,
+        44
+      ],
+      [
+        44,
+        null
+      ],
+      [
+        45,
+        45
+      ],
+      [
+        46,
+        46
+      ],
+      [
+        47,
+        47
+      ],
+      [
+        48,
+        48
+      ],
+      [
+        49,
+        49
+      ],
+      [
+        50,
+        50
+      ],
+      [
+        51,
+        51
+      ],
+      [
+        52,
+        52
+      ],
+      [
+        53,
+        53
+      ],
+      [
+        54,
+        54
+      ],
+      [
+        55,
+        55
+      ],
+      [
+        56,
+        56
+      ],
+      [
+        57,
+        57
+      ],
+      [
+        58,
+        58
+      ],
+      [
+        59,
+        59
+      ],
+      [
+        60,
+        60
+      ],
+      [
+        61,
+        61
+      ],
+      [
+        62,
+        62
+      ],
+      [
+        63,
+        63
+      ],
+      [
+        64,
+        null
+      ],
+      [
+        65,
+        null
+      ],
+      [
+        66,
+        null
+      ],
+      [
+        67,
+        null
+      ],
+      [
+        68,
+        64
+      ],
+      [
+        null,
+        65
+      ],
+      [
+        null,
+        66
+      ],
+      [
+        69,
+        67
+      ],
+      [
+        70,
+        68
+      ],
+      [
+        71,
+        69
+      ],
+      [
+        null,
+        70
+      ],
+      [
+        72,
+        71
+      ],
+      [
+        null,
+        72
+      ],
+      [
+        73,
+        73
+      ],
+      [
+        null,
+        74
+      ],
+      [
+        null,
+        75
+      ],
+      [
+        74,
+        76
+      ],
+      [
+        null,
+        77
+      ],
+      [
+        75,
+        78
+      ]
+    ]
+  },
+  "leo_assignments": {
+    "k": 10,
+    "idf": {
+      "<": 3.014165975242829,
+      "!": 5.676753802268282,
+      "DOCTYPE": 5.676753802268282,
+      "html": 4.829455941881078,
+      ">": 3.111804444806745,
+      "head": 5.165928178502291,
+      "title": 5.165928178502291,
+      "Sorting": 5.165928178502291,
+      "Visualizer": 5.165928178502291,
+      "/": 3.9421527468801756,
+      "style": 4.578141513600172,
+      "body": 4.829455941881078,
+      "{": 3.6398718750072416,
+      "display": 5.165928178502291,
+      ":": 3.6398718750072416,
+      "flex": 4.578141513600172,
+      ";": 2.4315606690827076,
+      "-": 3.5564902660681907,
+      "direction": 5.676753802268282,
+      "column": 5.676753802268282,
+      "justify": 6.082218910376446,
+      "content": 6.082218910376446,
+      "align": 5.165928178502291,
+      "items": 5.165928178502291,
+      "center": 5.676753802268282,
+      "}": 3.6398718750072416,
+      "#": 5.676753802268282,
+      "vis": 4.829455941881078,
+      "123456": 4.829455941881078,
+      "width": 5.389071729816501,
+      "200px": 5.389071729816501,
+      "height": 4.578141513600172,
+      "background": 5.389071729816501,
+      "color": 5.389071729816501,
+      "red": 6.082218910376446,
+      "end": 5.676753802268282,
+      ".": 3.341378886451245,
+      "bar": 4.067315889834181,
+      "7px": 5.676753802268282,
+      "100": 4.578141513600172,
+      "%": 4.829455941881078,
+      "black": 5.676753802268282,
+      "margin": 5.676753802268282,
+      "0px": 5.676753802268282,
+      "1px": 5.676753802268282,
+      "h1": 5.165928178502291,
+      "div": 4.829455941881078,
+      "id": 5.676753802268282,
+      "=": 3.111804444806745,
+      "\"": 3.4080702609499176,
+      "script": 5.165928178502291,
+      "const": 4.210416733474855,
+      "count": 4.829455941881078,
+      "50": 5.676753802268282,
+      "array": 4.136308761321133,
+      "new": 5.165928178502291,
+      "Array": 5.676753802268282,
+      "(": 3.086486636822455,
+      ")": 3.086486636822455,
+      "for": 4.578141513600172,
+      "let": 4.578141513600172,
+      "i": 2.9687036011660717,
+      "0": 4.829455941881078,
+      "+": 3.7308436532129683,
+      "[": 3.7308436532129683,
+      "]": 3.7308436532129683,
+      "Math": 5.676753802268282,
+      "random": 5.676753802268282,
+      "bubbleSort": 4.983606621708336,
+      "visualizer": 5.165928178502291,
+      "document": 4.829455941881078,
+      "getElementById": 5.676753802268282,
+      "length": 4.829455941881078,
+      "createElement": 5.676753802268282,
+      "appendChild": 5.676753802268282,
+      "classList": 5.676753802268282,
+      "add": 5.676753802268282,
+      "*": 5.165928178502291,
+      "function": 5.165928178502291,
+      "updateBars": 5.165928178502291,
+      "bars": 4.829455941881078,
+      "getElementsByClassName": 5.676753802268282,
+      "async": 5.676753802268282,
+      "arr": 3.9421527468801756,
+      "do": 5.676753802268282,
+      "var": 5.676753802268282,
+      "swapped": 4.829455941881078,
+      "false": 5.676753802268282,
+      "1": 4.578141513600172,
+      "if": 5.676753802268282,
+      "aux": 5.165928178502291,
+      "await": 5.676753802268282,
+      "Promise": 5.676753802268282,
+      "resolve": 5.165928178502291,
+      "setTimeout": 5.676753802268282,
+      ",": 5.676753802268282,
+      "true": 5.676753802268282,
+      "while": 5.676753802268282
+    },
+    "teacher_seq": [
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "title",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "style",
+      ">",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "}",
+      "#",
+      "vis",
+      "-",
+      "123456",
+      "{",
+      "height",
+      ":",
+      "200px",
+      ";",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "flex",
+      "-",
+      "end",
+      ";",
+      "}",
+      ".",
+      "bar",
+      "{",
+      "width",
+      ":",
+      "7px",
+      ";",
+      "height",
+      ":",
+      "100",
+      "%",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "margin",
+      ":",
+      "0px",
+      "1px",
+      ";",
+      "}",
+      "<",
+      "/",
+      "style",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      ">",
+      "const",
+      "count",
+      "=",
+      "50",
+      ";",
+      "const",
+      "array",
+      "=",
+      "new",
+      "Array",
+      "(",
+      "count",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "count",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "array",
+      "[",
+      "i",
+      "]",
+      "=",
+      "Math",
+      ".",
+      "random",
+      "(",
+      ")",
+      ";",
+      "}",
+      "const",
+      "visualizer",
+      "=",
+      "document",
+      ".",
+      "getElementById",
+      "(",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "array",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "const",
+      "bar",
+      "=",
+      "document",
+      ".",
+      "createElement",
+      "(",
+      "\"",
+      "div",
+      "\"",
+      ")",
+      ";",
+      "visualizer",
+      ".",
+      "appendChild",
+      "(",
+      "bar",
+      ")",
+      ";",
+      "bar",
+      ".",
+      "classList",
+      ".",
+      "add",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      ";",
+      "bar",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "bubbleSort",
+      "(",
+      "array",
+      ")",
+      ";",
+      "function",
+      "updateBars",
+      "(",
+      ")",
+      "{",
+      "const",
+      "bars",
+      "=",
+      "document",
+      ".",
+      "getElementsByClassName",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "bars",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "bars",
+      "[",
+      "i",
+      "]",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "async",
+      "function",
+      "bubbleSort",
+      "(",
+      "arr",
+      ")",
+      "{",
+      "do",
+      "{",
+      "var",
+      "swapped",
+      "=",
+      "false",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "1",
+      ";",
+      "i",
+      "<",
+      "arr",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "if",
+      "(",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ">",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ")",
+      "{",
+      "const",
+      "aux",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "]",
+      "=",
+      "aux",
+      ";",
+      "updateBars",
+      "(",
+      ")",
+      ";",
+      "await",
+      "new",
+      "Promise",
+      "(",
+      "resolve",
+      "=",
+      ">",
+      "setTimeout",
+      "(",
+      "resolve",
+      ",",
+      "100",
+      ")",
+      ")",
+      ";",
+      "swapped",
+      "=",
+      "true",
+      ";",
+      "}",
+      "}",
+      "}",
+      "while",
+      "(",
+      "swapped",
+      ")",
+      ";",
+      "}",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ],
+    "student_seq": [
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "title",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "style",
+      ">",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      "}",
+      "#",
+      "vis",
+      "-",
+      "123456",
+      "{",
+      "height",
+      ":",
+      "200px",
+      ";",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "flex",
+      "-",
+      "end",
+      ";",
+      "}",
+      ".",
+      "bar",
+      "{",
+      "width",
+      ":",
+      "7px",
+      ";",
+      "height",
+      ":",
+      "100",
+      "%",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "margin",
+      ":",
+      "0px",
+      "1px",
+      ";",
+      "}",
+      "<",
+      "/",
+      "style",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      ">",
+      "const",
+      "count",
+      "=",
+      "50",
+      ";",
+      "const",
+      "array",
+      "=",
+      "new",
+      "Array",
+      "(",
+      "count",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "count",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "array",
+      "[",
+      "i",
+      "]",
+      "=",
+      "Math",
+      ".",
+      "random",
+      "(",
+      ")",
+      ";",
+      "}",
+      "const",
+      "visualizer",
+      "=",
+      "document",
+      ".",
+      "getElementById",
+      "(",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "array",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "const",
+      "bar",
+      "=",
+      "document",
+      ".",
+      "createElement",
+      "(",
+      "\"",
+      "div",
+      "\"",
+      ")",
+      ";",
+      "visualizer",
+      ".",
+      "appendChild",
+      "(",
+      "bar",
+      ")",
+      ";",
+      "bar",
+      ".",
+      "classList",
+      ".",
+      "add",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      "bar",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "bubbleSort",
+      "(",
+      "array",
+      ")",
+      ";",
+      "function",
+      "updateBars",
+      "(",
+      ")",
+      "{",
+      "const",
+      "bars",
+      "=",
+      "document",
+      ".",
+      "getElementsByClassName",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "bars",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "bars",
+      "[",
+      "i",
+      "]",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "async",
+      "function",
+      "bubbleSort",
+      "(",
+      "arr",
+      ")",
+      "{",
+      "do",
+      "{",
+      "var",
+      "swapped",
+      "=",
+      "false",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "1",
+      ";",
+      "i",
+      "<",
+      "arr",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "if",
+      "(",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ">",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ")",
+      "{",
+      "const",
+      "aux",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "]",
+      "=",
+      "aux",
+      ";",
+      "swapped",
+      "=",
+      "true",
+      ";",
+      "updateBars",
+      "(",
+      ")",
+      ";",
+      "await",
+      "new",
+      "Promise",
+      "(",
+      "resolve",
+      "=",
+      ">",
+      "setTimeout",
+      "(",
+      "resolve",
+      ",",
+      "100",
+      ")",
+      ")",
+      ";",
+      "}",
+      "}",
+      "}",
+      "while",
+      "(",
+      "swapped",
+      ")",
+      ";",
+      "}",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ],
+    "tokens": {
+      "background": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 307,
+            "seq_idx": 76,
+            "label": null,
+            "seq_idx_aug": 89,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 204,
+            "blob_offset": 4,
+            "ghost": true,
+            "del_ts": 1771836609308,
+            "seq_idx_aug": 58
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 473,
+            "seq_idx": 76,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      ":": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 98,
+            "seq_idx": 26,
+            "label": null,
+            "seq_idx_aug": 26,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 124,
+            "seq_idx": 32,
+            "label": null,
+            "seq_idx_aug": 32,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 149,
+            "seq_idx": 38,
+            "label": null,
+            "seq_idx_aug": 41,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 195,
+            "seq_idx": 48,
+            "label": null,
+            "seq_idx_aug": 55,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 215,
+            "seq_idx": 52,
+            "label": null,
+            "seq_idx_aug": 65,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 238,
+            "seq_idx": 58,
+            "label": null,
+            "seq_idx_aug": 71,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 278,
+            "seq_idx": 68,
+            "label": null,
+            "seq_idx_aug": 81,
+            "match_idx": 6
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 295,
+            "seq_idx": 72,
+            "label": null,
+            "seq_idx_aug": 85,
+            "match_idx": 7
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 323,
+            "seq_idx": 79,
+            "label": null,
+            "seq_idx_aug": 92,
+            "match_idx": 8
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 342,
+            "seq_idx": 83,
+            "label": null,
+            "seq_idx_aug": 96,
+            "match_idx": 9
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 185,
+            "blob_offset": 9,
+            "ghost": true,
+            "del_ts": 1771836608725,
+            "seq_idx_aug": 51
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 204,
+            "blob_offset": 20,
+            "ghost": true,
+            "del_ts": 1771836609308,
+            "seq_idx_aug": 61
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 129,
+            "seq_idx": 26,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 160,
+            "seq_idx": 32,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 227,
+            "seq_idx": 38,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 295,
+            "seq_idx": 48,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 323,
+            "seq_idx": 52,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 354,
+            "seq_idx": 58,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "index.html",
+            "pos": 428,
+            "seq_idx": 68,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "index.html",
+            "pos": 453,
+            "seq_idx": 72,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "index.html",
+            "pos": 489,
+            "seq_idx": 79,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "index.html",
+            "pos": 516,
+            "seq_idx": 83,
+            "label": null,
+            "match_idx": 9
+          }
+        ]
+      },
+      "(": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 527,
+            "seq_idx": 135,
+            "label": null,
+            "seq_idx_aug": 148,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 547,
+            "seq_idx": 140,
+            "label": null,
+            "seq_idx_aug": 153,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 603,
+            "seq_idx": 163,
+            "label": null,
+            "seq_idx_aug": 176,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 689,
+            "seq_idx": 173,
+            "label": null,
+            "seq_idx_aug": 191,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 712,
+            "seq_idx": 182,
+            "label": null,
+            "seq_idx_aug": 200,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 787,
+            "seq_idx": 205,
+            "label": null,
+            "seq_idx_aug": 223,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 822,
+            "seq_idx": 214,
+            "label": null,
+            "seq_idx_aug": 232,
+            "match_idx": 6
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 850,
+            "seq_idx": 223,
+            "label": null,
+            "seq_idx_aug": 241,
+            "match_idx": 7
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1015,
+            "seq_idx": 248,
+            "label": null,
+            "seq_idx_aug": 266,
+            "match_idx": 8
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1050,
+            "seq_idx": 254,
+            "label": null,
+            "seq_idx_aug": 272,
+            "match_idx": 9
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1103,
+            "seq_idx": 263,
+            "label": null,
+            "seq_idx_aug": 281,
+            "match_idx": 10
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1120,
+            "seq_idx": 270,
+            "label": null,
+            "seq_idx_aug": 288,
+            "match_idx": 11
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1249,
+            "seq_idx": 312,
+            "label": null,
+            "seq_idx_aug": 330,
+            "match_idx": 12
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1301,
+            "seq_idx": 324,
+            "label": null,
+            "seq_idx_aug": 342,
+            "match_idx": 13
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1345,
+            "seq_idx": 342,
+            "label": null,
+            "seq_idx_aug": 360,
+            "match_idx": 14
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1474,
+            "seq_idx": 386,
+            "label": null,
+            "seq_idx_aug": 404,
+            "match_idx": 15
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1510,
+            "seq_idx": 392,
+            "label": null,
+            "seq_idx_aug": 410,
+            "match_idx": 16
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1532,
+            "seq_idx": 397,
+            "label": null,
+            "seq_idx_aug": 415,
+            "match_idx": 17
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1599,
+            "seq_idx": 412,
+            "label": null,
+            "seq_idx_aug": 430,
+            "match_idx": 18
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 644,
+            "blob_offset": 13,
+            "ghost": true,
+            "del_ts": 1771837711569,
+            "seq_idx_aug": 181
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 796,
+            "seq_idx": 135,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 822,
+            "seq_idx": 140,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 890,
+            "seq_idx": 163,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 1013,
+            "seq_idx": 173,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 1045,
+            "seq_idx": 182,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 1132,
+            "seq_idx": 205,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "index.html",
+            "pos": 1217,
+            "seq_idx": 214,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "index.html",
+            "pos": 1283,
+            "seq_idx": 223,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "index.html",
+            "pos": 1482,
+            "seq_idx": 247,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "index.html",
+            "pos": 1523,
+            "seq_idx": 253,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "index.html",
+            "pos": 1588,
+            "seq_idx": 262,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "index.html",
+            "pos": 1617,
+            "seq_idx": 269,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "index.html",
+            "pos": 1787,
+            "seq_idx": 311,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "index.html",
+            "pos": 1954,
+            "seq_idx": 323,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "index.html",
+            "pos": 2082,
+            "seq_idx": 341,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "index.html",
+            "pos": 2376,
+            "seq_idx": 389,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "index.html",
+            "pos": 2425,
+            "seq_idx": 395,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "index.html",
+            "pos": 2447,
+            "seq_idx": 400,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "index.html",
+            "pos": 2580,
+            "seq_idx": 411,
+            "label": null,
+            "match_idx": 18
+          }
+        ]
+      },
+      "color": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 318,
+            "seq_idx": 78,
+            "label": null,
+            "seq_idx_aug": 91,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 204,
+            "blob_offset": 15,
+            "ghost": true,
+            "del_ts": 1771836609308,
+            "seq_idx_aug": 60
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 484,
+            "seq_idx": 78,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "content": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 138,
+            "blob_offset": 8,
+            "ghost": true,
+            "del_ts": 1771835038522,
+            "seq_idx_aug": 37
+          }
+        ],
+        "student": []
+      },
+      ";": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 104,
+            "seq_idx": 28,
+            "label": null,
+            "seq_idx_aug": 28,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 132,
+            "seq_idx": 34,
+            "label": null,
+            "seq_idx_aug": 34,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 157,
+            "seq_idx": 40,
+            "label": null,
+            "seq_idx_aug": 43,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 202,
+            "seq_idx": 50,
+            "label": null,
+            "seq_idx_aug": 57,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 221,
+            "seq_idx": 54,
+            "label": null,
+            "seq_idx_aug": 67,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 248,
+            "seq_idx": 62,
+            "label": null,
+            "seq_idx_aug": 75,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 283,
+            "seq_idx": 70,
+            "label": null,
+            "seq_idx_aug": 83,
+            "match_idx": 6
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 301,
+            "seq_idx": 75,
+            "label": null,
+            "seq_idx_aug": 88,
+            "match_idx": 7
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 330,
+            "seq_idx": 81,
+            "label": null,
+            "seq_idx_aug": 94,
+            "match_idx": 8
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 351,
+            "seq_idx": 86,
+            "label": null,
+            "seq_idx_aug": 99,
+            "match_idx": 9
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 499,
+            "seq_idx": 129,
+            "label": null,
+            "seq_idx_aug": 142,
+            "match_idx": 10
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 534,
+            "seq_idx": 138,
+            "label": null,
+            "seq_idx_aug": 151,
+            "match_idx": 11
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 557,
+            "seq_idx": 145,
+            "label": null,
+            "seq_idx_aug": 158,
+            "match_idx": 12
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 568,
+            "seq_idx": 149,
+            "label": null,
+            "seq_idx_aug": 162,
+            "match_idx": 13
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 605,
+            "seq_idx": 165,
+            "label": null,
+            "seq_idx_aug": 178,
+            "match_idx": 14
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 703,
+            "seq_idx": 180,
+            "label": null,
+            "seq_idx_aug": 198,
+            "match_idx": 15
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 722,
+            "seq_idx": 187,
+            "label": null,
+            "seq_idx_aug": 205,
+            "match_idx": 16
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 740,
+            "seq_idx": 193,
+            "label": null,
+            "seq_idx_aug": 211,
+            "match_idx": 17
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 794,
+            "seq_idx": 210,
+            "label": null,
+            "seq_idx_aug": 228,
+            "match_idx": 18
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 827,
+            "seq_idx": 217,
+            "label": null,
+            "seq_idx_aug": 235,
+            "match_idx": 19
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 857,
+            "seq_idx": 228,
+            "label": "missing",
+            "seq_idx_aug": 246
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 902,
+            "seq_idx": 245,
+            "label": null,
+            "seq_idx_aug": 263,
+            "match_idx": 20
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1022,
+            "seq_idx": 251,
+            "label": null,
+            "seq_idx_aug": 269,
+            "match_idx": 21
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1110,
+            "seq_idx": 268,
+            "label": null,
+            "seq_idx_aug": 286,
+            "match_idx": 22
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1130,
+            "seq_idx": 275,
+            "label": null,
+            "seq_idx_aug": 293,
+            "match_idx": 23
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1147,
+            "seq_idx": 281,
+            "label": null,
+            "seq_idx_aug": 299,
+            "match_idx": 24
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1204,
+            "seq_idx": 306,
+            "label": null,
+            "seq_idx_aug": 324,
+            "match_idx": 25
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1290,
+            "seq_idx": 322,
+            "label": null,
+            "seq_idx_aug": 340,
+            "match_idx": 26
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1311,
+            "seq_idx": 329,
+            "label": null,
+            "seq_idx_aug": 347,
+            "match_idx": 27
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1327,
+            "seq_idx": 335,
+            "label": null,
+            "seq_idx_aug": 353,
+            "match_idx": 28
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1398,
+            "seq_idx": 365,
+            "label": null,
+            "seq_idx_aug": 383,
+            "match_idx": 29
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1426,
+            "seq_idx": 377,
+            "label": null,
+            "seq_idx_aug": 395,
+            "match_idx": 30
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1447,
+            "seq_idx": 384,
+            "label": null,
+            "seq_idx_aug": 402,
+            "match_idx": 31
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1476,
+            "seq_idx": 388,
+            "label": null,
+            "seq_idx_aug": 406,
+            "match_idx": 33
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1547,
+            "seq_idx": 403,
+            "label": null,
+            "seq_idx_aug": 421,
+            "match_idx": 34
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1570,
+            "seq_idx": 407,
+            "label": null,
+            "seq_idx_aug": 425,
+            "match_idx": 32
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1608,
+            "seq_idx": 415,
+            "label": null,
+            "seq_idx_aug": 433,
+            "match_idx": 35
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 185,
+            "blob_offset": 16,
+            "ghost": true,
+            "del_ts": 1771836608725,
+            "seq_idx_aug": 53
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 204,
+            "blob_offset": 25,
+            "ghost": true,
+            "del_ts": 1771836609308,
+            "seq_idx_aug": 63
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 644,
+            "blob_offset": 20,
+            "ghost": true,
+            "del_ts": 1771837711569,
+            "seq_idx_aug": 184
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 135,
+            "seq_idx": 28,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 168,
+            "seq_idx": 34,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 235,
+            "seq_idx": 40,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 302,
+            "seq_idx": 50,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 329,
+            "seq_idx": 54,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 363,
+            "seq_idx": 62,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "index.html",
+            "pos": 433,
+            "seq_idx": 70,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "index.html",
+            "pos": 459,
+            "seq_idx": 75,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "index.html",
+            "pos": 496,
+            "seq_idx": 81,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "index.html",
+            "pos": 525,
+            "seq_idx": 86,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "index.html",
+            "pos": 731,
+            "seq_idx": 129,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "index.html",
+            "pos": 803,
+            "seq_idx": 138,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "index.html",
+            "pos": 832,
+            "seq_idx": 145,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "index.html",
+            "pos": 843,
+            "seq_idx": 149,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "index.html",
+            "pos": 892,
+            "seq_idx": 165,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "index.html",
+            "pos": 1027,
+            "seq_idx": 180,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "index.html",
+            "pos": 1055,
+            "seq_idx": 187,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "index.html",
+            "pos": 1073,
+            "seq_idx": 193,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "index.html",
+            "pos": 1139,
+            "seq_idx": 210,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "index.html",
+            "pos": 1222,
+            "seq_idx": 217,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "index.html",
+            "pos": 1346,
+            "seq_idx": 244,
+            "label": null,
+            "match_idx": 21
+          },
+          {
+            "file": "index.html",
+            "pos": 1489,
+            "seq_idx": 250,
+            "label": null,
+            "match_idx": 22
+          },
+          {
+            "file": "index.html",
+            "pos": 1595,
+            "seq_idx": 267,
+            "label": null,
+            "match_idx": 23
+          },
+          {
+            "file": "index.html",
+            "pos": 1627,
+            "seq_idx": 274,
+            "label": null,
+            "match_idx": 24
+          },
+          {
+            "file": "index.html",
+            "pos": 1643,
+            "seq_idx": 280,
+            "label": null,
+            "match_idx": 25
+          },
+          {
+            "file": "index.html",
+            "pos": 1715,
+            "seq_idx": 305,
+            "label": null,
+            "match_idx": 26
+          },
+          {
+            "file": "index.html",
+            "pos": 1854,
+            "seq_idx": 321,
+            "label": null,
+            "match_idx": 27
+          },
+          {
+            "file": "index.html",
+            "pos": 1964,
+            "seq_idx": 328,
+            "label": null,
+            "match_idx": 28
+          },
+          {
+            "file": "index.html",
+            "pos": 1980,
+            "seq_idx": 334,
+            "label": null,
+            "match_idx": 29
+          },
+          {
+            "file": "index.html",
+            "pos": 2152,
+            "seq_idx": 364,
+            "label": null,
+            "match_idx": 30
+          },
+          {
+            "file": "index.html",
+            "pos": 2199,
+            "seq_idx": 376,
+            "label": null,
+            "match_idx": 31
+          },
+          {
+            "file": "index.html",
+            "pos": 2241,
+            "seq_idx": 383,
+            "label": null,
+            "match_idx": 32
+          },
+          {
+            "file": "index.html",
+            "pos": 2336,
+            "seq_idx": 387,
+            "label": null,
+            "match_idx": 35
+          },
+          {
+            "file": "index.html",
+            "pos": 2378,
+            "seq_idx": 391,
+            "label": null,
+            "match_idx": 33
+          },
+          {
+            "file": "index.html",
+            "pos": 2462,
+            "seq_idx": 406,
+            "label": null,
+            "match_idx": 34
+          },
+          {
+            "file": "index.html",
+            "pos": 2589,
+            "seq_idx": 414,
+            "label": null,
+            "match_idx": 36
+          }
+        ]
+      },
+      "bubbleSort": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 1005,
+            "seq_idx": 247,
+            "label": null,
+            "seq_idx_aug": 265,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1239,
+            "seq_idx": 311,
+            "label": null,
+            "seq_idx_aug": 329,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 644,
+            "blob_offset": 3,
+            "ghost": true,
+            "del_ts": 1771837711569,
+            "seq_idx_aug": 180
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 1472,
+            "seq_idx": 246,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 1777,
+            "seq_idx": 310,
+            "label": null,
+            "match_idx": 1
+          }
+        ]
+      },
+      ")": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 533,
+            "seq_idx": 137,
+            "label": null,
+            "seq_idx_aug": 150,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 573,
+            "seq_idx": 153,
+            "label": null,
+            "seq_idx_aug": 166,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 604,
+            "seq_idx": 164,
+            "label": null,
+            "seq_idx_aug": 177,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 702,
+            "seq_idx": 179,
+            "label": null,
+            "seq_idx_aug": 197,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 745,
+            "seq_idx": 197,
+            "label": null,
+            "seq_idx_aug": 215,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 793,
+            "seq_idx": 209,
+            "label": null,
+            "seq_idx_aug": 227,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 826,
+            "seq_idx": 216,
+            "label": null,
+            "seq_idx_aug": 234,
+            "match_idx": 6
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 856,
+            "seq_idx": 227,
+            "label": null,
+            "seq_idx_aug": 245,
+            "match_idx": 7
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1021,
+            "seq_idx": 250,
+            "label": null,
+            "seq_idx_aug": 268,
+            "match_idx": 8
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1051,
+            "seq_idx": 255,
+            "label": null,
+            "seq_idx_aug": 273,
+            "match_idx": 9
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1109,
+            "seq_idx": 267,
+            "label": null,
+            "seq_idx_aug": 285,
+            "match_idx": 10
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1152,
+            "seq_idx": 285,
+            "label": null,
+            "seq_idx_aug": 303,
+            "match_idx": 11
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1253,
+            "seq_idx": 314,
+            "label": null,
+            "seq_idx_aug": 332,
+            "match_idx": 12
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1332,
+            "seq_idx": 339,
+            "label": null,
+            "seq_idx_aug": 357,
+            "match_idx": 13
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1365,
+            "seq_idx": 354,
+            "label": null,
+            "seq_idx_aug": 372,
+            "match_idx": 14
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1475,
+            "seq_idx": 387,
+            "label": null,
+            "seq_idx_aug": 405,
+            "match_idx": 15
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1545,
+            "seq_idx": 401,
+            "label": null,
+            "seq_idx_aug": 419,
+            "match_idx": 16
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1546,
+            "seq_idx": 402,
+            "label": null,
+            "seq_idx_aug": 420,
+            "match_idx": 17
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1607,
+            "seq_idx": 414,
+            "label": null,
+            "seq_idx_aug": 432,
+            "match_idx": 18
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 644,
+            "blob_offset": 19,
+            "ghost": true,
+            "del_ts": 1771837711569,
+            "seq_idx_aug": 183
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 802,
+            "seq_idx": 137,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 848,
+            "seq_idx": 153,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 891,
+            "seq_idx": 164,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 1026,
+            "seq_idx": 179,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 1078,
+            "seq_idx": 197,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 1138,
+            "seq_idx": 209,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "index.html",
+            "pos": 1221,
+            "seq_idx": 216,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "index.html",
+            "pos": 1289,
+            "seq_idx": 227,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "index.html",
+            "pos": 1488,
+            "seq_idx": 249,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "index.html",
+            "pos": 1524,
+            "seq_idx": 254,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "index.html",
+            "pos": 1594,
+            "seq_idx": 266,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "index.html",
+            "pos": 1648,
+            "seq_idx": 284,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "index.html",
+            "pos": 1791,
+            "seq_idx": 313,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "index.html",
+            "pos": 1985,
+            "seq_idx": 338,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "index.html",
+            "pos": 2100,
+            "seq_idx": 353,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "index.html",
+            "pos": 2377,
+            "seq_idx": 390,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "index.html",
+            "pos": 2460,
+            "seq_idx": 404,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "index.html",
+            "pos": 2461,
+            "seq_idx": 405,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "index.html",
+            "pos": 2588,
+            "seq_idx": 413,
+            "label": null,
+            "match_idx": 18
+          }
+        ]
+      },
+      "width": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 273,
+            "seq_idx": 67,
+            "label": null,
+            "seq_idx_aug": 80,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 185,
+            "blob_offset": 4,
+            "ghost": true,
+            "del_ts": 1771836608725,
+            "seq_idx_aug": 50
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 423,
+            "seq_idx": 67,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "array": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 510,
+            "seq_idx": 131,
+            "label": null,
+            "seq_idx_aug": 144,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 581,
+            "seq_idx": 155,
+            "label": null,
+            "seq_idx_aug": 168,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 728,
+            "seq_idx": 190,
+            "label": null,
+            "seq_idx_aug": 208,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 882,
+            "seq_idx": 235,
+            "label": null,
+            "seq_idx_aug": 253,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1016,
+            "seq_idx": 249,
+            "label": null,
+            "seq_idx_aug": 267,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1184,
+            "seq_idx": 296,
+            "label": null,
+            "seq_idx_aug": 314,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 644,
+            "blob_offset": 14,
+            "ghost": true,
+            "del_ts": 1771837711569,
+            "seq_idx_aug": 182
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 779,
+            "seq_idx": 131,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 868,
+            "seq_idx": 155,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 1061,
+            "seq_idx": 190,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 1326,
+            "seq_idx": 234,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 1483,
+            "seq_idx": 248,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 1695,
+            "seq_idx": 295,
+            "label": null,
+            "match_idx": 5
+          }
+        ]
+      },
+      "200px": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 197,
+            "seq_idx": 49,
+            "label": null,
+            "seq_idx_aug": 56,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 185,
+            "blob_offset": 11,
+            "ghost": true,
+            "del_ts": 1771836608725,
+            "seq_idx_aug": 52
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 297,
+            "seq_idx": 49,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "-": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 114,
+            "seq_idx": 30,
+            "label": null,
+            "seq_idx_aug": 30,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 143,
+            "seq_idx": 36,
+            "label": null,
+            "seq_idx_aug": 39,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 175,
+            "seq_idx": 44,
+            "label": null,
+            "seq_idx_aug": 47,
+            "match_idx": 2
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 232,
+            "seq_idx": 56,
+            "label": null,
+            "seq_idx_aug": 69,
+            "match_idx": 3
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 244,
+            "seq_idx": 60,
+            "label": null,
+            "seq_idx_aug": 73,
+            "match_idx": 4
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 317,
+            "seq_idx": 77,
+            "label": null,
+            "seq_idx_aug": 90,
+            "match_idx": 5
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 430,
+            "seq_idx": 114,
+            "label": null,
+            "seq_idx_aug": 127,
+            "match_idx": 6
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 694,
+            "seq_idx": 176,
+            "label": null,
+            "seq_idx_aug": 194,
+            "match_idx": 7
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1352,
+            "seq_idx": 346,
+            "label": null,
+            "seq_idx_aug": 364,
+            "match_idx": 8
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1394,
+            "seq_idx": 362,
+            "label": null,
+            "seq_idx_aug": 380,
+            "match_idx": 9
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1413,
+            "seq_idx": 369,
+            "label": null,
+            "seq_idx_aug": 387,
+            "match_idx": 10
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 138,
+            "blob_offset": 7,
+            "ghost": true,
+            "del_ts": 1771835041019,
+            "seq_idx_aug": 36
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 204,
+            "blob_offset": 14,
+            "ghost": true,
+            "del_ts": 1771836609308,
+            "seq_idx_aug": 59
+          }
+        ],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 154,
+            "seq_idx": 30,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 217,
+            "seq_idx": 36,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 267,
+            "seq_idx": 44,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "index.html",
+            "pos": 348,
+            "seq_idx": 56,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "index.html",
+            "pos": 359,
+            "seq_idx": 60,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "index.html",
+            "pos": 483,
+            "seq_idx": 77,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "index.html",
+            "pos": 638,
+            "seq_idx": 114,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "index.html",
+            "pos": 1018,
+            "seq_idx": 176,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "index.html",
+            "pos": 2088,
+            "seq_idx": 345,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "index.html",
+            "pos": 2149,
+            "seq_idx": 361,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "index.html",
+            "pos": 2187,
+            "seq_idx": 368,
+            "label": null,
+            "match_idx": 10
+          }
+        ]
+      }
+    },
+    "teacher_seq_aug": [
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "title",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "style",
+      ">",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      [
+        "justify"
+      ],
+      [
+        "-"
+      ],
+      [
+        "content"
+      ],
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "}",
+      "#",
+      "vis",
+      "-",
+      "123456",
+      "{",
+      [
+        "width"
+      ],
+      [
+        ":"
+      ],
+      [
+        "200px"
+      ],
+      [
+        ";"
+      ],
+      "height",
+      ":",
+      "200px",
+      ";",
+      [
+        "background"
+      ],
+      [
+        "-"
+      ],
+      [
+        "color"
+      ],
+      [
+        ":"
+      ],
+      [
+        "red"
+      ],
+      [
+        ";"
+      ],
+      "display",
+      ":",
+      "flex",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "flex",
+      "-",
+      "end",
+      ";",
+      "}",
+      ".",
+      "bar",
+      "{",
+      "width",
+      ":",
+      "7px",
+      ";",
+      "height",
+      ":",
+      "100",
+      "%",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "margin",
+      ":",
+      "0px",
+      "1px",
+      ";",
+      "}",
+      "<",
+      "/",
+      "style",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "Sorting",
+      "Visualizer",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      ">",
+      "const",
+      "count",
+      "=",
+      "50",
+      ";",
+      "const",
+      "array",
+      "=",
+      "new",
+      "Array",
+      "(",
+      "count",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "count",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "array",
+      "[",
+      "i",
+      "]",
+      "=",
+      "Math",
+      ".",
+      "random",
+      "(",
+      ")",
+      ";",
+      "}",
+      [
+        "bubbleSort"
+      ],
+      [
+        "("
+      ],
+      [
+        "array"
+      ],
+      [
+        ")"
+      ],
+      [
+        ";"
+      ],
+      "const",
+      "visualizer",
+      "=",
+      "document",
+      ".",
+      "getElementById",
+      "(",
+      "\"",
+      "vis",
+      "-",
+      "123456",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "array",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "const",
+      "bar",
+      "=",
+      "document",
+      ".",
+      "createElement",
+      "(",
+      "\"",
+      "div",
+      "\"",
+      ")",
+      ";",
+      "visualizer",
+      ".",
+      "appendChild",
+      "(",
+      "bar",
+      ")",
+      ";",
+      "bar",
+      ".",
+      "classList",
+      ".",
+      "add",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      ";",
+      "bar",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "bubbleSort",
+      "(",
+      "array",
+      ")",
+      ";",
+      "function",
+      "updateBars",
+      "(",
+      ")",
+      "{",
+      "const",
+      "bars",
+      "=",
+      "document",
+      ".",
+      "getElementsByClassName",
+      "(",
+      "\"",
+      "bar",
+      "\"",
+      ")",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "0",
+      ";",
+      "i",
+      "<",
+      "bars",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "bars",
+      "[",
+      "i",
+      "]",
+      ".",
+      "style",
+      ".",
+      "height",
+      "=",
+      "array",
+      "[",
+      "i",
+      "]",
+      "*",
+      "100",
+      "+",
+      "\"",
+      "%",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "async",
+      "function",
+      "bubbleSort",
+      "(",
+      "arr",
+      ")",
+      "{",
+      "do",
+      "{",
+      "var",
+      "swapped",
+      "=",
+      "false",
+      ";",
+      "for",
+      "(",
+      "let",
+      "i",
+      "=",
+      "1",
+      ";",
+      "i",
+      "<",
+      "arr",
+      ".",
+      "length",
+      ";",
+      "i",
+      "+",
+      "+",
+      ")",
+      "{",
+      "if",
+      "(",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ">",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ")",
+      "{",
+      "const",
+      "aux",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "-",
+      "1",
+      "]",
+      "=",
+      "arr",
+      "[",
+      "i",
+      "]",
+      ";",
+      "arr",
+      "[",
+      "i",
+      "]",
+      "=",
+      "aux",
+      ";",
+      "updateBars",
+      "(",
+      ")",
+      ";",
+      "await",
+      "new",
+      "Promise",
+      "(",
+      "resolve",
+      "=",
+      ">",
+      "setTimeout",
+      "(",
+      "resolve",
+      ",",
+      "100",
+      ")",
+      ")",
+      ";",
+      "swapped",
+      "=",
+      "true",
+      ";",
+      "}",
+      "}",
+      "}",
+      "while",
+      "(",
+      "swapped",
+      ")",
+      ";",
+      "}",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 138,
+        "text": "justify-content",
+        "ins_ts": 1771834636293,
+        "del_ts": 1771835042563,
+        "char_del_ts": [
+          1771835042563,
+          1771835042274,
+          1771835041999,
+          1771835041796,
+          1771835041627,
+          1771835041422,
+          1771835041245,
+          1771835041019,
+          1771835039587,
+          1771835039428,
+          1771835039227,
+          1771835039054,
+          1771835038886,
+          1771835038718,
+          1771835038522
+        ]
+      },
+      {
+        "pos": 185,
+        "text": "\t\t\t\twidth: 200px;\n",
+        "ins_ts": 1771834803839,
+        "del_ts": 1771836608725,
+        "char_del_ts": [
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725
+        ]
+      },
+      {
+        "pos": 204,
+        "text": "\t\t\t\tbackground-color: red;\n",
+        "ins_ts": 1771834813919,
+        "del_ts": 1771836609308,
+        "char_del_ts": [
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308
+        ]
+      },
+      {
+        "pos": 644,
+        "text": "\t\t\tbubbleSort(array);\n",
+        "ins_ts": 1771837488031,
+        "del_ts": 1771837711569,
+        "char_del_ts": [
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569
+        ]
+      }
+    ]
+  }
+}

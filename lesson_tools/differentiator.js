@@ -170,7 +170,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	const modeSelect = document.getElementById("mode-select");
 	if (modeSelect) {
 		modeSelect.addEventListener("change", () => {
-			_diffMode = modeSelect.value || null;
+			_diffMode = modeSelect.value;
 			_applyDiffModeLabel();
 			_applyCurrentMarks();
 			const savedTeacher = _saveState("teacher");

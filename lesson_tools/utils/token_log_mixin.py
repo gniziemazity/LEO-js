@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from .lv_editor import reconstruct_all_headless
 from .token_log import (
     _add_log_metadata,
+    _apply_insert_at_to_unpaired_missings,
     _assemble_diff_marks,
     _build_file_ordered_ts_map,
     _build_git_diff_marks,
@@ -287,6 +288,13 @@ class TokenLogMixin:
                 alignments=alignments,
                 line_marks=line_marks if include_line_marks else None,
                 leo_assignments=leo_assignments,
+            )
+
+            _apply_insert_at_to_unpaired_missings(
+                diff_marks.get('teacher_files', {}),
+                diff_marks.get('student_files', {}),
+                teacher_code_files,
+                stu_files,
             )
 
             if write_star:

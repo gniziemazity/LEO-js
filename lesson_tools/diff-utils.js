@@ -25,11 +25,14 @@ if (!window.__getDifferentiatorData) {
 
 function _buildDiffPayload(data) {
 	const allMarks = data.allMarks ?? {};
-	const defaultMode = Object.prototype.hasOwnProperty.call(allMarks, "")
-		? ""
-		: Object.prototype.hasOwnProperty.call(allMarks, "leo")
-			? "leo"
-			: (Object.keys(allMarks)[0] ?? null);
+	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
+	const defaultMode = has("truth")
+		? "truth"
+		: has("")
+			? ""
+			: has("leo")
+				? "leo"
+				: (Object.keys(allMarks)[0] ?? null);
 	const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
 	return {
 		teacherFiles: data.teacherFiles ?? {},

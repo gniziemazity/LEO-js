@@ -1,0 +1,189 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth ground truth — manually curated. Student missing one JS ';' after element.replaceChildren(selectedPiece) at teacher pos 3324 — flagged as missing, insert_at student pos 5111 (right after the closing ')'). The other two ';' LEO* flags (pos 450 after grid-template-columns repeat(...), pos 538 after filter: invert(100%)) are CSS last-property cases where the spec genuinely allows omission — not flagged. Known unflaggable bug: 'element.style.border = \"4px solid red\";' was moved outside the 'else if' block (now runs every click). Pure token reorder — no missing/extra label expresses it.",
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 450,
+        "end": 451,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 744
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 538,
+        "end": 539,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1187
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 3324,
+        "end": 3325,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 5112
+        }
+      },
+      {
+        "token": "}",
+        "label": "missing",
+        "start": 3495,
+        "end": 3496,
+        "extent_start": 3495,
+        "extent_end": 3496,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 5391
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "}",
+        "label": "extra",
+        "start": 5270,
+        "end": 5271,
+        "extent_start": 5270,
+        "extent_end": 5271
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 481,
+        "text": "50px;",
+        "ins_ts": 1771409866912,
+        "del_ts": 1771410014155,
+        "char_del_ts": [
+          1771410014155,
+          1771409914495,
+          1771409912025,
+          1771409911257,
+          1771409910678
+        ]
+      },
+      {
+        "pos": 486,
+        "text": "\t\t\t\theight: 50px;\n",
+        "ins_ts": 1771409867900,
+        "del_ts": 1771409910001,
+        "char_del_ts": [
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001,
+          1771409910001
+        ]
+      },
+      {
+        "pos": 646,
+        "text": " onclick=\"handleClick(this);\"",
+        "ins_ts": 1771410540311,
+        "del_ts": 1771412219622,
+        "char_del_ts": [
+          1771412219622,
+          1771412219447,
+          1771412219242,
+          1771412219037,
+          1771412218832,
+          1771412218627,
+          1771412218422,
+          1771412218197,
+          1771412217992,
+          1771412217787,
+          1771412217582,
+          1771412217377,
+          1771412217172,
+          1771412216977,
+          1771412216771,
+          1771412216512,
+          1771412216367,
+          1771412216172,
+          1771412215977,
+          1771412215782,
+          1771412215587,
+          1771412215392,
+          1771412215197,
+          1771412215002,
+          1771412214817,
+          1771412214575,
+          1771412214283,
+          1771412214000,
+          1771412213775
+        ]
+      },
+      {
+        "pos": 2908,
+        "text": "const",
+        "ins_ts": 1771411881558,
+        "del_ts": 1771412212432,
+        "char_del_ts": [
+          1771412212432,
+          1771412212225,
+          1771412212105,
+          1771412211996,
+          1771412211877
+        ]
+      },
+      {
+        "pos": 3492,
+        "text": "\t\t\t\tconsole.log(element);\n",
+        "ins_ts": 1771410813221,
+        "del_ts": 1771410918151,
+        "char_del_ts": [
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151,
+          1771410918151
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth bootstrapped from LEO*. Very clean student: 1 swap pair (onclick<->onClick capitalization) and 6 ghost_extra tokens for background-color: red; (teacher typed this color in the lesson keylog then deleted it; student kept the same color). All other differences are reorderings or comment-only.",
+  "teacher_files": {
+    "123456.css": [],
+    "reconstructed.html": [
+      {
+        "token": "onclick",
+        "label": "missing",
+        "start": 388,
+        "end": 395,
+        "paired_with": {
+          "file": "index.html",
+          "start": 395,
+          "end": 402,
+          "token": "onClick",
+          "label": "extra"
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "123456.css": [
+      {
+        "token": "background",
+        "label": "ghost_extra",
+        "start": 229,
+        "end": 239
+      },
+      {
+        "token": "-",
+        "label": "ghost_extra",
+        "start": 239,
+        "end": 240
+      },
+      {
+        "token": "color",
+        "label": "ghost_extra",
+        "start": 240,
+        "end": 245
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 245,
+        "end": 246
+      },
+      {
+        "token": "red",
+        "label": "ghost_extra",
+        "start": 247,
+        "end": 250
+      },
+      {
+        "token": ";",
+        "label": "ghost_extra",
+        "start": 250,
+        "end": 251
+      }
+    ],
+    "index.html": [
+      {
+        "token": "onClick",
+        "label": "extra",
+        "start": 395,
+        "end": 402,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 388,
+          "end": 395,
+          "token": "onclick",
+          "label": "missing"
+        }
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 0,
+        "text": "!\t\t\t\n",
+        "ins_ts": 1774851257920,
+        "del_ts": 1774851263919,
+        "char_del_ts": [
+          1774851263919,
+          1774851263919,
+          1774851263919,
+          1774851263919,
+          1774851263919
+        ]
+      },
+      {
+        "pos": 148,
+        "text": "Document",
+        "ins_ts": 1774851263919,
+        "del_ts": 1774851265633,
+        "char_del_ts": [
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633
+        ]
+      },
+      {
+        "pos": 303,
+        "text": "jpg",
+        "ins_ts": 1774851472170,
+        "del_ts": 1774851504736,
+        "char_del_ts": [
+          1774851504736,
+          1774851503879,
+          1774851503022
+        ]
+      }
+    ],
+    "123456.css": [
+      {
+        "pos": 167,
+        "text": "#280;",
+        "ins_ts": 1774851448174,
+        "del_ts": 1774851852678,
+        "char_del_ts": [
+          1774851852678,
+          1774851851821,
+          1774851850964,
+          1774851850107,
+          1774851849250
+        ]
+      },
+      {
+        "pos": 205,
+        "text": "\tbackground-color: red;\n",
+        "ins_ts": 1774851548443,
+        "del_ts": 1774851886958,
+        "char_del_ts": [
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958
+        ]
+      },
+      {
+        "pos": 343,
+        "text": "lime;",
+        "ins_ts": 1774851724985,
+        "del_ts": 1774851871532,
+        "char_del_ts": [
+          1774851871532,
+          1774851870675,
+          1774851869818,
+          1774851868961,
+          1774851868104
+        ]
+      }
+    ],
+    "123456.js": [
+      {
+        "pos": 516,
+        "text": "\t\t\tconsole.log(text);\n",
+        "ins_ts": 1774852641118,
+        "del_ts": 1774852743958,
+        "char_del_ts": [
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958
+        ]
+      }
+    ]
+  }
+}

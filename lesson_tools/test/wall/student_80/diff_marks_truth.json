@@ -1,0 +1,433 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth bootstrapped from LEO*. 2 swap pairs caught: 425px<->400px (chess-board width), W3Schools<->W3schools (footer link text typo). Real omissions: missing entire .left-offset CSS rule (.left-offset { margin-left: 25px; } - 12 tokens) and 4 occurrences of left-offset class on rows 2,4,6,8 (4 * 3 tokens = 12: left, -, offset). 23 unpaired missings reflect this. Comments differ stylistically (student has /*styling by id*/ lowercase vs /* styling by ID */; recomended typo in HTML comment) but comments are not flagged. The /*font-size: 0px;*/ commented line in student is also a comment, not flagged.",
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "425px",
+        "label": "missing",
+        "start": 122,
+        "end": 127,
+        "paired_with": {
+          "file": "index.html",
+          "start": 164,
+          "end": 169,
+          "token": "400px",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "}",
+        "label": "missing",
+        "start": 535,
+        "end": 536,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 544,
+        "end": 545,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 545,
+        "end": 549,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 549,
+        "end": 550,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "offset",
+        "label": "missing",
+        "start": 550,
+        "end": 556,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "{",
+        "label": "missing",
+        "start": 557,
+        "end": 558,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "margin",
+        "label": "missing",
+        "start": 563,
+        "end": 569,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 569,
+        "end": 570,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 570,
+        "end": 574,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": ":",
+        "label": "missing",
+        "start": 574,
+        "end": 575,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "25px",
+        "label": "missing",
+        "start": 576,
+        "end": 580,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 827
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 960,
+        "end": 964,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1337
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 964,
+        "end": 965,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1337
+        }
+      },
+      {
+        "token": "offset",
+        "label": "missing",
+        "start": 965,
+        "end": 971,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1337
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 1516,
+        "end": 1520,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2051
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 1520,
+        "end": 1521,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2051
+        }
+      },
+      {
+        "token": "offset",
+        "label": "missing",
+        "start": 1521,
+        "end": 1527,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2051
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 2072,
+        "end": 2076,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2765
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 2076,
+        "end": 2077,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2765
+        }
+      },
+      {
+        "token": "offset",
+        "label": "missing",
+        "start": 2077,
+        "end": 2083,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2765
+        }
+      },
+      {
+        "token": "left",
+        "label": "missing",
+        "start": 2628,
+        "end": 2632,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 3479
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 2632,
+        "end": 2633,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 3479
+        }
+      },
+      {
+        "token": "offset",
+        "label": "missing",
+        "start": 2633,
+        "end": 2639,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 3479
+        }
+      },
+      {
+        "token": "W3Schools",
+        "label": "missing",
+        "start": 3090,
+        "end": 3099,
+        "paired_with": {
+          "file": "index.html",
+          "start": 4076,
+          "end": 4085,
+          "token": "W3schools",
+          "label": "extra"
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "400px",
+        "label": "extra",
+        "start": 164,
+        "end": 169,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 122,
+          "end": 127,
+          "token": "425px",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "W3schools",
+        "label": "extra",
+        "start": 4076,
+        "end": 4085,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 3090,
+          "end": 3099,
+          "token": "W3Schools",
+          "label": "missing"
+        }
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 122,
+        "text": "400px;432px;400px;",
+        "ins_ts": 1770797979898,
+        "del_ts": 1770799262317,
+        "char_del_ts": [
+          1770798188669,
+          1770798188509,
+          1770798188349,
+          1770798188189,
+          1770798187913,
+          1770798187776,
+          1770798268764,
+          1770798268568,
+          1770798268379,
+          1770798268183,
+          1770798267987,
+          1770798267791,
+          1770799262317,
+          1770799262101,
+          1770799261959,
+          1770799261743,
+          1770799261527,
+          1770799261311
+        ]
+      },
+      {
+        "pos": 129,
+        "text": "\t\t\t\tfont-size: 0;\n",
+        "ins_ts": 1770798012942,
+        "del_ts": 1770798402219,
+        "char_del_ts": [
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219,
+          1770798402219
+        ]
+      },
+      {
+        "pos": 200,
+        "text": "div",
+        "ins_ts": 1770796888696,
+        "del_ts": 1770797761106,
+        "char_del_ts": [
+          1770797761106,
+          1770797760716,
+          1770797760432
+        ]
+      },
+      {
+        "pos": 226,
+        "text": "\t\t\t\tbackground-color: black;\n",
+        "ins_ts": 1770796913287,
+        "del_ts": 1770799009933,
+        "char_del_ts": [
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933,
+          1770799009933
+        ]
+      },
+      {
+        "pos": 366,
+        "text": "\t\t\t\tdisplay: inline-block;\n",
+        "ins_ts": 1770797310012,
+        "del_ts": 1770798405807,
+        "char_del_ts": [
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807,
+          1770798405807
+        ]
+      }
+    ]
+  }
+}

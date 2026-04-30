@@ -1,0 +1,214 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth ground truth — manually curated. Functional gap: '#vis-123456' is missing 'display: flex' (3 missing tokens) — without it, align-items has no effect and bars don't sit on the bottom. All 3 tokens insert_at student pos 319 (right after 'height: 200px;'), in their teacher order. Cosmetic additions ('width: 200px', 'background-color: red') match teacher keylog ghosts and are correctly labelled ghost_extra (action: delete). Other differences (CSS-property reorder in body, JS reorder, comment differences) are preserved-functionality and not flagged.",
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "display",
+        "label": "missing",
+        "start": 208,
+        "end": 215,
+        "insert_at": {
+          "file": "123456.html",
+          "pos": 319
+        }
+      },
+      {
+        "token": ":",
+        "label": "missing",
+        "start": 215,
+        "end": 216,
+        "insert_at": {
+          "file": "123456.html",
+          "pos": 319
+        }
+      },
+      {
+        "token": "flex",
+        "label": "missing",
+        "start": 217,
+        "end": 221,
+        "insert_at": {
+          "file": "123456.html",
+          "pos": 319
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "123456.html": [
+      {
+        "token": "width",
+        "label": "ghost_extra",
+        "start": 275,
+        "end": 280
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 280,
+        "end": 281
+      },
+      {
+        "token": "200px",
+        "label": "ghost_extra",
+        "start": 282,
+        "end": 287
+      },
+      {
+        "token": ";",
+        "label": "ghost_extra",
+        "start": 287,
+        "end": 288
+      },
+      {
+        "token": "background",
+        "label": "ghost_extra",
+        "start": 336,
+        "end": 346
+      },
+      {
+        "token": "-",
+        "label": "ghost_extra",
+        "start": 346,
+        "end": 347
+      },
+      {
+        "token": "color",
+        "label": "ghost_extra",
+        "start": 347,
+        "end": 352
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 352,
+        "end": 353
+      },
+      {
+        "token": "red",
+        "label": "ghost_extra",
+        "start": 354,
+        "end": 357
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 138,
+        "text": "justify-content",
+        "ins_ts": 1771834636293,
+        "del_ts": 1771835042563,
+        "char_del_ts": [
+          1771835042563,
+          1771835042274,
+          1771835041999,
+          1771835041796,
+          1771835041627,
+          1771835041422,
+          1771835041245,
+          1771835041019,
+          1771835039587,
+          1771835039428,
+          1771835039227,
+          1771835039054,
+          1771835038886,
+          1771835038718,
+          1771835038522
+        ]
+      },
+      {
+        "pos": 185,
+        "text": "\t\t\t\twidth: 200px;\n",
+        "ins_ts": 1771834803839,
+        "del_ts": 1771836608725,
+        "char_del_ts": [
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725
+        ]
+      },
+      {
+        "pos": 204,
+        "text": "\t\t\t\tbackground-color: red;\n",
+        "ins_ts": 1771834813919,
+        "del_ts": 1771836609308,
+        "char_del_ts": [
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308
+        ]
+      },
+      {
+        "pos": 644,
+        "text": "\t\t\tbubbleSort(array);\n",
+        "ins_ts": 1771837488031,
+        "del_ts": 1771837711569,
+        "char_del_ts": [
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569
+        ]
+      }
+    ]
+  }
+}

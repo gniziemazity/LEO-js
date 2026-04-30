@@ -1,0 +1,1082 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth bootstrapped from LEO*. Student has many bugs: 6 swap pairs caught (color<->colour typo in .bar; createElement<->crateElement typo; appendChild<->appendchild lowercase; arr[i] vs arr[1] in swap; Promise<->promise lowercase; setTimeout 100<->10). Major omissions: (1) missing <!> in <DOCTYPE> (extra < not flagged); (2) bubbleSort(array) is never called (no entry point — visualization will not run); (3) updateBars() function is referenced but never defined (3 missing \"bars\" tokens); (4) array{i} vs array[i] (swap pair {<->[ and }<->] would be expected but LEO* did not catch); (5) arr[i-1] > arr[i] vs arr[i-1] = arr[i] in swap line (\">\"<->\"=\" pair in spirit, LEO* found unpaired \">\" extra at 1916). The remaining 73 unpaired missing tokens reflect missing updateBars function, missing bubbleSort call, and partial swap reconstructions.",
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "!",
+        "label": "missing",
+        "start": 1,
+        "end": 2,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1
+        }
+      },
+      {
+        "token": "flex",
+        "label": "missing",
+        "start": 110,
+        "end": 114,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 165
+        }
+      },
+      {
+        "token": "items",
+        "label": "missing",
+        "start": 144,
+        "end": 149,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 230
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 221,
+        "end": 222,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 457
+        }
+      },
+      {
+        "token": "align",
+        "label": "missing",
+        "start": 227,
+        "end": 232,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 457
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 232,
+        "end": 233,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 457
+        }
+      },
+      {
+        "token": ":",
+        "label": "missing",
+        "start": 238,
+        "end": 239,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 458
+        }
+      },
+      {
+        "token": "-",
+        "label": "missing",
+        "start": 244,
+        "end": 245,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 463
+        }
+      },
+      {
+        "token": "end",
+        "label": "missing",
+        "start": 245,
+        "end": 248,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 463
+        }
+      },
+      {
+        "token": "color",
+        "label": "missing",
+        "start": 318,
+        "end": 323,
+        "paired_with": {
+          "file": "index.html",
+          "start": 603,
+          "end": 609,
+          "token": "colour",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "createElement",
+        "label": "missing",
+        "start": 774,
+        "end": 787,
+        "paired_with": {
+          "file": "index.html",
+          "start": 1258,
+          "end": 1270,
+          "token": "crateElement",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "appendChild",
+        "label": "missing",
+        "start": 811,
+        "end": 822,
+        "paired_with": {
+          "file": "index.html",
+          "start": 1310,
+          "end": 1321,
+          "token": "appendchild",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "[",
+        "label": "missing",
+        "start": 887,
+        "end": 888,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1418
+        }
+      },
+      {
+        "token": "]",
+        "label": "missing",
+        "start": 889,
+        "end": 890,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1419
+        }
+      },
+      {
+        "token": "100",
+        "label": "missing",
+        "start": 893,
+        "end": 896,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1420
+        }
+      },
+      {
+        "token": "+",
+        "label": "missing",
+        "start": 897,
+        "end": 898,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1420
+        }
+      },
+      {
+        "token": "%",
+        "label": "missing",
+        "start": 900,
+        "end": 901,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1421
+        }
+      },
+      {
+        "token": "\"",
+        "label": "missing",
+        "start": 901,
+        "end": 902,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1421
+        }
+      },
+      {
+        "token": "}",
+        "label": "missing",
+        "start": 996,
+        "end": 997,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "bubbleSort",
+        "label": "missing",
+        "start": 1005,
+        "end": 1015,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "(",
+        "label": "missing",
+        "start": 1015,
+        "end": 1016,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "array",
+        "label": "missing",
+        "start": 1016,
+        "end": 1021,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": ")",
+        "label": "missing",
+        "start": 1021,
+        "end": 1022,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1022,
+        "end": 1023,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "function",
+        "label": "missing",
+        "start": 1031,
+        "end": 1039,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "updateBars",
+        "label": "missing",
+        "start": 1040,
+        "end": 1050,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "(",
+        "label": "missing",
+        "start": 1050,
+        "end": 1051,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": ")",
+        "label": "missing",
+        "start": 1051,
+        "end": 1052,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1423
+        }
+      },
+      {
+        "token": "const",
+        "label": "missing",
+        "start": 1059,
+        "end": 1064,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "bars",
+        "label": "missing",
+        "start": 1065,
+        "end": 1069,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "=",
+        "label": "missing",
+        "start": 1070,
+        "end": 1071,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "document",
+        "label": "missing",
+        "start": 1072,
+        "end": 1080,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 1080,
+        "end": 1081,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "getElementsByClassName",
+        "label": "missing",
+        "start": 1081,
+        "end": 1103,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "(",
+        "label": "missing",
+        "start": 1103,
+        "end": 1104,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "\"",
+        "label": "missing",
+        "start": 1104,
+        "end": 1105,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "bar",
+        "label": "missing",
+        "start": 1105,
+        "end": 1108,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "\"",
+        "label": "missing",
+        "start": 1108,
+        "end": 1109,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ")",
+        "label": "missing",
+        "start": 1109,
+        "end": 1110,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1110,
+        "end": 1111,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "for",
+        "label": "missing",
+        "start": 1116,
+        "end": 1119,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "(",
+        "label": "missing",
+        "start": 1120,
+        "end": 1121,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "let",
+        "label": "missing",
+        "start": 1121,
+        "end": 1124,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1125,
+        "end": 1126,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "=",
+        "label": "missing",
+        "start": 1127,
+        "end": 1128,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "0",
+        "label": "missing",
+        "start": 1129,
+        "end": 1130,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1130,
+        "end": 1131,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1132,
+        "end": 1133,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "<",
+        "label": "missing",
+        "start": 1134,
+        "end": 1135,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "bars",
+        "label": "missing",
+        "start": 1136,
+        "end": 1140,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 1140,
+        "end": 1141,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "length",
+        "label": "missing",
+        "start": 1141,
+        "end": 1147,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1147,
+        "end": 1148,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1149,
+        "end": 1150,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "+",
+        "label": "missing",
+        "start": 1150,
+        "end": 1151,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "+",
+        "label": "missing",
+        "start": 1151,
+        "end": 1152,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ")",
+        "label": "missing",
+        "start": 1152,
+        "end": 1153,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "{",
+        "label": "missing",
+        "start": 1154,
+        "end": 1155,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "bars",
+        "label": "missing",
+        "start": 1161,
+        "end": 1165,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "[",
+        "label": "missing",
+        "start": 1165,
+        "end": 1166,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1166,
+        "end": 1167,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "]",
+        "label": "missing",
+        "start": 1167,
+        "end": 1168,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 1168,
+        "end": 1169,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "style",
+        "label": "missing",
+        "start": 1169,
+        "end": 1174,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": ".",
+        "label": "missing",
+        "start": 1174,
+        "end": 1175,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "height",
+        "label": "missing",
+        "start": 1175,
+        "end": 1181,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "=",
+        "label": "missing",
+        "start": 1182,
+        "end": 1183,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "array",
+        "label": "missing",
+        "start": 1184,
+        "end": 1189,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "[",
+        "label": "missing",
+        "start": 1189,
+        "end": 1190,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1190,
+        "end": 1191,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "]",
+        "label": "missing",
+        "start": 1191,
+        "end": 1192,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "*",
+        "label": "missing",
+        "start": 1193,
+        "end": 1194,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1427
+        }
+      },
+      {
+        "token": "\"",
+        "label": "missing",
+        "start": 1201,
+        "end": 1202,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1431
+        }
+      },
+      {
+        "token": "async",
+        "label": "missing",
+        "start": 1224,
+        "end": 1229,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1616
+        }
+      },
+      {
+        "token": "i",
+        "label": "missing",
+        "start": 1439,
+        "end": 1440,
+        "paired_with": {
+          "file": "index.html",
+          "start": 1962,
+          "end": 1963,
+          "token": "1",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "Promise",
+        "label": "missing",
+        "start": 1503,
+        "end": 1510,
+        "paired_with": {
+          "file": "index.html",
+          "start": 2106,
+          "end": 2113,
+          "token": "promise",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "100",
+        "label": "missing",
+        "start": 1542,
+        "end": 1545,
+        "paired_with": {
+          "file": "index.html",
+          "start": 2144,
+          "end": 2146,
+          "token": "10",
+          "label": "extra"
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1547,
+        "end": 1548,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2144
+        }
+      },
+      {
+        "token": "=",
+        "label": "missing",
+        "start": 1564,
+        "end": 1565,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 2147
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "width",
+        "label": "ghost_extra",
+        "start": 338,
+        "end": 343
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 343,
+        "end": 344
+      },
+      {
+        "token": "200px",
+        "label": "ghost_extra",
+        "start": 345,
+        "end": 350
+      },
+      {
+        "token": ";",
+        "label": "ghost_extra",
+        "start": 350,
+        "end": 351
+      },
+      {
+        "token": "background",
+        "label": "ghost_extra",
+        "start": 407,
+        "end": 417
+      },
+      {
+        "token": "-",
+        "label": "ghost_extra",
+        "start": 417,
+        "end": 418
+      },
+      {
+        "token": "color",
+        "label": "ghost_extra",
+        "start": 418,
+        "end": 423
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 423,
+        "end": 424
+      },
+      {
+        "token": "red",
+        "label": "ghost_extra",
+        "start": 425,
+        "end": 428
+      },
+      {
+        "token": ";",
+        "label": "ghost_extra",
+        "start": 428,
+        "end": 429
+      },
+      {
+        "token": "colour",
+        "label": "extra",
+        "start": 603,
+        "end": 609,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 318,
+          "end": 323,
+          "token": "color",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "crateElement",
+        "label": "extra",
+        "start": 1258,
+        "end": 1270,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 774,
+          "end": 787,
+          "token": "createElement",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "appendchild",
+        "label": "extra",
+        "start": 1310,
+        "end": 1321,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 811,
+          "end": 822,
+          "token": "appendChild",
+          "label": "missing"
+        }
+      },
+      {
+        "token": ">",
+        "label": "extra",
+        "start": 1916,
+        "end": 1917
+      },
+      {
+        "token": "1",
+        "label": "extra",
+        "start": 1962,
+        "end": 1963,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 1439,
+          "end": 1440,
+          "token": "i",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "promise",
+        "label": "extra",
+        "start": 2106,
+        "end": 2113,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 1503,
+          "end": 1510,
+          "token": "Promise",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "10",
+        "label": "extra",
+        "start": 2144,
+        "end": 2146,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 1542,
+          "end": 1545,
+          "token": "100",
+          "label": "missing"
+        }
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 138,
+        "text": "justify-content",
+        "ins_ts": 1771834636293,
+        "del_ts": 1771835042563,
+        "char_del_ts": [
+          1771835042563,
+          1771835042274,
+          1771835041999,
+          1771835041796,
+          1771835041627,
+          1771835041422,
+          1771835041245,
+          1771835041019,
+          1771835039587,
+          1771835039428,
+          1771835039227,
+          1771835039054,
+          1771835038886,
+          1771835038718,
+          1771835038522
+        ]
+      },
+      {
+        "pos": 185,
+        "text": "\t\t\t\twidth: 200px;\n",
+        "ins_ts": 1771834803839,
+        "del_ts": 1771836608725,
+        "char_del_ts": [
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725,
+          1771836608725
+        ]
+      },
+      {
+        "pos": 204,
+        "text": "\t\t\t\tbackground-color: red;\n",
+        "ins_ts": 1771834813919,
+        "del_ts": 1771836609308,
+        "char_del_ts": [
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308,
+          1771836609308
+        ]
+      },
+      {
+        "pos": 644,
+        "text": "\t\t\tbubbleSort(array);\n",
+        "ins_ts": 1771837488031,
+        "del_ts": 1771837711569,
+        "char_del_ts": [
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569,
+          1771837711569
+        ]
+      }
+    ]
+  }
+}

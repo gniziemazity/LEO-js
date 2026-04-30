@@ -1,0 +1,288 @@
+{
+  "token_matching": "truth",
+  "_note": "Truth bootstrapped from LEO*. 4 swap pairs caught: ol<->old typo (line 14), all<->All, %<->& bug (student wrote console.log(a & b) instead of a % b on line 88), 36<->31 (student set age=31 instead of 36). 1 unpaired missing: extra ; from teachers \"};;\" double-semicolon (teacher had a stray ; on line 59 - student wrote single \"}\" so 1 ; is missing - inserted at student pos 1854). 11 unpaired extras: (1) extra ! in s3 string (Welcome to \"Karelia!\"! vs Welcome to \"Karelia\"!); (2) entire extra console.log(someDate.getDay()) line on student line 119 (10 tokens). Real semantic bug not captured: student's s2 = 'Welcome to \"Karelia!\"' vs teacher's 'Welcome to \"Karelia\"!' (the ! position differs inside vs outside the inner quotes - same tokens, just reordered).",
+  "teacher_files": {
+    "reconstructed.html": [
+      {
+        "token": "ol",
+        "label": "missing",
+        "start": 338,
+        "end": 340,
+        "paired_with": {
+          "file": "index.html",
+          "start": 377,
+          "end": 380,
+          "token": "old",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "all",
+        "label": "missing",
+        "start": 392,
+        "end": 395,
+        "paired_with": {
+          "file": "index.html",
+          "start": 442,
+          "end": 445,
+          "token": "All",
+          "label": "extra"
+        }
+      },
+      {
+        "token": ";",
+        "label": "missing",
+        "start": 1604,
+        "end": 1605,
+        "insert_at": {
+          "file": "index.html",
+          "pos": 1854
+        }
+      },
+      {
+        "token": "%",
+        "label": "missing",
+        "start": 2354,
+        "end": 2355,
+        "paired_with": {
+          "file": "index.html",
+          "start": 2740,
+          "end": 2741,
+          "token": "&",
+          "label": "extra"
+        }
+      },
+      {
+        "token": "36",
+        "label": "missing",
+        "start": 2814,
+        "end": 2816,
+        "paired_with": {
+          "file": "index.html",
+          "start": 3280,
+          "end": 3282,
+          "token": "31",
+          "label": "extra"
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "index.html": [
+      {
+        "token": "old",
+        "label": "extra",
+        "start": 377,
+        "end": 380,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 338,
+          "end": 340,
+          "token": "ol",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "All",
+        "label": "extra",
+        "start": 442,
+        "end": 445,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 392,
+          "end": 395,
+          "token": "all",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "&",
+        "label": "extra",
+        "start": 2740,
+        "end": 2741,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 2354,
+          "end": 2355,
+          "token": "%",
+          "label": "missing"
+        }
+      },
+      {
+        "token": "!",
+        "label": "extra",
+        "start": 3202,
+        "end": 3203
+      },
+      {
+        "token": "31",
+        "label": "extra",
+        "start": 3280,
+        "end": 3282,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 2814,
+          "end": 2816,
+          "token": "36",
+          "label": "missing"
+        }
+      },
+      {
+        "token": ".",
+        "label": "extra",
+        "start": 3571,
+        "end": 3572
+      },
+      {
+        "token": "getDay",
+        "label": "extra",
+        "start": 3572,
+        "end": 3578
+      },
+      {
+        "token": "(",
+        "label": "extra",
+        "start": 3578,
+        "end": 3579
+      },
+      {
+        "token": ")",
+        "label": "extra",
+        "start": 3579,
+        "end": 3580
+      },
+      {
+        "token": ")",
+        "label": "extra",
+        "start": 3580,
+        "end": 3581
+      },
+      {
+        "token": "console",
+        "label": "extra",
+        "start": 3591,
+        "end": 3598
+      },
+      {
+        "token": ".",
+        "label": "extra",
+        "start": 3598,
+        "end": 3599
+      },
+      {
+        "token": "log",
+        "label": "extra",
+        "start": 3599,
+        "end": 3602
+      },
+      {
+        "token": "(",
+        "label": "extra",
+        "start": 3602,
+        "end": 3603
+      },
+      {
+        "token": "someDate",
+        "label": "extra",
+        "start": 3603,
+        "end": 3611
+      }
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 0,
+        "text": "!\t\t\t\n",
+        "ins_ts": 1773138197773,
+        "del_ts": 1773138251411,
+        "char_del_ts": [
+          1773138251411,
+          1773138251411,
+          1773138251411,
+          1773138251411,
+          1773138251411
+        ]
+      },
+      {
+        "pos": 148,
+        "text": "Document",
+        "ins_ts": 1773138251411,
+        "del_ts": 1773138261562,
+        "char_del_ts": [
+          1773138261562,
+          1773138261562,
+          1773138261562,
+          1773138261562,
+          1773138261562,
+          1773138261562,
+          1773138261562,
+          1773138261562
+        ]
+      },
+      {
+        "pos": 421,
+        "text": "\t\t\tol>li*3\t\n",
+        "ins_ts": 1773138545044,
+        "del_ts": 1773138578876,
+        "char_del_ts": [
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876,
+          1773138578876
+        ]
+      },
+      {
+        "pos": 1337,
+        "text": "log",
+        "ins_ts": 1773139932939,
+        "del_ts": 1773140002731,
+        "char_del_ts": [
+          1773140002731,
+          1773140002481,
+          1773140002201
+        ]
+      },
+      {
+        "pos": 3394,
+        "text": "div#container\t\t\tscript\t\n",
+        "ins_ts": 1773138457329,
+        "del_ts": 1773138771876,
+        "char_del_ts": [
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138474909,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876,
+          1773138771876
+        ]
+      }
+    ]
+  }
+}

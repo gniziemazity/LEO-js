@@ -1,0 +1,5714 @@
+{
+  "token_matching": "leo_star",
+  "score": 98.7,
+  "teacher_files": {
+    "123456.css": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 24,
+        "end": 25
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 25,
+        "end": 26
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 27,
+        "end": 30
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 31,
+        "end": 39
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 40,
+        "end": 41
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 41,
+        "end": 42
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 231,
+        "end": 232
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 232,
+        "end": 233
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 234,
+        "end": 235
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 235,
+        "end": 236
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 237,
+        "end": 239
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 240,
+        "end": 243
+      },
+      {
+        "token": "viewport",
+        "label": "comment",
+        "start": 244,
+        "end": 252
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 253,
+        "end": 258
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 259,
+        "end": 260
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 260,
+        "end": 261
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 357,
+        "end": 358
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 358,
+        "end": 359
+      },
+      {
+        "token": "does",
+        "label": "comment",
+        "start": 360,
+        "end": 364
+      },
+      {
+        "token": "not",
+        "label": "comment",
+        "start": 365,
+        "end": 368
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 369,
+        "end": 375
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 376,
+        "end": 379
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 380,
+        "end": 384
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 385,
+        "end": 386
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 386,
+        "end": 387
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 414,
+        "end": 415
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 415,
+        "end": 416
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 417,
+        "end": 424
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 425,
+        "end": 428
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 429,
+        "end": 433
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 434,
+        "end": 435
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 435,
+        "end": 436
+      }
+    ],
+    "reconstructed.html": [
+      {
+        "token": "onclick",
+        "label": "missing",
+        "start": 388,
+        "end": 395,
+        "timestamp": "09:29:38",
+        "paired_with": {
+          "file": "index.html",
+          "start": 395,
+          "end": 402,
+          "token": "onClick",
+          "label": "extra"
+        }
+      }
+    ]
+  },
+  "student_files": {
+    "123456.css": [
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 26,
+        "end": 27
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 27,
+        "end": 28
+      },
+      {
+        "token": "CSS",
+        "label": "comment",
+        "start": 29,
+        "end": 32
+      },
+      {
+        "token": "variable",
+        "label": "comment",
+        "start": 33,
+        "end": 41
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 41,
+        "end": 42
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 42,
+        "end": 43
+      },
+      {
+        "token": "background",
+        "label": "ghost_extra",
+        "start": 229,
+        "end": 239,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": "-",
+        "label": "ghost_extra",
+        "start": 239,
+        "end": 240,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": "color",
+        "label": "ghost_extra",
+        "start": 240,
+        "end": 245,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": ":",
+        "label": "ghost_extra",
+        "start": 245,
+        "end": 246,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": "red",
+        "label": "ghost_extra",
+        "start": 247,
+        "end": 250,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": ";",
+        "label": "ghost_extra",
+        "start": 250,
+        "end": 251,
+        "removal_ts": "09:24:46"
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 281,
+        "end": 282
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 282,
+        "end": 283
+      },
+      {
+        "token": "3",
+        "label": "comment",
+        "start": 284,
+        "end": 285
+      },
+      {
+        "token": "%",
+        "label": "comment",
+        "start": 285,
+        "end": 286
+      },
+      {
+        "token": "of",
+        "label": "comment",
+        "start": 287,
+        "end": 289
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 290,
+        "end": 293
+      },
+      {
+        "token": "viewpoint",
+        "label": "comment",
+        "start": 294,
+        "end": 303
+      },
+      {
+        "token": "width",
+        "label": "comment",
+        "start": 304,
+        "end": 309
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 310,
+        "end": 311
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 311,
+        "end": 312
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 419,
+        "end": 420
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 420,
+        "end": 421
+      },
+      {
+        "token": "doesnot",
+        "label": "comment",
+        "start": 422,
+        "end": 429
+      },
+      {
+        "token": "affect",
+        "label": "comment",
+        "start": 430,
+        "end": 436
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 437,
+        "end": 440
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 441,
+        "end": 445
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 445,
+        "end": 446
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 446,
+        "end": 447
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 477,
+        "end": 478
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 478,
+        "end": 479
+      },
+      {
+        "token": "affects",
+        "label": "comment",
+        "start": 480,
+        "end": 487
+      },
+      {
+        "token": "the",
+        "label": "comment",
+        "start": 488,
+        "end": 491
+      },
+      {
+        "token": "size",
+        "label": "comment",
+        "start": 492,
+        "end": 496
+      },
+      {
+        "token": "*",
+        "label": "comment",
+        "start": 496,
+        "end": 497
+      },
+      {
+        "token": "/",
+        "label": "comment",
+        "start": 497,
+        "end": 498
+      }
+    ],
+    "index.html": [
+      {
+        "token": "onClick",
+        "label": "extra",
+        "start": 395,
+        "end": 402,
+        "paired_with": {
+          "file": "reconstructed.html",
+          "start": 388,
+          "end": 395,
+          "token": "onclick",
+          "label": "missing"
+        }
+      }
+    ]
+  },
+  "alignments": {
+    "123456.css": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        null,
+        9
+      ],
+      [
+        9,
+        10
+      ],
+      [
+        10,
+        11
+      ],
+      [
+        11,
+        12
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        13,
+        14
+      ],
+      [
+        14,
+        null
+      ],
+      [
+        15,
+        15
+      ],
+      [
+        null,
+        16
+      ],
+      [
+        16,
+        17
+      ],
+      [
+        17,
+        18
+      ],
+      [
+        null,
+        19
+      ],
+      [
+        null,
+        20
+      ],
+      [
+        18,
+        21
+      ],
+      [
+        19,
+        22
+      ],
+      [
+        20,
+        23
+      ],
+      [
+        21,
+        24
+      ],
+      [
+        22,
+        25
+      ],
+      [
+        23,
+        26
+      ],
+      [
+        24,
+        27
+      ],
+      [
+        25,
+        28
+      ],
+      [
+        26,
+        29
+      ],
+      [
+        27,
+        30
+      ],
+      [
+        28,
+        31
+      ],
+      [
+        29,
+        32
+      ],
+      [
+        30,
+        33
+      ],
+      [
+        31,
+        34
+      ],
+      [
+        32,
+        35
+      ],
+      [
+        33,
+        36
+      ],
+      [
+        34,
+        37
+      ],
+      [
+        35,
+        38
+      ],
+      [
+        36,
+        39
+      ],
+      [
+        37,
+        40
+      ],
+      [
+        38,
+        41
+      ],
+      [
+        39,
+        42
+      ],
+      [
+        null,
+        43
+      ],
+      [
+        40,
+        44
+      ]
+    ],
+    "123456.js": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        null
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        6,
+        5
+      ],
+      [
+        7,
+        6
+      ],
+      [
+        8,
+        null
+      ],
+      [
+        9,
+        7
+      ],
+      [
+        null,
+        8
+      ],
+      [
+        null,
+        9
+      ],
+      [
+        10,
+        10
+      ],
+      [
+        11,
+        11
+      ],
+      [
+        12,
+        null
+      ],
+      [
+        13,
+        12
+      ],
+      [
+        null,
+        13
+      ],
+      [
+        14,
+        14
+      ],
+      [
+        15,
+        15
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        17,
+        17
+      ],
+      [
+        18,
+        18
+      ],
+      [
+        19,
+        19
+      ],
+      [
+        20,
+        20
+      ],
+      [
+        21,
+        21
+      ],
+      [
+        22,
+        22
+      ],
+      [
+        23,
+        23
+      ],
+      [
+        24,
+        24
+      ],
+      [
+        25,
+        25
+      ],
+      [
+        26,
+        26
+      ],
+      [
+        27,
+        27
+      ],
+      [
+        28,
+        28
+      ],
+      [
+        29,
+        29
+      ],
+      [
+        30,
+        30
+      ],
+      [
+        31,
+        31
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        33,
+        33
+      ],
+      [
+        34,
+        34
+      ],
+      [
+        35,
+        35
+      ],
+      [
+        36,
+        36
+      ],
+      [
+        37,
+        37
+      ],
+      [
+        null,
+        38
+      ],
+      [
+        38,
+        39
+      ],
+      [
+        39,
+        null
+      ]
+    ],
+    "reconstructed.html": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        10
+      ],
+      [
+        11,
+        11
+      ],
+      [
+        12,
+        12
+      ],
+      [
+        13,
+        13
+      ],
+      [
+        14,
+        14
+      ],
+      [
+        15,
+        null
+      ],
+      [
+        16,
+        null
+      ],
+      [
+        17,
+        15
+      ],
+      [
+        18,
+        16
+      ],
+      [
+        19,
+        17
+      ],
+      [
+        20,
+        18
+      ],
+      [
+        21,
+        19
+      ],
+      [
+        22,
+        20
+      ]
+    ],
+    "index.html": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        10
+      ],
+      [
+        11,
+        11
+      ],
+      [
+        12,
+        12
+      ],
+      [
+        13,
+        13
+      ],
+      [
+        14,
+        14
+      ],
+      [
+        15,
+        null
+      ],
+      [
+        16,
+        null
+      ],
+      [
+        17,
+        15
+      ],
+      [
+        18,
+        16
+      ],
+      [
+        19,
+        17
+      ],
+      [
+        20,
+        18
+      ],
+      [
+        21,
+        19
+      ],
+      [
+        22,
+        20
+      ]
+    ]
+  },
+  "leo_assignments": {
+    "k": 10,
+    "idf": {
+      ":": 3.112207264550359,
+      "root": 5.945420608606575,
+      "{": 3.4886848357852713,
+      "-": 3.4331149846304605,
+      "theme": 5.098122748219372,
+      "#": 4.5591262474866845,
+      "280": 5.6577385361547945,
+      ";": 2.637313650010432,
+      "}": 3.4886848357852713,
+      "body": 5.098122748219372,
+      "display": 4.846808319938465,
+      "flex": 5.434594984840585,
+      "direction": 5.945420608606575,
+      "column": 5.945420608606575,
+      "align": 5.945420608606575,
+      "items": 5.945420608606575,
+      "center": 5.945420608606575,
+      "margin": 5.945420608606575,
+      "0": 4.846808319938465,
+      "h1": 5.098122748219372,
+      "font": 5.945420608606575,
+      "family": 5.945420608606575,
+      "\"": 2.469321918771302,
+      "Arial": 5.945420608606575,
+      "color": 5.098122748219372,
+      "var": 5.434594984840585,
+      "(": 3.259843263356424,
+      ")": 3.259843263356424,
+      "map": 4.846808319938465,
+      "width": 4.646137624476315,
+      "100": 5.434594984840585,
+      "%": 4.646137624476315,
+      "background": 5.434594984840585,
+      "red": 5.945420608606575,
+      "marker": 4.846808319938465,
+      "3vw": 5.434594984840585,
+      "height": 5.945420608606575,
+      "black": 5.945420608606575,
+      "border": 5.434594984840585,
+      "radius": 5.945420608606575,
+      "50": 5.098122748219372,
+      "outline": 5.945420608606575,
+      "5px": 5.434594984840585,
+      "solid": 5.434594984840585,
+      "lime": 6.35088571671474,
+      "white": 5.945420608606575,
+      "position": 5.434594984840585,
+      "absolute": 5.945420608606575,
+      "top": 4.646137624476315,
+      "left": 4.646137624476315,
+      "transform": 5.945420608606575,
+      "translate": 5.945420608606575,
+      ",": 4.479083539813148,
+      "mapContainer": 4.846808319938465,
+      "relative": 5.945420608606575,
+      "none": 5.434594984840585,
+      "camera": 5.098122748219372,
+      "const": 5.434594984840585,
+      "reader": 5.098122748219372,
+      "=": 2.9664954533689656,
+      "new": 5.945420608606575,
+      "Html5Qrcode": 5.945420608606575,
+      "let": 5.945420608606575,
+      "scannerOn": 4.846808319938465,
+      "false": 5.945420608606575,
+      "function": 4.479083539813148,
+      "toggleScanner": 5.098122748219372,
+      "!": 5.25227342804663,
+      "if": 5.945420608606575,
+      "startScanner": 5.434594984840585,
+      "btn": 5.098122748219372,
+      ".": 3.2153915007855898,
+      "innerText": 5.434594984840585,
+      "CANCEL": 5.945420608606575,
+      "style": 4.846808319938465,
+      "else": 5.945420608606575,
+      "stopScanner": 5.434594984840585,
+      "SCAN": 5.434594984840585,
+      "block": 5.945420608606575,
+      "start": 5.945420608606575,
+      "facingMode": 5.945420608606575,
+      "environment": 5.945420608606575,
+      "text": 4.964591355594849,
+      "place": 5.098122748219372,
+      "JSON": 5.945420608606575,
+      "parse": 5.945420608606575,
+      "showMarkerAt": 5.434594984840585,
+      "console": 5.6577385361547945,
+      "log": 6.35088571671474,
+      "catch": 5.945420608606575,
+      "err": 5.434594984840585,
+      "error": 5.945420608606575,
+      "stop": 5.945420608606575,
+      "<": 3.036699712042214,
+      "DOCTYPE": 5.945420608606575,
+      "html": 5.098122748219372,
+      ">": 3.036699712042214,
+      "lang": 5.945420608606575,
+      "en": 5.945420608606575,
+      "head": 5.434594984840585,
+      "meta": 5.434594984840585,
+      "charset": 5.945420608606575,
+      "UTF": 5.945420608606575,
+      "8": 5.945420608606575,
+      "name": 5.945420608606575,
+      "viewport": 5.945420608606575,
+      "content": 5.945420608606575,
+      "device": 5.945420608606575,
+      "initial": 5.945420608606575,
+      "scale": 5.945420608606575,
+      "1": 5.945420608606575,
+      "title": 5.434594984840585,
+      "Document": 6.35088571671474,
+      "QR": 5.434594984840585,
+      "Positioning": 5.434594984840585,
+      "/": 3.4886848357852713,
+      "link": 5.945420608606575,
+      "rel": 5.945420608606575,
+      "stylesheet": 5.945420608606575,
+      "href": 5.945420608606575,
+      "123456": 5.434594984840585,
+      "css": 5.945420608606575,
+      "div": 4.479083539813148,
+      "id": 4.646137624476315,
+      "img": 5.945420608606575,
+      "src": 5.098122748219372,
+      "jpg": 6.35088571671474,
+      "png": 5.945420608606575,
+      "alt": 5.945420608606575,
+      "button": 5.434594984840585,
+      "onclick": 6.35088571671474,
+      "script": 4.846808319938465,
+      "https": 5.945420608606575,
+      "unpkg": 5.945420608606575,
+      "com": 5.945420608606575,
+      "html5": 5.945420608606575,
+      "qrcode": 5.945420608606575,
+      "type": 5.945420608606575,
+      "javascript": 5.945420608606575,
+      "js": 5.945420608606575,
+      "onClick": 6.35088571671474
+    },
+    "teacher_seq": [
+      ":",
+      "root",
+      "{",
+      "-",
+      "-",
+      "theme",
+      ":",
+      "#",
+      "280",
+      ";",
+      "}",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "margin",
+      ":",
+      "0",
+      ";",
+      "}",
+      "h1",
+      "{",
+      "font",
+      "-",
+      "family",
+      ":",
+      "\"",
+      "Arial",
+      "\"",
+      ";",
+      "color",
+      ":",
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "}",
+      "#",
+      "map",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      "}",
+      "#",
+      "marker",
+      "{",
+      "width",
+      ":",
+      "3vw",
+      ";",
+      "height",
+      ":",
+      "3vw",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "border",
+      "-",
+      "radius",
+      ":",
+      "50",
+      "%",
+      ";",
+      "outline",
+      ":",
+      "5px",
+      "solid",
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "border",
+      ":",
+      "5px",
+      "solid",
+      "white",
+      ";",
+      "position",
+      ":",
+      "absolute",
+      ";",
+      "top",
+      ":",
+      "0",
+      ";",
+      "left",
+      ":",
+      "0",
+      ";",
+      "transform",
+      ":",
+      "translate",
+      "(",
+      "-",
+      "50",
+      "%",
+      ",",
+      "-",
+      "50",
+      "%",
+      ")",
+      ";",
+      "}",
+      "#",
+      "mapContainer",
+      "{",
+      "position",
+      ":",
+      "relative",
+      ";",
+      "display",
+      ":",
+      "none",
+      ";",
+      "}",
+      "#",
+      "camera",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      "}",
+      "const",
+      "reader",
+      "=",
+      "new",
+      "Html5Qrcode",
+      "(",
+      "\"",
+      "camera",
+      "\"",
+      ")",
+      ";",
+      "let",
+      "scannerOn",
+      "=",
+      "false",
+      ";",
+      "function",
+      "toggleScanner",
+      "(",
+      ")",
+      "{",
+      "scannerOn",
+      "=",
+      "!",
+      "scannerOn",
+      ";",
+      "if",
+      "(",
+      "scannerOn",
+      ")",
+      "{",
+      "startScanner",
+      "(",
+      ")",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "CANCEL",
+      "\"",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "none",
+      "\"",
+      ";",
+      "}",
+      "else",
+      "{",
+      "stopScanner",
+      "(",
+      ")",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "SCAN",
+      "\"",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "block",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "function",
+      "startScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "start",
+      "(",
+      "{",
+      "facingMode",
+      ":",
+      "\"",
+      "environment",
+      "\"",
+      "}",
+      ",",
+      "{",
+      "}",
+      ",",
+      "function",
+      "(",
+      "text",
+      ")",
+      "{",
+      "const",
+      "place",
+      "=",
+      "JSON",
+      ".",
+      "parse",
+      "(",
+      "text",
+      ")",
+      ";",
+      "showMarkerAt",
+      "(",
+      "place",
+      ".",
+      "top",
+      ",",
+      "place",
+      ".",
+      "left",
+      ")",
+      ";",
+      "toggleScanner",
+      "(",
+      ")",
+      ";",
+      "}",
+      ")",
+      ".",
+      "catch",
+      "(",
+      "function",
+      "(",
+      "err",
+      ")",
+      "{",
+      "console",
+      ".",
+      "error",
+      "(",
+      "err",
+      ")",
+      ";",
+      "}",
+      ")",
+      ";",
+      "}",
+      "function",
+      "stopScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "stop",
+      "(",
+      ")",
+      ";",
+      "}",
+      "function",
+      "showMarkerAt",
+      "(",
+      "top",
+      ",",
+      "left",
+      ")",
+      "{",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "top",
+      "=",
+      "top",
+      ";",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "left",
+      "=",
+      "left",
+      ";",
+      "}",
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      "lang",
+      "=",
+      "\"",
+      "en",
+      "\"",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "meta",
+      "charset",
+      "=",
+      "\"",
+      "UTF",
+      "-",
+      "8",
+      "\"",
+      ">",
+      "<",
+      "meta",
+      "name",
+      "=",
+      "\"",
+      "viewport",
+      "\"",
+      "content",
+      "=",
+      "\"",
+      "width",
+      "=",
+      "device",
+      "-",
+      "width",
+      ",",
+      "initial",
+      "-",
+      "scale",
+      "=",
+      "1",
+      ".",
+      "0",
+      "\"",
+      ">",
+      "<",
+      "title",
+      ">",
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "link",
+      "rel",
+      "=",
+      "\"",
+      "stylesheet",
+      "\"",
+      "href",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "css",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "mapContainer",
+      "\"",
+      ">",
+      "<",
+      "img",
+      "src",
+      "=",
+      "\"",
+      "map",
+      ".",
+      "png",
+      "\"",
+      "id",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "alt",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "marker",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "button",
+      "id",
+      "=",
+      "\"",
+      "btn",
+      "\"",
+      "onclick",
+      "=",
+      "\"",
+      "toggleScanner",
+      "(",
+      ")",
+      "\"",
+      ">",
+      "SCAN",
+      "<",
+      "/",
+      "button",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "camera",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "https",
+      ":",
+      "/",
+      "/",
+      "unpkg",
+      ".",
+      "com",
+      "/",
+      "html5",
+      "-",
+      "qrcode",
+      "\"",
+      "type",
+      "=",
+      "\"",
+      "text",
+      "/",
+      "javascript",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "js",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ],
+    "student_seq": [
+      ":",
+      "root",
+      "{",
+      "-",
+      "-",
+      "theme",
+      ":",
+      "#",
+      "280",
+      ";",
+      "}",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "margin",
+      ":",
+      "0",
+      ";",
+      "}",
+      "h1",
+      "{",
+      "font",
+      "-",
+      "family",
+      ":",
+      "\"",
+      "Arial",
+      "\"",
+      ";",
+      "color",
+      ":",
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "}",
+      "#",
+      "map",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "red",
+      ";",
+      "}",
+      "#",
+      "marker",
+      "{",
+      "width",
+      ":",
+      "3vw",
+      ";",
+      "height",
+      ":",
+      "3vw",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "border",
+      "-",
+      "radius",
+      ":",
+      "50",
+      "%",
+      ";",
+      "outline",
+      ":",
+      "5px",
+      "solid",
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "border",
+      ":",
+      "5px",
+      "solid",
+      "white",
+      ";",
+      "position",
+      ":",
+      "absolute",
+      ";",
+      "top",
+      ":",
+      "0",
+      ";",
+      "left",
+      ":",
+      "0",
+      ";",
+      "transform",
+      ":",
+      "translate",
+      "(",
+      "-",
+      "50",
+      "%",
+      ",",
+      "-",
+      "50",
+      "%",
+      ")",
+      ";",
+      "}",
+      "#",
+      "mapContainer",
+      "{",
+      "position",
+      ":",
+      "relative",
+      ";",
+      "display",
+      ":",
+      "none",
+      ";",
+      "}",
+      "#",
+      "camera",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      "}",
+      "const",
+      "reader",
+      "=",
+      "new",
+      "Html5Qrcode",
+      "(",
+      "\"",
+      "camera",
+      "\"",
+      ")",
+      ";",
+      "let",
+      "scannerOn",
+      "=",
+      "false",
+      ";",
+      "function",
+      "toggleScanner",
+      "(",
+      ")",
+      "{",
+      "scannerOn",
+      "=",
+      "!",
+      "scannerOn",
+      ";",
+      "if",
+      "(",
+      "scannerOn",
+      ")",
+      "{",
+      "startScanner",
+      "(",
+      ")",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "none",
+      "\"",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "CANCEL",
+      "\"",
+      ";",
+      "}",
+      "else",
+      "{",
+      "stopScanner",
+      "(",
+      ")",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "block",
+      "\"",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "SCAN",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "function",
+      "startScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "start",
+      "(",
+      "{",
+      "facingMode",
+      ":",
+      "\"",
+      "environment",
+      "\"",
+      "}",
+      ",",
+      "{",
+      "}",
+      ",",
+      "function",
+      "(",
+      "text",
+      ")",
+      "{",
+      "const",
+      "place",
+      "=",
+      "JSON",
+      ".",
+      "parse",
+      "(",
+      "text",
+      ")",
+      ";",
+      "showMarkerAt",
+      "(",
+      "place",
+      ".",
+      "top",
+      ",",
+      "place",
+      ".",
+      "left",
+      ")",
+      ";",
+      "toggleScanner",
+      "(",
+      ")",
+      ";",
+      "}",
+      ")",
+      ".",
+      "catch",
+      "(",
+      "function",
+      "(",
+      "err",
+      ")",
+      "{",
+      "console",
+      ".",
+      "error",
+      "(",
+      "err",
+      ")",
+      ";",
+      "}",
+      ")",
+      ";",
+      "}",
+      "function",
+      "stopScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "stop",
+      "(",
+      ")",
+      ";",
+      "}",
+      "function",
+      "showMarkerAt",
+      "(",
+      "top",
+      ",",
+      "left",
+      ")",
+      "{",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "top",
+      "=",
+      "top",
+      ";",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "left",
+      "=",
+      "left",
+      ";",
+      "}",
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      "lang",
+      "=",
+      "\"",
+      "en",
+      "\"",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "meta",
+      "charset",
+      "=",
+      "\"",
+      "UTF",
+      "-",
+      "8",
+      "\"",
+      ">",
+      "<",
+      "meta",
+      "name",
+      "=",
+      "\"",
+      "viewport",
+      "\"",
+      "content",
+      "=",
+      "\"",
+      "width",
+      "=",
+      "device",
+      "-",
+      "width",
+      ",",
+      "initial",
+      "-",
+      "scale",
+      "=",
+      "1",
+      ".",
+      "0",
+      "\"",
+      ">",
+      "<",
+      "title",
+      ">",
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "link",
+      "rel",
+      "=",
+      "\"",
+      "stylesheet",
+      "\"",
+      "href",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "css",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "mapContainer",
+      "\"",
+      ">",
+      "<",
+      "img",
+      "src",
+      "=",
+      "\"",
+      "map",
+      ".",
+      "png",
+      "\"",
+      "id",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "alt",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "marker",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "button",
+      "id",
+      "=",
+      "\"",
+      "btn",
+      "\"",
+      "onClick",
+      "=",
+      "\"",
+      "toggleScanner",
+      "(",
+      ")",
+      "\"",
+      ">",
+      "SCAN",
+      "<",
+      "/",
+      "button",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "camera",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "https",
+      ":",
+      "/",
+      "/",
+      "unpkg",
+      ".",
+      "com",
+      "/",
+      "html5",
+      "-",
+      "qrcode",
+      "\"",
+      "type",
+      "=",
+      "\"",
+      "text",
+      "/",
+      "javascript",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "js",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ],
+    "tokens": {
+      ";": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 22,
+            "seq_idx": 9,
+            "label": null,
+            "seq_idx_aug": 9,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 67,
+            "seq_idx": 16,
+            "label": null,
+            "seq_idx_aug": 16,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 92,
+            "seq_idx": 22,
+            "label": null,
+            "seq_idx_aug": 22,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 114,
+            "seq_idx": 28,
+            "label": null,
+            "seq_idx_aug": 28,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 126,
+            "seq_idx": 32,
+            "label": null,
+            "seq_idx_aug": 32,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 157,
+            "seq_idx": 43,
+            "label": null,
+            "seq_idx_aug": 43,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 179,
+            "seq_idx": 52,
+            "label": null,
+            "seq_idx_aug": 55,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 203,
+            "seq_idx": 61,
+            "label": null,
+            "seq_idx_aug": 64,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.css",
+            "pos": 229,
+            "seq_idx": 69,
+            "label": null,
+            "seq_idx_aug": 78,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.css",
+            "pos": 274,
+            "seq_idx": 73,
+            "label": null,
+            "seq_idx_aug": 82,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 300,
+            "seq_idx": 79,
+            "label": null,
+            "seq_idx_aug": 88,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 321,
+            "seq_idx": 86,
+            "label": null,
+            "seq_idx_aug": 95,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.css",
+            "pos": 355,
+            "seq_idx": 97,
+            "label": null,
+            "seq_idx_aug": 108,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.css",
+            "pos": 412,
+            "seq_idx": 103,
+            "label": null,
+            "seq_idx_aug": 114,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.css",
+            "pos": 456,
+            "seq_idx": 107,
+            "label": null,
+            "seq_idx_aug": 118,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.css",
+            "pos": 465,
+            "seq_idx": 111,
+            "label": null,
+            "seq_idx_aug": 122,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.css",
+            "pos": 475,
+            "seq_idx": 115,
+            "label": null,
+            "seq_idx_aug": 126,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 510,
+            "seq_idx": 128,
+            "label": null,
+            "seq_idx_aug": 139,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.css",
+            "pos": 550,
+            "seq_idx": 136,
+            "label": null,
+            "seq_idx_aug": 147,
+            "match_idx": 19
+          },
+          {
+            "file": "123456.css",
+            "pos": 566,
+            "seq_idx": 140,
+            "label": null,
+            "seq_idx_aug": 151,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.css",
+            "pos": 593,
+            "seq_idx": 149,
+            "label": null,
+            "seq_idx_aug": 160,
+            "match_idx": 21
+          },
+          {
+            "file": "123456.js",
+            "pos": 40,
+            "seq_idx": 161,
+            "label": null,
+            "seq_idx_aug": 172,
+            "match_idx": 22
+          },
+          {
+            "file": "123456.js",
+            "pos": 64,
+            "seq_idx": 166,
+            "label": null,
+            "seq_idx_aug": 177,
+            "match_idx": 23
+          },
+          {
+            "file": "123456.js",
+            "pos": 117,
+            "seq_idx": 176,
+            "label": null,
+            "seq_idx_aug": 187,
+            "match_idx": 24
+          },
+          {
+            "file": "123456.js",
+            "pos": 153,
+            "seq_idx": 185,
+            "label": null,
+            "seq_idx_aug": 196,
+            "match_idx": 25
+          },
+          {
+            "file": "123456.js",
+            "pos": 181,
+            "seq_idx": 193,
+            "label": null,
+            "seq_idx_aug": 204,
+            "match_idx": 27
+          },
+          {
+            "file": "123456.js",
+            "pos": 220,
+            "seq_idx": 203,
+            "label": null,
+            "seq_idx_aug": 214,
+            "match_idx": 26
+          },
+          {
+            "file": "123456.js",
+            "pos": 247,
+            "seq_idx": 210,
+            "label": null,
+            "seq_idx_aug": 221,
+            "match_idx": 29
+          },
+          {
+            "file": "123456.js",
+            "pos": 273,
+            "seq_idx": 218,
+            "label": null,
+            "seq_idx_aug": 229,
+            "match_idx": 28
+          },
+          {
+            "file": "123456.js",
+            "pos": 313,
+            "seq_idx": 228,
+            "label": null,
+            "seq_idx_aug": 239,
+            "match_idx": 30
+          },
+          {
+            "file": "123456.js",
+            "pos": 454,
+            "seq_idx": 265,
+            "label": null,
+            "seq_idx_aug": 276,
+            "match_idx": 31
+          },
+          {
+            "file": "123456.js",
+            "pos": 494,
+            "seq_idx": 276,
+            "label": null,
+            "seq_idx_aug": 287,
+            "match_idx": 32
+          },
+          {
+            "file": "123456.js",
+            "pos": 514,
+            "seq_idx": 280,
+            "label": null,
+            "seq_idx_aug": 291,
+            "match_idx": 33
+          },
+          {
+            "file": "123456.js",
+            "pos": 566,
+            "seq_idx": 297,
+            "label": null,
+            "seq_idx_aug": 315,
+            "match_idx": 34
+          },
+          {
+            "file": "123456.js",
+            "pos": 571,
+            "seq_idx": 300,
+            "label": null,
+            "seq_idx_aug": 318,
+            "match_idx": 35
+          },
+          {
+            "file": "123456.js",
+            "pos": 615,
+            "seq_idx": 312,
+            "label": null,
+            "seq_idx_aug": 330,
+            "match_idx": 36
+          },
+          {
+            "file": "123456.js",
+            "pos": 678,
+            "seq_idx": 329,
+            "label": null,
+            "seq_idx_aug": 347,
+            "match_idx": 37
+          },
+          {
+            "file": "123456.js",
+            "pos": 706,
+            "seq_idx": 337,
+            "label": null,
+            "seq_idx_aug": 355,
+            "match_idx": 38
+          },
+          {
+            "file": "123456.css",
+            "pos": 167,
+            "blob_offset": 4,
+            "ghost": true,
+            "del_ts": 1774851849250,
+            "seq_idx_aug": 48
+          },
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 22,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 70,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 343,
+            "blob_offset": 4,
+            "ghost": true,
+            "del_ts": 1774851868104,
+            "seq_idx_aug": 101
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 20,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 298
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 24,
+            "seq_idx": 9,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 70,
+            "seq_idx": 16,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 98,
+            "seq_idx": 22,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 123,
+            "seq_idx": 28,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 138,
+            "seq_idx": 32,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 172,
+            "seq_idx": 43,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 197,
+            "seq_idx": 52,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 223,
+            "seq_idx": 61,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.css",
+            "pos": 250,
+            "seq_idx": 67,
+            "label": "ghost_extra",
+            "match_idx": 39
+          },
+          {
+            "file": "123456.css",
+            "pos": 279,
+            "seq_idx": 75,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 328,
+            "seq_idx": 79,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.css",
+            "pos": 357,
+            "seq_idx": 85,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 380,
+            "seq_idx": 92,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 417,
+            "seq_idx": 103,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.css",
+            "pos": 475,
+            "seq_idx": 109,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.css",
+            "pos": 521,
+            "seq_idx": 113,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.css",
+            "pos": 533,
+            "seq_idx": 117,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.css",
+            "pos": 546,
+            "seq_idx": 121,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.css",
+            "pos": 584,
+            "seq_idx": 134,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 626,
+            "seq_idx": 142,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.css",
+            "pos": 645,
+            "seq_idx": 146,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "123456.css",
+            "pos": 674,
+            "seq_idx": 155,
+            "label": null,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.js",
+            "pos": 40,
+            "seq_idx": 167,
+            "label": null,
+            "match_idx": 21
+          },
+          {
+            "file": "123456.js",
+            "pos": 63,
+            "seq_idx": 172,
+            "label": null,
+            "match_idx": 22
+          },
+          {
+            "file": "123456.js",
+            "pos": 118,
+            "seq_idx": 182,
+            "label": null,
+            "match_idx": 23
+          },
+          {
+            "file": "123456.js",
+            "pos": 162,
+            "seq_idx": 191,
+            "label": null,
+            "match_idx": 24
+          },
+          {
+            "file": "123456.js",
+            "pos": 207,
+            "seq_idx": 201,
+            "label": null,
+            "match_idx": 26
+          },
+          {
+            "file": "123456.js",
+            "pos": 241,
+            "seq_idx": 209,
+            "label": null,
+            "match_idx": 25
+          },
+          {
+            "file": "123456.js",
+            "pos": 277,
+            "seq_idx": 216,
+            "label": null,
+            "match_idx": 28
+          },
+          {
+            "file": "123456.js",
+            "pos": 323,
+            "seq_idx": 226,
+            "label": null,
+            "match_idx": 27
+          },
+          {
+            "file": "123456.js",
+            "pos": 355,
+            "seq_idx": 234,
+            "label": null,
+            "match_idx": 29
+          },
+          {
+            "file": "123456.js",
+            "pos": 527,
+            "seq_idx": 271,
+            "label": null,
+            "match_idx": 30
+          },
+          {
+            "file": "123456.js",
+            "pos": 576,
+            "seq_idx": 282,
+            "label": null,
+            "match_idx": 31
+          },
+          {
+            "file": "123456.js",
+            "pos": 605,
+            "seq_idx": 286,
+            "label": null,
+            "match_idx": 32
+          },
+          {
+            "file": "123456.js",
+            "pos": 670,
+            "seq_idx": 303,
+            "label": null,
+            "match_idx": 33
+          },
+          {
+            "file": "123456.js",
+            "pos": 678,
+            "seq_idx": 306,
+            "label": null,
+            "match_idx": 34
+          },
+          {
+            "file": "123456.js",
+            "pos": 725,
+            "seq_idx": 318,
+            "label": null,
+            "match_idx": 35
+          },
+          {
+            "file": "123456.js",
+            "pos": 789,
+            "seq_idx": 335,
+            "label": null,
+            "match_idx": 36
+          },
+          {
+            "file": "123456.js",
+            "pos": 819,
+            "seq_idx": 343,
+            "label": null,
+            "match_idx": 37
+          }
+        ]
+      },
+      ".": {
+        "teacher": [
+          {
+            "file": "123456.js",
+            "pos": 160,
+            "seq_idx": 187,
+            "label": null,
+            "seq_idx_aug": 198,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.js",
+            "pos": 197,
+            "seq_idx": 195,
+            "label": null,
+            "seq_idx_aug": 206,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.js",
+            "pos": 203,
+            "seq_idx": 197,
+            "label": null,
+            "seq_idx_aug": 208,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 254,
+            "seq_idx": 212,
+            "label": null,
+            "seq_idx_aug": 223,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 289,
+            "seq_idx": 220,
+            "label": null,
+            "seq_idx_aug": 231,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 295,
+            "seq_idx": 222,
+            "label": null,
+            "seq_idx_aug": 233,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 354,
+            "seq_idx": 237,
+            "label": null,
+            "seq_idx_aug": 248,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 442,
+            "seq_idx": 260,
+            "label": null,
+            "seq_idx_aug": 271,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 477,
+            "seq_idx": 269,
+            "label": null,
+            "seq_idx_aug": 280,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 488,
+            "seq_idx": 273,
+            "label": null,
+            "seq_idx_aug": 284,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 522,
+            "seq_idx": 283,
+            "label": null,
+            "seq_idx_aug": 301,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 555,
+            "seq_idx": 292,
+            "label": null,
+            "seq_idx_aug": 310,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 608,
+            "seq_idx": 308,
+            "label": null,
+            "seq_idx_aug": 326,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 662,
+            "seq_idx": 323,
+            "label": null,
+            "seq_idx_aug": 341,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 668,
+            "seq_idx": 325,
+            "label": null,
+            "seq_idx_aug": 343,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 688,
+            "seq_idx": 331,
+            "label": null,
+            "seq_idx_aug": 349,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 694,
+            "seq_idx": 333,
+            "label": null,
+            "seq_idx_aug": 351,
+            "match_idx": 16
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 134,
+            "seq_idx": 386,
+            "label": null,
+            "seq_idx_aug": 405,
+            "match_idx": 17
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 208,
+            "seq_idx": 410,
+            "label": null,
+            "seq_idx_aug": 430,
+            "match_idx": 18
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 302,
+            "seq_idx": 445,
+            "label": null,
+            "seq_idx_aug": 465,
+            "match_idx": 19
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 488,
+            "seq_idx": 518,
+            "label": null,
+            "seq_idx_aug": 539,
+            "match_idx": 20
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 561,
+            "seq_idx": 543,
+            "label": null,
+            "seq_idx_aug": 564,
+            "match_idx": 21
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 10,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 293
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.js",
+            "pos": 184,
+            "seq_idx": 193,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.js",
+            "pos": 190,
+            "seq_idx": 195,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.js",
+            "pos": 220,
+            "seq_idx": 203,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 299,
+            "seq_idx": 218,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 305,
+            "seq_idx": 220,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 336,
+            "seq_idx": 228,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 402,
+            "seq_idx": 243,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 515,
+            "seq_idx": 266,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 559,
+            "seq_idx": 275,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 570,
+            "seq_idx": 279,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 622,
+            "seq_idx": 289,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 659,
+            "seq_idx": 298,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 718,
+            "seq_idx": 314,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 773,
+            "seq_idx": 329,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 779,
+            "seq_idx": 331,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 801,
+            "seq_idx": 337,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 807,
+            "seq_idx": 339,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "index.html",
+            "pos": 137,
+            "seq_idx": 392,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "index.html",
+            "pos": 215,
+            "seq_idx": 416,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "index.html",
+            "pos": 310,
+            "seq_idx": 451,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "index.html",
+            "pos": 492,
+            "seq_idx": 524,
+            "label": null,
+            "match_idx": 20
+          },
+          {
+            "file": "index.html",
+            "pos": 566,
+            "seq_idx": 549,
+            "label": null,
+            "match_idx": 21
+          }
+        ]
+      },
+      "onclick": {
+        "teacher": [
+          {
+            "file": "reconstructed.html",
+            "pos": 388,
+            "seq_idx": 483,
+            "label": "missing",
+            "seq_idx_aug": 504
+          }
+        ],
+        "student": []
+      },
+      "red": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 19,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 69,
+            "match_idx": 0
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 247,
+            "seq_idx": 66,
+            "label": "ghost_extra",
+            "match_idx": 0
+          }
+        ]
+      },
+      "!": {
+        "teacher": [
+          {
+            "file": "123456.js",
+            "pos": 107,
+            "seq_idx": 174,
+            "label": null,
+            "seq_idx_aug": 185,
+            "match_idx": 0
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 1,
+            "seq_idx": 340,
+            "label": null,
+            "seq_idx_aug": 359,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 0,
+            "blob_offset": 0,
+            "ghost": true,
+            "del_ts": 1774851263919,
+            "seq_idx_aug": 357
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.js",
+            "pos": 108,
+            "seq_idx": 180,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "index.html",
+            "pos": 1,
+            "seq_idx": 346,
+            "label": null,
+            "match_idx": 1
+          }
+        ]
+      },
+      "background": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 277,
+            "seq_idx": 74,
+            "label": null,
+            "seq_idx_aug": 83,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 1,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 65,
+            "match_idx": 0
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 229,
+            "seq_idx": 62,
+            "label": "ghost_extra",
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 334,
+            "seq_idx": 80,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "280": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 19,
+            "seq_idx": 8,
+            "label": null,
+            "seq_idx_aug": 8,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 167,
+            "blob_offset": 1,
+            "ghost": true,
+            "del_ts": 1774851850107,
+            "seq_idx_aug": 47
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 21,
+            "seq_idx": 8,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "#": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 18,
+            "seq_idx": 7,
+            "label": null,
+            "seq_idx_aug": 7,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 184,
+            "seq_idx": 54,
+            "label": null,
+            "seq_idx_aug": 57,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 208,
+            "seq_idx": 63,
+            "label": null,
+            "seq_idx_aug": 72,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 515,
+            "seq_idx": 130,
+            "label": null,
+            "seq_idx_aug": 141,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 571,
+            "seq_idx": 142,
+            "label": null,
+            "seq_idx_aug": 153,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 167,
+            "blob_offset": 0,
+            "ghost": true,
+            "del_ts": 1774851852678,
+            "seq_idx_aug": 46
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 20,
+            "seq_idx": 7,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 202,
+            "seq_idx": 54,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 256,
+            "seq_idx": 69,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 589,
+            "seq_idx": 136,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 650,
+            "seq_idx": 148,
+            "label": null,
+            "match_idx": 4
+          }
+        ]
+      },
+      ")": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 178,
+            "seq_idx": 51,
+            "label": null,
+            "seq_idx_aug": 54,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 354,
+            "seq_idx": 96,
+            "label": null,
+            "seq_idx_aug": 107,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 509,
+            "seq_idx": 127,
+            "label": null,
+            "seq_idx_aug": 138,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 39,
+            "seq_idx": 160,
+            "label": null,
+            "seq_idx_aug": 171,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 90,
+            "seq_idx": 170,
+            "label": null,
+            "seq_idx_aug": 181,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 133,
+            "seq_idx": 180,
+            "label": null,
+            "seq_idx_aug": 191,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 152,
+            "seq_idx": 184,
+            "label": null,
+            "seq_idx_aug": 195,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 246,
+            "seq_idx": 209,
+            "label": null,
+            "seq_idx_aug": 220,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 343,
+            "seq_idx": 234,
+            "label": null,
+            "seq_idx_aug": 245,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 417,
+            "seq_idx": 254,
+            "label": null,
+            "seq_idx_aug": 265,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 453,
+            "seq_idx": 264,
+            "label": null,
+            "seq_idx_aug": 275,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 493,
+            "seq_idx": 275,
+            "label": null,
+            "seq_idx_aug": 286,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 513,
+            "seq_idx": 279,
+            "label": null,
+            "seq_idx_aug": 290,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 521,
+            "seq_idx": 282,
+            "label": null,
+            "seq_idx_aug": 300,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 542,
+            "seq_idx": 289,
+            "label": null,
+            "seq_idx_aug": 307,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 565,
+            "seq_idx": 296,
+            "label": null,
+            "seq_idx_aug": 314,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 570,
+            "seq_idx": 299,
+            "label": null,
+            "seq_idx_aug": 317,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.js",
+            "pos": 597,
+            "seq_idx": 305,
+            "label": null,
+            "seq_idx_aug": 323,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.js",
+            "pos": 614,
+            "seq_idx": 311,
+            "label": null,
+            "seq_idx_aug": 329,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.js",
+            "pos": 651,
+            "seq_idx": 320,
+            "label": null,
+            "seq_idx_aug": 338,
+            "match_idx": 19
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 411,
+            "seq_idx": 488,
+            "label": null,
+            "seq_idx_aug": 509,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 19,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 297
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 196,
+            "seq_idx": 51,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 416,
+            "seq_idx": 102,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 583,
+            "seq_idx": 133,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 39,
+            "seq_idx": 166,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 89,
+            "seq_idx": 176,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 137,
+            "seq_idx": 186,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 161,
+            "seq_idx": 190,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 276,
+            "seq_idx": 215,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 388,
+            "seq_idx": 240,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 481,
+            "seq_idx": 260,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 526,
+            "seq_idx": 270,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 575,
+            "seq_idx": 281,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 604,
+            "seq_idx": 285,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 621,
+            "seq_idx": 288,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 641,
+            "seq_idx": 295,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 669,
+            "seq_idx": 302,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 677,
+            "seq_idx": 305,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.js",
+            "pos": 704,
+            "seq_idx": 311,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.js",
+            "pos": 724,
+            "seq_idx": 317,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.js",
+            "pos": 760,
+            "seq_idx": 326,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "index.html",
+            "pos": 418,
+            "seq_idx": 494,
+            "label": null,
+            "match_idx": 20
+          }
+        ]
+      },
+      ":": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 0,
+            "seq_idx": 0,
+            "label": null,
+            "seq_idx_aug": 0,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 16,
+            "seq_idx": 6,
+            "label": null,
+            "seq_idx_aug": 6,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 61,
+            "seq_idx": 14,
+            "label": null,
+            "seq_idx_aug": 14,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 84,
+            "seq_idx": 20,
+            "label": null,
+            "seq_idx_aug": 20,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 106,
+            "seq_idx": 26,
+            "label": null,
+            "seq_idx_aug": 26,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 123,
+            "seq_idx": 30,
+            "label": null,
+            "seq_idx_aug": 30,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 148,
+            "seq_idx": 39,
+            "label": null,
+            "seq_idx_aug": 39,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 165,
+            "seq_idx": 45,
+            "label": null,
+            "seq_idx_aug": 45,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.css",
+            "pos": 197,
+            "seq_idx": 58,
+            "label": null,
+            "seq_idx_aug": 61,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 224,
+            "seq_idx": 67,
+            "label": null,
+            "seq_idx_aug": 76,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 269,
+            "seq_idx": 71,
+            "label": null,
+            "seq_idx_aug": 80,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 293,
+            "seq_idx": 77,
+            "label": null,
+            "seq_idx_aug": 86,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.css",
+            "pos": 316,
+            "seq_idx": 83,
+            "label": null,
+            "seq_idx_aug": 92,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.css",
+            "pos": 331,
+            "seq_idx": 88,
+            "label": null,
+            "seq_idx_aug": 97,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.css",
+            "pos": 395,
+            "seq_idx": 99,
+            "label": null,
+            "seq_idx_aug": 110,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.css",
+            "pos": 446,
+            "seq_idx": 105,
+            "label": null,
+            "seq_idx_aug": 116,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.css",
+            "pos": 462,
+            "seq_idx": 109,
+            "label": null,
+            "seq_idx_aug": 120,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 472,
+            "seq_idx": 113,
+            "label": null,
+            "seq_idx_aug": 124,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.css",
+            "pos": 487,
+            "seq_idx": 117,
+            "label": null,
+            "seq_idx_aug": 128,
+            "match_idx": 19
+          },
+          {
+            "file": "123456.css",
+            "pos": 540,
+            "seq_idx": 134,
+            "label": null,
+            "seq_idx_aug": 145,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.css",
+            "pos": 560,
+            "seq_idx": 138,
+            "label": null,
+            "seq_idx_aug": 149,
+            "match_idx": 21
+          },
+          {
+            "file": "123456.css",
+            "pos": 587,
+            "seq_idx": 146,
+            "label": null,
+            "seq_idx_aug": 157,
+            "match_idx": 22
+          },
+          {
+            "file": "123456.js",
+            "pos": 376,
+            "seq_idx": 242,
+            "label": null,
+            "seq_idx_aug": 253,
+            "match_idx": 23
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 480,
+            "seq_idx": 514,
+            "label": null,
+            "seq_idx_aug": 535,
+            "match_idx": 24
+          },
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 17,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 68,
+            "match_idx": 9
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 0,
+            "seq_idx": 0,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 18,
+            "seq_idx": 6,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 64,
+            "seq_idx": 14,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 90,
+            "seq_idx": 20,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 115,
+            "seq_idx": 26,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 135,
+            "seq_idx": 30,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 163,
+            "seq_idx": 39,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 183,
+            "seq_idx": 45,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.css",
+            "pos": 217,
+            "seq_idx": 58,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 245,
+            "seq_idx": 65,
+            "label": "ghost_extra",
+            "match_idx": 24
+          },
+          {
+            "file": "123456.css",
+            "pos": 274,
+            "seq_idx": 73,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.css",
+            "pos": 323,
+            "seq_idx": 77,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 350,
+            "seq_idx": 83,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 376,
+            "seq_idx": 89,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.css",
+            "pos": 393,
+            "seq_idx": 94,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.css",
+            "pos": 458,
+            "seq_idx": 105,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.css",
+            "pos": 511,
+            "seq_idx": 111,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.css",
+            "pos": 530,
+            "seq_idx": 115,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.css",
+            "pos": 543,
+            "seq_idx": 119,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 561,
+            "seq_idx": 123,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.css",
+            "pos": 616,
+            "seq_idx": 140,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "123456.css",
+            "pos": 639,
+            "seq_idx": 144,
+            "label": null,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.css",
+            "pos": 668,
+            "seq_idx": 152,
+            "label": null,
+            "match_idx": 21
+          },
+          {
+            "file": "123456.js",
+            "pos": 430,
+            "seq_idx": 248,
+            "label": null,
+            "match_idx": 22
+          },
+          {
+            "file": "index.html",
+            "pos": 484,
+            "seq_idx": 520,
+            "label": null,
+            "match_idx": 23
+          }
+        ]
+      },
+      "(": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 170,
+            "seq_idx": 47,
+            "label": null,
+            "seq_idx_aug": 50,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 346,
+            "seq_idx": 92,
+            "label": null,
+            "seq_idx_aug": 103,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 498,
+            "seq_idx": 119,
+            "label": null,
+            "seq_idx_aug": 130,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 30,
+            "seq_idx": 156,
+            "label": null,
+            "seq_idx_aug": 167,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 89,
+            "seq_idx": 169,
+            "label": null,
+            "seq_idx_aug": 180,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 123,
+            "seq_idx": 178,
+            "label": null,
+            "seq_idx_aug": 189,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 151,
+            "seq_idx": 183,
+            "label": null,
+            "seq_idx_aug": 194,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 245,
+            "seq_idx": 208,
+            "label": null,
+            "seq_idx_aug": 219,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 342,
+            "seq_idx": 233,
+            "label": null,
+            "seq_idx_aug": 244,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 360,
+            "seq_idx": 239,
+            "label": null,
+            "seq_idx_aug": 250,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 412,
+            "seq_idx": 252,
+            "label": null,
+            "seq_idx_aug": 263,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 448,
+            "seq_idx": 262,
+            "label": null,
+            "seq_idx_aug": 273,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 471,
+            "seq_idx": 267,
+            "label": null,
+            "seq_idx_aug": 278,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 512,
+            "seq_idx": 278,
+            "label": null,
+            "seq_idx_aug": 289,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 528,
+            "seq_idx": 285,
+            "label": null,
+            "seq_idx_aug": 303,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 538,
+            "seq_idx": 287,
+            "label": null,
+            "seq_idx_aug": 305,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 561,
+            "seq_idx": 294,
+            "label": null,
+            "seq_idx_aug": 312,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.js",
+            "pos": 596,
+            "seq_idx": 304,
+            "label": null,
+            "seq_idx_aug": 322,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.js",
+            "pos": 613,
+            "seq_idx": 310,
+            "label": null,
+            "seq_idx_aug": 328,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.js",
+            "pos": 641,
+            "seq_idx": 316,
+            "label": null,
+            "seq_idx_aug": 334,
+            "match_idx": 19
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 410,
+            "seq_idx": 487,
+            "label": null,
+            "seq_idx_aug": 508,
+            "match_idx": 20
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 14,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 295
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 188,
+            "seq_idx": 47,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 408,
+            "seq_idx": 98,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 572,
+            "seq_idx": 125,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 30,
+            "seq_idx": 162,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.js",
+            "pos": 88,
+            "seq_idx": 175,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.js",
+            "pos": 127,
+            "seq_idx": 184,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.js",
+            "pos": 160,
+            "seq_idx": 189,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.js",
+            "pos": 275,
+            "seq_idx": 214,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.js",
+            "pos": 387,
+            "seq_idx": 239,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.js",
+            "pos": 408,
+            "seq_idx": 245,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.js",
+            "pos": 476,
+            "seq_idx": 258,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.js",
+            "pos": 521,
+            "seq_idx": 268,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.js",
+            "pos": 553,
+            "seq_idx": 273,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.js",
+            "pos": 603,
+            "seq_idx": 284,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "123456.js",
+            "pos": 628,
+            "seq_idx": 291,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "123456.js",
+            "pos": 637,
+            "seq_idx": 293,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "123456.js",
+            "pos": 665,
+            "seq_idx": 300,
+            "label": null,
+            "match_idx": 16
+          },
+          {
+            "file": "123456.js",
+            "pos": 703,
+            "seq_idx": 310,
+            "label": null,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.js",
+            "pos": 723,
+            "seq_idx": 316,
+            "label": null,
+            "match_idx": 18
+          },
+          {
+            "file": "123456.js",
+            "pos": 751,
+            "seq_idx": 322,
+            "label": null,
+            "match_idx": 19
+          },
+          {
+            "file": "index.html",
+            "pos": 417,
+            "seq_idx": 493,
+            "label": null,
+            "match_idx": 20
+          }
+        ]
+      },
+      "color": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 160,
+            "seq_idx": 44,
+            "label": null,
+            "seq_idx_aug": 44,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 288,
+            "seq_idx": 76,
+            "label": null,
+            "seq_idx_aug": 85,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 12,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 67,
+            "match_idx": 1
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 178,
+            "seq_idx": 44,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 240,
+            "seq_idx": 64,
+            "label": "ghost_extra",
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 345,
+            "seq_idx": 82,
+            "label": null,
+            "match_idx": 1
+          }
+        ]
+      },
+      "onClick": {
+        "teacher": [],
+        "student": [
+          {
+            "file": "index.html",
+            "pos": 395,
+            "seq_idx": 489,
+            "label": "extra"
+          }
+        ]
+      },
+      "text": {
+        "teacher": [
+          {
+            "file": "123456.js",
+            "pos": 413,
+            "seq_idx": 253,
+            "label": null,
+            "seq_idx_aug": 264,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.js",
+            "pos": 449,
+            "seq_idx": 263,
+            "label": null,
+            "seq_idx_aug": 274,
+            "match_idx": 1
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 513,
+            "seq_idx": 528,
+            "label": null,
+            "seq_idx_aug": 549,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 15,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 296
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.js",
+            "pos": 477,
+            "seq_idx": 259,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.js",
+            "pos": 522,
+            "seq_idx": 269,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "index.html",
+            "pos": 517,
+            "seq_idx": 534,
+            "label": null,
+            "match_idx": 2
+          }
+        ]
+      },
+      "console": {
+        "teacher": [
+          {
+            "file": "123456.js",
+            "pos": 548,
+            "seq_idx": 291,
+            "label": null,
+            "seq_idx_aug": 309,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.js",
+            "pos": 516,
+            "blob_offset": 3,
+            "ghost": true,
+            "del_ts": 1774852743958,
+            "seq_idx_aug": 292
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.js",
+            "pos": 652,
+            "seq_idx": 297,
+            "label": null,
+            "match_idx": 0
+          }
+        ]
+      },
+      "-": {
+        "teacher": [
+          {
+            "file": "123456.css",
+            "pos": 9,
+            "seq_idx": 3,
+            "label": null,
+            "seq_idx_aug": 3,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 10,
+            "seq_idx": 4,
+            "label": null,
+            "seq_idx_aug": 4,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 74,
+            "seq_idx": 18,
+            "label": null,
+            "seq_idx_aug": 18,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 100,
+            "seq_idx": 24,
+            "label": null,
+            "seq_idx_aug": 24,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 141,
+            "seq_idx": 37,
+            "label": null,
+            "seq_idx_aug": 37,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 171,
+            "seq_idx": 48,
+            "label": null,
+            "seq_idx_aug": 51,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 172,
+            "seq_idx": 49,
+            "label": null,
+            "seq_idx_aug": 52,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 287,
+            "seq_idx": 75,
+            "label": null,
+            "seq_idx_aug": 84,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 309,
+            "seq_idx": 81,
+            "label": null,
+            "seq_idx_aug": 90,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.css",
+            "pos": 347,
+            "seq_idx": 93,
+            "label": null,
+            "seq_idx_aug": 104,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 348,
+            "seq_idx": 94,
+            "label": null,
+            "seq_idx_aug": 105,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 499,
+            "seq_idx": 120,
+            "label": null,
+            "seq_idx_aug": 131,
+            "match_idx": 12
+          },
+          {
+            "file": "123456.css",
+            "pos": 505,
+            "seq_idx": 124,
+            "label": null,
+            "seq_idx_aug": 135,
+            "match_idx": 13
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 61,
+            "seq_idx": 361,
+            "label": null,
+            "seq_idx_aug": 380,
+            "match_idx": 14
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 111,
+            "seq_idx": 378,
+            "label": null,
+            "seq_idx_aug": 397,
+            "match_idx": 15
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 126,
+            "seq_idx": 382,
+            "label": null,
+            "seq_idx_aug": 401,
+            "match_idx": 16
+          },
+          {
+            "file": "reconstructed.html",
+            "pos": 498,
+            "seq_idx": 522,
+            "label": null,
+            "seq_idx_aug": 543,
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 205,
+            "blob_offset": 11,
+            "ghost": true,
+            "del_ts": 1774851886958,
+            "seq_idx_aug": 66,
+            "match_idx": 7
+          }
+        ],
+        "student": [
+          {
+            "file": "123456.css",
+            "pos": 11,
+            "seq_idx": 3,
+            "label": null,
+            "match_idx": 0
+          },
+          {
+            "file": "123456.css",
+            "pos": 12,
+            "seq_idx": 4,
+            "label": null,
+            "match_idx": 1
+          },
+          {
+            "file": "123456.css",
+            "pos": 80,
+            "seq_idx": 18,
+            "label": null,
+            "match_idx": 2
+          },
+          {
+            "file": "123456.css",
+            "pos": 109,
+            "seq_idx": 24,
+            "label": null,
+            "match_idx": 3
+          },
+          {
+            "file": "123456.css",
+            "pos": 156,
+            "seq_idx": 37,
+            "label": null,
+            "match_idx": 4
+          },
+          {
+            "file": "123456.css",
+            "pos": 189,
+            "seq_idx": 48,
+            "label": null,
+            "match_idx": 5
+          },
+          {
+            "file": "123456.css",
+            "pos": 190,
+            "seq_idx": 49,
+            "label": null,
+            "match_idx": 6
+          },
+          {
+            "file": "123456.css",
+            "pos": 239,
+            "seq_idx": 63,
+            "label": "ghost_extra",
+            "match_idx": 17
+          },
+          {
+            "file": "123456.css",
+            "pos": 344,
+            "seq_idx": 81,
+            "label": null,
+            "match_idx": 7
+          },
+          {
+            "file": "123456.css",
+            "pos": 369,
+            "seq_idx": 87,
+            "label": null,
+            "match_idx": 8
+          },
+          {
+            "file": "123456.css",
+            "pos": 409,
+            "seq_idx": 99,
+            "label": null,
+            "match_idx": 9
+          },
+          {
+            "file": "123456.css",
+            "pos": 410,
+            "seq_idx": 100,
+            "label": null,
+            "match_idx": 10
+          },
+          {
+            "file": "123456.css",
+            "pos": 573,
+            "seq_idx": 126,
+            "label": null,
+            "match_idx": 11
+          },
+          {
+            "file": "123456.css",
+            "pos": 579,
+            "seq_idx": 130,
+            "label": null,
+            "match_idx": 12
+          },
+          {
+            "file": "index.html",
+            "pos": 62,
+            "seq_idx": 367,
+            "label": null,
+            "match_idx": 13
+          },
+          {
+            "file": "index.html",
+            "pos": 114,
+            "seq_idx": 384,
+            "label": null,
+            "match_idx": 14
+          },
+          {
+            "file": "index.html",
+            "pos": 129,
+            "seq_idx": 388,
+            "label": null,
+            "match_idx": 15
+          },
+          {
+            "file": "index.html",
+            "pos": 502,
+            "seq_idx": 528,
+            "label": null,
+            "match_idx": 16
+          }
+        ]
+      }
+    },
+    "teacher_seq_aug": [
+      ":",
+      "root",
+      "{",
+      "-",
+      "-",
+      "theme",
+      ":",
+      "#",
+      "280",
+      ";",
+      "}",
+      "body",
+      "{",
+      "display",
+      ":",
+      "flex",
+      ";",
+      "flex",
+      "-",
+      "direction",
+      ":",
+      "column",
+      ";",
+      "align",
+      "-",
+      "items",
+      ":",
+      "center",
+      ";",
+      "margin",
+      ":",
+      "0",
+      ";",
+      "}",
+      "h1",
+      "{",
+      "font",
+      "-",
+      "family",
+      ":",
+      "\"",
+      "Arial",
+      "\"",
+      ";",
+      "color",
+      ":",
+      [
+        "#"
+      ],
+      [
+        "280"
+      ],
+      [
+        ";"
+      ],
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "}",
+      "#",
+      "map",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      [
+        "background"
+      ],
+      [
+        "-"
+      ],
+      [
+        "color"
+      ],
+      [
+        ":"
+      ],
+      [
+        "red"
+      ],
+      [
+        ";"
+      ],
+      "}",
+      "#",
+      "marker",
+      "{",
+      "width",
+      ":",
+      "3vw",
+      ";",
+      "height",
+      ":",
+      "3vw",
+      ";",
+      "background",
+      "-",
+      "color",
+      ":",
+      "black",
+      ";",
+      "border",
+      "-",
+      "radius",
+      ":",
+      "50",
+      "%",
+      ";",
+      "outline",
+      ":",
+      "5px",
+      "solid",
+      [
+        "lime"
+      ],
+      [
+        ";"
+      ],
+      "var",
+      "(",
+      "-",
+      "-",
+      "theme",
+      ")",
+      ";",
+      "border",
+      ":",
+      "5px",
+      "solid",
+      "white",
+      ";",
+      "position",
+      ":",
+      "absolute",
+      ";",
+      "top",
+      ":",
+      "0",
+      ";",
+      "left",
+      ":",
+      "0",
+      ";",
+      "transform",
+      ":",
+      "translate",
+      "(",
+      "-",
+      "50",
+      "%",
+      ",",
+      "-",
+      "50",
+      "%",
+      ")",
+      ";",
+      "}",
+      "#",
+      "mapContainer",
+      "{",
+      "position",
+      ":",
+      "relative",
+      ";",
+      "display",
+      ":",
+      "none",
+      ";",
+      "}",
+      "#",
+      "camera",
+      "{",
+      "width",
+      ":",
+      "100",
+      "%",
+      ";",
+      "}",
+      "const",
+      "reader",
+      "=",
+      "new",
+      "Html5Qrcode",
+      "(",
+      "\"",
+      "camera",
+      "\"",
+      ")",
+      ";",
+      "let",
+      "scannerOn",
+      "=",
+      "false",
+      ";",
+      "function",
+      "toggleScanner",
+      "(",
+      ")",
+      "{",
+      "scannerOn",
+      "=",
+      "!",
+      "scannerOn",
+      ";",
+      "if",
+      "(",
+      "scannerOn",
+      ")",
+      "{",
+      "startScanner",
+      "(",
+      ")",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "CANCEL",
+      "\"",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "none",
+      "\"",
+      ";",
+      "}",
+      "else",
+      "{",
+      "stopScanner",
+      "(",
+      ")",
+      ";",
+      "btn",
+      ".",
+      "innerText",
+      "=",
+      "\"",
+      "SCAN",
+      "\"",
+      ";",
+      "mapContainer",
+      ".",
+      "style",
+      ".",
+      "display",
+      "=",
+      "\"",
+      "block",
+      "\"",
+      ";",
+      "}",
+      "}",
+      "function",
+      "startScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "start",
+      "(",
+      "{",
+      "facingMode",
+      ":",
+      "\"",
+      "environment",
+      "\"",
+      "}",
+      ",",
+      "{",
+      "}",
+      ",",
+      "function",
+      "(",
+      "text",
+      ")",
+      "{",
+      "const",
+      "place",
+      "=",
+      "JSON",
+      ".",
+      "parse",
+      "(",
+      "text",
+      ")",
+      ";",
+      "showMarkerAt",
+      "(",
+      "place",
+      ".",
+      "top",
+      ",",
+      "place",
+      ".",
+      "left",
+      ")",
+      ";",
+      "toggleScanner",
+      "(",
+      ")",
+      ";",
+      [
+        "console"
+      ],
+      [
+        "."
+      ],
+      [
+        "log"
+      ],
+      [
+        "("
+      ],
+      [
+        "text"
+      ],
+      [
+        ")"
+      ],
+      [
+        ";"
+      ],
+      "}",
+      ")",
+      ".",
+      "catch",
+      "(",
+      "function",
+      "(",
+      "err",
+      ")",
+      "{",
+      "console",
+      ".",
+      "error",
+      "(",
+      "err",
+      ")",
+      ";",
+      "}",
+      ")",
+      ";",
+      "}",
+      "function",
+      "stopScanner",
+      "(",
+      ")",
+      "{",
+      "reader",
+      ".",
+      "stop",
+      "(",
+      ")",
+      ";",
+      "}",
+      "function",
+      "showMarkerAt",
+      "(",
+      "top",
+      ",",
+      "left",
+      ")",
+      "{",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "top",
+      "=",
+      "top",
+      ";",
+      "marker",
+      ".",
+      "style",
+      ".",
+      "left",
+      "=",
+      "left",
+      ";",
+      "}",
+      [
+        "!"
+      ],
+      "<",
+      "!",
+      "DOCTYPE",
+      "html",
+      ">",
+      "<",
+      "html",
+      "lang",
+      "=",
+      "\"",
+      "en",
+      "\"",
+      ">",
+      "<",
+      "head",
+      ">",
+      "<",
+      "meta",
+      "charset",
+      "=",
+      "\"",
+      "UTF",
+      "-",
+      "8",
+      "\"",
+      ">",
+      "<",
+      "meta",
+      "name",
+      "=",
+      "\"",
+      "viewport",
+      "\"",
+      "content",
+      "=",
+      "\"",
+      "width",
+      "=",
+      "device",
+      "-",
+      "width",
+      ",",
+      "initial",
+      "-",
+      "scale",
+      "=",
+      "1",
+      ".",
+      "0",
+      "\"",
+      ">",
+      "<",
+      "title",
+      ">",
+      [
+        "Document"
+      ],
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "title",
+      ">",
+      "<",
+      "link",
+      "rel",
+      "=",
+      "\"",
+      "stylesheet",
+      "\"",
+      "href",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "css",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "/",
+      "head",
+      ">",
+      "<",
+      "body",
+      ">",
+      "<",
+      "h1",
+      ">",
+      "QR",
+      "Positioning",
+      "<",
+      "/",
+      "h1",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "mapContainer",
+      "\"",
+      ">",
+      "<",
+      "img",
+      "src",
+      "=",
+      "\"",
+      "map",
+      ".",
+      [
+        "jpg"
+      ],
+      "png",
+      "\"",
+      "id",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "alt",
+      "=",
+      "\"",
+      "map",
+      "\"",
+      "/",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "marker",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "button",
+      "id",
+      "=",
+      "\"",
+      "btn",
+      "\"",
+      "onclick",
+      "=",
+      "\"",
+      "toggleScanner",
+      "(",
+      ")",
+      "\"",
+      ">",
+      "SCAN",
+      "<",
+      "/",
+      "button",
+      ">",
+      "<",
+      "div",
+      "id",
+      "=",
+      "\"",
+      "camera",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "div",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "https",
+      ":",
+      "/",
+      "/",
+      "unpkg",
+      ".",
+      "com",
+      "/",
+      "html5",
+      "-",
+      "qrcode",
+      "\"",
+      "type",
+      "=",
+      "\"",
+      "text",
+      "/",
+      "javascript",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "script",
+      "src",
+      "=",
+      "\"",
+      "123456",
+      ".",
+      "js",
+      "\"",
+      ">",
+      "<",
+      "/",
+      "script",
+      ">",
+      "<",
+      "/",
+      "body",
+      ">",
+      "<",
+      "/",
+      "html",
+      ">"
+    ]
+  },
+  "teacher_ghosts": {
+    "reconstructed.html": [
+      {
+        "pos": 0,
+        "text": "!\t\t\t\n",
+        "ins_ts": 1774851257920,
+        "del_ts": 1774851263919,
+        "char_del_ts": [
+          1774851263919,
+          1774851263919,
+          1774851263919,
+          1774851263919,
+          1774851263919
+        ]
+      },
+      {
+        "pos": 148,
+        "text": "Document",
+        "ins_ts": 1774851263919,
+        "del_ts": 1774851265633,
+        "char_del_ts": [
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633,
+          1774851265633
+        ]
+      },
+      {
+        "pos": 303,
+        "text": "jpg",
+        "ins_ts": 1774851472170,
+        "del_ts": 1774851504736,
+        "char_del_ts": [
+          1774851504736,
+          1774851503879,
+          1774851503022
+        ]
+      }
+    ],
+    "123456.css": [
+      {
+        "pos": 167,
+        "text": "#280;",
+        "ins_ts": 1774851448174,
+        "del_ts": 1774851852678,
+        "char_del_ts": [
+          1774851852678,
+          1774851851821,
+          1774851850964,
+          1774851850107,
+          1774851849250
+        ]
+      },
+      {
+        "pos": 205,
+        "text": "\tbackground-color: red;\n",
+        "ins_ts": 1774851548443,
+        "del_ts": 1774851886958,
+        "char_del_ts": [
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958,
+          1774851886958
+        ]
+      },
+      {
+        "pos": 343,
+        "text": "lime;",
+        "ins_ts": 1774851724985,
+        "del_ts": 1774851871532,
+        "char_del_ts": [
+          1774851871532,
+          1774851870675,
+          1774851869818,
+          1774851868961,
+          1774851868104
+        ]
+      }
+    ],
+    "123456.js": [
+      {
+        "pos": 516,
+        "text": "\t\t\tconsole.log(text);\n",
+        "ins_ts": 1774852641118,
+        "del_ts": 1774852743958,
+        "char_del_ts": [
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958,
+          1774852743958
+        ]
+      }
+    ]
+  }
+}
