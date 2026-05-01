@@ -363,6 +363,7 @@ def main() -> None:
     current_dir    = Path(sys.argv[1]).resolve()
     correct_dir    = current_dir / 'correct'
     anon_names_dir = current_dir / 'anon_names'
+    anon_ids_dir   = current_dir / 'anon_ids'
     names_dir      = current_dir / 'students'
     students_csv   = current_dir.parent.parent / 'students.csv'
     start_dir      = current_dir / 'start'
@@ -393,7 +394,8 @@ def main() -> None:
     print('\nWriting diff mark files...')
     if checker._lesson_keypresses:
         checker.write_keyword_log()
-        checker.write_student_token_files(names_dir, anon_names_dir)
+        checker.write_student_token_files(names_dir, anon_names_dir,
+                                           truth_dir=current_dir / 'truth')
     else:
         checker.write_leo_diff_marks(names_dir, anon_names_dir)
     checker.write_lcs_diff_marks(names_dir, anon_names_dir)
@@ -401,6 +403,7 @@ def main() -> None:
     checker.write_ro_diff_marks(names_dir, anon_names_dir)
     checker.write_git_diff_marks(names_dir, anon_names_dir)
     checker.copy_truth_diff_marks(current_dir / 'truth', names_dir, anon_names_dir)
+    checker.mirror_diff_marks_to_anon_ids(anon_names_dir, anon_ids_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

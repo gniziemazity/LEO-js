@@ -58,10 +58,3 @@ function rotatedLabel(ctx, x, y, text, color) {
 function showLoading(on) {
 	document.getElementById("loading").style.display = on ? "flex" : "none";
 }
-
-function escHtml(s) {
-	return String(s)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;");
-}

@@ -406,23 +406,8 @@
 				}
 			}
 
-			function readAsArray(file) {
-				return new Promise((res, rej) => {
-					const r = new FileReader();
-					r.onload = (e) => res(new Uint8Array(e.target.result));
-					r.onerror = rej;
-					r.readAsArrayBuffer(file);
-				});
-			}
-
-			function readText(file) {
-				return new Promise((res, rej) => {
-					const r = new FileReader();
-					r.onload = (e) => res(e.target.result);
-					r.onerror = rej;
-					r.readAsText(file);
-				});
-			}
+			const readAsArray = readFileArray;
+			const readText = readFileText;
 
 			async function loadXlsxFiles(files) {
 				if (typeof XLSX === "undefined") {
@@ -974,14 +959,7 @@
 
 			const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
-			function readDataUri(file) {
-				return new Promise((res, rej) => {
-					const r = new FileReader();
-					r.onload = (e) => res(e.target.result);
-					r.onerror = rej;
-					r.readAsDataURL(file);
-				});
-			}
+			const readDataUri = readFileDataUri;
 
 			async function _readStudentDiffPayload(student) {
 				const followPct =

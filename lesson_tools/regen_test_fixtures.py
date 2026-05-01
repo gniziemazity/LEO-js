@@ -31,7 +31,7 @@ _CODE_EXTS = {".html", ".htm", ".css", ".js"}
 def _student_dirs(case_dir: Path) -> list[Path]:
     result = []
     for d in sorted(case_dir.iterdir()):
-        if d.is_dir() and d.name.startswith("student_"):
+        if d.is_dir() and d.name.isdigit():
             if any(f.suffix.lower() in _CODE_EXTS for f in d.iterdir()):
                 result.append(d)
     return result

@@ -32,6 +32,16 @@
 	--hl-css-num: #007acc;
 	--hl-css-at: #af00db;
 	--hl-doctype: #007acc;
+
+	--clr-mark-missing: #e00;
+	--clr-mark-extra: #00c;
+	--clr-mark-ghost: #3aa0e0;
+	--clr-mark-comment: #4a4;
+	--clr-mark-extra-comment: #080;
+	--clr-mark-missing-bg: rgba(220, 0, 0, 0.13);
+	--clr-mark-extra-bg: rgba(0, 0, 200, 0.1);
+
+	--shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 *,
@@ -179,4 +189,67 @@ body {
 	background: var(--clr-accent);
 	color: var(--clr-bg);
 	border-color: var(--clr-accent);
+}
+
+.float-win {
+	position: fixed;
+	display: none;
+	flex-direction: column;
+	background: var(--clr-bg);
+	color: var(--clr-text);
+	border: 1px solid #999;
+	border-radius: 6px;
+	box-shadow: var(--shadow-pop);
+	font-family: ui-monospace, Consolas, monospace;
+	font-size: 11px;
+	overflow: hidden;
+}
+
+.float-win__header {
+	display: flex;
+	align-items: center;
+	cursor: move;
+	background: var(--clr-surface);
+	border-bottom: 1px solid var(--clr-border);
+	padding: 2px 6px;
+	border-radius: 6px 6px 0 0;
+	user-select: none;
+	flex-shrink: 0;
+}
+
+.float-win__drag {
+	color: #bbb;
+	margin-right: 6px;
+	font-size: 11px;
+}
+
+.float-win__title {
+	flex: 1;
+	font-weight: 700;
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.float-win__close {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 15px;
+	color: var(--clr-muted);
+	padding: 0 4px;
+	line-height: 1;
+}
+.float-win__close:hover {
+	color: var(--clr-text);
+}
+
+.float-win__body {
+	overflow: auto;
+	padding: 8px 10px;
+}
+
+body.is-dragging-overlay iframe {
+	pointer-events: none;
 }

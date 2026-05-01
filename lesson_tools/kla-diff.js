@@ -1,14 +1,5 @@
 "use strict";
 
-if (!window.__diffDataResolvers) window.__diffDataResolvers = new Map();
-if (!window.__getDifferentiatorData) {
-	window.__getDifferentiatorData = async function (dataKey) {
-		const resolver = window.__diffDataResolvers.get(dataKey);
-		if (!resolver) return null;
-		return await resolver();
-	};
-}
-
 async function _refreshAllFilesFromHandleIfPossible() {
 	if (!_dirHandle || typeof readDirHandle !== "function") return;
 	const files = [];
@@ -39,20 +30,6 @@ async function _buildDiffWindowPayload(student, followPct) {
 			p.toLowerCase().startsWith(studentDir) && /\.(html|css|js)$/i.test(p),
 	);
 
-	const MODE_SUFFIX = {
-		"": "_leo_star",
-		leo: "_leo",
-		"token-lcs": "_lcs",
-		"token-lcs-star": "_lcs_star",
-		"token-lev": "_lev",
-		"token-lev-star": "_lev_star",
-		"line-ro": "_ro",
-		"line-ro-star": "_ro_star",
-		"line-git": "_git",
-		"line-git-star": "_git_star",
-		truth: "_truth",
-	};
-
 	const loadDiffMarks = async (filename) => {
 		const key = studentDir + filename;
 		const entry = [..._allFiles.entries()].find(
@@ -69,35 +46,28 @@ async function _buildDiffWindowPayload(student, followPct) {
 		}
 		if (!fileObj) return null;
 		try {
-			return JSON.parse(await _diffReadText(fileObj));
+			return JSON.parse(await readFileText(fileObj));
 		} catch {
 			return null;
 		}
 	};
 
 	const allMarks = {};
-	for (const [m, sfx] of Object.entries(MODE_SUFFIX)) {
-		const marks = await loadDiffMarks(`diff_marks${sfx}.json`);
+	for (const [m, fname] of Object.entries(DIFF_MARKS_FILES)) {
+		const marks = await loadDiffMarks(fname);
 		if (marks) allMarks[m] = marks;
 	}
-	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
-	const defaultMode = has("truth")
-		? "truth"
-		: has("")
-			? ""
-			: has("leo")
-				? "leo"
-				: (Object.keys(allMarks)[0] ?? null);
+	const defaultMode = defaultDiffModeKey(allMarks);
 	const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
 
 	const teacherFiles = {};
 	for (const [, file] of teacherEntries) {
-		teacherFiles[file.name] = await _diffReadText(file);
+		teacherFiles[file.name] = await readFileText(file);
 	}
 
 	const studentFiles = {};
 	for (const [, file] of studentEntries) {
-		studentFiles[file.name] = await _diffReadText(file);
+		studentFiles[file.name] = await readFileText(file);
 	}
 
 	const imageUris = {};
@@ -108,14 +78,13 @@ async function _buildDiffWindowPayload(student, followPct) {
 	);
 	for (const [, file] of imageEntries) {
 		if (!imageUris[file.name])
-			imageUris[file.name] = await _diffReadDataUri(file);
+			imageUris[file.name] = await readFileDataUri(file);
 	}
 
 	return {
 		teacherFiles,
 		studentFiles,
 		imageUris,
-		dataSource: "fresh",
 		mode: defaultMode,
 		teacherMarks: defaultMarks ? defaultMarks.teacher_files || {} : null,
 		studentMarks: defaultMarks ? defaultMarks.student_files || {} : null,
@@ -134,29 +103,15 @@ async function openDiffWindow(student, mode = null) {
 			await _buildDiffWindowPayload(student, followPct);
 		const payload = await payloadBuilder();
 		const dataKey = "diffData_" + Date.now();
-		localStorage.setItem(dataKey, JSON.stringify(payload));
 		window.__diffDataResolvers.set(dataKey, payloadBuilder);
+		try {
+			localStorage.setItem(dataKey, JSON.stringify(payload));
+		} catch (e) {
+			console.warn("[KLA diff] localStorage handoff skipped:", e);
+		}
 		window.open(`differentiator.html?key=${dataKey}`, "_blank");
 	} catch (err) {
 		console.error("[KLA diff]", err);
 		alert("Error opening differentiator: " + err.message);
 	}
-}
-
-function _diffReadText(file) {
-	return new Promise((res, rej) => {
-		const r = new FileReader();
-		r.onload = (e) => res(e.target.result);
-		r.onerror = () => rej(new Error("Could not read: " + file.name));
-		r.readAsText(file);
-	});
-}
-
-function _diffReadDataUri(file) {
-	return new Promise((res, rej) => {
-		const r = new FileReader();
-		r.onload = (e) => res(e.target.result);
-		r.onerror = () => rej(new Error("Could not read: " + file.name));
-		r.readAsDataURL(file);
-	});
 }

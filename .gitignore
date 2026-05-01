@@ -5,6 +5,7 @@ __pycache__/
 /venv/
 /CLAUDE.md
 /lesson_tools/CLAUDE.md
+/lesson_tools/test
 /node_modules/
 /package-lock.json
 /build/

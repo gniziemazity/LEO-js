@@ -9,53 +9,66 @@
 			body {
 				height: 100%;
 				overflow: hidden;
-				background: #e8e8e8;
 			}
 
 			#diff-root {
-				display: flex;
 				height: 100vh;
 				width: 100%;
+			}
+
+			#diff-scroll {
+				height: 100%;
+				overflow-y: auto;
+				overflow-x: hidden;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				grid-template-rows: auto 1fr;
+			}
+
+			#header-teacher,
+			#header-student {
+				position: sticky;
+				top: 0;
+				z-index: 10;
+				grid-row: 1;
+			}
+			#header-teacher {
+				grid-column: 1;
+				border-right: 2px solid var(--clr-border);
+			}
+			#header-student {
+				grid-column: 2;
+			}
+
+			#panel-teacher {
+				grid-column: 1;
+				grid-row: 2;
+				border-right: 2px solid var(--clr-border);
+			}
+			#panel-student {
+				grid-column: 2;
+				grid-row: 2;
 			}
 
 			.diff-panel {
 				display: flex;
 				flex-direction: column;
-				flex: 1;
 				min-width: 0;
-				overflow: hidden;
-				border-right: 2px solid #ccc;
-			}
-			.diff-panel:last-child {
-				border-right: none;
+				min-height: 0;
 			}
 
 			.panel-header {
-				background: #e8e8e8;
+				background: var(--clr-toolbar);
 				padding: 4px 10px;
 				font-size: 11px;
 				font-weight: 700;
-				color: #555;
+				color: var(--clr-label);
 				text-transform: uppercase;
 				letter-spacing: 0.6px;
-				flex-shrink: 0;
-				border-bottom: 1px solid #ccc;
+				border-bottom: 1px solid var(--clr-border);
 				display: flex;
 				align-items: center;
 				gap: 8px;
-			}
-
-			#data-source-status {
-				display: none;
-				padding: 1px 6px;
-				font-size: 10px;
-				font-weight: 600;
-				text-transform: uppercase;
-				letter-spacing: 0.3px;
-				border-radius: 999px;
-				border: 1px solid #bbb;
-				background: #fff;
-				color: #666;
 			}
 
 			.panel-landing {
@@ -63,14 +76,13 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
+				min-height: 200px;
 			}
 
 			.panel-content {
 				flex: 1;
 				display: flex;
 				flex-direction: column;
-				min-height: 0;
-				overflow: hidden;
 			}
 
 			.tab-bar {
@@ -86,14 +98,11 @@
 
 			.code-wrap {
 				flex: 1;
-				overflow: hidden;
 				position: relative;
 			}
 
 			.code-pane {
 				display: none;
-				height: 100%;
-				overflow: auto;
 			}
 			.code-pane.active {
 				display: block;
@@ -104,7 +113,7 @@
 				font-size: 12px;
 				line-height: 1.5;
 				color: #aaa;
-				background: #fff;
+				background: var(--clr-bg);
 				white-space: pre-wrap;
 				word-wrap: break-word;
 				tab-size: 4;
@@ -118,7 +127,7 @@
 				font-size: 12px;
 				line-height: 1.5;
 				color: #aaa;
-				background: #fff;
+				background: var(--clr-bg);
 				tab-size: 4;
 				-moz-tab-size: 4;
 				min-height: 100%;
@@ -130,7 +139,7 @@
 				white-space: pre;
 			}
 			.diff-ghost {
-				color: #ccc !important;
+				color: var(--clr-border) !important;
 				font-style: italic;
 				font-weight: normal !important;
 				background: rgba(0, 0, 0, 0.02);
@@ -147,7 +156,8 @@
 				background: rgba(0, 0, 0, 0.04);
 			}
 
-			.btn-preview,
+			/* Action button used in #bottom-bar (preview / make-corrections /
+			   download / etc.) — also styled by truth-only variants further down. */
 			.btn-edit {
 				z-index: 100;
 				padding: 4px 12px;
@@ -157,35 +167,33 @@
 				letter-spacing: 0;
 				border: 1px solid #bbb;
 				border-radius: 4px;
-				background: #fff;
-				color: #555;
+				background: var(--clr-bg);
+				color: var(--clr-label);
 				cursor: pointer;
 				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 			}
-			.btn-preview:hover,
 			.btn-edit:hover {
-				background: #e8f4ff;
-				border-color: #007acc;
-				color: #007acc;
+				background: var(--clr-accent-light);
+				border-color: var(--clr-accent);
+				color: var(--clr-accent);
 			}
-			.btn-preview.active,
 			.btn-edit.active {
-				background: #007acc;
-				color: #fff;
-				border-color: #007acc;
+				background: var(--clr-accent);
+				color: var(--clr-bg);
+				border-color: var(--clr-accent);
 			}
 			.btn-edit:disabled {
 				cursor: default;
 			}
 			.btn-edit:disabled:hover {
-				background: #007acc;
-				color: #fff;
-				border-color: #007acc;
+				background: var(--clr-accent);
+				color: var(--clr-bg);
+				border-color: var(--clr-accent);
 			}
 			.code-aligned[contenteditable="plaintext-only"],
 			.code-aligned[contenteditable="true"] {
 				outline: none;
-				caret-color: #007acc;
+				caret-color: var(--clr-accent);
 				background: #fffbe6;
 			}
 
@@ -204,18 +212,26 @@
 				font-size: 11px;
 				border: 1px solid #bbb;
 				border-radius: 4px;
-				background: #fff;
-				color: #555;
+				background: var(--clr-bg);
+				color: var(--clr-label);
 				cursor: pointer;
 				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 			}
 
 			.preview-frame {
 				flex: 1;
-				min-height: 0;
+				min-height: 600px;
 				border: none;
-				background: #fff;
+				background: var(--clr-bg);
 				display: none;
+			}
+
+			/* Per-line backgrounds for line-based diff modes. */
+			.diff-line--missing {
+				background: var(--clr-mark-missing-bg);
+			}
+			.diff-line--extra {
+				background: var(--clr-mark-extra-bg);
 			}
 
 			.leo-mark {
@@ -226,10 +242,23 @@
 				outline: 1px solid #c79a00;
 				border-radius: 2px;
 			}
+			.leo-mark.leo-highlight-pair-extra {
+				background-color: rgba(0, 0, 200, 0.22);
+				outline: 1px solid var(--clr-mark-extra);
+			}
+			.leo-mark.leo-highlight-pair-missing {
+				background-color: rgba(220, 0, 0, 0.22);
+				outline: 1px solid var(--clr-mark-missing);
+			}
 			.swap-paired {
 				cursor: pointer;
-				text-decoration: underline dotted #888;
 				text-underline-offset: 2px;
+			}
+			.swap-paired[data-swap-side="student"] {
+				text-decoration: underline dotted var(--clr-mark-extra);
+			}
+			.swap-paired[data-swap-side="teacher"] {
+				text-decoration: underline dotted var(--clr-mark-missing);
 			}
 			.swap-paired.swap-partner-active {
 				background-color: rgba(120, 80, 200, 0.25);
@@ -238,8 +267,6 @@
 			}
 			.insert-source {
 				cursor: pointer;
-				text-decoration: underline dotted #c79a00;
-				text-underline-offset: 2px;
 			}
 			.insert-anchor {
 				display: inline-block;
@@ -248,7 +275,7 @@
 				font-size: 9px;
 				line-height: 1;
 				vertical-align: middle;
-				margin: 0 -2px;
+				margin: 0 -1px;
 				padding: 0;
 				user-select: none;
 				opacity: 0.7;
@@ -257,81 +284,30 @@
 				opacity: 1;
 			}
 			.insert-anchor.insert-active {
-				color: #fff;
-				background-color: #c79a00;
+				color: var(--clr-bg);
+				background-color: var(--clr-mark-missing);
 				border-radius: 2px;
 				opacity: 1;
 				padding: 0 2px;
 				margin: 0;
 			}
+
 			#leo-tooltip {
-				position: fixed;
-				display: none;
-				flex-direction: column;
 				z-index: 9999;
 				max-width: 95vw;
 				max-height: 80vh;
-				overflow: hidden;
-				background: #fff;
-				color: #222;
-				border: 1px solid #999;
-				border-radius: 4px;
-				font-family:
-					ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-				font-size: 11px;
 				line-height: 1.45;
-				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-			}
-			#leo-tooltip-header {
-				display: flex;
-				align-items: center;
-				cursor: move;
-				padding: 2px 4px 2px 8px;
-				border-bottom: 1px solid #e0e0e0;
-				background: #f5f5f5;
-				border-radius: 4px 4px 0 0;
-				user-select: none;
-				flex-shrink: 0;
-			}
-			#leo-tooltip-drag-hint {
-				font-size: 10px;
-				color: #bbb;
-				margin-right: 6px;
-			}
-			#leo-tooltip-title {
-				flex: 1;
-				font-weight: 700;
-				font-size: 12px;
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
-			#leo-tooltip-close {
-				background: none;
-				border: none;
-				cursor: pointer;
-				font-size: 15px;
-				color: #999;
-				padding: 0 4px;
-				line-height: 1;
-			}
-			#leo-tooltip-close:hover {
-				color: #333;
-			}
-			#leo-tooltip-body {
-				overflow: auto;
-				padding: 8px 10px;
 			}
 			#leo-tooltip .leo-sub {
 				font-weight: 400;
-				color: #666;
+				color: var(--clr-label);
 				font-size: 11px;
 			}
 			#leo-tooltip .leo-section-title {
 				font-weight: 600;
-				color: #555;
+				color: var(--clr-label);
 				margin-top: 6px;
-				border-bottom: 1px dashed #ccc;
+				border-bottom: 1px dashed var(--clr-border);
 			}
 			#leo-tooltip .leo-section-title:first-child {
 				margin-top: 0;
@@ -370,7 +346,7 @@
 			}
 			#leo-tooltip .leo-row.leo-sep {
 				justify-content: center;
-				color: #999;
+				color: var(--clr-muted);
 				letter-spacing: 4px;
 				padding: 2px 0;
 			}
@@ -378,7 +354,7 @@
 				flex: 0 0 40px;
 				width: 40px;
 				text-align: right;
-				color: #555;
+				color: var(--clr-label);
 				font-size: 10.5px;
 				font-variant-numeric: tabular-nums;
 				padding-right: 4px;
@@ -419,15 +395,38 @@
 				font-style: italic;
 			}
 
-			/* ===== Generate Truth ===== */
-			body.truth-edit-mode #panel-teacher .code-pane.active,
-			body.truth-edit-mode #panel-student .code-pane.active {
-				outline: 2px dashed #a4c4e2;
-				outline-offset: -2px;
+			.leo-mark.truth-connect-target,
+			#truth-connect-token-hover {
+				background-color: rgba(255, 220, 0, 0.45);
+				outline: 2px solid var(--clr-mark-missing);
+				border-radius: 2px;
 			}
-			body.truth-pair-mode .code-pane.active,
-			body.truth-insert-mode .code-pane.active {
-				cursor: crosshair;
+			body.truth-connect-anchor-extra .leo-mark.truth-connect-target,
+			body.truth-connect-anchor-extra #truth-connect-token-hover {
+				outline-color: var(--clr-mark-extra);
+			}
+
+			#truth-connect-token-hover {
+				position: fixed;
+				display: none;
+				pointer-events: none;
+				z-index: 9998;
+			}
+
+			#truth-connect-cursor {
+				position: fixed;
+				display: none;
+				pointer-events: none;
+				color: var(--clr-mark-missing);
+				font-size: 14px;
+				font-weight: bold;
+				line-height: 1;
+				z-index: 9999;
+				transform: translateX(-3px);
+				text-shadow: 0 0 2px var(--clr-bg);
+			}
+			body.truth-connect-anchor-extra #truth-connect-cursor {
+				color: var(--clr-mark-extra);
 			}
 			.btn-edit.truth-only-btn,
 			#btn-generate-truth {
@@ -438,74 +437,37 @@
 			.btn-edit.truth-only-btn:hover,
 			#btn-generate-truth:hover {
 				background: #c0d7ec;
-				border-color: #007acc;
-				color: #007acc;
+				border-color: var(--clr-accent);
+				color: var(--clr-accent);
 			}
 
 			#truth-controls {
-				position: fixed;
 				z-index: 9998;
-				display: none;
 				min-width: 320px;
 				max-width: 500px;
-				background: #fff;
-				border: 1px solid #999;
-				border-radius: 6px;
-				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-				padding: 8px 10px;
-				font-family: ui-monospace, Consolas, monospace;
 				font-size: 12px;
 			}
-			#truth-controls .tc-title {
-				font-weight: 700;
-				color: #555;
-				margin-bottom: 6px;
-				font-size: 11px;
-			}
 			#truth-controls .tc-row {
-				margin: 4px 0;
 				display: flex;
 				gap: 6px;
 				align-items: center;
 				flex-wrap: wrap;
 			}
-			#truth-controls .tc-row.tc-existing {
-				font-size: 11px;
-				color: #666;
-				margin-top: 8px;
-				border-top: 1px dashed #ddd;
-				padding-top: 6px;
-			}
-			#truth-controls .tc-mark {
-				font-size: 11px;
-			}
-			#truth-controls .tc-mark-info {
-				flex: 1;
-				min-width: 0;
-				overflow: hidden;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-			}
-			#truth-controls button {
+			#truth-controls .tc-row button {
 				font-size: 11px;
 				padding: 3px 8px;
 				border: 1px solid #bbb;
 				border-radius: 3px;
 				background: #f8f8f8;
+				color: var(--clr-text);
 				cursor: pointer;
+				appearance: none;
+				-webkit-appearance: none;
 			}
-			#truth-controls button:hover {
-				background: #e8f4ff;
-				border-color: #007acc;
-				color: #007acc;
-			}
-			#truth-controls .tc-btn-add {
-				background: #007acc;
-				color: #fff;
-				border-color: #007acc;
-			}
-			#truth-controls .tc-btn-add:hover {
-				background: #005a9e;
+			#truth-controls .tc-row button:hover {
+				background: var(--clr-accent-light);
+				border-color: var(--clr-accent);
+				color: var(--clr-accent);
 			}
 			#truth-controls .tc-btn-del {
 				background: #fff5f5;
@@ -516,111 +478,56 @@
 				background: #fee;
 			}
 			#truth-controls .tc-btn-missing {
-				background: #e00;
-				color: #fff;
+				background: var(--clr-mark-missing);
+				color: var(--clr-bg);
 				border-color: #b00;
 				font-weight: 700;
 			}
 			#truth-controls .tc-btn-missing:hover {
 				background: #c00;
-				color: #fff;
+				color: var(--clr-bg);
 			}
 			#truth-controls .tc-btn-extra {
-				background: #00c;
-				color: #fff;
+				background: var(--clr-mark-extra);
+				color: var(--clr-bg);
 				border-color: #008;
 				font-weight: 700;
 			}
 			#truth-controls .tc-btn-extra:hover {
 				background: #008;
-				color: #fff;
+				color: var(--clr-bg);
 			}
 			#truth-controls .tc-btn-ghost {
-				background: #3aa0e0;
-				color: #fff;
+				background: var(--clr-mark-ghost);
+				color: var(--clr-bg);
 				border-color: #2880c0;
 				font-weight: 700;
 			}
 			#truth-controls .tc-btn-ghost:hover {
 				background: #2880c0;
-				color: #fff;
+				color: var(--clr-bg);
 			}
 			#truth-controls .tc-tokens {
 				font-size: 11px;
-				color: #555;
-				margin: 4px 0;
+				color: var(--clr-label);
+				margin-bottom: 6px;
 				padding: 4px 6px;
-				background: #f5f5f5;
+				background: var(--clr-surface);
 				border-radius: 3px;
 			}
 			#truth-controls .tc-tokens code {
 				color: #222;
 			}
-			#truth-controls .tc-snap {
-				color: #888;
-				font-weight: normal;
-				font-size: 10.5px;
-			}
-			#truth-controls .tc-close {
-				justify-content: flex-end;
-			}
-			#truth-controls .tc-existing-info {
-				flex: 1;
-				color: #666;
-				font-size: 11px;
-			}
 
 			.truth-float-win#truth-float-win {
-				position: fixed;
-				display: none;
-				flex-direction: column;
 				z-index: 9997;
 				max-width: 90vw;
 				max-height: 80vh;
-				background: #fff;
-				border: 1px solid #999;
-				border-radius: 6px;
-				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-				font-family: ui-monospace, Consolas, monospace;
-				font-size: 11px;
 				min-width: 360px;
-			}
-			.truth-float-win .tw-header {
-				display: flex;
-				align-items: center;
-				cursor: move;
-				background: #f5f5f5;
-				border-bottom: 1px solid #e0e0e0;
-				padding: 2px 6px;
-				border-radius: 6px 6px 0 0;
-				user-select: none;
-			}
-			.truth-float-win .tw-drag {
-				color: #bbb;
-				margin-right: 6px;
-				font-size: 11px;
-			}
-			.truth-float-win .tw-title {
-				flex: 1;
-				font-weight: 700;
-			}
-			.truth-float-win .tw-close {
-				background: none;
-				border: none;
-				cursor: pointer;
-				font-size: 15px;
-				color: #999;
-			}
-			.truth-float-win .tw-close:hover {
-				color: #333;
-			}
-			.truth-float-win .tw-body {
-				overflow: auto;
-				padding: 8px 10px;
 			}
 			.truth-float-win .tw-section-title {
 				font-weight: 700;
-				color: #555;
+				color: var(--clr-label);
 				margin: 6px 0 2px;
 			}
 			.truth-float-win .tw-pre {
@@ -641,7 +548,7 @@
 			}
 			.truth-float-win .tw-summary-head {
 				font-size: 11px;
-				color: #555;
+				color: var(--clr-label);
 				margin-bottom: 2px;
 			}
 			.truth-float-win .tw-summary-suffix {
@@ -661,7 +568,7 @@
 			.truth-float-win .tw-summary-pair {
 				margin-top: 4px;
 				padding-left: 12px;
-				border-left: 2px solid #ddd;
+				border-left: 2px solid var(--clr-border);
 			}
 			.truth-float-win .tw-summary-arrow {
 				font-size: 10.5px;
@@ -683,9 +590,9 @@
 				min-width: 0;
 				display: flex;
 				flex-direction: column;
-				border: 1px solid #ddd;
+				border: 1px solid var(--clr-border);
 				border-radius: 4px;
-				background: #fff;
+				background: var(--clr-bg);
 				overflow: hidden;
 			}
 			.truth-float-win .tw-preview-code {
@@ -696,87 +603,96 @@
 				flex: 1;
 				width: 100%;
 				border: none;
-				background: #fff;
+				background: var(--clr-bg);
 			}
 		</style>
 	</head>
 	<body>
 		<div id="bottom-bar">
 			<select id="mode-select"></select>
-			<button id="btn-preview" class="btn-preview" onclick="togglePreview()">
+			<button
+				id="btn-line-padding"
+				class="btn-edit"
+				onclick="toggleLinePadding()"
+			>
+				⇲ Padding
+			</button>
+			<button id="btn-preview" class="btn-edit" onclick="togglePreview()">
 				⬜ Preview
 			</button>
 		</div>
 		<div id="diff-root">
-			<div class="diff-panel" id="panel-teacher">
-				<div class="panel-header">
+			<div id="diff-scroll">
+				<div class="panel-header" id="header-teacher">
 					<span id="title-teacher">Teacher</span>
 					<div class="tab-bar" id="tabs-teacher"></div>
 				</div>
-				<div class="panel-landing" id="landing-teacher">
-					<button
-						class="landing-btn"
-						onclick="document.getElementById('input-teacher').click()"
-					>
-						📁 Select Teacher Files
-					</button>
-					<input
-						type="file"
-						id="input-teacher"
-						multiple
-						accept=".html,.css,.js,.json"
-						style="display: none"
-					/>
-				</div>
-				<div
-					class="panel-content"
-					id="content-teacher"
-					style="display: none"
-				>
-					<div class="code-wrap" id="code-teacher"></div>
-					<iframe
-						class="preview-frame"
-						id="preview-teacher"
-						sandbox="allow-scripts allow-same-origin"
-					></iframe>
-				</div>
-			</div>
-			<div class="diff-panel" id="panel-student">
-				<div class="panel-header">
+				<div class="panel-header" id="header-student">
 					<span id="title-student">Student</span>
-					<span id="data-source-status"></span>
 					<div class="tab-bar" id="tabs-student"></div>
 				</div>
-				<div class="panel-landing" id="landing-student">
-					<button
-						class="landing-btn"
-						onclick="document.getElementById('input-student').click()"
-					>
-						📁 Select Student Files
-					</button>
-					<input
-						type="file"
-						id="input-student"
-						multiple
-						accept=".html,.css,.js,.json"
+				<div class="diff-panel" id="panel-teacher">
+					<div class="panel-landing" id="landing-teacher">
+						<button
+							class="landing-btn"
+							onclick="document.getElementById('input-teacher').click()"
+						>
+							📁 Select Teacher Files
+						</button>
+						<input
+							type="file"
+							id="input-teacher"
+							multiple
+							accept=".html,.css,.js,.json"
+							style="display: none"
+						/>
+					</div>
+					<div
+						class="panel-content"
+						id="content-teacher"
 						style="display: none"
-					/>
+					>
+						<div class="code-wrap" id="code-teacher"></div>
+						<iframe
+							class="preview-frame"
+							id="preview-teacher"
+							sandbox="allow-scripts allow-same-origin"
+						></iframe>
+					</div>
 				</div>
-				<div
-					class="panel-content"
-					id="content-student"
-					style="display: none"
-				>
-					<div class="code-wrap" id="code-student"></div>
-					<iframe
-						class="preview-frame"
-						id="preview-student"
-						sandbox="allow-scripts allow-same-origin"
-					></iframe>
+				<div class="diff-panel" id="panel-student">
+					<div class="panel-landing" id="landing-student">
+						<button
+							class="landing-btn"
+							onclick="document.getElementById('input-student').click()"
+						>
+							📁 Select Student Files
+						</button>
+						<input
+							type="file"
+							id="input-student"
+							multiple
+							accept=".html,.css,.js,.json"
+							style="display: none"
+						/>
+					</div>
+					<div
+						class="panel-content"
+						id="content-student"
+						style="display: none"
+					>
+						<div class="code-wrap" id="code-student"></div>
+						<iframe
+							class="preview-frame"
+							id="preview-student"
+							sandbox="allow-scripts allow-same-origin"
+						></iframe>
+					</div>
 				</div>
 			</div>
 		</div>
 		<script src="preview.js"></script>
+		<script src="diff-utils.js"></script>
 		<script src="differentiator.js"></script>
 		<script src="differentiator-truth.js"></script>
 	</body>

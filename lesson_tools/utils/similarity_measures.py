@@ -33,7 +33,7 @@ def calculate_char_histogram_similarity(lines1: List[str], lines2: List[str]) ->
     return 1.0 - total_diff / (total1 + total2)
 
 _COMMENT_RE = re.compile(
-    r'/\*.*?\*/|/\*.*\Z|<!--.*?-->|<!--.*\Z|(?<!:)//[^\n]*',
+    r'/\*.*?\*/|<!--.*?-->|(?<!:)//[^\n]*',
     re.DOTALL,
 )
 

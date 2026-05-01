@@ -76,7 +76,8 @@ class TokenLogMixin:
                     fh.write(reco_text)
                 print(f'  Written: reconstructed/{reco_path.name}  ({len(reco_text)} chars)')
 
-    def write_student_token_files(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_student_token_files(self, names_dir: Path, anon_names_dir: Path = None,
+                                   truth_dir: Optional[Path] = None) -> None:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         if not teacher_tokens_path.exists():
             print('  Student token files skipped \u2014 tokens.txt not found.')
@@ -153,6 +154,21 @@ class TokenLogMixin:
                 _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
             )
             diff_marks['score'] = score_e
+
+            if truth_dir is not None:
+                truth_src = truth_dir / sid / 'diff_marks_truth.json'
+                if truth_src.is_file():
+                    with open(truth_src, encoding='utf-8') as _fh:
+                        truth_marks = json.load(_fh)
+                    _fresh_removal: Dict[str, List[str]] = {}
+                    for _tok, _, _, _is_rem, _rt in teacher_entries:
+                        if _is_rem and _rt:
+                            _fresh_removal.setdefault(_tok, []).append(_rt)
+                    all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
+                        _build_occ_from_diff_marks(
+                            truth_marks, teacher_entries, _fresh_removal or None,
+                        )
+                    )
 
             n_found_e   = sum(1 for _, _, fl in all_occ if not fl)
             n_missing_e = sum(1 for _, _, fl in all_occ if fl == {'MISSING'})
@@ -407,7 +423,7 @@ class TokenLogMixin:
             sid = self.name_to_id.get(student_dir.name)
             if sid is None:
                 continue
-            src = truth_dir / f'student_{sid}' / 'diff_marks_truth.json'
+            src = truth_dir / sid / 'diff_marks_truth.json'
             if not src.is_file():
                 continue
             anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
@@ -417,3 +433,34 @@ class TokenLogMixin:
         if copied:
             print(f'Copied truth diff marks for {copied} student(s) into '
                   f'{anon_names_dir.name}/')
+
+    def mirror_diff_marks_to_anon_ids(
+        self,
+        anon_names_dir: Optional[Path],
+        anon_ids_dir: Optional[Path],
+    ) -> None:
+        if anon_names_dir is None or not anon_names_dir.is_dir():
+            return
+        if anon_ids_dir is None or not anon_ids_dir.is_dir():
+            return
+
+        copied = 0
+        for name_dir in sorted(anon_names_dir.iterdir()):
+            if not name_dir.is_dir():
+                continue
+            sid = self.name_to_id.get(name_dir.name)
+            if sid is None:
+                continue
+            ids_dir = anon_ids_dir / sid
+            if not ids_dir.is_dir():
+                continue
+            for src in name_dir.iterdir():
+                if not src.is_file():
+                    continue
+                if src.name.startswith('diff_marks_') and src.name.endswith('.json'):
+                    shutil.copy2(src, ids_dir / src.name)
+                    copied += 1
+
+        if copied:
+            print(f'Mirrored {copied} diff_marks file(s) from '
+                  f'{anon_names_dir.name}/ to {anon_ids_dir.name}/')

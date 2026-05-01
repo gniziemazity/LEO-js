@@ -14,6 +14,86 @@ const DIFF_MARKS_FILES = {
 	truth: "diff_marks_truth.json",
 };
 
+function diffModeFromFilename(filename) {
+	const lower = String(filename || "").toLowerCase();
+	for (const [mode, name] of Object.entries(DIFF_MARKS_FILES)) {
+		if (lower === name) return mode;
+	}
+	return null;
+}
+
+function defaultDiffModeKey(allMarks, requestedMode = null) {
+	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
+	if (requestedMode != null && has(requestedMode)) return requestedMode;
+	if (has("truth")) return "truth";
+	if (has("")) return "";
+	if (has("leo")) return "leo";
+	return Object.keys(allMarks)[0] ?? null;
+}
+
+function escHtml(s) {
+	return String(s)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+}
+
+function escAttr(s) {
+	return escHtml(s).replace(/"/g, "&quot;");
+}
+
+function readFileText(file) {
+	return new Promise((res, rej) => {
+		const r = new FileReader();
+		r.onload = (e) => res(e.target.result);
+		r.onerror = () => rej(new Error("Could not read: " + file.name));
+		r.readAsText(file);
+	});
+}
+
+function readFileDataUri(file) {
+	return new Promise((res, rej) => {
+		const r = new FileReader();
+		r.onload = (e) => res(e.target.result);
+		r.onerror = () => rej(new Error("Could not read: " + file.name));
+		r.readAsDataURL(file);
+	});
+}
+
+function readFileArray(file) {
+	return new Promise((res, rej) => {
+		const r = new FileReader();
+		r.onload = (e) => res(new Uint8Array(e.target.result));
+		r.onerror = () => rej(new Error("Could not read: " + file.name));
+		r.readAsArrayBuffer(file);
+	});
+}
+
+function makeDraggable(handle, target) {
+	handle.addEventListener("mousedown", (e) => {
+		if (e.button !== 0) return;
+		if (e.target.closest && e.target.closest("button, input, select, a"))
+			return;
+		e.preventDefault();
+		const startX = e.clientX;
+		const startY = e.clientY;
+		const origLeft = parseInt(target.style.left) || 0;
+		const origTop = parseInt(target.style.top) || 0;
+		document.body.classList.add("is-dragging-overlay");
+		const onMove = (me) => {
+			target.style.left = `${origLeft + me.clientX - startX}px`;
+			target.style.top = `${origTop + me.clientY - startY}px`;
+		};
+		const onUp = () => {
+			document.removeEventListener("mousemove", onMove);
+			document.removeEventListener("mouseup", onUp);
+			document.body.classList.remove("is-dragging-overlay");
+		};
+		document.addEventListener("mousemove", onMove);
+		document.addEventListener("mouseup", onUp);
+	});
+}
+
 if (!window.__diffDataResolvers) window.__diffDataResolvers = new Map();
 if (!window.__getDifferentiatorData) {
 	window.__getDifferentiatorData = async function (dataKey) {
@@ -25,20 +105,12 @@ if (!window.__getDifferentiatorData) {
 
 function _buildDiffPayload(data) {
 	const allMarks = data.allMarks ?? {};
-	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
-	const defaultMode = has("truth")
-		? "truth"
-		: has("")
-			? ""
-			: has("leo")
-				? "leo"
-				: (Object.keys(allMarks)[0] ?? null);
+	const defaultMode = defaultDiffModeKey(allMarks);
 	const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
 	return {
 		teacherFiles: data.teacherFiles ?? {},
 		studentFiles: data.studentFiles ?? {},
 		imageUris: data.imageUris ?? {},
-		dataSource: "fresh",
 		allMarks,
 		mode: defaultMode,
 		teacherMarks: defaultMarks?.teacher_files ?? null,
@@ -52,7 +124,11 @@ async function openDifferentiator(loader) {
 	const buildPayload = async () => _buildDiffPayload(await loader());
 	const payload = await buildPayload();
 	const dataKey = "diffData_" + Date.now() + "_" + ((Math.random() * 1e6) | 0);
-	localStorage.setItem(dataKey, JSON.stringify(payload));
 	window.__diffDataResolvers.set(dataKey, buildPayload);
+	try {
+		localStorage.setItem(dataKey, JSON.stringify(payload));
+	} catch (e) {
+		console.warn("[Differentiator] localStorage handoff skipped:", e);
+	}
 	window.open(`differentiator.html?key=${dataKey}`, "_blank");
 }

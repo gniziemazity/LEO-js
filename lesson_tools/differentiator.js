@@ -8,11 +8,6 @@ const DIFF_LABEL_COLORS = {
 	extra_comment: "#080",
 };
 
-const DIFF_LINE_BG_COLORS = {
-	missing: "rgba(220,0,0,0.13)",
-	extra: "rgba(0,0,200,0.10)",
-};
-
 let _diffMode = null;
 let _teacherFiles = null;
 let _studentFiles = null;
@@ -23,7 +18,11 @@ let _currentMarksEntry = null;
 let _titleBase = null;
 let _imageUris = {};
 let _diffSessionKey = null;
-let _dataSource = "";
+let _linePaddingEnabled =
+	typeof localStorage !== "undefined" &&
+	localStorage.getItem("diff-line-padding") === "off"
+		? false
+		: true;
 
 const DIFF_MODE_OPTIONS = [
 	{ key: "truth", label: "TRUTH" },
@@ -38,19 +37,6 @@ const DIFF_MODE_OPTIONS = [
 	{ key: "line-git-star", label: "Git*" },
 	{ key: "line-git", label: "Git" },
 ];
-
-function _hasOwn(obj, key) {
-	return Object.prototype.hasOwnProperty.call(obj, key);
-}
-
-function _getPreferredModeKey(allMarks, requestedMode = null) {
-	if (requestedMode != null && _hasOwn(allMarks, requestedMode))
-		return requestedMode;
-	if (_hasOwn(allMarks, "truth")) return "truth";
-	if (_hasOwn(allMarks, "")) return "";
-	if (_hasOwn(allMarks, "leo")) return "leo";
-	return Object.keys(allMarks)[0] ?? null;
-}
 
 function _refreshModeSelect() {
 	const modeSelect = document.getElementById("mode-select");
@@ -67,7 +53,7 @@ function _refreshModeSelect() {
 		modeSelect.appendChild(option);
 	}
 
-	const nextMode = _getPreferredModeKey(_allMarks, _diffMode);
+	const nextMode = defaultDiffModeKey(_allMarks, _diffMode);
 	_diffMode = nextMode;
 	modeSelect.disabled = modeSelect.options.length <= 1;
 	modeSelect.value = nextMode ?? "";
@@ -76,6 +62,34 @@ function _refreshModeSelect() {
 function _resolveMarksEntry() {
 	const modeKey = _diffMode ?? "";
 	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
+}
+
+const _BORROW_ALIGNMENT_ORDER = [
+	"line-git",
+	"line-git-star",
+	"line-ro",
+	"line-ro-star",
+	"leo",
+	"",
+	"token-lcs",
+	"token-lcs-star",
+	"token-lev",
+	"token-lev-star",
+];
+
+function _borrowedAlignments() {
+	for (const mode of _BORROW_ALIGNMENT_ORDER) {
+		const m = _allMarks[mode];
+		if (m && m.alignments && Object.keys(m.alignments).length) {
+			return m.alignments;
+		}
+	}
+	for (const m of Object.values(_allMarks)) {
+		if (m && m.alignments && Object.keys(m.alignments).length) {
+			return m.alignments;
+		}
+	}
+	return null;
 }
 
 function _applyCurrentMarks() {
@@ -90,26 +104,13 @@ function _serializeDiffState() {
 		studentFiles: _studentFiles || {},
 		imageUris: _imageUris || {},
 		allMarks: _allMarks || {},
+		truthWorking: typeof _truthWorking !== "undefined" ? _truthWorking : {},
 		mode: _diffMode,
 		teacherMarks: _currentMarksEntry?.teacher_files ?? _teacherMarks ?? null,
 		studentMarks: _currentMarksEntry?.student_files ?? _studentMarks ?? null,
 		title: document.title || null,
 		titleBase: _titleBase,
-		dataSource: _dataSource,
 	};
-}
-
-function _setDataSource(source) {
-	_dataSource = source || "";
-	const el = document.getElementById("data-source-status");
-	if (!el) return;
-	if (!_dataSource) {
-		el.style.display = "none";
-		el.textContent = "";
-		return;
-	}
-	el.textContent = `Data: ${_dataSource}`;
-	el.style.display = "inline-block";
 }
 
 function _persistDiffState() {
@@ -127,11 +128,13 @@ function _applyIncomingData(data) {
 	_teacherFiles = data.teacherFiles || {};
 	_studentFiles = data.studentFiles || {};
 	_imageUris = data.imageUris || {};
-	_setDataSource(data.dataSource || "");
+	if (data.truthWorking && typeof _truthWorking !== "undefined") {
+		_truthWorking = data.truthWorking;
+	}
 
 	if (data.allMarks) {
 		_allMarks = data.allMarks;
-		_diffMode = _getPreferredModeKey(_allMarks, data.mode ?? _diffMode);
+		_diffMode = defaultDiffModeKey(_allMarks, data.mode ?? _diffMode);
 		_refreshModeSelect();
 		_applyCurrentMarks();
 	} else {
@@ -166,6 +169,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	_diffSessionKey = keyParam ? `differentiatorSession:${keyParam}` : null;
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
+	_refreshLinePaddingButton();
 
 	const modeSelect = document.getElementById("mode-select");
 	if (modeSelect) {
@@ -186,24 +190,35 @@ window.addEventListener("DOMContentLoaded", async () => {
 		});
 	}
 
+	let incoming = null;
 	const raw = localStorage.getItem(key);
 	if (raw) {
 		localStorage.removeItem(key);
 		try {
-			const data = JSON.parse(raw);
-			if (!data.dataSource) data.dataSource = "fresh";
-			_applyIncomingData(data);
-			_persistDiffState();
+			incoming = JSON.parse(raw);
 		} catch (e) {
 			console.error("[Differentiator] Failed to parse diff data", e);
 		}
+	}
+	if (
+		!incoming &&
+		window.opener &&
+		typeof window.opener.__getDifferentiatorData === "function"
+	) {
+		try {
+			incoming = await window.opener.__getDifferentiatorData(key);
+		} catch (e) {
+			console.error("[Differentiator] Failed to fetch from opener", e);
+		}
+	}
+	if (incoming) {
+		_applyIncomingData(incoming);
+		_persistDiffState();
 	} else if (_diffSessionKey) {
 		const savedRaw = sessionStorage.getItem(_diffSessionKey);
 		if (savedRaw) {
 			try {
-				const saved = JSON.parse(savedRaw);
-				if (!saved.dataSource) saved.dataSource = "cache";
-				_applyIncomingData(saved);
+				_applyIncomingData(JSON.parse(savedRaw));
 			} catch (e) {
 				console.error("[Differentiator] Failed to restore session data", e);
 			}
@@ -228,32 +243,15 @@ function loadFilesFromInput(files, side) {
 	let pending = files.length;
 	if (!pending) return;
 
-	const MODE_SUFFIX = {
-		"": "_leo_star",
-		leo: "_leo",
-		"token-lcs": "_lcs",
-		"token-lcs-star": "_lcs_star",
-		"token-lev": "_lev",
-		"token-lev-star": "_lev_star",
-		"line-ro": "_ro",
-		"line-ro-star": "_ro_star",
-		"line-git": "_git",
-		"line-git-star": "_git_star",
-		truth: "_truth",
-	};
-
 	for (const file of files) {
 		const reader = new FileReader();
 		reader.onload = (e) => {
-			const fname = file.name.toLowerCase();
-			const modeEntry = Object.entries(MODE_SUFFIX).find(
-				([, sfx]) => fname === `diff_marks${sfx}.json`,
-			);
-			if (modeEntry) {
+			const mode = diffModeFromFilename(file.name);
+			if (mode != null) {
 				try {
 					const parsed = JSON.parse(e.target.result);
-					if (!_allMarks[modeEntry[0]]) _allMarks[modeEntry[0]] = {};
-					Object.assign(_allMarks[modeEntry[0]], parsed);
+					if (!_allMarks[mode]) _allMarks[mode] = {};
+					Object.assign(_allMarks[mode], parsed);
 				} catch {}
 			} else {
 				texts[file.name] = e.target.result;
@@ -264,7 +262,6 @@ function loadFilesFromInput(files, side) {
 				_applyCurrentMarks();
 				if (side === "teacher") _teacherFiles = texts;
 				else _studentFiles = texts;
-				_setDataSource("manual");
 				renderPanel(
 					side,
 					side === "teacher" ? _teacherFiles : _studentFiles,
@@ -277,8 +274,6 @@ function loadFilesFromInput(files, side) {
 		reader.readAsText(file);
 	}
 }
-
-let _syncingScroll = false;
 
 function _lineStartOffsets(text) {
 	const starts = [0];
@@ -329,17 +324,16 @@ function _renderAligned(
 				.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
 				.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
 			const lineAnchors = fileAnchors
-				.filter((a) => a.pos >= lineStart && a.pos <= lineEnd)
+				.filter((a) => a.pos >= lineStart && a.pos < lineEnd)
 				.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
 			const bgMark =
 				lineFileMarks &&
 				lineFileMarks.find(
 					(lm) => lm.start >= lineStart && lm.start < lineEnd,
 				);
-			const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
-			const style = bg ? ` style="background-color:${bg}"` : "";
+			const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
 			parts.push(
-				`<div class="diff-line" data-src-start="${lineStart}"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+				`<div class="diff-line${bgCls}" data-src-start="${lineStart}">${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 			);
 		}
 	}
@@ -382,10 +376,9 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 			lineFileMarks.find(
 				(lm) => lm.start >= lineStart && lm.start < lineEnd,
 			);
-		const bg = bgMark ? DIFF_LINE_BG_COLORS[bgMark.label] || null : null;
-		const style = bg ? ` style="background-color:${bg}"` : "";
+		const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
 		parts.push(
-			`<div class="diff-line" data-src-start="${lineStart}"${style}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+			`<div class="diff-line${bgCls}" data-src-start="${lineStart}">${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 		);
 	}
 	return parts.join("");
@@ -415,27 +408,6 @@ function _getInsertAnchors(studentFileName) {
 		}
 	}
 	return out;
-}
-
-function _setupScrollSync() {
-	for (const side of ["teacher", "student"]) {
-		const wrap = document.getElementById(`code-${side}`);
-		if (!wrap) continue;
-		wrap.querySelectorAll(".code-pane").forEach((pane, i) => {
-			pane.addEventListener("scroll", () => {
-				if (_syncingScroll) return;
-				const otherSide = side === "teacher" ? "student" : "teacher";
-				const otherWrap = document.getElementById(`code-${otherSide}`);
-				if (!otherWrap) return;
-				const otherPanes = otherWrap.querySelectorAll(".code-pane");
-				if (otherPanes[i]) {
-					_syncingScroll = true;
-					otherPanes[i].scrollTop = pane.scrollTop;
-					_syncingScroll = false;
-				}
-			});
-		});
-	}
 }
 
 function _syncAlignedRowHeights() {
@@ -491,7 +463,9 @@ function renderPanel(side, files, marks) {
 	codeWrap.style.display = "";
 
 	const modeData = _currentMarksEntry;
-	const allAlignments = modeData?.alignments ?? null;
+	const allAlignments = _linePaddingEnabled
+		? (modeData?.alignments ?? _borrowedAlignments())
+		: null;
 	const sideIdx = side === "teacher" ? 0 : 1;
 	const allLineMks = modeData?.line_marks ?? null;
 	const sideLineMks =
@@ -546,7 +520,6 @@ function renderPanel(side, files, marks) {
 		codeWrap.appendChild(pane);
 	});
 
-	_setupScrollSync();
 	requestAnimationFrame(_syncAlignedRowHeights);
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {
@@ -581,17 +554,6 @@ function sortFileNames(names, preferReconstructed) {
 		}
 	}
 	return [...html, ...css, ...js];
-}
-
-function escHtml(s) {
-	return String(s)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;");
-}
-
-function escAttr(s) {
-	return escHtml(s).replace(/"/g, "&quot;");
 }
 
 function _synthesizeLeoMarks(side, fileName) {
@@ -1186,47 +1148,31 @@ function _ensureLeoTooltip() {
 	if (_leoTip) return _leoTip;
 	_leoTip = document.createElement("div");
 	_leoTip.id = "leo-tooltip";
+	_leoTip.className = "float-win";
 
 	const header = document.createElement("div");
-	header.id = "leo-tooltip-header";
+	header.className = "float-win__header";
 	const dragHint = document.createElement("span");
-	dragHint.id = "leo-tooltip-drag-hint";
+	dragHint.className = "float-win__drag";
 	dragHint.textContent = "⠿";
 	header.appendChild(dragHint);
 	_leoTipTitle = document.createElement("span");
-	_leoTipTitle.id = "leo-tooltip-title";
+	_leoTipTitle.className = "float-win__title";
 	header.appendChild(_leoTipTitle);
 	const closeBtn = document.createElement("button");
-	closeBtn.id = "leo-tooltip-close";
+	closeBtn.className = "float-win__close";
 	closeBtn.textContent = "×";
 	closeBtn.addEventListener("click", _hideLeoTooltip);
 	header.appendChild(closeBtn);
 
 	_leoTipBody = document.createElement("div");
-	_leoTipBody.id = "leo-tooltip-body";
+	_leoTipBody.className = "float-win__body";
 
 	_leoTip.appendChild(header);
 	_leoTip.appendChild(_leoTipBody);
 	document.body.appendChild(_leoTip);
 
-	header.addEventListener("mousedown", (e) => {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		const startX = e.clientX;
-		const startY = e.clientY;
-		const origLeft = parseInt(_leoTip.style.left) || 0;
-		const origTop = parseInt(_leoTip.style.top) || 0;
-		const onMove = (me) => {
-			_leoTip.style.left = `${origLeft + me.clientX - startX}px`;
-			_leoTip.style.top = `${origTop + me.clientY - startY}px`;
-		};
-		const onUp = () => {
-			document.removeEventListener("mousemove", onMove);
-			document.removeEventListener("mouseup", onUp);
-		};
-		document.addEventListener("mousemove", onMove);
-		document.addEventListener("mouseup", onUp);
-	});
+	makeDraggable(header, _leoTip);
 
 	return _leoTip;
 }
@@ -1270,15 +1216,7 @@ function _showLeoTooltip(target) {
 	if (!data) {
 		const mark = _findMarkAtPos(side, token, pos);
 		if (!mark) return;
-		_clearLeoHighlights();
-		target.classList.add("leo-highlight-active");
-		_leoHighlighted.push(target);
-		if (target.hasAttribute("data-swap-pos")) {
-			_applySwapPartnerHighlight(target);
-		}
-		if (target.hasAttribute("data-insert-pos")) {
-			_applyInsertAnchorHighlight(target);
-		}
+		_applyMarkPairHighlight(target);
 		const label = mark.label || "matched";
 		const color = DIFF_LABEL_COLORS[label] || "#666";
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
@@ -1329,8 +1267,13 @@ let _leoHighlighted = [];
 let _swapHighlighted = [];
 let _insertHighlighted = [];
 function _clearLeoHighlights() {
-	for (const el of _leoHighlighted)
-		el.classList.remove("leo-highlight-active");
+	for (const el of _leoHighlighted) {
+		el.classList.remove(
+			"leo-highlight-active",
+			"leo-highlight-pair-extra",
+			"leo-highlight-pair-missing",
+		);
+	}
 	_leoHighlighted = [];
 	for (const el of _swapHighlighted)
 		el.classList.remove("swap-partner-active");
@@ -1346,32 +1289,69 @@ function _applySwapPartnerHighlight(target) {
 	if (!otherSide || partnerPos == null) return;
 	const wrap = document.getElementById(`code-${otherSide}`);
 	if (!wrap) return;
+	const partnerPairClass =
+		otherSide === "student"
+			? "leo-highlight-pair-missing"
+			: "leo-highlight-pair-extra";
 	const sel =
 		`.leo-mark[data-leo-side="${otherSide}"]` +
 		`[data-leo-pos="${partnerPos}"]:not([data-leo-ghost-offset])`;
 	for (const el of wrap.querySelectorAll(sel)) {
 		if (partnerToken && el.getAttribute("data-leo-token") !== partnerToken)
 			continue;
-		el.classList.add("swap-partner-active");
-		_swapHighlighted.push(el);
+		el.classList.add("leo-highlight-active", partnerPairClass);
+		_leoHighlighted.push(el);
 	}
 }
 
 function _applyInsertAnchorHighlight(target) {
 	const otherSide = target.getAttribute("data-insert-side");
-	const anchorPos = target.getAttribute("data-insert-pos");
-	if (!otherSide || anchorPos == null) return;
+	const teacherPos = target.getAttribute("data-leo-pos");
+	if (!otherSide || teacherPos == null) return;
 	const wrap = document.getElementById(`code-${otherSide}`);
 	if (!wrap) return;
-	const sel = `.insert-anchor[data-insert-anchor-pos="${anchorPos}"]`;
+	const sel = `.insert-anchor[data-insert-anchor-teacher-pos="${teacherPos}"]`;
 	for (const el of wrap.querySelectorAll(sel)) {
 		el.classList.add("insert-active");
 		_insertHighlighted.push(el);
 	}
 }
 
+function _addMarkPairHighlight(target) {
+	if (!target) return;
+	target.classList.add("leo-highlight-active");
+	if (target.hasAttribute("data-swap-pos")) {
+		const partnerSide = target.getAttribute("data-swap-side");
+		target.classList.add(
+			partnerSide === "student"
+				? "leo-highlight-pair-extra"
+				: "leo-highlight-pair-missing",
+		);
+	}
+	_leoHighlighted.push(target);
+	if (target.hasAttribute("data-swap-pos")) {
+		_applySwapPartnerHighlight(target);
+	}
+	if (target.hasAttribute("data-insert-pos")) {
+		_applyInsertAnchorHighlight(target);
+	}
+}
+
+function _applyMarkPairHighlight(target) {
+	_clearLeoHighlights();
+	_addMarkPairHighlight(target);
+}
+
 function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 	target.classList.add("leo-highlight-active");
+	if (target.hasAttribute("data-swap-pos")) {
+		const partnerSide = target.getAttribute("data-swap-side");
+		target.classList.add(
+			partnerSide === "student"
+				? "leo-highlight-pair-extra"
+				: "leo-highlight-pair-missing",
+		);
+	}
 	_leoHighlighted.push(target);
 	if (target.hasAttribute("data-swap-pos")) {
 		_applySwapPartnerHighlight(target);
@@ -1431,21 +1411,21 @@ document.addEventListener("mousedown", (ev) => {
 });
 
 function _showInsertAnchorOrigin(anchor) {
-	_clearLeoHighlights();
-	anchor.classList.add("insert-active");
-	_insertHighlighted.push(anchor);
-	const tFile = anchor.getAttribute("data-insert-anchor-teacher-file");
 	const tPos = anchor.getAttribute("data-insert-anchor-teacher-pos");
-	if (!tFile || tPos == null) return;
+	if (tPos == null) return;
 	const wrap = document.getElementById("code-teacher");
 	if (!wrap) return;
 	const sel =
 		`.leo-mark[data-leo-side="teacher"]` +
 		`[data-leo-pos="${tPos}"]` +
 		`[data-insert-pos]:not([data-leo-ghost-offset])`;
-	for (const el of wrap.querySelectorAll(sel)) {
-		el.classList.add("leo-highlight-active");
-		_leoHighlighted.push(el);
+	const markEl = wrap.querySelector(sel);
+	if (markEl) {
+		_showLeoTooltip(markEl);
+	} else {
+		_clearLeoHighlights();
+		anchor.classList.add("insert-active");
+		_insertHighlighted.push(anchor);
 	}
 }
 
@@ -1458,13 +1438,11 @@ function _saveState(side) {
 		b.classList.contains("file-tab-active"),
 	);
 	const tabName = activeIdx >= 0 ? btns[activeIdx].textContent : null;
-	const wrap = document.getElementById(`code-${side}`);
-	const panes = wrap ? [...wrap.querySelectorAll(".code-pane")] : [];
-	const pane = panes[activeIdx >= 0 ? activeIdx : 0] || null;
+	const scroll = document.getElementById("diff-scroll");
 	return {
 		tabName,
-		scrollTop: pane ? pane.scrollTop : 0,
-		scrollLeft: pane ? pane.scrollLeft : 0,
+		scrollTop: scroll ? scroll.scrollTop : 0,
+		scrollLeft: scroll ? scroll.scrollLeft : 0,
 	};
 }
 
@@ -1482,11 +1460,10 @@ function _restoreState(side, saved) {
 		btns[matchIdx].classList.add("file-tab-active");
 		if (panes[matchIdx]) panes[matchIdx].classList.add("active");
 	}
-	const activeIdx = matchIdx >= 0 ? matchIdx : 0;
-	const pane = panes[activeIdx];
-	if (pane) {
-		pane.scrollTop = saved.scrollTop;
-		pane.scrollLeft = saved.scrollLeft;
+	const scroll = document.getElementById("diff-scroll");
+	if (scroll) {
+		scroll.scrollTop = saved.scrollTop;
+		scroll.scrollLeft = saved.scrollLeft;
 	}
 }
 
@@ -1498,6 +1475,37 @@ function _updateTitleScore() {
 	const el = document.getElementById("title-student");
 	if (el) el.textContent = newTitle;
 	document.title = newTitle;
+}
+
+function _refreshLinePaddingButton() {
+	const btn = document.getElementById("btn-line-padding");
+	if (!btn) return;
+	if (_linePaddingEnabled) {
+		btn.classList.add("active");
+		btn.textContent = "⇲ Padding";
+	} else {
+		btn.classList.remove("active");
+		btn.textContent = "⇱ Padding";
+	}
+}
+
+function toggleLinePadding() {
+	_linePaddingEnabled = !_linePaddingEnabled;
+	try {
+		localStorage.setItem(
+			"diff-line-padding",
+			_linePaddingEnabled ? "on" : "off",
+		);
+	} catch {}
+	_refreshLinePaddingButton();
+	if (_teacherFiles && Object.keys(_teacherFiles).length) {
+		const savedT = _saveState("teacher");
+		const savedS = _saveState("student");
+		renderPanel("teacher", _teacherFiles, _teacherMarks);
+		renderPanel("student", _studentFiles, _studentMarks);
+		_restoreState("teacher", savedT);
+		_restoreState("student", savedS);
+	}
 }
 
 function togglePreview() {

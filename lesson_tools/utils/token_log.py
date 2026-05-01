@@ -730,11 +730,7 @@ def _build_leo_diff_marks(
         teacher_result, student_result, teacher_files, student_files,
     )
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
-    try:
-        _, _, _, alignments, line_marks, *_ = _build_git_diff_marks(teacher_files, student_files)
-    except Exception:
-        alignments, line_marks = {}, {}
-    return teacher_result, student_result, score, alignments, line_marks, n_total, assignments
+    return teacher_result, student_result, score, {}, {}, n_total, assignments
 
 
 def _add_log_metadata(
@@ -873,7 +869,15 @@ def _strip_internal_fields(diff_marks: dict) -> None:
     for side in ('teacher_files', 'student_files'):
         for marks in diff_marks.get(side, {}).values():
             for mark in marks:
+                if (
+                    mark.get('label') == 'missing'
+                    and 'insert_at' not in mark
+                    and mark.get('paired_with') is None
+                    and mark.get('_native_insert_at')
+                ):
+                    mark['insert_at'] = dict(mark['_native_insert_at'])
                 mark.pop('_tok_idx', None)
+                mark.pop('_native_insert_at', None)
 
 
 def _assemble_diff_marks(
@@ -1052,7 +1056,8 @@ def _line_token_marks(line_text: str, line_off: int, side: str,
 
 
 def _diff_line_pair_tokens(t_line: str, t_off: int, s_line: str, s_off: int,
-                            tok_all_positions: Dict[str, List[int]]
+                            tok_all_positions: Dict[str, List[int]],
+                            s_fname: Optional[str] = None,
                             ) -> Tuple[List[dict], List[dict]]:
     t_tok_ms = list(_sm._CHAR_TOKEN_RE.finditer(t_line))
     s_tok_ms = list(_sm._CHAR_TOKEN_RE.finditer(s_line))
@@ -1066,14 +1071,57 @@ def _diff_line_pair_tokens(t_line: str, t_off: int, s_line: str, s_off: int,
         if tag == 'equal':
             continue
         if tag in ('delete', 'replace'):
+            if s_fname is not None:
+                insert_pos = (
+                    s_off + s_tok_ms[j1].start()
+                    if j1 < len(s_tok_ms) else s_off + len(s_line)
+                )
+                native = {'file': s_fname, 'pos': insert_pos}
+            else:
+                native = None
             for ti in range(i1, i2):
                 m = t_tok_ms[ti]
-                t_marks.append(_missing_mark(t_off + m.start(), m.group(), tok_all_positions))
+                mark = _missing_mark(t_off + m.start(), m.group(), tok_all_positions)
+                if native is not None:
+                    mark['_native_insert_at'] = native
+                t_marks.append(mark)
         if tag in ('insert', 'replace'):
             for tj in range(j1, j2):
                 m = s_tok_ms[tj]
                 s_marks.append(_extra_mark(s_off + m.start(), m.group()))
     return t_marks, s_marks
+
+
+def _line_anchors_from_alignment(
+    alignment: list, s_starts: List[int], s_text_len: int,
+) -> Dict[int, int]:
+    anchors: Dict[int, int] = {}
+    next_s_pos = s_text_len
+    for entry in reversed(alignment):
+        t_i, s_j = entry[0], entry[1]
+        if s_j is not None:
+            next_s_pos = s_starts[s_j] if s_j < len(s_starts) else s_text_len
+        elif t_i is not None:
+            anchors[t_i] = next_s_pos
+    return anchors
+
+
+def _stamp_native_line_insert_at(
+    t_marks: List[dict], t_starts: List[int],
+    line_anchors: Dict[int, int], s_fname: str,
+) -> None:
+    if not line_anchors:
+        return
+    for m in t_marks:
+        if m.get('label') != 'missing':
+            continue
+        if m.get('_native_insert_at') is not None:
+            continue
+        line_idx = bisect.bisect_right(t_starts, m['start']) - 1
+        if line_idx in line_anchors:
+            m['_native_insert_at'] = {
+                'file': s_fname, 'pos': line_anchors[line_idx],
+            }
 
 
 def _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
@@ -1102,7 +1150,8 @@ def _add_unpaired_student_line(alignment, s_marks, s_line_ms,
 
 def _add_paired_line_block(alignment, t_marks, s_marks,
                             t_lines_raw, s_lines_raw, t_starts, s_starts,
-                            t_start, s_start, n_paired, tok_all_positions) -> None:
+                            t_start, s_start, n_paired, tok_all_positions,
+                            s_fname=None) -> None:
     for k in range(n_paired):
         t_i, s_j = t_start + k, s_start + k
         alignment.append([t_i, s_j])
@@ -1111,7 +1160,8 @@ def _add_paired_line_block(alignment, t_marks, s_marks,
         t_off = t_starts[t_i] if t_i < len(t_starts) else 0
         s_off = s_starts[s_j] if s_j < len(s_starts) else 0
         tm, sm = _diff_line_pair_tokens(
-            t_lines_raw[t_i], t_off, s_lines_raw[s_j], s_off, tok_all_positions
+            t_lines_raw[t_i], t_off, s_lines_raw[s_j], s_off,
+            tok_all_positions, s_fname=s_fname,
         )
         t_marks.extend(tm)
         s_marks.extend(sm)
@@ -1119,11 +1169,13 @@ def _add_paired_line_block(alignment, t_marks, s_marks,
 
 def _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
                         t_lines_raw, s_lines_raw, t_starts, s_starts,
-                        t_start, n_t, s_start, n_s, tok_all_positions) -> None:
+                        t_start, n_t, s_start, n_s, tok_all_positions,
+                        s_fname=None) -> None:
     n_paired = min(n_t, n_s)
     _add_paired_line_block(alignment, t_marks, s_marks,
                             t_lines_raw, s_lines_raw, t_starts, s_starts,
-                            t_start, s_start, n_paired, tok_all_positions)
+                            t_start, s_start, n_paired, tok_all_positions,
+                            s_fname=s_fname)
     for k in range(n_paired, n_t):
         _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
                                     t_lines_raw, t_starts, t_start + k, tok_all_positions)
@@ -1230,6 +1282,10 @@ def _build_token_seq_diff_marks(
         s_seq = [tok for _, tok in s_nc]
         n_total += len(t_seq)
 
+        fname = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        stamp_native = s_path is not None
+
         t_marks: List[dict] = []
         s_marks: List[dict] = []
         for tag, i1, i2, j1, j2 in opcodes_fn(t_seq, s_seq):
@@ -1237,9 +1293,19 @@ def _build_token_seq_diff_marks(
                 continue
             if tag in ('delete', 'replace'):
                 n_missing += i2 - i1
+                if stamp_native:
+                    insert_pos = (
+                        s_nc[j1][0] if j1 < len(s_nc) else len(s_text)
+                    )
+                    native = {'file': s_fname, 'pos': insert_pos}
+                else:
+                    native = None
                 for i in range(i1, i2):
                     pos, tok = t_nc[i]
-                    t_marks.append(_missing_mark(pos, tok, tok_all_positions))
+                    m = _missing_mark(pos, tok, tok_all_positions)
+                    if native is not None:
+                        m['_native_insert_at'] = native
+                    t_marks.append(m)
             if tag in ('insert', 'replace'):
                 for j in range(j1, j2):
                     pos, tok = s_nc[j]
@@ -1250,19 +1316,13 @@ def _build_token_seq_diff_marks(
         for pos, tok in s_cm:
             s_marks.append(_comment_pos_mark(pos, tok))
 
-        fname = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
         if t_marks:
             teacher_result[fname] = sorted(t_marks, key=lambda x: x['start'])
         if s_marks:
             student_result[s_fname] = sorted(s_marks, key=lambda x: x['start'])
 
     score = round((n_total - n_missing) / n_total * 100, 1) if n_total else None
-    try:
-        _, _, _, alignments, line_marks, *_ = _build_git_diff_marks(teacher_files, student_files)
-    except Exception:
-        alignments, line_marks = {}, {}
-    return teacher_result, student_result, score, alignments, line_marks, n_total
+    return teacher_result, student_result, score, {}, {}, n_total
 
 
 def _build_lcs_token_diff_marks(
@@ -1362,7 +1422,15 @@ def _apply_insert_at_to_unpaired_missings(
 ) -> None:
     for marks in t_marks_by_file.values():
         for m in marks:
-            if m.get('label') == 'missing' and m.get('paired_with') is None:
+            if m.get('label') != 'missing':
+                continue
+            if m.get('paired_with') is not None:
+                m.pop('insert_at', None)
+                continue
+            native = m.get('_native_insert_at')
+            if native is not None:
+                m['insert_at'] = dict(native)
+            else:
                 m.pop('insert_at', None)
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(
@@ -1374,7 +1442,8 @@ def _apply_insert_at_to_unpaired_missings(
 
         unpaired = [m for m in t_marks_by_file.get(t_fname, [])
                     if m.get('label') == 'missing'
-                    and m.get('paired_with') is None]
+                    and m.get('paired_with') is None
+                    and 'insert_at' not in m]
         if not unpaired:
             continue
 
@@ -1412,6 +1481,650 @@ def _apply_insert_at_to_unpaired_missings(
             else:
                 insert_pos = len(s_text)
             m['insert_at'] = {'file': s_fname, 'pos': insert_pos}
+
+    if student_files:
+        default_fname = sorted(student_files.keys())[0]
+        try:
+            default_eof = len(_read_text_normalized(student_files[default_fname]))
+        except Exception:
+            default_eof = 0
+        for marks in t_marks_by_file.values():
+            for m in marks:
+                if (m.get('label') == 'missing'
+                        and not m.get('paired_with')
+                        and 'insert_at' not in m):
+                    m['insert_at'] = {'file': default_fname, 'pos': default_eof}
+
+
+def _structural_form(tokens):
+    stack = [{'kind': 'top', 'items': []}]
+
+    def push(item):
+        ctx = stack[-1]
+        if ctx['kind'] == 'block':
+            ctx['cur_stmt'].append(item)
+        elif ctx['kind'] == 'tag':
+            ctx['items'].append(item)
+        else:
+            ctx['items'].append(item)
+
+    def close_block(closer):
+        ctx = stack[-1]
+        if ctx['kind'] == 'block' and closer == '}':
+            stack.pop()
+            if ctx['cur_stmt']:
+                ctx['stmts'].append(tuple(ctx['cur_stmt']))
+            return ('{', frozenset(Counter(ctx['stmts']).items()))
+        if ctx['kind'] == 'tag' and closer == '>':
+            stack.pop()
+            return ('<', frozenset(Counter(ctx['items']).items()))
+        return None
+
+    for tok in tokens:
+        if tok == '{':
+            stack.append({'kind': 'block', 'stmts': [], 'cur_stmt': []})
+        elif tok == '<':
+            stack.append({'kind': 'tag', 'items': []})
+        elif tok == '}':
+            node = close_block('}')
+            push(node if node is not None else tok)
+        elif tok == '>':
+            node = close_block('>')
+            push(node if node is not None else tok)
+        elif tok == ';' and stack[-1]['kind'] == 'block':
+            ctx = stack[-1]
+            if ctx['cur_stmt']:
+                ctx['stmts'].append(tuple(ctx['cur_stmt']))
+                ctx['cur_stmt'] = []
+        else:
+            push(tok)
+
+    while stack[-1]['kind'] != 'top':
+        kind = stack[-1]['kind']
+        node = close_block('}' if kind == 'block' else '>')
+        push(node)
+
+    return tuple(stack[0]['items'])
+
+
+def _structural_diff_summary(actual_form, expected_form):
+    """One-line summary of the first divergence between two structural forms.
+    Used in test failure messages."""
+    if actual_form == expected_form:
+        return 'forms equal'
+    a_len = len(actual_form)
+    e_len = len(expected_form)
+    if a_len != e_len:
+        return f'top-level length differs: actual={a_len}, expected={e_len}'
+    for i, (a, e) in enumerate(zip(actual_form, expected_form)):
+        if a != e:
+            a_kind = a[0] if isinstance(a, tuple) else 'tok'
+            e_kind = e[0] if isinstance(e, tuple) else 'tok'
+            return (f'first divergence at index {i}: '
+                    f'actual={a_kind}({a!r}) vs expected={e_kind}({e!r})')
+    return 'unknown divergence'
+
+
+def _flatten_structural_form(form):
+    out: List[str] = []
+    for item in form:
+        if (isinstance(item, tuple) and len(item) == 2
+                and item[0] in ('{', '<') and isinstance(item[1], frozenset)):
+            opener = item[0]
+            closer = '}' if opener == '{' else '>'
+            out.append(opener)
+            entries = sorted(item[1], key=lambda kv: repr(kv[0]))
+            for entry, count in entries:
+                if isinstance(entry, tuple):
+                    sub = _flatten_structural_form([entry] if (
+                        len(entry) == 2 and entry[0] in ('{', '<')
+                        and isinstance(entry[1], frozenset)
+                    ) else entry)
+                    for _ in range(count):
+                        out.extend(sub)
+                        if opener == '{':
+                            out.append(';')
+                else:
+                    for _ in range(count):
+                        out.append(entry)
+            out.append(closer)
+        else:
+            out.append(item)
+    return out
+
+
+def _reconstruct_corrected_tokens(t_marks, s_marks, s_text, s_fname):
+    s_nc, _ = _split_tokens_by_comment(s_text)
+    extras = {m['start'] for m in s_marks
+              if m.get('label') in ('extra', 'ghost_extra')}
+    for m in t_marks:
+        pw = m.get('paired_with')
+        if pw and pw.get('file') == s_fname:
+            extras.add(pw['start'])
+
+    events: List[tuple] = []
+    for i, (start, tok) in enumerate(s_nc):
+        if start in extras:
+            continue
+        events.append((start, 1, i, tok))
+
+    order = 0
+    for m in t_marks:
+        if m.get('label') != 'missing':
+            continue
+        pw = m.get('paired_with')
+        if pw and pw.get('file') == s_fname:
+            events.append((pw['start'], 0, order, m['token']))
+        else:
+            ia = m.get('insert_at')
+            if ia and ia.get('file') == s_fname:
+                events.append((ia['pos'], 0, order, m['token']))
+        order += 1
+
+    events.sort(key=lambda e: (e[0], e[1], e[2]))
+    return [e[3] for e in events]
+
+
+def _apply_leo_genetic_refinement(
+    diff_marks: dict,
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+    *,
+    generations: int = 20,
+    population: int = 8,
+    lambda_marks: float = 0.001,
+    context_k: int = _CONTEXT_K,
+    seed: Optional[int] = None,
+) -> None:
+    import copy
+    import difflib
+    import random
+
+    rng = random.Random(seed)
+
+    file_data: Dict[str, dict] = {}
+    for t_name, t_path, s_path in _match_files_by_name_then_ext(
+            teacher_files, student_files):
+        if s_path is None:
+            continue
+        try:
+            t_text = _read_text_normalized(t_path)
+            s_text = _read_text_normalized(s_path)
+        except Exception:
+            continue
+        t_nc, _ = _split_tokens_by_comment(t_text)
+        s_nc, _ = _split_tokens_by_comment(s_text)
+        t_seq = [tok for _, tok in t_nc]
+        s_seq = [tok for _, tok in s_nc]
+        file_data[Path(t_name).name] = {
+            's_fname': s_path.name,
+            's_text': s_text,
+            't_nc': t_nc,
+            's_nc': s_nc,
+            't_seq': t_seq,
+            's_seq': s_seq,
+            'teacher_tokens': list(t_seq),
+        }
+
+    if not file_data:
+        return
+
+    idf = _compute_idf(
+        *(fd['t_seq'] for fd in file_data.values()),
+        *(fd['s_seq'] for fd in file_data.values()),
+    )
+    teacher_ghosts_top = diff_marks.get('teacher_ghosts') or {}
+    for t_name, fd in file_data.items():
+        fd['t_packs'] = [_context_vector_pack(fd['t_seq'], i, context_k, idf)
+                         for i in range(len(fd['t_seq']))]
+        fd['s_packs'] = [_context_vector_pack(fd['s_seq'], i, context_k, idf)
+                         for i in range(len(fd['s_seq']))]
+        fd['t_pos_to_idx'] = {pos: i for i, (pos, _) in enumerate(fd['t_nc'])}
+        fd['s_pos_to_idx'] = {pos: i for i, (pos, _) in enumerate(fd['s_nc'])}
+        ghost_tokens: set = set()
+        for g in teacher_ghosts_top.get(t_name, []) or []:
+            for gm in _sm._CHAR_TOKEN_RE.finditer(g.get('text', '')):
+                ghost_tokens.add(gm.group())
+        fd['ghost_tokens'] = ghost_tokens
+
+    for fd in file_data.values():
+        fd['teacher_struct_flat'] = _flatten_structural_form(
+            _structural_form(fd['teacher_tokens']),
+        )
+
+    def fitness(dm: dict) -> float:
+        n_marks = 0
+        for marks in dm.get('teacher_files', {}).values():
+            for m in marks or []:
+                if m.get('label') == 'missing':
+                    n_marks += 1
+        for marks in dm.get('student_files', {}).values():
+            for m in marks or []:
+                if m.get('label') in ('extra', 'ghost_extra'):
+                    n_marks += 1
+        sim_total = 0.0
+        for t_name, fd in file_data.items():
+            t_marks = dm.get('teacher_files', {}).get(t_name, []) or []
+            s_marks = dm.get('student_files', {}).get(fd['s_fname'], []) or []
+            actual = _reconstruct_corrected_tokens(
+                t_marks, s_marks, fd['s_text'], fd['s_fname'],
+            )
+            actual_flat = _flatten_structural_form(_structural_form(actual))
+            expected_flat = fd['teacher_struct_flat']
+            sm = difflib.SequenceMatcher(None, actual_flat, expected_flat,
+                                          autojunk=False)
+            sim_total += sm.ratio()
+        sim_avg = sim_total / max(1, len(file_data))
+        return sim_avg - lambda_marks * n_marks
+
+    def m1_shift_insert_at(dm: dict) -> bool:
+        candidates = []
+        for t_name, marks in dm.get('teacher_files', {}).items():
+            fd = file_data.get(t_name)
+            if fd is None:
+                continue
+            for m in marks or []:
+                if m.get('label') != 'missing':
+                    continue
+                if m.get('paired_with'):
+                    continue
+                ia = m.get('insert_at')
+                if not ia or ia.get('file') != fd['s_fname']:
+                    continue
+                candidates.append((m, fd))
+        if not candidates:
+            return False
+        m, fd = rng.choice(candidates)
+        t_idx = fd['t_pos_to_idx'].get(m['start'])
+        if t_idx is None or len(fd['s_nc']) == 0:
+            return False
+        t_pack = fd['t_packs'][t_idx]
+        weights = [max(0.0, _combined_context_score(fd['s_packs'][i], t_pack)) ** 2 + 1e-3
+                   for i in range(len(fd['s_nc']))]
+        idx = rng.choices(range(len(fd['s_nc'])), weights=weights, k=1)[0]
+        m['insert_at'] = {'file': fd['s_fname'], 'pos': fd['s_nc'][idx][0]}
+        return True
+
+    def m2_form_pair(dm: dict) -> bool:
+        candidates = []
+        for t_name, fd in file_data.items():
+            s_fname = fd['s_fname']
+            t_marks = dm.get('teacher_files', {}).get(t_name, []) or []
+            s_marks = dm.get('student_files', {}).get(s_fname, []) or []
+            unpaired_m = [(m, fd['t_pos_to_idx'].get(m['start']))
+                          for m in t_marks
+                          if m.get('label') == 'missing'
+                          and not m.get('paired_with')
+                          and m['start'] in fd['t_pos_to_idx']]
+            unpaired_e = [(e, fd['s_pos_to_idx'].get(e['start']))
+                          for e in s_marks
+                          if e.get('label') == 'extra'
+                          and not e.get('paired_with')
+                          and e['start'] in fd['s_pos_to_idx']]
+            for m, mi in unpaired_m:
+                t_pack = fd['t_packs'][mi]
+                for e, ei in unpaired_e:
+                    cos = _combined_context_score(fd['s_packs'][ei], t_pack)
+                    candidates.append((cos, m, e, t_name, s_fname))
+        if not candidates:
+            return False
+        weights = [max(0.0, c[0]) ** 2 + 1e-3 for c in candidates]
+        _cos, m, e, t_name, s_fname = rng.choices(candidates, weights=weights, k=1)[0]
+        m['paired_with'] = {
+            'file': s_fname, 'start': e['start'], 'end': e['end'],
+            'token': e['token'], 'label': 'extra',
+        }
+        e['paired_with'] = {
+            'file': t_name, 'start': m['start'], 'end': m['end'],
+            'token': m['token'], 'label': 'missing',
+        }
+        return True
+
+    def m3_break_pair(dm: dict) -> bool:
+        candidates = []
+        for t_name, fd in file_data.items():
+            s_fname = fd['s_fname']
+            t_marks = dm.get('teacher_files', {}).get(t_name, []) or []
+            s_marks = dm.get('student_files', {}).get(s_fname, []) or []
+            s_by_pos = {e['start']: e for e in s_marks}
+            for m in t_marks:
+                if m.get('label') != 'missing':
+                    continue
+                pw = m.get('paired_with')
+                if not pw or pw.get('file') != s_fname:
+                    continue
+                e = s_by_pos.get(pw['start'])
+                if e is None or e.get('label') != 'extra':
+                    continue
+                ti = fd['t_pos_to_idx'].get(m['start'])
+                ei = fd['s_pos_to_idx'].get(e['start'])
+                if ti is None or ei is None:
+                    continue
+                cos = _combined_context_score(fd['s_packs'][ei], fd['t_packs'][ti])
+                candidates.append((cos, m, e, s_fname))
+        if not candidates:
+            return False
+        weights = [(1.0 - max(0.0, min(1.0, c[0]))) ** 2 + 1e-3 for c in candidates]
+        _cos, m, e, s_fname = rng.choices(candidates, weights=weights, k=1)[0]
+        partner_start = e['start']
+        m.pop('paired_with', None)
+        e.pop('paired_with', None)
+        m['insert_at'] = {'file': s_fname, 'pos': partner_start}
+        return True
+
+    def m5_reassign_extra(dm: dict) -> bool:
+        all_candidates = []  # (s_name, fd, t_name, tok, extras, unmarked_positions)
+        for t_name, fd in file_data.items():
+            s_name = fd['s_fname']
+            s_marks = dm.get('student_files', {}).get(s_name, []) or []
+            extra_by_tok: Dict[str, list] = {}
+            for m in s_marks:
+                if m.get('label') == 'extra' and not m.get('paired_with'):
+                    extra_by_tok.setdefault(m['token'], []).append(m)
+            if not extra_by_tok:
+                continue
+            all_pos_by_tok: Dict[str, list] = {}
+            for pos, tk in fd['s_nc']:
+                all_pos_by_tok.setdefault(tk, []).append(pos)
+            for tok, extras in extra_by_tok.items():
+                extra_pos = {m['start'] for m in extras}
+                unmarked = [p for p in all_pos_by_tok.get(tok, []) if p not in extra_pos]
+                if not unmarked:
+                    continue
+                all_candidates.append((s_name, fd, t_name, tok, extras, unmarked))
+        if not all_candidates:
+            return False
+
+        s_name, fd, t_name, tok, extras, unmarked = rng.choice(all_candidates)
+
+        teacher_packs = []
+        for tp, t_tok in fd['t_nc']:
+            if t_tok != tok:
+                continue
+            ti = fd['t_pos_to_idx'].get(tp)
+            if ti is not None:
+                teacher_packs.append(fd['t_packs'][ti])
+        if not teacher_packs:
+            return False
+
+        def best_sim(student_pos):
+            si = fd['s_pos_to_idx'].get(student_pos)
+            if si is None:
+                return 0.0
+            s_pack = fd['s_packs'][si]
+            return max(_combined_context_score(s_pack, tp) for tp in teacher_packs)
+
+        extra_weights = [max(0.0, best_sim(m['start'])) ** 2 + 1e-3 for m in extras]
+        extra_to_remove = rng.choices(extras, weights=extra_weights, k=1)[0]
+
+        unmarked_weights = [(1.0 - max(0.0, min(1.0, best_sim(p)))) ** 2 + 1e-3
+                            for p in unmarked]
+        new_extra_pos = rng.choices(unmarked, weights=unmarked_weights, k=1)[0]
+
+        if new_extra_pos == extra_to_remove['start']:
+            return False
+
+        new_end = None
+        for p, t in fd['s_nc']:
+            if p == new_extra_pos and t == tok:
+                new_end = p + len(t)
+                break
+        if new_end is None:
+            return False
+
+        s_marks = dm.setdefault('student_files', {}).setdefault(s_name, [])
+        try:
+            s_marks.remove(extra_to_remove)
+        except ValueError:
+            return False
+        s_marks.append({
+            'token': tok, 'label': 'extra',
+            'start': new_extra_pos, 'end': new_end,
+        })
+        s_marks.sort(key=lambda m: m['start'])
+        return True
+
+    def m7_cluster_neighbor_shift(dm: dict) -> bool:
+        per_file = {}
+        for t_name, fd in file_data.items():
+            marks = dm.get('teacher_files', {}).get(t_name, []) or []
+            unpaired = [m for m in marks
+                        if m.get('label') == 'missing'
+                        and not m.get('paired_with')
+                        and m.get('insert_at')
+                        and m['insert_at'].get('file') == fd['s_fname']]
+            if not unpaired:
+                continue
+            from collections import Counter as _Counter
+            pos_counts = _Counter(m['insert_at']['pos'] for m in unpaired)
+            best_pos, best_count = pos_counts.most_common(1)[0]
+            if best_count < 2:
+                continue
+            cluster = [m for m in unpaired if m['insert_at']['pos'] == best_pos]
+            per_file[t_name] = (cluster, best_pos)
+        if not per_file:
+            return False
+
+        t_name = rng.choice(list(per_file.keys()))
+        fd = file_data[t_name]
+        cluster, cur_pos = per_file[t_name]
+        s_nc = fd['s_nc']
+        if not s_nc:
+            return False
+        positions = [p for p, _ in s_nc]
+        try:
+            cur_idx = positions.index(cur_pos)
+        except ValueError:
+            cur_idx = min(range(len(positions)), key=lambda i: abs(positions[i] - cur_pos))
+        offset = rng.choice([-3, -2, -1, 1, 2, 3])
+        new_idx = max(0, min(len(positions) - 1, cur_idx + offset))
+        if new_idx == cur_idx:
+            return False
+        new_pos = positions[new_idx]
+        for m in cluster:
+            m['insert_at'] = {'file': fd['s_fname'], 'pos': new_pos}
+        return True
+
+    def m6_bulk_shift(dm: dict) -> bool:
+        per_file = {}
+        for t_name, fd in file_data.items():
+            marks = dm.get('teacher_files', {}).get(t_name, []) or []
+            unpaired = sorted(
+                [m for m in marks
+                 if m.get('label') == 'missing' and not m.get('paired_with')
+                 and m['start'] in fd['t_pos_to_idx']],
+                key=lambda m: m['start'],
+            )
+            if len(unpaired) >= 2:
+                per_file[t_name] = unpaired
+        if not per_file:
+            return False
+
+        t_name = rng.choice(list(per_file.keys()))
+        fd = file_data[t_name]
+        s_fname = fd['s_fname']
+        unpaired = per_file[t_name]
+        n_s = len(fd['s_nc'])
+        if n_s == 0:
+            return False
+
+        K_max = min(30, len(unpaired))
+        K_min = 2 if len(unpaired) < 5 else 5
+        K = rng.randint(K_min, K_max)
+        i = rng.randint(0, len(unpaired) - K)
+        run = unpaired[i:i + K]
+
+        head_idx = fd['t_pos_to_idx'].get(run[0]['start'])
+        if head_idx is None:
+            return False
+        head_pack = fd['t_packs'][head_idx]
+        weights = [max(0.0, _combined_context_score(fd['s_packs'][j], head_pack)) ** 2 + 1e-3
+                   for j in range(n_s)]
+        chosen = rng.choices(range(n_s), weights=weights, k=1)[0]
+        target_pos = fd['s_nc'][chosen][0]
+
+        for m in run:
+            m['insert_at'] = {'file': s_fname, 'pos': target_pos}
+        return True
+
+    def m4_flip_label(dm: dict) -> bool:
+        promote = []
+        demote = []
+        for t_name, fd in file_data.items():
+            s_fname = fd['s_fname']
+            ghost_tokens = fd.get('ghost_tokens', set())
+            s_marks = dm.get('student_files', {}).get(s_fname, []) or []
+            for e in s_marks:
+                if e.get('paired_with'):
+                    continue
+                lbl = e.get('label')
+                if lbl == 'extra' and e.get('token') in ghost_tokens:
+                    promote.append(e)
+                elif lbl == 'ghost_extra':
+                    demote.append(e)
+        pool = ([('promote', e) for e in promote]
+                + [('demote', e) for e in demote])
+        if not pool:
+            return False
+        op, e = rng.choice(pool)
+        if op == 'promote':
+            e['label'] = 'ghost_extra'
+        else:
+            e['label'] = 'extra'
+            e.pop('removal_ts', None)
+        return True
+
+    def mutate(dm: dict) -> None:
+        ops = [m1_shift_insert_at, m2_form_pair, m3_break_pair,
+               m4_flip_label, m5_reassign_extra, m6_bulk_shift,
+               m7_cluster_neighbor_shift]
+        rng.shuffle(ops)
+        for fn in ops:
+            if fn(dm):
+                return
+
+    def crossover(pa: dict, pb: dict) -> dict:
+        child: dict = {}
+        for k, v in pa.items():
+            if k in ('teacher_files', 'student_files'):
+                continue
+            child[k] = copy.deepcopy(v)
+
+        child_t: Dict[str, list] = {}
+        t_files = (set(pa.get('teacher_files', {}))
+                   | set(pb.get('teacher_files', {})))
+        for t_name in t_files:
+            a_marks = pa.get('teacher_files', {}).get(t_name, []) or []
+            b_marks = pb.get('teacher_files', {}).get(t_name, []) or []
+            types = ({m['token'] for m in a_marks if m.get('label') == 'missing'}
+                     | {m['token'] for m in b_marks if m.get('label') == 'missing'})
+            new_marks: list = []
+            for tok in types:
+                src = a_marks if rng.random() < 0.5 else b_marks
+                for m in src:
+                    if m.get('label') == 'missing' and m['token'] == tok:
+                        new_marks.append(copy.deepcopy(m))
+            child_t[t_name] = sorted(new_marks, key=lambda m: m['start'])
+        child['teacher_files'] = child_t
+
+        child_s: Dict[str, list] = {}
+        s_files = (set(pa.get('student_files', {}))
+                   | set(pb.get('student_files', {})))
+        for s_name in s_files:
+            a_marks = pa.get('student_files', {}).get(s_name, []) or []
+            b_marks = pb.get('student_files', {}).get(s_name, []) or []
+            types = ({m['token'] for m in a_marks
+                      if m.get('label') in ('extra', 'ghost_extra')}
+                     | {m['token'] for m in b_marks
+                        if m.get('label') in ('extra', 'ghost_extra')})
+            new_marks = []
+            for tok in types:
+                src = a_marks if rng.random() < 0.5 else b_marks
+                for m in src:
+                    if (m.get('label') in ('extra', 'ghost_extra')
+                            and m['token'] == tok):
+                        new_marks.append(copy.deepcopy(m))
+            child_s[s_name] = sorted(new_marks, key=lambda m: m['start'])
+        child['student_files'] = child_s
+
+        s_by_pos = {(s_name, m['start']): m
+                    for s_name, marks in child_s.items() for m in marks
+                    if m.get('label') in ('extra', 'ghost_extra')}
+        t_by_pos = {(t_name, m['start']): m
+                    for t_name, marks in child_t.items() for m in marks
+                    if m.get('label') == 'missing'}
+        for t_name, marks in child_t.items():
+            for m in marks:
+                pw = m.get('paired_with')
+                if not pw:
+                    continue
+                partner = s_by_pos.get((pw.get('file'), pw.get('start')))
+                if partner is None:
+                    m.pop('paired_with', None)
+                    continue
+                ppw = partner.get('paired_with') or {}
+                if (ppw.get('file') != t_name
+                        or ppw.get('start') != m['start']):
+                    m.pop('paired_with', None)
+        for s_name, marks in child_s.items():
+            for m in marks:
+                pw = m.get('paired_with')
+                if not pw:
+                    continue
+                partner = t_by_pos.get((pw.get('file'), pw.get('start')))
+                if partner is None:
+                    m.pop('paired_with', None)
+                    continue
+                ppw = partner.get('paired_with') or {}
+                if (ppw.get('file') != s_name
+                        or ppw.get('start') != m['start']):
+                    m.pop('paired_with', None)
+
+        if student_files:
+            default_fname = sorted(student_files.keys())[0]
+            try:
+                default_eof = len(_read_text_normalized(
+                    student_files[default_fname]))
+            except Exception:
+                default_eof = 0
+        else:
+            default_fname = None
+            default_eof = 0
+        for marks in child_t.values():
+            for m in marks:
+                if (m.get('label') == 'missing'
+                        and not m.get('paired_with')
+                        and 'insert_at' not in m
+                        and default_fname is not None):
+                    m['insert_at'] = {'file': default_fname, 'pos': default_eof}
+
+        return child
+
+    pop = [copy.deepcopy(diff_marks) for _ in range(population)]
+    for ind in pop[1:]:
+        mutate(ind)
+
+    for _ in range(generations):
+        scored = [(fitness(ind), ind) for ind in pop]
+        scored.sort(key=lambda x: -x[0])
+        keep_n = max(1, population // 2)
+        keep = scored[:keep_n]
+        new_pop = [c[1] for c in keep]
+        while len(new_pop) < population:
+            if len(keep) >= 2 and rng.random() < 0.5:
+                pa, pb = rng.sample(keep, 2)
+                child = crossover(pa[1], pb[1])
+            else:
+                parent = rng.choice(keep)[1]
+                child = copy.deepcopy(parent)
+            for _ in range(rng.randint(1, 3)):
+                mutate(child)
+            new_pop.append(child)
+        pop = new_pop
+
+    best = max(pop, key=fitness)
+    diff_marks['teacher_files'] = best['teacher_files']
+    diff_marks['student_files'] = best['student_files']
 
 
 def _apply_ghost_extra_promotion(
@@ -1631,6 +2344,10 @@ def _build_ro_diff_marks(
         tok_all_positions, file_n = _build_token_position_index(t_text)
         n_total += file_n
 
+        fname   = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        s_fname_native = s_fname if s_path is not None else None
+
         t_marks:   List[dict] = []
         s_marks:   List[dict] = []
         t_line_ms: List[dict] = []
@@ -1657,10 +2374,13 @@ def _build_ro_diff_marks(
             elif tag == 'replace':
                 _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
                                     t_lines_raw, s_lines_raw, t_starts, s_starts,
-                                    i1, i2 - i1, j1, j2 - j1, tok_all_positions)
+                                    i1, i2 - i1, j1, j2 - j1, tok_all_positions,
+                                    s_fname=s_fname_native)
 
-        fname   = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
+        if s_fname_native is not None:
+            anchors = _line_anchors_from_alignment(alignment, s_starts, len(s_text))
+            _stamp_native_line_insert_at(t_marks, t_starts, anchors, s_fname_native)
+
         per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
 
     return _finalize_per_file_diff(per_file_results, n_total)
@@ -1711,6 +2431,10 @@ def _build_git_diff_marks(
         tok_all_positions, file_n = _build_token_position_index(t_text)
         n_total += file_n
 
+        fname   = Path(t_name).name
+        s_fname = s_path.name if s_path else fname
+        s_fname_native = s_fname if s_path is not None else None
+
         t_marks:   List[dict] = []
         s_marks:   List[dict] = []
         t_line_ms: List[dict] = []
@@ -1724,28 +2448,41 @@ def _build_git_diff_marks(
             t_end    = (i1_raw - 1) if ic > 0 else i1_raw
             s_end    = (j1_raw - 1) if jc > 0 else j1_raw
             eq_count = t_end - t_cursor
-            for k in range(eq_count):
-                alignment.append([t_cursor + k, s_cursor + k])
+            _add_paired_line_block(alignment, t_marks, s_marks,
+                                    t_lines_raw, s_lines_raw, t_starts, s_starts,
+                                    t_cursor, s_cursor, eq_count, tok_all_positions,
+                                    s_fname=s_fname_native)
             t_cursor += eq_count
             s_cursor += eq_count
 
             _add_replace_block(alignment, t_marks, s_marks, t_line_ms, s_line_ms,
                                 t_lines_raw, s_lines_raw, t_starts, s_starts,
-                                t_end, ic, s_end, jc, tok_all_positions)
+                                t_end, ic, s_end, jc, tok_all_positions,
+                                s_fname=s_fname_native)
             t_cursor = t_end + ic
             s_cursor = s_end + jc
 
-        while t_cursor < len(t_lines_raw) or s_cursor < len(s_lines_raw):
-            t_val = t_cursor if t_cursor < len(t_lines_raw) else None
-            s_val = s_cursor if s_cursor < len(s_lines_raw) else None
-            alignment.append([t_val, s_val])
-            if t_cursor < len(t_lines_raw):
-                t_cursor += 1
-            if s_cursor < len(s_lines_raw):
-                s_cursor += 1
+        tail_pair = min(len(t_lines_raw) - t_cursor, len(s_lines_raw) - s_cursor)
+        _add_paired_line_block(alignment, t_marks, s_marks,
+                                t_lines_raw, s_lines_raw, t_starts, s_starts,
+                                t_cursor, s_cursor, tail_pair, tok_all_positions,
+                                s_fname=s_fname_native)
+        t_cursor += tail_pair
+        s_cursor += tail_pair
+        while t_cursor < len(t_lines_raw):
+            _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
+                                        t_lines_raw, t_starts, t_cursor,
+                                        tok_all_positions)
+            t_cursor += 1
+        while s_cursor < len(s_lines_raw):
+            _add_unpaired_student_line(alignment, s_marks, s_line_ms,
+                                        s_lines_raw, s_starts, s_cursor)
+            s_cursor += 1
 
-        fname   = Path(t_name).name
-        s_fname = s_path.name if s_path else fname
+        if s_fname_native is not None:
+            anchors = _line_anchors_from_alignment(alignment, s_starts, len(s_text))
+            _stamp_native_line_insert_at(t_marks, t_starts, anchors, s_fname_native)
+
         per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
 
     return _finalize_per_file_diff(per_file_results, n_total)
