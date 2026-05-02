@@ -976,10 +976,18 @@ function _truthBackfillTimestamps(teacherFiles, studentFiles) {
 	if (!leoStar) return;
 	const tsByPos = new Map();
 	const remTsByPos = new Map();
+	for (const [file, entries] of Object.entries(
+		leoStar.teacher_token_timestamps || {},
+	)) {
+		for (const e of entries || []) {
+			tsByPos.set(`${file}|${e.start}|${e.end}`, e.ts);
+		}
+	}
 	for (const [file, marks] of Object.entries(leoStar.teacher_files || {})) {
 		for (const m of marks || []) {
 			if (m.label === "missing" && m.timestamp) {
-				tsByPos.set(`${file}|${m.token}|${m.start}|${m.end}`, m.timestamp);
+				const k = `${file}|${m.start}|${m.end}`;
+				if (!tsByPos.has(k)) tsByPos.set(k, m.timestamp);
 			}
 		}
 	}
@@ -996,7 +1004,7 @@ function _truthBackfillTimestamps(teacherFiles, studentFiles) {
 	for (const [file, marks] of Object.entries(teacherFiles || {})) {
 		for (const m of marks || []) {
 			if (m.label !== "missing" || m.timestamp) continue;
-			const ts = tsByPos.get(`${file}|${m.token}|${m.start}|${m.end}`);
+			const ts = tsByPos.get(`${file}|${m.start}|${m.end}`);
 			if (ts) m.timestamp = ts;
 		}
 	}

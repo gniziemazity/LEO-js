@@ -178,11 +178,13 @@ function parseFollowLabel(label) {
 }
 
 function parseFollowEvents(descText, sessionDate) {
-	const re = /([^(,]+?)\s*\((\d{2}:\d{2}:\d{2})\)/g;
 	const events = [];
-	let m;
-	while ((m = re.exec(descText)) !== null) {
+	if (!descText) return events;
+	for (const seg of String(descText).split(/,\s+/)) {
+		const m = seg.match(/^(.+?)\s*\((\d{2}:\d{2}:\d{2})\)\s*$/);
+		if (!m) continue;
 		const rawLabel = m[1].trim();
+		if (!rawLabel) continue;
 		const [h, min, s] = m[2].split(":").map(Number);
 		const dt = new Date(sessionDate);
 		dt.setHours(h, min, s, 0);

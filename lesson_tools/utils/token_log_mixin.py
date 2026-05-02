@@ -17,6 +17,7 @@ from .token_log import (
     _build_lev_token_diff_marks,
     _build_occ_from_diff_marks,
     _build_ro_diff_marks,
+    _build_teacher_token_timestamps,
     _parse_teacher_tokens,
     _strip_internal_fields,
     _write_teacher_tokens_file,
@@ -91,8 +92,10 @@ class TokenLogMixin:
 
         all_events = getattr(self, '_lesson_all_events', None)
         ts_map_cached: Dict[str, List[str]] = {}
+        teacher_token_ts: Dict[str, list] = {}
         if all_events:
             ts_map_cached = _build_file_ordered_ts_map(all_events)
+            teacher_token_ts = _build_teacher_token_timestamps(all_events)
 
         teacher_code_files = self._get_teacher_code_files()
 
@@ -231,6 +234,9 @@ class TokenLogMixin:
 
             if anon_dir != student_dir:
                 shutil.copy2(out_path, anon_dir / 'tokens.txt')
+
+            if teacher_token_ts:
+                diff_marks['teacher_token_timestamps'] = teacher_token_ts
 
             _strip_internal_fields(diff_marks)
             with open(anon_dir / 'diff_marks_leo_star.json', 'w', encoding='utf-8') as fh:

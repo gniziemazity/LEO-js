@@ -54,6 +54,29 @@ def _build_file_ordered_ts_map(all_events: list) -> Dict[str, List[str]]:
     return result
 
 
+def _build_teacher_token_timestamps(events: list) -> Dict[str, list]:
+    if not events:
+        return {}
+    from .lv_editor import _replay_headless_multi
+    editors = _replay_headless_multi(events, track_timestamps=True)
+    result: Dict[str, list] = {}
+    for tab_key, ed in editors.items():
+        fname = "reconstructed.html" if tab_key == "MAIN" else tab_key
+        pairs = ed.get_surviving_with_timestamps()
+        text = "".join(ch for ch, _ in pairs)
+        char_ts = [ts for _, ts in pairs]
+        entries = []
+        for m in _sm._CHAR_TOKEN_RE.finditer(text):
+            end_idx = m.end() - 1
+            entries.append({
+                'start': m.start(),
+                'end': m.end(),
+                'ts': ts_to_local(char_ts[end_idx]),
+            })
+        result[fname] = entries
+    return result
+
+
 _TOKEN_FILE_HEADER_KEYS = ('Occurrences', 'Removed', 'Unique')
 
 
@@ -1591,6 +1614,203 @@ def _flatten_structural_form(form):
         else:
             out.append(item)
     return out
+
+
+def _validate_truth_schema(
+    truth: dict,
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> List[str]:
+    errors: List[str] = []
+    ALLOWED_TEACHER = {'missing', 'comment'}
+    ALLOWED_STUDENT = {'extra', 'ghost_extra', 'comment'}
+    REQ = ('token', 'label', 'start', 'end')
+
+    t_text_cache: Dict[str, str] = {}
+    s_text_cache: Dict[str, str] = {}
+    for fname, p in (teacher_files or {}).items():
+        try:
+            t_text_cache[fname] = _read_text_normalized(p)
+        except Exception:
+            pass
+    for fname, p in (student_files or {}).items():
+        try:
+            s_text_cache[fname] = _read_text_normalized(p)
+        except Exception:
+            pass
+
+    def check_mark(side: str, fname: str, m, allowed_labels: set) -> bool:
+        for k in REQ:
+            if k not in m:
+                errors.append(f'{side}/{fname}: mark missing field {k!r}: {m}')
+                return False
+        if m['label'] not in allowed_labels:
+            errors.append(
+                f'{side}/{fname}: bad label {m["label"]!r} '
+                f'(allowed: {sorted(allowed_labels)})'
+            )
+            return False
+        if not (isinstance(m['start'], int) and isinstance(m['end'], int)):
+            errors.append(f'{side}/{fname}: start/end must be ints: {m}')
+            return False
+        if m['start'] >= m['end']:
+            errors.append(f'{side}/{fname}: start>=end: {m}')
+            return False
+        text = (t_text_cache if side == 'teacher' else s_text_cache).get(fname)
+        if text is None:
+            errors.append(f'{side}/{fname}: file not in {side}_files')
+            return False
+        if m['end'] > len(text):
+            errors.append(f'{side}/{fname}: end {m["end"]} past file len {len(text)}: {m}')
+            return False
+        if text[m['start']:m['end']] != m['token']:
+            errors.append(
+                f'{side}/{fname}: substring at [{m["start"]},{m["end"]}] is '
+                f'{text[m["start"]:m["end"]]!r}, not token {m["token"]!r}'
+            )
+            return False
+        return True
+
+    teacher_marks_by_file = truth.get('teacher_files', {}) or {}
+    student_marks_by_file = truth.get('student_files', {}) or {}
+
+    for fname, marks in teacher_marks_by_file.items():
+        for m in marks or []:
+            check_mark('teacher', fname, m, ALLOWED_TEACHER)
+    for fname, marks in student_marks_by_file.items():
+        for m in marks or []:
+            check_mark('student', fname, m, ALLOWED_STUDENT)
+
+    t_index = {(fname, m['start']): m
+               for fname, marks in teacher_marks_by_file.items()
+               for m in marks or [] if 'start' in m}
+    s_index = {(fname, m['start']): m
+               for fname, marks in student_marks_by_file.items()
+               for m in marks or [] if 'start' in m}
+
+    t_paired_to: Dict[Tuple[str, int], Tuple[str, int]] = {}
+    s_paired_to: Dict[Tuple[str, int], Tuple[str, int]] = {}
+
+    for fname, marks in teacher_marks_by_file.items():
+        for m in marks or []:
+            pw = m.get('paired_with')
+            if pw is None:
+                continue
+            if m.get('label') != 'missing':
+                errors.append(
+                    f'teacher/{fname}: only `missing` may have paired_with, '
+                    f'got label {m.get("label")!r}'
+                )
+                continue
+            partner_key = (pw.get('file'), pw.get('start'))
+            partner = s_index.get(partner_key)
+            if partner is None:
+                errors.append(
+                    f'teacher/{fname}: paired_with refers to non-existent '
+                    f'student mark at {pw.get("file")}:{pw.get("start")}'
+                )
+                continue
+            if partner.get('label') != 'extra':
+                errors.append(
+                    f'teacher/{fname}: paired_with partner at {partner_key} '
+                    f'has label {partner.get("label")!r}, expected `extra`'
+                )
+                continue
+            ppw = partner.get('paired_with') or {}
+            if (ppw.get('file') != fname or ppw.get('start') != m['start']):
+                errors.append(
+                    f'teacher/{fname}: paired_with not bidirectional — '
+                    f'partner at {partner_key} does not point back'
+                )
+                continue
+            t_paired_to[(fname, m['start'])] = partner_key
+
+    for fname, marks in student_marks_by_file.items():
+        for m in marks or []:
+            pw = m.get('paired_with')
+            if pw is None:
+                continue
+            if m.get('label') != 'extra':
+                errors.append(
+                    f'student/{fname}: only `extra` may have paired_with, '
+                    f'got label {m.get("label")!r}'
+                )
+                continue
+            partner_key = (pw.get('file'), pw.get('start'))
+            partner = t_index.get(partner_key)
+            if partner is None:
+                errors.append(
+                    f'student/{fname}: paired_with refers to non-existent '
+                    f'teacher mark at {pw.get("file")}:{pw.get("start")}'
+                )
+                continue
+            if partner.get('label') != 'missing':
+                errors.append(
+                    f'student/{fname}: paired_with partner at {partner_key} '
+                    f'has label {partner.get("label")!r}, expected `missing`'
+                )
+                continue
+            s_paired_to[(fname, m['start'])] = partner_key
+
+    seen: Dict[Tuple[str, int], Tuple[str, int]] = {}
+    for src, dst in t_paired_to.items():
+        if dst in seen:
+            errors.append(
+                f'student mark at {dst} is the paired_with target of '
+                f'multiple teacher missings: {seen[dst]} and {src}'
+            )
+        else:
+            seen[dst] = src
+    seen.clear()
+    for src, dst in s_paired_to.items():
+        if dst in seen:
+            errors.append(
+                f'teacher mark at {dst} is the paired_with target of '
+                f'multiple student extras: {seen[dst]} and {src}'
+            )
+        else:
+            seen[dst] = src
+
+    for fname, marks in teacher_marks_by_file.items():
+        for m in marks or []:
+            ia = m.get('insert_at')
+            if ia is None:
+                continue
+            if m.get('label') != 'missing':
+                errors.append(
+                    f'teacher/{fname}: only `missing` may have insert_at, '
+                    f'got label {m.get("label")!r}'
+                )
+                continue
+            if m.get('paired_with'):
+                continue
+            ifile = ia.get('file')
+            ipos = ia.get('pos')
+            if ifile not in s_text_cache:
+                errors.append(
+                    f'teacher/{fname}: insert_at.file {ifile!r} not in student_files'
+                )
+                continue
+            if not isinstance(ipos, int) or ipos < 0 or ipos > len(s_text_cache[ifile]):
+                errors.append(
+                    f'teacher/{fname}: insert_at.pos {ipos} out of range '
+                    f'[0, {len(s_text_cache[ifile])}] for {ifile}'
+                )
+
+    for fname, marks in teacher_marks_by_file.items():
+        for m in marks or []:
+            if m.get('label') != 'missing':
+                continue
+            if m.get('paired_with'):
+                continue
+            if not m.get('insert_at'):
+                errors.append(
+                    f'teacher/{fname}: unpaired missing {m.get("token")!r} '
+                    f'at {m.get("start")} has no insert_at — undefined where '
+                    f'to splice'
+                )
+
+    return errors
 
 
 def _reconstruct_corrected_tokens(t_marks, s_marks, s_text, s_fname):

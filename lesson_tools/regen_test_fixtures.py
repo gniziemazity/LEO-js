@@ -11,6 +11,7 @@ from utils.token_log import (
     _build_leo_diff_marks,
     _add_log_metadata,
     _build_occ_from_diff_marks,
+    _build_teacher_token_timestamps,
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
@@ -150,6 +151,10 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         diff_marks_out["leo_assignments"] = leo_assignments
     if "teacher_ghosts" in diff_marks:
         diff_marks_out["teacher_ghosts"] = diff_marks["teacher_ghosts"]
+    if events:
+        ttts = _build_teacher_token_timestamps(events)
+        if ttts:
+            diff_marks_out["teacher_token_timestamps"] = ttts
     _strip_internal_fields(diff_marks_out)
 
     out = student_dir / "tokens.txt"

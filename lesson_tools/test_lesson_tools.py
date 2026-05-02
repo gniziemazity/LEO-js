@@ -27,6 +27,7 @@ from utils.token_log import (
     _split_tokens_by_comment,
     _structural_diff_summary,
     _structural_form,
+    _validate_truth_schema,
 )
 
 
@@ -987,6 +988,42 @@ def _attach_correction_tests() -> None:
 
 
 _attach_correction_tests()
+
+
+class TestTruthSchema(unittest.TestCase):
+    def _check(self, project_dir: Path, student_dir: Path) -> None:
+        truth_path = student_dir / 'diff_marks_truth.json'
+        if not truth_path.is_file():
+            self.skipTest('no diff_marks_truth.json')
+        teacher_files = _project_code_files(project_dir)
+        student_files = _project_code_files(student_dir)
+        if not teacher_files or not student_files:
+            self.skipTest('no code files')
+        with open(truth_path, encoding='utf-8') as f:
+            truth = json.load(f)
+        errors = _validate_truth_schema(truth, teacher_files, student_files)
+        if errors:
+            self.fail(f'{len(errors)} schema error(s):\n  '
+                      + '\n  '.join(errors[:8])
+                      + (f'\n  ... and {len(errors)-8} more' if len(errors) > 8 else ''))
+
+
+def _attach_truth_schema_tests() -> None:
+    for project_dir in sorted(_TEST.iterdir()):
+        if not project_dir.is_dir():
+            continue
+        for student_dir in _sampled_student_dirs(project_dir):
+            method_name = (
+                f'test_{project_dir.name}_{student_dir.name}'
+            )
+            def make(p=project_dir, s=student_dir):
+                def test(self):
+                    self._check(p, s)
+                return test
+            setattr(TestTruthSchema, method_name, make())
+
+
+_attach_truth_schema_tests()
 
 
 if __name__ == '__main__':

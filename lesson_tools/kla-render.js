@@ -481,7 +481,7 @@ function drawChart3(ctx, p, students, L) {
 		const clusters = [];
 		let cur = [sorted[0]];
 		for (let i = 1; i < sorted.length; i++) {
-			if (sorted[i].ts - sorted[i - 1].ts < CFG.BURST_GAP * 2)
+			if (sorted[i].ts - sorted[i - 1].ts < CFG.BURST_GAP)
 				cur.push(sorted[i]);
 			else {
 				clusters.push(cur);
