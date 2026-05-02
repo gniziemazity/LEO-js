@@ -43,13 +43,6 @@ const _jitterMap = new Map();
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
-function _hexToRgba(hex, a) {
-	const r = parseInt(hex.slice(1, 3), 16);
-	const g = parseInt(hex.slice(3, 5), 16);
-	const b = parseInt(hex.slice(5, 7), 16);
-	return `rgba(${r},${g},${b},${a})`;
-}
-
 const THEME = {
 	blue: _cssVar("--clr-accent"),
 	orange: _cssVar("--clr-orange"),
@@ -67,21 +60,21 @@ const INTERACTION_COLORS = {
 		hex: THEME.blue,
 		spanRgba: _hexToRgba(THEME.blue, 0.6),
 		spanRgbaUnanswered: _hexToRgba(THEME.blue, 0.15),
-		tipBg: "#E3F2FD",
+		tipBg: _cssVar("--clr-tip-bg-blue"),
 	},
 	"student-question": {
 		hex: THEME.orange,
 		spanRgba: _hexToRgba(THEME.orange, 0.6),
-		tipBg: "#FFF3E0",
+		tipBg: _cssVar("--clr-tip-bg-orange"),
 	},
 	"providing-help": {
 		hex: THEME.green,
 		spanRgba: _hexToRgba(THEME.green, 0.6),
-		tipBg: "#E8F5E9",
+		tipBg: _cssVar("--clr-tip-bg-green"),
 	},
 };
 
-function toggleShake() {
+function toggleStudentJitter() {
 	_shake = !_shake;
 	if (_shake && _students) {
 		for (const s of _students) {

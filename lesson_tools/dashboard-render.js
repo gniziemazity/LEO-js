@@ -113,24 +113,6 @@ const BAR_COLORS = {
 	move: THEME.orange,
 };
 
-function resolveInteractionStudent(field) {
-	if (typeof field === "number") {
-		const resolved = _studentIdMap?.[field] || null;
-		return resolved;
-	}
-	if (typeof field === "string") {
-		const trimmed = field.trim();
-		if (!trimmed) return null;
-		const asNum = Number(trimmed);
-		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
-			const resolved = _studentIdMap?.[asNum] || null;
-			return resolved;
-		}
-		return trimmed;
-	}
-	return null;
-}
-
 const _chart2Visible = {
 	chars: true,
 	inserts: true,
@@ -608,10 +590,7 @@ function drawChart3(ctx, p, students, L) {
 			const x = tsToX(s.follow_dt, L) + jitter.dx;
 			const _minY = L.M.top + (L.plotH3Pad || 0);
 			const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
-			const y = Math.max(
-				_minY,
-				Math.min(_maxY, studentY(s, L) + jitter.dy),
-			);
+			const y = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
 			const ans = answering.has(s.name);
 			const ask = asking.has(s.name);
 			const hlp = helping.has(s.name);

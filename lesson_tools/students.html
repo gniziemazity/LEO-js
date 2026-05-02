@@ -10,7 +10,7 @@
 				flex-direction: column;
 				height: 100vh;
 				overflow: hidden;
-				background: #f0f0f0;
+				background: var(--clr-page);
 			}
 
 			#landing {
@@ -33,15 +33,15 @@
 				align-items: center;
 				gap: 12px;
 				padding: 6px 12px;
-				background: #e8e8e8;
-				border-bottom: 1px solid #ccc;
+				background: var(--clr-toolbar);
+				border-bottom: 1px solid var(--clr-border);
 				flex-shrink: 0;
 				font-size: 12px;
 			}
 
 			#lesson-name {
 				font-weight: bold;
-				color: #1e1e1e;
+				color: var(--clr-text);
 				margin-right: 8px;
 			}
 
@@ -49,15 +49,15 @@
 				display: flex;
 				align-items: center;
 				gap: 6px;
-				color: #555;
+				color: var(--clr-label);
 			}
 
 			#toolbar select {
 				font-size: 12px;
 				padding: 2px 6px;
-				border: 1px solid #bbb;
+				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 3px;
-				background: #fff;
+				background: var(--clr-bg);
 			}
 
 			#main {
@@ -72,7 +72,7 @@
 				flex: 1;
 				overflow-x: hidden;
 				overflow-y: auto;
-				background: #fff;
+				background: var(--clr-bg);
 			}
 
 			table {
@@ -83,15 +83,15 @@
 			}
 
 			thead th {
-				background: #f3f3f3;
-				border-bottom: 2px solid #ccc;
-				border-right: 1px solid #ddd;
+				background: var(--clr-surface);
+				border-bottom: 2px solid var(--clr-border);
+				border-right: 1px solid var(--clr-border);
 				padding: 5px 8px;
 				text-align: left;
 				font-size: 11px !important;
 				font-family: inherit !important;
 				font-weight: 700;
-				color: #555;
+				color: var(--clr-label);
 				text-transform: uppercase;
 				letter-spacing: 0.5px;
 				white-space: nowrap;
@@ -104,20 +104,20 @@
 
 			tbody tr {
 				cursor: pointer;
-				border-bottom: 1px solid #eee;
+				border-bottom: 1px solid var(--clr-border-mid);
 				transition: background 0.08s;
 			}
 
 			tbody tr:hover {
-				background: #e8f4ff;
+				background: var(--clr-row-hover);
 			}
 			tbody tr:active {
-				background: #d0e8ff;
+				background: var(--clr-row-active);
 			}
 
 			td {
 				padding: 5px 8px;
-				border-right: 1px solid #eee;
+				border-right: 1px solid var(--clr-border-mid);
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
@@ -137,7 +137,7 @@
 			}
 			.col-num {
 				width: 50px;
-				color: #888;
+				color: var(--clr-muted);
 				font-family: Consolas, monospace;
 				overflow: visible;
 				text-overflow: clip;
@@ -170,19 +170,19 @@
 			}
 
 			tbody tr:hover td:not(.col-mismatch) {
-				background: #e8f4ff;
+				background: var(--clr-row-hover);
 			}
 			tbody tr:active td:not(.col-mismatch) {
-				background: #d0e8ff;
+				background: var(--clr-row-active);
 			}
 			tbody tr.selected {
-				background: #cce5ff;
+				background: var(--clr-row-selected);
 			}
 			tbody tr.selected td {
-				background: #cce5ff !important;
+				background: var(--clr-row-selected) !important;
 			}
 			tbody tr.selected:hover td {
-				background: #b3d4ff !important;
+				background: var(--clr-row-selected-hover) !important;
 			}
 
 			.mismatch-token {
@@ -194,8 +194,8 @@
 			#tip {
 				position: fixed;
 				display: none;
-				background: #fff;
-				color: #1e1e1e;
+				background: var(--clr-bg);
+				color: var(--clr-text);
 				font-size: 11px;
 				font-family: Consolas, monospace;
 				padding: 5px 10px;
@@ -260,48 +260,16 @@
 			const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
 			const MISMATCH_COLORS = {
-				missing: "#e53935",
-				"extra-star": "#3aa0e0",
-				extra: "#1e88e5",
+				missing: _cssVar("--clr-danger-strong") || "#c62828",
+				"extra-star": _cssVar("--clr-mark-ghost") || "#3aa0e0",
+				extra: _cssVar("--clr-mark-extra") || "#00c",
 			};
 
-			function _idbOpen() {
-				return new Promise((res, rej) => {
-					const req = indexedDB.open("lesson_tools", 1);
-					req.onupgradeneeded = (e) =>
-						e.target.result.createObjectStore("state");
-					req.onsuccess = (e) => res(e.target.result);
-					req.onerror = () => rej(req.error);
-				});
-			}
-
-			async function _idbGet(key) {
-				try {
-					const db = await _idbOpen();
-					return await new Promise((res) => {
-						const r = db
-							.transaction("state")
-							.objectStore("state")
-							.get(key);
-						r.onsuccess = () => res(r.result ?? null);
-						r.onerror = () => res(null);
-					});
-				} catch {
-					return null;
-				}
-			}
-
-			async function _idbSet(key, value) {
-				try {
-					const db = await _idbOpen();
-					await new Promise((res, rej) => {
-						const tx = db.transaction("state", "readwrite");
-						tx.objectStore("state").put(value, key);
-						tx.oncomplete = res;
-						tx.onerror = rej;
-					});
-				} catch {}
-			}
+			const UI_COLORS = {
+				faint: _cssVar("--clr-code-muted") || "#aaa",
+				muted: _cssVar("--clr-muted") || "#888",
+				dangerStrong: _cssVar("--clr-danger-strong") || "#c62828",
+			};
 
 			const landingEl = document.getElementById("landing");
 			const mainEl = document.getElementById("main");
@@ -406,9 +374,6 @@
 				}
 			}
 
-			const readAsArray = readFileArray;
-			const readText = readFileText;
-
 			async function loadXlsxFiles(files) {
 				if (typeof XLSX === "undefined") {
 					await new Promise((resolve) => {
@@ -456,8 +421,8 @@
 				try {
 					showLoading(true);
 					const bufs = await Promise.all([
-						readAsArray(remarksFile),
-						simFile ? readAsArray(simFile) : Promise.resolve(null),
+						readFileArray(remarksFile),
+						simFile ? readFileArray(simFile) : Promise.resolve(null),
 					]);
 					const result = parseStudentRows(bufs[0], bufs[1]);
 					_students = result.students;
@@ -820,7 +785,7 @@
 							el.textContent = obsVal;
 							if (obsVal) {
 								el.style.fontWeight = "bold";
-								el.style.color = "#c62828";
+								el.style.color = UI_COLORS.dangerStrong;
 							}
 						} else {
 							el.textContent = rk.val;
@@ -849,7 +814,7 @@
 						followEl.style.color = `rgb(${r}, 0, 0)`;
 					} else {
 						followEl.textContent = "";
-						followEl.style.color = "#aaa";
+						followEl.style.color = UI_COLORS.faint;
 					}
 					tr.appendChild(followEl);
 
@@ -889,7 +854,7 @@
 				const tipParts = [];
 				for (const key of order) {
 					const { ev, n } = counts.get(key);
-					const color = MISMATCH_COLORS[ev.kind] || "#888";
+					const color = MISMATCH_COLORS[ev.kind] || UI_COLORS.muted;
 					const span = document.createElement("span");
 					span.className = "mismatch-token";
 					span.style.color = color;
@@ -898,7 +863,7 @@
 					if (order.indexOf(key) < order.length - 1) {
 						const comma = document.createElement("span");
 						comma.textContent = ", ";
-						comma.style.color = "#aaa";
+						comma.style.color = UI_COLORS.faint;
 						wrap.appendChild(comma);
 					}
 					const esc = ev.token
@@ -910,7 +875,9 @@
 				}
 				cell.innerHTML = "";
 				cell.appendChild(wrap);
-				const tipHtml = tipParts.join('<span style="color:#aaa">, </span>');
+				const tipHtml = tipParts.join(
+					`<span style="color:${UI_COLORS.faint}">, </span>`,
+				);
 				cell.addEventListener("mouseenter", (e) => showTipHtml(e, tipHtml));
 				cell.addEventListener("mousemove", (e) => moveTip(e));
 				cell.addEventListener("mouseleave", () => hideTip());
@@ -959,8 +926,6 @@
 
 			const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
-			const readDataUri = readFileDataUri;
-
 			async function _readStudentDiffPayload(student) {
 				const followPct =
 					student.followPct != null
@@ -997,18 +962,18 @@
 					const entry = fileMap.get(anonBase + studentDir + fname);
 					if (entry) {
 						try {
-							allMarks[mode] = JSON.parse(await readText(entry));
+							allMarks[mode] = JSON.parse(await readFileText(entry));
 						} catch {}
 					}
 				}
 
 				const teacherFiles = {};
 				for (const [, file] of teacherEntries)
-					teacherFiles[file.name] = await readText(file);
+					teacherFiles[file.name] = await readFileText(file);
 
 				const studentFiles = {};
 				for (const [, file] of studentEntries)
-					studentFiles[file.name] = await readText(file);
+					studentFiles[file.name] = await readFileText(file);
 
 				const imageUris = {};
 				const imageEntries = [...fileMap.entries()].filter(
@@ -1019,7 +984,7 @@
 				);
 				for (const [, file] of imageEntries) {
 					if (!imageUris[file.name]) {
-						imageUris[file.name] = await readDataUri(file);
+						imageUris[file.name] = await readFileDataUri(file);
 					}
 				}
 

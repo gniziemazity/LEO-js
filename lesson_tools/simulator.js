@@ -1,11 +1,5 @@
 "use strict";
 
-function _cssVar(name) {
-	return getComputedStyle(document.documentElement)
-		.getPropertyValue(name)
-		.trim();
-}
-
 const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 

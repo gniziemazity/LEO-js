@@ -93,25 +93,17 @@ async function _buildDiffWindowPayload(student, followPct) {
 	};
 }
 
-async function openDiffWindow(student, mode = null) {
+async function openDifferentiatorWindow(student) {
 	try {
 		const followPct =
 			student.follow_pct != null
 				? student.follow_pct.toFixed(1) + "%"
 				: "N/A";
-		const payloadBuilder = async () =>
-			await _buildDiffWindowPayload(student, followPct);
-		const payload = await payloadBuilder();
-		const dataKey = "diffData_" + Date.now();
-		window.__diffDataResolvers.set(dataKey, payloadBuilder);
-		try {
-			localStorage.setItem(dataKey, JSON.stringify(payload));
-		} catch (e) {
-			console.warn("[KLA diff] localStorage handoff skipped:", e);
-		}
-		window.open(`differentiator.html?key=${dataKey}`, "_blank");
+		await openDifferentiator(() =>
+			_buildDiffWindowPayload(student, followPct),
+		);
 	} catch (err) {
-		console.error("[KLA diff]", err);
+		console.error("[Dashboard diff]", err);
 		alert("Error opening differentiator: " + err.message);
 	}
 }

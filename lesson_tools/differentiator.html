@@ -112,7 +112,7 @@
 				font-family: Consolas, "Courier New", monospace;
 				font-size: 12px;
 				line-height: 1.5;
-				color: #aaa;
+				color: var(--clr-code-muted);
 				background: var(--clr-bg);
 				white-space: pre-wrap;
 				word-wrap: break-word;
@@ -126,7 +126,7 @@
 				font-family: Consolas, "Courier New", monospace;
 				font-size: 12px;
 				line-height: 1.5;
-				color: #aaa;
+				color: var(--clr-code-muted);
 				background: var(--clr-bg);
 				tab-size: 4;
 				-moz-tab-size: 4;
@@ -148,7 +148,7 @@
 				display: inline-block;
 				margin: 0 4px;
 				font-weight: 600;
-				color: #999;
+				color: var(--clr-text-faint);
 			}
 			.diff-spacer {
 				display: block;
@@ -165,12 +165,12 @@
 				font-weight: normal;
 				text-transform: none;
 				letter-spacing: 0;
-				border: 1px solid #bbb;
+				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 4px;
 				background: var(--clr-bg);
 				color: var(--clr-label);
 				cursor: pointer;
-				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+				box-shadow: var(--shadow-soft);
 			}
 			.btn-edit:hover {
 				background: var(--clr-accent-light);
@@ -194,7 +194,7 @@
 			.code-aligned[contenteditable="true"] {
 				outline: none;
 				caret-color: var(--clr-accent);
-				background: #fffbe6;
+				background: var(--clr-highlight-warm);
 			}
 
 			#bottom-bar {
@@ -210,12 +210,12 @@
 			#mode-select {
 				padding: 4px 8px;
 				font-size: 11px;
-				border: 1px solid #bbb;
+				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 4px;
 				background: var(--clr-bg);
 				color: var(--clr-label);
 				cursor: pointer;
-				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+				box-shadow: var(--shadow-soft);
 			}
 
 			.preview-frame {
@@ -238,16 +238,16 @@
 				cursor: pointer;
 			}
 			.leo-mark.leo-highlight-active {
-				background-color: rgba(255, 220, 0, 0.45);
-				outline: 1px solid #c79a00;
+				background-color: var(--clr-highlight-active-bg);
+				outline: 1px solid var(--clr-highlight-active);
 				border-radius: 2px;
 			}
 			.leo-mark.leo-highlight-pair-extra {
-				background-color: rgba(0, 0, 200, 0.22);
+				background-color: var(--clr-mark-extra-pair-bg);
 				outline: 1px solid var(--clr-mark-extra);
 			}
 			.leo-mark.leo-highlight-pair-missing {
-				background-color: rgba(220, 0, 0, 0.22);
+				background-color: var(--clr-mark-missing-pair-bg);
 				outline: 1px solid var(--clr-mark-missing);
 			}
 			.swap-paired {
@@ -261,8 +261,8 @@
 				text-decoration: underline dotted var(--clr-mark-missing);
 			}
 			.swap-paired.swap-partner-active {
-				background-color: rgba(120, 80, 200, 0.25);
-				outline: 1px solid #6a3aa0;
+				background-color: var(--clr-swap-pair-bg);
+				outline: 1px solid var(--clr-swap-pair);
 				border-radius: 2px;
 			}
 			.insert-source {
@@ -271,7 +271,7 @@
 			.insert-anchor {
 				display: inline-block;
 				cursor: pointer;
-				color: #c79a00;
+				color: var(--clr-highlight-active);
 				font-size: 9px;
 				line-height: 1;
 				vertical-align: middle;
@@ -320,29 +320,29 @@
 				padding: 1px 2px;
 			}
 			#leo-tooltip .leo-row.leo-this {
-				outline: 2px solid #000;
-				box-shadow: inset 4px 0 0 #000;
+				outline: 2px solid var(--clr-black);
+				box-shadow: inset 4px 0 0 var(--clr-black);
 			}
 			#leo-tooltip .leo-pair {
-				outline: 1px solid #000;
+				outline: 1px solid var(--clr-black);
 				margin: 2px 0;
 			}
 			#leo-tooltip .leo-pair.leo-this {
-				outline: 2px solid #000;
-				box-shadow: inset 4px 0 0 #000;
+				outline: 2px solid var(--clr-black);
+				box-shadow: inset 4px 0 0 var(--clr-black);
 			}
 			#leo-tooltip .leo-row.leo-row-ghost {
 				font-style: italic;
 				opacity: 0.85;
 			}
 			#leo-tooltip .leo-row.leo-row-missing {
-				background: rgba(220, 0, 0, 0.08);
+				background: var(--clr-mark-missing-soft-bg);
 			}
 			#leo-tooltip .leo-row.leo-row-extra {
-				background: rgba(0, 0, 200, 0.08);
+				background: var(--clr-mark-extra-soft-bg);
 			}
 			#leo-tooltip .leo-row.leo-row-extra-star {
-				background: rgba(58, 160, 224, 0.1);
+				background: var(--clr-mark-ghost-soft-bg);
 			}
 			#leo-tooltip .leo-row.leo-sep {
 				justify-content: center;
@@ -364,7 +364,7 @@
 			#leo-tooltip .leo-before,
 			#leo-tooltip .leo-after {
 				flex: 1 1 0;
-				color: #444;
+				color: var(--clr-label);
 				overflow: hidden;
 				white-space: nowrap;
 				min-width: 80px;
@@ -386,35 +386,35 @@
 				flex: 0 0 auto;
 				font-weight: 700;
 				padding: 0 4px;
-				background: #fff7d6;
-				border: 1px solid #d6c477;
+				background: var(--clr-highlight-warm-soft);
+				border: 1px solid var(--clr-highlight-warm-border);
 				border-radius: 2px;
 			}
 			#leo-tooltip .leo-ghost-tok {
-				color: #aaa;
+				color: var(--clr-code-muted);
 				font-style: italic;
 			}
 
 			.leo-mark.truth-group-bg-missing {
-				background-color: rgba(220, 0, 0, 0.07);
+				background-color: var(--clr-mark-missing-soft-bg);
 			}
 			.leo-mark.truth-group-bg-extra {
-				background-color: rgba(0, 0, 200, 0.07);
+				background-color: var(--clr-mark-extra-soft-bg);
 			}
 			.leo-mark.truth-group-bg-ghost {
-				background-color: rgba(58, 160, 224, 0.08);
+				background-color: var(--clr-mark-ghost-soft-bg);
 			}
 
 			.leo-mark.truth-group-hover {
 				outline: 1px dashed rgba(0, 0, 0, 0.55);
 				outline-offset: 0;
 				border-radius: 2px;
-				background-color: rgba(255, 220, 0, 0.18);
+				background-color: var(--clr-highlight-soft-bg);
 			}
 
 			.leo-mark.truth-connect-target,
 			#truth-connect-token-hover {
-				background-color: rgba(255, 220, 0, 0.45);
+				background-color: var(--clr-highlight-active-bg);
 				outline: 2px solid var(--clr-mark-missing);
 				border-radius: 2px;
 			}
@@ -441,11 +441,11 @@
 				letter-spacing: 0.5px;
 				text-transform: uppercase;
 				white-space: nowrap;
-				color: #000;
+				color: var(--clr-black);
 				background: rgba(255, 255, 255, 0.8);
 				padding: 2px 5px;
 				border-radius: 2px;
-				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+				box-shadow: var(--shadow-soft);
 			}
 			#truth-connect-label.is-visible {
 				display: block;
@@ -480,13 +480,13 @@
 			}
 			.btn-edit.truth-only-btn,
 			#btn-generate-truth {
-				background: #d6e7f5;
-				border-color: #a4c4e2;
-				color: #245481;
+				background: var(--clr-info-pill-bg);
+				border-color: var(--clr-info-pill-border);
+				color: var(--clr-info-pill-text);
 			}
 			.btn-edit.truth-only-btn:hover,
 			#btn-generate-truth:hover {
-				background: #c0d7ec;
+				background: var(--clr-info-pill-hover);
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
@@ -506,9 +506,9 @@
 			#truth-controls .tc-row button {
 				font-size: 11px;
 				padding: 3px 8px;
-				border: 1px solid #bbb;
+				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 3px;
-				background: #f8f8f8;
+				background: var(--clr-btn-bg-soft);
 				color: var(--clr-text);
 				cursor: pointer;
 				appearance: none;
@@ -520,46 +520,46 @@
 				color: var(--clr-accent);
 			}
 			#truth-controls .tc-row button.tc-btn-del {
-				background: #fff5f5;
-				border-color: #d99;
-				color: #c00;
+				background: var(--clr-danger-soft-bg);
+				border-color: var(--clr-danger-soft-border);
+				color: var(--clr-danger);
 			}
 			#truth-controls .tc-row button.tc-btn-del:hover {
-				background: #fee;
-				color: #c00;
+				background: var(--clr-danger-hover-bg);
+				color: var(--clr-danger);
 			}
 			#truth-controls .tc-row button.tc-btn-missing {
 				background: var(--clr-mark-missing);
 				color: var(--clr-bg);
-				border-color: #b00;
+				border-color: var(--clr-danger-dark);
 				font-weight: 700;
 			}
 			#truth-controls .tc-row button.tc-btn-missing:hover {
-				background: #c00;
+				background: var(--clr-danger);
 				color: var(--clr-bg);
-				border-color: #800;
+				border-color: var(--clr-danger-darker);
 			}
 			#truth-controls .tc-row button.tc-btn-extra {
 				background: var(--clr-mark-extra);
 				color: var(--clr-bg);
-				border-color: #008;
+				border-color: var(--clr-extra-dark);
 				font-weight: 700;
 			}
 			#truth-controls .tc-row button.tc-btn-extra:hover {
-				background: #008;
+				background: var(--clr-extra-dark);
 				color: var(--clr-bg);
-				border-color: #006;
+				border-color: var(--clr-extra-darker);
 			}
 			#truth-controls .tc-row button.tc-btn-ghost {
 				background: var(--clr-mark-ghost);
 				color: var(--clr-bg);
-				border-color: #2880c0;
+				border-color: var(--clr-ghost-dark);
 				font-weight: 700;
 			}
 			#truth-controls .tc-row button.tc-btn-ghost:hover {
-				background: #2880c0;
+				background: var(--clr-ghost-dark);
 				color: var(--clr-bg);
-				border-color: #1668a0;
+				border-color: var(--clr-ghost-darker);
 			}
 			#truth-controls .tc-tokens {
 				font-size: 11px;
@@ -570,7 +570,7 @@
 				border-radius: 3px;
 			}
 			#truth-controls .tc-tokens code {
-				color: #222;
+				color: var(--clr-gray);
 			}
 
 			.truth-float-win#truth-float-win {
@@ -585,8 +585,8 @@
 				margin: 6px 0 2px;
 			}
 			.truth-float-win .tw-pre {
-				background: #fafafa;
-				border: 1px solid #eee;
+				background: var(--clr-surface-soft);
+				border: 1px solid var(--clr-border-mid);
 				padding: 6px;
 				white-space: pre;
 				word-wrap: normal;
@@ -598,7 +598,7 @@
 			}
 			.truth-float-win .tw-summary-row {
 				padding: 6px 0;
-				border-bottom: 1px dashed #eee;
+				border-bottom: 1px dashed var(--clr-border-mid);
 			}
 			.truth-float-win .tw-summary-head {
 				font-size: 11px;
@@ -606,12 +606,12 @@
 				margin-bottom: 2px;
 			}
 			.truth-float-win .tw-summary-suffix {
-				color: #666;
+				color: var(--clr-text-dim);
 				margin-left: 6px;
 			}
 			.truth-float-win .tw-summary-pre {
-				background: #fafafa;
-				border: 1px solid #eee;
+				background: var(--clr-surface-soft);
+				border: 1px solid var(--clr-border-mid);
 				padding: 4px 6px;
 				margin: 2px 0;
 				white-space: pre;
@@ -626,7 +626,7 @@
 			}
 			.truth-float-win .tw-summary-arrow {
 				font-size: 10.5px;
-				color: #666;
+				color: var(--clr-text-dim);
 			}
 
 			.truth-float-win .tw-preview-split {

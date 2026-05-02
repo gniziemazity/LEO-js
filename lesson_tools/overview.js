@@ -1,50 +1,17 @@
 "use strict";
 
-function _hexToRgba(hex, a) {
-	const r = parseInt(hex.slice(1, 3), 16);
-	const g = parseInt(hex.slice(3, 5), 16);
-	const b = parseInt(hex.slice(5, 7), 16);
-	return `rgba(${r},${g},${b},${a})`;
-}
-
 const OV_CLR = {
-	accent: _cssVar("--clr-accent") || "#007acc",
-	red: _cssVar("--clr-red") || "#cc2222",
-	label: _cssVar("--clr-label") || "#555",
-	muted: _cssVar("--clr-muted") || "#888",
+	accent: _cssVar("--clr-accent"),
+	red: _cssVar("--clr-red"),
+	label: _cssVar("--clr-label"),
+	muted: _cssVar("--clr-muted"),
+	neg: _cssVar("--clr-neg"),
+	textStrong: _cssVar("--clr-text-strong"),
+	textFaint: _cssVar("--clr-text-faint"),
+	codeMuted: _cssVar("--clr-code-muted"),
+	borderMid: _cssVar("--clr-border-mid"),
+	textSoft: _cssVar("--clr-text-soft"),
 };
-
-function _idbOpen() {
-	return new Promise((res, rej) => {
-		const req = indexedDB.open("grades-dash", 1);
-		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
-		req.onsuccess = (e) => res(e.target.result);
-		req.onerror = () => rej(req.error);
-	});
-}
-async function _idbGet(key) {
-	try {
-		const db = await _idbOpen();
-		return await new Promise((res) => {
-			const r = db.transaction("state").objectStore("state").get(key);
-			r.onsuccess = () => res(r.result ?? null);
-			r.onerror = () => res(null);
-		});
-	} catch {
-		return null;
-	}
-}
-async function _idbSet(key, value) {
-	try {
-		const db = await _idbOpen();
-		await new Promise((res, rej) => {
-			const tx = db.transaction("state", "readwrite");
-			tx.objectStore("state").put(value, key);
-			tx.oncomplete = res;
-			tx.onerror = rej;
-		});
-	} catch {}
-}
 
 const COL = {
 	id: 0,
@@ -135,11 +102,11 @@ document.getElementById("open-btn").addEventListener("click", pickFolder);
 
 async function pickFolder() {
 	try {
-		const lastDir = await _idbGet("lastCourseDir");
+		const lastDir = await _idbGet("lastCourseDir", "grades-dash");
 		const opts = { mode: "read" };
 		if (lastDir) opts.startIn = lastDir;
 		const handle = await window.showDirectoryPicker(opts);
-		await _idbSet("lastCourseDir", handle);
+		await _idbSet("lastCourseDir", handle, "grades-dash");
 		showLoading(true);
 		await loadCourse(handle);
 		showLoading(false);
@@ -150,7 +117,7 @@ async function pickFolder() {
 }
 
 (async function tryAutoLoad() {
-	const handle = await _idbGet("lastCourseDir");
+	const handle = await _idbGet("lastCourseDir", "grades-dash");
 	if (!handle || handle.kind !== "directory") return;
 	try {
 		const perm = await handle.requestPermission({ mode: "read" });
@@ -483,8 +450,8 @@ function renderTable() {
 		fg.style.color = s.passed_course
 			? ""
 			: s.final_grade != null
-				? "#dc2626"
-				: "#bbb";
+				? OV_CLR.neg
+				: OV_CLR.codeMuted;
 		fg.style.fontWeight = "700";
 		tr.appendChild(fg);
 
@@ -533,10 +500,10 @@ function fmtN(v, dec = 0) {
 	return dec > 0 ? (+v).toFixed(dec) : Math.round(+v).toString();
 }
 function followFg(pct) {
-	if (pct < 40) return "#cc2222";
-	if (pct < 60) return "#993311";
-	if (pct < 75) return "#555";
-	return "#111";
+	if (pct < 40) return OV_CLR.red;
+	if (pct < 60) return _cssVar("--clr-orange");
+	if (pct < 75) return OV_CLR.label;
+	return OV_CLR.textStrong;
 }
 function statusCellCls(s) {
 	if (!s) return "";
@@ -851,7 +818,7 @@ function renderStats() {
 			["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
 			["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
 		].forEach(([k, v]) => {
-			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid #f0f0f0"><span>${escHtml(k)}</span><span>${v}</span></div>`;
+			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
 		});
 		card.insertAdjacentHTML("beforeend", html);
 	}
@@ -993,13 +960,13 @@ function addPassingCard(parent, labels, passCounts, participCounts) {
 	chart.setData(labels, [
 		{
 			data: passCounts,
-			backgroundColor: "#555555",
-			borderColor: "#555555",
+			backgroundColor: OV_CLR.label,
+			borderColor: OV_CLR.label,
 		},
 		{
 			data: notPassCounts,
-			backgroundColor: "#cccccc",
-			borderColor: "#bbbbbb",
+			backgroundColor: _cssVar("--clr-border-strong"),
+			borderColor: _cssVar("--clr-code-muted"),
 		},
 	]);
 	_barCharts.push(chart);
@@ -1055,7 +1022,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		const h = card.querySelector("h3");
 		h.insertAdjacentHTML(
 			"beforeend",
-			`<span style="margin-left:6px;font-size:11px;color:#111111">●</span>` +
+			`<span style="margin-left:6px;font-size:11px;color:${OV_CLR.textStrong}">●</span>` +
 				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>` +
 				`<span style="font-size:11px;color:${OV_CLR.red}">●</span>` +
 				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> AI</span>`,
@@ -1087,7 +1054,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 	chart.setDatasets([
 		{
 			data: noAI,
-			color: "#11111199",
+			color: _hexToRgba(OV_CLR.textStrong, 0.6),
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1096,7 +1063,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		},
 		{
 			data: aiPts,
-			color: OV_CLR.red + "99",
+			color: _hexToRgba(OV_CLR.red, 0.6),
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1106,7 +1073,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		{
 			data: trend,
 			type: "line",
-			color: "#888",
+			color: OV_CLR.muted,
 			lineDash: [4, 4],
 			lineWidth: 1.5,
 		},
@@ -1178,7 +1145,7 @@ function addProgressTotals(container) {
 			min: 0,
 			max: 100,
 			ticks: [0, 20, 40, 60, 80, 100],
-			color: "#999",
+			color: OV_CLR.textFaint,
 		},
 		rightAxis: {
 			min: 0,
@@ -1246,7 +1213,7 @@ function renderProgress() {
 				min: -4,
 				max: 104,
 				ticks: [0, 20, 40, 60, 80, 100],
-				color: "#999",
+				color: OV_CLR.textFaint,
 			},
 			rightAxis: {
 				min: -0.25,

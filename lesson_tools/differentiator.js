@@ -1,11 +1,11 @@
 "use strict";
 
 const DIFF_LABEL_COLORS = {
-	missing: "#e00",
-	comment: "#4a4",
-	extra: "#00c",
-	ghost_extra: "#3aa0e0",
-	extra_comment: "#080",
+	missing: _cssVar("--clr-mark-missing"),
+	comment: _cssVar("--clr-mark-comment"),
+	extra: _cssVar("--clr-mark-extra"),
+	ghost_extra: _cssVar("--clr-mark-ghost"),
+	extra_comment: _cssVar("--clr-mark-extra-comment"),
 };
 
 let _diffMode = null;
@@ -176,7 +176,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 	if (modeSelect) {
 		modeSelect.addEventListener("change", () => {
 			_diffMode = modeSelect.value;
-			_applyDiffModeLabel();
 			_applyCurrentMarks();
 			if (typeof _truthEnable === "function") {
 				_truthEnable();
@@ -710,8 +709,7 @@ function _renderGhostBlob(ghost, tokensTbl) {
 	_GHOST_TOKEN_RE.lastIndex = 0;
 	let m;
 	while ((m = _GHOST_TOKEN_RE.exec(text)) !== null) {
-		if (m.index > lastEnd)
-			out += _ghostWhitespaceHtml(text.slice(lastEnd, m.index));
+		if (m.index > lastEnd) out += escHtml(text.slice(lastEnd, m.index));
 		const tok = m[0];
 		const offset = m.index;
 		if (tokensTbl && tokensTbl[tok]) {
@@ -724,20 +722,13 @@ function _renderGhostBlob(ghost, tokensTbl) {
 		}
 		lastEnd = m.index + tok.length;
 	}
-	if (lastEnd < text.length) out += _ghostWhitespaceHtml(text.slice(lastEnd));
+	if (lastEnd < text.length) out += escHtml(text.slice(lastEnd));
 	out += "</span>";
 	return out;
 }
 
-function _ghostWhitespaceHtml(s) {
-	return escHtml(s);
-}
-
 function _labelColor(label) {
-	if (label === "missing") return "#e00";
-	if (label === "extra") return "#00c";
-	if (label === "ghost_extra") return "#3aa0e0";
-	return "#666";
+	return DIFF_LABEL_COLORS[label] || _cssVar("--clr-btn-hover-dark");
 }
 
 function _ctxSlice(inst, side) {
@@ -1014,7 +1005,9 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		const fmt = isSelf ? _fmtCtxToken : _fmtCtxTokenBold;
 		const before = ctx ? ctx.before.map(fmt).join(" ") : "";
 		const after = ctx ? ctx.after.map(fmt).join(" ") : "";
-		const lblColor = inst.ghost ? "#888" : _labelColor(inst.label);
+		const lblColor = inst.ghost
+			? _cssVar("--clr-muted")
+			: _labelColor(inst.label);
 		const cls =
 			`leo-row ${labelClass(inst)}${highlight ? " leo-this" : ""}`.trim();
 		const scoreCell =
@@ -1195,9 +1188,6 @@ function _findMarkAtPos(side, token, pos) {
 }
 
 function _renderSimpleTooltip(token, mark) {
-	const tEsc = escHtml(token);
-	const label = mark.label || "matched";
-	const color = DIFF_LABEL_COLORS[label] || "#666";
 	let html = "";
 	if (mark.timestamp) {
 		html += `<div class="leo-row"><span class="leo-sub">teacher typed: ${escHtml(mark.timestamp)}</span></div>`;
@@ -1224,7 +1214,7 @@ function _showLeoTooltip(target) {
 		if (!mark) return;
 		_applyMarkPairHighlight(target);
 		const label = mark.label || "matched";
-		const color = DIFF_LABEL_COLORS[label] || "#666";
+		const color = _labelColor(label);
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
 		_leoTipBody.innerHTML = _renderSimpleTooltip(token, mark);
 		tip.style.display = "flex";
@@ -1449,8 +1439,6 @@ function _showInsertAnchorOrigin(anchor) {
 		_insertHighlighted.push(anchor);
 	}
 }
-
-function _applyDiffModeLabel() {}
 
 function _saveState(side) {
 	const tabs = document.getElementById(`tabs-${side}`);

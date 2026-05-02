@@ -1,5 +1,57 @@
 "use strict";
 
+function _cssVar(name) {
+	return getComputedStyle(document.documentElement)
+		.getPropertyValue(name)
+		.trim();
+}
+
+function _hexToRgba(hex, a) {
+	const r = parseInt(hex.slice(1, 3), 16);
+	const g = parseInt(hex.slice(3, 5), 16);
+	const b = parseInt(hex.slice(5, 7), 16);
+	return `rgba(${r},${g},${b},${a})`;
+}
+
+function _idbOpen(dbName = "lesson_tools") {
+	return new Promise((res, rej) => {
+		const req = indexedDB.open(dbName, 1);
+		req.onupgradeneeded = (e) => {
+			const db = e.target.result;
+			if (!db.objectStoreNames.contains("state")) {
+				db.createObjectStore("state");
+			}
+		};
+		req.onsuccess = (e) => res(e.target.result);
+		req.onerror = () => rej(req.error);
+	});
+}
+
+async function _idbGet(key, dbName = "lesson_tools") {
+	try {
+		const db = await _idbOpen(dbName);
+		return await new Promise((res) => {
+			const r = db.transaction("state").objectStore("state").get(key);
+			r.onsuccess = () => res(r.result ?? null);
+			r.onerror = () => res(null);
+		});
+	} catch {
+		return null;
+	}
+}
+
+async function _idbSet(key, value, dbName = "lesson_tools") {
+	try {
+		const db = await _idbOpen(dbName);
+		await new Promise((res, rej) => {
+			const tx = db.transaction("state", "readwrite");
+			tx.objectStore("state").put(value, key);
+			tx.oncomplete = res;
+			tx.onerror = rej;
+		});
+	} catch {}
+}
+
 const DIFF_MARKS_FILES = {
 	"": "diff_marks_leo_star.json",
 	leo: "diff_marks_leo.json",

@@ -1,11 +1,5 @@
 "use strict";
 
-function _cssVar(name) {
-	return getComputedStyle(document.documentElement)
-		.getPropertyValue(name)
-		.trim();
-}
-
 function lowerBound(arr, val, key) {
 	let lo = 0,
 		hi = arr.length;
@@ -57,4 +51,34 @@ function rotatedLabel(ctx, x, y, text, color) {
 
 function showLoading(on) {
 	document.getElementById("loading").style.display = on ? "flex" : "none";
+}
+
+function resolveInteractionStudent(field) {
+	if (typeof field === "number") {
+		return _studentIdMap?.[field] || null;
+	}
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		if (!trimmed) return null;
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
+			return _studentIdMap?.[asNum] || null;
+		}
+		return trimmed;
+	}
+	return null;
+}
+
+function resolveInteractionStudentDisplay(field) {
+	const name = resolveInteractionStudent(field);
+	if (name) return name;
+	if (typeof field === "number") return `ID ${field}`;
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed)
+			return `ID ${asNum}`;
+		return trimmed;
+	}
+	return "";
 }

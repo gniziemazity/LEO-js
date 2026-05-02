@@ -1,9 +1,3 @@
-:root {
-	--clr-legend-label: #333;
-	--clr-btn-hover-dark: #666;
-	--bg-legend: #fff8;
-}
-
 body {
 	background: var(--clr-page);
 	height: 100vh;
@@ -86,7 +80,7 @@ body {
 	font:
 		11px Consolas,
 		monospace;
-	color: var(--clr-legend-label);
+	color: var(--clr-text-soft);
 	white-space: nowrap;
 }
 
@@ -155,7 +149,7 @@ body {
 	position: absolute;
 	left: 68px;
 	top: 21px;
-	background-color: var(--bg-legend);
+	background-color: var(--clr-legend-bg);
 	padding: 5px;
 	display: flex;
 	flex-direction: column;
@@ -166,7 +160,7 @@ body {
 	font:
 		bold 10px Consolas,
 		monospace;
-	color: var(--clr-legend-label);
+	color: var(--clr-text-soft);
 	margin-bottom: 3px;
 	user-select: none;
 }
@@ -178,7 +172,7 @@ body {
 	font:
 		10px Consolas,
 		monospace;
-	color: var(--clr-legend-label);
+	color: var(--clr-text-soft);
 	height: 14px;
 	user-select: none;
 	white-space: nowrap;

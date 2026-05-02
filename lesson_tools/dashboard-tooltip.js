@@ -3,26 +3,8 @@
 const tooltipEl = document.getElementById("tooltip");
 let _pinned = null;
 
-function getStudentNameFromInteraction(field) {
-	if (typeof field === "number") {
-		const resolved = _studentIdMap[field] || `ID ${field}`;
-		return resolved;
-	}
-	if (typeof field === "string") {
-		const trimmed = field.trim();
-		if (!trimmed) return "";
-		const asNum = Number(trimmed);
-		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
-			const resolved = _studentIdMap[asNum] || `ID ${asNum}`;
-			return resolved;
-		}
-		return trimmed;
-	}
-	return null;
-}
-
 function matchesStudentName(interactionField, studentName) {
-	const interactionName = getStudentNameFromInteraction(interactionField);
+	const interactionName = resolveInteractionStudentDisplay(interactionField);
 	if (!interactionName || !studentName) return false;
 	return interactionName.trim() === studentName.trim();
 }
@@ -83,7 +65,7 @@ function setupHover(c1, c2, c3, p, L) {
 					return;
 				}
 				if (id === "c3" && hit.type === "student") {
-					openDiffWindow(hit.s, null);
+					openDifferentiatorWindow(hit.s);
 					return;
 				}
 				if (_pinned === hit) {
@@ -211,10 +193,7 @@ function hitChart3(ts, my, p, L, thT) {
 		const jitter = _shake
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
-		const sy = Math.max(
-			_minY,
-			Math.min(_maxY, studentY(s, L) + jitter.dy),
-		);
+		const sy = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
 
 		if (s.follow_dt != null && _chart3Visible.firstMismatch) {
 			const jitterDt = (jitter.dx / L.plotW) * (L.timeMax - L.timeMin);
@@ -503,7 +482,7 @@ function formatHitSimple(hit) {
 				let h = `<span style="color:${clr}">❓ ${escHtml(q.info || "")}</span>`;
 				if (q.answered_by && q.answered_by.length) {
 					const names = q.answered_by.map((field) =>
-						getStudentNameFromInteraction(field),
+						resolveInteractionStudentDisplay(field),
 					);
 					h += `\nAnswered by: ${names.map(escHtml).join(", ")}`;
 				}
@@ -511,14 +490,14 @@ function formatHitSimple(hit) {
 			} else if (hit.itype === "student-question") {
 				let h = `<span style="color:${clr}">🙋 ${escHtml(q.info || "")}</span>`;
 				if (q.asked_by) {
-					const name = getStudentNameFromInteraction(q.asked_by);
+					const name = resolveInteractionStudentDisplay(q.asked_by);
 					h += `\nAsked by: ${escHtml(name)}`;
 				}
 				return h;
 			} else if (hit.itype === "providing-help") {
 				let h = `<span style="color:${clr}">🤝 Providing Help</span>`;
 				if (q.student) {
-					const name = getStudentNameFromInteraction(q.student);
+					const name = resolveInteractionStudentDisplay(q.student);
 					h += `\nStudent: ${escHtml(name)}`;
 				}
 				return h;

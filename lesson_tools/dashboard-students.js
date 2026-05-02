@@ -25,8 +25,8 @@ async function loadXlsxFiles(files) {
 	try {
 		showLoading(true);
 		const [rBuf, sBuf] = await Promise.all([
-			readAsArray(remarksFile),
-			readAsArray(simFile),
+			readFileArray(remarksFile),
+			readFileArray(simFile),
 		]);
 		const sessionDate = new Date(_p.sessionStart * 1000);
 		const result = parseStudentData(
@@ -48,15 +48,6 @@ async function loadXlsxFiles(files) {
 		showLoading(false);
 		alert("Error loading xlsx files:\n" + ex.message);
 	}
-}
-
-function readAsArray(file) {
-	return new Promise((res, rej) => {
-		const r = new FileReader();
-		r.onload = (e) => res(new Uint8Array(e.target.result));
-		r.onerror = rej;
-		r.readAsArrayBuffer(file);
-	});
 }
 
 function parseStudentData(

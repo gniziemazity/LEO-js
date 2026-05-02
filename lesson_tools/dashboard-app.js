@@ -24,40 +24,6 @@ async function openFilePicker() {
 	}
 }
 
-function _idbOpen() {
-	return new Promise((res, rej) => {
-		const req = indexedDB.open("lesson_tools", 1);
-		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
-		req.onsuccess = (e) => res(e.target.result);
-		req.onerror = () => rej(req.error);
-	});
-}
-
-async function _idbGet(key) {
-	try {
-		const db = await _idbOpen();
-		return await new Promise((res) => {
-			const r = db.transaction("state").objectStore("state").get(key);
-			r.onsuccess = () => res(r.result ?? null);
-			r.onerror = () => res(null);
-		});
-	} catch {
-		return null;
-	}
-}
-
-async function _idbSet(key, value) {
-	try {
-		const db = await _idbOpen();
-		await new Promise((res, rej) => {
-			const tx = db.transaction("state", "readwrite");
-			tx.objectStore("state").put(value, key);
-			tx.oncomplete = res;
-			tx.onerror = rej;
-		});
-	} catch {}
-}
-
 async function openFolderPicker() {
 	try {
 		const lastDir = await _idbGet("lastDir");
@@ -179,7 +145,10 @@ async function loadJsonData(file, data) {
 		try {
 			const imageUris = await _readImageUris(_allFiles);
 			if (Object.keys(imageUris).length)
-				localStorage.setItem("dashboard_sim_images", JSON.stringify(imageUris));
+				localStorage.setItem(
+					"dashboard_sim_images",
+					JSON.stringify(imageUris),
+				);
 			else localStorage.removeItem("dashboard_sim_images");
 		} catch {}
 	} else {

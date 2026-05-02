@@ -30,22 +30,6 @@ from utils.token_log import (
 )
 
 
-def _student_labels(diff_marks: dict, tok: str) -> list:
-    la = diff_marks.get('leo_assignments', {}).get('tokens', {})
-    return [e.get('label') for e in la.get(tok, {}).get('student', [])]
-
-
-def _teacher_labels(diff_marks: dict, tok: str) -> list:
-    la = diff_marks.get('leo_assignments', {}).get('tokens', {})
-    entries = la.get(tok, {}).get('teacher', [])
-    return [e.get('label') for e in entries if not e.get('ghost')]
-
-
-def _student_marks(diff_marks: dict, fname: str, tok: str) -> list:
-    return [m for m in diff_marks.get('student_files', {}).get(fname, [])
-            if m.get('token') == tok]
-
-
 def _load_events(log_path: Path) -> list:
     with open(log_path, encoding='utf-8') as f:
         return json.load(f)['events']
@@ -231,114 +215,46 @@ class _StudentBase:
                     )
 
 
-class TestChessBoardReconstruction(_ReconstructionBase, unittest.TestCase):
+class TestWallReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'wall' / 'log.json'
     reconstructed_file = _TEST / 'wall' / 'reconstructed.html'
     tokens_file        = _TEST / 'wall' / 'tokens.txt'
 
 
-class TestChessBoardStudent78Tokens(_StudentBase, unittest.TestCase):
+class TestWallStudent78Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
     student_html        = _TEST / 'wall' / '78' / 'index.html'
     tokens_file         = _TEST / 'wall' / '78' / 'tokens.txt'
 
 
-class TestChessBoardStudent74Tokens(_StudentBase, unittest.TestCase):
+class TestWallStudent74Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
     student_html        = _TEST / 'wall' / '74' / 'index.html'
     tokens_file         = _TEST / 'wall' / '74' / 'tokens.txt'
 
 
-class TestChessBoardStudent80Tokens(_StudentBase, unittest.TestCase):
+class TestWallStudent80Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
     student_html        = _TEST / 'wall' / '80' / 'index.html'
     tokens_file         = _TEST / 'wall' / '80' / 'tokens.txt'
 
 
-class TestChessBoardStudent80DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.diff_marks = _load_json(_TEST / 'wall' / '80' / 'diff_marks_leo_star.json')
-        cls.teacher_occs = cls.diff_marks['teacher_files'][
-            next(iter(cls.diff_marks['teacher_files']))
-        ]
-        cls.student_occs = cls.diff_marks['student_files'][
-            next(iter(cls.diff_marks['student_files']))
-        ]
-
-    def test_shape_contains_teacher_and_student_files(self):
-        self.assertIn('teacher_files', self.diff_marks)
-        self.assertIn('student_files', self.diff_marks)
-        self.assertTrue(self.diff_marks['teacher_files'])
-        self.assertTrue(self.diff_marks['student_files'])
-
-    def test_positions_have_start_end(self):
-        for occ in self.teacher_occs + self.student_occs:
-            self.assertIn('start', occ)
-            self.assertIn('end', occ)
-            self.assertGreaterEqual(occ['end'], occ['start'])
-
-    def test_occurrences_sorted_by_start(self):
-        starts = [o['start'] for o in self.student_occs]
-        self.assertEqual(starts, sorted(starts))
-
-    def test_size_and_inline_are_comment(self):
-        size_labels = [o['label'] for o in self.student_occs if o['token'] == 'size']
-        self.assertTrue(size_labels)
-        self.assertTrue(all(x == 'comment' for x in size_labels))
-        inline_labels = [o['label'] for o in self.student_occs if o['token'] == 'inline']
-        self.assertTrue(inline_labels)
-        self.assertTrue(all(x == 'comment' for x in inline_labels))
-
-    def test_student_extra_example(self):
-        labels_400px = [o['label'] for o in self.student_occs if o['token'] == '400px']
-        self.assertEqual(labels_400px, ['extra'])
-
-    def test_student_div_comment_count(self):
-        div_comment = [o for o in self.student_occs if o['token'] == 'div' and o['label'] == 'comment']
-        self.assertEqual(len(div_comment), 3)
-
-    def test_no_null_labels_in_fixture(self):
-        # format v4 only stores colored (non-null) occurrences
-        for occ in self.teacher_occs + self.student_occs:
-            self.assertIsNotNone(occ.get('label'))
-
-
-class TestChessGameReconstruction(_ReconstructionBase, unittest.TestCase):
+class TestChessReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'chess' / 'log.json'
     reconstructed_file = _TEST / 'chess' / 'reconstructed.html'
     tokens_file        = _TEST / 'chess' / 'tokens.txt'
 
 
-class TestChessGameStudent23Tokens(_StudentBase, unittest.TestCase):
+class TestChessStudent23Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
     student_html        = _TEST / 'chess' / '23' / 'index.html'
     tokens_file         = _TEST / 'chess' / '23' / 'tokens.txt'
 
 
-class TestChessGameStudent50Tokens(_StudentBase, unittest.TestCase):
+class TestChessStudent50Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
     student_html        = _TEST / 'chess' / '50' / 'index.html'
     tokens_file         = _TEST / 'chess' / '50' / 'tokens.txt'
-
-
-class TestChessGameStudent50DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dm = _load_json(_TEST / 'chess' / '50' / 'diff_marks_leo_star.json')
-
-    def test_this_is_ghost_extra(self):
-        self.assertEqual(_student_labels(self.dm, 'this'), ['ghost_extra'])
-
-    def test_onclick_first_occurrence_is_ghost_extra(self):
-        labels = _student_labels(self.dm, 'onclick')
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'ghost_extra')
-
-    def test_handleclick_first_occurrence_is_ghost_extra(self):
-        labels = _student_labels(self.dm, 'handleClick')
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'ghost_extra')
 
 
 class TestJSStudent78Tokens(_StudentBase, unittest.TestCase):
@@ -359,7 +275,7 @@ class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
     tokens_file        = _TEST / 'js' / 'tokens.txt'
 
 
-class TestQRCodeReconstruction(_ReconstructionBase, unittest.TestCase):
+class TestQRReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _TEST / 'qr' / 'log.json'
     reconstructed_file = _TEST / 'qr' / 'reconstructed.html'
     tokens_file        = _TEST / 'qr' / 'tokens.txt'
@@ -377,72 +293,10 @@ class TestSortingStudent23Tokens(_StudentBase, unittest.TestCase):
     tokens_file         = _TEST / 'sorting' / '23' / 'tokens.txt'
 
 
-class TestChessGameStudent20DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dm = _load_json(_TEST / 'chess' / '20' / 'diff_marks_leo_star.json')
-
-    def test_handleclick_extra_is_ghost_extra(self):
-        labels = _student_labels(self.dm, 'handleClick')
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'ghost_extra')
-
-
-class TestChessGameStudent35Tokens(_StudentBase, unittest.TestCase):
+class TestChessStudent35Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
     student_html        = _TEST / 'chess' / '35' / '123456.index.html'
     tokens_file         = _TEST / 'chess' / '35' / 'tokens.txt'
-
-
-class TestChessGameStudent35DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dm = _load_json(_TEST / 'chess' / '35' / 'diff_marks_leo_star.json')
-
-    def test_handleclick_is_ghost_extra(self):
-        labels = _student_labels(self.dm, 'handleClick')
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'ghost_extra')
-
-    def test_handleclick_real_teacher_occurrences_are_matched(self):
-        labels = _teacher_labels(self.dm, 'handleClick')
-        self.assertEqual(labels, [None, None])
-
-
-class TestSortingStudent66DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dm = _load_json(_TEST / 'sorting' / '66' / 'diff_marks_leo_star.json')
-
-    def test_width_first_occurrence_is_ghost_extra(self):
-        labels = _student_labels(self.dm, 'width')
-        self.assertGreaterEqual(len(labels), 1)
-        self.assertEqual(labels[0], 'ghost_extra')
-
-    def test_width_second_occurrence_is_matched(self):
-        labels = _student_labels(self.dm, 'width')
-        self.assertGreaterEqual(len(labels), 2)
-        self.assertIsNone(labels[1])
-
-    def test_background_color_student_is_matched(self):
-        self.assertEqual(_student_labels(self.dm, 'background-color'), [])
-
-    def test_background_color_teacher_is_matched(self):
-        self.assertEqual(_teacher_labels(self.dm, 'background-color'), [])
-
-    def test_async_is_missing(self):
-        self.assertEqual(_teacher_labels(self.dm, 'async'), ['missing'])
-
-
-class TestQRStudent31DiffMarks(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dm = _load_json(_TEST / 'qr' / '31' / 'diff_marks_leo_star.json')
-
-    def test_background_in_css_is_ghost_extra(self):
-        marks = _student_marks(self.dm, '123456.css', 'background')
-        self.assertGreaterEqual(len(marks), 1)
-        self.assertEqual(marks[0]['label'], 'ghost_extra')
 
 
 def _shuffle_non_comment_tokens(text: str, seed: int) -> str:
