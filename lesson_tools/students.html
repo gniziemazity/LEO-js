@@ -267,7 +267,7 @@
 
 			function _idbOpen() {
 				return new Promise((res, rej) => {
-					const req = indexedDB.open("kla", 1);
+					const req = indexedDB.open("lesson_tools", 1);
 					req.onupgradeneeded = (e) =>
 						e.target.result.createObjectStore("state");
 					req.onsuccess = (e) => res(e.target.result);

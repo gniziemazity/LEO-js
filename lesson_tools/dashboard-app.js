@@ -26,7 +26,7 @@ async function openFilePicker() {
 
 function _idbOpen() {
 	return new Promise((res, rej) => {
-		const req = indexedDB.open("kla", 1);
+		const req = indexedDB.open("lesson_tools", 1);
 		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
 		req.onsuccess = (e) => res(e.target.result);
 		req.onerror = () => rej(req.error);
@@ -167,7 +167,7 @@ async function loadJsonData(file, data) {
 	_p = p;
 	try {
 		localStorage.setItem(
-			"kla_sim_data",
+			"dashboard_sim_data",
 			JSON.stringify({
 				filePath: file.name,
 				events: data.events || data.keyPresses || [],
@@ -179,11 +179,11 @@ async function loadJsonData(file, data) {
 		try {
 			const imageUris = await _readImageUris(_allFiles);
 			if (Object.keys(imageUris).length)
-				localStorage.setItem("kla_sim_images", JSON.stringify(imageUris));
-			else localStorage.removeItem("kla_sim_images");
+				localStorage.setItem("dashboard_sim_images", JSON.stringify(imageUris));
+			else localStorage.removeItem("dashboard_sim_images");
 		} catch {}
 	} else {
-		localStorage.removeItem("kla_sim_images");
+		localStorage.removeItem("dashboard_sim_images");
 	}
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";

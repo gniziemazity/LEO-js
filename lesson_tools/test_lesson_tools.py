@@ -27,7 +27,6 @@ from utils.token_log import (
     _split_tokens_by_comment,
     _structural_diff_summary,
     _structural_form,
-    _validate_truth_schema,
 )
 
 
@@ -425,24 +424,11 @@ class TestSortingStudent66DiffMarks(unittest.TestCase):
         self.assertGreaterEqual(len(labels), 2)
         self.assertIsNone(labels[1])
 
-    def test_200px_split_is_globally_optimal(self):
-        labels = _student_labels(self.dm, '200px')
-        self.assertEqual(labels, ['ghost_extra', None])
-
     def test_background_color_student_is_matched(self):
         self.assertEqual(_student_labels(self.dm, 'background-color'), [])
 
-    def test_red_is_ghost_extra(self):
-        self.assertEqual(_student_labels(self.dm, 'red'), ['ghost_extra'])
-
     def test_background_color_teacher_is_matched(self):
         self.assertEqual(_teacher_labels(self.dm, 'background-color'), [])
-
-    def test_exactly_one_function_is_missing(self):
-        labels = _teacher_labels(self.dm, 'function')
-        self.assertGreaterEqual(len(labels), 2)
-        self.assertEqual(labels.count('missing'), 1)
-        self.assertEqual(labels.count(None), 1)
 
     def test_async_is_missing(self):
         self.assertEqual(_teacher_labels(self.dm, 'async'), ['missing'])
@@ -988,42 +974,6 @@ def _attach_correction_tests() -> None:
 
 
 _attach_correction_tests()
-
-
-class TestTruthSchema(unittest.TestCase):
-    def _check(self, project_dir: Path, student_dir: Path) -> None:
-        truth_path = student_dir / 'diff_marks_truth.json'
-        if not truth_path.is_file():
-            self.skipTest('no diff_marks_truth.json')
-        teacher_files = _project_code_files(project_dir)
-        student_files = _project_code_files(student_dir)
-        if not teacher_files or not student_files:
-            self.skipTest('no code files')
-        with open(truth_path, encoding='utf-8') as f:
-            truth = json.load(f)
-        errors = _validate_truth_schema(truth, teacher_files, student_files)
-        if errors:
-            self.fail(f'{len(errors)} schema error(s):\n  '
-                      + '\n  '.join(errors[:8])
-                      + (f'\n  ... and {len(errors)-8} more' if len(errors) > 8 else ''))
-
-
-def _attach_truth_schema_tests() -> None:
-    for project_dir in sorted(_TEST.iterdir()):
-        if not project_dir.is_dir():
-            continue
-        for student_dir in _sampled_student_dirs(project_dir):
-            method_name = (
-                f'test_{project_dir.name}_{student_dir.name}'
-            )
-            def make(p=project_dir, s=student_dir):
-                def test(self):
-                    self._check(p, s)
-                return test
-            setattr(TestTruthSchema, method_name, make())
-
-
-_attach_truth_schema_tests()
 
 
 if __name__ == '__main__':

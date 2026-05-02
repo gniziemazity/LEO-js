@@ -1942,7 +1942,7 @@ let vis;
 
 function _simIdbOpen() {
 	return new Promise((res, rej) => {
-		const req = indexedDB.open("kla", 1);
+		const req = indexedDB.open("lesson_tools", 1);
 		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
 		req.onsuccess = (e) => res(e.target.result);
 		req.onerror = () => rej(req.error);
@@ -2036,7 +2036,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			const logTs = logData?.loadedAt || 0;
 			let parsed = null;
 			try {
-				const stored = localStorage.getItem("kla_sim_data");
+				const stored = localStorage.getItem("dashboard_sim_data");
 				if (stored) parsed = JSON.parse(stored);
 			} catch {}
 			const storedTs = parsed?.loadedAt || 0;
@@ -2047,7 +2047,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				const { filePath, events } = parsed;
 				let imageUris = {};
 				try {
-					const raw = localStorage.getItem("kla_sim_images");
+					const raw = localStorage.getItem("dashboard_sim_images");
 					if (raw) imageUris = JSON.parse(raw);
 				} catch {}
 				const micro = expandEvents(events || []);
