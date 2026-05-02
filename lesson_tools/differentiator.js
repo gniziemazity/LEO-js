@@ -160,6 +160,7 @@ function _applyIncomingData(data) {
 	renderPanel("teacher", _teacherFiles, _teacherMarks);
 	renderPanel("student", _studentFiles, _studentMarks);
 	_updateTitleScore();
+	if (typeof _truthEnable === "function") _truthEnable();
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -177,14 +178,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 			_diffMode = modeSelect.value;
 			_applyDiffModeLabel();
 			_applyCurrentMarks();
-			const savedTeacher = _saveState("teacher");
-			const savedStudent = _saveState("student");
-			if (_teacherFiles)
-				renderPanel("teacher", _teacherFiles, _teacherMarks);
-			if (_studentFiles)
-				renderPanel("student", _studentFiles, _studentMarks);
-			_restoreState("teacher", savedTeacher);
-			_restoreState("student", savedStudent);
+			if (typeof _truthEnable === "function") {
+				_truthEnable();
+			} else {
+				const savedTeacher = _saveState("teacher");
+				const savedStudent = _saveState("student");
+				if (_teacherFiles)
+					renderPanel("teacher", _teacherFiles, _teacherMarks);
+				if (_studentFiles)
+					renderPanel("student", _studentFiles, _studentMarks);
+				_restoreState("teacher", savedTeacher);
+				_restoreState("student", savedStudent);
+			}
 			_updateTitleScore();
 			_persistDiffState();
 		});
@@ -268,6 +273,7 @@ function loadFilesFromInput(files, side) {
 					side === "teacher" ? _teacherMarks : _studentMarks,
 				);
 				_updateTitleScore();
+				if (typeof _truthEnable === "function") _truthEnable();
 				_persistDiffState();
 			}
 		};
@@ -1389,24 +1395,39 @@ function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 }
 
 document.addEventListener("mousedown", (ev) => {
-	if (ev.button !== 0) return;
 	if (ev.target.closest && ev.target.closest(".code-aligned[contenteditable]"))
 		return;
-	const mark = ev.target.closest && ev.target.closest(".leo-mark");
-	if (mark) {
-		ev.preventDefault();
-		_showLeoTooltip(mark);
+	if (ev.button === 2) {
+		const mark = ev.target.closest && ev.target.closest(".leo-mark");
+		if (mark) {
+			ev.preventDefault();
+			_showLeoTooltip(mark);
+			return;
+		}
+		const anchor = ev.target.closest && ev.target.closest(".insert-anchor");
+		if (anchor) {
+			ev.preventDefault();
+			_showInsertAnchorOrigin(anchor);
+			return;
+		}
 		return;
 	}
-	const anchor = ev.target.closest && ev.target.closest(".insert-anchor");
-	if (anchor) {
-		ev.preventDefault();
-		_showInsertAnchorOrigin(anchor);
-		return;
-	}
+	if (ev.button !== 0) return;
 	if (_leoTip && _leoTip.style.display === "flex") {
 		if (ev.target.closest && ev.target.closest("#leo-tooltip")) return;
 		_hideLeoTooltip();
+	}
+});
+
+document.addEventListener("contextmenu", (ev) => {
+	const t = ev.target;
+	if (!t || !t.closest) return;
+	if (
+		t.closest(".leo-mark") ||
+		t.closest(".insert-anchor") ||
+		t.closest(".code-pane")
+	) {
+		ev.preventDefault();
 	}
 });
 

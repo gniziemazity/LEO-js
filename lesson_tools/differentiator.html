@@ -395,6 +395,23 @@
 				font-style: italic;
 			}
 
+			.leo-mark.truth-group-bg-missing {
+				background-color: rgba(220, 0, 0, 0.07);
+			}
+			.leo-mark.truth-group-bg-extra {
+				background-color: rgba(0, 0, 200, 0.07);
+			}
+			.leo-mark.truth-group-bg-ghost {
+				background-color: rgba(58, 160, 224, 0.08);
+			}
+
+			.leo-mark.truth-group-hover {
+				outline: 1px dashed rgba(0, 0, 0, 0.55);
+				outline-offset: 0;
+				border-radius: 2px;
+				background-color: rgba(255, 220, 0, 0.18);
+			}
+
 			.leo-mark.truth-connect-target,
 			#truth-connect-token-hover {
 				background-color: rgba(255, 220, 0, 0.45);
@@ -413,20 +430,53 @@
 				z-index: 9998;
 			}
 
-			#truth-connect-cursor {
+			#truth-connect-label {
 				position: fixed;
 				display: none;
 				pointer-events: none;
+				z-index: 9999;
+				font-size: 9px;
+				font-weight: 700;
+				line-height: 1;
+				letter-spacing: 0.5px;
+				text-transform: uppercase;
+				white-space: nowrap;
+				color: #000;
+				background: rgba(255, 255, 255, 0.8);
+				padding: 2px 5px;
+				border-radius: 2px;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+			}
+			#truth-connect-label.is-visible {
+				display: block;
+			}
+
+			#truth-connect-arrow {
+				position: fixed;
+				display: none;
+				pointer-events: none;
+				z-index: 9999;
 				color: var(--clr-mark-missing);
 				font-size: 14px;
 				font-weight: bold;
 				line-height: 1;
-				z-index: 9999;
 				transform: translateX(-3px);
 				text-shadow: 0 0 2px var(--clr-bg);
 			}
-			body.truth-connect-anchor-extra #truth-connect-cursor {
+			#truth-connect-arrow.is-visible {
+				display: block;
+			}
+			body.truth-connect-anchor-extra #truth-connect-arrow {
 				color: var(--clr-mark-extra);
+			}
+
+			body.truth-connect-mode,
+			body.truth-connect-mode .code-pane,
+			body.truth-connect-mode .code-pane *,
+			body.truth-connect-mode .leo-mark,
+			body.truth-connect-mode .diff-line,
+			body.truth-connect-mode .diff-ghost {
+				cursor: default !important;
 			}
 			.btn-edit.truth-only-btn,
 			#btn-generate-truth {
@@ -469,43 +519,47 @@
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
-			#truth-controls .tc-btn-del {
+			#truth-controls .tc-row button.tc-btn-del {
 				background: #fff5f5;
 				border-color: #d99;
 				color: #c00;
 			}
-			#truth-controls .tc-btn-del:hover {
+			#truth-controls .tc-row button.tc-btn-del:hover {
 				background: #fee;
+				color: #c00;
 			}
-			#truth-controls .tc-btn-missing {
+			#truth-controls .tc-row button.tc-btn-missing {
 				background: var(--clr-mark-missing);
 				color: var(--clr-bg);
 				border-color: #b00;
 				font-weight: 700;
 			}
-			#truth-controls .tc-btn-missing:hover {
+			#truth-controls .tc-row button.tc-btn-missing:hover {
 				background: #c00;
 				color: var(--clr-bg);
+				border-color: #800;
 			}
-			#truth-controls .tc-btn-extra {
+			#truth-controls .tc-row button.tc-btn-extra {
 				background: var(--clr-mark-extra);
 				color: var(--clr-bg);
 				border-color: #008;
 				font-weight: 700;
 			}
-			#truth-controls .tc-btn-extra:hover {
+			#truth-controls .tc-row button.tc-btn-extra:hover {
 				background: #008;
 				color: var(--clr-bg);
+				border-color: #006;
 			}
-			#truth-controls .tc-btn-ghost {
+			#truth-controls .tc-row button.tc-btn-ghost {
 				background: var(--clr-mark-ghost);
 				color: var(--clr-bg);
 				border-color: #2880c0;
 				font-weight: 700;
 			}
-			#truth-controls .tc-btn-ghost:hover {
+			#truth-controls .tc-row button.tc-btn-ghost:hover {
 				background: #2880c0;
 				color: var(--clr-bg);
+				border-color: #1668a0;
 			}
 			#truth-controls .tc-tokens {
 				font-size: 11px;

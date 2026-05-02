@@ -28,6 +28,8 @@ function pctToY(pct, L) {
 	);
 }
 
+const CHART3_BOTTOM = 22;
+
 function makeLayout(p, W, H1, H2, H3) {
 	const M = CFG.M;
 	return {
@@ -40,7 +42,7 @@ function makeLayout(p, W, H1, H2, H3) {
 		plotH1: H1 - M.top - M.bottom,
 		plotH2: H2 - M.top - M.bottom,
 		plotH2Pad: 8,
-		plotH3: H3 - M.top - M.bottom,
+		plotH3: H3 - M.top - CHART3_BOTTOM,
 		plotH3Pad: 8,
 		timeMin: _zoomMin ?? p.sessionStart - CFG.PADDING,
 		timeMax: _zoomMax ?? p.sessionEnd + CFG.PADDING,
@@ -82,7 +84,10 @@ function renderCharts(p) {
 	drawChart1(prep(c1, W, H1), p, L);
 	drawChart2(prep(c2, W, H2), p, L);
 	setupChart2Legend(p);
-	if (_students) drawChart3(prep(c3, W, H3), p, _students, L);
+	if (_students) {
+		setupChart3Legend();
+		drawChart3(prep(c3, W, H3), p, _students, L);
+	}
 
 	setupZoomPan(c1, p, L);
 	setupZoomPan(c2, p, L);
@@ -134,6 +139,66 @@ const _chart2Visible = {
 	dev: true,
 	moves: true,
 };
+
+const _chart3Visible = {
+	firstMismatch: true,
+	followRank: true,
+	interactions: true,
+};
+
+let _studentYByName = new Map();
+
+function _computeStudentYs(students, L) {
+	_studentYByName = new Map();
+	if (!students || !students.length) return;
+	if (!_chart3Visible.followRank) {
+		for (const s of students) {
+			_studentYByName.set(s.name, pctToY(s.follow_pct ?? 0, L));
+		}
+		return;
+	}
+	const sorted = [...students].sort(
+		(a, b) => (b.follow_pct ?? 0) - (a.follow_pct ?? 0),
+	);
+	const N = sorted.length;
+	for (let i = 0; i < N; i++) {
+		const y = L.M.top + ((i + 0.5) / N) * L.plotH3;
+		_studentYByName.set(sorted[i].name, y);
+	}
+}
+
+function studentY(s, L) {
+	const y = _studentYByName.get(s.name);
+	if (y != null) return y;
+	return pctToY(s.follow_pct ?? 0, L);
+}
+
+function setupChart3Legend() {
+	const cb1 = document.getElementById("leg3-firstmismatch");
+	if (cb1) {
+		cb1.checked = _chart3Visible.firstMismatch;
+		cb1.onchange = () => {
+			_chart3Visible.firstMismatch = cb1.checked;
+			scheduleRender();
+		};
+	}
+	const cb2 = document.getElementById("leg3-followrank");
+	if (cb2) {
+		cb2.checked = _chart3Visible.followRank;
+		cb2.onchange = () => {
+			_chart3Visible.followRank = cb2.checked;
+			scheduleRender();
+		};
+	}
+	const cb3 = document.getElementById("leg3-interactions");
+	if (cb3) {
+		cb3.checked = _chart3Visible.interactions;
+		cb3.onchange = () => {
+			_chart3Visible.interactions = cb3.checked;
+			scheduleRender();
+		};
+	}
+}
 
 function setupChart2Legend(p) {
 	const totalEl = document.getElementById("leg-total");
@@ -453,19 +518,25 @@ function drawChart3(ctx, p, students, L) {
 	ctx.fillStyle = "#fff";
 	ctx.fillRect(0, 0, W, H);
 
+	_computeStudentYs(students, L);
+
 	ctx.save();
 	ctx.beginPath();
 	ctx.rect(M.left, M.top, plotW, plotH3);
 	ctx.clip();
 
-	ctx.strokeStyle = "#e8e8e8";
-	ctx.lineWidth = 1;
-	for (let v = gs; v <= 100; v += gs) {
-		const y = pctToY(v, L);
-		ctx.beginPath();
-		ctx.moveTo(M.left, y);
-		ctx.lineTo(M.left + plotW, y);
-		ctx.stroke();
+	drawBlockBackgrounds(ctx, p, L);
+
+	if (!_chart3Visible.followRank) {
+		ctx.strokeStyle = "#e8e8e8";
+		ctx.lineWidth = 1;
+		for (let v = gs; v <= 100; v += gs) {
+			const y = pctToY(v, L);
+			ctx.beginPath();
+			ctx.moveTo(M.left, y);
+			ctx.lineTo(M.left + plotW, y);
+			ctx.stroke();
+		}
 	}
 
 	for (const s of students) {
@@ -493,11 +564,15 @@ function drawChart3(ctx, p, students, L) {
 		const minY = L.M.top + (L.plotH3Pad || 0);
 		const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
 		const y0 =
-			Math.max(minY, Math.min(maxY, pctToY(s.follow_pct, L) + jitter.dy)) -
-			barH / 2;
+			Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy)) - barH / 2;
 		for (const cl of clusters) {
-			const x1 = tsToX(cl[0].ts, L);
-			const x2 = Math.max(tsToX(cl[cl.length - 1].ts, L), x1 + 3);
+			let x1 = tsToX(cl[0].ts, L);
+			let x2 = tsToX(cl[cl.length - 1].ts, L);
+			if (x2 - x1 < 3) {
+				const cx = (x1 + x2) / 2;
+				x1 = cx - 1.5;
+				x2 = cx + 1.5;
+			}
 			ctx.fillStyle = isHovered
 				? "rgba(0,0,0,0.85)"
 				: "rgba(180,180,180,0.35)";
@@ -505,59 +580,63 @@ function drawChart3(ctx, p, students, L) {
 		}
 	}
 
-	const answering = new Set(),
-		asking = new Set(),
-		helping = new Set();
-	for (const q of p.interactions["teacher-question"])
-		for (const field of q.answered_by) {
-			const name = resolveInteractionStudent(field);
-			if (name) answering.add(name);
-		}
-	for (const q of p.interactions["student-question"]) {
-		const nm = resolveInteractionStudent(q.asked_by) || "";
-		if (nm.trim()) asking.add(nm.trim());
-	}
-	for (const q of p.interactions["providing-help"]) {
-		const nm = resolveInteractionStudent(q.student) || "";
-		if (nm.trim()) helping.add(nm.trim());
-	}
-
-	for (const s of students) {
-		if (s.follow_dt == null) continue;
-		const jitter = _shake
-			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
-			: { dx: 0, dy: 0 };
-		const x = tsToX(s.follow_dt, L) + jitter.dx;
-		const _minY = L.M.top + (L.plotH3Pad || 0);
-		const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
-		const y = Math.max(
-			_minY,
-			Math.min(_maxY, pctToY(s.follow_pct, L) + jitter.dy),
-		);
-		const ans = answering.has(s.name);
-		const ask = asking.has(s.name);
-		const hlp = helping.has(s.name);
-		const active = ans || ask || hlp;
-		const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
-
-		ctx.save();
-		if (active) {
-			if (isHovered) {
-				drawStar(ctx, x, y, 9, "#000000", 1.0);
-			} else {
-				drawStudentStar(ctx, x, y, ans, ask, hlp);
+	if (_chart3Visible.firstMismatch) {
+		const answering = new Set(),
+			asking = new Set(),
+			helping = new Set();
+		if (_chart3Visible.interactions) {
+			for (const q of p.interactions["teacher-question"])
+				for (const field of q.answered_by) {
+					const name = resolveInteractionStudent(field);
+					if (name) answering.add(name);
+				}
+			for (const q of p.interactions["student-question"]) {
+				const nm = resolveInteractionStudent(q.asked_by) || "";
+				if (nm.trim()) asking.add(nm.trim());
 			}
-		} else {
-			ctx.globalAlpha = isHovered ? 1.0 : 0.65;
-			ctx.beginPath();
-			ctx.arc(x, y, 5, 0, Math.PI * 2);
-			ctx.fillStyle = isHovered ? "#000" : "#CCCCCC";
-			ctx.fill();
-			ctx.strokeStyle = isHovered ? "#000" : "#999";
-			ctx.lineWidth = isHovered ? 1.5 : 0.8;
-			ctx.stroke();
+			for (const q of p.interactions["providing-help"]) {
+				const nm = resolveInteractionStudent(q.student) || "";
+				if (nm.trim()) helping.add(nm.trim());
+			}
 		}
-		ctx.restore();
+
+		for (const s of students) {
+			if (s.follow_dt == null) continue;
+			const jitter = _shake
+				? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
+				: { dx: 0, dy: 0 };
+			const x = tsToX(s.follow_dt, L) + jitter.dx;
+			const _minY = L.M.top + (L.plotH3Pad || 0);
+			const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+			const y = Math.max(
+				_minY,
+				Math.min(_maxY, studentY(s, L) + jitter.dy),
+			);
+			const ans = answering.has(s.name);
+			const ask = asking.has(s.name);
+			const hlp = helping.has(s.name);
+			const active = ans || ask || hlp;
+			const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
+
+			ctx.save();
+			if (active) {
+				if (isHovered) {
+					drawStar(ctx, x, y, 9, "#000000", 1.0);
+				} else {
+					drawStudentStar(ctx, x, y, ans, ask, hlp);
+				}
+			} else {
+				ctx.globalAlpha = isHovered ? 1.0 : 0.65;
+				ctx.beginPath();
+				ctx.arc(x, y, 5, 0, Math.PI * 2);
+				ctx.fillStyle = isHovered ? "#000" : "#CCCCCC";
+				ctx.fill();
+				ctx.strokeStyle = isHovered ? "#000" : "#999";
+				ctx.lineWidth = isHovered ? 1.5 : 0.8;
+				ctx.stroke();
+			}
+			ctx.restore();
+		}
 	}
 
 	ctx.restore();
@@ -567,17 +646,115 @@ function drawChart3(ctx, p, students, L) {
 	ctx.textAlign = "right";
 	ctx.strokeStyle = "#aaa";
 	ctx.lineWidth = 1;
-	for (let v = 0; v <= 100; v += 10) {
-		const y = pctToY(v, L);
-		ctx.fillText(v + "%", M.left - 3, y + 4);
-		ctx.beginPath();
-		ctx.moveTo(M.left - 3, y);
-		ctx.lineTo(M.left, y);
-		ctx.stroke();
+	if (_chart3Visible.followRank) {
+		const N = students.length;
+		if (N > 0) {
+			const ranks = N === 1 ? [1] : [1, N];
+			for (const r of ranks) {
+				const y = M.top + ((r - 0.5) / N) * plotH3;
+				ctx.fillText(String(r), M.left - 3, y + 4);
+				ctx.beginPath();
+				ctx.moveTo(M.left - 3, y);
+				ctx.lineTo(M.left, y);
+				ctx.stroke();
+			}
+		}
+	} else {
+		for (let v = 0; v <= 100; v += 10) {
+			const y = pctToY(v, L);
+			ctx.fillText(v + "%", M.left - 3, y + 4);
+			ctx.beginPath();
+			ctx.moveTo(M.left - 3, y);
+			ctx.lineTo(M.left, y);
+			ctx.stroke();
+		}
 	}
-	rotatedLabel(ctx, 22, M.top + plotH3 / 2, "Follow Score", THEME.label);
+
+	const yLabel = _chart3Visible.followRank ? "Follow Rank" : "Follow Score";
+	rotatedLabel(ctx, 22, M.top + plotH3 / 2, yLabel, THEME.label);
 
 	drawTimeAxis(ctx, L, M.top + plotH3, H);
+	drawBlockMistakeCounts(ctx, p, students, L);
+}
+
+function drawBlockBackgrounds(ctx, p, L) {
+	const { M, plotH3 } = L;
+	const minBarW =
+		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+
+	ctx.save();
+	ctx.fillStyle = "rgba(0, 0, 0, 0.045)";
+
+	const drawBand = (cx, dur) => {
+		const x = tsToX(cx - dur / 2, L);
+		const x2 = tsToX(cx + dur / 2, L);
+		const bw = Math.max(x2 - x, minBarW);
+		const bx = (x + x2) / 2 - bw / 2;
+		ctx.fillRect(bx, M.top, bw, plotH3);
+	};
+
+	for (const b of p.bursts || []) {
+		drawBand(b.centerTs, b.dur);
+	}
+	for (const kp of p.singletons || []) {
+		drawBand(kp.timestamp / 1000, 0);
+	}
+	ctx.restore();
+}
+
+function drawBlockMistakeCounts(ctx, p, students, L) {
+	if (!students || !students.length) return;
+	const { M, plotW } = L;
+	const xMin = M.left;
+	const xMax = M.left + plotW;
+	const labelY = Math.max(8, M.top - 10);
+
+	const blocks = [];
+	const seen = new Set();
+	for (const b of p.bursts || []) {
+		const key = `${b.startTs}|${b.endTs}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		blocks.push({ ts1: b.startTs, ts2: b.endTs });
+	}
+
+	const studentEvs = students.map((s) =>
+		(s.follow_events || []).filter(
+			(e) =>
+				e.ts != null &&
+				e.kind !== "extra" &&
+				e.kind !== "extra-star" &&
+				!(e.kind === "normal" && e.label === "(followed till end)"),
+		),
+	);
+
+	function countStudents(t1, t2) {
+		let n = 0;
+		for (const evs of studentEvs) {
+			for (const e of evs) {
+				if (e.ts >= t1 && e.ts <= t2) {
+					n++;
+					break;
+				}
+			}
+		}
+		return n;
+	}
+
+	ctx.save();
+	ctx.fillStyle = "#222";
+	ctx.font = "bold 10px Consolas,monospace";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+
+	for (const blk of blocks) {
+		const cx = (tsToX(blk.ts1, L) + tsToX(blk.ts2, L)) / 2;
+		if (cx < xMin || cx > xMax) continue;
+		const count = countStudents(blk.ts1, blk.ts2);
+		if (count === 0) continue;
+		ctx.fillText(String(count), cx, labelY);
+	}
+	ctx.restore();
 }
 
 function drawStar(ctx, cx, cy, r, fill, alpha = 1) {

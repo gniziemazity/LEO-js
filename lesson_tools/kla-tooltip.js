@@ -201,30 +201,63 @@ function hitChart2(ts, my, p, L, thT) {
 function hitChart3(ts, my, p, L, thT) {
 	if (!_students) return null;
 	const PY = 10;
+	const DASH_PY = 6;
 	let best = null,
 		bestD = Infinity;
+	const _minY = L.M.top + (L.plotH3Pad || 0);
+	const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+
 	for (const s of _students) {
-		if (s.follow_dt == null) continue;
 		const jitter = _shake
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
-		const jitterDt = (jitter.dx / L.plotW) * (L.timeMax - L.timeMin);
-		const dx = Math.abs(ts - (s.follow_dt + jitterDt));
-		const _minY = L.M.top + (L.plotH3Pad || 0);
-		const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
-		const dy = Math.abs(
-			my -
-				Math.max(
-					_minY,
-					Math.min(_maxY, pctToY(s.follow_pct, L) + jitter.dy),
-				),
+		const sy = Math.max(
+			_minY,
+			Math.min(_maxY, studentY(s, L) + jitter.dy),
 		);
-		if (dx < thT * 3 && dy < PY) {
-			const dxPx = (dx / (L.timeMax - L.timeMin)) * L.plotW;
-			const d = dxPx * dxPx + dy * dy;
-			if (d < bestD) {
+
+		if (s.follow_dt != null && _chart3Visible.firstMismatch) {
+			const jitterDt = (jitter.dx / L.plotW) * (L.timeMax - L.timeMin);
+			const dxDot = Math.abs(ts - (s.follow_dt + jitterDt));
+			const dyDot = Math.abs(my - sy);
+			if (dxDot < thT * 3 && dyDot < PY) {
+				const dxPx = (dxDot / (L.timeMax - L.timeMin)) * L.plotW;
+				const d = dxPx * dxPx + dyDot * dyDot;
+				if (d < bestD) {
+					bestD = d;
+					best = { type: "student", s };
+				}
+			}
+		}
+
+		const dyDash = Math.abs(my - sy);
+		if (dyDash > DASH_PY) continue;
+		const evs = (s.follow_events || []).filter(
+			(e) => e.ts != null && e.kind !== "extra" && e.kind !== "extra-star",
+		);
+		if (!evs.length) continue;
+		const sorted = [...evs].sort((a, b) => a.ts - b.ts);
+		let cl0 = sorted[0].ts;
+		let clN = sorted[0].ts;
+		for (let i = 1; i <= sorted.length; i++) {
+			const cur = i < sorted.length ? sorted[i] : null;
+			if (cur && cur.ts - clN < CFG.BURST_GAP) {
+				clN = cur.ts;
+				continue;
+			}
+			let tIn;
+			if (ts < cl0) tIn = cl0;
+			else if (ts > clN) tIn = clN;
+			else tIn = ts;
+			const dxPx = ((ts - tIn) / (L.timeMax - L.timeMin)) * L.plotW;
+			const d = dxPx * dxPx + dyDash * dyDash;
+			if (d < DASH_PY * DASH_PY && d < bestD) {
 				bestD = d;
 				best = { type: "student", s };
+			}
+			if (cur) {
+				cl0 = cur.ts;
+				clN = cur.ts;
 			}
 		}
 	}
