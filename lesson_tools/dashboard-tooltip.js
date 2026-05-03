@@ -430,10 +430,10 @@ function formatHit(hit, simple = false) {
 						const { ev, n } = counts.get(key);
 						const color =
 							ev.kind === "missing"
-								? "#e53935"
+								? _cssVar("--clr-mark-missing")
 								: ev.kind === "extra-star"
-									? "#3aa0e0"
-									: "#1e88e5";
+									? _cssVar("--clr-mark-ghost")
+									: _cssVar("--clr-mark-extra");
 						const label = escHtml(ev.token || ev.label);
 						const suffix = n > 1 ? `<b>×${n}</b>` : "";
 						return `<span style="color:${color}">${label}${suffix}</span>`;

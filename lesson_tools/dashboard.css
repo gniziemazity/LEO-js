@@ -130,9 +130,6 @@ body {
 	z-index: 10;
 	transition: background 0.15s;
 }
-#btn-shake.active {
-	background: var(--clr-orange);
-}
 #btn-students {
 	top: auto;
 	bottom: 36px;

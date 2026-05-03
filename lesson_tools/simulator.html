@@ -24,13 +24,34 @@
 				flex-direction: column;
 				flex: 1 1 0;
 				min-width: 0;
-				border-right: 2px solid var(--clr-border);
+			}
+
+			#vis-divider,
+			#vis-dev-divider {
+				flex: 0 0 4px;
+				background: var(--clr-border);
+				user-select: none;
+				touch-action: none;
+				transition: background 0.15s;
+			}
+
+			#vis-divider {
+				cursor: col-resize;
+			}
+
+			#vis-dev-divider {
+				cursor: row-resize;
+			}
+
+			#vis-divider:hover,
+			#vis-dev-divider:hover {
+				background: var(--clr-accent);
 			}
 
 			#vis-right {
 				display: flex;
 				flex-direction: column;
-				flex: 0 0 33.33%;
+				flex: 0 0 40%;
 				min-width: 0;
 				background: var(--clr-surface);
 			}
@@ -43,39 +64,27 @@
 			}
 
 			#vis-toolbar {
-				display: flex;
-				align-items: center;
 				gap: 6px;
-				padding: 6px 10px;
-				background: var(--clr-toolbar);
-				border-bottom: 1px solid var(--clr-border);
-				flex-shrink: 0;
 				flex-wrap: wrap;
 			}
 
 			#vis-toolbar button {
-				padding: 4px 12px;
+				padding: 3px 10px;
 				border: none;
 				border-radius: 3px;
 				cursor: pointer;
-				font-size: 12px;
+				font-size: 11px;
 				color: var(--clr-white);
 			}
 
 			#btn-play {
 				background: var(--clr-green);
 			}
-			#btn-reset {
-				background: var(--clr-orange);
-			}
-			#btn-settings {
-				background: var(--clr-surface);
-				color: var(--clr-accent) !important;
-			}
 			#btn-toggle-log,
 			#btn-toggle-devtools {
 				background: var(--clr-muted);
 				padding: 4px 8px;
+				transition: background 0.15s;
 			}
 			#btn-toggle-log:hover,
 			#btn-toggle-devtools:hover {
@@ -83,7 +92,7 @@
 			}
 
 			#vis-toolbar label {
-				font-size: 12px;
+				font-size: 11px;
 				color: var(--clr-muted);
 				display: flex;
 				align-items: center;
@@ -93,7 +102,7 @@
 				width: 120px;
 			}
 			#speed-label {
-				font-size: 12px;
+				font-size: 11px;
 				font-weight: bold;
 				color: var(--clr-accent);
 				min-width: 32px;
@@ -166,26 +175,25 @@
 			}
 
 			#vis-preview {
-				flex: 2 1 0;
+				flex: 5 1 0;
 				min-height: 0;
 				border: none;
 				background: var(--clr-bg);
 			}
 
 			#vis-dev-outer {
-				flex: 1 1 0;
+				flex: 1 1 50px;
 				min-height: 0;
 				display: flex;
 				flex-direction: column;
 				background: var(--clr-surface);
-				border-top: 1px solid var(--clr-border);
 			}
 
 			pre#vis-dev-editor {
 				flex: 1 1 0;
 				overflow: auto;
 				background: var(--clr-surface);
-				color: var(--clr-red);
+				color: var(--clr-green);
 				font-family: Consolas, "Courier New", monospace;
 				font-size: 11px;
 				line-height: 1.5;
@@ -236,42 +244,6 @@
 				50% {
 					background: transparent;
 				}
-			}
-
-			#settings-modal {
-				position: fixed;
-				inset: 0;
-				background: rgba(0, 0, 0, 0.4);
-				z-index: 100;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-			}
-			#settings-box {
-				background: var(--clr-surface);
-				border-radius: 6px;
-				padding: 20px 24px;
-				min-width: 460px;
-				max-height: 80vh;
-				overflow-y: auto;
-				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-			}
-			#settings-box table {
-				border-collapse: collapse;
-				width: 100%;
-			}
-			#settings-box td {
-				padding: 3px 6px;
-				font-size: 12px;
-			}
-			#btn-close-settings {
-				padding: 5px 18px;
-				background: var(--clr-accent);
-				color: var(--clr-white);
-				border: none;
-				border-radius: 3px;
-				cursor: pointer;
-				font-size: 12px;
 			}
 
 			#vis-hover-tip {
@@ -331,6 +303,9 @@
 		<script src=".last_vis_data.js" onerror="void 0"></script>
 		<script src="preview.js"></script>
 		<script src="diff-utils.js"></script>
+		<script src="simulator-model.js"></script>
+		<script src="simulator-highlight.js"></script>
+		<script src="simulator-visualizer.js"></script>
 		<script src="simulator.js"></script>
 	</body>
 </html>

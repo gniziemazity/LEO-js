@@ -122,7 +122,7 @@ async function _readImageUris(fileMap) {
 }
 
 async function loadJsonData(file, data) {
-	document.title = "Dashboard: " + file.name.replace(/\.json$/i, "");
+	document.title = "Dashboard";
 	_zoomMin = _zoomMax = null;
 	_studentIdMap = {};
 	const p = processData(data);

@@ -93,7 +93,6 @@ function renderCharts(p) {
 	setupZoomPan(c2, p, L);
 	if (_students) setupZoomPan(c3, p, L);
 	setupHover(c1, c2, c3, p, L);
-	updateZoomLabel(p, L);
 }
 
 function redrawChart3() {
@@ -557,7 +556,7 @@ function drawChart3(ctx, p, students, L) {
 			}
 			ctx.fillStyle = isHovered
 				? "rgba(0,0,0,0.85)"
-				: "rgba(180,180,180,0.35)";
+				: "rgba(130,130,130,0.5)";
 			ctx.fillRect(x1, y0, x2 - x1, barH);
 		}
 	}
@@ -608,9 +607,9 @@ function drawChart3(ctx, p, students, L) {
 				ctx.globalAlpha = isHovered ? 1.0 : 0.65;
 				ctx.beginPath();
 				ctx.arc(x, y, 5, 0, Math.PI * 2);
-				ctx.fillStyle = isHovered ? "#000" : "#CCCCCC";
+				ctx.fillStyle = isHovered ? "#000" : "#A8A8A8";
 				ctx.fill();
-				ctx.strokeStyle = isHovered ? "#000" : "#999";
+				ctx.strokeStyle = isHovered ? "#000" : "#777";
 				ctx.lineWidth = isHovered ? 1.5 : 0.8;
 				ctx.stroke();
 			}

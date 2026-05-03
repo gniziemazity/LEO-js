@@ -85,6 +85,6 @@ function toggleStudentJitter() {
 		}
 	}
 	const btn = document.getElementById("btn-shake");
-	if (btn) btn.classList.toggle("active", _shake);
+	if (btn) btn.classList.toggle("is-toggle-on", _shake);
 	redrawChart3();
 }

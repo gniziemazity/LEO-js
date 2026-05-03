@@ -65,24 +65,22 @@
 	--hl-css-at: #af00db;
 	--hl-doctype: #007acc;
 
-	--clr-mark-missing: #e00;
-	--clr-mark-extra: #00c;
-	--clr-mark-ghost: #3aa0e0;
+	--clr-mark-missing: #cc2222;
+	--clr-mark-extra: #007acc;
+	--clr-mark-ghost: #6dbcec;
 	--clr-mark-comment: #4a4;
 	--clr-mark-extra-comment: #080;
-	--clr-mark-missing-bg: rgba(220, 0, 0, 0.13);
-	--clr-mark-extra-bg: rgba(0, 0, 200, 0.1);
-	--clr-mark-missing-pair-bg: rgba(220, 0, 0, 0.22);
-	--clr-mark-extra-pair-bg: rgba(0, 0, 200, 0.22);
-	--clr-mark-missing-soft-bg: rgba(220, 0, 0, 0.08);
-	--clr-mark-extra-soft-bg: rgba(0, 0, 200, 0.08);
-	--clr-mark-ghost-soft-bg: rgba(58, 160, 224, 0.08);
+	--clr-mark-missing-bg: rgba(204, 34, 34, 0.13);
+	--clr-mark-extra-bg: rgba(0, 122, 204, 0.1);
+	--clr-mark-missing-pair-bg: rgba(204, 34, 34, 0.22);
+	--clr-mark-extra-pair-bg: rgba(0, 122, 204, 0.22);
+	--clr-mark-missing-soft-bg: rgba(204, 34, 34, 0.08);
+	--clr-mark-extra-soft-bg: rgba(0, 122, 204, 0.08);
+	--clr-mark-ghost-soft-bg: rgba(109, 188, 236, 0.08);
 
 	--clr-highlight-active: #c79a00;
 	--clr-highlight-active-bg: rgba(255, 220, 0, 0.45);
 	--clr-highlight-soft-bg: rgba(255, 220, 0, 0.18);
-	--clr-swap-pair: #6a3aa0;
-	--clr-swap-pair-bg: rgba(120, 80, 200, 0.25);
 
 	--clr-pos: #16a34a;
 	--clr-neg: #dc2626;
@@ -123,6 +121,22 @@ body {
 	font-family: "Segoe UI", sans-serif;
 	font-size: 13px;
 	color: var(--clr-text);
+}
+
+.is-toggle-on {
+	background: var(--clr-orange) !important;
+}
+
+.app-toolbar {
+	display: flex;
+	align-items: center;
+	background: var(--clr-toolbar);
+	border-bottom: 1px solid var(--clr-border);
+	padding: 4px 10px;
+	font-size: 11px;
+	flex-shrink: 0;
+	min-height: 26px;
+	box-sizing: border-box;
 }
 
 .pane-title {

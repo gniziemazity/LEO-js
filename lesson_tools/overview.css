@@ -22,25 +22,20 @@ body {
 
 #toolbar {
 	display: none;
-	align-items: center;
 	gap: 6px;
-	padding: 5px 10px;
-	background: var(--clr-toolbar);
-	border-bottom: 1px solid var(--clr-border-strong);
-	flex-shrink: 0;
-	font-size: 12px;
+	border-bottom-color: var(--clr-border-strong);
 }
 #toolbar.show {
 	display: flex;
 }
 #toolbar button {
-	padding: 3px 11px;
+	padding: 2px 10px;
 	border: 1px solid var(--clr-border-strong);
 	border-radius: 3px;
 	background: var(--clr-bg);
 	color: var(--clr-label);
 	cursor: pointer;
-	font-size: 12px;
+	font-size: 11px;
 	font-family: inherit;
 	transition: 0.12s;
 }

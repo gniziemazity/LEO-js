@@ -81,16 +81,3 @@ function resetZoom() {
 	_zoomMin = _zoomMax = null;
 	scheduleRender();
 }
-
-function updateZoomLabel(p, L) {
-	const fullRange = p.sessionEnd - p.sessionStart + 2 * CFG.PADDING;
-	const curRange = L.timeMax - L.timeMin;
-	const zoom = fullRange / curRange;
-	if (zoom > 1.05) {
-		document.title =
-			document.title.replace(/ \[.*?\]$/, "") +
-			` [Zoom ×${zoom.toFixed(1)}]`;
-	} else {
-		document.title = document.title.replace(/ \[.*?\]$/, "");
-	}
-}

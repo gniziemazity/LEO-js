@@ -14,6 +14,7 @@
 			#diff-root {
 				height: 100vh;
 				width: 100%;
+				position: relative;
 			}
 
 			#diff-scroll {
@@ -21,32 +22,38 @@
 				overflow-y: auto;
 				overflow-x: hidden;
 				display: grid;
-				grid-template-columns: 1fr 1fr;
+				grid-template-columns: 1fr 2px 1fr;
 				grid-template-rows: auto 1fr;
+			}
+
+			#diff-divider {
+				grid-column: 2;
+				grid-row: 1 / -1;
+				background: var(--clr-border);
+				pointer-events: none;
+				z-index: 5;
 			}
 
 			#header-teacher,
 			#header-student {
 				position: sticky;
 				top: 0;
-				z-index: 10;
+				z-index: 10000;
 				grid-row: 1;
 			}
 			#header-teacher {
 				grid-column: 1;
-				border-right: 2px solid var(--clr-border);
 			}
 			#header-student {
-				grid-column: 2;
+				grid-column: 3;
 			}
 
 			#panel-teacher {
 				grid-column: 1;
 				grid-row: 2;
-				border-right: 2px solid var(--clr-border);
 			}
 			#panel-student {
-				grid-column: 2;
+				grid-column: 3;
 				grid-row: 2;
 			}
 
@@ -103,6 +110,7 @@
 
 			.code-pane {
 				display: none;
+				background: var(--clr-bg);
 			}
 			.code-pane.active {
 				display: block;
@@ -113,7 +121,6 @@
 				font-size: 12px;
 				line-height: 1.5;
 				color: var(--clr-code-muted);
-				background: var(--clr-bg);
 				white-space: pre-wrap;
 				word-wrap: break-word;
 				tab-size: 4;
@@ -127,7 +134,6 @@
 				font-size: 12px;
 				line-height: 1.5;
 				color: var(--clr-code-muted);
-				background: var(--clr-bg);
 				tab-size: 4;
 				-moz-tab-size: 4;
 				min-height: 100%;
@@ -253,17 +259,15 @@
 			.swap-paired {
 				cursor: pointer;
 				text-underline-offset: 2px;
+				text-decoration-thickness: 2px;
 			}
 			.swap-paired[data-swap-side="student"] {
 				text-decoration: underline dotted var(--clr-mark-extra);
+				text-decoration-thickness: 2px;
 			}
 			.swap-paired[data-swap-side="teacher"] {
 				text-decoration: underline dotted var(--clr-mark-missing);
-			}
-			.swap-paired.swap-partner-active {
-				background-color: var(--clr-swap-pair-bg);
-				outline: 1px solid var(--clr-swap-pair);
-				border-radius: 2px;
+				text-decoration-thickness: 2px;
 			}
 			.insert-source {
 				cursor: pointer;
@@ -271,30 +275,29 @@
 			.insert-anchor {
 				display: inline-block;
 				cursor: pointer;
-				color: var(--clr-highlight-active);
+				color: var(--clr-mark-missing);
 				font-size: 9px;
 				line-height: 1;
 				vertical-align: middle;
 				margin: 0 -1px;
 				padding: 0;
 				user-select: none;
-				opacity: 0.7;
+				opacity: 0.5;
 			}
 			.insert-anchor:hover {
 				opacity: 1;
 			}
 			.insert-anchor.insert-active {
-				color: var(--clr-bg);
-				background-color: var(--clr-mark-missing);
-				border-radius: 2px;
+				color: var(--clr-mark-missing);
 				opacity: 1;
-				padding: 0 2px;
-				margin: 0;
+				font-weight: bold;
+				font-size: 13px;
+				text-shadow: 0 0 2px var(--clr-mark-missing);
 			}
 
 			#leo-tooltip {
 				z-index: 9999;
-				max-width: 95vw;
+				max-width: 500px;
 				max-height: 80vh;
 				line-height: 1.45;
 			}
@@ -395,42 +398,120 @@
 				font-style: italic;
 			}
 
-			.leo-mark.truth-group-bg-missing {
-				background-color: var(--clr-mark-missing-soft-bg);
+			.code-pane {
+				position: relative;
 			}
-			.leo-mark.truth-group-bg-extra {
-				background-color: var(--clr-mark-extra-soft-bg);
+			.code-aligned {
+				position: relative;
+				z-index: 2;
 			}
-			.leo-mark.truth-group-bg-ghost {
-				background-color: var(--clr-mark-ghost-soft-bg);
+			.truth-bg-layer {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				pointer-events: none;
+				z-index: 1;
 			}
-
-			.leo-mark.truth-group-hover {
-				outline: 1px dashed rgba(0, 0, 0, 0.55);
-				outline-offset: 0;
-				border-radius: 2px;
-				background-color: var(--clr-highlight-soft-bg);
+			.truth-fg-layer {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				pointer-events: none;
+				z-index: 3;
 			}
-
-			.leo-mark.truth-connect-target,
-			#truth-connect-token-hover {
+			.truth-bg-rect {
+				position: absolute;
+				border-radius: 3px;
+				box-sizing: border-box;
+				pointer-events: none;
+			}
+			.truth-bg-rect.is-missing {
+				background: var(--clr-mark-missing-soft-bg);
+				box-shadow: 0 0 6px 2px var(--clr-mark-missing-soft-bg);
+			}
+			.truth-bg-rect.is-extra {
+				background: var(--clr-mark-extra-soft-bg);
+				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
+			}
+			.truth-bg-rect.is-ghost {
+				background: var(--clr-mark-ghost-soft-bg);
+				box-shadow: 0 0 6px 2px var(--clr-mark-ghost-soft-bg);
+			}
+			.leo-mark.is-hover-transparent {
+				opacity: 0.7;
+			}
+			.truth-active-rect {
+				position: absolute;
 				background-color: var(--clr-highlight-active-bg);
-				outline: 2px solid var(--clr-mark-missing);
+				border-radius: 2px;
+				box-sizing: border-box;
+			}
+			.truth-active-rect.is-red {
+				background-color: var(--clr-mark-missing-pair-bg);
+			}
+			.truth-active-rect.is-blue {
+				background-color: var(--clr-mark-extra-pair-bg);
+			}
+			.truth-active-rect.is-gray {
+				background-color: rgba(0, 0, 0, 0.1);
+			}
+			.truth-hover-rect {
+				position: absolute;
+				background-color: rgba(0, 0, 0, 0.07);
+				border-radius: 2px;
+				box-sizing: border-box;
+				pointer-events: none;
+			}
+			.leo-mark.truth-sel-red {
+				background-color: var(--clr-mark-missing-pair-bg);
+				outline: 1px solid var(--clr-mark-missing);
 				border-radius: 2px;
 			}
-			body.truth-connect-anchor-extra .leo-mark.truth-connect-target,
-			body.truth-connect-anchor-extra #truth-connect-token-hover {
-				outline-color: var(--clr-mark-extra);
+			.leo-mark.truth-sel-blue {
+				background-color: var(--clr-mark-extra-pair-bg);
+				outline: 1px solid var(--clr-mark-extra);
+				border-radius: 2px;
 			}
 
-			#truth-connect-token-hover {
+			#truth-pair-connector-svg {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				pointer-events: none;
+				z-index: 9996;
+			}
+
+			.leo-mark.truth-pair-target {
+				text-decoration: underline dotted var(--clr-mark-missing);
+				text-underline-offset: 2px;
+			}
+			body.truth-pair-anchor-extra .leo-mark.truth-pair-target {
+				text-decoration-color: var(--clr-mark-extra);
+			}
+
+			#truth-pair-token-hover {
 				position: fixed;
 				display: none;
 				pointer-events: none;
 				z-index: 9998;
+				box-sizing: border-box;
+				background-color: rgba(0, 0, 0, 0.07);
+				border-bottom: 2px dotted var(--clr-mark-missing);
+			}
+			body.truth-pair-anchor-extra #truth-pair-token-hover {
+				border-bottom-color: var(--clr-mark-extra);
+			}
+			#truth-pair-token-hover.no-underline {
+				border-bottom: none;
 			}
 
-			#truth-connect-label {
+			#truth-pair-label {
 				position: fixed;
 				display: none;
 				pointer-events: none;
@@ -447,11 +528,11 @@
 				border-radius: 2px;
 				box-shadow: var(--shadow-soft);
 			}
-			#truth-connect-label.is-visible {
+			#truth-pair-label.is-visible {
 				display: block;
 			}
 
-			#truth-connect-arrow {
+			#truth-pair-arrow {
 				position: fixed;
 				display: none;
 				pointer-events: none;
@@ -460,23 +541,35 @@
 				font-size: 14px;
 				font-weight: bold;
 				line-height: 1;
-				transform: translateX(-3px);
+				transform: translateX(-50%);
 				text-shadow: 0 0 2px var(--clr-bg);
 			}
-			#truth-connect-arrow.is-visible {
+			#truth-pair-arrow.is-visible {
 				display: block;
 			}
-			body.truth-connect-anchor-extra #truth-connect-arrow {
+			body.truth-pair-anchor-extra #truth-pair-arrow {
 				color: var(--clr-mark-extra);
 			}
 
-			body.truth-connect-mode,
-			body.truth-connect-mode .code-pane,
-			body.truth-connect-mode .code-pane *,
-			body.truth-connect-mode .leo-mark,
-			body.truth-connect-mode .diff-line,
-			body.truth-connect-mode .diff-ghost {
+			body.truth-pair-mode,
+			body.truth-pair-mode .code-pane,
+			body.truth-pair-mode .code-pane *,
+			body.truth-pair-mode .leo-mark,
+			body.truth-pair-mode .diff-line,
+			body.truth-pair-mode .diff-ghost {
 				cursor: default !important;
+			}
+			body.truth-group-hover-active,
+			body.truth-group-hover-active .code-pane,
+			body.truth-group-hover-active .code-pane *,
+			body.truth-group-hover-active .leo-mark,
+			body.truth-group-hover-active .diff-line,
+			body.truth-token-hover-active,
+			body.truth-token-hover-active .code-pane,
+			body.truth-token-hover-active .code-pane *,
+			body.truth-token-hover-active .leo-mark,
+			body.truth-token-hover-active .diff-line {
+				cursor: pointer !important;
 			}
 			.btn-edit.truth-only-btn,
 			#btn-generate-truth {
@@ -492,10 +585,15 @@
 			}
 
 			#truth-controls {
+				position: absolute;
+				display: none;
 				z-index: 9998;
-				min-width: 320px;
-				max-width: 500px;
 				font-size: 12px;
+				background: var(--clr-bg);
+				border: 1px solid var(--clr-border);
+				border-radius: 4px;
+				box-shadow: var(--shadow-soft);
+				padding: 3px 4px;
 			}
 			#truth-controls .tc-row {
 				display: flex;
@@ -561,6 +659,11 @@
 				color: var(--clr-bg);
 				border-color: var(--clr-ghost-darker);
 			}
+			#truth-controls .tc-row button.tc-btn-pair.is-toggle-on {
+				color: var(--clr-bg);
+				border-color: var(--clr-orange);
+				font-weight: 700;
+			}
 			#truth-controls .tc-tokens {
 				font-size: 11px;
 				color: var(--clr-label);
@@ -574,7 +677,7 @@
 			}
 
 			.truth-float-win#truth-float-win {
-				z-index: 9997;
+				z-index: 10000;
 				max-width: 90vw;
 				max-height: 80vh;
 				min-width: 360px;
@@ -677,11 +780,12 @@
 		</div>
 		<div id="diff-root">
 			<div id="diff-scroll">
-				<div class="panel-header" id="header-teacher">
+				<div id="diff-divider"></div>
+				<div class="panel-header app-toolbar" id="header-teacher">
 					<span id="title-teacher">Teacher</span>
 					<div class="tab-bar" id="tabs-teacher"></div>
 				</div>
-				<div class="panel-header" id="header-student">
+				<div class="panel-header app-toolbar" id="header-student">
 					<span id="title-student">Student</span>
 					<div class="tab-bar" id="tabs-student"></div>
 				</div>
@@ -748,6 +852,12 @@
 		<script src="preview.js"></script>
 		<script src="diff-utils.js"></script>
 		<script src="differentiator.js"></script>
+		<script src="differentiator-render.js"></script>
+		<script src="differentiator-leo.js"></script>
 		<script src="differentiator-truth.js"></script>
+		<script src="differentiator-truth-overlays.js"></script>
+		<script src="differentiator-truth-pair.js"></script>
+		<script src="differentiator-truth-controls.js"></script>
+		<script src="differentiator-truth-io.js"></script>
 	</body>
 </html>
