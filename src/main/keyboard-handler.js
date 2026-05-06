@@ -4,52 +4,91 @@ const state = require("./state");
 
 // Map lowercase characters to Key constants for macOS compatibility
 const CHAR_TO_KEY = {
-	'a': Key.A, 'b': Key.B, 'c': Key.C, 'd': Key.D, 'e': Key.E,
-	'f': Key.F, 'g': Key.G, 'h': Key.H, 'i': Key.I, 'j': Key.J,
-	'k': Key.K, 'l': Key.L, 'm': Key.M, 'n': Key.N, 'o': Key.O,
-	'p': Key.P, 'q': Key.Q, 'r': Key.R, 's': Key.S, 't': Key.T,
-	'u': Key.U, 'v': Key.V, 'w': Key.W, 'x': Key.X, 'y': Key.Y,
-	'z': Key.Z,
-	'0': Key.Num0, '1': Key.Num1, '2': Key.Num2, '3': Key.Num3,
-	'4': Key.Num4, '5': Key.Num5, '6': Key.Num6, '7': Key.Num7,
-	'8': Key.Num8, '9': Key.Num9,
-	' ': Key.Space,
-	'.': Key.Period,
-	',': Key.Comma,
-	'/': Key.Slash,
-	'\\': Key.Backslash,
-	';': Key.Semicolon,
+	a: Key.A,
+	b: Key.B,
+	c: Key.C,
+	d: Key.D,
+	e: Key.E,
+	f: Key.F,
+	g: Key.G,
+	h: Key.H,
+	i: Key.I,
+	j: Key.J,
+	k: Key.K,
+	l: Key.L,
+	m: Key.M,
+	n: Key.N,
+	o: Key.O,
+	p: Key.P,
+	q: Key.Q,
+	r: Key.R,
+	s: Key.S,
+	t: Key.T,
+	u: Key.U,
+	v: Key.V,
+	w: Key.W,
+	x: Key.X,
+	y: Key.Y,
+	z: Key.Z,
+	0: Key.Num0,
+	1: Key.Num1,
+	2: Key.Num2,
+	3: Key.Num3,
+	4: Key.Num4,
+	5: Key.Num5,
+	6: Key.Num6,
+	7: Key.Num7,
+	8: Key.Num8,
+	9: Key.Num9,
+	" ": Key.Space,
+	".": Key.Period,
+	",": Key.Comma,
+	"/": Key.Slash,
+	"\\": Key.Backslash,
+	";": Key.Semicolon,
 	"'": Key.Quote,
-	'[': Key.LeftBracket,
-	']': Key.RightBracket,
-	'-': Key.Minus,
-	'=': Key.Equal,
-	'`': Key.Grave,
-	'\t': Key.Tab,
+	"[": Key.LeftBracket,
+	"]": Key.RightBracket,
+	"-": Key.Minus,
+	"=": Key.Equal,
+	"`": Key.Grave,
+	"\t": Key.Tab,
 };
 
 // Shifted versions of keys
 const SHIFTED_CHARS = {
-	'!': Key.Num1, '@': Key.Num2, '#': Key.Num3, '$': Key.Num4,
-	'%': Key.Num5, '^': Key.Num6, '&': Key.Num7, '*': Key.Num8,
-	'(': Key.Num9, ')': Key.Num0,
-	'_': Key.Minus, '+': Key.Equal,
-	'{': Key.LeftBracket, '}': Key.RightBracket,
-	'|': Key.Backslash,
-	':': Key.Semicolon, '"': Key.Quote,
-	'<': Key.Comma, '>': Key.Period, '?': Key.Slash,
-	'~': Key.Grave,
+	"!": Key.Num1,
+	"@": Key.Num2,
+	"#": Key.Num3,
+	$: Key.Num4,
+	"%": Key.Num5,
+	"^": Key.Num6,
+	"&": Key.Num7,
+	"*": Key.Num8,
+	"(": Key.Num9,
+	")": Key.Num0,
+	_: Key.Minus,
+	"+": Key.Equal,
+	"{": Key.LeftBracket,
+	"}": Key.RightBracket,
+	"|": Key.Backslash,
+	":": Key.Semicolon,
+	'"': Key.Quote,
+	"<": Key.Comma,
+	">": Key.Period,
+	"?": Key.Slash,
+	"~": Key.Grave,
 };
 
 // Helper to wait - needed for macOS hotkey unregister to take effect
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class KeyboardHandler {
 	constructor(hotkeyManager, settingsManager) {
 		this.hotkeyManager = hotkeyManager;
 		this.settingsManager = settingsManager;
 		this.isProcessing = false;
-		
+
 		// Debounce tracking to prevent double letters
 		this.lastTypedChar = null;
 		this.lastTypedTime = 0;
@@ -81,7 +120,10 @@ class KeyboardHandler {
 
 		// Debounce: ignore same character if it comes in too fast (key bounce)
 		const now = Date.now();
-		if (char === this.lastTypedChar && (now - this.lastTypedTime) < this.debounceMs) {
+		if (
+			char === this.lastTypedChar &&
+			now - this.lastTypedTime < this.debounceMs
+		) {
 			console.log("Debounced duplicate char:", char);
 			return;
 		}
@@ -122,7 +164,7 @@ class KeyboardHandler {
 			state.clearQueue();
 		} finally {
 			this.isProcessing = false;
-			
+
 			// Check if more characters were queued while we were finishing up
 			if (state.hasQueuedKeys()) {
 				const nextChar = state.dequeueKey();
@@ -132,23 +174,23 @@ class KeyboardHandler {
 	}
 
 	async typeCharWithHotkeyManagement(char, charLower, isInterceptorKey) {
-    if (isInterceptorKey) {
-				this.hotkeyManager.unregisterKey(charLower);
-				// macOS fix: wait for unregister to take effect
-				if (this.isMacOS()) {
-					await sleep(20);
-				}
+		if (isInterceptorKey) {
+			this.hotkeyManager.unregisterKey(charLower);
+			// macOS fix: wait for unregister to take effect
+			if (this.isMacOS()) {
+				await sleep(20);
 			}
+		}
 
-			await this.typeWithNutJs(char);
+		await this.typeWithNutJs(char);
 
-			if (isInterceptorKey) {
-				// macOS fix: wait before re-registering
-				if (this.isMacOS()) {
-					await sleep(20);
-				}
-				this.hotkeyManager.registerKey(charLower);
+		if (isInterceptorKey) {
+			// macOS fix: wait before re-registering
+			if (this.isMacOS()) {
+				await sleep(20);
 			}
+			this.hotkeyManager.registerKey(charLower);
+		}
 	}
 
 	ensureHotkeyRegistered(charLower, isInterceptorKey) {
@@ -244,11 +286,11 @@ class KeyboardHandler {
 	async typeWithKeyConstants(char) {
 		// macOS fix: Use Key constants instead of string characters
 		const charLower = char.toLowerCase();
-		
+
 		if (CHAR_TO_KEY[charLower]) {
 			const keyToType = CHAR_TO_KEY[charLower];
 			const isUpperCase = char !== charLower && /[A-Z]/.test(char);
-			
+
 			if (isUpperCase) {
 				await keyboard.type(Key.LeftShift, keyToType);
 			} else {
@@ -257,14 +299,6 @@ class KeyboardHandler {
 			return;
 		}
 
-		// Check if it's a shifted character (like ! @ # etc)
-		if (SHIFTED_CHARS[char]) {
-			await keyboard.type(Key.LeftShift, SHIFTED_CHARS[char]);
-			return;
-		}
-
-		// Fallback: try the original string method
-		console.log(`[typeWithKeyConstants] Fallback for char="${char}" code=${char.charCodeAt(0)}`);
 		await keyboard.type(char);
 	}
 
