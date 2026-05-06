@@ -19,6 +19,7 @@ from .token_log import (
     _build_ro_diff_marks,
     _build_teacher_token_timestamps,
     _parse_teacher_tokens,
+    _refresh_missing_timestamps,
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
@@ -163,6 +164,10 @@ class TokenLogMixin:
                 if truth_src.is_file():
                     with open(truth_src, encoding='utf-8') as _fh:
                         truth_marks = json.load(_fh)
+                    if all_events:
+                        _refresh_missing_timestamps(
+                            truth_marks, all_events, _ts_map=ts_map_cached or None,
+                        )
                     _fresh_removal: Dict[str, List[str]] = {}
                     for _tok, _, _, _is_rem, _rt in teacher_entries:
                         if _is_rem and _rt:
@@ -170,6 +175,7 @@ class TokenLogMixin:
                     all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
                         _build_occ_from_diff_marks(
                             truth_marks, teacher_entries, _fresh_removal or None,
+                            teacher_ghosts=diff_marks.get('teacher_ghosts'),
                         )
                     )
 
@@ -416,6 +422,7 @@ class TokenLogMixin:
         truth_dir: Path,
         names_dir: Path,
         anon_names_dir: Optional[Path],
+        anon_ids_dir: Optional[Path] = None,
     ) -> None:
         if not truth_dir.is_dir() or not names_dir.is_dir():
             return
@@ -439,6 +446,26 @@ class TokenLogMixin:
         if copied:
             print(f'Copied truth diff marks for {copied} student(s) into '
                   f'{anon_names_dir.name}/')
+
+        root_exts = {'.json', '.html', '.htm', '.css', '.js', '.txt'}
+        root_files = [
+            p for p in sorted(truth_dir.iterdir())
+            if p.is_file() and p.suffix.lower() in root_exts
+        ]
+        if not root_files:
+            return
+        targets = [anon_names_dir]
+        if anon_ids_dir is not None and anon_ids_dir.is_dir():
+            targets.append(anon_ids_dir)
+        root_copied = 0
+        for target in targets:
+            for src in root_files:
+                shutil.copy2(src, target / src.name)
+                root_copied += 1
+        if root_copied:
+            target_names = ', '.join(t.name for t in targets)
+            print(f'Copied {len(root_files)} truth root file(s) into '
+                  f'{target_names}/')
 
     def mirror_diff_marks_to_anon_ids(
         self,

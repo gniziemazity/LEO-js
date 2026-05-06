@@ -88,6 +88,27 @@ function _borrowedAlignments() {
 	return null;
 }
 
+const _BORROW_GHOSTS_ORDER = [
+	"",
+	"token-lcs-star",
+	"token-lev-star",
+	"line-ro-star",
+	"line-git-star",
+];
+
+function _borrowedTeacherGhosts(fileName) {
+	for (const mode of _BORROW_GHOSTS_ORDER) {
+		const m = _allMarks[mode];
+		const list = m && m.teacher_ghosts && m.teacher_ghosts[fileName];
+		if (list && list.length) return list;
+	}
+	for (const m of Object.values(_allMarks)) {
+		const list = m && m.teacher_ghosts && m.teacher_ghosts[fileName];
+		if (list && list.length) return list;
+	}
+	return [];
+}
+
 function _applyCurrentMarks() {
 	_currentMarksEntry = _resolveMarksEntry();
 	_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
@@ -312,10 +333,78 @@ function _restoreState(side, saved) {
 	}
 }
 
+const _DIFF_COMMENT_RE = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
+const _DIFF_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+
+let _teacherTokenTotalCache = null;
+let _teacherTokenTotalCacheKey = null;
+
+function _countNonCommentTokens(text) {
+	if (!text) return 0;
+	const ranges = [];
+	_DIFF_COMMENT_RE.lastIndex = 0;
+	let m;
+	while ((m = _DIFF_COMMENT_RE.exec(text)) !== null) {
+		ranges.push([m.index, m.index + m[0].length]);
+	}
+	let count = 0;
+	_DIFF_TOKEN_RE.lastIndex = 0;
+	while ((m = _DIFF_TOKEN_RE.exec(text)) !== null) {
+		const pos = m.index;
+		let inComment = false;
+		for (const [lo, hi] of ranges) {
+			if (lo <= pos && pos < hi) {
+				inComment = true;
+				break;
+			}
+			if (pos < lo) break;
+		}
+		if (!inComment) count++;
+	}
+	return count;
+}
+
+function _getTeacherNonCommentTokenTotal() {
+	if (!_teacherFiles) return 0;
+	const names = Object.keys(_teacherFiles).sort();
+	const key =
+		names.join("|") +
+		"::" +
+		names.map((n) => (_teacherFiles[n] || "").length).join(",");
+	if (key === _teacherTokenTotalCacheKey) return _teacherTokenTotalCache;
+	let total = 0;
+	for (const name of names)
+		total += _countNonCommentTokens(_teacherFiles[name] || "");
+	_teacherTokenTotalCache = total;
+	_teacherTokenTotalCacheKey = key;
+	return total;
+}
+
+function _computeFollowScore(marksEntry) {
+	if (!marksEntry) return null;
+	const total = _getTeacherNonCommentTokenTotal();
+	if (total === 0) return null;
+	let nMissing = 0;
+	for (const marks of Object.values(marksEntry.teacher_files || {})) {
+		for (const m of marks || []) {
+			if (m.label === "missing") nMissing++;
+		}
+	}
+	let nGhostExtra = 0;
+	for (const marks of Object.values(marksEntry.student_files || {})) {
+		for (const m of marks || []) {
+			if (m.label === "ghost_extra") nGhostExtra++;
+		}
+	}
+	const nFound = total - nMissing;
+	const raw = Math.max(0, (nFound - nGhostExtra) / total) * 100;
+	return Math.round(raw * 10) / 10;
+}
+
 function _updateTitleScore() {
 	if (!_titleBase) return;
-	const score = _currentMarksEntry?.score;
-	const suffix = score != null ? ` (${Number(score).toFixed(1)}%)` : "";
+	const score = _computeFollowScore(_currentMarksEntry);
+	const suffix = score != null ? ` (${score.toFixed(1)}%)` : "";
 	const newTitle = _titleBase + suffix;
 	const el = document.getElementById("title-student");
 	if (el) el.textContent = newTitle;

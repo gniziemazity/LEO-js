@@ -70,6 +70,7 @@ function parseStudentData(
 		);
 
 	const idMap = {};
+	const nameToId = {};
 	for (let i = 1; i < rowsR.length; i++) {
 		const row = rowsR[i];
 		const idVal = row[0];
@@ -77,8 +78,10 @@ function parseStudentData(
 		if (idVal != null && nameVal != null) {
 			const id = Number(idVal);
 			const name = String(nameVal).trim();
+			const idStr = String(idVal).trim();
 			if (Number.isInteger(id) && id > 0 && name) {
 				idMap[id] = name;
+				nameToId[name] = idStr;
 			}
 		}
 	}
@@ -140,6 +143,7 @@ function parseStudentData(
 			];
 		students.push({
 			name,
+			id: nameToId[name] || "",
 			follow_pct: fd.pct,
 			follow_events: evs,
 			follow_dt:
@@ -161,7 +165,8 @@ function parseFollowLabel(label) {
 	if (label.startsWith("+")) {
 		const tokenPart = label.slice(1).trimStart();
 		if (tokenPart.endsWith("*")) {
-			return { kind: "extra-star", token: tokenPart.slice(0, -1).trimEnd() };
+			const t = tokenPart.slice(0, -1).trimEnd();
+			if (t) return { kind: "extra-star", token: t };
 		}
 		return { kind: "extra", token: tokenPart };
 	}
@@ -172,13 +177,15 @@ function parseFollowEvents(descText, sessionDate) {
 	const events = [];
 	if (!descText) return events;
 	for (const seg of String(descText).split(/,\s+/)) {
-		const m = seg.match(/^(.+?)\s*\((\d{2}:\d{2}:\d{2})\)\s*$/);
+		const m = seg.match(/^(.+?)\s*\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)\s*$/);
 		if (!m) continue;
 		const rawLabel = m[1].trim();
 		if (!rawLabel) continue;
-		const [h, min, s] = m[2].split(":").map(Number);
+		const [hms, frac = "0"] = m[2].split(".");
+		const [h, min, s] = hms.split(":").map(Number);
+		const ms = Number((frac + "000").slice(0, 3));
 		const dt = new Date(sessionDate);
-		dt.setHours(h, min, s, 0);
+		dt.setHours(h, min, s, ms);
 		const { kind, token } = parseFollowLabel(rawLabel);
 		events.push({ label: rawLabel, ts: dt.getTime() / 1000, kind, token });
 	}

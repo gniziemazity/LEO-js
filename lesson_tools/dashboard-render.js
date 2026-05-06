@@ -112,6 +112,23 @@ const BAR_COLORS = {
 	move: THEME.orange,
 };
 
+function _burstColorKey(b) {
+	if (b.chars > 0) return b.colorType || "normal";
+	if (b.hasCodeInserts) return "normal";
+	if (b.hasAnchors) return "anchor";
+	if (b.hasMoves) return "move";
+	return "normal";
+}
+
+function _singletonColorKey(kp) {
+	if (kp._virtualType === "anchor") return "anchor";
+	if (kp._virtualType === "move") return "move";
+	if (kp._virtualType === "code_insert") return "normal";
+	if (kp._editor === "dev") return "dev";
+	if (DELETE_CHARS.has(kp.char)) return "remove";
+	return "normal";
+}
+
 const _chart2Visible = {
 	chars: true,
 	inserts: true,
@@ -520,15 +537,15 @@ function drawChart3(ctx, p, students, L) {
 		}
 	}
 
-	for (const s of students) {
-		const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
+	const drawDashesFor = (s, emphasized) => {
 		const jitter = _shake
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
 		const evs = (s.follow_events || []).filter(
-			(e) => e.ts != null && e.kind !== "extra" && e.kind !== "extra-star",
+			(e) =>
+				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
 		);
-		if (!evs.length) continue;
+		if (!evs.length) return;
 		const sorted = [...evs].sort((a, b) => a.ts - b.ts);
 		const clusters = [];
 		let cur = [sorted[0]];
@@ -541,79 +558,158 @@ function drawChart3(ctx, p, students, L) {
 			}
 		}
 		clusters.push(cur);
-		const barH = isHovered ? 6 : 3;
 		const minY = L.M.top + (L.plotH3Pad || 0);
 		const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
-		const y0 =
-			Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy)) - barH / 2;
+		const cy = Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy));
+		const dotR = emphasized ? 2.0 : 1.5;
 		for (const cl of clusters) {
-			let x1 = tsToX(cl[0].ts, L);
-			let x2 = tsToX(cl[cl.length - 1].ts, L);
-			if (x2 - x1 < 3) {
-				const cx = (x1 + x2) / 2;
-				x1 = cx - 1.5;
-				x2 = cx + 1.5;
+			const isActiveCluster =
+				emphasized &&
+				_hoveredCluster &&
+				cl[0].ts === _hoveredCluster.ts1 &&
+				cl[cl.length - 1].ts === _hoveredCluster.ts2;
+			if (isActiveCluster) {
+				ctx.fillStyle = THEME.orange;
+				for (const ev of cl) {
+					const cx = tsToX(ev.ts, L);
+					ctx.beginPath();
+					ctx.arc(cx, cy, dotR + 2, 0, Math.PI * 2);
+					ctx.fill();
+				}
 			}
-			ctx.fillStyle = isHovered
+			ctx.fillStyle = emphasized
 				? "rgba(0,0,0,0.85)"
-				: "rgba(130,130,130,0.5)";
-			ctx.fillRect(x1, y0, x2 - x1, barH);
+				: "rgba(130,130,130,0.55)";
+			for (const ev of cl) {
+				const cx = tsToX(ev.ts, L);
+				ctx.beginPath();
+				ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+				ctx.fill();
+			}
+		}
+	};
+
+	const drawDotFor = (s, emphasized, ans, ask, hlp) => {
+		if (s.follow_dt == null) return;
+		const jitter = _shake
+			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
+			: { dx: 0, dy: 0 };
+		const x = tsToX(s.follow_dt, L) + jitter.dx;
+		const _minY = L.M.top + (L.plotH3Pad || 0);
+		const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+		const y = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
+		const active = ans || ask || hlp;
+
+		ctx.save();
+		if (active) {
+			if (emphasized) {
+				drawStar(ctx, x, y, 9, "#000000", 1.0);
+			} else {
+				drawStudentStar(ctx, x, y, ans, ask, hlp);
+			}
+		} else {
+			ctx.globalAlpha = emphasized ? 1.0 : 0.65;
+			ctx.beginPath();
+			ctx.arc(x, y, 5, 0, Math.PI * 2);
+			ctx.fillStyle = emphasized ? "#000" : "#A8A8A8";
+			ctx.fill();
+			ctx.strokeStyle = emphasized ? "#000" : "#777";
+			ctx.lineWidth = emphasized ? 1.5 : 0.8;
+			ctx.stroke();
+		}
+		ctx.restore();
+	};
+
+	const answering = new Set(),
+		asking = new Set(),
+		helping = new Set();
+	if (_chart3Visible.firstMismatch && _chart3Visible.interactions) {
+		for (const q of p.interactions["teacher-question"])
+			for (const field of q.answered_by) {
+				const name = resolveInteractionStudent(field);
+				if (name) answering.add(name);
+			}
+		for (const q of p.interactions["student-question"]) {
+			const nm = resolveInteractionStudent(q.asked_by) || "";
+			if (nm.trim()) asking.add(nm.trim());
+		}
+		for (const q of p.interactions["providing-help"]) {
+			const nm = resolveInteractionStudent(q.student) || "";
+			if (nm.trim()) helping.add(nm.trim());
 		}
 	}
 
+	for (const s of students) {
+		if (_hoveredStudent && s.name === _hoveredStudent.name) continue;
+		drawDashesFor(s, false);
+	}
 	if (_chart3Visible.firstMismatch) {
-		const answering = new Set(),
-			asking = new Set(),
-			helping = new Set();
-		if (_chart3Visible.interactions) {
-			for (const q of p.interactions["teacher-question"])
-				for (const field of q.answered_by) {
-					const name = resolveInteractionStudent(field);
-					if (name) answering.add(name);
-				}
-			for (const q of p.interactions["student-question"]) {
-				const nm = resolveInteractionStudent(q.asked_by) || "";
-				if (nm.trim()) asking.add(nm.trim());
+		for (const s of students) {
+			if (_hoveredStudent && s.name === _hoveredStudent.name) continue;
+			drawDotFor(
+				s,
+				false,
+				answering.has(s.name),
+				asking.has(s.name),
+				helping.has(s.name),
+			);
+		}
+	}
+
+	if (_hoveredStudent) {
+		const hs = _hoveredStudent;
+		const hEvs = (hs.follow_events || []).filter(
+			(e) =>
+				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
+		);
+		if (hEvs.length) {
+			const hSorted = [...hEvs].sort((a, b) => a.ts - b.ts);
+			const hJitter = _shake
+				? _jitterMap.get(hs.name) || { dx: 0, dy: 0 }
+				: { dx: 0, dy: 0 };
+			const minY = L.M.top + (L.plotH3Pad || 0);
+			const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+			const cy = Math.max(
+				minY,
+				Math.min(maxY, studentY(hs, L) + hJitter.dy),
+			);
+			const x1 = tsToX(hSorted[0].ts, L);
+			const x2 = tsToX(hSorted[hSorted.length - 1].ts, L);
+			const bandH = 10;
+			const padX = 6;
+			const radius = 5;
+			const bx = x1 - padX;
+			const bw = x2 - x1 + 2 * padX;
+			const by = cy - bandH / 2;
+			ctx.fillStyle = _hexToRgba(THEME.blue, 0.5);
+			ctx.beginPath();
+			if (typeof ctx.roundRect === "function") {
+				ctx.roundRect(bx, by, bw, bandH, radius);
+			} else {
+				const r = Math.min(radius, bw / 2, bandH / 2);
+				ctx.moveTo(bx + r, by);
+				ctx.lineTo(bx + bw - r, by);
+				ctx.arcTo(bx + bw, by, bx + bw, by + r, r);
+				ctx.lineTo(bx + bw, by + bandH - r);
+				ctx.arcTo(bx + bw, by + bandH, bx + bw - r, by + bandH, r);
+				ctx.lineTo(bx + r, by + bandH);
+				ctx.arcTo(bx, by + bandH, bx, by + bandH - r, r);
+				ctx.lineTo(bx, by + r);
+				ctx.arcTo(bx, by, bx + r, by, r);
+				ctx.closePath();
 			}
-			for (const q of p.interactions["providing-help"]) {
-				const nm = resolveInteractionStudent(q.student) || "";
-				if (nm.trim()) helping.add(nm.trim());
-			}
+			ctx.fill();
 		}
 
-		for (const s of students) {
-			if (s.follow_dt == null) continue;
-			const jitter = _shake
-				? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
-				: { dx: 0, dy: 0 };
-			const x = tsToX(s.follow_dt, L) + jitter.dx;
-			const _minY = L.M.top + (L.plotH3Pad || 0);
-			const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
-			const y = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
-			const ans = answering.has(s.name);
-			const ask = asking.has(s.name);
-			const hlp = helping.has(s.name);
-			const active = ans || ask || hlp;
-			const isHovered = _hoveredStudent && s.name === _hoveredStudent.name;
-
-			ctx.save();
-			if (active) {
-				if (isHovered) {
-					drawStar(ctx, x, y, 9, "#000000", 1.0);
-				} else {
-					drawStudentStar(ctx, x, y, ans, ask, hlp);
-				}
-			} else {
-				ctx.globalAlpha = isHovered ? 1.0 : 0.65;
-				ctx.beginPath();
-				ctx.arc(x, y, 5, 0, Math.PI * 2);
-				ctx.fillStyle = isHovered ? "#000" : "#A8A8A8";
-				ctx.fill();
-				ctx.strokeStyle = isHovered ? "#000" : "#777";
-				ctx.lineWidth = isHovered ? 1.5 : 0.8;
-				ctx.stroke();
-			}
-			ctx.restore();
+		drawDashesFor(hs, true);
+		if (_chart3Visible.firstMismatch) {
+			drawDotFor(
+				hs,
+				true,
+				answering.has(hs.name),
+				asking.has(hs.name),
+				helping.has(hs.name),
+			);
 		}
 	}
 
@@ -627,24 +723,27 @@ function drawChart3(ctx, p, students, L) {
 	if (_chart3Visible.followRank) {
 		const N = students.length;
 		if (N > 0) {
-			const ranks = N === 1 ? [1] : [1, N];
-			for (const r of ranks) {
+			for (let r = 1; r <= N; r++) {
 				const y = M.top + ((r - 0.5) / N) * plotH3;
-				ctx.fillText(String(r), M.left - 3, y + 4);
 				ctx.beginPath();
 				ctx.moveTo(M.left - 3, y);
 				ctx.lineTo(M.left, y);
 				ctx.stroke();
+				if (r === 1 || r === N) {
+					ctx.fillText(String(r), M.left - 3, y + 4);
+				}
 			}
 		}
 	} else {
 		for (let v = 0; v <= 100; v += 10) {
 			const y = pctToY(v, L);
-			ctx.fillText(v + "%", M.left - 3, y + 4);
 			ctx.beginPath();
 			ctx.moveTo(M.left - 3, y);
 			ctx.lineTo(M.left, y);
 			ctx.stroke();
+			if (v === 0 || v === 100) {
+				ctx.fillText(v + "%", M.left - 3, y + 4);
+			}
 		}
 	}
 
@@ -661,21 +760,22 @@ function drawBlockBackgrounds(ctx, p, L) {
 		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
 
 	ctx.save();
-	ctx.fillStyle = "rgba(0, 0, 0, 0.045)";
 
-	const drawBand = (cx, dur) => {
+	const drawBand = (cx, dur, key) => {
 		const x = tsToX(cx - dur / 2, L);
 		const x2 = tsToX(cx + dur / 2, L);
 		const bw = Math.max(x2 - x, minBarW);
 		const bx = (x + x2) / 2 - bw / 2;
+		const color = BAR_COLORS[key] || BAR_COLORS.normal;
+		ctx.fillStyle = _hexToRgba(color, 0.15);
 		ctx.fillRect(bx, M.top, bw, plotH3);
 	};
 
 	for (const b of p.bursts || []) {
-		drawBand(b.centerTs, b.dur);
+		drawBand(b.centerTs, b.dur, _burstColorKey(b));
 	}
 	for (const kp of p.singletons || []) {
-		drawBand(kp.timestamp / 1000, 0);
+		drawBand(kp.timestamp / 1000, 0, _singletonColorKey(kp));
 	}
 	ctx.restore();
 }
@@ -699,10 +799,7 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 	const studentEvs = students.map((s) =>
 		(s.follow_events || []).filter(
 			(e) =>
-				e.ts != null &&
-				e.kind !== "extra" &&
-				e.kind !== "extra-star" &&
-				!(e.kind === "normal" && e.label === "(followed till end)"),
+				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
 		),
 	);
 

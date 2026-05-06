@@ -155,7 +155,8 @@ def calculate_containment(a: Counter, b: Counter) -> float:
     return round(sum((a & b).values()) / sum(a.values()) * 100, 1)
 
 def ts_to_local(ts_ms: int) -> str:
-    return datetime.fromtimestamp(ts_ms / 1000).strftime('%H:%M:%S')
+    dt = datetime.fromtimestamp(ts_ms / 1000)
+    return dt.strftime('%H:%M:%S') + f'.{dt.microsecond // 1000:03d}'
 
 
 _SIZEWITHCELLS_RE = re.compile(r'<[^>]*:SizeWithCells\s*/>|<SizeWithCells\s*/>')

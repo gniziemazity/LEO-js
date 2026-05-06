@@ -19,6 +19,7 @@
 		"main": "python lesson_tools/main.py",
 		"main-anon": "python lesson_tools/main.py --anon",
 		"charts": "python lesson_tools/charts.py",
+		"eval": "python lesson_tools/compare_methods_to_truth.py",
 		"test": "npm run test:py && npm run test:js",
 		"test:py": "cd lesson_tools && python -m unittest discover -v",
 		"test:js": "node --test tests/*.test.js"

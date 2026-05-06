@@ -122,7 +122,9 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 
 function _getFileGhosts(fileName) {
 	const map = _currentMarksEntry?.teacher_ghosts;
-	return (map && map[fileName]) || [];
+	const own = map && map[fileName];
+	if (own && own.length) return own;
+	return _borrowedTeacherGhosts(fileName);
 }
 
 function _getInsertAnchors(studentFileName) {
@@ -267,7 +269,12 @@ function renderPanel(side, files, marks) {
 		codeWrap.appendChild(pane);
 	});
 
-	requestAnimationFrame(_syncAlignedRowHeights);
+	requestAnimationFrame(() => {
+		_syncAlignedRowHeights();
+		if (typeof _truthRefreshGhostPairs === "function") {
+			_truthRefreshGhostPairs();
+		}
+	});
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {
 		const files = side === "teacher" ? _teacherFiles : _studentFiles;
@@ -398,22 +405,25 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 				: "";
 			const absPos = m._abs_start ?? m.start;
 			const otherSide = side === "teacher" ? "student" : "teacher";
-			const pairedAttrs = m.paired_with
-				? ` data-swap-side="${otherSide}"` +
-					` data-swap-file="${escAttr(m.paired_with.file)}"` +
-					` data-swap-pos="${m.paired_with.start}"` +
-					` data-swap-token="${escAttr(m.paired_with.token)}"`
-				: "";
+			const isGhostPair = !!(m.paired_with && m.paired_with.ghost);
+			const pairedAttrs =
+				m.paired_with && !isGhostPair
+					? ` data-swap-side="${otherSide}"` +
+						` data-swap-file="${escAttr(m.paired_with.file)}"` +
+						` data-swap-pos="${m.paired_with.start}"` +
+						` data-swap-token="${escAttr(m.paired_with.token)}"`
+					: "";
 			const insertAttrs = m.insert_at
 				? ` data-insert-side="${otherSide}"` +
 					` data-insert-file="${escAttr(m.insert_at.file)}"` +
 					` data-insert-pos="${m.insert_at.pos}"`
 				: "";
-			const leoClass = m.paired_with
-				? "leo-mark swap-paired"
-				: m.insert_at
-					? "leo-mark insert-source"
-					: "leo-mark";
+			const leoClass =
+				m.paired_with && !isGhostPair
+					? "leo-mark swap-paired"
+					: m.insert_at
+						? "leo-mark insert-source"
+						: "leo-mark";
 			const leoAttrs =
 				m.token &&
 				m.label !== "comment" &&
@@ -447,6 +457,8 @@ const _GHOST_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
 function _renderGhostBlob(ghost, tokensTbl) {
 	const text = ghost.text;
 	const blobPos = ghost._abs_pos ?? ghost.pos;
+	const wrapAll =
+		typeof _truthEditMode !== "undefined" && _truthEditMode === true;
 	let out = '<span class="diff-ghost">';
 	let lastEnd = 0;
 	_GHOST_TOKEN_RE.lastIndex = 0;
@@ -455,7 +467,7 @@ function _renderGhostBlob(ghost, tokensTbl) {
 		if (m.index > lastEnd) out += escHtml(text.slice(lastEnd, m.index));
 		const tok = m[0];
 		const offset = m.index;
-		if (tokensTbl && tokensTbl[tok]) {
+		if (wrapAll || (tokensTbl && tokensTbl[tok])) {
 			out +=
 				`<span class="leo-mark" data-leo-token="${escAttr(tok)}"` +
 				` data-leo-side="teacher" data-leo-pos="${blobPos}"` +

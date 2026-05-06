@@ -150,6 +150,17 @@
 				font-weight: normal !important;
 				background: rgba(0, 0, 0, 0.02);
 			}
+			.diff-ghost .leo-mark[data-leo-ghost-offset].truth-ghost-paired {
+				font-weight: bold !important;
+				text-decoration: underline dotted var(--clr-mark-ghost);
+				text-decoration-thickness: 2px;
+				text-underline-offset: 2px;
+			}
+			.leo-mark.truth-paired-ghost-extra {
+				text-decoration: underline dotted var(--clr-pale-red);
+				text-decoration-thickness: 2px;
+				text-underline-offset: 2px;
+			}
 			.diff-ghost-nl {
 				display: inline-block;
 				margin: 0 4px;
@@ -207,7 +218,7 @@
 				position: fixed;
 				bottom: 14px;
 				right: 14px;
-				z-index: 100;
+				z-index: 9997;
 				display: none;
 				gap: 6px;
 				align-items: center;
@@ -458,6 +469,9 @@
 			}
 			.truth-active-rect.is-gray {
 				background-color: rgba(0, 0, 0, 0.1);
+			}
+			.truth-active-rect.is-dark-gray {
+				background-color: rgba(0, 0, 0, 0.28);
 			}
 			.truth-hover-rect {
 				position: absolute;

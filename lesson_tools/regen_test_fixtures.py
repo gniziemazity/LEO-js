@@ -12,6 +12,7 @@ from utils.token_log import (
     _add_log_metadata,
     _build_occ_from_diff_marks,
     _build_teacher_token_timestamps,
+    _refresh_missing_timestamps,
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
@@ -135,8 +136,26 @@ def regen_student(case_dir: Path, student_name: str) -> None:
     if events:
         _add_log_metadata(diff_marks, events, stu_files, teacher_files=teacher_files)
 
+    truth_path = student_dir / "diff_marks_truth.json"
+    truth_marks = None
+    if truth_path.is_file():
+        try:
+            with open(truth_path, encoding="utf-8") as fh:
+                truth_marks = json.load(fh)
+        except Exception:
+            truth_marks = None
+
+    if truth_marks is not None and events:
+        _refresh_missing_timestamps(truth_marks, events)
+
+    occ_marks = truth_marks if truth_marks is not None else diff_marks
     all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
-        _build_occ_from_diff_marks(diff_marks, teacher_entries, removal_ts_by_token or None)
+        _build_occ_from_diff_marks(
+            occ_marks,
+            teacher_entries,
+            removal_ts_by_token or None,
+            teacher_ghosts=diff_marks.get("teacher_ghosts"),
+        )
     )
 
     diff_marks_out = {

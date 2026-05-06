@@ -8,7 +8,7 @@ const CFG = {
 	M: { top: 22, right: 24, bottom: 44, left: 68 },
 	DOT_R: 3.5,
 	DIA_R: 8,
-	STUDENT_SUBDIR: "anon_names",
+	STUDENT_SUBDIR: "anon_ids",
 };
 
 const DELETE_CHARS = new Set([
@@ -32,6 +32,8 @@ let _zoomMin = null,
 	_zoomMax = null;
 let _renderScheduled = false;
 let _hoveredStudent = null;
+let _hoveredCluster = null;
+let _lockedStudent = null;
 let _lastL = null;
 
 const PAN_STATE = { active: false, startX: 0, startMin: 0, startMax: 0 };

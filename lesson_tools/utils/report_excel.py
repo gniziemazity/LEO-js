@@ -503,32 +503,40 @@ class ExcelReportMixin:
         return peer_ranking, max_sim
 
     def _extract_interactions(self) -> Dict[str, str]:
+        def _names_from(raw) -> List[str]:
+            if raw is None or raw == '':
+                return []
+            if isinstance(raw, list):
+                return [str(s).strip() for s in raw if str(s).strip()]
+            return [p.strip() for p in str(raw).split(',') if p.strip()]
+
         iacts: List[Tuple[float, str, str]] = []
         for ev in self._lesson_interactions:
             ts_s  = ev.get('timestamp', 0) / 1000
             itype = ev.get('interaction', '')
             if itype == 'teacher-question':
-                raw = ev.get('answered_by', '') or ''
-                names = (
-                    [str(s).strip() for s in raw if str(s).strip()]
-                    if isinstance(raw, list)
-                    else [p.strip() for p in str(raw).split(',') if p.strip()]
-                )
-                for n in names:
+                for n in _names_from(ev.get('answered_by')):
                     iacts.append((ts_s, 'A', n))
             elif itype == 'student-question':
-                n = str(ev.get('asked_by') or '').strip()
-                if n:
+                for n in _names_from(ev.get('asked_by')):
                     iacts.append((ts_s, 'Q', n))
             elif itype == 'providing-help':
-                n = str(ev.get('student') or '').strip()
-                if n:
+                for n in _names_from(ev.get('student')):
                     iacts.append((ts_s, 'H', n))
 
         iacts.sort(key=lambda x: x[0])
         per_sid: Dict[str, List[str]] = {}
         for _, letter, nm in iacts:
             found = self.name_to_id.get(nm)
+            if not found and nm in self.student_info:
+                found = nm
+            if not found:
+                try:
+                    candidate = str(int(nm))
+                    if candidate in self.student_info:
+                        found = candidate
+                except (ValueError, TypeError):
+                    pass
             if found:
                 per_sid.setdefault(found, []).append(letter)
         return {s: ', '.join(v) for s, v in per_sid.items()}

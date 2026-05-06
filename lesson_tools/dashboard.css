@@ -38,6 +38,18 @@ body {
 	padding: 3px;
 	background: var(--clr-border);
 	overflow: hidden;
+	position: relative;
+}
+
+#hover-vline {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1px;
+	background: var(--clr-accent);
+	pointer-events: none;
+	display: none;
+	z-index: 8;
 }
 
 .chart-section {

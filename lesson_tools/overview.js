@@ -544,42 +544,10 @@ function findHandle(handles, name) {
 		if (k.includes(nl) || nl.includes(k)) return k;
 	return null;
 }
-function matchAnonFolder(options, student) {
-	const id = student.id.trim(),
-		idN = id.replace(/^0+/, "");
-	const byId = options.find(
-		(o) =>
-			o === id ||
-			o.replace(/^0+/, "") === idN ||
-			o.includes(id) ||
-			id.includes(o),
-	);
-	if (byId) return byId;
-	const parts = student.name
-		.toLowerCase()
-		.split(/\s+/)
-		.filter((p) => p.length > 3);
-	return (
-		options.find((o) => parts.some((p) => o.toLowerCase().includes(p))) ||
-		null
-	);
-}
 async function _readOverviewDiffPayload(dirHandle, student, followPct) {
-	let anonName = null;
-	const opts = [];
-	try {
-		const anonDir = await dirHandle.getDirectoryHandle("anon_names");
-		for await (const [n, e] of anonDir.entries())
-			if (e.kind === "directory") opts.push(n);
-	} catch {}
-	anonName = opts.find((o) => o === student.name) ?? null;
-	if (!anonName)
-		anonName =
-			opts.find((o) => o.toLowerCase() === student.name.toLowerCase()) ??
-			null;
-	if (!anonName) anonName = matchAnonFolder(opts, student);
-	if (!anonName)
-		throw new Error(`Cannot find anon folder for "${student.name}".`);
+	const sid = (student.id || "").trim();
+	if (!sid)
+		throw new Error(`Cannot find anon folder for "${student.name}" (no ID).`);
 
 	const teacherFiles = {};
 	const _readCodeFiles = async (dirHandleSrc) => {
@@ -603,8 +571,8 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	const studentFiles = {};
 	const allMarks = {};
 	try {
-		const anonDir = await dirHandle.getDirectoryHandle("anon_names");
-		const studentDir = await anonDir.getDirectoryHandle(anonName);
+		const anonDir = await dirHandle.getDirectoryHandle("anon_ids");
+		const studentDir = await anonDir.getDirectoryHandle(sid);
 		for await (const [name, entry] of studentDir.entries()) {
 			if (entry.kind !== "file") continue;
 			if (/\.(html|css|js)$/i.test(name))

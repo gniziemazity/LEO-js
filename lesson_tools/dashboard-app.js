@@ -4,6 +4,7 @@ let _pendingXlsx = [];
 let _allFiles = new Map();
 let _dirHandle = null;
 let _studentIdMap = {};
+let _realToAlterMap = {};
 
 const landingEl = document.getElementById("landing");
 
@@ -57,47 +58,117 @@ async function readDirHandle(handle, prefix, pathMap, files) {
 }
 
 function handleFiles(files) {
+	const isRootLevel = (f) => {
+		const p = _filePathFor(f);
+		return !p || !p.includes("/");
+	};
 	const jsonFiles = files.filter(
 		(f) =>
 			f.name.toLowerCase().endsWith(".json") &&
-			!f.name.toLowerCase().startsWith("diff_marks"),
+			!f.name.toLowerCase().startsWith("diff_marks") &&
+			isRootLevel(f),
 	);
 	const xlsxFiles = files.filter((f) =>
 		f.name.toLowerCase().endsWith(".xlsx"),
+	);
+	const studentsCsvFile = files.find(
+		(f) => f.name.toLowerCase() === "students.csv",
+	);
+	const nameMapFile = files.find(
+		(f) => f.name.toLowerCase() === "name_map.csv",
 	);
 	if (!jsonFiles.length) {
 		alert("No JSON log file found.");
 		return;
 	}
 	_pendingXlsx = xlsxFiles;
+	_realToAlterMap = {};
+	if (nameMapFile) loadStudentsCsv(nameMapFile);
+	else if (studentsCsvFile) loadStudentsCsv(studentsCsvFile);
 	loadBestJsonFile(jsonFiles);
 }
 
-async function loadBestJsonFile(jsonFiles) {
-	const rank = (name) => {
-		const n = name.toLowerCase();
-		if (n === "log.json") return 0;
-		if (n.endsWith("_log.json")) return 1;
-		if (n.includes("log")) return 2;
-		return 3;
-	};
-	const candidates = [...jsonFiles].sort(
-		(a, b) => rank(a.name) - rank(b.name),
-	);
-
-	for (const file of candidates) {
-		try {
-			const data = JSON.parse(await file.text());
-			const events = data?.events || data?.keyPresses || [];
-			if (Array.isArray(events) && events.length) {
-				await loadJsonData(file, data);
-				return;
-			}
-		} catch {}
+async function loadStudentsCsv(file) {
+	try {
+		const text = await file.text();
+		_realToAlterMap = parseStudentsCsvForAlterEgo(text);
+		if (_p) scheduleRender();
+	} catch {
+		_realToAlterMap = {};
 	}
+}
 
-	alert("No JSON log file with events found.");
-	showLoading(false);
+function parseStudentsCsvForAlterEgo(text) {
+	const map = {};
+	const lines = text.split(/\r?\n/).filter(Boolean);
+	if (lines.length < 2) return map;
+	const delim = lines[0].includes(";") ? ";" : ",";
+	const cells = (line) =>
+		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+	const header = cells(lines[0]);
+	const nameIdx = header.findIndex((h) => /student.?name/i.test(h));
+	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
+	if (nameIdx === -1 || alterIdx === -1) return map;
+	for (let i = 1; i < lines.length; i++) {
+		const parts = cells(lines[i]);
+		const realName = parts[nameIdx];
+		const alterEgo = parts[alterIdx];
+		if (realName && alterEgo) map[realName] = alterEgo;
+	}
+	return map;
+}
+
+async function loadBestJsonFile(jsonFiles) {
+	if (jsonFiles.length === 0) {
+		alert("No JSON log file found in the selected folder.");
+		showLoading(false);
+		return;
+	}
+	if (jsonFiles.length > 1) {
+		const paths = jsonFiles
+			.map((f) => _filePathFor(f) || f.name)
+			.join("\n  ");
+		console.warn(
+			`[Dashboard] Expected exactly one .json log file, found ${jsonFiles.length}:\n  ${paths}`,
+		);
+		alert(
+			`Expected exactly one .json log file in the folder, found ${jsonFiles.length}:\n${paths}`,
+		);
+		showLoading(false);
+		return;
+	}
+	const file = jsonFiles[0];
+	const path = _filePathFor(file) || file.name;
+	try {
+		const data = JSON.parse(await file.text());
+		const events = data?.events || data?.keyPresses || [];
+		if (!Array.isArray(events) || events.length === 0) {
+			console.error(`[Dashboard] ${path} has no events`);
+			alert(`${path} has no events.`);
+			showLoading(false);
+			return;
+		}
+		console.log(
+			`[Dashboard] Loading log from ${path} ` +
+				`(${events.length} events, sessionStart=${
+					events[0]?.timestamp
+						? new Date(events[0].timestamp).toISOString()
+						: "?"
+				})`,
+		);
+		await loadJsonData(file, data);
+	} catch (e) {
+		console.error(`[Dashboard] failed to load ${path}: ${e.message}`);
+		alert(`Failed to load ${path}: ${e.message}`);
+		showLoading(false);
+	}
+}
+
+function _filePathFor(file) {
+	for (const [path, f] of _allFiles.entries()) {
+		if (f === file) return path;
+	}
+	return null;
 }
 
 async function _readImageUris(fileMap) {

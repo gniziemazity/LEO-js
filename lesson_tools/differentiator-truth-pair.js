@@ -50,13 +50,109 @@ function _truthHidePairTokenHover() {
 	if (el) el.style.display = "none";
 }
 
+function _truthSetPairHoverEls(els) {
+	const next = els ? els.filter(Boolean) : [];
+	for (const el of _truthPairHoverMarkEls) {
+		if (!next.includes(el)) el.classList.remove("truth-pair-target");
+	}
+	for (const el of next) el.classList.add("truth-pair-target");
+	_truthPairHoverMarkEls = next;
+}
+
 function _truthClearPairHover() {
 	_truthHidePairTokenHover();
-	if (_truthPairHoverMarkEl) {
-		_truthPairHoverMarkEl.classList.remove("truth-pair-target");
-		_truthPairHoverMarkEl = null;
-	}
+	_truthSetPairHoverEls([]);
 	_truthHidePairArrow();
+}
+
+function _truthGhostTokensInFile(file) {
+	const blobs =
+		(_currentMarksEntry?.teacher_ghosts &&
+			_currentMarksEntry.teacher_ghosts[file]) ||
+		(typeof _borrowedTeacherGhosts === "function"
+			? _borrowedTeacherGhosts(file)
+			: []);
+	if (!blobs || !blobs.length) return [];
+	const out = [];
+	const re = /[a-zA-Z0-9]+|[^\s]/g;
+	for (const blob of blobs) {
+		const text = blob.text || "";
+		re.lastIndex = 0;
+		let m;
+		while ((m = re.exec(text)) !== null) {
+			out.push({
+				file,
+				blobPos: blob.pos,
+				offset: m.index,
+				token: m[0],
+				start: blob.pos + m.index,
+				end: blob.pos + m.index + m[0].length,
+			});
+		}
+	}
+	out.sort((a, b) => a.start - b.start);
+	return out;
+}
+
+function _truthFindConsecutiveGhosts(file, startGhost, n) {
+	if (n <= 0) return null;
+	const list = _truthGhostTokensInFile(file);
+	const idx = list.findIndex(
+		(g) => g.start === startGhost.start && g.token === startGhost.token,
+	);
+	if (idx < 0) return null;
+	if (idx + n > list.length) return null;
+	const slice = list.slice(idx, idx + n);
+	for (const g of slice) {
+		if (_truthGhostIsPaired(g)) return null;
+	}
+	const realTokens = _truthTokensForFile("teacher", file);
+	for (let i = 1; i < slice.length; i++) {
+		const prev = slice[i - 1];
+		const cur = slice[i];
+		if (prev.blobPos === cur.blobPos) continue;
+		const lo = Math.min(prev.blobPos, cur.blobPos);
+		const hi = Math.max(prev.blobPos, cur.blobPos);
+		for (const tok of realTokens) {
+			if (tok.start < lo) continue;
+			if (tok.start >= hi) break;
+			if (_truthIsCommentPos("teacher", file, tok.start)) continue;
+			return null;
+		}
+	}
+	return slice;
+}
+
+function _truthGhostIsPaired(ghost) {
+	const t = _truthMarks();
+	if (!t) return false;
+	const sFiles = t.student_files || {};
+	for (const marks of Object.values(sFiles)) {
+		for (const m of marks || []) {
+			if (m.label !== "ghost_extra") continue;
+			if (_truthGhostMatchesPair(ghost, m.paired_with)) return true;
+		}
+	}
+	return false;
+}
+
+function _truthFindGhostElByPos(file, start, token) {
+	const wrap = document.getElementById("code-teacher");
+	if (!wrap) return null;
+	const candidates = wrap.querySelectorAll(
+		`.leo-mark[data-leo-side="teacher"][data-leo-ghost-offset]`,
+	);
+	for (const el of candidates) {
+		const pane = el.closest(".code-pane");
+		if (!pane || pane.dataset.paneFile !== file) continue;
+		const blobPos = parseInt(el.dataset.leoPos, 10);
+		const offset = parseInt(el.dataset.leoGhostOffset, 10);
+		if (!Number.isFinite(blobPos) || !Number.isFinite(offset)) continue;
+		if (blobPos + offset === start && el.dataset.leoToken === token) {
+			return el;
+		}
+	}
+	return null;
 }
 
 function _truthFindLeoMarkEl(side, pos, token) {
@@ -100,15 +196,17 @@ function _truthSrcPosToDomPoint(side, file, srcPos) {
 	const target = srcPos - lineStart;
 	let cursor = 0;
 	let result = null;
+	let lastBoundary = null;
 	const walk = (n) => {
 		if (result) return;
 		if (n.nodeType === 3) {
 			const len = n.nodeValue.length;
-			if (cursor + len >= target) {
+			if (cursor + len > target) {
 				result = { node: n, offset: target - cursor };
 				return;
 			}
 			cursor += len;
+			lastBoundary = { node: n, offset: len };
 		} else if (n.nodeType === 1) {
 			if (
 				n.classList &&
@@ -120,7 +218,7 @@ function _truthSrcPosToDomPoint(side, file, srcPos) {
 		}
 	};
 	walk(lineEl);
-	return result;
+	return result || lastBoundary;
 }
 
 function _truthTokenBbox(side, file, tok) {
@@ -272,6 +370,79 @@ function _truthOnPairMouseMove(ev) {
 		return;
 	}
 
+	if (roles.wantsGhost) {
+		const ghost = _truthGhostFromTarget(ev.target);
+		if (!ghost || ghost.side !== "teacher") {
+			_truthHidePairLabel();
+			_truthClearPairHover();
+			return;
+		}
+		const n = roles.anchorMarks.length;
+		if (n > 1) {
+			const consecutive = _truthFindConsecutiveGhosts(ghost.file, ghost, n);
+			if (!consecutive) {
+				_truthHidePairLabel();
+				_truthClearPairHover();
+				return;
+			}
+			_truthShowPairLabel(ev.clientX, ev.clientY, "pair");
+			_truthHidePairTokenHover();
+			_truthHidePairArrow();
+			const els = consecutive
+				.map((g) => _truthFindGhostElByPos(g.file, g.start, g.token))
+				.filter(Boolean);
+			_truthSetPairHoverEls(els);
+			return;
+		}
+		if (_truthGhostIsPaired(ghost)) {
+			_truthHidePairLabel();
+			_truthClearPairHover();
+			return;
+		}
+		_truthShowPairLabel(ev.clientX, ev.clientY, "pair");
+		const r = ghost.el.getBoundingClientRect();
+		const el = _truthEnsurePairTokenHover();
+		el.classList.remove("no-underline");
+		el.style.left = `${r.left}px`;
+		el.style.top = `${r.top}px`;
+		el.style.width = `${r.width}px`;
+		el.style.height = `${r.height + 1}px`;
+		el.style.display = "block";
+		_truthHidePairArrow();
+		_truthSetPairHoverEls([ghost.el]);
+		return;
+	}
+
+	if (roles.wantsStudentGhostExtra) {
+		const info = _truthClickPosition(ev);
+		const tok = info && _truthTokenAtPos(info.side, info.file, info.pos);
+		const studentMark =
+			info && tok
+				? _truthExistingMarkAtPos("student", info.file, tok.start)
+				: null;
+		if (
+			!info ||
+			info.side !== "student" ||
+			!studentMark ||
+			studentMark.label !== "ghost_extra" ||
+			studentMark.paired_with
+		) {
+			_truthHidePairLabel();
+			_truthClearPairHover();
+			return;
+		}
+		_truthShowPairLabel(ev.clientX, ev.clientY, "pair");
+		_truthHidePairTokenHover();
+		_truthHidePairArrow();
+		const markEl = _truthFindLeoMarkEl(
+			"student",
+			studentMark.start,
+			studentMark.token,
+		);
+		_truthSetPairHoverEls(markEl ? [markEl] : []);
+		return;
+	}
+
 	const info = _truthClickPosition(ev);
 	if (!info || info.side !== roles.wantedSide) {
 		_truthHidePairLabel();
@@ -283,10 +454,7 @@ function _truthOnPairMouseMove(ev) {
 
 	if (intent.kind === "block") {
 		_truthHidePairLabel();
-		if (_truthPairHoverMarkEl) {
-			_truthPairHoverMarkEl.classList.remove("truth-pair-target");
-			_truthPairHoverMarkEl = null;
-		}
+		_truthSetPairHoverEls([]);
 		_truthHidePairTokenHover();
 		_truthHidePairArrow();
 		return;
@@ -298,15 +466,7 @@ function _truthOnPairMouseMove(ev) {
 	if (intent.kind === "mark") {
 		const markEl = _truthFindMarkEl(info.side, intent.mark);
 		const alreadyPaired = !!intent.mark.paired_with;
-		if (markEl !== _truthPairHoverMarkEl) {
-			if (_truthPairHoverMarkEl) {
-				_truthPairHoverMarkEl.classList.remove("truth-pair-target");
-			}
-			_truthPairHoverMarkEl = markEl;
-		}
-		if (markEl) {
-			markEl.classList.toggle("truth-pair-target", !alreadyPaired);
-		}
+		_truthSetPairHoverEls(markEl && !alreadyPaired ? [markEl] : []);
 		if (alreadyPaired && markEl) {
 			const r = markEl.getBoundingClientRect();
 			const el = _truthEnsurePairTokenHover();
@@ -323,10 +483,7 @@ function _truthOnPairMouseMove(ev) {
 		return;
 	}
 
-	if (_truthPairHoverMarkEl) {
-		_truthPairHoverMarkEl.classList.remove("truth-pair-target");
-		_truthPairHoverMarkEl = null;
-	}
+	_truthSetPairHoverEls([]);
 
 	if (intent.kind === "swap") {
 		if (intent.bbox) {
@@ -392,20 +549,142 @@ function _truthEnterPairMode(anchorMarks, anchorSide, anchorFile) {
 	}
 }
 
+function _truthEnterPairModeForGhost(ghost) {
+	_truthPending = {
+		kind: "pair",
+		anchorMarks: [],
+		anchorGhost: ghost,
+		anchorSide: "teacher",
+		anchorFile: ghost.file,
+	};
+	document.body.classList.add("truth-pair-mode");
+	document.body.classList.add("truth-pair-anchor-extra");
+}
+
 function _truthHandlePendingClick(ev) {
 	if (!_truthPending || _truthPending.kind !== "pair") return false;
+	const roles = _truthPairAnchorRoles();
+	if (roles && roles.wantsGhost) {
+		const ghost = _truthGhostFromTarget(ev.target);
+		if (!ghost) return false;
+		return _truthApplyGhostPairFromExtraStar(ghost);
+	}
+	if (roles && roles.wantsStudentGhostExtra) {
+		const info = _truthClickPosition(ev);
+		if (!info || info.side !== "student") return false;
+		const tok = _truthTokenAtPos(info.side, info.file, info.pos);
+		const studentMark = tok
+			? _truthExistingMarkAtPos("student", info.file, tok.start)
+			: null;
+		if (
+			!studentMark ||
+			studentMark.label !== "ghost_extra" ||
+			studentMark.paired_with
+		) {
+			return false;
+		}
+		return _truthApplyGhostPairFromGhostAnchor(studentMark);
+	}
 	const info = _truthClickPosition(ev);
 	if (!info) return false;
 	return _truthApplyPendingPair(info, ev);
 }
 
+function _truthApplyGhostPairFromExtraStar(ghost) {
+	const anchorMarks = _truthPending.anchorMarks || [];
+	if (
+		!anchorMarks.length ||
+		!anchorMarks.every((m) => m.label === "ghost_extra")
+	) {
+		_truthCancelPending();
+		_truthClearPairHover();
+		return true;
+	}
+	const anchorSide = _truthPending.anchorSide;
+	const anchorFile = _truthPending.anchorFile;
+	if (anchorMarks.length === 1) {
+		const anchorMark = anchorMarks[0];
+		if (_truthGhostIsPaired(ghost)) return false;
+		_truthSnapshot();
+		_truthSetGhostPair(anchorMark, ghost);
+		const anchorLo = anchorMark.start;
+		const anchorHi = anchorMark.end;
+		_truthCancelPending();
+		_truthClearPairHover();
+		_truthRerender();
+		_truthSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0, {
+			preservePosition: true,
+		});
+		return true;
+	}
+	const sortedAnchors = anchorMarks.slice().sort((a, b) => a.start - b.start);
+	const consecutive = _truthFindConsecutiveGhosts(
+		ghost.file,
+		ghost,
+		sortedAnchors.length,
+	);
+	if (!consecutive) return false;
+	_truthSnapshot();
+	for (let i = 0; i < sortedAnchors.length; i++) {
+		_truthSetGhostPair(sortedAnchors[i], consecutive[i]);
+	}
+	const anchorLo = Math.min(...sortedAnchors.map((m) => m.start));
+	const anchorHi = Math.max(...sortedAnchors.map((m) => m.end));
+	_truthCancelPending();
+	_truthClearPairHover();
+	_truthRerender();
+	_truthSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0, {
+		preservePosition: true,
+	});
+	return true;
+}
+
+function _truthApplyGhostPairFromGhostAnchor(studentMark) {
+	const ghost = _truthPending.anchorGhost;
+	if (!ghost) {
+		_truthCancelPending();
+		_truthClearPairHover();
+		return true;
+	}
+	_truthSnapshot();
+	_truthSetGhostPair(studentMark, ghost);
+	_truthCancelPending();
+	_truthClearPairHover();
+	_truthRerender();
+	if (typeof _truthSelectGhostAndShow === "function") {
+		_truthSelectGhostAndShow(ghost, 0, 0, { preservePosition: true });
+	}
+	return true;
+}
+
 function _truthPairAnchorRoles() {
+	if (_truthPending.anchorGhost) {
+		return {
+			anchorMarks: [],
+			anchorGhost: _truthPending.anchorGhost,
+			allMissing: false,
+			allGhostExtra: false,
+			wantedSide: "student",
+			wantedTargetLabels: new Set(["ghost_extra"]),
+			wantsStudentGhostExtra: true,
+		};
+	}
 	const anchorMarks = _truthPending.anchorMarks || [];
 	if (!anchorMarks.length) return null;
 	const allMissing = anchorMarks.every((m) => m.label === "missing");
-
 	const allExtra = anchorMarks.every((m) => m.label === "extra");
-	if (!allMissing && !allExtra) return null;
+	const allGhostExtra = anchorMarks.every((m) => m.label === "ghost_extra");
+	if (!allMissing && !allExtra && !allGhostExtra) return null;
+	if (allGhostExtra) {
+		return {
+			anchorMarks,
+			allMissing: false,
+			allGhostExtra: true,
+			wantedSide: "teacher",
+			wantedTargetLabels: new Set(),
+			wantsGhost: true,
+		};
+	}
 	return {
 		anchorMarks,
 		allMissing,

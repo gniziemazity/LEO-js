@@ -91,16 +91,16 @@ def _build_token_occurrences(events: list) -> list:
 
 
 def _ts_to_helsinki(ts_ms: int) -> str:
+    from datetime import datetime
     try:
         from utils.lv_constants import FINLAND_TZ
-        from datetime import datetime
         if FINLAND_TZ is not None:
             dt = datetime.fromtimestamp(ts_ms / 1000, tz=FINLAND_TZ)
-            return dt.strftime('%H:%M:%S')
+            return dt.strftime('%H:%M:%S') + f'.{dt.microsecond // 1000:03d}'
     except Exception:
         pass
-    from datetime import datetime
-    return datetime.fromtimestamp(ts_ms / 1000).strftime('%H:%M:%S')
+    dt = datetime.fromtimestamp(ts_ms / 1000)
+    return dt.strftime('%H:%M:%S') + f'.{dt.microsecond // 1000:03d}'
 
 
 class _ReconstructionBase:

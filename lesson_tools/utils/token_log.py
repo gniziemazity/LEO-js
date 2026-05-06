@@ -45,12 +45,17 @@ def _build_file_ordered_ts_map(all_events: list) -> Dict[str, List[str]]:
     surviving, _ = replay_with_timestamps_all(all_events)
     if not surviving:
         return {}
-    text = ''.join(ch for ch, _ in surviving)
-    char_ts = [ts for _, ts in surviving]
+    text_parts: List[str] = []
+    char_ts: List[int] = []
+    for ch, ts in surviving:
+        text_parts.append(ch)
+        char_ts.extend([ts] * len(ch))
+    text = ''.join(text_parts)
     result: Dict[str, List[str]] = {}
     for m in _sm._CHAR_TOKEN_RE.finditer(text):
         end_idx = m.end() - 1
-        result.setdefault(m.group(), []).append(ts_to_local(char_ts[end_idx]))
+        if end_idx < len(char_ts):
+            result.setdefault(m.group(), []).append(ts_to_local(char_ts[end_idx]))
     return result
 
 
@@ -63,16 +68,21 @@ def _build_teacher_token_timestamps(events: list) -> Dict[str, list]:
     for tab_key, ed in editors.items():
         fname = "reconstructed.html" if tab_key == "MAIN" else tab_key
         pairs = ed.get_surviving_with_timestamps()
-        text = "".join(ch for ch, _ in pairs)
-        char_ts = [ts for _, ts in pairs]
+        text_parts: List[str] = []
+        char_ts: List[int] = []
+        for ch, ts in pairs:
+            text_parts.append(ch)
+            char_ts.extend([ts] * len(ch))
+        text = "".join(text_parts)
         entries = []
         for m in _sm._CHAR_TOKEN_RE.finditer(text):
             end_idx = m.end() - 1
-            entries.append({
-                'start': m.start(),
-                'end': m.end(),
-                'ts': ts_to_local(char_ts[end_idx]),
-            })
+            if end_idx < len(char_ts):
+                entries.append({
+                    'start': m.start(),
+                    'end': m.end(),
+                    'ts': ts_to_local(char_ts[end_idx]),
+                })
         result[fname] = entries
     return result
 
@@ -190,12 +200,51 @@ def _build_occ_from_diff_marks(
     diff_marks: dict,
     teacher_entries: list,
     removal_ts_by_token: dict = None,
+    teacher_ghosts: dict = None,
 ) -> tuple:
     def _pop_removal_ts(tok: str) -> str:
         val = (removal_ts_by_token or {}).get(tok)
         if val:
             return val.pop(0)
         return '00:00:00'
+
+    ghosts_for_lookup = teacher_ghosts
+    if ghosts_for_lookup is None:
+        ghosts_for_lookup = diff_marks.get('teacher_ghosts')
+    ghost_ts_by_pair: dict = {}
+    if ghosts_for_lookup:
+        for fname, blobs in ghosts_for_lookup.items():
+            for blob in blobs or []:
+                base_pos = blob.get('pos')
+                if base_pos is None:
+                    continue
+                blob_del_ts = blob.get('del_ts')
+                char_del_ts = blob.get('char_del_ts') or []
+                text = blob.get('text') or ''
+                for tm in _sm._CHAR_TOKEN_RE.finditer(text):
+                    start_rel = tm.start()
+                    end_rel = tm.end() - 1
+                    if start_rel < len(char_del_ts):
+                        raw_ts = char_del_ts[end_rel] if end_rel < len(char_del_ts) else blob_del_ts
+                    else:
+                        raw_ts = blob_del_ts
+                    if raw_ts is None:
+                        continue
+                    ts_str = (
+                        ts_to_local(raw_ts)
+                        if isinstance(raw_ts, (int, float))
+                        else raw_ts
+                    )
+                    ghost_ts_by_pair[
+                        (fname, base_pos + start_rel, tm.group())
+                    ] = ts_str
+
+    def _ghost_pair_ts(mark: dict) -> str:
+        pw = mark.get('paired_with') or {}
+        if not pw.get('ghost'):
+            return ''
+        key = (pw.get('file'), pw.get('start'), pw.get('token'))
+        return ghost_ts_by_pair.get(key, '')
 
     miss_nc_ts: Counter = Counter()
     miss_nc_ctr: Counter = Counter()
@@ -268,17 +317,23 @@ def _build_occ_from_diff_marks(
             if label == 'extra':
                 all_occ.append(('00:00:00', tok, {'EXTRA'}))
             elif label == 'ghost_extra':
-                rem_ts = m.get('removal_ts') or _pop_removal_ts(tok)
+                rem_ts = (
+                    _ghost_pair_ts(m)
+                    or m.get('removal_ts')
+                    or _pop_removal_ts(tok)
+                )
                 all_occ.append((rem_ts, tok, {'EXTRA*'}))
 
     def _sort_key(entry: tuple) -> tuple:
         ts, _, fl = entry
         is_tail = ts == '00:00:00' and 'EXTRA' in fl and 'EXTRA*' not in fl
         try:
-            h, m, s = ts.split(':')
-            return (is_tail, int(h), int(m), int(s))
+            h_str, m_str, rest = ts.split(':')
+            sec_str, _, ms_str = rest.partition('.')
+            ms = int(ms_str) if ms_str else 0
+            return (is_tail, int(h_str), int(m_str), int(sec_str), ms)
         except Exception:
-            return (is_tail, 99, 99, 99)
+            return (is_tail, 99, 99, 99, 0)
 
     all_occ.sort(key=_sort_key)
 
@@ -756,6 +811,98 @@ def _build_leo_diff_marks(
     return teacher_result, student_result, score, {}, {}, n_total, assignments
 
 
+def _build_token_secprefix_map(ts_map: Dict[str, List[str]]) -> Dict[str, Dict[str, List[str]]]:
+    out: Dict[str, Dict[str, List[str]]] = {}
+    for tok, ts_list in ts_map.items():
+        tok_map: Dict[str, List[str]] = {}
+        for ts in ts_list:
+            secprefix, _, ms_str = ts.partition('.')
+            ms = int(ms_str) if ms_str else 0
+            tok_map.setdefault(secprefix, []).append(ts)
+            if ms >= 500:
+                rounded = _add_seconds_to_hms(secprefix, 1)
+                if rounded:
+                    tok_map.setdefault(rounded, []).append(ts)
+        out[tok] = tok_map
+    return out
+
+
+def _add_seconds_to_hms(hms: str, delta: int) -> Optional[str]:
+    try:
+        h, m, s = hms.split(':')
+        total = int(h) * 3600 + int(m) * 60 + int(s) + delta
+        if total < 0 or total >= 24 * 3600:
+            return None
+        return f'{total // 3600:02d}:{(total // 60) % 60:02d}:{total % 60:02d}'
+    except Exception:
+        return None
+
+
+def _build_removal_ts_map(events: list) -> Dict[str, List[str]]:
+    _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(events)
+    out: Dict[str, List[str]] = {}
+    for tok, pairs in removed_kw_ts.items():
+        for _ins_ts, del_ts in pairs:
+            out.setdefault(tok, []).append(ts_to_local(del_ts))
+    return out
+
+
+def _upgrade_secprefix(existing: str, candidates: List[str],
+                        consumed: Dict[Tuple[str, str], int],
+                        key: Tuple[str, str]) -> Optional[str]:
+    if not candidates:
+        return None
+    idx = consumed.get(key, 0)
+    if idx >= len(candidates):
+        return None
+    consumed[key] = idx + 1
+    return candidates[idx]
+
+
+def _refresh_missing_timestamps(diff_marks: dict, events: list,
+                                 _ts_map: dict = None) -> None:
+    if not events:
+        return
+    ts_map = _ts_map if _ts_map is not None else _build_file_ordered_ts_map(events)
+    by_token_secprefix = _build_token_secprefix_map(ts_map)
+    consumed: Dict[Tuple[str, str], int] = {}
+    for fname in sorted(diff_marks.get('teacher_files', {})):
+        for mark in diff_marks['teacher_files'][fname]:
+            if mark.get('label') != 'missing':
+                mark.pop('_tok_idx', None)
+                continue
+            tok = mark.get('token', '')
+            existing = mark.get('timestamp', '')
+            stored_idx = mark.pop('_tok_idx', None)
+            if existing and '.' in existing:
+                continue
+            if existing:
+                cands = by_token_secprefix.get(tok, {}).get(existing, [])
+                upgraded = _upgrade_secprefix(existing, cands, consumed, (tok, existing))
+                if upgraded:
+                    mark['timestamp'] = upgraded
+            elif stored_idx is not None:
+                ts_list = ts_map.get(tok, [])
+                if stored_idx < len(ts_list):
+                    mark['timestamp'] = ts_list[stored_idx]
+
+    rem_map = _build_removal_ts_map(events)
+    rem_secprefix = _build_token_secprefix_map(rem_map)
+    rem_consumed: Dict[Tuple[str, str], int] = {}
+    for fname in sorted(diff_marks.get('student_files', {})):
+        for mark in diff_marks['student_files'][fname]:
+            if mark.get('label') != 'ghost_extra':
+                continue
+            existing = mark.get('removal_ts', '')
+            if not existing or '.' in existing:
+                continue
+            tok = mark.get('token', '')
+            cands = rem_secprefix.get(tok, {}).get(existing, [])
+            upgraded = _upgrade_secprefix(existing, cands, rem_consumed, (tok, existing))
+            if upgraded:
+                mark['removal_ts'] = upgraded
+
+
 def _add_log_metadata(
     diff_marks: dict,
     events: list,
@@ -767,24 +914,7 @@ def _add_log_metadata(
         return
 
     ts_map = _ts_map if _ts_map is not None else _build_file_ordered_ts_map(events)
-
-    tok_seen: Counter = Counter()
-    for fname in sorted(diff_marks.get('teacher_files', {})):
-        for mark in diff_marks['teacher_files'][fname]:
-            if mark.get('label') == 'missing':
-                tok = mark.get('token', '')
-                if tok:
-                    stored_idx = mark.pop('_tok_idx', None)
-                    if stored_idx is not None:
-                        idx = stored_idx
-                    else:
-                        idx = tok_seen[tok]
-                        tok_seen[tok] += 1
-                    ts_list = ts_map.get(tok, [])
-                    if idx < len(ts_list):
-                        mark['timestamp'] = ts_list[idx]
-            else:
-                mark.pop('_tok_idx', None)
+    _refresh_missing_timestamps(diff_marks, events, _ts_map=ts_map)
 
     if 'leo_assignments' not in diff_marks and teacher_files:
         assignments = _build_assignments_for_post_pass(
@@ -1370,9 +1500,15 @@ def _apply_swap_pairing_to_marks(
 ) -> None:
     for marks in t_marks_by_file.values():
         for m in marks:
+            pw = m.get('paired_with')
+            if pw and pw.get('ghost'):
+                continue
             m.pop('paired_with', None)
     for marks in s_marks_by_file.values():
         for m in marks:
+            pw = m.get('paired_with')
+            if pw and pw.get('ghost'):
+                continue
             m.pop('paired_with', None)
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
@@ -1702,6 +1838,24 @@ def _validate_truth_schema(
             pw = m.get('paired_with')
             if pw is None:
                 continue
+            if pw.get('ghost'):
+                if m.get('label') != 'ghost_extra':
+                    errors.append(
+                        f'student/{fname}: ghost paired_with only allowed on '
+                        f'`ghost_extra`, got label {m.get("label")!r}'
+                    )
+                    continue
+                if not (
+                    isinstance(pw.get('file'), str)
+                    and isinstance(pw.get('start'), int)
+                    and isinstance(pw.get('end'), int)
+                    and isinstance(pw.get('token'), str)
+                ):
+                    errors.append(
+                        f'student/{fname}: ghost paired_with must include '
+                        f'file/start/end/token strings/ints'
+                    )
+                continue
             if m.get('label') != 'extra':
                 errors.append(
                     f'student/{fname}: only `extra` may have paired_with, '
@@ -1817,6 +1971,18 @@ def _apply_ghost_extra_promotion(
             del_ts = g_inst.get('del_ts')
             if del_ts is not None:
                 mark['removal_ts'] = ts_to_local(del_ts)
+            g_file = g_inst.get('file')
+            g_blob = g_inst.get('pos')
+            g_off = g_inst.get('blob_offset')
+            if g_file is not None and g_blob is not None and g_off is not None:
+                g_start = g_blob + g_off
+                mark['paired_with'] = {
+                    'file': g_file,
+                    'start': g_start,
+                    'end': g_start + len(tok),
+                    'token': tok,
+                    'ghost': True,
+                }
 
     for tok, td in tokens_data.items():
         students = td.get('student', [])

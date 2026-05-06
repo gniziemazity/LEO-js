@@ -61,6 +61,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
     def _load_students(self) -> None:
         use_alter_ego = os.environ.get('STUDENT_ANALYTICS_USE_ALTER_EGO') == '1'
+        self._real_to_display: Dict[str, str] = {}
 
         def _handle(row):
             sid = row['Student ID'].strip()
@@ -74,16 +75,29 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 'name':   display_name,
                 'number': row['Student Number'].strip(),
             }
-            # Folder names on disk match the real student name; map both so
-            # student_dir lookups still succeed.
             self.name_to_id[real_name] = sid
             if display_name != real_name:
                 self.name_to_id[display_name] = sid
+            self._real_to_display[real_name] = display_name
+
+        def _reset():
+            self.student_info.clear()
+            self.name_to_id.clear()
+            self._real_to_display.clear()
 
         open_csv_encoded(
-            self.students_csv, _handle,
-            reset_fn=lambda: (self.student_info.clear(), self.name_to_id.clear()),
+            self.students_csv, _handle, reset_fn=_reset,
         )
+
+    def write_name_map(self, project_dir: Path) -> None:
+        name_map = getattr(self, '_real_to_display', {}) or {}
+        out_path = Path(project_dir) / 'name_map.csv'
+        with open(out_path, 'w', encoding='utf-8-sig', newline='') as fh:
+            writer = csv.writer(fh, delimiter=';')
+            writer.writerow(['Student Name', 'Alter Ego'])
+            for real_name, alter in name_map.items():
+                writer.writerow([real_name, alter])
+        print(f'Written {out_path.name} ({len(name_map)} student name mappings)')
 
     def load_remarks_csv(self, csv_path: str) -> None:
         path = Path(csv_path)
@@ -402,8 +416,11 @@ def main() -> None:
     checker.write_lev_diff_marks(names_dir, anon_names_dir)
     checker.write_ro_diff_marks(names_dir, anon_names_dir)
     checker.write_git_diff_marks(names_dir, anon_names_dir)
-    checker.copy_truth_diff_marks(current_dir / 'truth', names_dir, anon_names_dir)
+    checker.copy_truth_diff_marks(
+        current_dir / 'truth', names_dir, anon_names_dir, anon_ids_dir,
+    )
     checker.mirror_diff_marks_to_anon_ids(anon_names_dir, anon_ids_dir)
+    checker.write_name_map(current_dir)
 
     checker.generate_excel_report(
         str(current_dir / f'teacher_similarity_{folder_name}.xlsx')

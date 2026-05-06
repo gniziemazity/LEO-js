@@ -134,10 +134,17 @@ document.addEventListener("DOMContentLoaded", () => {
 			const pathMap = new Map();
 			await _simReadDir(dirHandle, "", pathMap, files);
 
+			const isRootLevel = (f) => {
+				for (const [p, fp] of pathMap.entries()) {
+					if (fp === f) return !p.includes("/");
+				}
+				return true;
+			};
 			const jsonFiles = files.filter(
 				(f) =>
 					f.name.toLowerCase().endsWith(".json") &&
-					!_SIM_LOG_SKIP.has(f.name.toLowerCase()),
+					!_SIM_LOG_SKIP.has(f.name.toLowerCase()) &&
+					isRootLevel(f),
 			);
 			if (!jsonFiles.length) {
 				alert("No JSON log file found in this folder.");

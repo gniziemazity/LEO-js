@@ -63,7 +63,6 @@ function _truthBuildJson() {
 		teacher_files: teacherFiles,
 		student_files: studentFiles,
 	};
-	if (t.teacher_ghosts) out.teacher_ghosts = t.teacher_ghosts;
 	return JSON.stringify(out, null, 2) + "\n";
 }
 

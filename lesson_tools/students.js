@@ -428,7 +428,7 @@ function parseSimilarityEvents(descText) {
 }
 
 function parseFollowEvents(descText) {
-	const re = /([^(,]+?)\s*\((\d{2}:\d{2}:\d{2})\)/g;
+	const re = /([^(,]+?)\s*\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
 	const events = [];
 	let m;
 	while ((m = re.exec(descText)) !== null) {
@@ -672,8 +672,8 @@ async function _readStudentDiffPayload(student) {
 		([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
 	);
 	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
-	const studentDir = (student.name + "/").toLowerCase();
-	const anonBase = "anon_names/";
+	const studentDir = (student.id + "/").toLowerCase();
+	const anonBase = "anon_ids/";
 	const studentEntries = [...fileMap.entries()].filter(
 		([p]) =>
 			p.startsWith(anonBase + studentDir) && /\.(html|css|js)$/i.test(p),
@@ -711,7 +711,7 @@ async function _readStudentDiffPayload(student) {
 
 	if (!Object.keys(teacherFiles).length && !Object.keys(studentFiles).length) {
 		throw new Error(
-			`No files found for student "${student.name}". Make sure the folder contains correct/ and anon_names/ subdirectories.`,
+			`No files found for student "${student.name}". Make sure the folder contains correct/ and anon_ids/ subdirectories.`,
 		);
 	}
 

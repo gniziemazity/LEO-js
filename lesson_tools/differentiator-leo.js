@@ -690,6 +690,19 @@ document.addEventListener("contextmenu", (ev) => {
 	}
 });
 
+document.addEventListener(
+	"keydown",
+	(ev) => {
+		if (ev.key !== "Escape") return;
+		if (_leoTip && _leoTip.style.display === "flex") {
+			ev.preventDefault();
+			ev.stopPropagation();
+			_hideLeoTooltip();
+		}
+	},
+	true,
+);
+
 function _showInsertAnchorOrigin(anchor) {
 	const tPos = anchor.getAttribute("data-insert-anchor-teacher-pos");
 	if (tPos == null) return;

@@ -130,6 +130,76 @@ function _truthCollectGroupRect(group, pad = 6) {
 	};
 }
 
+function _truthRefreshGhostPairs() {
+	const wrapTeacher = document.getElementById("code-teacher");
+	const wrapStudent = document.getElementById("code-student");
+	if (wrapTeacher) {
+		for (const el of wrapTeacher.querySelectorAll(".truth-ghost-paired")) {
+			el.classList.remove("truth-ghost-paired");
+		}
+	}
+	if (wrapStudent) {
+		for (const el of wrapStudent.querySelectorAll(
+			".truth-paired-ghost-extra",
+		)) {
+			el.classList.remove("truth-paired-ghost-extra");
+		}
+	}
+	const t =
+		(typeof _truthMarks === "function" ? _truthMarks() : null) ||
+		_currentMarksEntry ||
+		null;
+	if (!t) return;
+	const sFiles = t.student_files || {};
+	for (const [studentFile, marks] of Object.entries(sFiles)) {
+		for (const m of marks || []) {
+			if (m.label !== "ghost_extra") continue;
+			const pw = m.paired_with;
+			if (!pw || !pw.ghost) continue;
+			if (wrapTeacher) {
+				const candidates = wrapTeacher.querySelectorAll(
+					`.leo-mark[data-leo-side="teacher"][data-leo-ghost-offset]`,
+				);
+				for (const el of candidates) {
+					const pane = el.closest(".code-pane");
+					if (!pane || pane.dataset.paneFile !== pw.file) continue;
+					const blobPos = parseInt(el.dataset.leoPos, 10);
+					const offset = parseInt(el.dataset.leoGhostOffset, 10);
+					if (!Number.isFinite(blobPos) || !Number.isFinite(offset))
+						continue;
+					if (
+						blobPos + offset === pw.start &&
+						el.dataset.leoToken === pw.token
+					) {
+						el.classList.add("truth-ghost-paired");
+					}
+				}
+			}
+			if (wrapStudent) {
+				const studentEl = _truthFindLeoMarkEl("student", m.start, m.token);
+				if (studentEl) studentEl.classList.add("truth-paired-ghost-extra");
+			}
+		}
+	}
+}
+
+function _truthGroupTitleText(kind, count) {
+	let label;
+	if (kind === "missing" || kind === "missing-insert") label = "missing";
+	else if (kind === "ghost_extra") label = "ghost";
+	else label = "extra";
+	const noun = count === 1 ? "token" : "tokens";
+	return `${count} ${label} ${noun}`;
+}
+
+function _truthApplyGroupCountTitles(group, marks) {
+	const title = _truthGroupTitleText(group.kind, marks.length);
+	for (const mark of marks) {
+		const el = _truthFindLeoMarkEl(group.side, mark.start, mark.token);
+		if (el) el.setAttribute("title", title);
+	}
+}
+
 function _truthRefreshOverlays() {
 	const wrapTeacher = document.getElementById("code-teacher");
 	const wrapStudent = document.getElementById("code-student");
@@ -157,6 +227,7 @@ function _truthRefreshOverlays() {
 		div.style.width = `${r.width}px`;
 		div.style.height = `${r.height}px`;
 		layers.bg.appendChild(div);
+		_truthApplyGroupCountTitles(g, marks);
 	}
 	_truthRebuildGroupRectCache();
 	if (_truthActiveGroupRange) {
@@ -170,6 +241,7 @@ function _truthRefreshOverlays() {
 	_truthRefreshHoverBorder();
 	_truthRefreshActiveOverlay();
 	_truthRefreshConnectorsForCurrent();
+	_truthRefreshGhostPairs();
 }
 
 function _truthRefreshConnectorsForCurrent() {
@@ -192,6 +264,26 @@ function _truthRefreshConnectorsForCurrent() {
 			seenPairs,
 			seenGroups,
 		);
+	}
+	if (_truthActiveGhost) {
+		const partner = _truthFindGhostPartner(_truthActiveGhost);
+		if (partner) {
+			const key = `ghost|${_truthActiveGhost.file}|${_truthActiveGhost.start}|${_truthActiveGhost.token}|${partner.file}|${partner.mark.start}`;
+			if (!seenPairs.has(key)) {
+				seenPairs.add(key);
+				_truthPairConnectorItems.push({
+					kind: "ghost-pair",
+					studentMark: partner.mark,
+					studentFile: partner.file,
+					ghost: {
+						file: _truthActiveGhost.file,
+						start: _truthActiveGhost.start,
+						end: _truthActiveGhost.end,
+						token: _truthActiveGhost.token,
+					},
+				});
+			}
+		}
 	}
 	_truthRefreshPairConnectors();
 }
@@ -216,6 +308,7 @@ function _truthClearGroupHover() {
 	document.body.classList.remove("truth-group-hover-active");
 	_truthRefreshHoverBorder();
 	_truthRefreshConnectorsForCurrent();
+	if (typeof _truthClearGhostHover === "function") _truthClearGhostHover();
 }
 
 function _truthRefreshHoverBorder() {
@@ -245,6 +338,7 @@ function _truthRefreshHoverBorder() {
 }
 
 let _truthActiveGroupRange = null;
+let _truthActiveGhost = null;
 let _truthSelectionRange = null;
 
 function _truthDrawActiveRect(range) {
@@ -278,14 +372,33 @@ function _truthRefreshActiveOverlay() {
 			el.remove();
 		}
 	}
+	if (_truthActiveGhost) {
+		_truthDrawGhostActiveRect(_truthActiveGhost);
+		const partner = _truthFindGhostPartner(_truthActiveGhost);
+		if (partner) {
+			_truthDrawActiveRect({
+				side: "student",
+				file: partner.file,
+				lo: partner.mark.start,
+				hi: partner.mark.end,
+				marks: [partner.mark],
+			});
+		}
+		return;
+	}
 	if (!_truthActiveGroupRange) return;
 	_truthDrawActiveRect(_truthActiveGroupRange);
 
 	const otherSide =
 		_truthActiveGroupRange.side === "teacher" ? "student" : "teacher";
 	const partnerRanges = new Map();
+	const ghostPartners = [];
 	for (const m of _truthActiveGroupRange.marks || []) {
 		if (!m.paired_with) continue;
+		if (m.paired_with.ghost) {
+			ghostPartners.push(m.paired_with);
+			continue;
+		}
 		const pFile = m.paired_with.file;
 		const pStart = m.paired_with.start;
 		const pEnd = pStart + (m.paired_with.token?.length ?? 0);
@@ -308,6 +421,27 @@ function _truthRefreshActiveOverlay() {
 			marks,
 		});
 	}
+	for (const ghost of ghostPartners) {
+		_truthDrawGhostActiveRect(ghost);
+	}
+}
+
+function _truthDrawGhostActiveRect(ghost) {
+	const el = _truthFindGhostElement(ghost);
+	if (!el) return;
+	const pane = el.closest(".code-pane");
+	if (!pane) return;
+	const layers = _truthEnsurePaneOverlays(pane);
+	if (!layers) return;
+	const r = el.getBoundingClientRect();
+	const paneRect = pane.getBoundingClientRect();
+	const div = document.createElement("div");
+	div.className = "truth-active-rect is-dark-gray";
+	div.style.left = `${r.left - paneRect.left}px`;
+	div.style.top = `${r.top - paneRect.top}px`;
+	div.style.width = `${r.width}px`;
+	div.style.height = `${r.height}px`;
+	layers.bg.appendChild(div);
 }
 
 function _truthFindGroupRange(side, file, pos) {
@@ -429,6 +563,40 @@ function _truthOnGroupHover(ev) {
 		_truthClearTokenHover();
 		return;
 	}
+	const ghostInfo = _truthGhostFromTarget(ev.target);
+	if (ghostInfo) {
+		const partner = _truthFindGhostPartner(ghostInfo);
+		if (partner) {
+			const key = `ghost|${ghostInfo.file}|${ghostInfo.start}|${ghostInfo.token}`;
+			document.body.classList.add("truth-group-hover-active");
+			if (_truthHoverGroupKey !== key) {
+				_truthHoverGroupKey = key;
+				_truthHoverGroupRange = {
+					side: "student",
+					file: partner.file,
+					lo: partner.mark.start,
+					hi: partner.mark.end,
+					marks: [partner.mark],
+				};
+				_truthClearTokenHover();
+				_truthRefreshHoverBorder();
+				_truthRefreshConnectorsForCurrent();
+			}
+			return;
+		}
+		if (_truthHoverGroupKey) _truthClearGroupHover();
+		const ghostKey = `ghost|${ghostInfo.file}|${ghostInfo.start}|${ghostInfo.token}`;
+		const oldKey = _truthHoverGhost
+			? `ghost|${_truthHoverGhost.file}|${_truthHoverGhost.start}|${_truthHoverGhost.token}`
+			: null;
+		if (oldKey !== ghostKey) {
+			_truthClearTokenHover();
+			_truthHoverGhost = ghostInfo;
+			_truthRefreshGhostHoverOverlay();
+		}
+		return;
+	}
+	if (_truthHoverGhost) _truthClearGhostHover();
 	const g =
 		_truthGroupAtPoint(ev.clientX, ev.clientY) ||
 		_truthInsertAnchorAtPoint(ev.clientX, ev.clientY);
@@ -473,15 +641,58 @@ function _truthOnGroupHover(ev) {
 }
 
 let _truthHoverToken = null;
+let _truthHoverGhost = null;
+
+function _truthRefreshGhostHoverOverlay() {
+	for (const layer of document.querySelectorAll(".truth-bg-layer")) {
+		for (const el of layer.querySelectorAll(".truth-ghost-hover-rect")) {
+			el.remove();
+		}
+	}
+	if (!_truthHoverGhost) {
+		if (!_truthHoverToken)
+			document.body.classList.remove("truth-token-hover-active");
+		return;
+	}
+	document.body.classList.add("truth-token-hover-active");
+	const el =
+		_truthHoverGhost.el ||
+		_truthFindGhostElByPos(
+			_truthHoverGhost.file,
+			_truthHoverGhost.start,
+			_truthHoverGhost.token,
+		);
+	if (!el) return;
+	const r = el.getBoundingClientRect();
+	const pane = el.closest(".code-pane");
+	if (!pane) return;
+	const paneRect = pane.getBoundingClientRect();
+	const layers = _truthEnsurePaneOverlays(pane);
+	if (!layers) return;
+	const div = document.createElement("div");
+	div.className = "truth-hover-rect truth-ghost-hover-rect";
+	div.style.left = `${r.left - paneRect.left}px`;
+	div.style.top = `${r.top - paneRect.top}px`;
+	div.style.width = `${r.width}px`;
+	div.style.height = `${r.height}px`;
+	layers.bg.appendChild(div);
+}
+
+function _truthClearGhostHover() {
+	if (!_truthHoverGhost) return;
+	_truthHoverGhost = null;
+	_truthRefreshGhostHoverOverlay();
+}
 
 function _truthRefreshTokenHoverOverlay() {
 	for (const layer of document.querySelectorAll(".truth-bg-layer")) {
-		for (const el of layer.querySelectorAll(".truth-hover-rect")) {
+		for (const el of layer.querySelectorAll(".truth-token-hover-rect")) {
 			el.remove();
 		}
 	}
 	if (!_truthHoverToken) {
-		document.body.classList.remove("truth-token-hover-active");
+		if (!_truthHoverGhost)
+			document.body.classList.remove("truth-token-hover-active");
 		return;
 	}
 	document.body.classList.add("truth-token-hover-active");
@@ -491,7 +702,7 @@ function _truthRefreshTokenHoverOverlay() {
 	const layers = _truthEnsurePaneOverlays(r.pane);
 	if (!layers) return;
 	const div = document.createElement("div");
-	div.className = "truth-hover-rect";
+	div.className = "truth-hover-rect truth-token-hover-rect";
 	div.style.left = `${r.left}px`;
 	div.style.top = `${r.top}px`;
 	div.style.width = `${r.width}px`;
@@ -533,6 +744,7 @@ function _truthApplyPartnerAndAnchorHighlights(el) {
 function _truthApplyClickHighlights(side, file, lo, hi) {
 	_clearLeoHighlights();
 	_truthActiveGroupRange = null;
+	_truthActiveGhost = null;
 	_truthSelectionRange = { side, file, lo, hi };
 	const wrap = document.getElementById(`code-${side}`);
 	if (!wrap) {
@@ -597,6 +809,28 @@ function _truthFindPartnerEl(side, mark) {
 	);
 }
 
+function _truthFindGhostElement(ghostRef) {
+	const wrap = document.getElementById("code-teacher");
+	if (!wrap || !ghostRef) return null;
+	const candidates = wrap.querySelectorAll(
+		`.leo-mark[data-leo-side="teacher"][data-leo-ghost-offset]`,
+	);
+	for (const el of candidates) {
+		const pane = el.closest(".code-pane");
+		if (!pane || pane.dataset.paneFile !== ghostRef.file) continue;
+		const blobPos = parseInt(el.dataset.leoPos, 10);
+		const offset = parseInt(el.dataset.leoGhostOffset, 10);
+		if (!Number.isFinite(blobPos) || !Number.isFinite(offset)) continue;
+		if (
+			blobPos + offset === ghostRef.start &&
+			el.dataset.leoToken === ghostRef.token
+		) {
+			return el;
+		}
+	}
+	return null;
+}
+
 function _truthFindInsertAnchorEl(teacherMark) {
 	if (!teacherMark.insert_at) return null;
 	const wrap = document.getElementById(`code-student`);
@@ -607,8 +841,17 @@ function _truthFindInsertAnchorEl(teacherMark) {
 
 function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 	const marks = _truthFindMarks(range.side, range.file, range.lo, range.hi);
+	const ghostPairsHere = [];
 	for (const mark of marks) {
 		if (!mark.paired_with) continue;
+		if (mark.paired_with.ghost && mark.label === "ghost_extra") {
+			ghostPairsHere.push({
+				studentMark: mark,
+				studentFile: range.file,
+				ghost: mark.paired_with,
+			});
+			continue;
+		}
 		let teacherFile, teacherStart, teacherToken;
 		if (mark.label === "missing") {
 			teacherFile = range.file;
@@ -649,6 +892,38 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 			if (seenGroups.has(key)) continue;
 			seenGroups.add(key);
 			items.push({ kind: "groupInsert", group: g });
+		}
+	}
+
+	if (ghostPairsHere.length === 1) {
+		const p = ghostPairsHere[0];
+		const key = `ghost|${p.ghost.file}|${p.ghost.start}|${p.ghost.token}|${p.studentFile}|${p.studentMark.start}`;
+		if (!seenPairs.has(key)) {
+			seenPairs.add(key);
+			items.push({ kind: "ghost-pair", ...p });
+		}
+	} else if (ghostPairsHere.length > 1) {
+		const sortedByGhost = ghostPairsHere
+			.slice()
+			.sort((a, b) => b.ghost.start - a.ghost.start);
+		const sortedByStudent = ghostPairsHere
+			.slice()
+			.sort((a, b) => a.studentMark.start - b.studentMark.start);
+		const rightmostGhost = sortedByGhost[0].ghost;
+		const leftmostStudent = sortedByStudent[0];
+		const key = `ghost-group|${rightmostGhost.file}|${rightmostGhost.start}|${leftmostStudent.studentFile}|${leftmostStudent.studentMark.start}`;
+		if (!seenPairs.has(key)) {
+			seenPairs.add(key);
+			items.push({
+				kind: "ghost-pair-group",
+				ghost: rightmostGhost,
+				studentMark: leftmostStudent.studentMark,
+				studentFile: leftmostStudent.studentFile,
+			});
+		}
+		for (const p of ghostPairsHere) {
+			const k = `ghost|${p.ghost.file}|${p.ghost.start}|${p.ghost.token}|${p.studentFile}|${p.studentMark.start}`;
+			seenPairs.add(k);
 		}
 	}
 }
@@ -723,9 +998,26 @@ function _truthRefreshPairConnectors() {
 	const missingColor = _cssVar("--clr-mark-missing");
 	const extraColor = _cssVar("--clr-mark-extra");
 	const blackColor = _cssVar("--clr-black");
+	const paleRedColor = _cssVar("--clr-pale-red");
+	const paleBlueColor = _cssVar("--clr-mark-ghost");
 
 	for (const item of _truthPairConnectorItems) {
-		if (item.kind === "pair") {
+		if (item.kind === "ghost-pair" || item.kind === "ghost-pair-group") {
+			const teacherEl = _truthFindGhostElement(item.ghost);
+			const studentEl = _truthFindLeoMarkEl(
+				"student",
+				item.studentMark.start,
+				item.studentMark.token,
+			);
+			if (!teacherEl || !studentEl) continue;
+			const tRect = teacherEl.getBoundingClientRect();
+			const sRect = studentEl.getBoundingClientRect();
+			const tY = _truthElBelowLineY(teacherEl);
+			const sY = _truthElBelowLineY(studentEl);
+			_truthSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
+			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
+			_truthSvgLine(svg, midX, sY, sRect.left, sY, paleRedColor);
+		} else if (item.kind === "pair") {
 			const srcEl = _truthFindMarkEl(item.side, item.mark);
 			const partnerEl = _truthFindPartnerEl(item.side, item.mark);
 			if (!srcEl || !partnerEl) continue;

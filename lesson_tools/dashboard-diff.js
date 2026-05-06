@@ -14,7 +14,7 @@ async function _buildDiffWindowPayload(student, followPct) {
 	const studentDir = (
 		CFG.STUDENT_SUBDIR +
 		"/" +
-		student.name +
+		student.id +
 		"/"
 	).toLowerCase();
 
@@ -39,7 +39,7 @@ async function _buildDiffWindowPayload(student, followPct) {
 		if (!fileObj && _dirHandle) {
 			try {
 				const sub = await _dirHandle.getDirectoryHandle(CFG.STUDENT_SUBDIR);
-				const sdir = await sub.getDirectoryHandle(student.name);
+				const sdir = await sub.getDirectoryHandle(student.id);
 				const fh = await sdir.getFileHandle(filename);
 				fileObj = await fh.getFile();
 			} catch {}

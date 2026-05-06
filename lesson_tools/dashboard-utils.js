@@ -64,7 +64,7 @@ function resolveInteractionStudent(field) {
 		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
 			return _studentIdMap?.[asNum] || null;
 		}
-		return trimmed;
+		return _realToAlterMap?.[trimmed] || trimmed;
 	}
 	return null;
 }
