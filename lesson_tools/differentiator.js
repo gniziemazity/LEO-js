@@ -265,17 +265,16 @@ function loadFilesFromInput(files, side) {
 	if (!pending) return;
 
 	for (const file of files) {
-		const reader = new FileReader();
-		reader.onload = (e) => {
+		readFileText(file).then((text) => {
 			const mode = diffModeFromFilename(file.name);
 			if (mode != null) {
 				try {
-					const parsed = JSON.parse(e.target.result);
+					const parsed = JSON.parse(text);
 					if (!_allMarks[mode]) _allMarks[mode] = {};
 					Object.assign(_allMarks[mode], parsed);
 				} catch {}
 			} else {
-				texts[file.name] = e.target.result;
+				texts[file.name] = text;
 			}
 			pending--;
 			if (pending === 0) {
@@ -292,8 +291,7 @@ function loadFilesFromInput(files, side) {
 				if (typeof _truthEnable === "function") _truthEnable();
 				_persistDiffState();
 			}
-		};
-		reader.readAsText(file);
+		});
 	}
 }
 
@@ -334,21 +332,60 @@ function _restoreState(side, saved) {
 }
 
 const _DIFF_COMMENT_RE = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
+const _DIFF_COMMENT_RE_CSS = /\/\*[\s\S]*?\*\//g;
+const _DIFF_HTML_SCRIPT_RE = /(<script\b[^>]*>)([\s\S]*?)<\/script\s*>/gi;
 const _DIFF_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+
+function _diffCommentRanges(text, fileName) {
+	const ext = String(fileName || "")
+		.toLowerCase()
+		.match(/\.[a-z]+$/);
+	const e = ext ? ext[0] : "";
+	const ranges = [];
+	if (e === ".css") {
+		_DIFF_COMMENT_RE_CSS.lastIndex = 0;
+		let m;
+		while ((m = _DIFF_COMMENT_RE_CSS.exec(text)) !== null) {
+			ranges.push([m.index, m.index + m[0].length]);
+		}
+		return ranges;
+	}
+	const isHtml = e === ".html" || e === ".htm";
+	const scriptRanges = [];
+	if (isHtml) {
+		_DIFF_HTML_SCRIPT_RE.lastIndex = 0;
+		let sm;
+		while ((sm = _DIFF_HTML_SCRIPT_RE.exec(text)) !== null) {
+			const innerStart = sm.index + sm[1].length;
+			scriptRanges.push([innerStart, innerStart + sm[2].length]);
+		}
+	}
+	const inScript = (pos) => {
+		for (const [lo, hi] of scriptRanges) {
+			if (lo <= pos && pos < hi) return true;
+			if (pos < lo) return false;
+		}
+		return false;
+	};
+	_DIFF_COMMENT_RE.lastIndex = 0;
+	let m;
+	while ((m = _DIFF_COMMENT_RE.exec(text)) !== null) {
+		const kind = m[0].slice(0, 2);
+		if (isHtml && kind === "//" && !inScript(m.index)) continue;
+		ranges.push([m.index, m.index + m[0].length]);
+	}
+	return ranges;
+}
 
 let _teacherTokenTotalCache = null;
 let _teacherTokenTotalCacheKey = null;
 
-function _countNonCommentTokens(text) {
+function _countNonCommentTokens(text, fileName) {
 	if (!text) return 0;
-	const ranges = [];
-	_DIFF_COMMENT_RE.lastIndex = 0;
-	let m;
-	while ((m = _DIFF_COMMENT_RE.exec(text)) !== null) {
-		ranges.push([m.index, m.index + m[0].length]);
-	}
+	const ranges = _diffCommentRanges(text, fileName);
 	let count = 0;
 	_DIFF_TOKEN_RE.lastIndex = 0;
+	let m;
 	while ((m = _DIFF_TOKEN_RE.exec(text)) !== null) {
 		const pos = m.index;
 		let inComment = false;
@@ -374,7 +411,7 @@ function _getTeacherNonCommentTokenTotal() {
 	if (key === _teacherTokenTotalCacheKey) return _teacherTokenTotalCache;
 	let total = 0;
 	for (const name of names)
-		total += _countNonCommentTokens(_teacherFiles[name] || "");
+		total += _countNonCommentTokens(_teacherFiles[name] || "", name);
 	_teacherTokenTotalCache = total;
 	_teacherTokenTotalCacheKey = key;
 	return total;

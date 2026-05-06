@@ -97,6 +97,16 @@ function _truthGhostTokensInFile(file) {
 function _truthFindConsecutiveGhosts(file, startGhost, n) {
 	if (n <= 0) return null;
 	const list = _truthGhostTokensInFile(file);
+
+	const sameBlob = list.filter((g) => g.blobPos === startGhost.blobPos);
+	const sbIdx = sameBlob.findIndex(
+		(g) => g.start === startGhost.start && g.token === startGhost.token,
+	);
+	if (sbIdx >= 0 && sbIdx + n <= sameBlob.length) {
+		const sbSlice = sameBlob.slice(sbIdx, sbIdx + n);
+		if (!sbSlice.some((g) => _truthGhostIsPaired(g))) return sbSlice;
+	}
+
 	const idx = list.findIndex(
 		(g) => g.start === startGhost.start && g.token === startGhost.token,
 	);

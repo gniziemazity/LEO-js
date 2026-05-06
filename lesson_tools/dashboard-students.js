@@ -157,22 +157,6 @@ function parseStudentData(
 	return { students, idMap };
 }
 
-function parseFollowLabel(label) {
-	if (label.startsWith("-")) {
-		const token = label.slice(1).trimStart();
-		return { kind: "missing", token };
-	}
-	if (label.startsWith("+")) {
-		const tokenPart = label.slice(1).trimStart();
-		if (tokenPart.endsWith("*")) {
-			const t = tokenPart.slice(0, -1).trimEnd();
-			if (t) return { kind: "extra-star", token: t };
-		}
-		return { kind: "extra", token: tokenPart };
-	}
-	return { kind: "normal", token: label };
-}
-
 function parseFollowEvents(descText, sessionDate) {
 	const events = [];
 	if (!descText) return events;

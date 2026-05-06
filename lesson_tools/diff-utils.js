@@ -121,6 +121,35 @@ function readFileArray(file) {
 	});
 }
 
+async function readDirHandle(handle, prefix, pathMap, files, opts = {}) {
+	const lowercaseKeys = opts.lowercaseKeys === true;
+	for await (const [name, entry] of handle) {
+		const path = prefix ? `${prefix}/${name}` : name;
+		if (entry.kind === "directory") {
+			await readDirHandle(entry, path, pathMap, files, opts);
+		} else {
+			const file = await entry.getFile();
+			files.push(file);
+			pathMap.set(lowercaseKeys ? path.toLowerCase() : path, file);
+		}
+	}
+}
+
+function parseFollowLabel(label) {
+	if (label.startsWith("-")) {
+		return { kind: "missing", token: label.slice(1).trimStart() };
+	}
+	if (label.startsWith("+")) {
+		const tokenPart = label.slice(1).trimStart();
+		if (tokenPart.endsWith("*")) {
+			const t = tokenPart.slice(0, -1).trimEnd();
+			if (t) return { kind: "extra-star", token: t };
+		}
+		return { kind: "extra", token: tokenPart };
+	}
+	return { kind: "normal", token: label };
+}
+
 function makeDraggable(handle, target) {
 	handle.addEventListener("mousedown", (e) => {
 		if (e.button !== 0) return;

@@ -5,38 +5,6 @@
 
 let vis;
 
-function _simIdbOpen() {
-	return new Promise((res, rej) => {
-		const req = indexedDB.open("lesson_tools", 1);
-		req.onupgradeneeded = (e) => e.target.result.createObjectStore("state");
-		req.onsuccess = (e) => res(e.target.result);
-		req.onerror = () => rej(req.error);
-	});
-}
-async function _simIdbGet(key) {
-	try {
-		const db = await _simIdbOpen();
-		return await new Promise((res) => {
-			const r = db.transaction("state").objectStore("state").get(key);
-			r.onsuccess = () => res(r.result ?? null);
-			r.onerror = () => res(null);
-		});
-	} catch {
-		return null;
-	}
-}
-async function _simIdbSet(key, value) {
-	try {
-		const db = await _simIdbOpen();
-		await new Promise((res, rej) => {
-			const tx = db.transaction("state", "readwrite");
-			tx.objectStore("state").put(value, key);
-			tx.oncomplete = res;
-			tx.onerror = rej;
-		});
-	} catch {}
-}
-
 const _SIM_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 const _SIM_LOG_SKIP = new Set(["diff_marks.json"]);
 const _SIM_LOG_RANK = (name) => {
@@ -47,36 +15,16 @@ const _SIM_LOG_RANK = (name) => {
 	return 3;
 };
 
-async function _simReadDir(handle, prefix, pathMap, files) {
-	for await (const [name, entry] of handle) {
-		const path = prefix ? `${prefix}/${name}` : name;
-		if (entry.kind === "directory") {
-			await _simReadDir(entry, path, pathMap, files);
-		} else {
-			const file = await entry.getFile();
-			files.push(file);
-			pathMap.set(path, file);
-		}
-	}
-}
-
 async function _simReadImageUris(pathMap) {
 	const imageUris = {};
 	await Promise.all(
 		[...pathMap.entries()]
 			.filter(([p]) => _SIM_IMAGE_EXT.test(p))
-			.map(
-				([, f]) =>
-					new Promise((res) => {
-						const r = new FileReader();
-						r.onload = (e) => {
-							imageUris[f.name] = e.target.result;
-							res();
-						};
-						r.onerror = res;
-						r.readAsDataURL(f);
-					}),
-			),
+			.map(async ([, f]) => {
+				try {
+					imageUris[f.name] = await readFileDataUri(f);
+				} catch {}
+			}),
 	);
 	return imageUris;
 }
@@ -125,14 +73,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	btnFolder.addEventListener("click", async () => {
 		try {
-			const lastDir = await _simIdbGet("lastDir");
+			const lastDir = await _idbGet("lastDir");
 			const opts = { mode: "read" };
 			if (lastDir) opts.startIn = lastDir;
 			const dirHandle = await window.showDirectoryPicker(opts);
-			_simIdbSet("lastDir", dirHandle);
+			_idbSet("lastDir", dirHandle);
 			const files = [];
 			const pathMap = new Map();
-			await _simReadDir(dirHandle, "", pathMap, files);
+			await readDirHandle(dirHandle, "", pathMap, files);
 
 			const isRootLevel = (f) => {
 				for (const [p, fp] of pathMap.entries()) {
@@ -182,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	btnOpen.addEventListener("click", async () => {
 		try {
-			const lastDir = await _simIdbGet("lastDir");
+			const lastDir = await _idbGet("lastDir");
 			const opts = {
 				types: [
 					{
@@ -193,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			};
 			if (lastDir) opts.startIn = lastDir;
 			const [fh] = await window.showOpenFilePicker(opts);
-			_simIdbSet("lastDir", fh);
+			_idbSet("lastDir", fh);
 			const file = await fh.getFile();
 			const json = JSON.parse(await file.text());
 			const events = json.events || [];

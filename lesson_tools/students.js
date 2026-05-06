@@ -51,7 +51,7 @@ async function _tryAutoLoad() {
 	_dirHandle = handle;
 	_allFiles.clear();
 	const files = [];
-	await readDirHandle(handle, "", _allFiles, files);
+	await readDirHandle(handle, "", _allFiles, files, { lowercaseKeys: true });
 	lessonNameEl.textContent = handle.name;
 	document.title = "Students – " + handle.name;
 	await loadXlsxFiles(files);
@@ -101,7 +101,9 @@ async function openFolderPicker() {
 		_dirHandle = dirHandle;
 		_allFiles.clear();
 		const files = [];
-		await readDirHandle(dirHandle, "", _allFiles, files);
+		await readDirHandle(dirHandle, "", _allFiles, files, {
+			lowercaseKeys: true,
+		});
 		const name = dirHandle.name;
 		lessonNameEl.textContent = name;
 		document.title = "Students – " + name;
@@ -109,19 +111,6 @@ async function openFolderPicker() {
 	} catch (e) {
 		if (e.name !== "AbortError") alert("Could not open folder: " + e.message);
 		showLoading(false);
-	}
-}
-
-async function readDirHandle(handle, prefix, pathMap, files) {
-	for await (const [name, entry] of handle) {
-		const path = prefix ? `${prefix}/${name}` : name;
-		if (entry.kind === "directory") {
-			await readDirHandle(entry, path, pathMap, files);
-		} else {
-			const file = await entry.getFile();
-			files.push(file);
-			pathMap.set(path.toLowerCase(), file);
-		}
 	}
 }
 
@@ -438,20 +427,6 @@ function parseFollowEvents(descText) {
 	return events;
 }
 
-function parseFollowLabel(label) {
-	if (label.startsWith("-"))
-		return { kind: "missing", token: label.slice(1).trimStart() };
-	if (label.startsWith("+")) {
-		const tp = label.slice(1).trimStart();
-		if (tp.endsWith("*")) {
-			const t = tp.slice(0, -1).trimEnd();
-			if (t) return { kind: "extra-star", token: t };
-		}
-		return { kind: "extra", token: tp };
-	}
-	return { kind: "normal", token: label };
-}
-
 function renderTable() {
 	const thead = document.getElementById("thead");
 	const tbody = document.getElementById("tbody");
@@ -660,7 +635,7 @@ async function _readStudentDiffPayload(student) {
 
 	const fileMap = new Map();
 	if (_dirHandle) {
-		await readDirHandle(_dirHandle, "", fileMap, []);
+		await readDirHandle(_dirHandle, "", fileMap, [], { lowercaseKeys: true });
 	} else {
 		for (const [k, v] of _allFiles) fileMap.set(k, v);
 	}

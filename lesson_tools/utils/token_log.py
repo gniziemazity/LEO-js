@@ -172,9 +172,9 @@ def _parse_teacher_tokens(
     return entries
 
 
-def _scan_file_tokens(text: str) -> Dict[str, List[Tuple[int, bool]]]:
+def _scan_file_tokens(text: str, ext=None) -> Dict[str, List[Tuple[int, bool]]]:
     result: Dict[str, List[Tuple[int, bool]]] = {}
-    for pos, tok, is_comment in _sm.iter_code_tokens(text):
+    for pos, tok, is_comment in _sm.iter_code_tokens(text, ext):
         result.setdefault(tok, []).append((pos, is_comment))
     return result
 
@@ -565,7 +565,7 @@ def _collect_occurrences(files_by_ext: dict, token_keys: set = None) -> Tuple[Li
             raw = path.read_text(encoding='utf-8', errors='ignore')
         except Exception:
             continue
-        tok_occs = _scan_file_tokens(raw)
+        tok_occs = _scan_file_tokens(raw, ext)
         file_name = path.name
 
         for tok in (token_keys if token_keys is not None else tok_occs.keys()):
@@ -1161,20 +1161,20 @@ def _read_text_normalized(path: Optional[Path]) -> str:
         return ''
 
 
-def _split_tokens_by_comment(text: str) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+def _split_tokens_by_comment(text: str, ext=None) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
     if not text:
         return [], []
     nc: List[Tuple[int, str]] = []
     cm: List[Tuple[int, str]] = []
-    for pos, tok, is_comment in _sm.iter_code_tokens(text):
+    for pos, tok, is_comment in _sm.iter_code_tokens(text, ext):
         (cm if is_comment else nc).append((pos, tok))
     return nc, cm
 
 
-def _build_token_position_index(text: str) -> Tuple[Dict[str, List[int]], int]:
+def _build_token_position_index(text: str, ext=None) -> Tuple[Dict[str, List[int]], int]:
     positions: Dict[str, List[int]] = {}
     n = 0
-    for pos, tok, _ in _sm.iter_code_tokens(text):
+    for pos, tok, _ in _sm.iter_code_tokens(text, ext):
         positions.setdefault(tok, []).append(pos)
         n += 1
     return positions, n
@@ -1427,9 +1427,10 @@ def _build_token_seq_diff_marks(
         if not t_text:
             continue
 
-        t_nc, t_cm = _split_tokens_by_comment(t_text)
-        s_nc, s_cm = _split_tokens_by_comment(s_text)
-        tok_all_positions, _ = _build_token_position_index(t_text)
+        ext = Path(t_name).suffix.lower()
+        t_nc, t_cm = _split_tokens_by_comment(t_text, ext)
+        s_nc, s_cm = _split_tokens_by_comment(s_text, ext)
+        tok_all_positions, _ = _build_token_position_index(t_text, ext)
 
         t_seq = [tok for _, tok in t_nc]
         s_seq = [tok for _, tok in s_nc]
@@ -1524,8 +1525,9 @@ def _apply_swap_pairing_to_marks(
 
         t_text = _read_text_normalized(t_path)
         s_text = _read_text_normalized(s_path)
-        t_nc, _ = _split_tokens_by_comment(t_text)
-        s_nc, _ = _split_tokens_by_comment(s_text)
+        ext = Path(t_name).suffix.lower()
+        t_nc, _ = _split_tokens_by_comment(t_text, ext)
+        s_nc, _ = _split_tokens_by_comment(s_text, ext)
         t_seq = [tok for _, tok in t_nc]
         s_seq = [tok for _, tok in s_nc]
         t_pos_to_idx = {pos: i for i, (pos, _) in enumerate(t_nc)}
@@ -1608,8 +1610,9 @@ def _apply_insert_at_to_unpaired_missings(
 
         t_text = _read_text_normalized(t_path)
         s_text = _read_text_normalized(s_path)
-        t_nc, _ = _split_tokens_by_comment(t_text)
-        s_nc, _ = _split_tokens_by_comment(s_text)
+        ext = Path(t_name).suffix.lower()
+        t_nc, _ = _split_tokens_by_comment(t_text, ext)
+        s_nc, _ = _split_tokens_by_comment(s_text, ext)
 
         missing_pos = {m['start'] for m in t_marks_by_file.get(t_fname, [])
                        if m.get('label') == 'missing'}
@@ -2165,7 +2168,8 @@ def _build_ro_diff_marks(
         t_starts    = _line_start_offsets(t_text)
         s_starts    = _line_start_offsets(s_text) if s_text else []
 
-        tok_all_positions, file_n = _build_token_position_index(t_text)
+        ext = Path(t_name).suffix.lower()
+        tok_all_positions, file_n = _build_token_position_index(t_text, ext)
         n_total += file_n
 
         fname   = Path(t_name).name
@@ -2252,7 +2256,8 @@ def _build_git_diff_marks(
         t_starts    = _line_start_offsets(t_text)
         s_starts    = _line_start_offsets(s_text) if s_text else []
 
-        tok_all_positions, file_n = _build_token_position_index(t_text)
+        ext = Path(t_name).suffix.lower()
+        tok_all_positions, file_n = _build_token_position_index(t_text, ext)
         n_total += file_n
 
         fname   = Path(t_name).name

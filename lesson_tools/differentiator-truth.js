@@ -9,6 +9,7 @@ let _truthPending = null;
 let _truthFloatWin = null;
 let _truthPairHoverMarkEls = [];
 const _truthTokenCache = new Map();
+const _truthCommentRangeCache = new Map();
 const _truthFloaters = new Map();
 
 let _truthWorking = {};
@@ -99,6 +100,7 @@ function _truthStripExtentFields(filesObj) {
 
 function _truthEnable() {
 	_truthTokenCache.clear();
+	_truthCommentRangeCache.clear();
 	_truthCancelPending();
 	_truthClearPairHover();
 	_truthClearGroupHover();
@@ -655,6 +657,32 @@ function _truthTokensForFile(side, file) {
 		out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });
 	}
 	_truthTokenCache.set(key, out);
+	return out;
+}
+
+function _truthCommentRanges(side, file) {
+	const key = side + ":" + file;
+	if (_truthCommentRangeCache.has(key))
+		return _truthCommentRangeCache.get(key);
+	const text = _truthSrcText(side, file);
+	const ranges = _diffCommentRanges(text, file);
+	_truthCommentRangeCache.set(key, ranges);
+	return ranges;
+}
+
+function _truthSliceExcludingComments(side, file, lo, hi) {
+	const text = _truthSrcText(side, file);
+	const ranges = _truthCommentRanges(side, file);
+	let out = "";
+	let cursor = lo;
+	for (const [cLo, cHi] of ranges) {
+		if (cHi <= lo) continue;
+		if (cLo >= hi) break;
+		const a = Math.max(cLo, lo);
+		if (a > cursor) out += text.slice(cursor, a);
+		cursor = Math.min(cHi, hi);
+	}
+	if (cursor < hi) out += text.slice(cursor, hi);
 	return out;
 }
 

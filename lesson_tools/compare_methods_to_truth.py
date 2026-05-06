@@ -23,12 +23,13 @@ For each (student, method, label) where label ∈ {missing, extra, ghost_extra}:
 from __future__ import annotations
 
 import json
-import re
 import sys
 import tkinter as tk
 from collections import defaultdict
 from pathlib import Path
 from tkinter import filedialog
+
+from utils.similarity_measures import _CHAR_TOKEN_RE, _COMMENT_RE
 
 try:
     import pandas as pd  # noqa: F401
@@ -41,9 +42,6 @@ except ImportError:
 TRUTH_FILE = "diff_marks_truth.json"
 LABELS = ("missing", "extra", "ghost_extra")
 CODE_EXTS = (".html", ".htm", ".css", ".js")
-
-_CHAR_TOKEN_RE = re.compile(r"[a-zA-Z0-9]+|[^\s]")
-_COMMENT_RE = re.compile(r"/\*.*?\*/|<!--.*?-->|(?<!:)//[^\n]*", re.DOTALL)
 
 METHOD_LABELS = {
     "leo_star":  "LEO*",

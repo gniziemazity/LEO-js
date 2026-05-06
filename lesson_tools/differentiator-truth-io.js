@@ -136,13 +136,17 @@ function _truthAlignWhitespace(
 	dstText,
 	dstStart,
 	dstEnd,
+	bodyOverride,
 ) {
 	const srcLead = _truthBackwardWhitespace(srcText, srcStart);
 	const dstLead = _truthBackwardWhitespace(dstText, dstStart);
 	const srcTrail = _truthForwardWhitespace(srcText, srcEnd);
 	const dstTrail = _truthForwardWhitespace(dstText, dstEnd);
 
-	let text = srcText.slice(srcStart, srcEnd);
+	let text =
+		bodyOverride !== undefined
+			? bodyOverride
+			: srcText.slice(srcStart, srcEnd);
 	let aStart = dstStart;
 	let aEnd = dstEnd;
 
@@ -224,8 +228,16 @@ function _truthApplyToStudent() {
 			}
 			const tLo = contig[0].lo;
 			const tHi = contig[contig.length - 1].hi;
-			const tSrc = _truthSrcText("teacher", contig[0].file);
-			eg._coalesced = { tLo, tHi, body: tSrc.slice(tLo, tHi) };
+			eg._coalesced = {
+				tLo,
+				tHi,
+				body: _truthSliceExcludingComments(
+					"teacher",
+					contig[0].file,
+					tLo,
+					tHi,
+				),
+			};
 			for (const mg of contig) consumedMissings.add(mg);
 		}
 		for (const g of groups) {
@@ -236,6 +248,12 @@ function _truthApplyToStudent() {
 			) {
 				if (consumedMissings.has(g)) continue;
 				const tSrc = _truthSrcText("teacher", g.file);
+				const body = _truthSliceExcludingComments(
+					"teacher",
+					g.file,
+					g.lo,
+					g.hi,
+				);
 				const a = _truthAlignWhitespace(
 					tSrc,
 					g.lo,
@@ -243,6 +261,7 @@ function _truthApplyToStudent() {
 					origText,
 					g.insertPos,
 					g.insertPos,
+					body,
 				);
 				pushOp({ start: a.start, end: a.end, text: a.text });
 			} else if (
@@ -251,6 +270,12 @@ function _truthApplyToStudent() {
 				g.file === sName
 			) {
 				const tSrc = _truthSrcText("teacher", g.pairFile);
+				const body = _truthSliceExcludingComments(
+					"teacher",
+					g.pairFile,
+					g.pairLo,
+					g.pairHi,
+				);
 				const a = _truthAlignWhitespace(
 					tSrc,
 					g.pairLo,
@@ -258,6 +283,7 @@ function _truthApplyToStudent() {
 					origText,
 					g.lo,
 					g.hi,
+					body,
 				);
 				pushOp({ start: a.start, end: a.end, text: a.text });
 			} else if (

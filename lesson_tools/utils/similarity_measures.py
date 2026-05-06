@@ -36,12 +36,49 @@ _COMMENT_RE = re.compile(
     r'/\*.*?\*/|<!--.*?-->|(?<!:)//[^\n]*',
     re.DOTALL,
 )
+_COMMENT_RE_CSS = re.compile(r'/\*.*?\*/', re.DOTALL)
+_HTML_SCRIPT_RE = re.compile(
+    r'<script\b[^>]*>(.*?)</script\s*>',
+    re.DOTALL | re.IGNORECASE,
+)
 
 
-def _comment_ranges(text: str) -> Tuple[List[int], List[int]]:
+def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
+    """Find comment ranges in `text`.
+
+    For .html/.htm: <!-- --> and /* */ match everywhere; // only matches
+    inside <script>...</script> blocks (where it's a real JS line comment).
+    For .css: only /* */.
+    For .js (or unknown): all three styles.
+    """
     starts: List[int] = []
     ends: List[int] = []
+
+    e = ext.lower() if ext else ''
+    if e == '.css':
+        for match in _COMMENT_RE_CSS.finditer(text):
+            starts.append(match.start())
+            ends.append(match.end())
+        return starts, ends
+
+    is_html = e in ('.html', '.htm')
+    script_ranges: List[Tuple[int, int]] = []
+    if is_html:
+        for sm in _HTML_SCRIPT_RE.finditer(text):
+            script_ranges.append((sm.start(1), sm.end(1)))
+
+    def _in_script(pos: int) -> bool:
+        for lo, hi in script_ranges:
+            if lo <= pos < hi:
+                return True
+            if pos < lo:
+                return False
+        return False
+
     for match in _COMMENT_RE.finditer(text):
+        kind = match.group()[:2]
+        if is_html and kind == '//' and not _in_script(match.start()):
+            continue
         starts.append(match.start())
         ends.append(match.end())
     return starts, ends
@@ -52,21 +89,21 @@ def _pos_in_comment(pos: int, starts: List[int], ends: List[int]) -> bool:
     return idx >= 0 and ends[idx] > pos
 
 
-def iter_code_tokens(text: str):
-    starts, ends = _comment_ranges(text)
+def iter_code_tokens(text: str, ext=None):
+    starts, ends = _comment_ranges(text, ext)
     for match in _CHAR_TOKEN_RE.finditer(text):
         pos = match.start()
         yield pos, match.group(), _pos_in_comment(pos, starts, ends)
 
 
-def extract_tokens(lines: List[str]) -> Counter:
+def extract_tokens(lines: List[str], ext=None) -> Counter:
     text = ' '.join(lines)
-    return Counter(tok for _, tok, _ in iter_code_tokens(text))
+    return Counter(tok for _, tok, _ in iter_code_tokens(text, ext))
 
-def split_code_tokens(text: str) -> Tuple[Counter, Counter]:
+def split_code_tokens(text: str, ext=None) -> Tuple[Counter, Counter]:
     outside: Counter = Counter()
     inside: Counter = Counter()
-    for _, tok, is_comment in iter_code_tokens(text):
+    for _, tok, is_comment in iter_code_tokens(text, ext):
         if is_comment:
             inside[tok] += 1
         else:

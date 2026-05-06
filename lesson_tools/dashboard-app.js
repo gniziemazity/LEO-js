@@ -44,19 +44,6 @@ async function openFolderPicker() {
 	}
 }
 
-async function readDirHandle(handle, prefix, pathMap, files) {
-	for await (const [name, entry] of handle) {
-		const path = prefix ? `${prefix}/${name}` : name;
-		if (entry.kind === "directory") {
-			await readDirHandle(entry, path, pathMap, files);
-		} else {
-			const file = await entry.getFile();
-			files.push(file);
-			pathMap.set(path, file);
-		}
-	}
-}
-
 function handleFiles(files) {
 	const isRootLevel = (f) => {
 		const p = _filePathFor(f);
@@ -176,18 +163,11 @@ async function _readImageUris(fileMap) {
 	await Promise.all(
 		[...fileMap.entries()]
 			.filter(([p]) => IMAGE_EXT.test(p))
-			.map(
-				([, f]) =>
-					new Promise((res) => {
-						const r = new FileReader();
-						r.onload = (e) => {
-							imageUris[f.name] = e.target.result;
-							res();
-						};
-						r.onerror = res;
-						r.readAsDataURL(f);
-					}),
-			),
+			.map(async ([, f]) => {
+				try {
+					imageUris[f.name] = await readFileDataUri(f);
+				} catch {}
+			}),
 	);
 	return imageUris;
 }

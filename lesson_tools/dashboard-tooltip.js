@@ -410,26 +410,28 @@ function hideTip() {
 }
 
 function bgForHit(hit) {
-	if (!hit) return "#ffffff";
+	if (!hit) return "var(--clr-bg)";
 	switch (hit.type) {
 		case "move":
-			return "#FFF3E0";
+			return "var(--clr-tip-bg-orange)";
 		case "anchor":
-			return "#E3F2FD";
+			return "var(--clr-tip-bg-blue)";
 		case "code_insert":
 			return "#F5F5F5";
 		case "dev_char":
-			return "#E8F5E9";
+			return "var(--clr-tip-bg-green)";
 		case "delete":
 			return "#FFEBEE";
 		case "char":
-			return "#ffffff";
+			return "var(--clr-bg)";
 		case "burst":
-			return hit.b?.colorType === "dev" ? "#E8F5E9" : "#ffffff";
+			return hit.b?.colorType === "dev"
+				? "var(--clr-tip-bg-green)"
+				: "var(--clr-bg)";
 		case "interaction":
-			return INTERACTION_COLORS[hit.itype]?.tipBg ?? "#ffffff";
+			return INTERACTION_COLORS[hit.itype]?.tipBg ?? "var(--clr-bg)";
 		default:
-			return "#ffffff";
+			return "var(--clr-bg)";
 	}
 }
 
