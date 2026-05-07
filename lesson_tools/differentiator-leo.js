@@ -3,20 +3,20 @@
 // LEO context-vector math, tooltip rendering, mark/insert-anchor highlighting,
 // and the document-level mousedown / contextmenu listeners that drive the tooltip.
 
-function _ctxSlice(inst, side) {
-	const la = _currentMarksEntry?.leo_assignments;
-	if (!la || !inst) return null;
+function _contextSlice(inst, side) {
+	const assignments = _currentMarksEntry?.leo_assignments;
+	if (!assignments || !inst) return null;
 	const useAug =
 		side === "teacher" &&
-		Array.isArray(la.teacher_seq_aug) &&
+		Array.isArray(assignments.teacher_seq_aug) &&
 		Number.isInteger(inst.seq_idx_aug);
 	const seq = useAug
-		? la.teacher_seq_aug
+		? assignments.teacher_seq_aug
 		: side === "teacher"
-			? la.teacher_seq
-			: la.student_seq;
+			? assignments.teacher_seq
+			: assignments.student_seq;
 	const idx = useAug ? inst.seq_idx_aug : inst.seq_idx;
-	const k = la.k ?? 40;
+	const k = assignments.k ?? 40;
 	if (!seq || idx == null) return null;
 	const lo = Math.max(0, idx - k);
 	const hi = Math.min(seq.length, idx + k + 1);
@@ -26,31 +26,32 @@ function _ctxSlice(inst, side) {
 	};
 }
 
-function _instHasGhostNeighbours(inst, sideName) {
+function _instanceHasGhostNeighbours(inst, sideName) {
 	if (sideName !== "teacher") return false;
 	if (inst.ghost) return false;
 	if (!Number.isInteger(inst.seq_idx_aug)) return false;
-	const sv = _strippedTeacherView();
-	if (!sv) return false;
-	const la = _currentMarksEntry?.leo_assignments;
-	const k = la?.k ?? 18;
+	const strippedView = _strippedTeacherView();
+	if (!strippedView) return false;
+	const assignments = _currentMarksEntry?.leo_assignments;
+	const k = assignments?.k ?? 18;
 	const idx = inst.seq_idx_aug;
 	const lo = Math.max(0, idx - k);
-	const hi = Math.min(sv.isGhostAt.length, idx + k + 1);
+	const hi = Math.min(strippedView.isGhostAt.length, idx + k + 1);
 	for (let i = lo; i < hi; i++) {
-		if (i !== idx && sv.isGhostAt[i]) return true;
+		if (i !== idx && strippedView.isGhostAt[i]) return true;
 	}
 	return false;
 }
 
-function _ctxSliceStripped(inst) {
-	const la = _currentMarksEntry?.leo_assignments;
-	const sv = _strippedTeacherView();
-	if (!la || !sv || !Number.isInteger(inst.seq_idx_aug)) return null;
-	const k = la.k ?? 40;
-	const anchorIdx = sv.augToStripped[inst.seq_idx_aug];
-	const anchorIsGhost = sv.isGhostAt[inst.seq_idx_aug];
-	const seq = sv.strippedSeq;
+function _contextSliceStripped(inst) {
+	const assignments = _currentMarksEntry?.leo_assignments;
+	const strippedView = _strippedTeacherView();
+	if (!assignments || !strippedView || !Number.isInteger(inst.seq_idx_aug))
+		return null;
+	const k = assignments.k ?? 40;
+	const anchorIdx = strippedView.augToStripped[inst.seq_idx_aug];
+	const anchorIsGhost = strippedView.isGhostAt[inst.seq_idx_aug];
+	const seq = strippedView.strippedSeq;
 	if (anchorIsGhost) {
 		return {
 			before: seq.slice(Math.max(0, anchorIdx - k), anchorIdx),
@@ -64,92 +65,86 @@ function _ctxSliceStripped(inst) {
 }
 
 function _strippedTeacherView() {
-	const la = _currentMarksEntry?.leo_assignments;
-	if (!la) return null;
-	if (la.__strippedView !== undefined) return la.__strippedView;
-	const aug = la.teacher_seq_aug;
+	const assignments = _currentMarksEntry?.leo_assignments;
+	if (!assignments) return null;
+	if (assignments.__strippedView !== undefined)
+		return assignments.__strippedView;
+	const aug = assignments.teacher_seq_aug;
 	if (!Array.isArray(aug) || !aug.some((t) => Array.isArray(t))) {
-		la.__strippedView = null;
+		assignments.__strippedView = null;
 		return null;
 	}
 	const strippedSeq = [];
 	const augToStripped = [];
 	const isGhostAt = [];
-	for (const t of aug) {
-		const gho = Array.isArray(t);
-		isGhostAt.push(gho);
+	for (const entry of aug) {
+		const isGhost = Array.isArray(entry);
+		isGhostAt.push(isGhost);
 		augToStripped.push(strippedSeq.length);
-		if (!gho) strippedSeq.push(t);
+		if (!isGhost) strippedSeq.push(entry);
 	}
-	la.__strippedView = { strippedSeq, augToStripped, isGhostAt };
-	return la.__strippedView;
+	assignments.__strippedView = { strippedSeq, augToStripped, isGhostAt };
+	return assignments.__strippedView;
 }
 
-function _instContextVectors(inst, sideName) {
-	const la = _currentMarksEntry?.leo_assignments;
-	if (!la) return null;
-	const k = la.k ?? 10;
-	const idf = la.idf || {};
+function _instanceContextVectors(inst, sideName) {
+	const assignments = _currentMarksEntry?.leo_assignments;
+	if (!assignments) return null;
+	const k = assignments.k ?? 10;
 	let seq, idx;
 	if (sideName === "teacher") {
-		const aug = Array.isArray(la.teacher_seq_aug) ? la.teacher_seq_aug : null;
+		const aug = Array.isArray(assignments.teacher_seq_aug)
+			? assignments.teacher_seq_aug
+			: null;
 		if (aug && Number.isInteger(inst.seq_idx_aug)) {
 			seq = aug.map((t) => (Array.isArray(t) ? t[0] : t));
 			idx = inst.seq_idx_aug;
 		} else {
-			seq = la.teacher_seq;
+			seq = assignments.teacher_seq;
 			idx = inst.seq_idx;
 		}
 	} else {
-		seq = la.student_seq;
+		seq = assignments.student_seq;
 		idx = inst.seq_idx;
 	}
 	if (!seq || !Number.isInteger(idx)) return null;
-	const primary = _buildContextSplit(seq, idx, k, idf);
+	const primary = _buildContextSplit(seq, idx, k);
 	let alt = null;
 	if (
 		sideName === "teacher" &&
 		!inst.ghost &&
 		Number.isInteger(inst.seq_idx_aug)
 	) {
-		const sv = _strippedTeacherView();
-		if (sv) {
+		const strippedView = _strippedTeacherView();
+		if (strippedView) {
 			alt = _buildStrippedContextSplit(
-				sv.strippedSeq,
-				sv.augToStripped[inst.seq_idx_aug],
-				sv.isGhostAt[inst.seq_idx_aug],
+				strippedView.strippedSeq,
+				strippedView.augToStripped[inst.seq_idx_aug],
+				strippedView.isGhostAt[inst.seq_idx_aug],
 				k,
-				idf,
 			);
 		}
 	}
 	return { primary, alt };
 }
 
-// A "context pack": { left, right } — two Maps weighted by IDF (no decay).
-function _buildContextSplit(seq, idx, k, idf) {
+// A "context pack": { left, right } — two Maps with uniform per-token counts
+// (no IDF, no distance decay).
+function _buildContextSplit(seq, idx, k) {
 	const left = new Map();
 	const right = new Map();
 	for (let i = Math.max(0, idx - k); i < idx; i++) {
 		const tok = seq[i];
-		const w = idf[tok] || 0;
-		if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
+		left.set(tok, (left.get(tok) || 0) + 1);
 	}
 	for (let i = idx + 1; i < Math.min(seq.length, idx + k + 1); i++) {
 		const tok = seq[i];
-		const w = idf[tok] || 0;
-		if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
+		right.set(tok, (right.get(tok) || 0) + 1);
 	}
 	return { left, right };
 }
 
-function _buildStrippedContextSplit(
-	strippedSeq,
-	anchorIdx,
-	anchorIsGhost,
-	k,
-	idf,
-) {
+function _buildStrippedContextSplit(strippedSeq, anchorIdx, anchorIsGhost, k) {
 	const left = new Map();
 	const right = new Map();
 	const n = strippedSeq.length;
@@ -158,26 +153,22 @@ function _buildStrippedContextSplit(
 			const i = anchorIdx - off;
 			if (i < 0) break;
 			const tok = strippedSeq[i];
-			const w = idf[tok] || 0;
-			if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
+			left.set(tok, (left.get(tok) || 0) + 1);
 		}
 		for (let off = 1; off <= k; off++) {
 			const i = anchorIdx - 1 + off;
 			if (i >= n) break;
 			const tok = strippedSeq[i];
-			const w = idf[tok] || 0;
-			if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
+			right.set(tok, (right.get(tok) || 0) + 1);
 		}
 	} else {
 		for (let i = Math.max(0, anchorIdx - k); i < anchorIdx; i++) {
 			const tok = strippedSeq[i];
-			const w = idf[tok] || 0;
-			if (w > 0) left.set(tok, (left.get(tok) || 0) + w);
+			left.set(tok, (left.get(tok) || 0) + 1);
 		}
 		for (let i = anchorIdx + 1; i < Math.min(n, anchorIdx + k + 1); i++) {
 			const tok = strippedSeq[i];
-			const w = idf[tok] || 0;
-			if (w > 0) right.set(tok, (right.get(tok) || 0) + w);
+			right.set(tok, (right.get(tok) || 0) + 1);
 		}
 	}
 	return { left, right };
@@ -213,7 +204,7 @@ function _cosineSim(v1, v2) {
 	return dot / (Math.sqrt(n1) * Math.sqrt(n2));
 }
 
-function _findInstIdx(list, pos, ghostOffset) {
+function _findInstanceIdx(list, pos, ghostOffset) {
 	if (!list) return -1;
 	if (ghostOffset != null) {
 		return list.findIndex(
@@ -229,18 +220,18 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 	const teachers = data.teacher;
 	const students = data.student;
 	const thisList = side === "teacher" ? teachers : students;
-	const thisIdx = _findInstIdx(thisList, pos, ghostOffset);
+	const thisIdx = _findInstanceIdx(thisList, pos, ghostOffset);
 	const thisInst = thisIdx >= 0 ? thisList[thisIdx] : null;
 	const matchedOtherIdx =
 		thisInst && Number.isInteger(thisInst.match_idx)
 			? thisInst.match_idx
 			: -1;
 
-	const clickedCtx = thisInst ? _instContextVectors(thisInst, side) : null;
-	const clickedCtxSlice = thisInst ? _ctxSlice(thisInst, side) : null;
+	const clickedCtx = thisInst ? _instanceContextVectors(thisInst, side) : null;
+	const clickedCtxSlice = thisInst ? _contextSlice(thisInst, side) : null;
 	const clickedCtxSliceStripped =
-		thisInst && _instHasGhostNeighbours(thisInst, side)
-			? _ctxSliceStripped(thisInst)
+		thisInst && _instanceHasGhostNeighbours(thisInst, side)
+			? _contextSliceStripped(thisInst)
 			: null;
 	const clickedWindowSet = clickedCtxSlice
 		? new Set([
@@ -301,19 +292,19 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		isSelf = false,
 		scoreAlt = null,
 	) => {
-		const isDual = highlight && _instHasGhostNeighbours(inst, sideName);
+		const isDual = highlight && _instanceHasGhostNeighbours(inst, sideName);
 		if (!isDual) {
 			return renderSingleRow(
 				inst,
 				sideName,
-				_ctxSlice(inst, sideName),
+				_contextSlice(inst, sideName),
 				highlight,
 				score,
 				isSelf,
 			);
 		}
-		const ctxWith = _ctxSlice(inst, sideName);
-		const ctxStripped = _ctxSliceStripped(inst);
+		const ctxWith = _contextSlice(inst, sideName);
+		const ctxStripped = _contextSliceStripped(inst);
 		const cls = `leo-pair${highlight ? " leo-this" : ""}`;
 		return (
 			`<div class="${cls}">` +
@@ -330,7 +321,9 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 			return renderRow(list[thisIdx], sideName, true, null, true, null);
 		}
 		const scored = list.map((inst, i) => {
-			const ctxs = clickedCtx ? _instContextVectors(inst, sideName) : null;
+			const ctxs = clickedCtx
+				? _instanceContextVectors(inst, sideName)
+				: null;
 			let score = null;
 			let scoreAlt = null;
 			if (clickedCtx && ctxs) {
@@ -624,7 +617,7 @@ function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
 		_applyInsertAnchorHighlight(target);
 	}
 	const list = side === "teacher" ? data.teacher : data.student;
-	const idx = _findInstIdx(list, pos, ghostOffset);
+	const idx = _findInstanceIdx(list, pos, ghostOffset);
 	const inst = idx >= 0 ? list[idx] : null;
 	if (!inst || !Number.isInteger(inst.match_idx)) return;
 	const otherSide = side === "teacher" ? "student" : "teacher";

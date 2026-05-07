@@ -153,19 +153,6 @@ def _merge_marks(*by_file_dicts):
     return out
 
 
-def _files_referenced(*data_objs) -> tuple[set, set]:
-    teacher_files: set = set()
-    student_files: set = set()
-    for data in data_objs:
-        if not data:
-            continue
-        for fname in (data.get("teacher_files") or {}):
-            teacher_files.add(fname)
-        for fname in (data.get("student_files") or {}):
-            student_files.add(fname)
-    return teacher_files, student_files
-
-
 def _files_referenced_by_source(named_data: dict) -> tuple[dict, dict]:
     """Return ({teacher_fname: [sources]}, {student_fname: [sources]})."""
     teacher_src: dict = {}
@@ -490,9 +477,9 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
     return per_student, totals
 
 
-def _autosize(ws, df, start_row=1, start_col=1):
+def _autosize(ws, df):
     from openpyxl.utils import get_column_letter
-    for col_idx, col in enumerate(df.columns, start=start_col):
+    for col_idx, col in enumerate(df.columns, start=1):
         max_len = max([len(str(col))] + [len(str(v)) for v in df[col].tolist()])
         letter = get_column_letter(col_idx)
         existing = ws.column_dimensions[letter].width or 0

@@ -169,13 +169,13 @@ function _truthAlignWhitespace(
 
 function _truthApplyToStudent() {
 	const out = {};
-	const t = _truthMarks();
-	if (!t) return out;
+	const truthData = _truthMarks();
+	if (!truthData) return out;
 	const studentNames = Object.keys(_studentFiles || {});
 	const groups = _truthGroupMarks();
 
-	for (const sName of studentNames) {
-		let text = _truthSrcText("student", sName);
+	for (const studentName of studentNames) {
+		let text = _truthSrcText("student", studentName);
 		const origText = text;
 		const ops = [];
 		let order = 0;
@@ -186,172 +186,177 @@ function _truthApplyToStudent() {
 
 		const studentExtras = groups
 			.filter(
-				(g) =>
-					g.side === "student" &&
-					g.file === sName &&
-					(g.kind === "extra" || g.kind === "ghost_extra"),
+				(group) =>
+					group.side === "student" &&
+					group.file === studentName &&
+					(group.kind === "extra" || group.kind === "ghost_extra"),
 			)
 			.slice()
 			.sort((a, b) => a.lo - b.lo);
 		const teacherMissings = groups
 			.filter(
-				(g) =>
-					g.side === "teacher" &&
-					g.kind === "missing-insert" &&
-					g.insertFile === sName,
+				(group) =>
+					group.side === "teacher" &&
+					group.kind === "missing-insert" &&
+					group.insertFile === studentName,
 			)
 			.slice()
 			.sort((a, b) => a.lo - b.lo);
-		const tFile = teacherMissings[0]?.file ?? null;
-		const allTeacherTokens = tFile
-			? _truthTokensForFile("teacher", tFile)
+		const teacherFile = teacherMissings[0]?.file ?? null;
+		const allTeacherTokens = teacherFile
+			? _truthTokensForFile("teacher", teacherFile)
 			: [];
 		const consumedMissings = new Set();
-		for (const eg of studentExtras) {
+		for (const extraGroup of studentExtras) {
 			const candidates = teacherMissings
 				.filter(
-					(g) =>
-						!consumedMissings.has(g) &&
-						g.insertPos >= eg.lo &&
-						g.insertPos <= eg.hi,
+					(group) =>
+						!consumedMissings.has(group) &&
+						group.insertPos >= extraGroup.lo &&
+						group.insertPos <= extraGroup.hi,
 				)
 				.slice()
 				.sort((a, b) => a.lo - b.lo);
 			if (!candidates.length) continue;
-			const contig = [candidates[0]];
+			const contiguous = [candidates[0]];
 			for (let i = 1; i < candidates.length; i++) {
-				const prevHi = contig[contig.length - 1].hi;
-				const nxtLo = candidates[i].lo;
-				let hasKept = false;
+				const prevHigh = contiguous[contiguous.length - 1].hi;
+				const nextLow = candidates[i].lo;
+				let hasKeptToken = false;
 				for (const tok of allTeacherTokens) {
-					if (tok.start < prevHi) continue;
-					if (tok.start >= nxtLo) break;
-					hasKept = true;
+					if (tok.start < prevHigh) continue;
+					if (tok.start >= nextLow) break;
+					hasKeptToken = true;
 					break;
 				}
-				if (hasKept) break;
-				contig.push(candidates[i]);
+				if (hasKeptToken) break;
+				contiguous.push(candidates[i]);
 			}
-			const tLo = contig[0].lo;
-			const tHi = contig[contig.length - 1].hi;
-			eg._coalesced = {
-				tLo,
-				tHi,
+			const teacherLo = contiguous[0].lo;
+			const teacherHi = contiguous[contiguous.length - 1].hi;
+			extraGroup._coalesced = {
+				tLo: teacherLo,
+				tHi: teacherHi,
 				body: _truthSliceExcludingComments(
 					"teacher",
-					contig[0].file,
-					tLo,
-					tHi,
+					contiguous[0].file,
+					teacherLo,
+					teacherHi,
 				),
 			};
-			for (const mg of contig) consumedMissings.add(mg);
+			for (const missingGroup of contiguous)
+				consumedMissings.add(missingGroup);
 		}
 		const rawOps = [];
-		for (const g of groups) {
+		for (const group of groups) {
 			if (
-				g.side === "teacher" &&
-				g.kind === "missing-insert" &&
-				g.insertFile === sName
+				group.side === "teacher" &&
+				group.kind === "missing-insert" &&
+				group.insertFile === studentName
 			) {
-				if (consumedMissings.has(g)) continue;
+				if (consumedMissings.has(group)) continue;
 				const body = _truthSliceExcludingComments(
 					"teacher",
-					g.file,
-					g.lo,
-					g.hi,
+					group.file,
+					group.lo,
+					group.hi,
 				);
 				rawOps.push({
 					kind: "insert",
-					origStart: g.insertPos,
-					origEnd: g.insertPos,
-					srcFile: g.file,
-					srcStart: g.lo,
-					srcEnd: g.hi,
+					origStart: group.insertPos,
+					origEnd: group.insertPos,
+					srcFile: group.file,
+					srcStart: group.lo,
+					srcEnd: group.hi,
 					body,
 				});
 			} else if (
-				g.side === "student" &&
-				g.kind === "extra-replace" &&
-				g.file === sName
+				group.side === "student" &&
+				group.kind === "extra-replace" &&
+				group.file === studentName
 			) {
 				const body = _truthSliceExcludingComments(
 					"teacher",
-					g.pairFile,
-					g.pairLo,
-					g.pairHi,
+					group.pairFile,
+					group.pairLo,
+					group.pairHi,
 				);
 				rawOps.push({
 					kind: "swap",
-					origStart: g.lo,
-					origEnd: g.hi,
-					srcFile: g.pairFile,
-					srcStart: g.pairLo,
-					srcEnd: g.pairHi,
+					origStart: group.lo,
+					origEnd: group.hi,
+					srcFile: group.pairFile,
+					srcStart: group.pairLo,
+					srcEnd: group.pairHi,
 					body,
 				});
 			} else if (
-				g.side === "student" &&
-				(g.kind === "extra" || g.kind === "ghost_extra") &&
-				g.file === sName
+				group.side === "student" &&
+				(group.kind === "extra" || group.kind === "ghost_extra") &&
+				group.file === studentName
 			) {
-				if (g._coalesced) {
+				if (group._coalesced) {
 					rawOps.push({
 						kind: "coal",
-						origStart: g.lo,
-						origEnd: g.hi,
-						body: g._coalesced.body,
+						origStart: group.lo,
+						origEnd: group.hi,
+						body: group._coalesced.body,
 					});
-					delete g._coalesced;
+					delete group._coalesced;
 				} else {
 					rawOps.push({
 						kind: "del",
-						origStart: g.lo,
-						origEnd: g.hi,
+						origStart: group.lo,
+						origEnd: group.hi,
 						body: "",
 					});
 				}
 			}
 		}
 
-		const siblings = rawOps.map((o) => [o.origStart, o.origEnd]);
+		const siblings = rawOps.map((op) => [op.origStart, op.origEnd]);
 		for (let i = 0; i < rawOps.length; i++) {
-			const o = rawOps[i];
+			const op = rawOps[i];
 			const canExtendLeft = (newStart) => {
-				if (newStart >= o.origStart) return true;
+				if (newStart >= op.origStart) return true;
 				for (let j = 0; j < siblings.length; j++) {
 					if (j === i) continue;
 					const [bLo, bHi] = siblings[j];
-					if (newStart <= bLo && bLo <= o.origStart) return false;
-					if (newStart <= bHi && bHi <= o.origStart) return false;
+					if (newStart <= bLo && bLo <= op.origStart) return false;
+					if (newStart <= bHi && bHi <= op.origStart) return false;
 				}
 				return true;
 			};
 			const canExtendRight = (newEnd) => {
-				if (newEnd <= o.origEnd) return true;
+				if (newEnd <= op.origEnd) return true;
 				for (let j = 0; j < siblings.length; j++) {
 					if (j === i) continue;
 					const [bLo, bHi] = siblings[j];
-					if (o.origEnd <= bLo && bLo <= newEnd) return false;
-					if (o.origEnd <= bHi && bHi <= newEnd) return false;
+					if (op.origEnd <= bLo && bLo <= newEnd) return false;
+					if (op.origEnd <= bHi && bHi <= newEnd) return false;
 				}
 				return true;
 			};
-			if (o.kind === "insert" || o.kind === "swap") {
-				const tSrc = _truthSrcText("teacher", o.srcFile);
-				const a = _truthAlignWhitespace(
-					tSrc,
-					o.srcStart,
-					o.srcEnd,
+			if (op.kind === "insert" || op.kind === "swap") {
+				const teacherSrc = _truthSrcText("teacher", op.srcFile);
+				const aligned = _truthAlignWhitespace(
+					teacherSrc,
+					op.srcStart,
+					op.srcEnd,
 					origText,
-					o.origStart,
-					o.origEnd,
-					o.body,
+					op.origStart,
+					op.origEnd,
+					op.body,
 					canExtendLeft,
 					canExtendRight,
 				);
-				pushOp({ start: a.start, end: a.end, text: a.text });
+				pushOp({
+					start: aligned.start,
+					end: aligned.end,
+					text: aligned.text,
+				});
 			} else {
-				pushOp({ start: o.origStart, end: o.origEnd, text: o.body });
+				pushOp({ start: op.origStart, end: op.origEnd, text: op.body });
 			}
 		}
 		ops.sort((a, b) => {

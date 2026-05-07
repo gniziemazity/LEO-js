@@ -7,43 +7,47 @@ function xToTs(x, L) {
 	return L.timeMin + ((x - L.M.left) / L.plotW) * (L.timeMax - L.timeMin);
 }
 
-const Y1_LO = 5,
-	Y1_HI = 1500;
+// Y axes per chart:
+// top chart    — keystroke counts (linear)
+// middle chart — typing rate (log scale)
+// bottom chart — student follow % / rate
+const RATE_Y_LO = 5,
+	RATE_Y_HI = 1500;
 function rateToY(r, L) {
 	const t =
-		(Math.log10(Math.max(r, Y1_LO)) - Math.log10(Y1_LO)) /
-		(Math.log10(Y1_HI) - Math.log10(Y1_LO));
-	return L.M.top + L.plotH1 * (1 - t);
+		(Math.log10(Math.max(r, RATE_Y_LO)) - Math.log10(RATE_Y_LO)) /
+		(Math.log10(RATE_Y_HI) - Math.log10(RATE_Y_LO));
+	return L.M.top + L.plotHmid * (1 - t);
 }
 function countToY(n, maxN, L) {
-	const pad = L.plotH2Pad || 0;
-	return L.M.top + pad + (L.plotH2 - 2 * pad) * (1 - n / Math.max(maxN, 1));
+	const pad = L.plotHtopPad || 0;
+	return L.M.top + pad + (L.plotHtop - 2 * pad) * (1 - n / Math.max(maxN, 1));
 }
 function pctToY(pct, L) {
-	const pad = L.plotH3Pad || 0;
+	const pad = L.plotHbotPad || 0;
 	return (
 		L.M.top +
 		pad +
-		(L.plotH3 - 2 * pad) * (1 - Math.max(0, Math.min(100, pct)) / 100)
+		(L.plotHbot - 2 * pad) * (1 - Math.max(0, Math.min(100, pct)) / 100)
 	);
 }
 
-const CHART3_BOTTOM = 22;
+const BOTTOM_CHART_LEGEND_HEIGHT = 22;
 
-function makeLayout(p, W, H1, H2, H3) {
+function makeLayout(p, W, Hmid, Htop, Hbot) {
 	const M = CFG.M;
 	return {
 		W,
 		M,
-		H1,
-		H2,
-		H3,
+		Hmid,
+		Htop,
+		Hbot,
 		plotW: W - M.left - M.right,
-		plotH1: H1 - M.top - M.bottom,
-		plotH2: H2 - M.top - M.bottom,
-		plotH2Pad: 8,
-		plotH3: H3 - M.top - CHART3_BOTTOM,
-		plotH3Pad: 8,
+		plotHmid: Hmid - M.top - M.bottom,
+		plotHtop: Htop - M.top - M.bottom,
+		plotHtopPad: 8,
+		plotHbot: Hbot - M.top - BOTTOM_CHART_LEGEND_HEIGHT,
+		plotHbotPad: 8,
 		timeMin: _zoomMin ?? p.sessionStart - CFG.PADDING,
 		timeMax: _zoomMax ?? p.sessionEnd + CFG.PADDING,
 	};
@@ -71,37 +75,37 @@ function scheduleRender() {
 }
 
 function renderCharts(p) {
-	const c1 = document.getElementById("chart1");
-	const c2 = document.getElementById("chart2");
-	const c3 = document.getElementById("chart3");
-	const W = c1.parentElement.clientWidth;
-	const H1 = c1.parentElement.clientHeight;
-	const H2 = c2.parentElement.clientHeight;
-	const H3 = _students ? c3.parentElement.clientHeight : 0;
-	const L = makeLayout(p, W, H1, H2, H3);
+	const middleChart = document.getElementById("chart-middle");
+	const topChart = document.getElementById("chart-top");
+	const bottomChart = document.getElementById("chart-bottom");
+	const W = middleChart.parentElement.clientWidth;
+	const Hmid = middleChart.parentElement.clientHeight;
+	const Htop = topChart.parentElement.clientHeight;
+	const Hbot = _students ? bottomChart.parentElement.clientHeight : 0;
+	const L = makeLayout(p, W, Hmid, Htop, Hbot);
 	_lastL = L;
 
-	drawChart1(prep(c1, W, H1), p, L);
-	drawChart2(prep(c2, W, H2), p, L);
-	setupChart2Legend(p);
+	drawMiddleChart(prep(middleChart, W, Hmid), p, L);
+	drawTopChart(prep(topChart, W, Htop), p, L);
+	setupTopChartLegend(p);
 	if (_students) {
-		setupChart3Legend();
-		drawChart3(prep(c3, W, H3), p, _students, L);
+		setupBottomChartLegend();
+		drawBottomChart(prep(bottomChart, W, Hbot), p, _students, L);
 	}
 
-	setupZoomPan(c1, p, L);
-	setupZoomPan(c2, p, L);
-	if (_students) setupZoomPan(c3, p, L);
-	setupHover(c1, c2, c3, p, L);
+	setupZoomPan(middleChart, p, L);
+	setupZoomPan(topChart, p, L);
+	if (_students) setupZoomPan(bottomChart, p, L);
+	setupHover(middleChart, topChart, bottomChart, p, L);
 }
 
-function redrawChart3() {
+function redrawBottomChart() {
 	if (!_p || !_students || !_lastL) return;
-	const c3 = document.getElementById("chart3");
+	const bottomChart = document.getElementById("chart-bottom");
 	const dpr = window.devicePixelRatio || 1;
-	const ctx = c3.getContext("2d");
+	const ctx = bottomChart.getContext("2d");
 	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-	drawChart3(ctx, _p, _students, _lastL);
+	drawBottomChart(ctx, _p, _students, _lastL);
 }
 
 const BAR_COLORS = {
@@ -129,7 +133,7 @@ function _singletonColorKey(kp) {
 	return "normal";
 }
 
-const _chart2Visible = {
+const _topChartVisible = {
 	chars: true,
 	inserts: true,
 	deletes: true,
@@ -138,7 +142,7 @@ const _chart2Visible = {
 	moves: true,
 };
 
-const _chart3Visible = {
+const _bottomChartVisible = {
 	firstMismatch: true,
 	followRank: true,
 	interactions: true,
@@ -149,7 +153,7 @@ let _studentYByName = new Map();
 function _computeStudentYs(students, L) {
 	_studentYByName = new Map();
 	if (!students || !students.length) return;
-	if (!_chart3Visible.followRank) {
+	if (!_bottomChartVisible.followRank) {
 		for (const s of students) {
 			_studentYByName.set(s.name, pctToY(s.follow_pct ?? 0, L));
 		}
@@ -160,7 +164,7 @@ function _computeStudentYs(students, L) {
 	);
 	const N = sorted.length;
 	for (let i = 0; i < N; i++) {
-		const y = L.M.top + ((i + 0.5) / N) * L.plotH3;
+		const y = L.M.top + ((i + 0.5) / N) * L.plotHbot;
 		_studentYByName.set(sorted[i].name, y);
 	}
 }
@@ -171,34 +175,34 @@ function studentY(s, L) {
 	return pctToY(s.follow_pct ?? 0, L);
 }
 
-function setupChart3Legend() {
-	const cb1 = document.getElementById("leg3-firstmismatch");
+function setupBottomChartLegend() {
+	const cb1 = document.getElementById("leg-bottom-firstmismatch");
 	if (cb1) {
-		cb1.checked = _chart3Visible.firstMismatch;
+		cb1.checked = _bottomChartVisible.firstMismatch;
 		cb1.onchange = () => {
-			_chart3Visible.firstMismatch = cb1.checked;
+			_bottomChartVisible.firstMismatch = cb1.checked;
 			scheduleRender();
 		};
 	}
-	const cb2 = document.getElementById("leg3-followrank");
+	const cb2 = document.getElementById("leg-bottom-followrank");
 	if (cb2) {
-		cb2.checked = _chart3Visible.followRank;
+		cb2.checked = _bottomChartVisible.followRank;
 		cb2.onchange = () => {
-			_chart3Visible.followRank = cb2.checked;
+			_bottomChartVisible.followRank = cb2.checked;
 			scheduleRender();
 		};
 	}
-	const cb3 = document.getElementById("leg3-interactions");
+	const cb3 = document.getElementById("leg-bottom-interactions");
 	if (cb3) {
-		cb3.checked = _chart3Visible.interactions;
+		cb3.checked = _bottomChartVisible.interactions;
 		cb3.onchange = () => {
-			_chart3Visible.interactions = cb3.checked;
+			_bottomChartVisible.interactions = cb3.checked;
 			scheduleRender();
 		};
 	}
 }
 
-function setupChart2Legend(p) {
+function setupTopChartLegend(p) {
 	const totalEl = document.getElementById("leg-total");
 	if (totalEl) totalEl.textContent = `Total Events: ${p.eventCount}`;
 	const items = [
@@ -215,15 +219,15 @@ function setupChart2Legend(p) {
 		const countEl = cb.closest("label")?.querySelector(".leg-count");
 		if (countEl) countEl.textContent = `(${count})`;
 		cb.onchange = () => {
-			_chart2Visible[key] = cb.checked;
+			_topChartVisible[key] = cb.checked;
 			scheduleRender();
 		};
 	}
 }
 
-function drawChart1(ctx, p, L) {
-	const { M, W, H1: H, plotW, plotH1 } = L;
-	const bottomY = M.top + plotH1;
+function drawMiddleChart(ctx, p, L) {
+	const { M, W, Hmid: H, plotW, plotHmid } = L;
+	const bottomY = M.top + plotHmid;
 	const minBarW =
 		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
 
@@ -232,7 +236,7 @@ function drawChart1(ctx, p, L) {
 
 	ctx.save();
 	ctx.beginPath();
-	ctx.rect(M.left, M.top, plotW, plotH1);
+	ctx.rect(M.left, M.top, plotW, plotHmid);
 	ctx.clip();
 
 	ctx.strokeStyle = "#e8e8e8";
@@ -327,7 +331,13 @@ function drawChart1(ctx, p, L) {
 	ctx.restore();
 
 	drawYAxisLog(ctx, L);
-	rotatedLabel(ctx, 22, L.M.top + L.plotH1 / 2, "Keys / Minute", THEME.label);
+	rotatedLabel(
+		ctx,
+		22,
+		L.M.top + L.plotHmid / 2,
+		"Keys / Minute",
+		THEME.label,
+	);
 
 	ctx.font = "10px Consolas,monospace";
 	ctx.textAlign = "left";
@@ -342,11 +352,11 @@ function drawChart1(ctx, p, L) {
 		ctx.fillText(lbl, lx + 14, yy + 9);
 	});
 
-	drawTimeAxis(ctx, L, M.top + plotH1, H);
+	drawTimeAxis(ctx, L, M.top + plotHmid, H);
 }
 
-function drawChart2(ctx, p, L) {
-	const { M, W, H2: H, plotW, plotH2 } = L;
+function drawTopChart(ctx, p, L) {
+	const { M, W, Htop: H, plotW, plotHtop } = L;
 	const cum = p.cumulative;
 	const maxN = p.totalChars || 1;
 	const gs = niceStep(maxN, 5);
@@ -356,7 +366,7 @@ function drawChart2(ctx, p, L) {
 
 	ctx.save();
 	ctx.beginPath();
-	ctx.rect(M.left, M.top, plotW, plotH2);
+	ctx.rect(M.left, M.top, plotW, plotHtop);
 	ctx.clip();
 
 	ctx.strokeStyle = "#e8e8e8";
@@ -369,7 +379,7 @@ function drawChart2(ctx, p, L) {
 		ctx.stroke();
 	}
 
-	drawInteractionSpans(ctx, p, L, M.top, plotH2, {
+	drawInteractionSpans(ctx, p, L, M.top, plotHtop, {
 		...Object.fromEntries(
 			Object.entries(INTERACTION_COLORS).map(([k, v]) => [k, v.spanRgba]),
 		),
@@ -384,8 +394,8 @@ function drawChart2(ctx, p, L) {
 		ctx.beginPath();
 		ctx.moveTo(pts[0][0], pts[0][1]);
 		for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-		ctx.lineTo(pts[pts.length - 1][0], M.top + plotH2);
-		ctx.lineTo(pts[0][0], M.top + plotH2);
+		ctx.lineTo(pts[pts.length - 1][0], M.top + plotHtop);
+		ctx.lineTo(pts[0][0], M.top + plotHtop);
 		ctx.closePath();
 		ctx.fillStyle = "rgba(204,204,204,0.3)";
 		ctx.fill();
@@ -436,14 +446,14 @@ function drawChart2(ctx, p, L) {
 		ctx.restore();
 	}
 
-	if (_chart2Visible.chars)
+	if (_topChartVisible.chars)
 		for (const grp of p.burstGroups)
 			for (const idx of grp.idxs) {
 				const c = cum[idx];
 				if (!c) continue;
 				dot(tsToX(c.ts, L), countToY(c.count, maxN, L), "#000", 1.0);
 			}
-	if (_chart2Visible.deletes)
+	if (_topChartVisible.deletes)
 		for (const ev of p.deletes) {
 			const ts = ev.timestamp / 1000;
 			dot(
@@ -453,7 +463,7 @@ function drawChart2(ctx, p, L) {
 				1.0,
 			);
 		}
-	if (_chart2Visible.dev)
+	if (_topChartVisible.dev)
 		for (const ev of p.devChars) {
 			const ts = ev.timestamp / 1000;
 			dot(
@@ -463,7 +473,7 @@ function drawChart2(ctx, p, L) {
 				1.0,
 			);
 		}
-	if (_chart2Visible.anchors)
+	if (_topChartVisible.anchors)
 		for (const anc of p.anchors) {
 			const ts = anc.ts / 1000;
 			dot(
@@ -473,7 +483,7 @@ function drawChart2(ctx, p, L) {
 				1.0,
 			);
 		}
-	if (_chart2Visible.moves)
+	if (_topChartVisible.moves)
 		for (const mv of p.moves) {
 			const ts = mv.ts / 1000;
 			dot(
@@ -483,7 +493,7 @@ function drawChart2(ctx, p, L) {
 				1.0,
 			);
 		}
-	if (_chart2Visible.inserts)
+	if (_topChartVisible.inserts)
 		for (const ev of p.codeInserts) {
 			const ts = ev.timestamp / 1000;
 			dia(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#999999");
@@ -504,13 +514,13 @@ function drawChart2(ctx, p, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 22, M.top + plotH2 / 2, "Chars Typed", THEME.label);
+	rotatedLabel(ctx, 22, M.top + plotHtop / 2, "Chars Typed", THEME.label);
 
-	drawTimeAxis(ctx, L, M.top + plotH2, H);
+	drawTimeAxis(ctx, L, M.top + plotHtop, H);
 }
 
-function drawChart3(ctx, p, students, L) {
-	const { M, W, H3: H, plotW, plotH3 } = L;
+function drawBottomChart(ctx, p, students, L) {
+	const { M, W, Hbot: H, plotW, plotHbot } = L;
 	const gs = 10;
 
 	ctx.fillStyle = "#fff";
@@ -520,12 +530,12 @@ function drawChart3(ctx, p, students, L) {
 
 	ctx.save();
 	ctx.beginPath();
-	ctx.rect(M.left, M.top, plotW, plotH3);
+	ctx.rect(M.left, M.top, plotW, plotHbot);
 	ctx.clip();
 
 	drawBlockBackgrounds(ctx, p, L);
 
-	if (!_chart3Visible.followRank) {
+	if (!_bottomChartVisible.followRank) {
 		ctx.strokeStyle = "#e8e8e8";
 		ctx.lineWidth = 1;
 		for (let v = gs; v <= 100; v += gs) {
@@ -558,8 +568,8 @@ function drawChart3(ctx, p, students, L) {
 			}
 		}
 		clusters.push(cur);
-		const minY = L.M.top + (L.plotH3Pad || 0);
-		const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+		const minY = L.M.top + (L.plotHbotPad || 0);
+		const maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
 		const cy = Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy));
 		const dotR = emphasized ? 2.0 : 1.5;
 		for (const cl of clusters) {
@@ -595,8 +605,8 @@ function drawChart3(ctx, p, students, L) {
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
 		const x = tsToX(s.follow_dt, L) + jitter.dx;
-		const _minY = L.M.top + (L.plotH3Pad || 0);
-		const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+		const _minY = L.M.top + (L.plotHbotPad || 0);
+		const _maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
 		const y = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
 		const active = ans || ask || hlp;
 
@@ -623,7 +633,7 @@ function drawChart3(ctx, p, students, L) {
 	const answering = new Set(),
 		asking = new Set(),
 		helping = new Set();
-	if (_chart3Visible.firstMismatch && _chart3Visible.interactions) {
+	if (_bottomChartVisible.firstMismatch && _bottomChartVisible.interactions) {
 		for (const q of p.interactions["teacher-question"])
 			for (const field of q.answered_by) {
 				const name = resolveInteractionStudent(field);
@@ -643,7 +653,7 @@ function drawChart3(ctx, p, students, L) {
 		if (_hoveredStudent && s.name === _hoveredStudent.name) continue;
 		drawDashesFor(s, false);
 	}
-	if (_chart3Visible.firstMismatch) {
+	if (_bottomChartVisible.firstMismatch) {
 		for (const s of students) {
 			if (_hoveredStudent && s.name === _hoveredStudent.name) continue;
 			drawDotFor(
@@ -667,8 +677,8 @@ function drawChart3(ctx, p, students, L) {
 			const hJitter = _shake
 				? _jitterMap.get(hs.name) || { dx: 0, dy: 0 }
 				: { dx: 0, dy: 0 };
-			const minY = L.M.top + (L.plotH3Pad || 0);
-			const maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+			const minY = L.M.top + (L.plotHbotPad || 0);
+			const maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
 			const cy = Math.max(
 				minY,
 				Math.min(maxY, studentY(hs, L) + hJitter.dy),
@@ -702,7 +712,7 @@ function drawChart3(ctx, p, students, L) {
 		}
 
 		drawDashesFor(hs, true);
-		if (_chart3Visible.firstMismatch) {
+		if (_bottomChartVisible.firstMismatch) {
 			drawDotFor(
 				hs,
 				true,
@@ -720,11 +730,11 @@ function drawChart3(ctx, p, students, L) {
 	ctx.textAlign = "right";
 	ctx.strokeStyle = "#aaa";
 	ctx.lineWidth = 1;
-	if (_chart3Visible.followRank) {
+	if (_bottomChartVisible.followRank) {
 		const N = students.length;
 		if (N > 0) {
 			for (let r = 1; r <= N; r++) {
-				const y = M.top + ((r - 0.5) / N) * plotH3;
+				const y = M.top + ((r - 0.5) / N) * plotHbot;
 				ctx.beginPath();
 				ctx.moveTo(M.left - 3, y);
 				ctx.lineTo(M.left, y);
@@ -747,15 +757,17 @@ function drawChart3(ctx, p, students, L) {
 		}
 	}
 
-	const yLabel = _chart3Visible.followRank ? "Follow Rank" : "Follow Score";
-	rotatedLabel(ctx, 22, M.top + plotH3 / 2, yLabel, THEME.label);
+	const yLabel = _bottomChartVisible.followRank
+		? "Follow Rank"
+		: "Follow Score";
+	rotatedLabel(ctx, 22, M.top + plotHbot / 2, yLabel, THEME.label);
 
-	drawTimeAxis(ctx, L, M.top + plotH3, H);
+	drawTimeAxis(ctx, L, M.top + plotHbot, H);
 	drawBlockMistakeCounts(ctx, p, students, L);
 }
 
 function drawBlockBackgrounds(ctx, p, L) {
-	const { M, plotH3 } = L;
+	const { M, plotHbot } = L;
 	const minBarW =
 		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
 
@@ -768,7 +780,7 @@ function drawBlockBackgrounds(ctx, p, L) {
 		const bx = (x + x2) / 2 - bw / 2;
 		const color = BAR_COLORS[key] || BAR_COLORS.normal;
 		ctx.fillStyle = _hexToRgba(color, 0.15);
-		ctx.fillRect(bx, M.top, bw, plotH3);
+		ctx.fillRect(bx, M.top, bw, plotHbot);
 	};
 
 	for (const b of p.bursts || []) {
@@ -902,12 +914,12 @@ function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
 }
 
 function drawYAxisLog(ctx, L) {
-	const { M, plotH1 } = L;
+	const { M, plotHmid } = L;
 	ctx.strokeStyle = "#ccc";
 	ctx.lineWidth = 1;
 	ctx.beginPath();
 	ctx.moveTo(M.left, M.top);
-	ctx.lineTo(M.left, M.top + plotH1);
+	ctx.lineTo(M.left, M.top + plotHmid);
 	ctx.stroke();
 	ctx.fillStyle = "#555";
 	ctx.font = "11px Consolas,monospace";

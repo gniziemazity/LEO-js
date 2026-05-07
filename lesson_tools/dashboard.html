@@ -21,8 +21,8 @@
 		<div id="main">
 			<div id="charts">
 				<div id="hover-vline"></div>
-				<div class="chart-section" id="chart2-section">
-					<div class="chart-wrap"><canvas id="chart2"></canvas></div>
+				<div class="chart-section" id="chart-top-section">
+					<div class="chart-wrap"><canvas id="chart-top"></canvas></div>
 					<button
 						id="btn-open-sim"
 						onclick="window.open('simulator.html')"
@@ -30,7 +30,7 @@
 					>
 						▶
 					</button>
-					<div id="chart2-legend" class="chart-legend-overlay">
+					<div id="chart-top-legend" class="chart-legend-overlay">
 						<div id="leg-total" class="leg-total-row"></div>
 						<label
 							><input type="checkbox" id="leg-chars" checked /><span
@@ -75,34 +75,34 @@
 						></label>
 					</div>
 				</div>
-				<div class="chart-section" id="chart1-section">
-					<div class="chart-wrap"><canvas id="chart1"></canvas></div>
+				<div class="chart-section" id="chart-middle-section">
+					<div class="chart-wrap"><canvas id="chart-middle"></canvas></div>
 				</div>
 				<div
 					class="chart-section"
-					id="chart3-section"
+					id="chart-bottom-section"
 					style="display: none"
 				>
-					<div class="chart-wrap"><canvas id="chart3"></canvas></div>
-					<div id="chart3-legend">
+					<div class="chart-wrap"><canvas id="chart-bottom"></canvas></div>
+					<div id="chart-bottom-legend">
 						<label
 							><input
 								type="checkbox"
-								id="leg3-followrank"
+								id="leg-bottom-followrank"
 								checked
 							/><span>Follow Rank</span></label
 						>
 						<label
 							><input
 								type="checkbox"
-								id="leg3-firstmismatch"
+								id="leg-bottom-firstmismatch"
 								checked
 							/><span>First Mismatch</span></label
 						>
 						<label
 							><input
 								type="checkbox"
-								id="leg3-interactions"
+								id="leg-bottom-interactions"
 								checked
 							/><span>Interactions</span></label
 						>

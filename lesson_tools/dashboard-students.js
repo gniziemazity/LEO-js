@@ -31,7 +31,7 @@ async function loadXlsxFiles(files) {
 			showLoading(false);
 			return;
 		}
-		document.getElementById("chart3-section").style.display = "";
+		document.getElementById("chart-bottom-section").style.display = "";
 		scheduleRender();
 	} catch (ex) {
 		showLoading(false);

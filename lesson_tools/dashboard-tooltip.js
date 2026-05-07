@@ -24,9 +24,9 @@ function _hitTs(hit) {
 function showVLine(ts, L) {
 	if (ts == null || !vlineEl) return hideVLine();
 	const charts = document.getElementById("charts");
-	const c1 = document.getElementById("chart1");
-	if (!charts || !c1) return;
-	const cRect = c1.getBoundingClientRect();
+	const middleChart = document.getElementById("chart-middle");
+	if (!charts || !middleChart) return;
+	const cRect = middleChart.getBoundingClientRect();
 	const chartsRect = charts.getBoundingClientRect();
 	const x = cRect.left - chartsRect.left + tsToX(ts, L);
 	vlineEl.style.left = x + "px";
@@ -75,11 +75,11 @@ function matchesStudentName(interactionField, studentName) {
 	return interactionName.trim() === studentName.trim();
 }
 
-function setupHover(c1, c2, c3, p, L) {
+function setupHover(middleChart, topChart, bottomChart, p, L) {
 	for (const [canvas, id] of [
-		[c1, "c1"],
-		[c2, "c2"],
-		[c3, "c3"],
+		[middleChart, "middle"],
+		[topChart, "top"],
+		[bottomChart, "bottom"],
 	]) {
 		if (!canvas) continue;
 		const key = canvas.id + "_h";
@@ -95,7 +95,7 @@ function setupHover(c1, c2, c3, p, L) {
 				const hit = findHit(e, canvas, id, p, L);
 
 				let effectiveHit = hit;
-				if (id === "c3") {
+				if (id === "bottom") {
 					if (
 						_lockKeyDown &&
 						!_lockedStudent &&
@@ -124,13 +124,13 @@ function setupHover(c1, c2, c3, p, L) {
 					) {
 						_hoveredStudent = newStudent;
 						_hoveredCluster = newCluster;
-						redrawChart3();
+						redrawBottomChart();
 					}
 				}
 
 				if (effectiveHit) {
 					showTip(e.clientX, e.clientY, effectiveHit, false, id);
-					if (id === "c2" && effectiveHit.type !== "interaction") {
+					if (id === "top" && effectiveHit.type !== "interaction") {
 						const ts = _hitTs(effectiveHit);
 						if (ts != null) showVLine(ts, L);
 						else hideVLine();
@@ -148,16 +148,16 @@ function setupHover(c1, c2, c3, p, L) {
 		canvas.addEventListener(
 			"mouseleave",
 			() => {
-				if (id === "c3") {
+				if (id === "bottom") {
 					if (_lockedStudent) {
 						if (_hoveredCluster) {
 							_hoveredCluster = null;
-							redrawChart3();
+							redrawBottomChart();
 						}
 					} else if (_hoveredStudent) {
 						_hoveredStudent = null;
 						_hoveredCluster = null;
-						redrawChart3();
+						redrawBottomChart();
 					}
 				}
 				if (!_pinned) {
@@ -179,7 +179,7 @@ function setupHover(c1, c2, c3, p, L) {
 					hideVLine();
 					return;
 				}
-				if (id === "c3" && hit.type === "student") {
+				if (id === "bottom" && hit.type === "student") {
 					openDifferentiatorWindow(hit.s);
 					return;
 				}
@@ -190,7 +190,7 @@ function setupHover(c1, c2, c3, p, L) {
 				} else {
 					_pinned = hit;
 					showTip(e.clientX, e.clientY, hit, true, id);
-					if (id === "c2" && hit.type !== "interaction") {
+					if (id === "top" && hit.type !== "interaction") {
 						const ts = _hitTs(hit);
 						if (ts != null) showVLine(ts, L);
 						else hideVLine();
@@ -212,17 +212,18 @@ function canvasXY(e, canvas) {
 function findHit(e, canvas, id, p, L) {
 	const [mx, my] = canvasXY(e, canvas);
 	const { M, plotW } = L;
-	const plotH = id === "c1" ? L.plotH1 : id === "c2" ? L.plotH2 : L.plotH3;
+	const plotH =
+		id === "middle" ? L.plotHmid : id === "top" ? L.plotHtop : L.plotHbot;
 	if (mx < M.left || mx > M.left + plotW || my < M.top || my > M.top + plotH)
 		return null;
 	const ts = xToTs(mx, L);
 	const thT = (L.timeMax - L.timeMin) * (10 / plotW);
-	if (id === "c1") return hitChart1(ts, p, L, thT);
-	if (id === "c2") return hitChart2(ts, my, p, L, thT);
-	if (id === "c3") {
-		const hit = hitChart3(ts, my, p, L, thT);
+	if (id === "middle") return hitMiddleChart(ts, p, L, thT);
+	if (id === "top") return hitTopChart(ts, my, p, L, thT);
+	if (id === "bottom") {
+		const hit = hitBottomChart(ts, my, p, L, thT);
 		if (_lockedStudent && (!hit || hit.s !== _lockedStudent)) {
-			const restricted = hitChart3(ts, my, p, L, thT, _lockedStudent);
+			const restricted = hitBottomChart(ts, my, p, L, thT, _lockedStudent);
 			if (restricted) return restricted;
 		}
 		return hit;
@@ -230,7 +231,7 @@ function findHit(e, canvas, id, p, L) {
 	return null;
 }
 
-function hitChart1(ts, p, L, thT) {
+function hitMiddleChart(ts, p, L, thT) {
 	let best = null,
 		bestD = Infinity;
 	for (const b of p.bursts) {
@@ -264,7 +265,7 @@ function hitChart1(ts, p, L, thT) {
 	return best;
 }
 
-function hitChart2(ts, my, p, L, thT) {
+function hitTopChart(ts, my, p, L, thT) {
 	const cum = p.cumulative,
 		maxN = p.totalChars || 1,
 		PY = 8;
@@ -310,14 +311,14 @@ function hitChart2(ts, my, p, L, thT) {
 	return best || hitInteraction(ts, p);
 }
 
-function hitChart3(ts, my, p, L, thT, restrictStudent) {
+function hitBottomChart(ts, my, p, L, thT, restrictStudent) {
 	if (!_students) return null;
 	const DASH_PY = 6;
 	const DOT_PX = 7;
 	let best = null,
 		bestD = Infinity;
-	const _minY = L.M.top + (L.plotH3Pad || 0);
-	const _maxY = L.M.top + L.plotH3 - (L.plotH3Pad || 0);
+	const _minY = L.M.top + (L.plotHbotPad || 0);
+	const _maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
 
 	for (const s of _students) {
 		if (restrictStudent && s !== restrictStudent) continue;

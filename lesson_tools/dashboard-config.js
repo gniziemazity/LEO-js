@@ -88,5 +88,5 @@ function toggleStudentJitter() {
 	}
 	const btn = document.getElementById("btn-shake");
 	if (btn) btn.classList.toggle("is-toggle-on", _shake);
-	redrawChart3();
+	redrawBottomChart();
 }

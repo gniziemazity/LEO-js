@@ -62,17 +62,17 @@ body {
 	position: relative;
 }
 
-#chart3-section {
+#chart-bottom-section {
 	display: flex;
 	flex-direction: column;
 }
 
-#chart3-section .chart-wrap {
+#chart-bottom-section .chart-wrap {
 	flex: 1;
 	min-height: 0;
 }
 
-#chart3-legend {
+#chart-bottom-legend {
 	flex: 0 0 auto;
 	display: flex;
 	flex-direction: row;
@@ -84,7 +84,7 @@ body {
 	user-select: none;
 }
 
-#chart3-legend label {
+#chart-bottom-legend label {
 	display: flex;
 	align-items: center;
 	gap: 5px;
@@ -96,7 +96,7 @@ body {
 	white-space: nowrap;
 }
 
-#chart3-legend input[type="checkbox"] {
+#chart-bottom-legend input[type="checkbox"] {
 	width: 11px;
 	height: 11px;
 	margin: 0;
