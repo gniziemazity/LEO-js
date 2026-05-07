@@ -147,10 +147,6 @@ async function loadXlsxFiles(files) {
 		.filter((f) => /remarks/i.test(f.name))
 		.sort((a, b) => _ts(b) - _ts(a));
 	const remarksFile = gradesFiles[0] || remarksFiles[0] || null;
-	const simFile =
-		xlsxFiles.find((f) => /teacher_similarity/i.test(f.name)) ||
-		xlsxFiles.find((f) => /similarity/i.test(f.name)) ||
-		null;
 	if (!remarksFile) {
 		showLoading(false);
 		alert(
@@ -160,11 +156,8 @@ async function loadXlsxFiles(files) {
 	}
 	try {
 		showLoading(true);
-		const bufs = await Promise.all([
-			readFileArray(remarksFile),
-			simFile ? readFileArray(simFile) : Promise.resolve(null),
-		]);
-		const result = parseStudentRows(bufs[0], bufs[1]);
+		const remarksBuf = await readFileArray(remarksFile);
+		const result = parseStudentRows(remarksBuf);
 		_students = result.students;
 		_remarkCols = result.remarkCols;
 		_hasInteractions = result.hasInteractions;
@@ -183,7 +176,7 @@ async function loadXlsxFiles(files) {
 	}
 }
 
-function parseStudentRows(remarksBuf, simBuf) {
+function parseStudentRows(remarksBuf) {
 	const wbR = XLSX.read(remarksBuf, { type: "array" });
 	const wsR =
 		wbR.Sheets["Grades"] ||
@@ -227,34 +220,6 @@ function parseStudentRows(remarksBuf, simBuf) {
 			({ name, idx }) => !specialSet.has(idx) && REMARK_WHITELIST.test(name),
 		);
 	if (iName === -1) throw new Error('Remarks xlsx: missing "Student" column');
-
-	const incData = {};
-	if (simBuf) {
-		const wbS = XLSX.read(simBuf, { type: "array" });
-		const wsS = wbS.Sheets[wbS.SheetNames[0]];
-		const rowsS = XLSX.utils.sheet_to_json(wsS, {
-			header: 1,
-			defval: "",
-		});
-		const hdrS = (rowsS[0] || []).map((h) => String(h || "").trim());
-		const iNameS = hdrS.indexOf("Student");
-		const incCols = hdrS.reduce((a, h, i) => {
-			if (h === "Inc" || (h && h.endsWith("_Inc"))) a.push(i);
-			return a;
-		}, []);
-		if (iNameS !== -1 && incCols.length) {
-			for (let i = 1; i < rowsS.length; i++) {
-				const row = rowsS[i];
-				const nm = String(row[iNameS] || "").trim();
-				if (!nm) continue;
-				const vals = incCols
-					.map((c) => parseFloat(row[c]))
-					.filter((v) => !isNaN(v));
-				if (vals.length)
-					incData[nm] = vals.reduce((a, v) => a + v, 0) / vals.length;
-			}
-		}
-	}
 
 	const students = [];
 	const unicodeCorruptionHits = [];
@@ -328,7 +293,6 @@ function parseStudentRows(remarksBuf, simBuf) {
 			followPct,
 			followEvents,
 			remarksDesc,
-			incSim: incData[name] ?? null,
 			remarks,
 			interactions,
 		});
@@ -695,7 +659,7 @@ async function _readStudentDiffPayload(student) {
 		studentFiles,
 		allMarks,
 		imageUris,
-		title: `${student.name} (${followPct})`,
+		title: `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`,
 	};
 }
 

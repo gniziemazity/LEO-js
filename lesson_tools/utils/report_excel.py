@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 from openpyxl import Workbook
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from .similarity_measures import (
@@ -13,111 +13,6 @@ from .similarity_measures import (
 
 
 class ExcelReportMixin:
-    def generate_excel_report(self, output_file: str, anonymize: bool = False) -> None:
-        wb = Workbook()
-        sheet = wb.active
-        sheet.title = 'Similarity'
-
-        all_exts    = ['.html', '.css', '.js']
-        present_exts = [
-            e for e in all_exts
-            if any(
-                data.get('files_compared', {}).get(e, {}).get('status')
-                in ('success', 'no_reference')
-                for data in self.results.values()
-            )
-        ]
-
-        header = ['ID', 'Student', 'FileName', 'Diff', 'Char', 'Inc', 'Extra', 'Extra (C)']
-        COL_EXTRA  = header.index('Extra')     + 1
-        COL_EXTRAC = header.index('Extra (C)') + 1
-        sheet.append(header)
-        for i, cell in enumerate(sheet[1]):
-            h = header[i] if i < len(header) else ''
-            cell.font = Font(bold=True, color='808080') if h in ('Diff', 'Char') \
-                        else Font(bold=True)
-
-        ts_denom = self._teacher_token_denom()
-
-        def _avg(lst):
-            return round(sum(lst) / len(lst), 1) if lst else ''
-
-        for sid in sorted(self.student_info.keys(), key=int):
-            info = self.student_info[sid]
-            row  = [int(sid), sid if anonymize else info['name']]
-            data = self.results.get(sid)
-            if not data or not data.get('files_compared'):
-                sheet.append(row)
-                continue
-
-            fnames = []
-            diff_vals, char_vals, inc_vals = [], [], []
-            for ext in present_exts:
-                fd = data['files_compared'].get(ext)
-                if fd and fd.get('status') == 'success':
-                    fnames.append(fd['file_name'])
-                    diff_vals.append(fd['ide_sim'])
-                    char_vals.append(fd['char_hist_sim'])
-                    inc_vals.append(fd['inc_sim'])
-                elif fd and fd.get('status') == 'no_reference':
-                    fnames.append(fd['file_name'])
-
-            extra_pct, extrac_pct, extra_kws, extrac_kws = \
-                self._extra_pct_and_kws(sid, ts_denom, data)
-
-            row.extend([
-                ', '.join(fnames) if fnames else '',
-                _avg(diff_vals), _avg(char_vals), _avg(inc_vals),
-                extra_pct, extrac_pct,
-            ])
-            sheet.append(row)
-            cur = sheet.max_row
-            if extra_kws:
-                c = Comment(', '.join(extra_kws), 'sim_check')
-                c.width = 900; c.height = min(150 + 50 * len(extra_kws), 4000)
-                sheet.cell(row=cur, column=COL_EXTRA).comment = c
-            if extrac_kws:
-                c = Comment(', '.join(extrac_kws), 'sim_check')
-                c.width = 900; c.height = min(150 + 50 * len(extrac_kws), 4000)
-                sheet.cell(row=cur, column=COL_EXTRAC).comment = c
-
-        max_row    = sheet.max_row
-        left_border = Border(left=Side(style='medium', color='000000'))
-        for r in range(1, max_row + 1):
-            sheet[f'C{r}'].border = left_border
-
-        for col in [get_column_letter(i) for i in range(4, 7)]:
-            for r in range(2, max_row + 1):
-                cell = sheet[f'{col}{r}']
-                if cell.value not in ('', None):
-                    cell.number_format = '0.0'
-                    cell.alignment = Alignment(horizontal='center')
-                    if col in ('D', 'E'):
-                        cell.font = Font(color='808080')
-            if max_row > 1:
-                sheet.conditional_formatting.add(
-                    f'{col}2:{col}{max_row}',
-                    ColorScaleRule(start_type='min', start_color='FFFFFF',
-                                   end_type='max', end_color='5A8AC6'))
-
-        for col_idx in (COL_EXTRA, COL_EXTRAC):
-            col = get_column_letter(col_idx)
-            for r in range(2, max_row + 1):
-                cell = sheet[f'{col}{r}']
-                if cell.value not in ('', None):
-                    cell.number_format = '0.0'
-                    cell.alignment = Alignment(horizontal='center')
-            if max_row > 1:
-                sheet.conditional_formatting.add(
-                    f'{col}2:{col}{max_row}',
-                    ColorScaleRule(start_type='num', start_value=0, start_color='FFFFFF',
-                                   end_type='max', end_color='F8696B'))
-
-        self._auto_column_widths(sheet)
-        sheet.column_dimensions['B'].width = 18
-        sheet.column_dimensions['C'].width = 20
-        save_xlsx(wb, output_file)
-
     def generate_remarks_report(self, output_file: str, anonymize: bool = False) -> None:
         wb = Workbook()
         wb.remove(wb.active)
@@ -366,7 +261,7 @@ class ExcelReportMixin:
 
     def _similarity_info(self, sid: str, has_submission: bool, code_not_found: bool):
         """Returns (sim_pct, sim_desc_str, sim_items_list) for no-log Similarity column.
-        sim_pct   = average inc_sim across files (same value as Inc column).
+        sim_pct   = average inc_sim across files.
         sim_desc  = '-TOKEN / +TOKEN' formatted string for students.html mismatch rendering.
         sim_items = human-readable comment items.
         """
@@ -424,27 +319,6 @@ class ExcelReportMixin:
             'inside_all':  inside_all,
             'all':         outside_all + inside_all,
         }
-
-    def _extra_pct_and_kws(self, sid: str, ts_denom: int, data: dict):
-        _ts = self._student_token_stats.get(sid)
-        if _ts:
-            denom      = _ts['teacher_total_e'] or ts_denom
-            extra_pct  = round(min(_ts['extra']         / denom * 100, 100.0), 1) if _ts['extra']         else ''
-            extrac_pct = round(min(_ts['n_extra_comment'] / denom * 100, 100.0), 1) if _ts['n_extra_comment'] else ''
-            return extra_pct, extrac_pct, _ts['extra_all'], _ts['extra_comment_all']
-
-        extra_ctr = sum(self.student_simple_extra_by_ext.get(sid, {}).values(), Counter())
-        extra_pct = round(min(sum(extra_ctr.values()) / ts_denom * 100, 100.0), 1) if extra_ctr else ''
-        extra_kws = [f'{kw} (x{n})' if n > 1 else kw for kw, n in sorted(extra_ctr.items())]
-        extrac_ctr = sum(
-            (fd.get('extra_inside', Counter())
-             for fd in data['files_compared'].values()
-             if fd.get('status') == 'success'),
-            Counter()
-        )
-        extrac_pct = round(min(sum(extrac_ctr.values()) / ts_denom * 100, 100.0), 1) if extrac_ctr else ''
-        extrac_kws = [f'{kw} (x{n})' if n > 1 else kw for kw, n in sorted(extrac_ctr.items())]
-        return extra_pct, extrac_pct, extra_kws, extrac_kws
 
     def _avg_inc(self, sid: str) -> str:
         inc_vals = [fd['inc_sim']

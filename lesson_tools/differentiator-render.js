@@ -243,6 +243,11 @@ function renderPanel(side, files, marks) {
 				.forEach((p) => p.classList.remove("active"));
 			btn.classList.add("file-tab-active");
 			codeWrap.children[i].classList.add("active");
+			if (typeof _truthRefreshOverlays === "function") {
+				_truthRefreshOverlays();
+			} else if (typeof _truthRefreshGhostPairs === "function") {
+				_truthRefreshGhostPairs();
+			}
 		};
 		tabs.appendChild(btn);
 

@@ -1277,6 +1277,34 @@ def _stamp_native_line_insert_at(
             }
 
 
+def _shift_inserts_past_comments(
+    t_marks: List[dict], s_fname: str, s_text: str,
+    s_comment_ranges: List[Tuple[int, int]],
+) -> None:
+    if not s_comment_ranges:
+        return
+    n = len(s_text)
+    for m in t_marks:
+        if m.get('label') != 'missing':
+            continue
+        for field in ('_native_insert_at', 'insert_at'):
+            ia = m.get(field)
+            if not ia or ia.get('file') != s_fname:
+                continue
+            pos = ia.get('pos')
+            if pos is None:
+                continue
+            for cs, ce in s_comment_ranges:
+                if cs <= pos <= ce:
+                    new_pos = ce
+                    if new_pos < n and s_text[new_pos] == '\n':
+                        new_pos += 1
+                    ia['pos'] = new_pos
+                    break
+                if pos < cs:
+                    break
+
+
 def _add_unpaired_teacher_line(alignment, t_marks, t_line_ms,
                                 t_lines_raw, t_starts, t_i, tok_all_positions) -> None:
     alignment.append([t_i, None])
@@ -2158,17 +2186,20 @@ def _build_ro_diff_marks(
     per_file_results: List[tuple] = []
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        t_text = _read_text_normalized(t_path)
-        s_text = _read_text_normalized(s_path) if s_path else ''
-        if not t_text:
+        t_orig = _read_text_normalized(t_path)
+        s_orig = _read_text_normalized(s_path) if s_path else ''
+        if not t_orig:
             continue
+
+        ext = Path(t_name).suffix.lower()
+        t_text = _sm.blank_comments(t_orig, ext)
+        s_text = _sm.blank_comments(s_orig, ext) if s_orig else ''
 
         t_lines_raw = t_text.splitlines()
         s_lines_raw = s_text.splitlines()
         t_starts    = _line_start_offsets(t_text)
         s_starts    = _line_start_offsets(s_text) if s_text else []
 
-        ext = Path(t_name).suffix.lower()
         tok_all_positions, file_n = _build_token_position_index(t_text, ext)
         n_total += file_n
 
@@ -2205,9 +2236,24 @@ def _build_ro_diff_marks(
                                     i1, i2 - i1, j1, j2 - j1, tok_all_positions,
                                     s_fname=s_fname_native)
 
+        s_comment_ranges: List[Tuple[int, int]] = []
+        if s_orig:
+            s_starts_cm, s_ends_cm = _sm._comment_ranges(s_orig, ext)
+            s_comment_ranges = list(zip(s_starts_cm, s_ends_cm))
+
         if s_fname_native is not None:
             anchors = _line_anchors_from_alignment(alignment, s_starts, len(s_text))
             _stamp_native_line_insert_at(t_marks, t_starts, anchors, s_fname_native)
+            _shift_inserts_past_comments(t_marks, s_fname_native, s_orig, s_comment_ranges)
+
+        _, t_cm = _split_tokens_by_comment(t_orig, ext)
+        _, s_cm = _split_tokens_by_comment(s_orig, ext) if s_orig else ([], [])
+        for pos, tok in t_cm:
+            t_marks.append(_comment_pos_mark(pos, tok))
+        for pos, tok in s_cm:
+            s_marks.append(_comment_pos_mark(pos, tok))
+        t_marks.sort(key=lambda m: m['start'])
+        s_marks.sort(key=lambda m: m['start'])
 
         per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
 
@@ -2216,18 +2262,15 @@ def _build_ro_diff_marks(
 
 import subprocess as _subprocess
 import re as _re
+import tempfile as _tempfile
+import os as _os
 
 _GIT_HUNK_RE = _re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
 
 
-def _git_diff_hunks(t_path: Path, s_path: Path) -> List[Tuple[int, int, int, int]]:
-    result = _subprocess.run(
-        ['git', 'diff', '--no-index', '--unified=0', '-w',
-         str(t_path), str(s_path)],
-        capture_output=True, text=True, encoding='utf-8',
-    )
+def _parse_git_hunks(stdout: str) -> List[Tuple[int, int, int, int]]:
     hunks: List[Tuple[int, int, int, int]] = []
-    for line in result.stdout.splitlines():
+    for line in stdout.splitlines():
         m = _GIT_HUNK_RE.match(line)
         if m:
             i1 = int(m.group(1))
@@ -2238,6 +2281,30 @@ def _git_diff_hunks(t_path: Path, s_path: Path) -> List[Tuple[int, int, int, int
     return hunks
 
 
+def _git_diff_hunks_text(t_text: str, s_text: str,
+                          ext: Optional[str] = None) -> List[Tuple[int, int, int, int]]:
+    suffix = ext or ''
+    t_fd, t_path_str = _tempfile.mkstemp(suffix=suffix, prefix='git_diff_t_')
+    s_fd, s_path_str = _tempfile.mkstemp(suffix=suffix, prefix='git_diff_s_')
+    try:
+        with _os.fdopen(t_fd, 'w', encoding='utf-8', newline='') as f:
+            f.write(t_text)
+        with _os.fdopen(s_fd, 'w', encoding='utf-8', newline='') as f:
+            f.write(s_text)
+        result = _subprocess.run(
+            ['git', 'diff', '--no-index', '--unified=0', '-w',
+             t_path_str, s_path_str],
+            capture_output=True, text=True, encoding='utf-8',
+        )
+        return _parse_git_hunks(result.stdout)
+    finally:
+        for p in (t_path_str, s_path_str):
+            try:
+                _os.unlink(p)
+            except OSError:
+                pass
+
+
 def _build_git_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
@@ -2246,17 +2313,20 @@ def _build_git_diff_marks(
     per_file_results: List[tuple] = []
 
     for t_name, t_path, s_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        t_text = _read_text_normalized(t_path)
-        s_text = _read_text_normalized(s_path) if s_path else ''
-        if not t_text:
+        t_orig = _read_text_normalized(t_path)
+        s_orig = _read_text_normalized(s_path) if s_path else ''
+        if not t_orig:
             continue
+
+        ext = Path(t_name).suffix.lower()
+        t_text = _sm.blank_comments(t_orig, ext)
+        s_text = _sm.blank_comments(s_orig, ext) if s_orig else ''
 
         t_lines_raw = t_text.splitlines()
         s_lines_raw = s_text.splitlines()
         t_starts    = _line_start_offsets(t_text)
         s_starts    = _line_start_offsets(s_text) if s_text else []
 
-        ext = Path(t_name).suffix.lower()
         tok_all_positions, file_n = _build_token_position_index(t_text, ext)
         n_total += file_n
 
@@ -2270,7 +2340,7 @@ def _build_git_diff_marks(
         s_line_ms: List[dict] = []
         alignment: list       = []
 
-        hunks = _git_diff_hunks(t_path, s_path) if s_path else []
+        hunks = _git_diff_hunks_text(t_text, s_text, ext) if s_path else []
         t_cursor = s_cursor = 0
 
         for i1_raw, ic, j1_raw, jc in hunks:
@@ -2308,9 +2378,24 @@ def _build_git_diff_marks(
                                         s_lines_raw, s_starts, s_cursor)
             s_cursor += 1
 
+        s_comment_ranges: List[Tuple[int, int]] = []
+        if s_orig:
+            s_starts_cm, s_ends_cm = _sm._comment_ranges(s_orig, ext)
+            s_comment_ranges = list(zip(s_starts_cm, s_ends_cm))
+
         if s_fname_native is not None:
             anchors = _line_anchors_from_alignment(alignment, s_starts, len(s_text))
             _stamp_native_line_insert_at(t_marks, t_starts, anchors, s_fname_native)
+            _shift_inserts_past_comments(t_marks, s_fname_native, s_orig, s_comment_ranges)
+
+        _, t_cm = _split_tokens_by_comment(t_orig, ext)
+        _, s_cm = _split_tokens_by_comment(s_orig, ext) if s_orig else ([], [])
+        for pos, tok in t_cm:
+            t_marks.append(_comment_pos_mark(pos, tok))
+        for pos, tok in s_cm:
+            s_marks.append(_comment_pos_mark(pos, tok))
+        t_marks.sort(key=lambda m: m['start'])
+        s_marks.sort(key=lambda m: m['start'])
 
         per_file_results.append((fname, s_fname, t_marks, s_marks, t_line_ms, s_line_ms, alignment))
 

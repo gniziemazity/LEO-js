@@ -91,7 +91,7 @@ function _truthCollectGroupRect(group, pad = 6) {
 	const panes = wrap.querySelectorAll(".code-pane");
 	let pane = null;
 	for (const p of panes) {
-		if (p.dataset.paneFile === group.file) {
+		if (p.dataset.paneFile === group.file && p.classList.contains("active")) {
 			pane = p;
 			break;
 		}
@@ -806,6 +806,7 @@ function _truthFindPartnerEl(side, mark) {
 		partnerSide,
 		mark.paired_with.start,
 		mark.paired_with.token,
+		mark.paired_with.file,
 	);
 }
 
@@ -813,7 +814,7 @@ function _truthFindGhostElement(ghostRef) {
 	const wrap = document.getElementById("code-teacher");
 	if (!wrap || !ghostRef) return null;
 	const candidates = wrap.querySelectorAll(
-		`.leo-mark[data-leo-side="teacher"][data-leo-ghost-offset]`,
+		`.code-pane.active .leo-mark[data-leo-side="teacher"][data-leo-ghost-offset]`,
 	);
 	for (const el of candidates) {
 		const pane = el.closest(".code-pane");
@@ -835,7 +836,11 @@ function _truthFindInsertAnchorEl(teacherMark) {
 	if (!teacherMark.insert_at) return null;
 	const wrap = document.getElementById(`code-student`);
 	if (!wrap) return null;
-	const sel = `.insert-anchor[data-insert-anchor-teacher-pos="${teacherMark.start}"]`;
+	const file = teacherMark.insert_at.file;
+	const paneSel = file
+		? `.code-pane[data-pane-file="${CSS.escape(file)}"].active`
+		: `.code-pane.active`;
+	const sel = `${paneSel} .insert-anchor[data-insert-anchor-teacher-pos="${teacherMark.start}"]`;
 	return wrap.querySelector(sel);
 }
 
@@ -942,7 +947,7 @@ function _truthRebuildPairConnectorsForSelection(side, file, lo, hi) {
 }
 
 const _SVG_NS = "http://www.w3.org/2000/svg";
-const _TRUTH_LINE_GAP = -2.5;
+const _TRUTH_LINE_GAP = 0.5;
 
 function _truthSvgLine(svg, x1, y1, x2, y2, color) {
 	const ln = document.createElementNS(_SVG_NS, "line");
@@ -974,13 +979,28 @@ function _truthSvgX(svg, cx, cy, size, color) {
 	}
 }
 
+const _TRUTH_INSERT_ANCHOR_LIFT = 2.25;
+
 function _truthElBelowLineY(el) {
-	const line = el.closest(".diff-line");
-	if (!line) return el.getBoundingClientRect().bottom + _TRUTH_LINE_GAP;
-	const r = line.getBoundingClientRect();
-	const lh = parseFloat(getComputedStyle(line).lineHeight);
-	const baseHeight = Number.isFinite(lh) && lh > 0 ? lh : r.height;
-	return r.top + baseHeight + _TRUTH_LINE_GAP;
+	if (el && el.classList && el.classList.contains("insert-anchor")) {
+		const line = el.closest(".diff-line");
+		if (line) {
+			const r = el.getBoundingClientRect();
+			const lr = line.getBoundingClientRect();
+			const lh = parseFloat(getComputedStyle(line).lineHeight);
+			if (Number.isFinite(lh) && lh > 0) {
+				const center = r.top + r.height / 2;
+				const lineIdx = Math.max(0, Math.floor((center - lr.top) / lh));
+				return (
+					lr.top +
+					(lineIdx + 1) * lh +
+					_TRUTH_LINE_GAP -
+					_TRUTH_INSERT_ANCHOR_LIFT
+				);
+			}
+		}
+	}
+	return el.getBoundingClientRect().bottom + _TRUTH_LINE_GAP;
 }
 
 function _truthRefreshPairConnectors() {
@@ -1008,6 +1028,7 @@ function _truthRefreshPairConnectors() {
 				"student",
 				item.studentMark.start,
 				item.studentMark.token,
+				item.studentFile,
 			);
 			if (!teacherEl || !studentEl) continue;
 			const tRect = teacherEl.getBoundingClientRect();
@@ -1018,7 +1039,7 @@ function _truthRefreshPairConnectors() {
 			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
 			_truthSvgLine(svg, midX, sY, sRect.left, sY, paleRedColor);
 		} else if (item.kind === "pair") {
-			const srcEl = _truthFindMarkEl(item.side, item.mark);
+			const srcEl = _truthFindMarkEl(item.side, item.mark, item.file);
 			const partnerEl = _truthFindPartnerEl(item.side, item.mark);
 			if (!srcEl || !partnerEl) continue;
 
@@ -1048,7 +1069,7 @@ function _truthRefreshPairConnectors() {
 			}
 
 			if (g.marks.length === 1) {
-				const teacherEl = _truthFindMarkEl("teacher", g.marks[0]);
+				const teacherEl = _truthFindMarkEl("teacher", g.marks[0], g.file);
 				if (!teacherEl) continue;
 				const tRect = teacherEl.getBoundingClientRect();
 				const startX = tRect.right;

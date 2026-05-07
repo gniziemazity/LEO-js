@@ -481,8 +481,8 @@ def _pair_student_file(t_path: Path, t_name: str,
 _NON_STAR_RECONSTRUCT_METHODS = [
     ('lcs', _build_lcs_token_diff_marks, False),
     ('lev', _build_lev_token_diff_marks, False),
-    ('ro',  _build_ro_diff_marks,        True),
-    ('git', _build_git_diff_marks,       True),
+    ('ro',  _build_ro_diff_marks,        False),
+    ('git', _build_git_diff_marks,       False),
 ]
 
 

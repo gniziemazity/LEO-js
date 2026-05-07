@@ -289,11 +289,12 @@
 				color: var(--clr-mark-missing);
 				font-size: 9px;
 				line-height: 1;
-				vertical-align: middle;
+				vertical-align: text-top;
 				margin: 0 -1px;
 				padding: 0;
 				user-select: none;
 				opacity: 0.5;
+				transform: translateY(-1px);
 			}
 			.insert-anchor:hover {
 				opacity: 1;
@@ -673,6 +674,17 @@
 				color: var(--clr-bg);
 				border-color: var(--clr-ghost-darker);
 			}
+			#truth-controls .tc-row button.tc-btn-comment {
+				background: var(--clr-mark-comment);
+				color: var(--clr-bg);
+				border-color: var(--clr-mark-comment);
+				font-weight: 700;
+			}
+			#truth-controls .tc-row button.tc-btn-comment:hover {
+				background: var(--clr-mark-comment);
+				color: var(--clr-bg);
+				filter: brightness(0.85);
+			}
 			#truth-controls .tc-row button.tc-btn-pair.is-toggle-on {
 				color: var(--clr-bg);
 				border-color: var(--clr-orange);
@@ -863,6 +875,7 @@
 				</div>
 			</div>
 		</div>
+		<div id="loading">Loading…</div>
 		<script src="preview.js"></script>
 		<script src="diff-utils.js"></script>
 		<script src="differentiator.js"></script>

@@ -165,11 +165,14 @@ function _truthFindGhostElByPos(file, start, token) {
 	return null;
 }
 
-function _truthFindLeoMarkEl(side, pos, token) {
+function _truthFindLeoMarkEl(side, pos, token, file) {
 	const wrap = document.getElementById(`code-${side}`);
 	if (!wrap) return null;
+	const paneSel = file
+		? `.code-pane[data-pane-file="${CSS.escape(file)}"].active`
+		: `.code-pane.active`;
 	const sel =
-		`.leo-mark[data-leo-side="${side}"]` +
+		`${paneSel} .leo-mark[data-leo-side="${side}"]` +
 		`[data-leo-pos="${pos}"]:not([data-leo-ghost-offset])`;
 	for (const el of wrap.querySelectorAll(sel)) {
 		if (el.getAttribute("data-leo-token") === token) return el;
@@ -177,9 +180,9 @@ function _truthFindLeoMarkEl(side, pos, token) {
 	return null;
 }
 
-function _truthFindMarkEl(side, mark) {
+function _truthFindMarkEl(side, mark, file) {
 	if (!mark) return null;
-	return _truthFindLeoMarkEl(side, mark.start, mark.token);
+	return _truthFindLeoMarkEl(side, mark.start, mark.token, file);
 }
 
 function _truthSrcPosToDomPoint(side, file, srcPos) {
@@ -311,6 +314,27 @@ function _truthPairHitTest(info, ev, roles) {
 				return { kind: "block" };
 			}
 			if (groupRange) return { kind: "block" };
+			if (roles.allMissing && ev) {
+				const markEl = _truthFindMarkEl(info.side, existingHere, info.file);
+				if (markEl) {
+					const r = markEl.getBoundingClientRect();
+					const edgePx = Math.min(_TRUTH_EDGE_PX, r.width / 4);
+					if (ev.clientX <= r.left + edgePx) {
+						return {
+							kind: "insert",
+							pos: existingHere.start,
+							edge: { x: r.left, y: r.top, h: r.height },
+						};
+					}
+					if (ev.clientX >= r.right - edgePx) {
+						return {
+							kind: "insert",
+							pos: existingHere.end,
+							edge: { x: r.right, y: r.top, h: r.height },
+						};
+					}
+				}
+			}
 			return { kind: "mark", mark: existingHere };
 		}
 	}
@@ -474,7 +498,7 @@ function _truthOnPairMouseMove(ev) {
 	_truthShowPairLabel(ev.clientX, ev.clientY, labelText);
 
 	if (intent.kind === "mark") {
-		const markEl = _truthFindMarkEl(info.side, intent.mark);
+		const markEl = _truthFindMarkEl(info.side, intent.mark, info.file);
 		const alreadyPaired = !!intent.mark.paired_with;
 		_truthSetPairHoverEls(markEl && !alreadyPaired ? [markEl] : []);
 		if (alreadyPaired && markEl) {

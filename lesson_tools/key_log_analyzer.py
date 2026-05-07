@@ -32,16 +32,10 @@ def find_files_in_directory():
 
 def find_xlsx_files(directory):
     folder_name = os.path.basename(directory)
-    remarks    = os.path.join(directory, f'remarks_{folder_name}.xlsx')
-    similarity = os.path.join(directory, f'teacher_similarity_{folder_name}.xlsx')
+    remarks = os.path.join(directory, f'remarks_{folder_name}.xlsx')
     if not os.path.isfile(remarks):
-        remarks    = os.path.join(directory, 'remarks.xlsx')
-    if not os.path.isfile(similarity):
-        similarity = os.path.join(directory, 'teacher_similarity.xlsx')
-    return (
-        remarks    if os.path.isfile(remarks)    else None,
-        similarity if os.path.isfile(similarity) else None,
-    )
+        remarks = os.path.join(directory, 'remarks.xlsx')
+    return remarks if os.path.isfile(remarks) else None
 
 
 def select_file():
@@ -69,23 +63,20 @@ def main():
     data = load_keypress_data(fp)
 
     json_dir = os.path.dirname(os.path.abspath(fp))
-    remarks_path, similarity_path = find_xlsx_files(json_dir)
+    remarks_path = find_xlsx_files(json_dir)
 
     s_data = None
-    if remarks_path and similarity_path:
-        print(f'Found remarks.xlsx and teacher_similarity.xlsx in: {json_dir}')
+    if remarks_path:
+        print(f'Found remarks.xlsx in: {json_dir}')
         session_start = data['events'][0]['timestamp'] / 1000
         session_end  = data['events'][-1]['timestamp'] / 1000
-        s_data = load_student_data_from_xlsx(remarks_path, similarity_path, session_start, session_end)
+        s_data = load_student_data_from_xlsx(remarks_path, session_start, session_end)
         if s_data:
             print(f'  Loaded {len(s_data)} students with follow data')
         else:
-            print('  No student data loaded (check column names in xlsx files)')
+            print('  No student data loaded (check column names in remarks.xlsx)')
     else:
-        missing = []
-        if not remarks_path:    missing.append('remarks.xlsx')
-        if not similarity_path: missing.append('teacher_similarity.xlsx')
-        print(f'Student chart disabled (not found in {json_dir}): {" ".join(missing)}')
+        print(f'Student chart disabled (remarks.xlsx not found in {json_dir})')
 
     create_visualizations(data, s_data)
 

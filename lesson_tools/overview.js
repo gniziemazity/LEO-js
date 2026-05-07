@@ -598,7 +598,7 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 		studentFiles,
 		allMarks,
 		imageUris: {},
-		title: `${escHtml(student.name)} (${escHtml(label)})`,
+		title: `${student.id ? escHtml(String(student.id)) + ". " : ""}${escHtml(student.name)} (${escHtml(label)})`,
 	};
 }
 

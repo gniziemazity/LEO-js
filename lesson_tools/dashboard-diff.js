@@ -89,7 +89,7 @@ async function _buildDiffWindowPayload(student, followPct) {
 		teacherMarks: defaultMarks ? defaultMarks.teacher_files || {} : null,
 		studentMarks: defaultMarks ? defaultMarks.student_files || {} : null,
 		allMarks,
-		title: `${escHtml(student.name)} (${escHtml(followPct)})`,
+		title: `${student.id ? escHtml(student.id) + ". " : ""}${escHtml(student.name)} (${escHtml(followPct)})`,
 	};
 }
 

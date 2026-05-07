@@ -137,6 +137,8 @@ function _truthAlignWhitespace(
 	dstStart,
 	dstEnd,
 	bodyOverride,
+	canExtendLeft,
+	canExtendRight,
 ) {
 	const srcLead = _truthBackwardWhitespace(srcText, srcStart);
 	const dstLead = _truthBackwardWhitespace(dstText, dstStart);
@@ -151,12 +153,16 @@ function _truthAlignWhitespace(
 	let aEnd = dstEnd;
 
 	if (srcLead && !dstLead) text = srcLead + text;
-	else if (!srcLead && dstLead && !dstLead.includes("\n"))
-		aStart = dstStart - dstLead.length;
+	else if (!srcLead && dstLead && !dstLead.includes("\n")) {
+		const newStart = dstStart - dstLead.length;
+		if (!canExtendLeft || canExtendLeft(newStart)) aStart = newStart;
+	}
 
 	if (srcTrail && !dstTrail) text = text + srcTrail;
-	else if (!srcTrail && dstTrail && !dstTrail.includes("\n"))
-		aEnd = dstEnd + dstTrail.length;
+	else if (!srcTrail && dstTrail && !dstTrail.includes("\n")) {
+		const newEnd = dstEnd + dstTrail.length;
+		if (!canExtendRight || canExtendRight(newEnd)) aEnd = newEnd;
+	}
 
 	return { text, start: aStart, end: aEnd };
 }
@@ -240,6 +246,7 @@ function _truthApplyToStudent() {
 			};
 			for (const mg of contig) consumedMissings.add(mg);
 		}
+		const rawOps = [];
 		for (const g of groups) {
 			if (
 				g.side === "teacher" &&
@@ -247,57 +254,104 @@ function _truthApplyToStudent() {
 				g.insertFile === sName
 			) {
 				if (consumedMissings.has(g)) continue;
-				const tSrc = _truthSrcText("teacher", g.file);
 				const body = _truthSliceExcludingComments(
 					"teacher",
 					g.file,
 					g.lo,
 					g.hi,
 				);
-				const a = _truthAlignWhitespace(
-					tSrc,
-					g.lo,
-					g.hi,
-					origText,
-					g.insertPos,
-					g.insertPos,
+				rawOps.push({
+					kind: "insert",
+					origStart: g.insertPos,
+					origEnd: g.insertPos,
+					srcFile: g.file,
+					srcStart: g.lo,
+					srcEnd: g.hi,
 					body,
-				);
-				pushOp({ start: a.start, end: a.end, text: a.text });
+				});
 			} else if (
 				g.side === "student" &&
 				g.kind === "extra-replace" &&
 				g.file === sName
 			) {
-				const tSrc = _truthSrcText("teacher", g.pairFile);
 				const body = _truthSliceExcludingComments(
 					"teacher",
 					g.pairFile,
 					g.pairLo,
 					g.pairHi,
 				);
-				const a = _truthAlignWhitespace(
-					tSrc,
-					g.pairLo,
-					g.pairHi,
-					origText,
-					g.lo,
-					g.hi,
+				rawOps.push({
+					kind: "swap",
+					origStart: g.lo,
+					origEnd: g.hi,
+					srcFile: g.pairFile,
+					srcStart: g.pairLo,
+					srcEnd: g.pairHi,
 					body,
-				);
-				pushOp({ start: a.start, end: a.end, text: a.text });
+				});
 			} else if (
 				g.side === "student" &&
 				(g.kind === "extra" || g.kind === "ghost_extra") &&
 				g.file === sName
 			) {
 				if (g._coalesced) {
-					const c = g._coalesced;
-					pushOp({ start: g.lo, end: g.hi, text: c.body });
+					rawOps.push({
+						kind: "coal",
+						origStart: g.lo,
+						origEnd: g.hi,
+						body: g._coalesced.body,
+					});
 					delete g._coalesced;
 				} else {
-					pushOp({ start: g.lo, end: g.hi, text: "" });
+					rawOps.push({
+						kind: "del",
+						origStart: g.lo,
+						origEnd: g.hi,
+						body: "",
+					});
 				}
+			}
+		}
+
+		const siblings = rawOps.map((o) => [o.origStart, o.origEnd]);
+		for (let i = 0; i < rawOps.length; i++) {
+			const o = rawOps[i];
+			const canExtendLeft = (newStart) => {
+				if (newStart >= o.origStart) return true;
+				for (let j = 0; j < siblings.length; j++) {
+					if (j === i) continue;
+					const [bLo, bHi] = siblings[j];
+					if (newStart <= bLo && bLo <= o.origStart) return false;
+					if (newStart <= bHi && bHi <= o.origStart) return false;
+				}
+				return true;
+			};
+			const canExtendRight = (newEnd) => {
+				if (newEnd <= o.origEnd) return true;
+				for (let j = 0; j < siblings.length; j++) {
+					if (j === i) continue;
+					const [bLo, bHi] = siblings[j];
+					if (o.origEnd <= bLo && bLo <= newEnd) return false;
+					if (o.origEnd <= bHi && bHi <= newEnd) return false;
+				}
+				return true;
+			};
+			if (o.kind === "insert" || o.kind === "swap") {
+				const tSrc = _truthSrcText("teacher", o.srcFile);
+				const a = _truthAlignWhitespace(
+					tSrc,
+					o.srcStart,
+					o.srcEnd,
+					origText,
+					o.origStart,
+					o.origEnd,
+					o.body,
+					canExtendLeft,
+					canExtendRight,
+				);
+				pushOp({ start: a.start, end: a.end, text: a.text });
+			} else {
+				pushOp({ start: o.origStart, end: o.origEnd, text: o.body });
 			}
 		}
 		ops.sort((a, b) => {
@@ -308,6 +362,7 @@ function _truthApplyToStudent() {
 			return b.order - a.order;
 		});
 		const _alnum = /[a-zA-Z0-9]/;
+		const _nonAlnum = /[^a-zA-Z0-9]/;
 		for (const op of ops) {
 			let body = op.text;
 			if (body) {
@@ -320,6 +375,13 @@ function _truthApplyToStudent() {
 				}
 				if (after && _alnum.test(after) && _alnum.test(last)) {
 					body = body + " ";
+				}
+			} else {
+				const before = text[op.start - 1];
+				const after = text[op.end];
+				if (before && after && _alnum.test(before) && _alnum.test(after)) {
+					const deleted = text.slice(op.start, op.end);
+					if (_nonAlnum.test(deleted)) body = " ";
 				}
 			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);

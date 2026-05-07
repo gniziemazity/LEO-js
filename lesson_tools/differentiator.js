@@ -180,6 +180,11 @@ function _applyIncomingData(data) {
 	if (typeof _truthEnable === "function") _truthEnable();
 }
 
+function _showLoading(on) {
+	const el = document.getElementById("loading");
+	if (el) el.style.display = on ? "flex" : "none";
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
 	const params = new URLSearchParams(location.search);
 	const keyParam = params.get("key");
@@ -188,6 +193,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
 	_refreshLinePaddingButton();
+
+	const expectAutoLoad =
+		!!keyParam ||
+		!!localStorage.getItem(key) ||
+		(_diffSessionKey && !!sessionStorage.getItem(_diffSessionKey)) ||
+		(window.opener &&
+			typeof window.opener.__getDifferentiatorData === "function");
+	if (expectAutoLoad) _showLoading(true);
 
 	const modeSelect = document.getElementById("mode-select");
 	if (modeSelect) {
@@ -245,6 +258,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 			}
 		}
 	}
+	_showLoading(false);
 
 	window.addEventListener("beforeunload", _persistDiffState);
 	document.addEventListener("visibilitychange", () => {
@@ -333,8 +347,39 @@ function _restoreState(side, saved) {
 
 const _DIFF_COMMENT_RE = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
 const _DIFF_COMMENT_RE_CSS = /\/\*[\s\S]*?\*\//g;
-const _DIFF_HTML_SCRIPT_RE = /(<script\b[^>]*>)([\s\S]*?)<\/script\s*>/gi;
+const _DIFF_HTML_OPEN_RE = /<\s*(script|style)\b[^>]*>/gi;
 const _DIFF_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+
+function _htmlTagBlockRanges(text) {
+	const scriptRanges = [];
+	const styleRanges = [];
+	_DIFF_HTML_OPEN_RE.lastIndex = 0;
+	let om;
+	while ((om = _DIFF_HTML_OPEN_RE.exec(text)) !== null) {
+		const tag = om[1].toLowerCase();
+		const innerStart = om.index + om[0].length;
+		const closeRe = new RegExp(
+			`<\\/\\s*${tag}\\s*>|<\\s*\\\\\\s*\\/?\\s*${tag}\\s*>|\\/\\s*${tag}\\s*>`,
+			"i",
+		);
+		const sub = text.slice(innerStart);
+		const cm = sub.match(closeRe);
+		let innerEnd, nextPos;
+		if (cm) {
+			innerEnd = innerStart + cm.index;
+			nextPos = innerEnd + cm[0].length;
+		} else {
+			innerEnd = text.length;
+			nextPos = text.length;
+		}
+		(tag === "script" ? scriptRanges : styleRanges).push([
+			innerStart,
+			innerEnd,
+		]);
+		_DIFF_HTML_OPEN_RE.lastIndex = nextPos;
+	}
+	return { scriptRanges, styleRanges };
+}
 
 function _diffCommentRanges(text, fileName) {
 	const ext = String(fileName || "")
@@ -351,17 +396,13 @@ function _diffCommentRanges(text, fileName) {
 		return ranges;
 	}
 	const isHtml = e === ".html" || e === ".htm";
-	const scriptRanges = [];
+	let scriptRanges = [];
+	let styleRanges = [];
 	if (isHtml) {
-		_DIFF_HTML_SCRIPT_RE.lastIndex = 0;
-		let sm;
-		while ((sm = _DIFF_HTML_SCRIPT_RE.exec(text)) !== null) {
-			const innerStart = sm.index + sm[1].length;
-			scriptRanges.push([innerStart, innerStart + sm[2].length]);
-		}
+		({ scriptRanges, styleRanges } = _htmlTagBlockRanges(text));
 	}
-	const inScript = (pos) => {
-		for (const [lo, hi] of scriptRanges) {
+	const inRanges = (pos, rs) => {
+		for (const [lo, hi] of rs) {
 			if (lo <= pos && pos < hi) return true;
 			if (pos < lo) return false;
 		}
@@ -371,7 +412,15 @@ function _diffCommentRanges(text, fileName) {
 	let m;
 	while ((m = _DIFF_COMMENT_RE.exec(text)) !== null) {
 		const kind = m[0].slice(0, 2);
-		if (isHtml && kind === "//" && !inScript(m.index)) continue;
+		if (isHtml) {
+			const pos = m.index;
+			if (kind === "//" && !inRanges(pos, scriptRanges)) continue;
+			if (
+				kind === "/*" &&
+				!(inRanges(pos, styleRanges) || inRanges(pos, scriptRanges))
+			)
+				continue;
+		}
 		ranges.push([m.index, m.index + m[0].length]);
 	}
 	return ranges;

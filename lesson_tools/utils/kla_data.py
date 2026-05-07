@@ -116,7 +116,7 @@ def _parse_all_events_from_follow(follow_text, session_date):
     return events
 
 
-def load_student_data_from_xlsx(remarks_path, similarity_path, session_start_ts, session_end_ts=None):
+def load_student_data_from_xlsx(remarks_path, session_start_ts, session_end_ts=None):
     try:
         from openpyxl import load_workbook
     except ImportError:
@@ -163,42 +163,14 @@ def load_student_data_from_xlsx(remarks_path, similarity_path, session_start_ts,
     except Exception as e:
         print(f'  Error reading remarks.xlsx: {e}')
 
-    inc_data = {}
-    try:
-        wb_s = load_workbook(similarity_path, read_only=True, data_only=True)
-        ws_s = wb_s.active
-        rows_s = list(ws_s.iter_rows(values_only=True))
-        wb_s.close()
-        header_s   = list(rows_s[0]) if rows_s else []
-        name_col_s = None
-        inc_cols   = []
-        for ci, h in enumerate(header_s):
-            if h == 'Student' and name_col_s is None:
-                name_col_s = ci
-            elif h == 'Inc' or (h and str(h).endswith('_Inc')):
-                inc_cols.append(ci)
-        if name_col_s is None or not inc_cols:
-            print('  Warning: could not locate Student / Inc columns in teacher_similarity.xlsx')
-        else:
-            for row in rows_s[1:]:
-                name = str(row[name_col_s]).strip() if row[name_col_s] else ''
-                vals = [float(row[ci]) for ci in inc_cols
-                        if row[ci] is not None and row[ci] != '']
-                if name and vals:
-                    inc_data[name] = sum(vals) / len(vals)
-    except Exception as e:
-        print(f'  Error reading teacher_similarity.xlsx: {e}')
-
     students = []
-    all_names = set(follow_data.keys()) | set(inc_data.keys())
     session_end_dt = datetime.fromtimestamp(session_end_ts) if session_end_ts else None
-    for name in sorted(all_names):
+    for name in sorted(follow_data.keys()):
         fd = follow_data.get(name, {})
         follow_pct = fd.get('pct') if isinstance(fd, dict) else None
         if follow_pct is None:
             continue
         events = fd.get('events', []) if isinstance(fd, dict) else fd
-        inc = inc_data.get(name)
         if not events:
             if session_end_dt is None:
                 continue
@@ -208,7 +180,6 @@ def load_student_data_from_xlsx(remarks_path, similarity_path, session_start_ts,
             'name': name,
             'follow_dt': follow_dt,
             'follow_events': events,
-            'inc_sim': inc,
             'follow_pct': follow_pct,
         })
     return students

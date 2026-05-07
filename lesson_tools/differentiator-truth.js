@@ -248,8 +248,12 @@ function _truthOnKeyDown(ev) {
 	const tokens = _truthCurrentTokens || [];
 	const existing = _truthCurrentExisting || [];
 
-	if (ev.key === "Delete" || ev.key === "Backspace") {
-		if (!existing.length) return;
+	if (
+		ev.key === "Delete" ||
+		ev.key === "Backspace" ||
+		ev.key.toLowerCase() === "d"
+	) {
+		if (!existing.some((m) => m.label !== "comment")) return;
 		ev.preventDefault();
 		_truthOnControlAction("del-all", sel, tokens, existing);
 		return;
@@ -258,20 +262,29 @@ function _truthOnKeyDown(ev) {
 	if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
 
 	const k = ev.key.toLowerCase();
+	const nonCommentExisting = existing.filter((m) => m.label !== "comment");
 	const allMissing =
-		existing.length > 0 && existing.every((m) => m.label === "missing");
+		nonCommentExisting.length > 0 &&
+		nonCommentExisting.every((m) => m.label === "missing");
 	const allExtra =
-		existing.length > 0 && existing.every((m) => m.label === "extra");
+		nonCommentExisting.length > 0 &&
+		nonCommentExisting.every((m) => m.label === "extra");
 	const allGhostExtra =
-		existing.length > 0 && existing.every((m) => m.label === "ghost_extra");
-	const single = existing.length === 1;
-	const allUnpairedGhostExtra =
-		allGhostExtra && existing.every((m) => !m.paired_with);
+		nonCommentExisting.length > 0 &&
+		nonCommentExisting.every((m) => m.label === "ghost_extra");
+	const single = nonCommentExisting.length === 1;
+	const allUnpaired =
+		(allMissing || allExtra || allGhostExtra) &&
+		nonCommentExisting.every((m) => !m.paired_with);
+	const canPair =
+		((allMissing || allGhostExtra) && allUnpaired) ||
+		(allExtra && single && allUnpaired);
+	const hasAnyPaired = nonCommentExisting.some((m) => m.paired_with);
 
 	const fullyLabeled = (label) =>
-		existing.length === tokens.length &&
-		existing.length > 0 &&
-		existing.every((m) => m.label === label);
+		nonCommentExisting.length === tokens.length &&
+		nonCommentExisting.length > 0 &&
+		nonCommentExisting.every((m) => m.label === label);
 
 	if (k === "m" && sel.side === "teacher" && !fullyLabeled("missing")) {
 		ev.preventDefault();
@@ -286,24 +299,60 @@ function _truthOnKeyDown(ev) {
 	) {
 		ev.preventDefault();
 		_truthOnControlAction("set-ghost", sel, tokens, existing);
-	} else if (
-		(k === "i" || k === "p") &&
-		(allMissing ||
-			(allExtra && single) ||
-			(allGhostExtra && single && !existing[0].paired_with) ||
-			(allUnpairedGhostExtra && existing.length > 1))
-	) {
+	} else if (k === "c" && !fullyLabeled("comment")) {
 		ev.preventDefault();
-		_truthOnControlAction("set-pair", sel, tokens, existing);
+		_truthOnControlAction("set-comment", sel, tokens, existing);
+	} else if ((k === "i" || k === "p") && (tokens.length || existing.length)) {
+		ev.preventDefault();
+		if (sel.side === "teacher") {
+			if (allMissing && fullyLabeled("missing")) {
+				_truthOnControlAction("set-pair", sel, tokens, existing);
+			} else {
+				_truthOnControlAction("set-missing", sel, tokens, existing);
+			}
+		} else if (sel.side === "student") {
+			if (allGhostExtra && allUnpaired) {
+				_truthOnControlAction("set-pair", sel, tokens, existing);
+			} else if (
+				allExtra &&
+				fullyLabeled("extra") &&
+				single &&
+				allUnpaired
+			) {
+				_truthOnControlAction("set-pair", sel, tokens, existing);
+			} else if (existing.length === 0 || allExtra) {
+				_truthOnControlAction("set-extra", sel, tokens, existing);
+				const newMarks = _truthFindMarks(
+					sel.side,
+					sel.file,
+					sel.lo,
+					sel.hi,
+				).filter((m) => m.label === "extra" && !m.paired_with);
+				if (newMarks.length === 1) {
+					_truthEnterPairMode(newMarks, sel.side, sel.file);
+					_truthRefreshCurrentControls();
+				}
+			}
+		}
 	} else if (
 		k === "r" &&
-		((single && existing[0].paired_with) ||
-			(allGhostExtra &&
-				existing.length > 1 &&
-				existing.some((m) => m.paired_with)))
+		hasAnyPaired &&
+		(allMissing || allExtra || allGhostExtra)
 	) {
 		ev.preventDefault();
 		_truthOnControlAction("unpair", sel, tokens, existing);
+	}
+}
+
+function _truthRefreshCurrentControls() {
+	if (!_truthCurrentSel) return;
+	const sel = _truthCurrentSel;
+	if (sel.isGhost && typeof _truthSelectGhostAndShow === "function") {
+		_truthSelectGhostAndShow(sel.ghost, 0, 0);
+	} else if (!sel.isGhost) {
+		_truthSelectAndShow(sel.side, sel.file, sel.rawLo, sel.rawHi, 0, 0, {
+			preservePosition: true,
+		});
 	}
 }
 
@@ -316,6 +365,7 @@ document.addEventListener(
 			ev.stopPropagation();
 			_truthCancelPending();
 			_truthClearPairHover();
+			_truthRefreshCurrentControls();
 			return;
 		}
 		if (ev.button !== 0) return;
@@ -714,7 +764,8 @@ function _truthFindMarks(side, file, lo, hi) {
 			m.end > lo &&
 			(m.label === "missing" ||
 				m.label === "extra" ||
-				m.label === "ghost_extra"),
+				m.label === "ghost_extra" ||
+				m.label === "comment"),
 	);
 }
 

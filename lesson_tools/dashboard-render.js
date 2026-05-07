@@ -795,6 +795,14 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 		seen.add(key);
 		blocks.push({ ts1: b.startTs, ts2: b.endTs });
 	}
+	const half = CFG.BAR_MIN_SECS / 2;
+	for (const kp of p.singletons || []) {
+		const ts = kp.timestamp / 1000;
+		const key = `s|${ts}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		blocks.push({ ts1: ts - half, ts2: ts + half });
+	}
 
 	const studentEvs = students.map((s) =>
 		(s.follow_events || []).filter(

@@ -37,20 +37,34 @@ _COMMENT_RE = re.compile(
     re.DOTALL,
 )
 _COMMENT_RE_CSS = re.compile(r'/\*.*?\*/', re.DOTALL)
-_HTML_SCRIPT_RE = re.compile(
-    r'<script\b[^>]*>(.*?)</script\s*>',
-    re.DOTALL | re.IGNORECASE,
-)
+_HTML_OPEN_RE = re.compile(r'<\s*(script|style)\b[^>]*>', re.IGNORECASE)
+
+
+def _html_tag_block_ranges(text: str) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+    script_ranges: List[Tuple[int, int]] = []
+    style_ranges: List[Tuple[int, int]] = []
+    pos = 0
+    while True:
+        om = _HTML_OPEN_RE.search(text, pos)
+        if not om:
+            break
+        tag = om.group(1).lower()
+        inner_start = om.end()
+        close_re = re.compile(
+            rf'</\s*{tag}\s*>|<\s*\\\s*/?\s*{tag}\s*>|/\s*{tag}\s*>',
+            re.IGNORECASE,
+        )
+        cm = close_re.search(text, inner_start)
+        inner_end = cm.start() if cm else len(text)
+        if tag == 'script':
+            script_ranges.append((inner_start, inner_end))
+        else:
+            style_ranges.append((inner_start, inner_end))
+        pos = cm.end() if cm else len(text)
+    return script_ranges, style_ranges
 
 
 def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
-    """Find comment ranges in `text`.
-
-    For .html/.htm: <!-- --> and /* */ match everywhere; // only matches
-    inside <script>...</script> blocks (where it's a real JS line comment).
-    For .css: only /* */.
-    For .js (or unknown): all three styles.
-    """
     starts: List[int] = []
     ends: List[int] = []
 
@@ -63,12 +77,12 @@ def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
 
     is_html = e in ('.html', '.htm')
     script_ranges: List[Tuple[int, int]] = []
+    style_ranges: List[Tuple[int, int]] = []
     if is_html:
-        for sm in _HTML_SCRIPT_RE.finditer(text):
-            script_ranges.append((sm.start(1), sm.end(1)))
+        script_ranges, style_ranges = _html_tag_block_ranges(text)
 
-    def _in_script(pos: int) -> bool:
-        for lo, hi in script_ranges:
+    def _in_ranges(pos: int, ranges: List[Tuple[int, int]]) -> bool:
+        for lo, hi in ranges:
             if lo <= pos < hi:
                 return True
             if pos < lo:
@@ -77,11 +91,29 @@ def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
 
     for match in _COMMENT_RE.finditer(text):
         kind = match.group()[:2]
-        if is_html and kind == '//' and not _in_script(match.start()):
-            continue
+        if is_html:
+            pos = match.start()
+            if kind == '//' and not _in_ranges(pos, script_ranges):
+                continue
+            if kind == '/*' and not (
+                _in_ranges(pos, style_ranges) or _in_ranges(pos, script_ranges)
+            ):
+                continue
         starts.append(match.start())
         ends.append(match.end())
     return starts, ends
+
+
+def blank_comments(text: str, ext=None) -> str:
+    starts, ends = _comment_ranges(text, ext)
+    if not starts:
+        return text
+    chars = list(text)
+    for cs, ce in zip(starts, ends):
+        for i in range(cs, ce):
+            if chars[i] != '\n':
+                chars[i] = ' '
+    return ''.join(chars)
 
 
 def _pos_in_comment(pos: int, starts: List[int], ends: List[int]) -> bool:

@@ -8,30 +8,19 @@ async function loadXlsxFiles(files) {
 		return;
 	}
 
-	let remarksFile = null,
-		simFile = null;
+	let remarksFile = null;
 	for (const f of files) {
 		const n = f.name.toLowerCase();
 		if (n.includes("remarks")) remarksFile = f;
-		else if (
-			n.includes("similarity") ||
-			n.includes("teacher_sim") ||
-			n.includes("sim")
-		)
-			simFile = f;
 	}
-	if (!remarksFile || !simFile) return;
+	if (!remarksFile) return;
 
 	try {
 		showLoading(true);
-		const [rBuf, sBuf] = await Promise.all([
-			readFileArray(remarksFile),
-			readFileArray(simFile),
-		]);
+		const rBuf = await readFileArray(remarksFile);
 		const sessionDate = new Date(_p.sessionStart * 1000);
 		const result = parseStudentData(
 			rBuf,
-			sBuf,
 			sessionDate,
 			_p.sessionStart,
 			_p.sessionEnd,
@@ -50,13 +39,7 @@ async function loadXlsxFiles(files) {
 	}
 }
 
-function parseStudentData(
-	remarksBuf,
-	simBuf,
-	sessionDate,
-	sessionStart,
-	sessionEnd,
-) {
+function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 	const wbR = XLSX.read(remarksBuf, { type: "array" });
 	const wsR = wbR.Sheets["Remarks"] || wbR.Sheets[wbR.SheetNames[0]];
 	const rowsR = XLSX.utils.sheet_to_json(wsR, { header: 1, defval: "" });
@@ -99,37 +82,9 @@ function parseStudentData(
 		};
 	}
 
-	const wbS = XLSX.read(simBuf, { type: "array" });
-	const wsS = wbS.Sheets[wbS.SheetNames[0]];
-	const rowsS = XLSX.utils.sheet_to_json(wsS, { header: 1, defval: "" });
-	const hdrS = rowsS[0] || [];
-	const nameColS = hdrS.indexOf("Student");
-	const incCols = hdrS.reduce((a, h, i) => {
-		if (h === "Inc" || (h && String(h).endsWith("_Inc"))) a.push(i);
-		return a;
-	}, []);
-
-	const incData = {};
-	if (nameColS !== -1 && incCols.length) {
-		for (let i = 1; i < rowsS.length; i++) {
-			const row = rowsS[i];
-			const name = String(row[nameColS] || "").trim();
-			if (!name) continue;
-			const vals = incCols
-				.map((c) => parseFloat(row[c]))
-				.filter((v) => !isNaN(v));
-			if (vals.length)
-				incData[name] = vals.reduce((a, v) => a + v, 0) / vals.length;
-		}
-	}
-
-	const allNames = new Set([
-		...Object.keys(followData),
-		...Object.keys(incData),
-	]);
 	const students = [];
-	for (const name of [...allNames].sort()) {
-		const fd = followData[name] || {};
+	for (const name of Object.keys(followData).sort()) {
+		const fd = followData[name];
 		if (fd.pct == null) continue;
 		let evs = fd.events || [];
 		if (!evs.length)
@@ -148,10 +103,13 @@ function parseStudentData(
 			follow_events: evs,
 			follow_dt:
 				(
-					evs.find((e) => e.kind !== "extra" && e.kind !== "extra-star") ??
+					evs
+						.filter(
+							(e) => e.kind === "missing" || e.kind === "extra-star",
+						)
+						.reduce((a, b) => (a == null || b.ts < a.ts ? b : a), null) ??
 					evs[0]
 				)?.ts ?? null,
-			inc_sim: incData[name] ?? null,
 		});
 	}
 	return { students, idMap };

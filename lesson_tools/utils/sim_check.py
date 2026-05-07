@@ -422,9 +422,6 @@ def main() -> None:
     checker.mirror_diff_marks_to_anon_ids(anon_names_dir, anon_ids_dir)
     checker.write_name_map(current_dir)
 
-    checker.generate_excel_report(
-        str(current_dir / f'teacher_similarity_{folder_name}.xlsx')
-    )
     remarks_path = current_dir / f'remarks_{folder_name}.xlsx'
     checker.generate_remarks_report(str(remarks_path))
 
@@ -433,8 +430,7 @@ def main() -> None:
     shutil.copy2(str(remarks_path), str(grades_path))
     merge_existing_grades(current_dir, folder_name, grades_path)
 
-    print(f'Done — teacher_similarity_{folder_name}.xlsx, '
-          f'remarks_{folder_name}.xlsx and '
+    print(f'Done — remarks_{folder_name}.xlsx and '
           f'grades_{folder_name}_{grades_ts}.xlsx generated.')
 
 
