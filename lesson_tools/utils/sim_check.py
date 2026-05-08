@@ -94,9 +94,10 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         out_path = Path(project_dir) / 'name_map.csv'
         with open(out_path, 'w', encoding='utf-8-sig', newline='') as fh:
             writer = csv.writer(fh, delimiter=';')
-            writer.writerow(['Student Name', 'Alter Ego'])
+            writer.writerow(['Student ID', 'Student Name', 'Alter Ego'])
             for real_name, alter in name_map.items():
-                writer.writerow([real_name, alter])
+                sid = self.name_to_id.get(real_name, '')
+                writer.writerow([sid, real_name, alter])
         print(f'Written {out_path.name} ({len(name_map)} student name mappings)')
 
     def load_remarks_csv(self, csv_path: str) -> None:
@@ -369,12 +370,44 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             'student_tokens':         Counter(),
         }
 
+_REMARKS_BASES = [
+    'ideal', 'required',
+    'leo_star', 'leo',
+    'lcs_star', 'lcs',
+    'lev_star', 'lev',
+    'ro_star', 'ro',
+    'git_star', 'git',
+]
+
+
+def _resolve_follow_basis(requested: str, generated: List[str]) -> str:
+    if requested != 'auto':
+        if requested in generated:
+            return requested
+        print(f'  --follow-basis={requested!r} not available; falling back to auto pick')
+    for preferred in ('ideal', 'required', 'leo_star', 'leo'):
+        if preferred in generated:
+            return preferred
+    return generated[0] if generated else ''
+
+
 def main() -> None:
     if len(sys.argv) < 2:
-        print('Usage: sim_check.py <project_dir>')
+        print('Usage: sim_check.py <project_dir> [--follow-basis=<basis>]')
         sys.exit(1)
 
-    current_dir    = Path(sys.argv[1]).resolve()
+    follow_basis = 'auto'
+    positional: List[str] = []
+    for arg in sys.argv[1:]:
+        if arg.startswith('--follow-basis='):
+            follow_basis = arg.split('=', 1)[1].strip() or 'auto'
+        else:
+            positional.append(arg)
+    if not positional:
+        print('Usage: sim_check.py <project_dir> [--follow-basis=<basis>]')
+        sys.exit(1)
+
+    current_dir    = Path(positional[0]).resolve()
     correct_dir    = current_dir / 'correct'
     anon_names_dir = current_dir / 'anon_names'
     anon_ids_dir   = current_dir / 'anon_ids'
@@ -409,21 +442,41 @@ def main() -> None:
     if checker._lesson_keypresses:
         checker.write_keyword_log()
         checker.write_student_token_files(names_dir, anon_names_dir,
-                                           truth_dir=current_dir / 'truth')
+                                           curated_dir=current_dir / 'curated')
     else:
         checker.write_leo_diff_marks(names_dir, anon_names_dir)
     checker.write_lcs_diff_marks(names_dir, anon_names_dir)
     checker.write_lev_diff_marks(names_dir, anon_names_dir)
     checker.write_ro_diff_marks(names_dir, anon_names_dir)
     checker.write_git_diff_marks(names_dir, anon_names_dir)
-    checker.copy_truth_diff_marks(
-        current_dir / 'truth', names_dir, anon_names_dir, anon_ids_dir,
+    checker.copy_curated_diff_marks(
+        current_dir / 'curated', names_dir, anon_names_dir, anon_ids_dir,
     )
     checker.mirror_diff_marks_to_anon_ids(anon_names_dir, anon_ids_dir)
     checker.write_name_map(current_dir)
 
+    print('\nGenerating per-basis remarks reports...')
+    generated_bases: List[str] = []
+    for basis in _REMARKS_BASES:
+        stats = checker.compute_basis_token_stats(
+            f'diff_marks_{basis}.json', names_dir, anon_names_dir,
+        )
+        if not stats:
+            continue
+        out_path = current_dir / f'remarks_{basis}.xlsx'
+        checker.generate_remarks_report(str(out_path), token_stats=stats)
+        generated_bases.append(basis)
+        print(f'  {out_path.name}  ({len(stats)} student(s))')
+
+    chosen_basis = _resolve_follow_basis(follow_basis, generated_bases)
     remarks_path = current_dir / f'remarks_{folder_name}.xlsx'
-    checker.generate_remarks_report(str(remarks_path))
+    if chosen_basis:
+        src_path = current_dir / f'remarks_{chosen_basis}.xlsx'
+        shutil.copy2(str(src_path), str(remarks_path))
+        print(f'\nFollow basis: {chosen_basis} -> {remarks_path.name}')
+    else:
+        checker.generate_remarks_report(str(remarks_path))
+        print(f'\nFollow basis: (default LEO* re-scored) -> {remarks_path.name}')
 
     grades_ts   = int(datetime.now().timestamp())
     grades_path = current_dir / f'grades_{folder_name}_{grades_ts}.xlsx'

@@ -243,6 +243,9 @@ function renderPanel(side, files, marks) {
 				.forEach((p) => p.classList.remove("active"));
 			btn.classList.add("file-tab-active");
 			codeWrap.children[i].classList.add("active");
+			const otherSide = side === "teacher" ? "student" : "teacher";
+			const otherName = _pairedFileName(side, name);
+			if (otherName) _activateFileTab(otherSide, otherName);
 			if (typeof _truthRefreshOverlays === "function") {
 				_truthRefreshOverlays();
 			} else if (typeof _truthRefreshGhostPairs === "function") {

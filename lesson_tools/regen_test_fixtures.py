@@ -136,19 +136,19 @@ def regen_student(case_dir: Path, student_name: str) -> None:
     if events:
         _add_log_metadata(diff_marks, events, stu_files, teacher_files=teacher_files)
 
-    truth_path = student_dir / "diff_marks_truth.json"
-    truth_marks = None
-    if truth_path.is_file():
+    ideal_path = student_dir / "diff_marks_ideal.json"
+    ideal_marks = None
+    if ideal_path.is_file():
         try:
-            with open(truth_path, encoding="utf-8") as fh:
-                truth_marks = json.load(fh)
+            with open(ideal_path, encoding="utf-8") as fh:
+                ideal_marks = json.load(fh)
         except Exception:
-            truth_marks = None
+            ideal_marks = None
 
-    if truth_marks is not None and events:
-        _refresh_missing_timestamps(truth_marks, events)
+    if ideal_marks is not None and events:
+        _refresh_missing_timestamps(ideal_marks, events)
 
-    occ_marks = truth_marks if truth_marks is not None else diff_marks
+    occ_marks = ideal_marks if ideal_marks is not None else diff_marks
     all_occ, score_e, _score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
         _build_occ_from_diff_marks(
             occ_marks,

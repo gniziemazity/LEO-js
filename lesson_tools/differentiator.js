@@ -21,7 +21,8 @@ let _linePaddingEnabled =
 		: true;
 
 const DIFF_MODE_OPTIONS = [
-	{ key: "truth", label: "TRUTH" },
+	{ key: "ideal", label: "Ideal" },
+	{ key: "required", label: "Required" },
 	{ key: "", label: "LEO*" },
 	{ key: "leo", label: "LEO" },
 	{ key: "token-lcs-star", label: "LCS*" },
@@ -53,11 +54,65 @@ function _refreshModeSelect() {
 	_diffMode = nextMode;
 	modeSelect.disabled = modeSelect.options.length <= 1;
 	modeSelect.value = nextMode ?? "";
+	modeSelect.classList.toggle("is-curated", CURATED_MODES.has(nextMode));
 }
 
 function _resolveMarksEntry() {
 	const modeKey = _diffMode ?? "";
 	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
+}
+
+const _CODE_FILE_RE = /\.(html|css|js)$/i;
+function _fileExt(name) {
+	const m = name && name.match(/\.[^./\\]+$/);
+	return m ? m[0].toLowerCase() : "";
+}
+
+function _pairedFileName(fromSide, name) {
+	const otherSide = fromSide === "teacher" ? "student" : "teacher";
+	const otherFiles = otherSide === "teacher" ? _teacherFiles : _studentFiles;
+	if (!otherFiles) return null;
+	const otherNames = Object.keys(otherFiles).filter((n) =>
+		_CODE_FILE_RE.test(n),
+	);
+	if (!otherNames.length) return null;
+	const lower = String(name).toLowerCase();
+	for (const n of otherNames) {
+		if (n.toLowerCase() === lower) return n;
+	}
+	const marks = _currentMarksEntry;
+	if (marks) {
+		const fromFiles =
+			fromSide === "teacher" ? marks.teacher_files : marks.student_files;
+		const fromMarks = (fromFiles && fromFiles[name]) || [];
+		for (const m of fromMarks) {
+			const ref =
+				(m && m.paired_with && m.paired_with.file) ||
+				(m && m.insert_at && m.insert_at.file);
+			if (ref && otherFiles[ref] != null) return ref;
+		}
+	}
+	const ext = _fileExt(name);
+	if (!ext) return null;
+	const sameExt = otherNames.filter((n) => _fileExt(n) === ext);
+	if (sameExt.length === 1) return sameExt[0];
+	return null;
+}
+
+function _activateFileTab(side, name) {
+	if (!name) return;
+	const tabs = document.getElementById(`tabs-${side}`);
+	const codeWrap = document.getElementById(`code-${side}`);
+	if (!tabs || !codeWrap) return;
+	const btns = [...tabs.querySelectorAll(".file-tab")];
+	const idx = btns.findIndex((b) => b.textContent === name);
+	if (idx < 0) return;
+	btns.forEach((b) => b.classList.remove("file-tab-active"));
+	codeWrap
+		.querySelectorAll(".code-pane")
+		.forEach((p) => p.classList.remove("active"));
+	btns[idx].classList.add("file-tab-active");
+	if (codeWrap.children[idx]) codeWrap.children[idx].classList.add("active");
 }
 
 const _BORROW_ALIGNMENT_ORDER = [
@@ -151,7 +206,7 @@ function _applyIncomingData(data) {
 
 	if (data.allMarks) {
 		_allMarks = data.allMarks;
-		_diffMode = defaultDiffModeKey(_allMarks, data.mode ?? _diffMode);
+		_diffMode = defaultDiffModeKey(_allMarks, _diffMode);
 		_refreshModeSelect();
 		_applyCurrentMarks();
 	} else {
@@ -206,6 +261,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 	if (modeSelect) {
 		modeSelect.addEventListener("change", () => {
 			_diffMode = modeSelect.value;
+			modeSelect.classList.toggle(
+				"is-curated",
+				CURATED_MODES.has(_diffMode),
+			);
 			_applyCurrentMarks();
 			if (typeof _truthEnable === "function") {
 				_truthEnable();
@@ -500,13 +559,8 @@ function _updateTitleScore() {
 function _refreshLinePaddingButton() {
 	const btn = document.getElementById("btn-line-padding");
 	if (!btn) return;
-	if (_linePaddingEnabled) {
-		btn.classList.add("active");
-		btn.textContent = "⇲ Padding";
-	} else {
-		btn.classList.remove("active");
-		btn.textContent = "⇱ Padding";
-	}
+	btn.classList.toggle("is-toggle-on", _linePaddingEnabled);
+	btn.textContent = _linePaddingEnabled ? "⇲ Padding" : "⇱ Padding";
 }
 
 function toggleLinePadding() {
@@ -535,7 +589,7 @@ function toggleLinePadding() {
 
 function togglePreview() {
 	const btn = document.getElementById("btn-preview");
-	const isPreview = btn && btn.classList.contains("active");
+	const isPreview = btn && btn.classList.contains("is-toggle-on");
 
 	for (const side of ["teacher", "student"]) {
 		const codeWrap = document.getElementById(`code-${side}`);
@@ -559,13 +613,8 @@ function togglePreview() {
 	}
 
 	if (btn) {
-		if (isPreview) {
-			btn.textContent = "\u2b1c Preview";
-			btn.classList.remove("active");
-		} else {
-			btn.textContent = "\ud83d\udcc4 Code";
-			btn.classList.add("active");
-		}
+		btn.classList.toggle("is-toggle-on", !isPreview);
+		btn.textContent = isPreview ? "\u2b1c Preview" : "\ud83d\udcc4 Code";
 	}
 	localStorage.setItem("diff-preview-mode", isPreview ? "code" : "preview");
 }

@@ -228,10 +228,10 @@ def _build_occ_from_diff_marks(
                     start_rel = tok_match.start()
                     end_rel = tok_match.end() - 1
                     if start_rel < len(char_del_ts):
-                        raw_ts = (
-                            char_del_ts[end_rel]
-                            if end_rel < len(char_del_ts) else blob_del_ts
-                        )
+                        slice_end = min(end_rel, len(char_del_ts) - 1)
+                        slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
+                                      if t is not None]
+                        raw_ts = max(slice_vals) if slice_vals else blob_del_ts
                     else:
                         raw_ts = blob_del_ts
                     if raw_ts is None:
@@ -957,11 +957,6 @@ def _build_teacher_seq_aug(
     teacher_occurrences: List[dict],
     teacher_ghosts: Dict[str, list],
 ) -> Tuple[list, Dict[int, int], List[dict]]:
-    # Sort key per entry: (file_order, position, kind, ghost_counter)
-    # `kind` is 1 for surviving (real) tokens, 0 for ghosts, so when a real
-    # and a ghost share the exact same (file_order, position), the ghost
-    # sorts first — the ghost was typed-then-deleted at that spot before
-    # the surviving token landed there.
     file_order_by_fname: Dict[str, int] = {}
     for occurrence in teacher_occurrences:
         file_order_by_fname.setdefault(occurrence['file'], occurrence['file_order'])
@@ -981,12 +976,15 @@ def _build_teacher_seq_aug(
             blob_del_ts = ghost['del_ts']
             char_del_ts = ghost.get('char_del_ts')
             for tok_match in _sm._CHAR_TOKEN_RE.finditer(ghost['text']):
+                start_rel = tok_match.start()
                 last_char_rel = tok_match.end() - 1
-                tok_del_ts = (
-                    char_del_ts[last_char_rel]
-                    if char_del_ts and last_char_rel < len(char_del_ts)
-                    else blob_del_ts
-                )
+                if char_del_ts and start_rel < len(char_del_ts):
+                    slice_end = min(last_char_rel, len(char_del_ts) - 1)
+                    slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
+                                  if t is not None]
+                    tok_del_ts = max(slice_vals) if slice_vals else blob_del_ts
+                else:
+                    tok_del_ts = blob_del_ts
                 ghost_entries.append((
                     file_order, blob_pos, 0, ghost_counter,
                     tok_match.group(), tok_match.start(), fname, tok_del_ts,

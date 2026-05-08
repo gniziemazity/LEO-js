@@ -1,31 +1,36 @@
-"""compare_methods_to_truth.py
+"""compare_methods_to_ideal.py
 
-Compare every diff_marks_<method>.json against diff_marks_truth.json.
+Compare every diff_marks_<method>.json against diff_marks_ideal.json.
 
 Two modes:
 
 (1) Multi-lesson mode (default — invoked by `npm run eval`):
-        python compare_methods_to_truth.py
+        python compare_methods_to_ideal.py
     A file picker asks for the Grades excel. The script then walks
     `<root>/lessons/<lesson>/` for each lesson dir, evaluates every student
     under `<lesson>/anon_ids/`, and writes a combined workbook
     `<root>/Method_Evaluation.xlsx` with:
-      * Summary sheet — F1 and Pair F1 per method × lesson (2 columns/lesson)
+      * Summary sheet — F1, Pair F1, and Pair Mean Dist per method × lesson (3 columns/lesson)
       * one sheet per lesson — the same totals + per-student tables that
         single-project mode produces.
 
 (2) Single-project mode (legacy):
-        python compare_methods_to_truth.py PROJECT_DIR
+        python compare_methods_to_ideal.py PROJECT_DIR
     PROJECT_DIR contains student subfolders directly. Teacher files are
     looked up in PROJECT_DIR itself or PROJECT_DIR/reconstructed/. Output:
-    PROJECT_DIR/methods_vs_truth.xlsx.
+    PROJECT_DIR/methods_vs_ideal.xlsx.
 
 For each (student, method, label) where label ∈ {missing, extra, ghost_extra}:
   * mark-level TP/FP/FN/TN with precision, recall, F1, accuracy
     (universe = all non-comment tokens in the relevant source files)
   * pair-level TP/FP/FN/TN measured on TP marks: does the method's pairing or
-    insert-anchor on a correctly identified mark match the truth's? Comparison
+    insert-anchor on a correctly identified mark match the ideal's? Comparison
     uses (file, start, end) of the partner — token text is not required to match.
+  * pair distance: when both method and ideal made a same-kind same-file pairing
+    decision, |method_target_start - ideal_target_start| in characters. The
+    Pair Mean Dist column averages this over comparable pairs (exact matches
+    contribute 0). Useful for distinguishing "method picked the right neighborhood
+    but the wrong token" from "method was completely off."
 """
 
 from __future__ import annotations
@@ -47,7 +52,7 @@ except ImportError:
     sys.exit(1)
 
 
-TRUTH_FILE = "diff_marks_truth.json"
+IDEAL_FILE = "diff_marks_ideal.json"
 LABELS = ("missing", "extra", "ghost_extra")
 CODE_EXTS = (".html", ".htm", ".css", ".js")
 
@@ -141,6 +146,26 @@ def _pair_signature(mark, ignore_ghost_pairs: bool = False) -> tuple | None:
     return None
 
 
+def _pair_distance(ms, ts) -> int | None:
+    """Char distance between method's pair target and ideal's pair target.
+
+    Returns 0 for exact match, positive int for same-kind same-file mismatch,
+    or None if incomparable (different kinds, different files, missing values)."""
+    if ms is None or ts is None:
+        return None
+    if ms[0] != ts[0]:
+        return None
+    if ms[0] == "pair":
+        if ms[1] != ts[1] or ms[2] is None or ts[2] is None:
+            return None
+        return abs(ms[2] - ts[2])
+    if ms[0] == "insert":
+        if ms[1] != ts[1] or ms[2] is None or ts[2] is None:
+            return None
+        return abs(ms[2] - ts[2])
+    return None
+
+
 def _is_star_method(method_key: str) -> bool:
     return method_key.endswith("_star")
 
@@ -184,16 +209,19 @@ def _universe_size(side: str, fname: str, project_dir: Path,
     return n
 
 
-def _score_label_for_files(label, method_marks_by_file, truth_marks_by_file,
+def _score_label_for_files(label, method_marks_by_file, ideal_marks_by_file,
                            file_universe, ignore_ghost_pairs: bool = False):
     tp = fp = fn = tn = 0
     pair_tp = pair_fp = pair_fn = pair_tn = 0
+    pair_dist_sum = 0
+    pair_dist_n = 0
+    pair_dist_max = 0
     fnames = (
-        set(method_marks_by_file) | set(truth_marks_by_file) | set(file_universe)
+        set(method_marks_by_file) | set(ideal_marks_by_file) | set(file_universe)
     )
     for fname in fnames:
         m = method_marks_by_file.get(fname, {})
-        t = truth_marks_by_file.get(fname, {})
+        t = ideal_marks_by_file.get(fname, {})
         m_keys = set(m)
         t_keys = set(t)
         tp_keys = m_keys & t_keys
@@ -220,10 +248,19 @@ def _score_label_for_files(label, method_marks_by_file, truth_marks_by_file,
             else:
                 pair_fp += 1
                 pair_fn += 1
+            d = _pair_distance(ms, ts)
+            if d is not None:
+                pair_dist_sum += d
+                pair_dist_n += 1
+                if d > pair_dist_max:
+                    pair_dist_max = d
     return {
         "TP": tp, "FP": fp, "FN": fn, "TN": tn,
         "Pair TP": pair_tp, "Pair FP": pair_fp,
         "Pair FN": pair_fn, "Pair TN": pair_tn,
+        "Pair Dist Sum": pair_dist_sum,
+        "Pair Dist N": pair_dist_n,
+        "Pair Dist Max": pair_dist_max,
     }
 
 
@@ -250,6 +287,10 @@ def _add_metrics(row):
     row["Pair F1"] = round(pf, 4)
     row["Pair Accuracy"] = round(pacc, 4)
 
+    pds = row.get("Pair Dist Sum", 0)
+    pdn = row.get("Pair Dist N", 0)
+    row["Pair Mean Dist"] = round(pds / pdn, 2) if pdn else 0.0
+
 
 def _method_display_name(key: str) -> str:
     return METHOD_LABELS.get(key, key)
@@ -271,7 +312,7 @@ def _list_methods(student_dir: Path) -> list[tuple[str, Path]]:
             entry.is_file()
             and name.startswith("diff_marks_")
             and name.endswith(".json")
-            and name != TRUTH_FILE
+            and name != IDEAL_FILE
         ):
             method = name[len("diff_marks_") : -len(".json")]
             out.append((method, entry))
@@ -281,7 +322,7 @@ def _list_methods(student_dir: Path) -> list[tuple[str, Path]]:
 def _list_students(project_dir: Path) -> list[Path]:
     return sorted(
         d for d in project_dir.iterdir()
-        if d.is_dir() and (d / TRUTH_FILE).is_file()
+        if d.is_dir() and (d / IDEAL_FILE).is_file()
     )
 
 
@@ -291,6 +332,7 @@ _PER_STUDENT_COLS = [
     "Precision", "Recall", "F1", "Accuracy",
     "Pair TP", "Pair FP", "Pair FN", "Pair TN",
     "Pair Precision", "Pair Recall", "Pair F1", "Pair Accuracy",
+    "Pair Dist N", "Pair Mean Dist", "Pair Dist Max",
 ]
 _TOTALS_COLS = [
     "Method", "Label", "Students",
@@ -298,6 +340,7 @@ _TOTALS_COLS = [
     "Precision", "Recall", "F1", "Accuracy",
     "Pair TP", "Pair FP", "Pair FN", "Pair TN",
     "Pair Precision", "Pair Recall", "Pair F1", "Pair Accuracy",
+    "Pair Dist N", "Pair Mean Dist", "Pair Dist Max",
 ]
 
 
@@ -306,7 +349,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
         students_dir = teacher_dir
     students = _list_students(students_dir)
     if not students:
-        raise SystemExit(f"No student subfolders with {TRUTH_FILE} in {students_dir}")
+        raise SystemExit(f"No student subfolders with {IDEAL_FILE} in {students_dir}")
     project_dir = teacher_dir
 
     per_student: list[dict] = []
@@ -316,9 +359,9 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
 
     for student_dir in students:
         student_id = student_dir.name
-        truth_path = student_dir / TRUTH_FILE
-        truth_data = _load_json(truth_path)
-        truth_marks = _collect_marks(truth_data)
+        ideal_path = student_dir / IDEAL_FILE
+        ideal_data = _load_json(ideal_path)
+        ideal_marks = _collect_marks(ideal_data)
 
         methods = _list_methods(student_dir)
         if not methods:
@@ -334,7 +377,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
             except Exception as e:
                 print(f"  warn: failed to load {mpath}: {e}", file=sys.stderr)
 
-        named_data = {"truth": truth_data, **per_method_data}
+        named_data = {"ideal": ideal_data, **per_method_data}
         teacher_src, student_src = _files_referenced_by_source(named_data)
 
         teacher_universe = {}
@@ -370,12 +413,12 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
         def _filter_marks(marks_by_file, allowed):
             return {f: m for f, m in marks_by_file.items() if f in allowed}
 
-        truth_marks = {
+        ideal_marks = {
             lbl: _filter_marks(
-                truth_marks[lbl],
+                ideal_marks[lbl],
                 teacher_universe if lbl == "missing" else student_universe,
             )
-            for lbl in truth_marks
+            for lbl in ideal_marks
         }
 
         for method, mdata in per_method_data.items():
@@ -393,7 +436,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
             label_specs.append((
                 "missing",
                 method_marks["missing"],
-                truth_marks["missing"],
+                ideal_marks["missing"],
                 teacher_universe,
                 False,
             ))
@@ -401,14 +444,14 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
                 label_specs.append((
                     "extra",
                     method_marks["extra"],
-                    truth_marks["extra"],
+                    ideal_marks["extra"],
                     student_universe,
                     False,
                 ))
                 label_specs.append((
                     "ghost_extra",
                     method_marks["ghost_extra"],
-                    truth_marks["ghost_extra"],
+                    ideal_marks["ghost_extra"],
                     student_universe,
                     False,
                 ))
@@ -416,7 +459,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
                 label_specs.append((
                     "extra (incl. ghost)",
                     _merge_marks(method_marks["extra"], method_marks["ghost_extra"]),
-                    _merge_marks(truth_marks["extra"], truth_marks["ghost_extra"]),
+                    _merge_marks(ideal_marks["extra"], ideal_marks["ghost_extra"]),
                     student_universe,
                     True,
                 ))
@@ -440,10 +483,14 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
                 agg = aggregate.setdefault(key, {
                     "TP": 0, "FP": 0, "FN": 0, "TN": 0,
                     "Pair TP": 0, "Pair FP": 0, "Pair FN": 0, "Pair TN": 0,
+                    "Pair Dist Sum": 0, "Pair Dist N": 0, "Pair Dist Max": 0,
                 })
                 for k in ("TP", "FP", "FN", "TN",
-                         "Pair TP", "Pair FP", "Pair FN", "Pair TN"):
+                         "Pair TP", "Pair FP", "Pair FN", "Pair TN",
+                         "Pair Dist Sum", "Pair Dist N"):
                     agg[k] += stats[k]
+                if stats["Pair Dist Max"] > agg["Pair Dist Max"]:
+                    agg["Pair Dist Max"] = stats["Pair Dist Max"]
                 methods_per_student_count[key] += 1
 
     totals: list[dict] = []
@@ -515,9 +562,15 @@ def _aggregate_method_stats(totals: list[dict]) -> dict[str, dict]:
             "Method": r["Method"],
             "TP": 0, "FP": 0, "FN": 0, "TN": 0,
             "Pair TP": 0, "Pair FP": 0, "Pair FN": 0, "Pair TN": 0,
+            "Pair Dist Sum": 0, "Pair Dist N": 0, "Pair Dist Max": 0,
         })
-        for k in ("TP", "FP", "FN", "TN", "Pair TP", "Pair FP", "Pair FN", "Pair TN"):
-            a[k] += r[k]
+        for k in ("TP", "FP", "FN", "TN",
+                  "Pair TP", "Pair FP", "Pair FN", "Pair TN",
+                  "Pair Dist Sum", "Pair Dist N"):
+            a[k] += r.get(k, 0)
+        max_d = r.get("Pair Dist Max", 0)
+        if max_d > a["Pair Dist Max"]:
+            a["Pair Dist Max"] = max_d
     return agg
 
 
@@ -568,10 +621,15 @@ def write_multi_excel(
             if a is None:
                 row[f"{lesson_name} F1"] = ""
                 row[f"{lesson_name} Pair F1"] = ""
+                row[f"{lesson_name} Pair Mean Dist"] = ""
                 continue
             row[f"{lesson_name} F1"] = round(_f1(a["TP"], a["FP"], a["FN"]), 4)
             row[f"{lesson_name} Pair F1"] = round(
                 _f1(a["Pair TP"], a["Pair FP"], a["Pair FN"]), 4,
+            )
+            pdn = a.get("Pair Dist N", 0)
+            row[f"{lesson_name} Pair Mean Dist"] = (
+                round(a["Pair Dist Sum"] / pdn, 2) if pdn else 0.0
             )
         summary_rows.append(row)
 
@@ -579,6 +637,7 @@ def write_multi_excel(
     for lesson_name in results:
         summary_cols.append(f"{lesson_name} F1")
         summary_cols.append(f"{lesson_name} Pair F1")
+        summary_cols.append(f"{lesson_name} Pair Mean Dist")
     summary_df = pd.DataFrame(summary_rows, columns=summary_cols)
 
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
@@ -692,7 +751,7 @@ def main(argv: list[str]) -> int:
         if not per_student:
             print("No methods to compare.")
             return 0
-        out_path = project_dir / "methods_vs_truth.xlsx"
+        out_path = project_dir / "methods_vs_ideal.xlsx"
         write_excel(out_path, per_student, totals)
         print(f"Wrote {out_path}")
         print(f"  {len(per_student)} per-student rows  ·  {len(totals)} totals rows")

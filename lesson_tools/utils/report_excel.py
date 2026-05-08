@@ -13,11 +13,24 @@ from .similarity_measures import (
 
 
 class ExcelReportMixin:
-    def generate_remarks_report(self, output_file: str, anonymize: bool = False) -> None:
+    def generate_remarks_report(
+        self,
+        output_file: str,
+        anonymize: bool = False,
+        token_stats: 'Dict[str, dict] | None' = None,
+    ) -> None:
         wb = Workbook()
         wb.remove(wb.active)
-        self._add_remarks_sheet(wb, anonymize=anonymize)
-        save_xlsx(wb, output_file)
+        prev_stats = None
+        if token_stats is not None:
+            prev_stats = self._student_token_stats
+            self._student_token_stats = token_stats
+        try:
+            self._add_remarks_sheet(wb, anonymize=anonymize)
+            save_xlsx(wb, output_file)
+        finally:
+            if prev_stats is not None:
+                self._student_token_stats = prev_stats
 
     def _add_remarks_sheet(self, wb: Workbook, anonymize: bool = False) -> None:
         sheet   = wb.create_sheet(title='Remarks')

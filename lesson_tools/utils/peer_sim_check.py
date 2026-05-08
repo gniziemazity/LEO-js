@@ -1,3 +1,5 @@
+import csv
+import hashlib
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -13,11 +15,129 @@ from .similarity_measures import (
     save_xlsx,
 )
 
+
+_HASH_EXTS = {'.html', '.htm', '.css', '.js'}
+
+
+def _folder_fingerprint(folder: Path) -> Optional[str]:
+    h = hashlib.sha1()
+    files = sorted(
+        (p for p in folder.iterdir()
+         if p.is_file() and p.suffix.lower() in _HASH_EXTS),
+        key=lambda p: p.name.lower(),
+    )
+    if not files:
+        return None
+    for p in files:
+        h.update(p.name.lower().encode('utf-8'))
+        h.update(b'\0')
+        try:
+            h.update(p.read_bytes())
+        except Exception:
+            return None
+        h.update(b'\0')
+    return h.hexdigest()
+
+
+def _read_name_id_map(name_map_csv: Path) -> Dict[str, str]:
+    """Map folder names (real name OR alter ego, whichever is used) to id."""
+    out: Dict[str, str] = {}
+    if not name_map_csv.is_file():
+        return out
+    for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
+        try:
+            with open(name_map_csv, encoding=enc) as fh:
+                reader = csv.DictReader(fh, delimiter=';')
+                for row in reader:
+                    sid = (row.get('Student ID') or '').strip()
+                    if not sid:
+                        continue
+                    name = (row.get('Student Name') or '').strip()
+                    alter = (row.get('Alter Ego') or '').strip()
+                    if name:
+                        out[name] = sid
+                    if alter:
+                        out[alter] = sid
+            return out
+        except (UnicodeDecodeError, UnicodeError):
+            out.clear()
+            continue
+        except Exception:
+            return out
+    return out
+
+
+def _build_anon_to_id_map(anon_names_dir: Path,
+                          anon_ids_dir: Path,
+                          name_map_csv: Optional[Path] = None) -> Dict[str, str]:
+    """Build a mapping from anon_names folder name to student id.
+
+    Prefers the deterministic CSV mapping (name_map.csv written by sim_check);
+    falls back to content fingerprinting against anon_ids/ if needed.
+    """
+    name_to_id: Dict[str, str] = {}
+    if name_map_csv is not None:
+        name_to_id = _read_name_id_map(name_map_csv)
+
+    out: Dict[str, str] = {}
+    folder_names = [d.name for d in anon_names_dir.iterdir() if d.is_dir()]
+    for folder in folder_names:
+        sid = name_to_id.get(folder)
+        if sid:
+            out[folder] = sid
+
+    if len(out) == len(folder_names) or not anon_ids_dir.is_dir():
+        return out
+
+    id_by_fp: Dict[str, str] = {}
+    for d in anon_ids_dir.iterdir():
+        if not d.is_dir():
+            continue
+        fp = _folder_fingerprint(d)
+        if fp and fp not in id_by_fp:
+            id_by_fp[fp] = d.name
+    for d in anon_names_dir.iterdir():
+        if not d.is_dir() or d.name in out:
+            continue
+        fp = _folder_fingerprint(d)
+        if fp and fp in id_by_fp:
+            out[d.name] = id_by_fp[fp]
+    return out
+
 _HEADER_ROW_HEIGHT = 50
 _BLACK_BORDER = Border(
     left=Side(style='medium', color='000000'), right=Side(style='medium', color='000000'),
     top=Side(style='medium', color='000000'),  bottom=Side(style='medium', color='000000'),
 )
+
+
+def _indent_pairs(text: str) -> Counter:
+    pairs: Counter = Counter()
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        i = 0
+        while i < len(line) and line[i] in (' ', '\t'):
+            i += 1
+        ws = line[:i]
+        content = line[i:].rstrip()
+        pairs[(ws, content)] += 1
+    return pairs
+
+
+def _fmt_indent_pair(pair) -> str:
+    ws, content = pair
+    n_sp = ws.count(' ')
+    n_tab = ws.count('\t')
+    if n_tab and n_sp:
+        ind = f'[{n_sp}sp+{n_tab}tab]'
+    elif n_tab:
+        ind = f'[{n_tab}tab]'
+    elif n_sp:
+        ind = f'[{n_sp}sp]'
+    else:
+        ind = '[0]'
+    return f'{ind} {content[:80]}'
 
 
 def _parse_tokens_txt(path: Path) -> Tuple[Counter, Counter]:
@@ -45,15 +165,15 @@ def _parse_tokens_txt(path: Path) -> Tuple[Counter, Counter]:
 
 
 
-def _extra_comment(cA: Counter, cB: Counter, name_a: str) -> Optional[Comment]:
+def _extra_comment(cA: Counter, cB: Counter, name_a: str, fmt=str) -> Optional[Comment]:
     inter = cA & cB
     if not inter:
         return None
-    lines = [f'{kw} (x{n})' if n > 1 else kw for kw, n in sorted(inter.items())]
+    lines = [f'{fmt(kw)} (x{n})' if n > 1 else fmt(kw) for kw, n in sorted(inter.items())]
     only_a = cA - cB
     if only_a:
         lines.append(f'\n-- {name_a} ONLY --\n')
-        lines.extend(f'{kw} (x{n})' if n > 1 else kw for kw, n in sorted(only_a.items()))
+        lines.extend(f'{fmt(kw)} (x{n})' if n > 1 else fmt(kw) for kw, n in sorted(only_a.items()))
     cm = Comment(', '.join(lines).replace('\n,', '\n'), 'peer_sim')
     cm.width  = 500
     cm.height = min(100 + 30 * len(lines), 4000)
@@ -62,16 +182,20 @@ def _extra_comment(cA: Counter, cB: Counter, name_a: str) -> Optional[Comment]:
 
 class PeerSimilarityChecker:
     def __init__(self, students_dir: str, teacher_dir: str,
-                 start_dir: str = None):
+                 start_dir: str = None,
+                 id_map: Optional[Dict[str, str]] = None):
         self.students_dir = Path(students_dir)
         self.teacher_dir  = Path(teacher_dir)
         self.start_dir    = Path(start_dir) if start_dir else None
+        self.id_map       = id_map or {}
         self.student_data:           Dict[str, Dict[str, Optional[List[str]]]] = {}
         self.student_extra_outside:  Dict[str, Dict[str, Counter]] = {}
         self.student_extra_inside:   Dict[str, Dict[str, Counter]] = {}
+        self.student_indent_extras:  Dict[str, Dict[str, Counter]] = {}
         self.student_outside_full:   Dict[str, Counter] = {}
         self.baseline_outside: Dict[str, Counter] = {}
         self.baseline_inside:  Dict[str, Counter] = {}
+        self.baseline_indent:  Dict[str, Counter] = {}
         self.extensions = ['.html', '.css', '.js']
 
     def _read_file(self, directory: Path, ext: str) -> Optional[str]:
@@ -88,9 +212,11 @@ class PeerSimilarityChecker:
             if src_raw is not None:
                 self.baseline_outside[ext], self.baseline_inside[ext] = \
                     split_code_tokens(src_raw)
+                self.baseline_indent[ext] = _indent_pairs(src_raw)
             else:
                 self.baseline_outside[ext] = Counter()
                 self.baseline_inside[ext]  = Counter()
+                self.baseline_indent[ext]  = Counter()
 
             t_raw = self._read_file(self.teacher_dir, ext)
             if t_raw is not None:
@@ -101,6 +227,10 @@ class PeerSimilarityChecker:
                 for tok, cnt in t_ins.items():
                     if cnt > self.baseline_inside[ext].get(tok, 0):
                         self.baseline_inside[ext][tok] = cnt
+                t_ind = _indent_pairs(t_raw)
+                for key, cnt in t_ind.items():
+                    if cnt > self.baseline_indent[ext].get(key, 0):
+                        self.baseline_indent[ext][key] = cnt
 
     def load_student_data(self) -> None:
         print("Loading student files...")
@@ -111,6 +241,7 @@ class PeerSimilarityChecker:
             self.student_data[name]           = {}
             self.student_extra_outside[name]  = {}
             self.student_extra_inside[name]   = {}
+            self.student_indent_extras[name]  = {}
 
             tokens_path = s_dir / 'tokens.txt'
             if tokens_path.exists():
@@ -124,6 +255,9 @@ class PeerSimilarityChecker:
                     if raw:
                         out, _ = split_code_tokens(raw)
                         full_outside += out
+                        self.student_indent_extras[name][ext] = _indent_pairs(raw) - self.baseline_indent[ext]
+                    else:
+                        self.student_indent_extras[name][ext] = Counter()
                 self.student_outside_full[name] = full_outside
                 continue
 
@@ -134,17 +268,20 @@ class PeerSimilarityChecker:
                     self.student_data[name][ext]          = None
                     self.student_extra_outside[name][ext] = Counter()
                     self.student_extra_inside[name][ext]  = Counter()
+                    self.student_indent_extras[name][ext] = Counter()
                     continue
                 try:
                     self.student_data[name][ext] = normalize_code(raw)
                     out, ins = split_code_tokens(raw)
                     self.student_extra_outside[name][ext] = out - self.baseline_outside[ext]
                     self.student_extra_inside[name][ext] = ins - self.baseline_inside[ext]
+                    self.student_indent_extras[name][ext] = _indent_pairs(raw) - self.baseline_indent[ext]
                     full_outside += out
                 except Exception:
                     self.student_data[name][ext]          = None
                     self.student_extra_outside[name][ext] = Counter()
                     self.student_extra_inside[name][ext]  = Counter()
+                    self.student_indent_extras[name][ext] = Counter()
             self.student_outside_full[name] = full_outside
 
 
@@ -156,18 +293,23 @@ class PeerSimilarityChecker:
         scorer: Callable[[str, str], Tuple[Optional[float], Optional[Comment]]],
     ) -> None:
         ws = wb.create_sheet(title=title)
-        self._init_matrix_header(ws, student_names)
+        has_ids = bool(self.id_map)
+        student_ids = ([self.id_map.get(n, '') for n in student_names]
+                       if has_ids else None)
+        self._init_matrix_header(ws, student_names, student_ids)
+        row_off = 3 if has_ids else 2
+        col_off = 3 if has_ids else 2
         for r, sA in enumerate(student_names):
             for c, sB in enumerate(student_names):
                 if sA == sB:
                     continue
-                cell = ws.cell(row=r + 2, column=c + 2)
+                cell = ws.cell(row=r + row_off, column=c + col_off)
                 cell.alignment = Alignment(horizontal='center')
                 value, comment = scorer(sA, sB)
                 cell.value = value
                 if comment:
                     cell.comment = comment
-        self._format_asymmetric_sheet(ws, student_names)
+        self._format_asymmetric_sheet(ws, student_names, has_ids)
 
     def generate_matrix_report(self, output_file: str) -> None:
         if not self.student_data:
@@ -177,7 +319,14 @@ class PeerSimilarityChecker:
         if 'Sheet' in wb.sheetnames:
             wb.remove(wb['Sheet'])
 
-        student_names = sorted(self.student_data.keys())
+        def _sort_key(n):
+            sid = self.id_map.get(n, '')
+            try:
+                return (0, int(sid), n)
+            except (TypeError, ValueError):
+                return (1, sid, n)
+
+        student_names = sorted(self.student_data.keys(), key=_sort_key)
         active_exts = [ext for ext in self.extensions
                        if any(self.student_data[n].get(ext) is not None
                               for n in self.student_data)] or self.extensions
@@ -206,16 +355,20 @@ class PeerSimilarityChecker:
         def _score_extra(sA, sB):
             eA = sum(self.student_extra_outside[sA].values(), Counter())
             eB = sum(self.student_extra_outside[sB].values(), Counter())
-            a_total = sum(eA.values())
-            score = round(sum((eA & eB).values()) / a_total * 100, 2) if a_total else None
-            return score or None, _extra_comment(eA, eB, sA)
+            overlap = sum((eA & eB).values())
+            return overlap or None, _extra_comment(eA, eB, sA)
 
         def _score_extra_c(sA, sB):
             iA = sum(self.student_extra_inside[sA].values(), Counter())
             iB = sum(self.student_extra_inside[sB].values(), Counter())
-            a_total = sum(iA.values())
-            score = round(sum((iA & iB).values()) / a_total * 100, 2) if a_total else None
-            return score or None, _extra_comment(iA, iB, sA)
+            overlap = sum((iA & iB).values())
+            return overlap or None, _extra_comment(iA, iB, sA)
+
+        def _score_indent(sA, sB):
+            iA = sum(self.student_indent_extras[sA].values(), Counter())
+            iB = sum(self.student_indent_extras[sB].values(), Counter())
+            overlap = sum((iA & iB).values())
+            return overlap or None, _extra_comment(iA, iB, sA, fmt=_fmt_indent_pair)
 
         for title, scorer in [
             ('Diff',      _score_diff),
@@ -223,6 +376,7 @@ class PeerSimilarityChecker:
             ('Inc',       _score_inc),
             ('Extra',     _score_extra),
             ('Extra (C)', _score_extra_c),
+            ('Indent',    _score_indent),
         ]:
             self._fill_matrix_sheet(wb, title, student_names, scorer)
 
@@ -231,32 +385,55 @@ class PeerSimilarityChecker:
 
 
     @staticmethod
-    def _init_matrix_header(ws, student_names):
-        ws.row_dimensions[1].height = _HEADER_ROW_HEIGHT
+    def _init_matrix_header(ws, student_names, student_ids=None):
+        has_ids = student_ids is not None
+        name_row = 2 if has_ids else 1
+        name_col = 2 if has_ids else 1
+        first_data_col = name_col + 1
+        ws.row_dimensions[name_row].height = _HEADER_ROW_HEIGHT
+        if has_ids:
+            ws.row_dimensions[1].height = _HEADER_ROW_HEIGHT
         for idx, name in enumerate(student_names):
-            c = ws.cell(row=1, column=idx + 2, value=name)
+            data_col = idx + first_data_col
+            c = ws.cell(row=name_row, column=data_col, value=name)
             c.font = Font(bold=True)
             c.alignment = Alignment(text_rotation=90, vertical='bottom',
                                     horizontal='center')
-            ws.cell(row=idx + 2, column=1, value=name).font = Font(bold=True)
+            ws.cell(row=idx + name_row + 1, column=name_col,
+                    value=name).font = Font(bold=True)
+            if has_ids:
+                sid = student_ids[idx]
+                ic = ws.cell(row=1, column=data_col, value=sid)
+                ic.font = Font(bold=True)
+                ic.alignment = Alignment(text_rotation=90, vertical='bottom',
+                                         horizontal='center')
+                ws.cell(row=idx + name_row + 1, column=1,
+                        value=sid).font = Font(bold=True)
 
     @staticmethod
-    def _format_asymmetric_sheet(ws, student_names):
+    def _format_asymmetric_sheet(ws, student_names, has_ids=False):
         n = len(student_names)
-        data_col    = ws.cell(row=1, column=2).column_letter
-        max_col_ltr = ws.cell(row=1, column=n + 1).column_letter
-        max_row     = n + 1
-        ws.freeze_panes = f'{data_col}2'
+        name_row = 2 if has_ids else 1
+        name_col = 2 if has_ids else 1
+        first_data_col = name_col + 1
+        first_data_row = name_row + 1
+        data_col_ltr = ws.cell(row=name_row, column=first_data_col).column_letter
+        max_col_idx  = first_data_col + n - 1
+        max_col_ltr  = ws.cell(row=name_row, column=max_col_idx).column_letter
+        max_row      = first_data_row + n - 1
+        ws.freeze_panes = f'{data_col_ltr}{first_data_row}'
         ws.conditional_formatting.add(
-            f'{data_col}2:{max_col_ltr}{max_row}',
+            f'{data_col_ltr}{first_data_row}:{max_col_ltr}{max_row}',
             ColorScaleRule(start_type='num', start_value=0, start_color='FFFFFF',
                            end_type='max', end_color='F8696B'),
         )
-        ws.column_dimensions['A'].width = 20
-        for col_idx in range(2, n + 2):
+        ws.column_dimensions['A'].width = 6 if has_ids else 20
+        if has_ids:
+            ws.column_dimensions[ws.cell(row=1, column=name_col).column_letter].width = 20
+        for col_idx in range(first_data_col, max_col_idx + 1):
             ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 6
-        for row_cells in ws.iter_rows(min_row=2, max_row=max_row,
-                                      min_col=2, max_col=n + 1):
+        for row_cells in ws.iter_rows(min_row=first_data_row, max_row=max_row,
+                                      min_col=first_data_col, max_col=max_col_idx):
             for cell in row_cells:
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = '0'
@@ -277,9 +454,17 @@ def main():
         print(f"Missing: {correct_dir}"); sys.exit(1)
 
     if anon_names_dir.exists():
+        anon_ids_dir = current_dir / 'anon_ids'
+        name_map_csv = current_dir / 'name_map.csv'
+        id_map = _build_anon_to_id_map(
+            anon_names_dir, anon_ids_dir, name_map_csv,
+        )
+        if id_map:
+            print(f"Resolved {len(id_map)} anon name -> id mapping(s).")
         checker = PeerSimilarityChecker(
             str(anon_names_dir), str(correct_dir),
             start_dir=str(start_dir) if start_dir.exists() else None,
+            id_map=id_map,
         )
         folder_name = current_dir.name
         checker.generate_matrix_report(

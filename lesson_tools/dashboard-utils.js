@@ -82,3 +82,26 @@ function resolveInteractionStudentDisplay(field) {
 	}
 	return "";
 }
+
+function _interactionStudentId(field) {
+	if (typeof field === "number") return String(field);
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed)
+			return String(asNum);
+		if (_studentIdMap) {
+			for (const [id, name] of Object.entries(_studentIdMap)) {
+				if (name === trimmed) return String(id);
+			}
+		}
+	}
+	return null;
+}
+
+function resolveInteractionStudentDisplayWithId(field) {
+	const name = resolveInteractionStudentDisplay(field);
+	const id = _interactionStudentId(field);
+	if (id && name && !name.startsWith(`ID ${id}`)) return `${id}. ${name}`;
+	return name;
+}

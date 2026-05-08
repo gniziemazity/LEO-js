@@ -104,6 +104,42 @@ body {
 	flex-shrink: 0;
 }
 
+#chart-bottom-basis {
+	display: none;
+	align-items: center;
+	gap: 4px;
+	font:
+		11px Consolas,
+		monospace;
+	color: var(--clr-text-soft);
+}
+
+#chart-bottom-basis.has-options {
+	display: inline-flex;
+}
+
+#chart-bottom-basis select {
+	font:
+		11px Consolas,
+		monospace;
+	color: var(--clr-text-soft);
+	background: var(--clr-bg);
+	border: 1px solid var(--clr-border);
+	border-radius: 3px;
+	padding: 1px 3px;
+	cursor: pointer;
+}
+#chart-bottom-basis select.is-curated {
+	color: var(--clr-mark-extra);
+}
+#chart-bottom-basis select option {
+	color: var(--clr-text-soft);
+}
+#chart-bottom-basis select option[value="ideal"],
+#chart-bottom-basis select option[value="required"] {
+	color: var(--clr-mark-extra);
+}
+
 .chart-wrap {
 	width: 100%;
 	height: 100%;

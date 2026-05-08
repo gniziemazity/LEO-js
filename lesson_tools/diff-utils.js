@@ -63,8 +63,11 @@ const DIFF_MARKS_FILES = {
 	"line-ro-star": "diff_marks_ro_star.json",
 	"line-git": "diff_marks_git.json",
 	"line-git-star": "diff_marks_git_star.json",
-	truth: "diff_marks_truth.json",
+	ideal: "diff_marks_ideal.json",
+	required: "diff_marks_required.json",
 };
+
+const CURATED_MODES = new Set(["ideal", "required"]);
 
 function diffModeFromFilename(filename) {
 	const lower = String(filename || "").toLowerCase();
@@ -77,7 +80,8 @@ function diffModeFromFilename(filename) {
 function defaultDiffModeKey(allMarks, requestedMode = null) {
 	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
-	if (has("truth")) return "truth";
+	if (has("ideal")) return "ideal";
+	if (has("required")) return "required";
 	if (has("")) return "";
 	if (has("leo")) return "leo";
 	return Object.keys(allMarks)[0] ?? null;

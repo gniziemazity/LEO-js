@@ -50,8 +50,9 @@ function _truthBackfillTimestamps(teacherFiles, studentFiles) {
 }
 
 function _truthBuildJson() {
+	const matching = _diffMode === "required" ? "required" : "ideal";
 	const t = _truthMarks() || {
-		token_matching: "truth",
+		token_matching: matching,
 		teacher_files: {},
 		student_files: {},
 	};
@@ -59,7 +60,7 @@ function _truthBuildJson() {
 	const studentFiles = JSON.parse(JSON.stringify(t.student_files || {}));
 	_truthBackfillTimestamps(teacherFiles, studentFiles);
 	const out = {
-		token_matching: "truth",
+		token_matching: matching,
 		teacher_files: teacherFiles,
 		student_files: studentFiles,
 	};
@@ -72,7 +73,10 @@ function _truthDownload() {
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
 	a.href = url;
-	a.download = "diff_marks_truth.json";
+	a.download =
+		_diffMode === "required"
+			? "diff_marks_required.json"
+			: "diff_marks_ideal.json";
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
@@ -391,7 +395,19 @@ function _truthApplyToStudent() {
 			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);
 		}
-		out[sName] = text;
+		out[studentName] = text;
+	}
+
+	const teacherNames = Object.keys(_teacherFiles || {});
+	const studentNamesAll = Object.keys(_studentFiles || {});
+	const _ext = (n) => (n.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
+	const studentExts = new Set(studentNamesAll.map(_ext).filter(Boolean));
+	for (const teacherName of teacherNames) {
+		if (out[teacherName] != null) continue;
+		if (_studentFiles && _studentFiles[teacherName] != null) continue;
+		const ext = _ext(teacherName);
+		if (ext && studentExts.has(ext)) continue;
+		out[teacherName] = _teacherFiles[teacherName] || "";
 	}
 	return out;
 }

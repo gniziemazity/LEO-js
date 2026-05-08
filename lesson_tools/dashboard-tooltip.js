@@ -645,7 +645,8 @@ function formatHit(hit, simple = false) {
 			const s = hit.s;
 			const pct =
 				s.follow_pct != null ? s.follow_pct.toFixed(1) + "%" : "N/A";
-			let html = `👤 ${escHtml(s.name)} (${escHtml(pct)})`;
+			const idPrefix = s.id ? `${escHtml(s.id)}. ` : "";
+			let html = `👤 ${idPrefix}${escHtml(s.name)} (${escHtml(pct)})`;
 			const interTypes = [];
 			if (_p) {
 				const answered = (_p.interactions["teacher-question"] || []).filter(
@@ -845,7 +846,7 @@ function formatHitSimple(hit) {
 				let h = `<span style="color:${clr}">❓ ${escHtml(q.info || "")}</span>`;
 				if (q.answered_by && q.answered_by.length) {
 					const names = q.answered_by.map((field) =>
-						resolveInteractionStudentDisplay(field),
+						resolveInteractionStudentDisplayWithId(field),
 					);
 					h += `\nAnswered by: ${names.map(escHtml).join(", ")}`;
 				}
@@ -853,14 +854,14 @@ function formatHitSimple(hit) {
 			} else if (hit.itype === "student-question") {
 				let h = `<span style="color:${clr}">🙋 ${escHtml(q.info || "")}</span>`;
 				if (q.asked_by) {
-					const name = resolveInteractionStudentDisplay(q.asked_by);
+					const name = resolveInteractionStudentDisplayWithId(q.asked_by);
 					h += `\nAsked by: ${escHtml(name)}`;
 				}
 				return h;
 			} else if (hit.itype === "providing-help") {
 				let h = `<span style="color:${clr}">🤝 Providing Help</span>`;
 				if (q.student) {
-					const name = resolveInteractionStudentDisplay(q.student);
+					const name = resolveInteractionStudentDisplayWithId(q.student);
 					h += `\nStudent: ${escHtml(name)}`;
 				}
 				return h;

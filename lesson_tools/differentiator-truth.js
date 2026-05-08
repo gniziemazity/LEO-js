@@ -113,7 +113,7 @@ function _truthEnable() {
 	if (!_truthWorking[key]) {
 		const base = _allMarks[key] ?? null;
 		const seed = {
-			token_matching: "truth",
+			token_matching: key === "required" ? "required" : "ideal",
 			teacher_files: (base && base.teacher_files) || {},
 			student_files: (base && base.student_files) || {},
 		};

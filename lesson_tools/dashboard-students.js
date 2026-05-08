@@ -1,5 +1,24 @@
 "use strict";
 
+const REMARKS_BASES = [
+	{ key: "ideal", label: "Ideal" },
+	{ key: "required", label: "Required" },
+	{ key: "leo_star", label: "LEO*" },
+	{ key: "leo", label: "LEO" },
+	{ key: "lcs_star", label: "LCS*" },
+	{ key: "lcs", label: "LCS" },
+	{ key: "lev_star", label: "Lev*" },
+	{ key: "lev", label: "Lev" },
+	{ key: "ro_star", label: "R/O*" },
+	{ key: "ro", label: "R/O" },
+	{ key: "git_star", label: "Git*" },
+	{ key: "git", label: "Git" },
+];
+
+let _basisFiles = new Map();
+let _basisFallbackFile = null;
+let _activeBasis = null;
+
 async function loadXlsxFiles(files) {
 	if (typeof XLSX === "undefined") {
 		alert(
@@ -8,35 +27,109 @@ async function loadXlsxFiles(files) {
 		return;
 	}
 
-	let remarksFile = null;
+	_basisFiles = new Map();
+	_basisFallbackFile = null;
 	for (const f of files) {
 		const n = f.name.toLowerCase();
-		if (n.includes("remarks")) remarksFile = f;
+		if (!n.includes("remarks") || !n.endsWith(".xlsx")) continue;
+		let matched = false;
+		for (const { key } of REMARKS_BASES) {
+			if (n === `remarks_${key}.xlsx`) {
+				_basisFiles.set(key, f);
+				matched = true;
+				break;
+			}
+		}
+		if (!matched) _basisFallbackFile = f;
 	}
+
+	let chosenKey = null;
+	for (const { key } of REMARKS_BASES) {
+		if (_basisFiles.has(key)) {
+			chosenKey = key;
+			break;
+		}
+	}
+	_activeBasis = chosenKey;
+	const remarksFile = chosenKey
+		? _basisFiles.get(chosenKey)
+		: _basisFallbackFile;
 	if (!remarksFile) return;
 
 	try {
 		showLoading(true);
-		const rBuf = await readFileArray(remarksFile);
-		const sessionDate = new Date(_p.sessionStart * 1000);
-		const result = parseStudentData(
-			rBuf,
-			sessionDate,
-			_p.sessionStart,
-			_p.sessionEnd,
-		);
-		_students = result.students;
-		_studentIdMap = result.idMap;
-		if (!_students.length) {
-			showLoading(false);
-			return;
-		}
-		document.getElementById("chart-bottom-section").style.display = "";
-		scheduleRender();
+		await _loadRemarksFile(remarksFile);
+		_renderBasisPicker();
 	} catch (ex) {
 		showLoading(false);
 		alert("Error loading xlsx files:\n" + ex.message);
 	}
+}
+
+async function _loadRemarksFile(file) {
+	const rBuf = await readFileArray(file);
+	const sessionDate = new Date(_p.sessionStart * 1000);
+	const result = parseStudentData(
+		rBuf,
+		sessionDate,
+		_p.sessionStart,
+		_p.sessionEnd,
+	);
+	_students = result.students;
+	_studentIdMap = result.idMap;
+	if (!_students.length) {
+		showLoading(false);
+		return;
+	}
+	document.getElementById("chart-bottom-section").style.display = "";
+	scheduleRender();
+}
+
+function _renderBasisPicker() {
+	const container = document.getElementById("chart-bottom-basis");
+	if (!container) return;
+	if (_basisFiles.size === 0) {
+		container.classList.remove("has-options");
+		container.innerHTML = "";
+		return;
+	}
+	container.classList.add("has-options");
+	let select = container.querySelector("select");
+	if (!select) {
+		container.innerHTML = "";
+		container.appendChild(document.createTextNode("Basis: "));
+		select = document.createElement("select");
+		container.appendChild(select);
+		select.addEventListener("change", async () => {
+			_activeBasis = select.value;
+			select.classList.toggle(
+				"is-curated",
+				_activeBasis === "ideal" || _activeBasis === "required",
+			);
+			const f = _basisFiles.get(_activeBasis);
+			if (!f) return;
+			try {
+				showLoading(true);
+				await _loadRemarksFile(f);
+			} catch (ex) {
+				showLoading(false);
+				alert("Error loading basis xlsx:\n" + ex.message);
+			}
+		});
+	}
+	select.innerHTML = "";
+	for (const { key, label } of REMARKS_BASES) {
+		if (!_basisFiles.has(key)) continue;
+		const opt = document.createElement("option");
+		opt.value = key;
+		opt.textContent = label;
+		select.appendChild(opt);
+	}
+	if (_activeBasis) select.value = _activeBasis;
+	select.classList.toggle(
+		"is-curated",
+		select.value === "ideal" || select.value === "required",
+	);
 }
 
 function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {

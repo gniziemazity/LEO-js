@@ -196,9 +196,10 @@ def reconstruct_tokens_from_keylog_full(
             seg_text = ''.join(c for c, _, _ in seg_chars)
             for m in _CHAR_TOKEN_RE.finditer(seg_text):
                 tok = m.group()
+                start_rel = m.start()
                 end_rel = m.end() - 1
                 ins_ts = seg_chars[end_rel][1]
-                del_ts = seg_chars[end_rel][2]
+                del_ts = max(seg_chars[i][2] for i in range(start_rel, end_rel + 1))
                 removed_kw_ts.setdefault(tok, []).append((ins_ts, del_ts))
                 if tok not in removed_upper_to_display:
                     removed_upper_to_display[tok] = tok

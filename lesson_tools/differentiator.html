@@ -194,11 +194,6 @@
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
-			.btn-edit.active {
-				background: var(--clr-accent);
-				color: var(--clr-bg);
-				border-color: var(--clr-accent);
-			}
 			.btn-edit:disabled {
 				cursor: default;
 			}
@@ -233,6 +228,16 @@
 				color: var(--clr-label);
 				cursor: pointer;
 				box-shadow: var(--shadow-soft);
+			}
+			#mode-select.is-curated {
+				color: var(--clr-mark-extra);
+			}
+			#mode-select option {
+				color: var(--clr-label);
+			}
+			#mode-select option[value="ideal"],
+			#mode-select option[value="required"] {
+				color: var(--clr-mark-extra);
 			}
 
 			.preview-frame {
