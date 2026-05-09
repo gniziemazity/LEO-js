@@ -1,22 +1,28 @@
 import csv
 import hashlib
+import math
+import re
 import sys
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 from collections import Counter
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
+    _CHAR_TOKEN_RE,
     normalize_code,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, calculate_containment,
     save_xlsx,
 )
+from .lesson_log import load_lesson_log
+from .lv_editor import reconstruct_all_with_ghosts
 
 
-_HASH_EXTS = {'.html', '.htm', '.css', '.js'}
+_HASH_EXTS = {'.html', '.htm', '.css', '.js', '.py'}
+_NGRAM_SIZE = 3
 
 
 def _folder_fingerprint(folder: Path) -> Optional[str]:
@@ -180,14 +186,38 @@ def _extra_comment(cA: Counter, cB: Counter, name_a: str, fmt=str) -> Optional[C
     return cm
 
 
+def _ngram_comment(ngrams: Set[Tuple[str, ...]]) -> Optional[Comment]:
+    if not ngrams:
+        return None
+    lines = [' '.join(ng) for ng in sorted(ngrams)]
+    cm = Comment('\n'.join(lines), 'peer_sim')
+    cm.width  = 500
+    cm.height = min(100 + 18 * len(lines), 4000)
+    return cm
+
+
+def _token_seq(text: str) -> List[str]:
+    return [m.group() for m in _CHAR_TOKEN_RE.finditer(text)]
+
+
+def _ngrams(seq: List[str], n: int = _NGRAM_SIZE) -> Set[Tuple[str, ...]]:
+    if len(seq) < n:
+        return set()
+    return {tuple(seq[i:i + n]) for i in range(len(seq) - n + 1)}
+
+
 class PeerSimilarityChecker:
     def __init__(self, students_dir: str, teacher_dir: str,
                  start_dir: str = None,
-                 id_map: Optional[Dict[str, str]] = None):
+                 id_map: Optional[Dict[str, str]] = None,
+                 events: Optional[list] = None,
+                 lesson_file: Optional[str] = None):
         self.students_dir = Path(students_dir)
         self.teacher_dir  = Path(teacher_dir)
         self.start_dir    = Path(start_dir) if start_dir else None
         self.id_map       = id_map or {}
+        self.events       = events
+        self.lesson_file  = lesson_file
         self.student_data:           Dict[str, Dict[str, Optional[List[str]]]] = {}
         self.student_extra_outside:  Dict[str, Dict[str, Counter]] = {}
         self.student_extra_inside:   Dict[str, Dict[str, Counter]] = {}
@@ -196,7 +226,13 @@ class PeerSimilarityChecker:
         self.baseline_outside: Dict[str, Counter] = {}
         self.baseline_inside:  Dict[str, Counter] = {}
         self.baseline_indent:  Dict[str, Counter] = {}
-        self.extensions = ['.html', '.css', '.js']
+        self.teacher_ngrams: Set[Tuple[str, ...]] = set()
+        self.student_extra_ngrams:  Dict[str, Set[Tuple[str, ...]]] = {}
+        self.ngram_df: Counter = Counter()
+        self.indent_df: Counter = Counter()
+        self.idf: Dict[str, float] = {}
+        self.rare_threshold = 0
+        self.extensions = ['.html', '.css', '.js', '.py']
 
     def _read_file(self, directory: Path, ext: str) -> Optional[str]:
         files = list(directory.glob(f'*{ext}'))
@@ -232,6 +268,58 @@ class PeerSimilarityChecker:
                     if cnt > self.baseline_indent[ext].get(key, 0):
                         self.baseline_indent[ext][key] = cnt
 
+        if self.events:
+            self._augment_baseline_with_ghosts()
+
+        self._build_teacher_ngrams()
+
+    def _augment_baseline_with_ghosts(self) -> None:
+        try:
+            reco = reconstruct_all_with_ghosts(
+                self.events, lesson_file=self.lesson_file,
+            )
+        except Exception:
+            return
+        for tab_key, info in reco.items():
+            ghosts = info.get('ghosts', []) if isinstance(info, dict) else []
+            for g in ghosts:
+                gtext = g.get('text', '') if isinstance(g, dict) else ''
+                if not gtext.strip():
+                    continue
+                g_out, g_ins = split_code_tokens(gtext)
+                g_ind = _indent_pairs(gtext)
+                for ext in self.extensions:
+                    for tok, cnt in g_out.items():
+                        if cnt > self.baseline_outside[ext].get(tok, 0):
+                            self.baseline_outside[ext][tok] = cnt
+                    for tok, cnt in g_ins.items():
+                        if cnt > self.baseline_inside[ext].get(tok, 0):
+                            self.baseline_inside[ext][tok] = cnt
+                    for key, cnt in g_ind.items():
+                        if cnt > self.baseline_indent[ext].get(key, 0):
+                            self.baseline_indent[ext][key] = cnt
+
+    def _build_teacher_ngrams(self) -> None:
+        seqs: List[str] = []
+        for ext in self.extensions:
+            t_raw = self._read_file(self.teacher_dir, ext)
+            if t_raw:
+                seqs.extend(_token_seq(t_raw))
+        if self.events:
+            try:
+                reco = reconstruct_all_with_ghosts(
+                    self.events, lesson_file=self.lesson_file,
+                )
+            except Exception:
+                reco = {}
+            for info in reco.values():
+                ghosts = info.get('ghosts', []) if isinstance(info, dict) else []
+                for g in ghosts:
+                    gtext = g.get('text', '') if isinstance(g, dict) else ''
+                    if gtext.strip():
+                        seqs.extend(_token_seq(gtext))
+        self.teacher_ngrams = _ngrams(seqs)
+
     def load_student_data(self) -> None:
         print("Loading student files...")
         self._load_baseline()
@@ -242,6 +330,7 @@ class PeerSimilarityChecker:
             self.student_extra_outside[name]  = {}
             self.student_extra_inside[name]   = {}
             self.student_indent_extras[name]  = {}
+            student_seq: List[str] = []
 
             tokens_path = s_dir / 'tokens.txt'
             if tokens_path.exists():
@@ -256,9 +345,13 @@ class PeerSimilarityChecker:
                         out, _ = split_code_tokens(raw)
                         full_outside += out
                         self.student_indent_extras[name][ext] = _indent_pairs(raw) - self.baseline_indent[ext]
+                        student_seq.extend(_token_seq(raw))
                     else:
                         self.student_indent_extras[name][ext] = Counter()
                 self.student_outside_full[name] = full_outside
+                self.student_extra_ngrams[name] = (
+                    _ngrams(student_seq) - self.teacher_ngrams
+                )
                 continue
 
             full_outside = Counter()
@@ -277,12 +370,47 @@ class PeerSimilarityChecker:
                     self.student_extra_inside[name][ext] = ins - self.baseline_inside[ext]
                     self.student_indent_extras[name][ext] = _indent_pairs(raw) - self.baseline_indent[ext]
                     full_outside += out
+                    student_seq.extend(_token_seq(raw))
                 except Exception:
                     self.student_data[name][ext]          = None
                     self.student_extra_outside[name][ext] = Counter()
                     self.student_extra_inside[name][ext]  = Counter()
                     self.student_indent_extras[name][ext] = Counter()
             self.student_outside_full[name] = full_outside
+            self.student_extra_ngrams[name] = (
+                _ngrams(student_seq) - self.teacher_ngrams
+            )
+
+        self._compute_document_frequencies()
+
+    def _compute_document_frequencies(self) -> None:
+        n = max(1, len(self.student_data))
+        self.rare_threshold = max(2, min(4, n // 10))
+
+        ext_token_df: Counter = Counter()
+        for name, exts in self.student_extra_outside.items():
+            seen = set()
+            for ext_ctr in exts.values():
+                for tok in ext_ctr:
+                    seen.add(tok)
+            for tok in seen:
+                ext_token_df[tok] += 1
+        self.idf = {
+            tok: math.log((n + 1) / (cnt + 1)) + 1.0
+            for tok, cnt in ext_token_df.items()
+        }
+
+        for ngrams in self.student_extra_ngrams.values():
+            for ng in ngrams:
+                self.ngram_df[ng] += 1
+
+        for name, exts in self.student_indent_extras.items():
+            seen_pairs = set()
+            for ext_ctr in exts.values():
+                for pair in ext_ctr:
+                    seen_pairs.add(pair)
+            for pair in seen_pairs:
+                self.indent_df[pair] += 1
 
 
     def _fill_matrix_sheet(
@@ -370,13 +498,50 @@ class PeerSimilarityChecker:
             overlap = sum((iA & iB).values())
             return overlap or None, _extra_comment(iA, iB, sA, fmt=_fmt_indent_pair)
 
+        def _score_idf_extra(sA, sB):
+            eA = sum(self.student_extra_outside[sA].values(), Counter())
+            eB = sum(self.student_extra_outside[sB].values(), Counter())
+            inter = eA & eB
+            if not inter:
+                return None, None
+            score = sum(
+                min(eA[t], eB[t]) * self.idf.get(t, 1.0) for t in inter
+            )
+            return round(score, 1) or None, _extra_comment(eA, eB, sA)
+
+        def _score_rare_ngram(sA, sB):
+            ngA = self.student_extra_ngrams.get(sA, set())
+            ngB = self.student_extra_ngrams.get(sB, set())
+            inter = ngA & ngB
+            rare = {ng for ng in inter
+                    if self.ngram_df.get(ng, 0) <= self.rare_threshold}
+            if not rare:
+                return None, None
+            return len(rare), _ngram_comment(rare)
+
+        def _score_rare_indent(sA, sB):
+            iA = sum(self.student_indent_extras[sA].values(), Counter())
+            iB = sum(self.student_indent_extras[sB].values(), Counter())
+            inter = iA & iB
+            rare_ctr = Counter({
+                pair: cnt for pair, cnt in inter.items()
+                if self.indent_df.get(pair, 0) <= self.rare_threshold
+            })
+            overlap = sum(rare_ctr.values())
+            if not overlap:
+                return None, None
+            return overlap, _extra_comment(rare_ctr, rare_ctr, sA, fmt=_fmt_indent_pair)
+
         for title, scorer in [
-            ('Diff',      _score_diff),
-            ('Char',      _score_char),
-            ('Inc',       _score_inc),
-            ('Extra',     _score_extra),
-            ('Extra (C)', _score_extra_c),
-            ('Indent',    _score_indent),
+            ('Diff',       _score_diff),
+            ('Char',       _score_char),
+            ('Inc',        _score_inc),
+            ('Extra',      _score_extra),
+            ('Extra (C)',  _score_extra_c),
+            ('Indent',     _score_indent),
+            ('IDF Extra',  _score_idf_extra),
+            ('Rare NGram', _score_rare_ngram),
+            ('Rare Indent', _score_rare_indent),
         ]:
             self._fill_matrix_sheet(wb, title, student_names, scorer)
 
@@ -461,10 +626,17 @@ def main():
         )
         if id_map:
             print(f"Resolved {len(id_map)} anon name -> id mapping(s).")
+        log_data, log_msg = load_lesson_log(current_dir)
+        if log_msg:
+            print(log_msg)
+        events = log_data.all_events if log_data else None
+        lesson_file = log_data.lesson_file if log_data else None
         checker = PeerSimilarityChecker(
             str(anon_names_dir), str(correct_dir),
             start_dir=str(start_dir) if start_dir.exists() else None,
             id_map=id_map,
+            events=events,
+            lesson_file=lesson_file,
         )
         folder_name = current_dir.name
         checker.generate_matrix_report(
