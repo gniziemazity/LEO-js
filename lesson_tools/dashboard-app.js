@@ -187,6 +187,7 @@ async function loadJsonData(file, data) {
 			"dashboard_sim_data",
 			JSON.stringify({
 				filePath: file.name,
+				lessonFile: data.lessonFile || null,
 				events: data.events || data.keyPresses || [],
 				loadedAt: Date.now(),
 			}),

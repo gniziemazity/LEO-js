@@ -19,15 +19,16 @@ async function _buildDiffWindowPayload(student, followPct) {
 	).toLowerCase();
 
 	const recoEntries = [..._allFiles.entries()].filter(
-		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
+		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
 	const correctEntries = [..._allFiles.entries()].filter(
-		([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
+		([p]) => /^correct\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
 	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
 	const studentEntries = [..._allFiles.entries()].filter(
 		([p]) =>
-			p.toLowerCase().startsWith(studentDir) && /\.(html|css|js)$/i.test(p),
+			p.toLowerCase().startsWith(studentDir) &&
+			/\.(html|css|js|py)$/i.test(p),
 	);
 
 	const loadDiffMarks = async (filename) => {

@@ -605,17 +605,17 @@ async function _readStudentDiffPayload(student) {
 	}
 
 	const recoEntries = [...fileMap.entries()].filter(
-		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js)$/i.test(p),
+		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
 	const correctEntries = [...fileMap.entries()].filter(
-		([p]) => /^correct\//i.test(p) && /\.(html|css|js)$/i.test(p),
+		([p]) => /^correct\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
 	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
 	const studentDir = (student.id + "/").toLowerCase();
 	const anonBase = "anon_ids/";
 	const studentEntries = [...fileMap.entries()].filter(
 		([p]) =>
-			p.startsWith(anonBase + studentDir) && /\.(html|css|js)$/i.test(p),
+			p.startsWith(anonBase + studentDir) && /\.(html|css|js|py)$/i.test(p),
 	);
 
 	const allMarks = {};

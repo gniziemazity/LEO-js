@@ -4,6 +4,14 @@ from .lv_constants import (
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS, PAUSE_CHAR, PAUSE_MS,
     PAGE_LINES, split_code_with_anchors,
 )
+from languages import (
+    get_profile,
+    lesson_file_extension,
+    should_auto_dedent_on_char,
+    should_decrease_after,
+    should_decrease_on_line,
+    should_increase_after,
+)
 
 
 class HeadlessEditor:
@@ -14,7 +22,7 @@ class HeadlessEditor:
     )
     _OPEN_TAG_RE  = re.compile(r"<([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?>$")
 
-    def __init__(self, track_timestamps: bool = False) -> None:
+    def __init__(self, track_timestamps: bool = False, file_ext: str = None) -> None:
         self._chars: list = []
         self._cur:   int  = 0
         self._anchors: dict = {}
@@ -30,6 +38,7 @@ class HeadlessEditor:
         self._deleted_chars: list = []
         self._idx_to_anchor: dict = {}
         self._auto_dedent_idxs: set = set()
+        self._profile = get_profile(file_ext) if file_ext else None
 
     def get_text(self) -> str:
         return "".join(self._chars)
@@ -291,16 +300,24 @@ class HeadlessEditor:
         nl = self._cur - 1; pls = self._line_start(nl)
         prev_line = "".join(self._chars[pls:nl])
         base = re.match(r"^(\s*)", prev_line).group(1)
-        stripped = prev_line.rstrip()
-        opens = bool(
-            re.search(r"[{(\[]$", stripped) or (
-                HeadlessEditor._OPEN_TAG_RE.search(stripped)
-                and not stripped.endswith("/>")
-                and not HeadlessEditor._VOID_TAGS_RE.search(stripped)))
+        after = "".join(self._chars[self._cur: self._line_end()]).strip()
+        if self._profile is not None:
+            opens = should_increase_after(self._profile, prev_line)
+            closes = should_decrease_on_line(self._profile, after)
+            dedent_after = should_decrease_after(self._profile, prev_line)
+        else:
+            stripped = prev_line.rstrip()
+            opens = bool(
+                re.search(r"[{(\[]$", stripped) or (
+                    HeadlessEditor._OPEN_TAG_RE.search(stripped)
+                    and not stripped.endswith("/>")
+                    and not HeadlessEditor._VOID_TAGS_RE.search(stripped)))
+            closes = bool(re.match(r"^[})\]]", after) or re.match(r"^</", after))
+            dedent_after = False
         extra = "\t" if opens else ""
         new_indent = base + extra
-        after = "".join(self._chars[self._cur: self._line_end()]).strip()
-        closes = bool(re.match(r"^[})\]]", after) or re.match(r"^</", after))
+        if dedent_after and not opens and not closes:
+            new_indent = HeadlessEditor._dedent_one(base)
         if opens and closes:
             for ch in new_indent: self._ins(ch)
             mid = self._cur
@@ -315,10 +332,14 @@ class HeadlessEditor:
     def _auto_dedent(self, ch: str) -> bool:
         ls = self._line_start()
         before = "".join(self._chars[ls: self._cur])
-        is_closer = ch in "})]"
-        is_html_end = (ch == "/" and bool(re.fullmatch(r"[ \t]*<", before)))
-        if not (is_closer or is_html_end): return False
-        if is_closer and not re.fullmatch(r"[ \t]*", before): return False
+        if self._profile is not None:
+            if not should_auto_dedent_on_char(self._profile, ch, before):
+                return False
+        else:
+            is_closer = ch in "})]"
+            is_html_end = (ch == "/" and bool(re.fullmatch(r"[ \t]*<", before)))
+            if not (is_closer or is_html_end): return False
+            if is_closer and not re.fullmatch(r"[ \t]*", before): return False
         if not before: return False
         if before.startswith("\t"): nb = before[1:]
         elif before.startswith("    "): nb = before[4:]
@@ -418,11 +439,20 @@ class HeadlessEditor:
         self._ci_indent = ""
 
 
-_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm"))
+_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm", ".py"))
 
 
-def _replay_headless_multi(events: list, track_timestamps: bool = False) -> dict:
-    editors: dict = {"MAIN": HeadlessEditor(track_timestamps=track_timestamps)}
+def _replay_headless_multi(
+    events: list,
+    track_timestamps: bool = False,
+    lesson_file: str | None = None,
+) -> dict:
+    main_ext = lesson_file_extension(lesson_file) or ".html"
+    editors: dict = {
+        "MAIN": HeadlessEditor(
+            track_timestamps=track_timestamps, file_ext=main_ext,
+        ),
+    }
     active          = "MAIN"
     current_context = "main"
 
@@ -438,7 +468,13 @@ def _replay_headless_multi(events: list, track_timestamps: bool = False) -> dict
                 current_context = "main"
                 active = t
                 if active not in editors:
-                    editors[active] = HeadlessEditor(track_timestamps=track_timestamps)
+                    ext_match = next(
+                        (ext for ext in _FILE_EXTS if t.lower().endswith(ext)),
+                        None,
+                    )
+                    editors[active] = HeadlessEditor(
+                        track_timestamps=track_timestamps, file_ext=ext_match,
+                    )
             else:
                 editors[active].move_to_anchor(t)
             continue
@@ -473,17 +509,23 @@ def _replay_headless_multi(events: list, track_timestamps: bool = False) -> dict
     return editors
 
 
-def reconstruct_html_headless(events: list) -> str:
-    return _replay_headless_multi(events)["MAIN"].get_text()
+def reconstruct_html_headless(events: list, lesson_file: str | None = None) -> str:
+    return _replay_headless_multi(events, lesson_file=lesson_file)["MAIN"].get_text()
 
 
-def reconstruct_all_headless(events: list) -> dict:
-    return {k: ed.get_text() for k, ed in _replay_headless_multi(events).items()}
+def reconstruct_all_headless(events: list, lesson_file: str | None = None) -> dict:
+    return {
+        k: ed.get_text()
+        for k, ed in _replay_headless_multi(events, lesson_file=lesson_file).items()
+    }
 
 
-def reconstruct_all_with_ghosts(events: list) -> dict:
+def reconstruct_all_with_ghosts(events: list, lesson_file: str | None = None) -> dict:
     out: dict = {}
-    for k, ed in _replay_headless_multi(events, track_timestamps=True).items():
+    eds = _replay_headless_multi(
+        events, track_timestamps=True, lesson_file=lesson_file,
+    )
+    for k, ed in eds.items():
         text, ranges = ed.get_text_with_ghosts()
         out[k] = {'text': text, 'ghosts': ranges}
     return out
@@ -509,7 +551,7 @@ def replay_with_timestamps_all(events: list):
 
 def find_ignored_backspace_timestamps(events: list) -> set:
     ignored: set = set()
-    ed: HeadlessEditor = HeadlessEditor()
+    ed: HeadlessEditor = HeadlessEditor(file_ext=".html")
     current_editor = "main"
 
     for ev in events:

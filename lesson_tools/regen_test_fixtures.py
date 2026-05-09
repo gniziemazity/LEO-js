@@ -5,6 +5,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(_ROOT))
 
+from languages import lesson_file_extension
 from utils.lv_editor import reconstruct_all_headless
 from utils.token_log import (
     _parse_teacher_tokens,
@@ -25,9 +26,10 @@ _CASES = [
     ("js",      True),
     ("qr",      True),
     ("sorting", True),
+    ("python",  True),
 ]
 
-_CODE_EXTS = {".html", ".htm", ".css", ".js"}
+_CODE_EXTS = {".html", ".htm", ".css", ".js", ".py"}
 
 
 def _student_dirs(case_dir: Path) -> list[Path]:
@@ -42,6 +44,14 @@ def _student_dirs(case_dir: Path) -> list[Path]:
 def _load_events(log_path: Path) -> list:
     with open(log_path, encoding="utf-8") as f:
         return json.load(f)["events"]
+
+
+def _load_lesson_file(log_path: Path) -> str | None:
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            return json.load(f).get("lessonFile")
+    except Exception:
+        return None
 
 
 def _collect_teacher_files(case_dir: Path) -> dict:
@@ -86,9 +96,17 @@ def regen_reconstructed(case_dir: Path) -> None:
     if not log_path.exists():
         return
     events = _load_events(log_path)
-    reco_files = reconstruct_all_headless(events)
+    lesson_file = _load_lesson_file(log_path)
+    reco_files = reconstruct_all_headless(events, lesson_file=lesson_file)
+    main_ext = lesson_file_extension(lesson_file) or ".html"
+    main_name = (
+        "reconstructed.html" if main_ext == ".html"
+        else f"reconstructed{main_ext}"
+    )
     for tab_key, text in reco_files.items():
-        name = "reconstructed.html" if tab_key == "MAIN" else tab_key
+        if tab_key == "MAIN" and not text:
+            continue
+        name = main_name if tab_key == "MAIN" else tab_key
         out = case_dir / name
         out.write_text(text, encoding="utf-8")
         print(f"  {case_dir.name}/{name}  ({len(text)} chars)")

@@ -34,82 +34,6 @@ const HL_PRIORITY = [
 	"hl_attr",
 ];
 
-const JS_KW = new Set([
-	"var",
-	"let",
-	"const",
-	"function",
-	"return",
-	"if",
-	"else",
-	"for",
-	"while",
-	"do",
-	"switch",
-	"case",
-	"break",
-	"continue",
-	"new",
-	"this",
-	"typeof",
-	"instanceof",
-	"null",
-	"undefined",
-	"true",
-	"false",
-	"class",
-	"extends",
-	"import",
-	"export",
-	"default",
-	"try",
-	"catch",
-	"finally",
-	"throw",
-	"async",
-	"await",
-	"of",
-	"in",
-	"from",
-	"static",
-	"super",
-	"yield",
-	"delete",
-	"void",
-	"debugger",
-]);
-const JS_BUILTINS = new Set([
-	"console",
-	"document",
-	"window",
-	"Array",
-	"Object",
-	"String",
-	"Number",
-	"Boolean",
-	"Math",
-	"JSON",
-	"Promise",
-	"setTimeout",
-	"setInterval",
-	"clearTimeout",
-	"clearInterval",
-	"parseInt",
-	"parseFloat",
-	"isNaN",
-	"isFinite",
-	"alert",
-	"confirm",
-	"prompt",
-	"addEventListener",
-	"fetch",
-	"querySelector",
-	"querySelectorAll",
-	"getElementById",
-	"getElementsByClassName",
-	"getElementsByTagName",
-]);
-
 function buildHighlightSpans(content, fileType = "html") {
 	if (fileType === "none") return [];
 
@@ -140,8 +64,12 @@ function buildHighlightSpans(content, fileType = "html") {
 		return result;
 	}
 
-	if (fileType === "js") {
-		_hlJs(content, 0, spans);
+	if (fileType === "js" || fileType === "py" || fileType === "python") {
+		const profId = fileType === "js" ? ".js" : "python";
+		const prof = window.LanguageProfiles
+			? window.LanguageProfiles.getProfile(profId)
+			: null;
+		if (prof) window.LanguageProfiles.highlight(prof, content, 0, spans);
 		const result = [];
 		const used = new Uint8Array(content.length);
 		for (const cls of HL_PRIORITY) {
@@ -294,74 +222,10 @@ function _hlCss(css, off, spans) {
 }
 
 function _hlJs(js, off, spans) {
-	const p = new Set();
-	for (const m of js.matchAll(/\/\*[\s\S]*?\*\//g)) {
-		spans.hl_comment.push({
-			start: off + m.index,
-			end: off + m.index + m[0].length,
-		});
-		_protect(p, m.index, m.index + m[0].length);
-	}
-	for (const m of js.matchAll(/\/\/[^\n]*/g))
-		if (!p.has(m.index)) {
-			spans.hl_comment.push({
-				start: off + m.index,
-				end: off + m.index + m[0].length,
-			});
-			_protect(p, m.index, m.index + m[0].length);
-		}
-	for (const m of js.matchAll(/`(?:[^`\\]|\\.)*`/gs))
-		if (!p.has(m.index)) {
-			spans.hl_string.push({
-				start: off + m.index,
-				end: off + m.index + m[0].length,
-			});
-			_protect(p, m.index, m.index + m[0].length);
-		}
-	for (const m of js.matchAll(/"(?:[^"\\]|\\.)*"/g))
-		if (!p.has(m.index)) {
-			spans.hl_string.push({
-				start: off + m.index,
-				end: off + m.index + m[0].length,
-			});
-			_protect(p, m.index, m.index + m[0].length);
-		}
-	for (const m of js.matchAll(/'(?:[^'\\]|\\.)*'/g))
-		if (!p.has(m.index)) {
-			spans.hl_string.push({
-				start: off + m.index,
-				end: off + m.index + m[0].length,
-			});
-			_protect(p, m.index, m.index + m[0].length);
-		}
-	for (const m of js.matchAll(
-		/\b0x[0-9a-fA-F]+|\b\d+\.?\d*([eE][+-]?\d+)?\b/g,
-	))
-		if (!p.has(m.index))
-			spans.hl_number.push({
-				start: off + m.index,
-				end: off + m.index + m[0].length,
-			});
-	for (const m of js.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g))
-		if (!p.has(m.index))
-			spans.hl_func.push({
-				start: off + m.index,
-				end: off + m.index + m[1].length,
-			});
-	for (const m of js.matchAll(/\b[a-zA-Z_$][a-zA-Z0-9_$]*\b/g)) {
-		if (p.has(m.index)) continue;
-		const w = m[0];
-		if (JS_BUILTINS.has(w))
-			spans.hl_builtin.push({
-				start: off + m.index,
-				end: off + m.index + w.length,
-			});
-		else if (JS_KW.has(w))
-			spans.hl_keyword.push({
-				start: off + m.index,
-				end: off + m.index + w.length,
-			});
-	}
+	const prof = window.LanguageProfiles
+		? window.LanguageProfiles.getProfile(".js")
+		: null;
+	if (prof) window.LanguageProfiles.highlight(prof, js, off, spans);
 }
 
 function fmtTs(tsMs) {

@@ -62,7 +62,7 @@ function _resolveMarksEntry() {
 	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
 }
 
-const _CODE_FILE_RE = /\.(html|css|js)$/i;
+const _CODE_FILE_RE = /\.(html|css|js|py)$/i;
 function _fileExt(name) {
 	const m = name && name.match(/\.[^./\\]+$/);
 	return m ? m[0].toLowerCase() : "";
@@ -241,6 +241,7 @@ function _showLoading(on) {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+	await window.LanguageProfiles.initProfiles();
 	const params = new URLSearchParams(location.search);
 	const keyParam = params.get("key");
 	const key = keyParam || "diffData";
@@ -404,82 +405,22 @@ function _restoreState(side, saved) {
 	}
 }
 
-const _DIFF_COMMENT_RE = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
-const _DIFF_COMMENT_RE_CSS = /\/\*[\s\S]*?\*\//g;
-const _DIFF_HTML_OPEN_RE = /<\s*(script|style)\b[^>]*>/gi;
 const _DIFF_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
-
-function _htmlTagBlockRanges(text) {
-	const scriptRanges = [];
-	const styleRanges = [];
-	_DIFF_HTML_OPEN_RE.lastIndex = 0;
-	let om;
-	while ((om = _DIFF_HTML_OPEN_RE.exec(text)) !== null) {
-		const tag = om[1].toLowerCase();
-		const innerStart = om.index + om[0].length;
-		const closeRe = new RegExp(
-			`<\\/\\s*${tag}\\s*>|<\\s*\\\\\\s*\\/?\\s*${tag}\\s*>|\\/\\s*${tag}\\s*>`,
-			"i",
-		);
-		const sub = text.slice(innerStart);
-		const cm = sub.match(closeRe);
-		let innerEnd, nextPos;
-		if (cm) {
-			innerEnd = innerStart + cm.index;
-			nextPos = innerEnd + cm[0].length;
-		} else {
-			innerEnd = text.length;
-			nextPos = text.length;
-		}
-		(tag === "script" ? scriptRanges : styleRanges).push([
-			innerStart,
-			innerEnd,
-		]);
-		_DIFF_HTML_OPEN_RE.lastIndex = nextPos;
-	}
-	return { scriptRanges, styleRanges };
-}
+const _DIFF_FALLBACK_DETECT_RE =
+	/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
 
 function _diffCommentRanges(text, fileName) {
 	const ext = String(fileName || "")
 		.toLowerCase()
 		.match(/\.[a-z]+$/);
 	const e = ext ? ext[0] : "";
+	const profile = e ? window.LanguageProfiles.getProfile(e) : null;
+	if (profile) return window.LanguageProfiles.commentRangesOf(profile, text);
+
 	const ranges = [];
-	if (e === ".css") {
-		_DIFF_COMMENT_RE_CSS.lastIndex = 0;
-		let m;
-		while ((m = _DIFF_COMMENT_RE_CSS.exec(text)) !== null) {
-			ranges.push([m.index, m.index + m[0].length]);
-		}
-		return ranges;
-	}
-	const isHtml = e === ".html" || e === ".htm";
-	let scriptRanges = [];
-	let styleRanges = [];
-	if (isHtml) {
-		({ scriptRanges, styleRanges } = _htmlTagBlockRanges(text));
-	}
-	const inRanges = (pos, rs) => {
-		for (const [lo, hi] of rs) {
-			if (lo <= pos && pos < hi) return true;
-			if (pos < lo) return false;
-		}
-		return false;
-	};
-	_DIFF_COMMENT_RE.lastIndex = 0;
+	_DIFF_FALLBACK_DETECT_RE.lastIndex = 0;
 	let m;
-	while ((m = _DIFF_COMMENT_RE.exec(text)) !== null) {
-		const kind = m[0].slice(0, 2);
-		if (isHtml) {
-			const pos = m.index;
-			if (kind === "//" && !inRanges(pos, scriptRanges)) continue;
-			if (
-				kind === "/*" &&
-				!(inRanges(pos, styleRanges) || inRanges(pos, scriptRanges))
-			)
-				continue;
-		}
+	while ((m = _DIFF_FALLBACK_DETECT_RE.exec(text)) !== null) {
 		ranges.push([m.index, m.index + m[0].length]);
 	}
 	return ranges;

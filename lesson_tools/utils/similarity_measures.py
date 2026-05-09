@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from .lv_editor import reconstruct_all_headless, replay_with_timestamps_all
+from languages import get_profile, comment_ranges as _profile_comment_ranges
 
 _CHAR_TOKEN_RE = re.compile(r'[a-zA-Z0-9]+|[^\s]')
 
@@ -64,7 +65,7 @@ def _html_tag_block_ranges(text: str) -> Tuple[List[Tuple[int, int]], List[Tuple
     return script_ranges, style_ranges
 
 
-def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
+def _legacy_comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
     starts: List[int] = []
     ends: List[int] = []
 
@@ -102,6 +103,21 @@ def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
         starts.append(match.start())
         ends.append(match.end())
     return starts, ends
+
+
+_FALLBACK_DETECT_RE = re.compile(r'/\*[\s\S]*?\*/|<!--[\s\S]*?-->|(?<!:)//[^\n]*')
+
+
+def _comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
+    profile = get_profile(ext) if ext else None
+    if profile is None:
+        starts: List[int] = []
+        ends: List[int] = []
+        for m in _FALLBACK_DETECT_RE.finditer(text):
+            starts.append(m.start())
+            ends.append(m.end())
+        return starts, ends
+    return _profile_comment_ranges(profile, text)
 
 
 def blank_comments(text: str, ext=None) -> str:

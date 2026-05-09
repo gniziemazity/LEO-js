@@ -18,6 +18,7 @@ class LogVisualizer {
 		this._files = { MAIN: this.main };
 		this._activeFilename = "MAIN";
 		this._activeEditor = "main";
+		this._lessonFile = null;
 		this._ciBaseIndent = "";
 		this._anchorFlashTimer = null;
 
@@ -206,7 +207,7 @@ class LogVisualizer {
 		if (this.elBtnDev) this.elBtnDev.classList.toggle("is-toggle-on", on);
 	}
 
-	loadFile({ filePath, micro, error, imageUris }) {
+	loadFile({ filePath, micro, error, imageUris, lessonFile }) {
 		if (error) {
 			console.error("expand error:\n" + error);
 			return;
@@ -214,6 +215,7 @@ class LogVisualizer {
 
 		this.vscode = new VSCodeSettings();
 		this._imageUris = imageUris || {};
+		this._lessonFile = lessonFile || null;
 
 		this.micro = micro;
 
@@ -637,6 +639,24 @@ class LogVisualizer {
 		}
 	}
 
+	_activeProfile() {
+		const LP = window.LanguageProfiles;
+		if (!LP) return null;
+		const fn = (this._activeFilename || "").toLowerCase();
+		const m = fn.match(/\.[^./\\]+$/);
+		if (m) return LP.getProfile(m[0]);
+		const lessonExt = LP.lessonFileExtension(this._lessonFile);
+		if (lessonExt) return LP.getProfile(lessonExt);
+		return LP.getProfile(".html");
+	}
+
+	_dedentOne(indent) {
+		if (indent.startsWith("\t")) return indent.slice(1);
+		if (indent.startsWith("    ")) return indent.slice(4);
+		if (indent.startsWith("  ")) return indent.slice(2);
+		return indent;
+	}
+
 	_autoIndent(ts) {
 		const cur = this.main.cursor;
 		const prevEnd = this.main.text.lastIndexOf("\n", cur - 1);
@@ -644,25 +664,38 @@ class LogVisualizer {
 			prevEnd > 0 ? this.main.text.lastIndexOf("\n", prevEnd - 1) : -1;
 		const prevLine = this.main.text.slice(prev2 + 1, prevEnd);
 		const base = (prevLine.match(/^(\s*)/) || ["", ""])[1];
-		const trimmed = prevLine.trimEnd();
-
-		const opensWithBrace = /[{([]$/.test(trimmed);
-		const opensWithTag =
-			/<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
-			!/\/>$/.test(trimmed) &&
-			!/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*)?>$/i.test(
-				trimmed,
-			);
-		const opens = opensWithBrace || opensWithTag;
-		const indent = base + (opens ? "\t" : "");
-
 		const lineEnd = this.main.text.indexOf("\n", cur);
 		const after =
 			lineEnd === -1
 				? this.main.text.slice(cur)
 				: this.main.text.slice(cur, lineEnd);
 		const afterTrimmed = after.trimStart();
-		const closes = /^[})\]]/.test(afterTrimmed) || /^<\//.test(afterTrimmed);
+
+		const LP = window.LanguageProfiles;
+		const profile = this._activeProfile();
+		let opens, closes, dedentAfter;
+		if (profile && LP) {
+			opens = LP.shouldIncreaseAfter(profile, prevLine);
+			closes = LP.shouldDecreaseOnLine(profile, afterTrimmed);
+			dedentAfter = LP.shouldDecreaseAfter(profile, prevLine);
+		} else {
+			const trimmed = prevLine.trimEnd();
+			const opensWithBrace = /[{([]$/.test(trimmed);
+			const opensWithTag =
+				/<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
+				!/\/>$/.test(trimmed) &&
+				!/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*)?>$/i.test(
+					trimmed,
+				);
+			opens = opensWithBrace || opensWithTag;
+			closes = /^[})\]]/.test(afterTrimmed) || /^<\//.test(afterTrimmed);
+			dedentAfter = false;
+		}
+
+		let indent = base + (opens ? "\t" : "");
+		if (dedentAfter && !opens && !closes) {
+			indent = this._dedentOne(base);
+		}
 
 		if (opens && closes) {
 			for (const c of indent) this.main.insert(c, ts);
@@ -670,11 +703,7 @@ class LogVisualizer {
 			for (const c of base) this.main.insert(c, ts);
 			this.main.cursor -= base.length + 1;
 		} else if (!opens && closes) {
-			let closingIndent;
-			if (base.startsWith("\t")) closingIndent = base.slice(1);
-			else if (base.startsWith("    ")) closingIndent = base.slice(4);
-			else if (base.startsWith("  ")) closingIndent = base.slice(2);
-			else closingIndent = base;
+			const closingIndent = this._dedentOne(base);
 			for (const c of closingIndent) this.main.insert(c, ts);
 		} else {
 			for (const c of indent) this.main.insert(c, ts);
@@ -913,11 +942,18 @@ class LogVisualizer {
 
 	_renderEditors() {
 		const fn = this._activeFilename.toLowerCase();
-		const mainFileType = fn.endsWith(".css")
-			? "css"
-			: fn.endsWith(".js")
-				? "js"
-				: "html";
+		let mainFileType;
+		if (fn.endsWith(".css")) mainFileType = "css";
+		else if (fn.endsWith(".js")) mainFileType = "js";
+		else if (fn.endsWith(".py")) mainFileType = "py";
+		else {
+			const LP = window.LanguageProfiles;
+			const lessonExt = LP ? LP.lessonFileExtension(this._lessonFile) : null;
+			if (lessonExt === ".py") mainFileType = "py";
+			else if (lessonExt === ".css") mainFileType = "css";
+			else if (lessonExt === ".js") mainFileType = "js";
+			else mainFileType = "html";
+		}
 		this.elEditor.innerHTML = renderEditorHtml(this.main, true, mainFileType);
 		this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
 		if (this.elAutoScroll.checked) {

@@ -4,7 +4,7 @@ from .lv_constants import (
     split_code_with_anchors,
 )
 
-_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm"))
+_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm", ".py"))
 
 _CI_SPECIAL = frozenset(
     list(CURSOR_MOVES.keys()) + [

@@ -5,6 +5,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+from languages import lesson_file_extension
+
 from .lv_editor import reconstruct_all_headless
 from .token_log import (
     _add_log_metadata,
@@ -25,7 +30,7 @@ from .token_log import (
 )
 
 
-_RECO_EXTS = {'.html', '.htm', '.css', '.js'}
+_RECO_EXTS = {'.html', '.htm', '.css', '.js', '.py'}
 
 
 def _fmt_item(ts_str: str, s: str) -> str:
@@ -125,12 +130,31 @@ class TokenLogMixin:
         print(f'  Written: correct/{out_path.name}  ({n_typed} occurrences, '
               f'{n_removed} removed, {n_unique} unique)')
 
-        reco_files = reconstruct_all_headless(all_events)
+        lesson_file = getattr(self, '_lesson_file', None)
+        reco_files = reconstruct_all_headless(all_events, lesson_file=lesson_file)
         if reco_files:
             reco_dir = self.reference_dir.parent / 'reconstructed'
             reco_dir.mkdir(exist_ok=True)
+            main_ext = lesson_file_extension(lesson_file) or '.html'
+            main_name = f'reconstructed{main_ext}' if main_ext != '.html' else 'reconstructed.html'
+
+            fresh_names = {
+                main_name if tab_key == 'MAIN' else tab_key
+                for tab_key, reco_text in reco_files.items()
+                if not (tab_key == 'MAIN' and not reco_text)
+            }
+            for stale in reco_dir.iterdir():
+                if stale.is_file() and stale.suffix.lower() in _RECO_EXTS \
+                        and stale.name not in fresh_names:
+                    try:
+                        stale.unlink()
+                        print(f'  Removed stale: reconstructed/{stale.name}')
+                    except OSError:
+                        pass
             for tab_key, reco_text in reco_files.items():
-                reco_name = 'reconstructed.html' if tab_key == 'MAIN' else tab_key
+                if tab_key == 'MAIN' and not reco_text:
+                    continue
+                reco_name = main_name if tab_key == 'MAIN' else tab_key
                 reco_path = reco_dir / reco_name
                 with open(reco_path, 'w', encoding='utf-8') as fh:
                     fh.write(reco_text)
@@ -456,7 +480,7 @@ class TokenLogMixin:
             print(f'Copied {basis_name} diff marks for {count} student(s) into '
                   f'{anon_names_dir.name}/')
 
-        root_exts = {'.json', '.html', '.htm', '.css', '.js', '.txt'}
+        root_exts = {'.json', '.html', '.htm', '.css', '.js', '.txt', '.py'}
         root_files = [
             p for p in sorted(curated_dir.iterdir())
             if p.is_file() and p.suffix.lower() in root_exts

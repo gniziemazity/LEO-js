@@ -147,11 +147,12 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self._lesson_code_inserts = data.code_inserts
         self._lesson_interactions = data.interactions
         self._lesson_session_start = data.session_start
+        self._lesson_file = data.lesson_file
 
 
     def get_code_files(self, directory: Path) -> Dict[str, Path]:
         files = {}
-        for ext in ('.html', '.css', '.js'):
+        for ext in ('.html', '.css', '.js', '.py'):
             matching = list(directory.glob(f'*{ext}'))
             if matching:
                 files[ext] = matching[0]
@@ -159,7 +160,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
     def get_all_code_files(self, directory: Path) -> Dict[str, Path]:
         files = {}
-        for ext in ('.html', '.css', '.js'):
+        for ext in ('.html', '.css', '.js', '.py'):
             for path in sorted(directory.glob(f'*{ext}')):
                 files[path.name] = path
         return files
@@ -281,7 +282,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             simple_extras:    Dict[str, Counter] = {}
             all_outside_parts: List[Counter]     = []
 
-            for ext in ['.html', '.css', '.js']:
+            for ext in ['.html', '.css', '.js', '.py']:
                 _files = sorted(student_dir.glob(f'*{ext}'))
                 if not _files:
                     simple_extras[ext] = Counter()
@@ -320,7 +321,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             _floor(bl_outside, t_outside)
             _floor(bl_inside,  t_inside)
 
-        for ext in ['.html', '.css', '.js']:
+        for ext in ['.html', '.css', '.js', '.py']:
             src = None
             if self.start_dir and self.start_dir.is_dir():
                 sf_list = list(self.start_dir.glob(f'*{ext}'))

@@ -223,7 +223,7 @@ function renderPanel(side, files, marks) {
 			: (allLineMks?.student_files ?? null);
 
 	const allNames = Object.keys(files).filter((n) =>
-		/\.(html|css|js)$/i.test(n),
+		/\.(html|css|js|py)$/i.test(n),
 	);
 	const names = sortFileNames(allNames, side === "teacher");
 
@@ -303,6 +303,9 @@ function sortFileNames(names, preferReconstructed) {
 	const html = names.filter((n) => /\.html$/i.test(n));
 	const css = names.filter((n) => /\.css$/i.test(n));
 	const js = names.filter((n) => /\.js$/i.test(n));
+	const py = names.filter((n) => /\.py$/i.test(n));
+	const grouped = new Set([...html, ...css, ...js, ...py]);
+	const other = names.filter((n) => !grouped.has(n));
 	if (preferReconstructed) {
 		const ri = html.findIndex(
 			(n) => n.toLowerCase() === "reconstructed.html",
@@ -312,10 +315,12 @@ function sortFileNames(names, preferReconstructed) {
 				[html[ri], ...html.filter((_, i) => i !== ri)],
 				css,
 				js,
+				py,
+				other,
 			].flat();
 		}
 	}
-	return [...html, ...css, ...js];
+	return [...html, ...css, ...js, ...py, ...other];
 }
 
 function _synthesizeLeoMarks(side, fileName) {

@@ -32,6 +32,24 @@ let webWindow = null;
 let webWindowPinned = false;
 let webWindowRect = null;
 
+function resolveStudentName(field) {
+	if (field == null) return null;
+	const students = broadcastServer.currentState.students || [];
+	if (typeof field === "number" && Number.isInteger(field)) {
+		return students[field - 1] || null;
+	}
+	if (typeof field === "string") {
+		const trimmed = field.trim();
+		if (!trimmed) return null;
+		const asNum = Number(trimmed);
+		if (Number.isInteger(asNum) && String(asNum) === trimmed) {
+			return students[asNum - 1] || null;
+		}
+		return trimmed;
+	}
+	return null;
+}
+
 broadcastServer.on("client-toggle-active", () => {
 	state.mainWindow.webContents.send("global-toggle-active");
 });
@@ -42,12 +60,15 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.mainWindow.webContents.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
-	questionWindowStudentAnswered = studentName;
+	const resolved = resolveStudentName(studentName);
+	questionWindowStudentAnswered = resolved;
 	if (state.mainWindow) {
-		state.mainWindow.webContents.send("question-answered", { studentName });
+		state.mainWindow.webContents.send("question-answered", {
+			studentName: resolved,
+		});
 	}
 	if (questionWindow && !questionWindow.isDestroyed()) {
-		questionWindow.webContents.send("set-answered", studentName);
+		questionWindow.webContents.send("set-answered", resolved);
 	}
 });
 broadcastServer.on(
@@ -56,7 +77,7 @@ broadcastServer.on(
 		if (state.mainWindow) {
 			state.mainWindow.webContents.send("log-student-interaction", {
 				interactionType,
-				studentName,
+				studentName: resolveStudentName(studentName),
 				questionText,
 				openedAt,
 				closedAt,
@@ -68,13 +89,14 @@ broadcastServer.on(
 broadcastServer.on(
 	"client-show-student-interaction",
 	(interactionType, studentName, questionText, openedAt) => {
+		const resolved = resolveStudentName(studentName);
 		const isQuestion = interactionType === "student-question";
 		const displayText = isQuestion
 			? questionText || "(no question text)"
 			: `Helping`;
 		const emoji = isQuestion ? "❓" : "🤝";
 		const bgColor = isQuestion ? "#ffe0b2" : "#c8e6c9";
-		openQuestionWindow(displayText, bgColor, emoji, studentName);
+		openQuestionWindow(displayText, bgColor, emoji, resolved);
 	},
 );
 
@@ -90,7 +112,7 @@ broadcastServer.on(
 		if (state.mainWindow) {
 			state.mainWindow.webContents.send("log-student-interaction", {
 				interactionType,
-				studentName,
+				studentName: resolveStudentName(studentName),
 				questionText,
 				openedAt,
 				closedAt,

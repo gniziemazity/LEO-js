@@ -1,0 +1,43 @@
+{
+	"id": "html",
+	"extensions": [".html", ".htm"],
+	"comments": {
+		"line": null,
+		"block": { "open": "<!--", "close": "-->" },
+		"detectRe": "/\\*[\\s\\S]*?\\*/|<!--[\\s\\S]*?-->|(?<!:)//[^\\n]*"
+	},
+	"strings": [
+		{ "open": "\"", "close": "\"" },
+		{ "open": "'", "close": "'" }
+	],
+	"keywords": [],
+	"builtins": [],
+	"identifierRe": "[a-zA-Z][a-zA-Z0-9-]*",
+	"numberRe": "\\d+\\.?\\d*",
+	"indent": {
+		"increaseAfter": "[{(\\[]\\s*$",
+		"decreaseOnLine": "^[})\\]]|^</",
+		"decreaseAfter": ""
+	},
+	"embeddedTags": [
+		{ "tag": "script", "language": "javascript" },
+		{ "tag": "style", "language": "css" }
+	],
+	"openTagRe": "<([a-zA-Z][a-zA-Z0-9-]*)(?:\\s[^>]*)?>$",
+	"voidTags": [
+		"area",
+		"base",
+		"br",
+		"col",
+		"embed",
+		"hr",
+		"img",
+		"input",
+		"link",
+		"meta",
+		"param",
+		"source",
+		"track",
+		"wbr"
+	]
+}

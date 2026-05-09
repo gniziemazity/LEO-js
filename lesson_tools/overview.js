@@ -553,7 +553,7 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	const _readCodeFiles = async (dirHandleSrc) => {
 		const out = {};
 		for await (const [name, entry] of dirHandleSrc.entries())
-			if (entry.kind === "file" && /\.(html|css|js)$/i.test(name))
+			if (entry.kind === "file" && /\.(html|css|js|py)$/i.test(name))
 				out[name] = await (await entry.getFile()).text();
 		return out;
 	};
@@ -575,7 +575,7 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 		const studentDir = await anonDir.getDirectoryHandle(sid);
 		for await (const [name, entry] of studentDir.entries()) {
 			if (entry.kind !== "file") continue;
-			if (/\.(html|css|js)$/i.test(name))
+			if (/\.(html|css|js|py)$/i.test(name))
 				studentFiles[name] = await (await entry.getFile()).text();
 		}
 		for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {

@@ -178,7 +178,7 @@ class ExcelReportMixin:
                     sheet.cell(row=cur, column=col_).comment = c
 
             if code_not_found:
-                c = Comment('No HTML/CSS/JS files found in submission', 'sim_check')
+                c = Comment('No code files found in submission', 'sim_check')
                 c.width = 400; c.height = 80
                 sheet.cell(row=cur, column=4).comment = c
                 sheet.cell(row=cur, column=4).font = Font(name='Segoe UI Emoji')
@@ -285,7 +285,7 @@ class ExcelReportMixin:
             return ('', '', [])
         inc_vals    = []
         teacher_agg: Counter = Counter()
-        for ext in ['.html', '.css', '.js']:
+        for ext in ['.html', '.css', '.js', '.py']:
             fd = data['files_compared'].get(ext)
             if not fd or fd.get('status') != 'success':
                 continue

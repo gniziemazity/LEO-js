@@ -54,7 +54,7 @@ except ImportError:
 
 IDEAL_FILE = "diff_marks_ideal.json"
 LABELS = ("missing", "extra", "ghost_extra")
-CODE_EXTS = (".html", ".htm", ".css", ".js")
+CODE_EXTS = (".html", ".htm", ".css", ".js", ".py")
 
 METHOD_LABELS = {
     "leo_star":  "LEO*",

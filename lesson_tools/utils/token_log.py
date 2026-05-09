@@ -17,7 +17,7 @@ from .similarity_measures import (
 from .lv_editor import replay_with_timestamps_all, reconstruct_all_with_ghosts
 
 
-_FILE_EXTS = (".js", ".css", ".html", ".htm")
+_FILE_EXTS = (".js", ".css", ".html", ".htm", ".py")
 
 
 def _build_file_timeline(events: list) -> list:

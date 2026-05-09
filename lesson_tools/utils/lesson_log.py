@@ -10,6 +10,7 @@ class LessonLogData:
     code_inserts: list
     interactions: list
     session_start: int
+    lesson_file: str | None = None
 
 
 def load_lesson_log(project_dir: Path) -> tuple[LessonLogData | None, str | None]:
@@ -46,6 +47,7 @@ def load_lesson_log(project_dir: Path) -> tuple[LessonLogData | None, str | None
             code_inserts=code_inserts,
             interactions=interactions,
             session_start=data['sessionStart'],
+            lesson_file=data.get('lessonFile'),
         )
         msg = (
             f'  Loaded lesson log: {json_files[0].name} '

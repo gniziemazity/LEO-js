@@ -29,7 +29,8 @@ async function _simReadImageUris(pathMap) {
 	return imageUris;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+	await window.LanguageProfiles.initProfiles();
 	vis = new LogVisualizer();
 
 	const landing = document.getElementById("lv-landing");
@@ -57,14 +58,20 @@ document.addEventListener("DOMContentLoaded", () => {
 			if (logData && logTs >= storedTs) {
 				loadFromData(logData);
 			} else if (parsed) {
-				const { filePath, events } = parsed;
+				const { filePath, events, lessonFile } = parsed;
 				let imageUris = {};
 				try {
 					const raw = localStorage.getItem("dashboard_sim_images");
 					if (raw) imageUris = JSON.parse(raw);
 				} catch {}
 				const micro = expandEvents(events || []);
-				loadFromData({ filePath, micro, error: null, imageUris });
+				loadFromData({
+					filePath,
+					micro,
+					error: null,
+					imageUris,
+					lessonFile,
+				});
 			} else if (logData) {
 				loadFromData(logData);
 			}
@@ -115,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							micro,
 							error: null,
 							imageUris,
+							lessonFile: data?.lessonFile || null,
 						});
 						loaded = true;
 						break;
@@ -146,7 +154,12 @@ document.addEventListener("DOMContentLoaded", () => {
 			const json = JSON.parse(await file.text());
 			const events = json.events || [];
 			const micro = expandEvents(events);
-			loadFromData({ filePath: file.name, micro, error: null });
+			loadFromData({
+				filePath: file.name,
+				micro,
+				error: null,
+				lessonFile: json?.lessonFile || null,
+			});
 		} catch (e) {
 			if (e.name !== "AbortError") alert("Failed to load log: " + e.message);
 		}

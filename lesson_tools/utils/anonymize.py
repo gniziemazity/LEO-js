@@ -260,7 +260,7 @@ TEXT_EXTENSIONS = {
 DOCX_EXTENSIONS = {".docx"}
 PDF_EXTENSIONS = {".pdf"}
 
-VALID_STUDENT_EXTENSIONS = {'.html', '.htm', '.css', '.js', '.docx', '.pdf'}
+VALID_STUDENT_EXTENSIONS = {'.html', '.htm', '.css', '.js', '.py', '.docx', '.pdf'}
 
 def process_file(src_path, dst_path, student_data, all_student_numbers):
     ext = os.path.splitext(src_path)[1].lower()
