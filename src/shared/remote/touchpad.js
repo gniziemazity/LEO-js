@@ -13,8 +13,8 @@ let twoFingerStartX = 0;
 let twoFingerTapStart = 0;
 let twoFingerMoved = false;
 let wasTwoFinger = false;
-let touchpadMode = "mouse"; // "mouse" or "keyboard"
-let touchpadSide = "right"; // "right" or "left"
+let touchpadMode = "mouse";
+let touchpadSide = "right";
 let scrollAnchorId = null;
 let scrollAccum = 0;
 

@@ -1,9 +1,5 @@
 "use strict";
 
-// Truth-mode controls panel: action buttons (Missing/Extra/Ghost/Pair/Delete)
-// docked to the top-right of the active token / multi-token bounding box,
-// and the action dispatcher that mutates the working truth doc.
-
 let _truthCurrentSel = null;
 let _truthCurrentTokens = null;
 let _truthCurrentExisting = null;

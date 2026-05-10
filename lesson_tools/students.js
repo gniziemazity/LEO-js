@@ -25,7 +25,6 @@ const UI_COLORS = {
 
 const landingEl = document.getElementById("landing");
 const mainEl = document.getElementById("main");
-const loadingEl = document.getElementById("loading");
 const lessonNameEl = document.getElementById("lesson-name");
 const anonSelectEl = document.getElementById("anon-select");
 
@@ -85,10 +84,6 @@ async function _tryAutoLoad() {
 		document.getElementById("landing-buttons").prepend(btn);
 	}
 })();
-
-function showLoading(on) {
-	loadingEl.style.display = on ? "flex" : "none";
-}
 
 async function openFolderPicker() {
 	try {
@@ -364,7 +359,7 @@ function warnLikelyAstralTruncation(hits, repairs) {
 
 function findCol(headers, re) {
 	const idx = headers.findIndex((h) => re.test(h));
-	return idx; // -1 if not found
+	return idx;
 }
 
 function parseSimilarityEvents(descText) {
@@ -397,11 +392,10 @@ function renderTable() {
 	thead.innerHTML = "";
 	tbody.innerHTML = "";
 
-	const showId = true; // ID always shown
+	const showId = true;
 	const showName = _anonMode !== "id";
 	const showNum = _anonMode === "";
 
-	// Build column specs
 	const specs = [];
 	if (showId) specs.push({ cls: "col-id", label: "ID" });
 	if (showName) specs.push({ cls: "col-name", label: "Name" });

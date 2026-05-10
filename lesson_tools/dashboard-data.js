@@ -20,7 +20,6 @@ function processData(raw) {
 	const charEvents = events.filter((e) => e.char != null);
 	const devChars = charEvents.filter((e) => e._editor === "dev");
 	const allCharsCount = charEvents.length;
-	// Forward-progress chars only: exclude dev editor and delete chars
 	const mainCharEvents = charEvents.filter(
 		(e) => e._editor !== "dev" && !DELETE_CHARS.has(e.char),
 	);
@@ -77,9 +76,7 @@ function processData(raw) {
 			(e) => !e._virtualType && e._editor !== "dev",
 		);
 		if (devCharEvs.length > 0 && nonDevCharEvs.length > 0) {
-			// Dev-only bar
 			bursts.push(makeBurst(devCharEvs));
-			// Non-dev bar: retains virtual events (anchors, moves, inserts)
 			const nonDevEvs = b.evs
 				.filter((e) => e._virtualType || e._editor !== "dev")
 				.sort((a, b_) => a.timestamp - b_.timestamp);

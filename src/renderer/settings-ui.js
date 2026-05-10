@@ -72,7 +72,6 @@ class SettingsUI {
 	}
 
 	loadIntoModal(settings) {
-		// Platform setting
 		document.getElementById("platformSelect").value =
 			settings.platform || "windows";
 
@@ -167,8 +166,9 @@ class SettingsUI {
 					"questionCommentColor",
 				).value,
 				imageBlockColor: document.getElementById("imageBlockColor").value,
-				codeInsertBlockColor: document.getElementById("codeInsertBlockColor")
-					.value,
+				codeInsertBlockColor: document.getElementById(
+					"codeInsertBlockColor",
+				).value,
 				moveToBlockColor: document.getElementById("moveToBlockColor").value,
 				moveToTextColor: document.getElementById("moveToTextColor").value,
 				commentActive: document.getElementById("commentActiveColor").value,

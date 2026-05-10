@@ -1,8 +1,5 @@
 "use strict";
 
-// Truth-mode entry: shared module state, enable/listeners, undo/redo,
-// keyboard + mouseup handlers, mark/token CRUD, group computation, DOMContentLoaded glue.
-
 let _truthEditMode = false;
 let _truthControlsEl = null;
 let _truthPending = null;

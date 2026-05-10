@@ -1,8 +1,5 @@
 "use strict";
 
-// Truth-mode I/O and previews: timestamp backfill, JSON build/download/copy,
-// whitespace-aware apply-to-student, and Test/Summary float windows.
-
 function _truthBackfillTimestamps(teacherFiles, studentFiles) {
 	const leoStar = _allMarks[""];
 	if (!leoStar) return;

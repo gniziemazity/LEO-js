@@ -50,7 +50,9 @@ class HotkeyManager {
 		});
 
 		globalShortcut.register(shortcuts.toggleTransparency, () => {
-			state.mainWindow.webContents.send("toggle-transparency-event");
+			if (!state.mainWindow) return;
+			const current = state.mainWindow.getOpacity();
+			state.mainWindow.setOpacity(current < 0.9 ? 1.0 : 0.5);
 		});
 
 		const toggleWindowKey = shortcuts.toggleWindow;

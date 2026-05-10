@@ -1,8 +1,5 @@
 "use strict";
 
-// Truth-mode overlays: bg/active/hover rects, group-rect cache, group hover handler,
-// click highlights, and SVG pair connectors.
-
 function _truthEnsurePaneOverlays(pane) {
 	if (!pane) return null;
 	let bg = pane.querySelector(":scope > .truth-bg-layer");

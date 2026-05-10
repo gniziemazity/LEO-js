@@ -1,8 +1,5 @@
 "use strict";
 
-// LogVisualizer: orchestrates playback, action handling, VS Code auto-features,
-// preview iframe, event log, seekbar, and settings modal.
-
 class LogVisualizer {
 	constructor() {
 		this.micro = [];

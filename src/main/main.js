@@ -883,12 +883,6 @@ ipcMain.on(
 			state.mainWindow.webContents.send("auto-typing-finished");
 	},
 );
-ipcMain.on("toggle-transparency", () => {
-	if (!state.mainWindow) return;
-	const current = state.mainWindow.getOpacity();
-	state.mainWindow.setOpacity(current < 0.9 ? 1.0 : 0.5);
-});
-
 ipcMain.handle("show-save-dialog", async () => {
 	const result = await dialog.showSaveDialog(state.mainWindow, {
 		filters: [{ name: "JSON", extensions: ["json"] }],
@@ -996,10 +990,8 @@ ipcMain.on("save-settings", (event, settings) => {
 		hotkeyManager.registerTypingHotkeys();
 	}
 
-	// update keyboard handler platform settings
 	keyboardHandler.updatePlatformSettings();
 
-	// broadcast settings to clients
 	broadcastServer.updateSettings(settings);
 	createApplicationMenu();
 	event.reply("settings-saved", settingsManager.getAll());
@@ -1012,7 +1004,6 @@ ipcMain.on("reset-settings", (event) => {
 		hotkeyManager.registerTypingHotkeys();
 	}
 
-	// update keyboard handler platform settings
 	keyboardHandler.updatePlatformSettings();
 
 	event.reply("settings-loaded", settingsManager.getAll());

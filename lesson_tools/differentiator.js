@@ -1,9 +1,5 @@
 "use strict";
 
-// Differentiator entry: shared module state, mode select, alignment-borrow, JSON persistence,
-// DOMContentLoaded boot, file-input loading, save/restore, title score,
-// line-padding toggle, and preview iframe.
-
 let _diffMode = null;
 let _teacherFiles = null;
 let _studentFiles = null;

@@ -51,7 +51,11 @@ const qrModalManager = new QRModalManager();
 let pendingQuestion = null;
 
 function applyMode(mode) {
-	document.body.classList.remove("mode-record", "mode-classroom", "mode-scientific");
+	document.body.classList.remove(
+		"mode-record",
+		"mode-classroom",
+		"mode-scientific",
+	);
 	document.body.classList.add(`mode-${mode}`);
 }
 
@@ -172,9 +176,6 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("global-step-backward", () => cursorManager.stepBackward());
 	ipcRenderer.on("global-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
-	ipcRenderer.on("toggle-transparency-event", () =>
-		ipcRenderer.send("toggle-transparency"),
-	);
 	ipcRenderer.on("settings-loaded", (e, s) => {
 		settingsUI.applySettings(s);
 		applyMode(s.mode || "record");

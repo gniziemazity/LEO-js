@@ -7,10 +7,6 @@ function xToTs(x, L) {
 	return L.timeMin + ((x - L.M.left) / L.plotW) * (L.timeMax - L.timeMin);
 }
 
-// Y axes per chart:
-// top chart    — keystroke counts (linear)
-// middle chart — typing rate (log scale)
-// bottom chart — student follow % / rate
 const RATE_Y_LO = 5,
 	RATE_Y_HI = 1500;
 function rateToY(r, L) {

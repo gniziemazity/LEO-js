@@ -31,8 +31,6 @@ class UIManager {
 			specialKeysContainer: document.getElementById(
 				"special-keys-container",
 			),
-			askQuestionBtn: document.getElementById("askQuestionBtn"),
-			helpBtn: document.getElementById("helpBtn"),
 		};
 	}
 

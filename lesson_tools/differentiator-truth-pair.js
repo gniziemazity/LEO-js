@@ -1,7 +1,5 @@
 "use strict";
 
-// Pair-mode floaters, DOM/bbox helpers, hit-testing, mousemove, and pair-state machine.
-
 function _truthEnsureFloater(id, init) {
 	if (_truthFloaters.has(id)) return _truthFloaters.get(id);
 	const el = document.createElement("div");

@@ -52,6 +52,11 @@ async function _idbSet(key, value, dbName = "lesson_tools") {
 	} catch {}
 }
 
+function showLoading(on) {
+	const el = document.getElementById("loading");
+	if (el) el.style.display = on ? "flex" : "none";
+}
+
 const DIFF_MARKS_FILES = {
 	"": "diff_marks_leo_star.json",
 	leo: "diff_marks_leo.json",

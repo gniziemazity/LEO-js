@@ -36,7 +36,7 @@ class SettingsManager {
 			hotkeyMode: "single-key",
 			autoTypingSpeed: 50,
 			touchpadSensitivity: 3,
-			touchpadSide: "right", // for right / left handed people
+			touchpadSide: "right",
 		};
 
 		this.settings = this.load();

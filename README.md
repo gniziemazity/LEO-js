@@ -68,8 +68,8 @@ When a special comment block is reached, LEO opens a dedicated floating window:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/leo.git
-cd leo
+git clone https://github.com/gniziemazity/LEO-js.git
+cd LEO-js
 
 # Install dependencies
 npm install

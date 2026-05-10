@@ -1,8 +1,5 @@
 "use strict";
 
-// Simulator model: keylog event expansion, TextState (text-buffer model with
-// cursor/selection/anchors), VSCodeSettings (auto-close brackets/quotes/tags).
-
 const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 

@@ -1,8 +1,5 @@
 "use strict";
 
-// Simulator entry: top-level vis instance, IDB persistence, log/folder pickers,
-// and DOMContentLoaded boot.
-
 let vis;
 
 const _SIM_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;

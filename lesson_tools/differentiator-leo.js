@@ -1,8 +1,5 @@
 "use strict";
 
-// LEO context-vector math, tooltip rendering, mark/insert-anchor highlighting,
-// and the document-level mousedown / contextmenu listeners that drive the tooltip.
-
 function _contextSlice(inst, side) {
 	const assignments = _currentMarksEntry?.leo_assignments;
 	if (!assignments || !inst) return null;

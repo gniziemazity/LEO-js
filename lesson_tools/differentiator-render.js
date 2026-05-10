@@ -1,8 +1,5 @@
 "use strict";
 
-// Differentiator render layer: panels/tabs, line-aligned vs flat code, mark colorization,
-// LEO ghost-blob rendering, and DIFF_LABEL_COLORS palette.
-
 const DIFF_LABEL_COLORS = {
 	missing: _cssVar("--clr-mark-missing"),
 	comment: _cssVar("--clr-mark-comment"),

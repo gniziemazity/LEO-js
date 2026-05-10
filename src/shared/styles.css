@@ -1207,8 +1207,6 @@ body.side-left .i-modal {
 	color: rgba(0, 0, 0, 0.35);
 }
 
-
-
 .neon-frame {
 	position: absolute;
 	inset: 32px;
@@ -1251,8 +1249,6 @@ body.side-left .i-modal {
 	background: rgba(220, 50, 50, 0.75);
 	color: #fff;
 }
-
-
 
 body.image-view {
 	--bg: #bbdefb;
@@ -1384,8 +1380,6 @@ webview {
 #pinBtn:hover::after {
 	opacity: 1;
 }
-
-
 
 body.question-view {
 	--bg: #facaca;
@@ -1526,11 +1520,9 @@ body.web-view .neon-frame {
 	-webkit-app-region: drag;
 }
 
-/* Platform setting hint */
 .setting-hint {
-   font-size: 11px;
-   color: #666;
-   margin-top: 5px;
-   font-style: italic;
+	font-size: 11px;
+	color: #666;
+	margin-top: 5px;
+	font-style: italic;
 }
-

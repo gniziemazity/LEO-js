@@ -49,10 +49,6 @@ function rotatedLabel(ctx, x, y, text, color) {
 	ctx.restore();
 }
 
-function showLoading(on) {
-	document.getElementById("loading").style.display = on ? "flex" : "none";
-}
-
 function resolveInteractionStudent(field) {
 	if (typeof field === "number") {
 		return _studentIdMap?.[field] || null;

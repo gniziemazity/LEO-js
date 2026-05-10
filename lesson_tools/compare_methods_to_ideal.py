@@ -45,7 +45,7 @@ from tkinter import filedialog
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 
 try:
-    import pandas as pd  # noqa: F401
+    import pandas as pd
 except ImportError:
     print("error: pandas + openpyxl required. pip install pandas openpyxl",
           file=sys.stderr)
