@@ -28,6 +28,22 @@ const mainEl = document.getElementById("main");
 const lessonNameEl = document.getElementById("lesson-name");
 const anonSelectEl = document.getElementById("anon-select");
 
+lessonNameEl.title = "Open dashboard for this lesson";
+lessonNameEl.addEventListener("click", async () => {
+	if (!_dirHandle) return;
+	try {
+		const perm = await _dirHandle.requestPermission({ mode: "read" });
+		if (perm !== "granted") {
+			alert("Permission denied for the lesson folder.");
+			return;
+		}
+		await _idbSet("lastDir", _dirHandle);
+		window.open("dashboard.html?autoload=1", "_blank");
+	} catch (e) {
+		alert("Could not open dashboard: " + e.message);
+	}
+});
+
 (function () {
 	const qs = new URLSearchParams(location.search);
 	const anon = qs.get("anon") || "";
@@ -52,6 +68,7 @@ async function _tryAutoLoad() {
 	const files = [];
 	await readDirHandle(handle, "", _allFiles, files, { lowercaseKeys: true });
 	lessonNameEl.textContent = handle.name;
+	lessonNameEl.classList.add("clickable");
 	document.title = "Students – " + handle.name;
 	await loadXlsxFiles(files);
 	return true;
@@ -101,6 +118,7 @@ async function openFolderPicker() {
 		});
 		const name = dirHandle.name;
 		lessonNameEl.textContent = name;
+		lessonNameEl.classList.add("clickable");
 		document.title = "Students – " + name;
 		await loadXlsxFiles(files);
 	} catch (e) {

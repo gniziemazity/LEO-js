@@ -252,7 +252,8 @@ function _truthOnKeyDown(ev) {
 	) {
 		if (!existing.some((m) => m.label !== "comment")) return;
 		ev.preventDefault();
-		_truthOnControlAction("del-all", sel, tokens, existing);
+		const action = ev.shiftKey ? "del-all-with-pairs" : "del-all";
+		_truthOnControlAction(action, sel, tokens, existing);
 		return;
 	}
 
@@ -275,7 +276,7 @@ function _truthOnKeyDown(ev) {
 		nonCommentExisting.every((m) => !m.paired_with);
 	const canPair =
 		((allMissing || allGhostExtra) && allUnpaired) ||
-		(allExtra && single && allUnpaired);
+		(allExtra && allUnpaired);
 	const hasAnyPaired = nonCommentExisting.some((m) => m.paired_with);
 
 	const fullyLabeled = (label) =>
@@ -310,12 +311,7 @@ function _truthOnKeyDown(ev) {
 		} else if (sel.side === "student") {
 			if (allGhostExtra && allUnpaired) {
 				_truthOnControlAction("set-pair", sel, tokens, existing);
-			} else if (
-				allExtra &&
-				fullyLabeled("extra") &&
-				single &&
-				allUnpaired
-			) {
+			} else if (allExtra && fullyLabeled("extra") && allUnpaired) {
 				_truthOnControlAction("set-pair", sel, tokens, existing);
 			} else if (existing.length === 0 || allExtra) {
 				_truthOnControlAction("set-extra", sel, tokens, existing);
@@ -499,19 +495,34 @@ function _truthSelectionColor(marks) {
 
 function _truthSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
 	const snapped = _truthSnapToTokens(side, file, rawLo, rawHi);
-	const tokens = _truthTokensInRange(side, file, snapped.lo, snapped.hi);
-	const existing = _truthFindMarks(side, file, snapped.lo, snapped.hi);
+	let tokens = _truthTokensInRange(side, file, snapped.lo, snapped.hi);
+	let existing = _truthFindMarks(side, file, snapped.lo, snapped.hi);
+	let lo = snapped.lo;
+	let hi = snapped.hi;
+	if (
+		!tokens.length &&
+		!existing.length &&
+		_truthIsAllWhitespace(side, file, rawLo, rawHi)
+	) {
+		const wsTokens = _truthWhitespaceTokensInRange(side, file, rawLo, rawHi);
+		if (wsTokens.length) {
+			tokens = wsTokens;
+			lo = wsTokens[0].start;
+			hi = wsTokens[wsTokens.length - 1].end;
+			existing = _truthFindMarks(side, file, lo, hi);
+		}
+	}
 	if (!tokens.length && !existing.length) {
 		_truthHideControls();
 		return false;
 	}
-	_truthApplyClickHighlights(side, file, snapped.lo, snapped.hi);
+	_truthApplyClickHighlights(side, file, lo, hi);
 	_truthShowControls(
 		{
 			side,
 			file,
-			lo: snapped.lo,
-			hi: snapped.hi,
+			lo,
+			hi,
 			rawLo,
 			rawHi,
 			tokens,
@@ -525,6 +536,27 @@ function _truthSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
 }
 
 function _truthSelectInsertAnchor(anchorEl, x, y) {
+	const moveSourcePosStr = anchorEl.getAttribute(
+		"data-insert-anchor-move-source-pos",
+	);
+	if (moveSourcePosStr != null) {
+		const sFile = anchorEl.getAttribute(
+			"data-insert-anchor-move-source-file",
+		);
+		const sPos = parseInt(moveSourcePosStr, 10);
+		if (sFile && Number.isFinite(sPos)) {
+			const studentMark = _truthFileMarks("student", sFile).find(
+				(m) => m.label === "extra" && m.start === sPos && m.move_to,
+			);
+			if (studentMark) {
+				const range = _truthFindGroupRange("student", sFile, sPos);
+				const rawLo = range ? range.lo : studentMark.start;
+				const rawHi = range ? range.hi : studentMark.end;
+				_truthSelectAndShow("student", sFile, rawLo, rawHi, x, y);
+				return;
+			}
+		}
+	}
 	const tFile = anchorEl.getAttribute("data-insert-anchor-teacher-file");
 	const tPosStr = anchorEl.getAttribute("data-insert-anchor-teacher-pos");
 	const tPos = tPosStr != null ? parseInt(tPosStr, 10) : NaN;
@@ -742,6 +774,32 @@ function _truthTokensInRange(side, file, lo, hi) {
 	);
 }
 
+function _truthIsAllWhitespace(side, file, lo, hi) {
+	if (lo >= hi) return false;
+	const text = _truthSrcText(side, file);
+	if (hi > text.length) return false;
+	return /^\s+$/.test(text.slice(lo, hi));
+}
+
+function _truthWhitespaceTokensInRange(side, file, lo, hi) {
+	const text = _truthSrcText(side, file);
+	if (lo >= hi || hi > text.length) return [];
+	const out = [];
+	const re = /\s+/g;
+	re.lastIndex = lo;
+	let m;
+	while ((m = re.exec(text)) !== null) {
+		if (m.index >= hi) break;
+		const s = Math.max(m.index, lo);
+		const e = Math.min(m.index + m[0].length, hi);
+		if (s < e && !_truthIsCommentPos(side, file, s)) {
+			out.push({ start: s, end: e, token: text.slice(s, e) });
+		}
+		if (re.lastIndex >= hi) break;
+	}
+	return out;
+}
+
 function _truthMarks() {
 	return _truthWorking[_truthWorkingKey()] ?? null;
 }
@@ -769,7 +827,16 @@ function _truthFindMarks(side, file, lo, hi) {
 function _truthAddMark(side, file, label, tokens, opts) {
 	const arr = _truthFileMarks(side, file);
 	const { insertAtPos } = opts || {};
+	const commentSpans =
+		label === "comment"
+			? null
+			: new Set(
+					arr
+						.filter((m) => m.label === "comment")
+						.map((m) => `${m.start}-${m.end}`),
+				);
 	for (const t of tokens) {
+		if (commentSpans && commentSpans.has(`${t.start}-${t.end}`)) continue;
 		const m = { token: t.token, label, start: t.start, end: t.end };
 		if (insertAtPos != null) m.insert_at = { file, pos: insertAtPos };
 		arr.push(m);
@@ -828,6 +895,7 @@ function _truthSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
 		label: "missing",
 	};
 	delete missingMark.insert_at;
+	delete extraMark.move_to;
 }
 
 function _clearSelectionPreservingScroll() {
@@ -883,9 +951,11 @@ function _truthGroupKey(m) {
 		return `m|free`;
 	}
 	if (m.label === "extra") {
-		return m.paired_with
-			? `er|${m.paired_with.file}|${m.paired_with.start}`
-			: `e`;
+		if (m.paired_with) {
+			return `er|${m.paired_with.file}|${m.paired_with.start}`;
+		}
+		if (m.move_to) return `em|${m.move_to.file}|${m.move_to.pos}`;
+		return `e`;
 	}
 	if (m.label === "ghost_extra") return `ge`;
 	return `?|${m.label}`;
@@ -902,11 +972,17 @@ function _truthMakeGroup(side, file, m) {
 	} else if (m.label === "ghost_extra") {
 		g.kind = "ghost_extra";
 	} else {
-		g.kind = m.paired_with ? "extra-replace" : "extra";
 		if (m.paired_with) {
+			g.kind = "extra-replace";
 			g.pairFile = m.paired_with.file;
 			g.pairLo = m.paired_with.start;
 			g.pairHi = m.paired_with.end;
+		} else if (m.move_to) {
+			g.kind = "extra-move";
+			g.moveFile = m.move_to.file;
+			g.movePos = m.move_to.pos;
+		} else {
+			g.kind = "extra";
 		}
 	}
 	return g;
@@ -938,6 +1014,15 @@ function _truthGroupMarks() {
 						if (tm.paired_with) continue;
 						const ia = tm.insert_at;
 						if (ia && ia.file === file) insertPositions.add(ia.pos);
+					}
+				}
+				const sFiles = t.student_files || {};
+				for (const sMarks of Object.values(sFiles)) {
+					for (const sm of sMarks || []) {
+						if (sm.label !== "extra") continue;
+						if (sm.paired_with) continue;
+						const mt = sm.move_to;
+						if (mt && mt.file === file) insertPositions.add(mt.pos);
 					}
 				}
 			}
@@ -1005,7 +1090,10 @@ function _truthGroupMarks() {
 		}
 	}
 
-	groups.sort((a, b) => (a.side > b.side ? 1 : -1) || a.lo - b.lo);
+	groups.sort((a, b) => {
+		if (a.side !== b.side) return a.side > b.side ? 1 : -1;
+		return a.lo - b.lo;
+	});
 	return groups;
 }
 

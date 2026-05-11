@@ -103,7 +103,9 @@ DATA_ROWS = slice(1, 85)
 
 
 def load_data(path):
-    df = pd.read_excel(path, engine="xlrd", header=None)
+    ext = os.path.splitext(path)[1].lower()
+    engine = "openpyxl" if ext == ".xlsx" else "xlrd"
+    df = pd.read_excel(path, engine=engine, header=None)
     return df.iloc[DATA_ROWS].copy().reset_index(drop=True)
 
 
@@ -971,7 +973,7 @@ def main():
     root.attributes("-topmost", True)
 
     path = filedialog.askopenfilename(
-        title="Select the Grades .xls file",
+        title="Select the Grades .xls or Overview .xlsx file",
         filetypes=[("Excel files", "*.xls *.xlsx"), ("All files", "*.*")],
     )
 

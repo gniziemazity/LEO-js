@@ -15,6 +15,9 @@ let _linePaddingEnabled =
 	localStorage.getItem("diff-line-padding") === "off"
 		? false
 		: true;
+let _lineNumbersEnabled =
+	typeof localStorage !== "undefined" &&
+	localStorage.getItem("diff-line-numbers") === "on";
 
 const DIFF_MODE_OPTIONS = [
 	{ key: "ideal", label: "Ideal" },
@@ -245,6 +248,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
 	_refreshLinePaddingButton();
+	_refreshLineNumbersButton();
+	_applyLineNumbersClass();
 
 	const expectAutoLoad =
 		!!keyParam ||
@@ -473,13 +478,16 @@ function _computeFollowScore(marksEntry) {
 		}
 	}
 	let nGhostExtra = 0;
+	let nExtraUnpaired = 0;
 	for (const marks of Object.values(marksEntry.student_files || {})) {
 		for (const m of marks || []) {
 			if (m.label === "ghost_extra") nGhostExtra++;
+			else if (m.label === "extra" && !m.paired_with) nExtraUnpaired++;
 		}
 	}
 	const nFound = total - nMissing;
-	const raw = Math.max(0, (nFound - nGhostExtra) / total) * 100;
+	const raw =
+		Math.max(0, (nFound - nGhostExtra - nExtraUnpaired) / total) * 100;
 	return Math.round(raw * 10) / 10;
 }
 
@@ -498,6 +506,30 @@ function _refreshLinePaddingButton() {
 	if (!btn) return;
 	btn.classList.toggle("is-toggle-on", _linePaddingEnabled);
 	btn.textContent = _linePaddingEnabled ? "⇲ Padding" : "⇱ Padding";
+}
+
+function _refreshLineNumbersButton() {
+	const btn = document.getElementById("btn-line-numbers");
+	if (!btn) return;
+	btn.classList.toggle("is-toggle-on", _lineNumbersEnabled);
+	btn.textContent = _lineNumbersEnabled ? "Line №" : "Line №";
+}
+
+function _applyLineNumbersClass() {
+	if (typeof document === "undefined") return;
+	document.body.classList.toggle("show-line-numbers", _lineNumbersEnabled);
+}
+
+function toggleLineNumbers() {
+	_lineNumbersEnabled = !_lineNumbersEnabled;
+	try {
+		localStorage.setItem(
+			"diff-line-numbers",
+			_lineNumbersEnabled ? "on" : "off",
+		);
+	} catch {}
+	_refreshLineNumbersButton();
+	_applyLineNumbersClass();
 }
 
 function toggleLinePadding() {

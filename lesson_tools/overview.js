@@ -142,19 +142,33 @@ async function loadCourse(rootHandle) {
 
 	let gradesFile = null,
 		pyStatsFile = null;
+	let overviewFile = null;
 	const gradesCandidates = [];
 	for await (const [name, entry] of rootHandle.entries()) {
 		if (entry.kind !== "file") continue;
-		if (/^grades\.xlsx?$/i.test(name))
+		if (/^overview\.xlsx?$/i.test(name)) {
+			overviewFile = await entry.getFile();
+		} else if (/^grades\.xlsx?$/i.test(name)) {
 			gradesCandidates.unshift(await entry.getFile());
-		else if (/^grades.*\.xlsx?$/i.test(name))
+		} else if (/^grades.*\.xlsx?$/i.test(name)) {
 			gradesCandidates.push(await entry.getFile());
+		}
 		if (/^grades_stats\.json$/i.test(name))
 			pyStatsFile = await entry.getFile();
 	}
-	gradesFile = gradesCandidates[0] ?? null;
+	const fallbackGrades = gradesCandidates[0] ?? null;
+	if (overviewFile && fallbackGrades) {
+		const useOverview = window.confirm(
+			`Both ${overviewFile.name} and ${fallbackGrades.name} were found.\n\n` +
+				`OK    = load ${overviewFile.name} (auto-built)\n` +
+				`Cancel = load ${fallbackGrades.name} (master grades)`,
+		);
+		gradesFile = useOverview ? overviewFile : fallbackGrades;
+	} else {
+		gradesFile = overviewFile || fallbackGrades;
+	}
 	if (!gradesFile) {
-		alert("No Grades.xls / Grades.xlsx found.");
+		alert("No Grades.xls / Grades.xlsx / Overview.xlsx found.");
 		return;
 	}
 
@@ -328,6 +342,7 @@ function renderTable() {
 		th.className = "grp";
 		if (sep) th.classList.add("asn-sep");
 		r1.appendChild(th);
+		return th;
 	};
 	const col = (label, cls = "", sep = false) => {
 		const th = document.createElement("th");
@@ -345,14 +360,14 @@ function renderTable() {
 
 	for (const a of ASSIGNMENTS) {
 		if (a.follow != null) {
-			grp(a.name, 5, true);
+			attachLessonGroup(grp(a.name, 5, true), a);
 			col("Follow%", "lhd", true);
 			col("Obs", "lhd");
 			col("Grade", "ahd");
 			col("Status", "ahd");
 			col("Obs", "ahd");
 		} else {
-			grp(a.name, 3, true);
+			attachLessonGroup(grp(a.name, 3, true), a);
 			col("Grade", "ahd", true);
 			col("Status", "ahd");
 			col("Obs", "ahd");
@@ -543,6 +558,26 @@ function findHandle(handles, name) {
 	for (const k of Object.keys(handles))
 		if (k.includes(nl) || nl.includes(k)) return k;
 	return null;
+}
+function attachLessonGroup(th, assignment) {
+	const key = findHandle(_lessonHandles, assignment.name);
+	if (!key) return;
+	const handle = _lessonHandles[key];
+	th.classList.add("clickable");
+	th.title = `Open ${assignment.name} dashboard`;
+	th.addEventListener("click", async () => {
+		try {
+			const perm = await handle.requestPermission({ mode: "read" });
+			if (perm !== "granted") {
+				alert(`Permission denied for "${assignment.name}" folder.`);
+				return;
+			}
+			await _idbSet("lastDir", handle);
+			window.open("dashboard.html?autoload=1", "_blank");
+		} catch (e) {
+			alert("Could not open dashboard: " + e.message);
+		}
+	});
 }
 async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	const sid = (student.id || "").trim();

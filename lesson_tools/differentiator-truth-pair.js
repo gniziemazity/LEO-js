@@ -276,6 +276,11 @@ function _truthFindMultiGroupRange(side, file, pos) {
 function _truthPairHitTest(info, ev, roles) {
 	const multiAnchor = roles.anchorMarks.length > 1;
 	const groupRange = _truthFindMultiGroupRange(info.side, info.file, info.pos);
+	const isExtraMoveContext = !!(roles.allExtra && info.side === "student");
+	const allowInsert = roles.allMissing || isExtraMoveContext;
+	const effectiveTargetLabels = isExtraMoveContext
+		? new Set()
+		: roles.wantedTargetLabels;
 
 	if (!multiAnchor) {
 		const winSel = window.getSelection();
@@ -296,7 +301,7 @@ function _truthPairHitTest(info, ev, roles) {
 					info.file,
 					Math.min(a.pos, b.pos),
 					Math.max(a.pos, b.pos),
-				).filter((m) => roles.wantedTargetLabels.has(m.label));
+				).filter((m) => effectiveTargetLabels.has(m.label));
 				if (inSelection.length)
 					return { kind: "mark", mark: inSelection[0] };
 			}
@@ -308,11 +313,11 @@ function _truthPairHitTest(info, ev, roles) {
 			info.pos,
 		);
 		if (existingHere) {
-			if (!roles.wantedTargetLabels.has(existingHere.label)) {
+			if (!effectiveTargetLabels.has(existingHere.label)) {
 				return { kind: "block" };
 			}
 			if (groupRange) return { kind: "block" };
-			if (roles.allMissing && ev) {
+			if (allowInsert && ev) {
 				const markEl = _truthFindMarkEl(info.side, existingHere, info.file);
 				if (markEl) {
 					const r = markEl.getBoundingClientRect();
@@ -341,7 +346,6 @@ function _truthPairHitTest(info, ev, roles) {
 		return { kind: "block" };
 	}
 
-	const allowInsert = roles.allMissing;
 	const tok = _truthTokenAtPos(info.side, info.file, info.pos);
 	if (!tok) {
 		return allowInsert
@@ -384,6 +388,9 @@ function _truthPairHitTest(info, ev, roles) {
 				edge: { x: bbox.right, y: bbox.top, h: bbox.height },
 			};
 		}
+	}
+	if (isExtraMoveContext) {
+		return { kind: "block" };
 	}
 	return { kind: "swap", token: tok, bbox: bbox || null };
 }
@@ -476,7 +483,7 @@ function _truthOnPairMouseMove(ev) {
 	}
 
 	const info = _truthClickPosition(ev);
-	if (!info || info.side !== roles.wantedSide) {
+	if (!info || !roles.wantedSides.has(info.side)) {
 		_truthHidePairLabel();
 		_truthClearPairHover();
 		return;
@@ -535,7 +542,9 @@ function _truthOnPairMouseMove(ev) {
 
 	_truthHidePairTokenHover();
 
-	if (!roles.allMissing) {
+	const showInsertArrow =
+		roles.allMissing || (roles.allExtra && info.side === "student");
+	if (!showInsertArrow) {
 		_truthHidePairArrow();
 		return;
 	}
@@ -695,8 +704,10 @@ function _truthPairAnchorRoles() {
 			anchorMarks: [],
 			anchorGhost: _truthPending.anchorGhost,
 			allMissing: false,
+			allExtra: false,
 			allGhostExtra: false,
 			wantedSide: "student",
+			wantedSides: new Set(["student"]),
 			wantedTargetLabels: new Set(["ghost_extra"]),
 			wantsStudentGhostExtra: true,
 		};
@@ -711,16 +722,23 @@ function _truthPairAnchorRoles() {
 		return {
 			anchorMarks,
 			allMissing: false,
+			allExtra: false,
 			allGhostExtra: true,
 			wantedSide: "teacher",
+			wantedSides: new Set(["teacher"]),
 			wantedTargetLabels: new Set(),
 			wantsGhost: true,
 		};
 	}
+	const primarySide = allMissing ? "student" : "teacher";
 	return {
 		anchorMarks,
 		allMissing,
-		wantedSide: allMissing ? "student" : "teacher",
+		allExtra,
+		wantedSide: primarySide,
+		wantedSides: allExtra
+			? new Set(["teacher", "student"])
+			: new Set([primarySide]),
 		wantedTargetLabels: allMissing
 			? new Set(["extra"])
 			: new Set(["missing"]),
@@ -733,7 +751,7 @@ function _truthApplyPendingPair(info, ev) {
 		_truthCancelPending();
 		return true;
 	}
-	if (info.side !== roles.wantedSide) return false;
+	if (!roles.wantedSides.has(info.side)) return false;
 
 	const intent = _truthPairHitTest(info, ev, roles);
 
@@ -772,6 +790,15 @@ function _truthApplyPendingPair(info, ev) {
 		for (const m of roles.anchorMarks) {
 			_truthClearPair(m, "teacher");
 			m.insert_at = { file: info.file, pos: intent.pos };
+		}
+	} else if (
+		intent.kind === "insert" &&
+		roles.allExtra &&
+		info.side === "student"
+	) {
+		for (const m of roles.anchorMarks) {
+			_truthClearPair(m, "student");
+			m.move_to = { file: info.file, pos: intent.pos };
 		}
 	} else {
 		_truthCancelPending();

@@ -27,6 +27,7 @@ from utils.token_log import (
     _split_tokens_by_comment,
     _structural_diff_summary,
     _structural_form,
+    _validate_truth_schema,
 )
 
 
@@ -394,15 +395,21 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
             1 for marks in diff['student_files'].values()
             for m in marks if m.get('label') == 'ghost_extra'
         )
+        n_extra_unpaired = sum(
+            1 for marks in diff['student_files'].values()
+            for m in marks
+            if m.get('label') == 'extra' and not m.get('paired_with')
+        )
         score_star = round(
-            max(0.0, (n_total - n_missing - n_ghost_extra) / n_total * 100), 1,
+            max(0.0, (n_total - n_missing - n_ghost_extra - n_extra_unpaired) / n_total * 100), 1,
         )
         self.assertLess(
             score_star, 100.0,
             'LEO* should be < 100% under shuffle: Phase 1 joint Hungarian '
             'with ghosts can pull real teachers out of pairing; '
             f'got {score_star} (n_missing={n_missing}, '
-            f'n_ghost_extra={n_ghost_extra}).',
+            f'n_ghost_extra={n_ghost_extra}, '
+            f'n_extra_unpaired={n_extra_unpaired}).',
         )
         self.assertGreater(
             score_star, 95.0,
@@ -527,7 +534,12 @@ def _group_marks_for_apply(
             return f"mi|{ia['file']}|{ia['pos']}" if ia else 'm|free'
         if lbl == 'extra':
             pw = m.get('paired_with')
-            return f"er|{pw['file']}|{pw['start']}" if pw else 'e'
+            if pw:
+                return f"er|{pw['file']}|{pw['start']}"
+            mt = m.get('move_to')
+            if mt:
+                return f"em|{mt['file']}|{mt['pos']}"
+            return 'e'
         if lbl == 'ghost_extra':
             return 'ge'
         return f"?|{lbl}"
@@ -585,11 +597,17 @@ def _group_marks_for_apply(
             elif lbl == 'ghost_extra':
                 cur['kind'] = 'ghost_extra'
             else:
-                cur['kind'] = 'extra-replace' if m.get('paired_with') else 'extra'
                 if m.get('paired_with'):
+                    cur['kind'] = 'extra-replace'
                     cur['pair_file'] = m['paired_with']['file']
                     cur['pair_lo'] = m['paired_with']['start']
                     cur['pair_hi'] = m['paired_with']['end']
+                elif m.get('move_to'):
+                    cur['kind'] = 'extra-move'
+                    cur['move_file'] = m['move_to']['file']
+                    cur['move_pos'] = m['move_to']['pos']
+                else:
+                    cur['kind'] = 'extra'
         if cur is not None:
             groups.append(cur)
     return groups
@@ -619,6 +637,7 @@ def _forward_whitespace(text: str, pos: int) -> str:
 def _align_whitespace(
     src_text: str, src_start: int, src_end: int,
     dst_text: str, dst_start: int, dst_end: int,
+    can_extend_left=None, can_extend_right=None,
 ):
     s_lead = _backward_whitespace(src_text, src_start)
     d_lead = _backward_whitespace(dst_text, dst_start)
@@ -629,11 +648,15 @@ def _align_whitespace(
     if s_lead and not d_lead:
         body = s_lead + body
     elif not s_lead and d_lead and '\n' not in d_lead:
-        a_start = dst_start - len(d_lead)
+        new_start = dst_start - len(d_lead)
+        if can_extend_left is None or can_extend_left(new_start):
+            a_start = new_start
     if s_trail and not d_trail:
         body = body + s_trail
     elif not s_trail and d_trail and '\n' not in d_trail:
-        a_end = dst_end + len(d_trail)
+        new_end = dst_end + len(d_trail)
+        if can_extend_right is None or can_extend_right(new_end):
+            a_end = new_end
     return body, a_start, a_end
 
 
@@ -682,7 +705,7 @@ def _truth_apply_to_student_text(
         for mg in contig:
             consumed_missings.add(id(mg))
 
-    ops = []
+    raw_ops = []
     order = 0
     for g in groups:
         if g['side'] == 'teacher' and g['kind'] == 'missing-insert' \
@@ -690,26 +713,92 @@ def _truth_apply_to_student_text(
             if id(g) in consumed_missings:
                 order += 1
                 continue
-            body, a, b = _align_whitespace(
-                t_text, g['lo'], g['hi'],
-                s_text, g['insert_pos'], g['insert_pos'],
-            )
-            ops.append([a, b, body, order])
+            raw_ops.append({
+                'kind': 'insert',
+                'orig_start': g['insert_pos'], 'orig_end': g['insert_pos'],
+                'src_start': g['lo'], 'src_end': g['hi'],
+                'body': t_text[g['lo']:g['hi']], 'order': order,
+            })
         elif g['side'] == 'student' and g['kind'] == 'extra-replace' \
                 and g['file'] == s_fname:
-            body, a, b = _align_whitespace(
-                t_text, g['pair_lo'], g['pair_hi'],
-                s_text, g['lo'], g['hi'],
-            )
-            ops.append([a, b, body, order])
+            raw_ops.append({
+                'kind': 'swap',
+                'orig_start': g['lo'], 'orig_end': g['hi'],
+                'src_start': g['pair_lo'], 'src_end': g['pair_hi'],
+                'body': t_text[g['pair_lo']:g['pair_hi']], 'order': order,
+            })
         elif g['side'] == 'student' and g['kind'] in ('extra', 'ghost_extra') \
                 and g['file'] == s_fname:
             if '_coalesced' in g:
                 _, _, body = g.pop('_coalesced')
-                ops.append([g['lo'], g['hi'], body, order])
+                raw_ops.append({
+                    'kind': 'coal',
+                    'orig_start': g['lo'], 'orig_end': g['hi'],
+                    'body': body, 'order': order,
+                })
             else:
-                ops.append([g['lo'], g['hi'], '', order])
+                raw_ops.append({
+                    'kind': 'del',
+                    'orig_start': g['lo'], 'orig_end': g['hi'],
+                    'body': '', 'order': order,
+                })
+        elif g['side'] == 'student' and g['kind'] == 'extra-move' \
+                and g['file'] == s_fname:
+            move_body = s_text[g['lo']:g['hi']]
+            raw_ops.append({
+                'kind': 'del',
+                'orig_start': g['lo'], 'orig_end': g['hi'],
+                'body': '', 'order': order,
+            })
+            if g.get('move_file') == s_fname:
+                order += 1
+                raw_ops.append({
+                    'kind': 'move-ins',
+                    'orig_start': g['move_pos'], 'orig_end': g['move_pos'],
+                    'body': move_body, 'order': order,
+                })
         order += 1
+
+    siblings = [(op['orig_start'], op['orig_end']) for op in raw_ops]
+    ops = []
+    for i, op in enumerate(raw_ops):
+        if op['kind'] in ('insert', 'swap'):
+            def _make_left(idx, lo_orig):
+                def can(new_start, idx=idx, lo_orig=lo_orig):
+                    if new_start >= lo_orig:
+                        return True
+                    for j, (b_lo, b_hi) in enumerate(siblings):
+                        if j == idx:
+                            continue
+                        if new_start <= b_lo <= lo_orig:
+                            return False
+                        if new_start <= b_hi <= lo_orig:
+                            return False
+                    return True
+                return can
+            def _make_right(idx, hi_orig):
+                def can(new_end, idx=idx, hi_orig=hi_orig):
+                    if new_end <= hi_orig:
+                        return True
+                    for j, (b_lo, b_hi) in enumerate(siblings):
+                        if j == idx:
+                            continue
+                        if hi_orig <= b_lo <= new_end:
+                            return False
+                        if hi_orig <= b_hi <= new_end:
+                            return False
+                    return True
+                return can
+            body, a, b = _align_whitespace(
+                t_text, op['src_start'], op['src_end'],
+                s_text, op['orig_start'], op['orig_end'],
+                can_extend_left=_make_left(i, op['orig_start']),
+                can_extend_right=_make_right(i, op['orig_end']),
+            )
+            ops.append([a, b, body, op['order']])
+        else:
+            ops.append([op['orig_start'], op['orig_end'],
+                        op['body'], op['order']])
     ops.sort(key=lambda o: (-o[0], -(o[1] - o[0]), -o[3]))
     text = s_text
     for start, end, body, _ in ops:
@@ -720,6 +809,14 @@ def _truth_apply_to_student_text(
                 body = ' ' + body
             if after and _ALNUM_RE.match(after) and _ALNUM_RE.match(body[-1]):
                 body = body + ' '
+        else:
+            before = text[start - 1] if start > 0 else ''
+            after = text[end] if end < len(text) else ''
+            if before and after and _ALNUM_RE.match(before) \
+                    and _ALNUM_RE.match(after):
+                deleted = text[start:end]
+                if any(not _ALNUM_RE.match(c) for c in deleted):
+                    body = ' '
         text = text[:start] + body + text[end:]
     return text
 
@@ -828,6 +925,178 @@ def _attach_correction_tests() -> None:
 
 
 _attach_correction_tests()
+
+
+def _curated_pair_teacher_to_student(t_name, t_marks, student_files):
+    refs = set()
+    for m in t_marks or []:
+        ia = m.get('insert_at')
+        if ia and ia.get('file'):
+            refs.add(ia['file'])
+        pw = m.get('paired_with')
+        if pw and not pw.get('ghost') and pw.get('file'):
+            refs.add(pw['file'])
+    if len(refs) == 1:
+        only = next(iter(refs))
+        if only in student_files:
+            return only
+    if t_name in student_files:
+        return t_name
+    t_ext = Path(t_name).suffix.lower()
+    same_ext = [n for n in student_files if Path(n).suffix.lower() == t_ext]
+    if len(same_ext) == 1:
+        return same_ext[0]
+    return None
+
+
+def _curated_collect_marks(diff_marks: dict) -> set:
+    out = set()
+    for side in ('teacher_files', 'student_files'):
+        for fname, marks in (diff_marks.get(side, {}) or {}).items():
+            for m in marks or []:
+                out.add((side, fname, m['start'], m['end'],
+                         m['label'], m['token']))
+    return out
+
+
+def _curated_nc_token_bag(text: str) -> Counter:
+    nc, _cm = _split_tokens_by_comment(text)
+    return Counter(t for _, t in nc)
+
+
+# (project_name, student_dir_name) pairs whose `required <= ideal` check is
+# intentionally skipped. Use only when the curator decided required should
+# fix the student via a different approach than ideal — e.g.,
+# sorting/67: student wrote a different bubble-sort variant, so the
+# minimum-fix marks legitimately diverge from ideal's recommended fix.
+# js/59: student renamed a variable consistently and required keeps that
+# rename everywhere except one spot where ideal suggests a different fix.
+_REQUIRED_SUBSET_EXCEPTIONS: Set[Tuple[str, str]] = {
+    ('sorting', '67'),
+    ('js', '59'),
+}
+
+
+class TestCuratedSanity(unittest.TestCase):
+    def _check_ideal_token_bag(self, project_dir: Path, student_dir: Path) -> None:
+        ideal_path = student_dir / 'diff_marks_ideal.json'
+        if not ideal_path.exists():
+            self.skipTest('no diff_marks_ideal.json')
+        teacher_files = _project_code_files(project_dir)
+        if not teacher_files:
+            self.skipTest('project has no code files')
+        student_files = _project_code_files(student_dir)
+        ideal = _load_json(ideal_path)
+        for t_name, t_marks in (ideal.get('teacher_files', {}) or {}).items():
+            if t_name not in teacher_files:
+                continue
+            s_name = _curated_pair_teacher_to_student(
+                t_name, t_marks, student_files,
+            )
+            if s_name is None:
+                continue
+            t_text = teacher_files[t_name].read_text(
+                encoding='utf-8', errors='ignore',
+            ).replace('\r\n', '\n')
+            s_text = student_files[s_name].read_text(
+                encoding='utf-8', errors='ignore',
+            ).replace('\r\n', '\n')
+            with self.subTest(project=project_dir.name,
+                              student=student_dir.name,
+                              pair=f'{t_name}->{s_name}'):
+                spliced = _truth_apply_to_student_text(
+                    ideal, t_text, s_text, t_name, s_name,
+                )
+                actual = _curated_nc_token_bag(spliced)
+                expected = _curated_nc_token_bag(t_text)
+                self.assertEqual(
+                    actual, expected,
+                    f'applying ideal marks did not yield teacher token bag '
+                    f'(extra={dict(actual - expected)}, '
+                    f'missing={dict(expected - actual)})',
+                )
+
+    def _check_schema_valid(self, project_dir: Path, student_dir: Path,
+                            mode: str) -> None:
+        marks_path = student_dir / f'diff_marks_{mode}.json'
+        if not marks_path.exists():
+            self.skipTest(f'no diff_marks_{mode}.json')
+        teacher_files = _project_code_files(project_dir)
+        if not teacher_files:
+            self.skipTest('project has no code files')
+        student_files = _project_code_files(student_dir)
+        marks = _load_json(marks_path)
+        errors = _validate_truth_schema(marks, teacher_files, student_files)
+        with self.subTest(project=project_dir.name,
+                          student=student_dir.name,
+                          mode=mode):
+            self.assertEqual(
+                errors, [],
+                f'{mode} schema violations: {errors}',
+            )
+
+    def _check_required_subset_of_ideal(self, project_dir: Path,
+                                         student_dir: Path) -> None:
+        ideal_path = student_dir / 'diff_marks_ideal.json'
+        required_path = student_dir / 'diff_marks_required.json'
+        if not ideal_path.exists() or not required_path.exists():
+            self.skipTest('missing ideal or required file')
+        if (project_dir.name, student_dir.name) in _REQUIRED_SUBSET_EXCEPTIONS:
+            self.skipTest(
+                f'{project_dir.name}/{student_dir.name}: known acceptable '
+                f'divergence (see _REQUIRED_SUBSET_EXCEPTIONS)'
+            )
+        ideal = _load_json(ideal_path)
+        required = _load_json(required_path)
+        ideal_set = _curated_collect_marks(ideal)
+        required_set = _curated_collect_marks(required)
+        extra = required_set - ideal_set
+        with self.subTest(project=project_dir.name,
+                          student=student_dir.name,
+                          check='required<=ideal'):
+            self.assertFalse(
+                extra,
+                f'required has {len(extra)} mark(s) not in ideal '
+                f'(sample: {sorted(extra)[:3]})',
+            )
+
+
+def _attach_curated_sanity_tests() -> None:
+    for project_dir in sorted(_TEST.iterdir()):
+        if not project_dir.is_dir() or '-' in project_dir.name:
+            continue
+        for student_dir in sorted(d for d in project_dir.iterdir()
+                                  if d.is_dir() and d.name.isdigit()):
+            base = f'{project_dir.name}_{student_dir.name}'
+
+            def make_bag(p=project_dir, s=student_dir):
+                def test(self):
+                    self._check_ideal_token_bag(p, s)
+                return test
+
+            def make_subset(p=project_dir, s=student_dir):
+                def test(self):
+                    self._check_required_subset_of_ideal(p, s)
+                return test
+
+            def make_schema(p=project_dir, s=student_dir, mode='ideal'):
+                def test(self):
+                    self._check_schema_valid(p, s, mode)
+                return test
+
+            setattr(TestCuratedSanity,
+                    f'test_ideal_token_bag_{base}', make_bag())
+            setattr(TestCuratedSanity,
+                    f'test_required_subset_{base}', make_subset())
+            setattr(TestCuratedSanity,
+                    f'test_schema_ideal_{base}',
+                    make_schema(mode='ideal'))
+            setattr(TestCuratedSanity,
+                    f'test_schema_required_{base}',
+                    make_schema(mode='required'))
+
+
+_attach_curated_sanity_tests()
 
 
 if __name__ == '__main__':

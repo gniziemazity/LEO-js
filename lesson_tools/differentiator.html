@@ -248,7 +248,18 @@
 				display: none;
 			}
 
-			/* Per-line backgrounds for line-based diff modes. */
+			body.show-line-numbers .diff-line[data-line-num]::before {
+				content: attr(data-line-num);
+				display: inline-block;
+				width: 32px;
+				margin-right: 8px;
+				text-align: right;
+				color: var(--clr-text-dim);
+				opacity: 0.55;
+				font-size: 10px;
+				user-select: none;
+				white-space: nowrap;
+			}
 			.diff-line--missing {
 				background: var(--clr-mark-missing-bg);
 			}
@@ -271,6 +282,16 @@
 			.leo-mark.leo-highlight-pair-missing {
 				background-color: var(--clr-mark-missing-pair-bg);
 				outline: 1px solid var(--clr-mark-missing);
+			}
+			.leo-mark.is-whitespace {
+				background-color: var(--clr-mark-missing-bg);
+				outline: 1px dashed var(--clr-mark-missing);
+				outline-offset: -1px;
+				border-radius: 2px;
+			}
+			.leo-mark.is-whitespace[data-leo-side="student"] {
+				background-color: var(--clr-mark-extra-bg);
+				outline-color: var(--clr-mark-extra);
 			}
 			.swap-paired {
 				cursor: pointer;
@@ -310,6 +331,13 @@
 				font-weight: bold;
 				font-size: 13px;
 				text-shadow: 0 0 2px var(--clr-mark-missing);
+			}
+			.insert-anchor--move {
+				color: var(--clr-mark-extra);
+			}
+			.insert-anchor--move.insert-active {
+				color: var(--clr-mark-extra);
+				text-shadow: 0 0 2px var(--clr-mark-extra);
 			}
 
 			#leo-tooltip {
@@ -730,37 +758,63 @@
 				tab-size: 4;
 				-moz-tab-size: 4;
 			}
-			.truth-float-win .tw-summary-row {
-				padding: 6px 0;
-				border-bottom: 1px dashed var(--clr-border-mid);
-			}
-			.truth-float-win .tw-summary-head {
-				font-size: 11px;
-				color: var(--clr-label);
-				margin-bottom: 2px;
-			}
-			.truth-float-win .tw-summary-suffix {
-				color: var(--clr-text-dim);
-				margin-left: 6px;
-			}
 			.truth-float-win .tw-summary-pre {
 				background: var(--clr-surface-soft);
 				border: 1px solid var(--clr-border-mid);
-				padding: 4px 6px;
-				margin: 2px 0;
+				padding: 2px 6px;
+				margin: 0;
 				white-space: pre;
 				word-wrap: normal;
 				overflow-x: auto;
 				font-size: 11px;
 			}
-			.truth-float-win .tw-summary-pair {
-				margin-top: 4px;
-				padding-left: 12px;
-				border-left: 2px solid var(--clr-border);
-			}
-			.truth-float-win .tw-summary-arrow {
-				font-size: 10.5px;
+			.truth-float-win .tw-summary-chars {
 				color: var(--clr-text-dim);
+				font-weight: normal;
+				margin-left: 4px;
+				opacity: 0.7;
+			}
+			.truth-float-win .tw-summary-grid {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+				gap: 11px 12px;
+				align-items: start;
+			}
+			.truth-float-win .tw-summary-grid > * {
+				min-width: 0;
+			}
+			.truth-float-win .tw-mid {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				line-height: 1;
+				margin-top: 5px;
+			}
+			.truth-float-win .tw-loc {
+				font-size: 9px;
+				color: var(--clr-label);
+				white-space: nowrap;
+				line-height: 1;
+				margin-top: -3px;
+				margin-bottom: -4px;
+			}
+			.truth-float-win .tw-arrow {
+				font-size: 14px;
+				font-weight: bold;
+				color: var(--clr-text);
+				opacity: 0.7;
+				text-align: center;
+				padding: 0 4px;
+				line-height: 1;
+				margin-top: -2px;
+			}
+			.truth-float-win .tw-summary-pre .tw-del {
+				color: #c00000;
+				font-weight: bold;
+			}
+			.truth-float-win .tw-summary-pre .tw-ins {
+				color: #0066cc;
+				font-weight: bold;
 			}
 
 			.truth-float-win .tw-preview-split {
@@ -804,6 +858,13 @@
 				onclick="toggleLinePadding()"
 			>
 				⇲ Padding
+			</button>
+			<button
+				id="btn-line-numbers"
+				class="btn-edit"
+				onclick="toggleLineNumbers()"
+			>
+				Line №
 			</button>
 			<button id="btn-preview" class="btn-edit" onclick="togglePreview()">
 				⬜ Preview

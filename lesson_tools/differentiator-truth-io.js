@@ -130,6 +130,27 @@ function _truthForwardWhitespace(text, pos) {
 	return text.slice(pos, i);
 }
 
+function _truthDedentBlock(body) {
+	const lines = body.split("\n");
+	if (lines.length < 2) return body;
+	const startIdx = body.startsWith("\n") ? 0 : 1;
+	let minIndent = Infinity;
+	for (let i = startIdx; i < lines.length; i++) {
+		const line = lines[i];
+		if (line.length === 0) continue;
+		const m = line.match(/^[ \t]*/);
+		const indentLen = m[0].length;
+		if (indentLen === line.length) continue;
+		if (indentLen < minIndent) minIndent = indentLen;
+	}
+	if (!isFinite(minIndent) || minIndent === 0) return body;
+	return lines
+		.map((l, i) =>
+			i >= startIdx && l.length >= minIndent ? l.slice(minIndent) : l,
+		)
+		.join("\n");
+}
+
 function _truthAlignWhitespace(
 	srcText,
 	srcStart,
@@ -312,6 +333,26 @@ function _truthApplyToStudent() {
 						body: "",
 					});
 				}
+			} else if (
+				group.side === "student" &&
+				group.kind === "extra-move" &&
+				group.file === studentName
+			) {
+				const body = origText.slice(group.lo, group.hi);
+				rawOps.push({
+					kind: "del",
+					origStart: group.lo,
+					origEnd: group.hi,
+					body: "",
+				});
+				if (group.moveFile === studentName) {
+					rawOps.push({
+						kind: "move-ins",
+						origStart: group.movePos,
+						origEnd: group.movePos,
+						body,
+					});
+				}
 			}
 		}
 
@@ -458,38 +499,303 @@ function _truthSummarize() {
 		return;
 	}
 
-	for (const g of groups) {
-		const row = document.createElement("div");
-		row.className = "tw-summary-row";
-		const codeText = _truthSrcText(g.side, g.file).slice(g.lo, g.hi);
+	const _posLine = (text, pos) => {
+		let n = 1;
+		const limit = Math.min(pos, text.length);
+		for (let i = 0; i < limit; i++) if (text[i] === "\n") n++;
+		return n;
+	};
+	const _lineRange = (text, lo, hi) => {
+		const a = _posLine(text, lo);
+		const b = _posLine(text, Math.max(lo, hi - 1));
+		return a === b ? `line ${a}` : `lines ${a}–${b}`;
+	};
+	const _expandToLines = (text, lo, hi) => {
+		const start = text.lastIndexOf("\n", Math.max(0, lo - 1)) + 1;
+		const fromIdx = Math.max(lo, hi - 1);
+		const nextNl = text.indexOf("\n", fromIdx);
+		const end = nextNl < 0 ? text.length : nextNl;
+		return [start, end];
+	};
+	const _walkPerLine = (text, fullLo, fullHi, edits, mode) => {
+		const sortedEdits = (edits || [])
+			.slice()
+			.sort((a, b) => a.start - b.start || a.end - b.end);
 
-		let pairBlock = "";
-		if (g.kind === "extra-replace") {
-			const pairText = _truthSrcText("teacher", g.pairFile).slice(
-				g.pairLo,
-				g.pairHi,
-			);
-			pairBlock =
-				`<div class="tw-summary-pair">` +
-				`<span class="tw-summary-arrow">↔ replaced by ${escHtml(g.pairFile)} [${g.pairLo}–${g.pairHi}]:</span>` +
-				`<pre class="tw-summary-pre">${escHtml(pairText)}</pre>` +
-				`</div>`;
+		const lines = [];
+		{
+			let lo = fullLo;
+			while (lo <= fullHi) {
+				const nl = text.indexOf("\n", lo);
+				const end = nl < 0 || nl >= fullHi ? fullHi : nl;
+				lines.push({ start: lo, end });
+				if (nl < 0 || nl >= fullHi) break;
+				lo = nl + 1;
+			}
 		}
+		let indent = Infinity;
+		for (const { start, end } of lines) {
+			if (start === end) continue;
+			let p = start;
+			while (p < end && (text[p] === " " || text[p] === "\t")) p++;
+			if (p === end) continue;
+			indent = Math.min(indent, p - start);
+		}
+		if (!isFinite(indent)) indent = 0;
 
-		let suffix = "";
-		if (g.kind === "missing-insert")
-			suffix = ` → insert at ${g.file}:${g.insertPos}`;
-		else if (g.kind === "ghost_extra") suffix = " (extra*, delete)";
-		else if (g.kind === "extra") suffix = " (delete)";
+		let html = "";
+		for (let li = 0; li < lines.length; li++) {
+			const { start: ls, end: le } = lines[li];
+			const skipUntil = Math.min(ls + indent, le);
+			let cursor = skipUntil;
 
-		row.innerHTML =
-			`<div class="tw-summary-head"><b>${escHtml(g.kind)}</b> ` +
-			`${escHtml(g.side)}/${escHtml(g.file)} [${g.lo}–${g.hi}]` +
-			`<span class="tw-summary-suffix">${escHtml(suffix)}</span></div>` +
-			`<pre class="tw-summary-pre">${escHtml(codeText)}</pre>` +
-			pairBlock;
-		body.appendChild(row);
+			for (const e of sortedEdits) {
+				if (e.end <= cursor && !(e.start === e.end && e.start === cursor))
+					continue;
+				if (e.start > le) break;
+				if (e.start === le && !(e.start === e.end)) break;
+
+				const eStart = Math.max(e.start, cursor);
+				const eEnd = Math.min(e.end, le);
+
+				if (eStart > cursor) html += escHtml(text.slice(cursor, eStart));
+
+				if (mode === "before") {
+					if (eEnd > eStart) {
+						html +=
+							`<span class="tw-del">` +
+							escHtml(text.slice(eStart, eEnd)) +
+							`</span>`;
+					}
+				} else {
+					if (
+						e.start >= ls &&
+						e.start < le + 1 &&
+						e.start <= eStart &&
+						e.insertText
+					) {
+						html +=
+							`<span class="tw-ins">` +
+							escHtml(e.insertText) +
+							`</span>`;
+					}
+				}
+
+				cursor = Math.max(cursor, eEnd);
+			}
+
+			if (cursor < le) html += escHtml(text.slice(cursor, le));
+			if (li < lines.length - 1) html += "\n";
+		}
+		return html;
+	};
+	const _renderBefore = (text, lo, hi, edits) =>
+		_walkPerLine(text, lo, hi, edits, "before");
+	const _renderAfter = (text, lo, hi, edits) =>
+		_walkPerLine(text, lo, hi, edits, "after");
+	const _trimBlankLines = (html) => {
+		const lines = html.split("\n");
+		const isBlank = (l) => !l.replace(/<[^>]*>/g, "").trim();
+		let s = 0;
+		let e = lines.length - 1;
+		while (s <= e && isBlank(lines[s])) s++;
+		while (e >= s && isBlank(lines[e])) e--;
+		return lines.slice(s, e + 1).join("\n");
+	};
+
+	const bucketOrder = [];
+	const bucketMap = new Map();
+	const _addEdit = (file, edit) => {
+		const text = _truthSrcText("student", file);
+		const probeHi = Math.max(edit.start + 1, edit.end);
+		const [fLo, fHi] = _expandToLines(text, edit.start, probeHi);
+		const key = `${file}|${fLo}|${fHi}`;
+		let b = bucketMap.get(key);
+		if (!b) {
+			b = { file, fullLo: fLo, fullHi: fHi, edits: [] };
+			bucketMap.set(key, b);
+			bucketOrder.push(b);
+		}
+		b.edits.push(edit);
+	};
+
+	const _orphans = [];
+
+	for (const g of groups) {
+		if (g.kind === "extra" || g.kind === "ghost_extra") {
+			for (const m of g.marks || []) {
+				if (m.move_to) {
+					_addEdit(g.file, {
+						start: m.start,
+						end: m.end,
+						insertText: "",
+					});
+					_addEdit(m.move_to.file, {
+						start: m.move_to.pos,
+						end: m.move_to.pos,
+						insertText: m.token,
+					});
+				} else {
+					_addEdit(g.file, {
+						start: m.start,
+						end: m.end,
+						insertText: "",
+					});
+				}
+			}
+		} else if (g.kind === "extra-replace") {
+			for (const m of g.marks || []) {
+				const pw = m.paired_with;
+				if (!pw || pw.ghost) {
+					_addEdit(g.file, {
+						start: m.start,
+						end: m.end,
+						insertText: "",
+					});
+					continue;
+				}
+				_addEdit(g.file, {
+					start: m.start,
+					end: m.end,
+					insertText: pw.token,
+				});
+			}
+		} else if (g.kind === "extra-move") {
+			const studentText = _truthSrcText("student", g.file);
+			_addEdit(g.file, {
+				start: g.lo,
+				end: g.hi,
+				insertText: "",
+			});
+			_addEdit(g.moveFile, {
+				start: g.movePos,
+				end: g.movePos,
+				insertText: _truthDedentBlock(studentText.slice(g.lo, g.hi)),
+			});
+		} else if (g.kind === "missing-insert") {
+			const teacherText = _truthSrcText("teacher", g.file);
+			let body = teacherText.slice(g.lo, g.hi).replace(/[ \t\r\n]+$/, "");
+			let lineStart = g.lo;
+			while (
+				lineStart > 0 &&
+				teacherText[lineStart - 1] !== "\n" &&
+				/[ \t]/.test(teacherText[lineStart - 1])
+			) {
+				lineStart--;
+			}
+			if (
+				lineStart < g.lo &&
+				(lineStart === 0 || teacherText[lineStart - 1] === "\n")
+			) {
+				body = "\n" + teacherText.slice(lineStart, g.lo) + body;
+			}
+			body = _truthDedentBlock(body);
+			_addEdit(g.insertFile, {
+				start: g.insertPos,
+				end: g.insertPos,
+				insertText: body,
+			});
+		} else {
+			_orphans.push(g);
+		}
 	}
+
+	for (const b of bucketOrder) {
+		b.edits.sort((a, b) => a.start - b.start || a.end - b.end);
+	}
+
+	const mergedOrder = [];
+	{
+		const byFile = new Map();
+		for (const b of bucketOrder) {
+			if (!byFile.has(b.file)) byFile.set(b.file, []);
+			byFile.get(b.file).push(b);
+		}
+		for (const [, list] of byFile) {
+			list.sort((a, b) => a.fullLo - b.fullLo);
+			let cur = null;
+			for (const b of list) {
+				if (cur && b.fullLo === cur.fullHi + 1) {
+					cur.fullHi = b.fullHi;
+					cur.edits.push(...b.edits);
+				} else {
+					if (cur) mergedOrder.push(cur);
+					cur = {
+						file: b.file,
+						fullLo: b.fullLo,
+						fullHi: b.fullHi,
+						edits: b.edits.slice(),
+					};
+				}
+			}
+			if (cur) mergedOrder.push(cur);
+		}
+		for (const b of mergedOrder) {
+			b.edits.sort((a, b) => a.start - b.start || a.end - b.end);
+		}
+	}
+
+	const grid = document.createElement("div");
+	grid.className = "tw-summary-grid";
+
+	for (const b of mergedOrder) {
+		const text = _truthSrcText("student", b.file);
+		const beforeHtml = _trimBlankLines(
+			_renderBefore(text, b.fullLo, b.fullHi, b.edits),
+		);
+		const afterHtml = _trimBlankLines(
+			_renderAfter(text, b.fullLo, b.fullHi, b.edits),
+		);
+
+		const lo = Math.min(...b.edits.map((e) => e.start));
+		const hi = Math.max(...b.edits.map((e) => Math.max(e.end, e.start)));
+		const lineLabel = `line ${_posLine(text, lo)}`;
+		const titleAttr = `[${lo}–${hi}]`;
+		const midCell =
+			`<div class="tw-mid">` +
+			`<span class="tw-loc" title="${escAttr(titleAttr)}">` +
+			`${escHtml(lineLabel)}</span>` +
+			`<span class="tw-arrow">→</span>` +
+			`</div>`;
+
+		grid.insertAdjacentHTML(
+			"beforeend",
+			`<pre class="tw-summary-pre">${beforeHtml}</pre>` +
+				midCell +
+				`<pre class="tw-summary-pre">${afterHtml}</pre>`,
+		);
+	}
+
+	for (const g of _orphans) {
+		const text = _truthSrcText(g.side, g.file);
+		const [fLo, fHi] = _expandToLines(text, g.lo, g.hi);
+		const sorted = (g.marks || []).slice().sort((a, b) => a.start - b.start);
+		let html = "";
+		let cursor = fLo;
+		for (const m of sorted) {
+			const ms = Math.max(m.start, cursor);
+			const me = Math.min(m.end, fHi);
+			if (me <= ms) continue;
+			if (ms > cursor) html += escHtml(text.slice(cursor, ms));
+			html +=
+				`<span class="tw-ins">` + escHtml(text.slice(ms, me)) + `</span>`;
+			cursor = me;
+		}
+		if (cursor < fHi) html += escHtml(text.slice(cursor, fHi));
+		html = _trimBlankLines(html);
+		const lineLabel = _lineRange(text, g.lo, g.hi);
+		const titleAttr = `[${g.lo}–${g.hi}]`;
+		grid.insertAdjacentHTML(
+			"beforeend",
+			`<pre class="tw-summary-pre">${html}</pre>` +
+				`<div class="tw-mid">` +
+				`<span class="tw-loc" title="${escAttr(titleAttr)}">${escHtml(lineLabel)}</span>` +
+				`</div>` +
+				`<span></span>`,
+		);
+	}
+
+	body.appendChild(grid);
 	_truthShowFloatWin("Summary", body);
 }
 

@@ -106,6 +106,13 @@ th.grp {
 	font-size: 10px;
 	border-bottom: none;
 }
+th.grp.clickable {
+	cursor: pointer;
+}
+th.grp.clickable:hover {
+	color: var(--clr-accent);
+	text-decoration: underline;
+}
 th.lhd {
 	color: var(--clr-text-soft);
 }

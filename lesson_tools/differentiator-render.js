@@ -32,6 +32,7 @@ function _renderAligned(
 	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
 	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
 	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
+	const lineNumFor = _lineNumberMap(lines, lineStarts, normText, fileGhosts);
 
 	const parts = [];
 	for (const pair of alignment) {
@@ -65,12 +66,41 @@ function _renderAligned(
 					(lm) => lm.start >= lineStart && lm.start < lineEnd,
 				);
 			const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
+			const ln = lineNumFor.numbers[lineIdx];
+			const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
 			parts.push(
-				`<div class="diff-line${bgCls}" data-src-start="${lineStart}">${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+				`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 			);
 		}
 	}
 	return parts.join("");
+}
+
+function _lineNumberMap(lines, lineStarts, normText, fileGhosts) {
+	const numbers = new Array(lines.length);
+	const offsets = new Array(lines.length).fill(0);
+	let visible = 0;
+	for (let i = 0; i < lines.length; i++) {
+		const ls = lineStarts[i] ?? normText.length;
+		const le =
+			i + 1 < lineStarts.length ? lineStarts[i + 1] : normText.length + 1;
+		const isEmpty = (lines[i] || "") === "";
+		let hasGhost = false;
+		if (isEmpty && fileGhosts && fileGhosts.length) {
+			for (const g of fileGhosts) {
+				if (g.pos >= ls && g.pos < le) {
+					hasGhost = true;
+					break;
+				}
+			}
+		}
+		if (isEmpty && hasGhost) {
+			numbers[i] = null;
+		} else {
+			numbers[i] = ++visible;
+		}
+	}
+	return { numbers, offsets };
 }
 
 function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
@@ -81,6 +111,7 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 	const sortedMarks = _mergeMarks(fileMarks, synthMarks);
 	const fileGhosts = side === "teacher" ? _getFileGhosts(fileName) : [];
 	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
+	const lineNumFor = _lineNumberMap(lines, lineStarts, normText, fileGhosts);
 
 	const parts = [];
 	for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
@@ -110,8 +141,15 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 				(lm) => lm.start >= lineStart && lm.start < lineEnd,
 			);
 		const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
+		const ln = lineNumFor.numbers[lineIdx];
+		const offset = lineNumFor.offsets[lineIdx] || 0;
+		const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
+		const styleAttr =
+			ln != null && offset > 0
+				? ` style="--ghost-lines-before:${offset}"`
+				: "";
 		parts.push(
-			`<div class="diff-line${bgCls}" data-src-start="${lineStart}">${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}${styleAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
 		);
 	}
 	return parts.join("");
@@ -125,21 +163,40 @@ function _getFileGhosts(fileName) {
 }
 
 function _getInsertAnchors(studentFileName) {
-	const tFiles = _currentMarksEntry?.teacher_files;
-	if (!tFiles || !studentFileName) return [];
+	if (!studentFileName) return [];
 	const out = [];
-	for (const [tFile, marks] of Object.entries(tFiles)) {
-		for (const m of marks || []) {
-			if (m.label !== "missing") continue;
-			if (m.paired_with) continue;
-			const ia = m.insert_at;
-			if (!ia || ia.file !== studentFileName) continue;
-			out.push({
-				pos: ia.pos,
-				token: m.token,
-				teacher_file: tFile,
-				teacher_pos: m.start,
-			});
+	const tFiles = _currentMarksEntry?.teacher_files;
+	if (tFiles) {
+		for (const [tFile, marks] of Object.entries(tFiles)) {
+			for (const m of marks || []) {
+				if (m.label !== "missing") continue;
+				if (m.paired_with) continue;
+				const ia = m.insert_at;
+				if (!ia || ia.file !== studentFileName) continue;
+				out.push({
+					pos: ia.pos,
+					token: m.token,
+					teacher_file: tFile,
+					teacher_pos: m.start,
+				});
+			}
+		}
+	}
+	const sFiles = _currentMarksEntry?.student_files;
+	if (sFiles) {
+		for (const [sFile, marks] of Object.entries(sFiles)) {
+			for (const m of marks || []) {
+				if (m.label !== "extra") continue;
+				if (m.paired_with) continue;
+				const mt = m.move_to;
+				if (!mt || mt.file !== studentFileName) continue;
+				out.push({
+					pos: mt.pos,
+					token: m.token,
+					move_source_file: sFile,
+					move_source_pos: m.start,
+				});
+			}
 		}
 	}
 	return out;
@@ -428,12 +485,14 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 					` data-insert-file="${escAttr(m.insert_at.file)}"` +
 					` data-insert-pos="${m.insert_at.pos}"`
 				: "";
-			const leoClass =
+			const isWhitespace = !!(m.token && /^\s+$/.test(m.token));
+			let leoClass =
 				m.paired_with && !isGhostPair
 					? "leo-mark swap-paired"
 					: m.insert_at
 						? "leo-mark insert-source"
 						: "leo-mark";
+			if (isWhitespace) leoClass += " is-whitespace";
 			const leoAttrs =
 				m.token &&
 				m.label !== "comment" &&
@@ -448,12 +507,20 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 		} else {
 			const a = ev.anchor;
 			const absPos = a._abs_pos ?? a.pos;
+			const isMove = a.move_source_pos != null;
+			const cls = isMove
+				? "insert-anchor insert-anchor--move"
+				: "insert-anchor";
+			const sourceAttrs = isMove
+				? ` data-insert-anchor-move-source-file="${escAttr(a.move_source_file)}"` +
+					` data-insert-anchor-move-source-pos="${a.move_source_pos}"`
+				: ` data-insert-anchor-teacher-file="${escAttr(a.teacher_file)}"` +
+					` data-insert-anchor-teacher-pos="${a.teacher_pos}"`;
 			out +=
-				`<span class="insert-anchor"` +
+				`<span class="${cls}"` +
 				` data-insert-anchor-pos="${absPos}"` +
 				` data-insert-anchor-token="${escAttr(a.token)}"` +
-				` data-insert-anchor-teacher-file="${escAttr(a.teacher_file)}"` +
-				` data-insert-anchor-teacher-pos="${a.teacher_pos}">▾</span>`;
+				`${sourceAttrs}>▾</span>`;
 		}
 	}
 	if (pos < normText.length) {

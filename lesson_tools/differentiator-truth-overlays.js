@@ -20,7 +20,8 @@ function _truthEnsurePaneOverlays(pane) {
 function _truthGroupHasBox(kind) {
 	if (!kind) return false;
 	if (kind.indexOf("missing") === 0) return true;
-	if (kind === "extra" || kind === "extra-replace") return true;
+	if (kind === "extra" || kind === "extra-replace" || kind === "extra-move")
+		return true;
 	if (kind === "ghost_extra") return true;
 	return false;
 }
@@ -287,12 +288,17 @@ function _truthRefreshConnectorsForCurrent() {
 
 function _truthCollectAlwaysOnConnectors(items, seenGroups) {
 	for (const g of _truthGroupMarks()) {
-		if (g.side !== "teacher") continue;
-		if (g.kind !== "missing") continue;
-		const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
-		if (seenGroups.has(key)) continue;
-		seenGroups.add(key);
-		items.push({ kind: "groupInsert", group: g });
+		if (g.side === "teacher" && g.kind === "missing") {
+			const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
+			if (seenGroups.has(key)) continue;
+			seenGroups.add(key);
+			items.push({ kind: "groupInsert", group: g });
+		} else if (g.side === "student" && g.kind === "extra-move") {
+			const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
+			if (seenGroups.has(key)) continue;
+			seenGroups.add(key);
+			items.push({ kind: "extraMove", group: g });
+		}
 	}
 }
 
@@ -770,6 +776,21 @@ function _truthApplyClickHighlights(side, file, lo, hi) {
 				}
 			}
 		}
+	} else if (side === "student") {
+		const studentWrap = document.getElementById("code-student");
+		if (studentWrap) {
+			for (const m of marks) {
+				if (m.label !== "extra" || !m.move_to || m.paired_with) continue;
+				const aSel =
+					`.insert-anchor--move` +
+					`[data-insert-anchor-move-source-file="${CSS.escape(file)}"]` +
+					`[data-insert-anchor-move-source-pos="${m.start}"]`;
+				for (const a of studentWrap.querySelectorAll(aSel)) {
+					a.classList.add("insert-active");
+					_insertHighlighted.push(a);
+				}
+			}
+		}
 	}
 	_truthRefreshActiveOverlay();
 	_truthRebuildPairConnectorsForSelection(side, file, lo, hi);
@@ -827,6 +848,21 @@ function _truthFindGhostElement(ghostRef) {
 		}
 	}
 	return null;
+}
+
+function _truthFindMoveAnchorEl(extraMark, sourceFile) {
+	if (!extraMark || !extraMark.move_to) return null;
+	const wrap = document.getElementById(`code-student`);
+	if (!wrap) return null;
+	const targetFile = extraMark.move_to.file;
+	const paneSel = targetFile
+		? `.code-pane[data-pane-file="${CSS.escape(targetFile)}"].active`
+		: `.code-pane.active`;
+	const sel =
+		`${paneSel} .insert-anchor--move` +
+		`[data-insert-anchor-move-source-file="${CSS.escape(sourceFile)}"]` +
+		`[data-insert-anchor-move-source-pos="${extraMark.start}"]`;
+	return wrap.querySelector(sel);
 }
 
 function _truthFindInsertAnchorEl(teacherMark) {
@@ -976,6 +1012,60 @@ function _truthSvgX(svg, cx, cy, size, color) {
 	}
 }
 
+const _TRUTH_ARROW_LEN = 5;
+const _TRUTH_ARROW_HALF_WIDTH = 3;
+
+function _truthSvgArrowhead(svg, tipX, tipY, dirX, dirY, color) {
+	const len = Math.hypot(dirX, dirY) || 1;
+	const ux = dirX / len;
+	const uy = dirY / len;
+	const px = -uy;
+	const py = ux;
+	const baseCenterX = tipX - ux * _TRUTH_ARROW_LEN;
+	const baseCenterY = tipY - uy * _TRUTH_ARROW_LEN;
+	const b1x = baseCenterX + px * _TRUTH_ARROW_HALF_WIDTH;
+	const b1y = baseCenterY + py * _TRUTH_ARROW_HALF_WIDTH;
+	const b2x = baseCenterX - px * _TRUTH_ARROW_HALF_WIDTH;
+	const b2y = baseCenterY - py * _TRUTH_ARROW_HALF_WIDTH;
+	const poly = document.createElementNS(_SVG_NS, "polygon");
+	poly.setAttribute("points", `${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`);
+	poly.setAttribute("fill", color);
+	svg.appendChild(poly);
+}
+
+function _truthSrcPosToClient(side, file, srcPos) {
+	if (typeof _truthSrcPosToDomPoint !== "function") return null;
+	const dom = _truthSrcPosToDomPoint(side, file, srcPos);
+	if (!dom) return null;
+	let range;
+	try {
+		range = document.createRange();
+		range.setStart(dom.node, dom.offset);
+		range.collapse(true);
+	} catch {
+		return null;
+	}
+	const rect = range.getBoundingClientRect();
+	if (!rect) return null;
+	if (
+		rect.width === 0 &&
+		rect.height === 0 &&
+		rect.top === 0 &&
+		rect.left === 0
+	) {
+		return null;
+	}
+	const lineEl =
+		dom.node.nodeType === 1
+			? dom.node.closest && dom.node.closest(".diff-line")
+			: dom.node.parentElement &&
+				dom.node.parentElement.closest(".diff-line");
+	const lineBottom = lineEl
+		? lineEl.getBoundingClientRect().bottom + _TRUTH_LINE_GAP
+		: rect.bottom + _TRUTH_LINE_GAP;
+	return { x: rect.left, y: lineBottom };
+}
+
 const _TRUTH_INSERT_ANCHOR_LIFT = 2.25;
 
 function _truthElBelowLineY(el) {
@@ -1035,6 +1125,7 @@ function _truthRefreshPairConnectors() {
 			_truthSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
 			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
 			_truthSvgLine(svg, midX, sY, sRect.left, sY, paleRedColor);
+			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, paleRedColor);
 		} else if (item.kind === "pair") {
 			const srcEl = _truthFindMarkEl(item.side, item.mark, item.file);
 			const partnerEl = _truthFindPartnerEl(item.side, item.mark);
@@ -1056,6 +1147,7 @@ function _truthRefreshPairConnectors() {
 			_truthSvgLine(svg, tRect.right, tY, midX, tY, extraColor);
 			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
 			_truthSvgLine(svg, midX, sY, sRect.left, sY, missingColor);
+			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, missingColor);
 		} else if (item.kind === "groupInsert") {
 			const g = item.group;
 
@@ -1078,6 +1170,14 @@ function _truthRefreshPairConnectors() {
 					_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
 					_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
 					_truthSvgLine(svg, midX, aY, aX, aY, missingColor);
+					_truthSvgArrowhead(
+						svg,
+						aX,
+						aY,
+						aX >= midX ? 1 : -1,
+						0,
+						missingColor,
+					);
 				} else {
 					_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
 					_truthSvgX(svg, midX, startY, 10, missingColor);
@@ -1100,11 +1200,63 @@ function _truthRefreshPairConnectors() {
 				_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
 				_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
 				_truthSvgLine(svg, midX, aY, aX, aY, missingColor);
+				_truthSvgArrowhead(
+					svg,
+					aX,
+					aY,
+					aX >= midX ? 1 : -1,
+					0,
+					missingColor,
+				);
 			} else {
 				const startY = (boxTop + boxBottom) / 2;
 				_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
 				_truthSvgX(svg, midX, startY, 10, missingColor);
 			}
+		} else if (item.kind === "extraMove") {
+			const g = item.group;
+			let startX, startY;
+			if (g.marks.length === 1) {
+				const studentEl = _truthFindMarkEl("student", g.marks[0], g.file);
+				if (!studentEl) continue;
+				const sRect = studentEl.getBoundingClientRect();
+				startX = sRect.right;
+				startY = _truthElBelowLineY(studentEl);
+			} else {
+				const r = _truthCollectGroupRect(g);
+				if (!r) continue;
+				const paneRect = r.pane.getBoundingClientRect();
+				startX = paneRect.left + r.left + r.width;
+				const boxTop = paneRect.top + r.top;
+				const boxBottom = boxTop + r.height;
+				startY = (boxTop + boxBottom) / 2;
+			}
+			const rightX = spRect.right - 8;
+			const anchorEl = _truthFindMoveAnchorEl(g.marks[0], g.file);
+			let targetX, targetY;
+			if (anchorEl) {
+				const aRect = anchorEl.getBoundingClientRect();
+				targetX = aRect.left + aRect.width / 2;
+				targetY = _truthElBelowLineY(anchorEl);
+			} else {
+				const target = _truthSrcPosToClient(
+					"student",
+					g.moveFile,
+					g.movePos,
+				);
+				if (!target) {
+					_truthSvgLine(svg, startX, startY, rightX, startY, extraColor);
+					_truthSvgX(svg, rightX, startY, 10, extraColor);
+					continue;
+				}
+				targetX = target.x;
+				targetY = target.y;
+			}
+			_truthSvgLine(svg, startX, startY, rightX, startY, extraColor);
+			_truthSvgLine(svg, rightX, startY, rightX, targetY, blackColor);
+			_truthSvgLine(svg, rightX, targetY, targetX, targetY, extraColor);
+			const dirX = targetX <= rightX ? -1 : 1;
+			_truthSvgArrowhead(svg, targetX, targetY, dirX, 0, extraColor);
 		}
 	}
 }

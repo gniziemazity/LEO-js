@@ -343,9 +343,16 @@ def _build_occ_from_diff_marks(
 
     all_occurrences.sort(key=_sort_key)
 
+    n_extra_unpaired = sum(
+        1
+        for marks in diff_marks.get('student_files', {}).values()
+        for m in marks
+        if m.get('label') == 'extra' and not m.get('paired_with')
+    )
+
     stats = _summarize_occurrence_flags(all_occurrences)
     teacher_total_e = stats['n_found_e'] + stats['n_missing_e']
-    score_e = (round(max(0.0, (stats['n_found_e'] - stats['n_ghost_extra']) / teacher_total_e * 100), 1)
+    score_e = (round(max(0.0, (stats['n_found_e'] - stats['n_ghost_extra'] - n_extra_unpaired) / teacher_total_e * 100), 1)
                if teacher_total_e else 0.0)
 
     comment_total = stats['n_found_c'] + stats['n_missing_c']
@@ -2059,6 +2066,36 @@ def _validate_truth_schema(
                     f'[0, {len(s_text_cache[ifile])}] for {ifile}'
                 )
 
+    for fname, marks in student_marks_by_file.items():
+        for m in marks or []:
+            mt = m.get('move_to')
+            if mt is None:
+                continue
+            if m.get('label') != 'extra':
+                errors.append(
+                    f'student/{fname}: only `extra` may have move_to, '
+                    f'got label {m.get("label")!r}'
+                )
+                continue
+            if m.get('paired_with'):
+                errors.append(
+                    f'student/{fname}: extra at {m.get("start")} cannot have '
+                    f'both paired_with and move_to'
+                )
+                continue
+            mfile = mt.get('file')
+            mpos = mt.get('pos')
+            if mfile not in s_text_cache:
+                errors.append(
+                    f'student/{fname}: move_to.file {mfile!r} not in student_files'
+                )
+                continue
+            if not isinstance(mpos, int) or mpos < 0 or mpos > len(s_text_cache[mfile]):
+                errors.append(
+                    f'student/{fname}: move_to.pos {mpos} out of range '
+                    f'[0, {len(s_text_cache[mfile])}] for {mfile}'
+                )
+
     for fname, marks in teacher_marks_by_file.items():
         for m in marks or []:
             if m.get('label') != 'missing':
@@ -2071,6 +2108,25 @@ def _validate_truth_schema(
                     f'at {m.get("start")} has no insert_at — undefined where '
                     f'to splice'
                 )
+
+    for side, marks_by_file in (
+        ('teacher', teacher_marks_by_file),
+        ('student', student_marks_by_file),
+    ):
+        for fname, marks in marks_by_file.items():
+            seen_spans: Dict[Tuple[int, int], str] = {}
+            for m in marks or []:
+                if 'start' not in m or 'end' not in m:
+                    continue
+                key = (m['start'], m['end'])
+                if key in seen_spans:
+                    errors.append(
+                        f'{side}/{fname}: duplicate marks at span '
+                        f'[{key[0]},{key[1]}] — labels {seen_spans[key]!r} '
+                        f'and {m.get("label")!r}'
+                    )
+                else:
+                    seen_spans[key] = m.get('label')
 
     return errors
 

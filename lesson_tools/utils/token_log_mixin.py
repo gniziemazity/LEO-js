@@ -373,13 +373,18 @@ class TokenLogMixin:
                         1 for marks in diff_marks.get('student_files', {}).values()
                         for m in marks if m.get('label') == 'ghost_extra'
                     )
+                    n_extra_unpaired_count = sum(
+                        1 for marks in diff_marks.get('student_files', {}).values()
+                        for m in marks
+                        if m.get('label') == 'extra' and not m.get('paired_with')
+                    )
                     n_missing_nc_star = sum(
                         1 for marks in diff_marks.get('teacher_files', {}).values()
                         for m in marks if m.get('label') == 'missing'
                     )
                     n_found_nc_star = teacher_total_nc - n_missing_nc_star
                     diff_marks['score'] = round(
-                        max(0.0, (n_found_nc_star - n_ghost_extra_count) / teacher_total_nc * 100), 1
+                        max(0.0, (n_found_nc_star - n_ghost_extra_count - n_extra_unpaired_count) / teacher_total_nc * 100), 1
                     )
                 _strip_internal_fields(diff_marks)
                 with open(anon_dir / star_filename, 'w', encoding='utf-8') as fh:

@@ -133,7 +133,7 @@ function _truthShowControls(sel, x, y, opts) {
 		nonCommentExisting.every((m) => !m.paired_with);
 	const canPair =
 		allMissing ||
-		(allExtra && single && allUnpaired) ||
+		(allExtra && allUnpaired) ||
 		(allGhostExtra && allUnpaired);
 
 	const fullyLabeled = (label) =>
@@ -183,9 +183,15 @@ function _truthShowControls(sel, x, y, opts) {
 				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a student-side position (I)">${_truthBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
 			);
 		} else if (allExtra) {
-			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Pair with a missing token (P)">${_truthBtnLabel("⇄", "Pair", "p", suffix)}</button>`,
-			);
+			if (single) {
+				buttons.push(
+					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert this token at a different student-side position, or pair with a missing (I or P)">${_truthBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
+				);
+			} else {
+				buttons.push(
+					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a different student-side position (I)">${_truthBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
+				);
+			}
 		} else if (allGhostExtra) {
 			const tip =
 				n === 1
@@ -207,8 +213,14 @@ function _truthShowControls(sel, x, y, opts) {
 		}
 		const hasNonComment = existing.some((m) => m.label !== "comment");
 		if (hasNonComment) {
+			const hasPairedNonComment = existing.some(
+				(m) => m.label !== "comment" && m.paired_with && !m.paired_with.ghost,
+			);
+			const tip = hasPairedNonComment
+				? "Delete mark (D, Delete or Backspace). Hold Shift to also delete its pair."
+				: "Delete mark (D, Delete or Backspace)";
 			buttons.push(
-				`<button type="button" class="tc-btn-del" data-action="del-all" title="Delete mark (D, Delete or Backspace)">${_truthBtnLabel("✖", "Delete", "d")}</button>`,
+				`<button type="button" class="tc-btn-del" data-action="del-all" title="${tip}">${_truthBtnLabel("✖", "Delete", "d")}</button>`,
 			);
 		}
 	}
@@ -411,6 +423,23 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 		case "del-all":
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
+				_truthRemoveMark(sel.side, sel.file, m);
+			}
+			break;
+		case "del-all-with-pairs":
+			for (const m of existing.slice()) {
+				if (m.label === "comment") continue;
+				const pw = m.paired_with;
+				if (pw && !pw.ghost) {
+					const otherSide = sel.side === "teacher" ? "student" : "teacher";
+					const partnerArr = _truthFileMarks(otherSide, pw.file);
+					const partner = partnerArr.find(
+						(p) => p.start === pw.start && p.token === pw.token,
+					);
+					if (partner) {
+						_truthRemoveMark(otherSide, pw.file, partner);
+					}
+				}
 				_truthRemoveMark(sel.side, sel.file, m);
 			}
 			break;

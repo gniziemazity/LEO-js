@@ -179,10 +179,6 @@ function setupHover(middleChart, topChart, bottomChart, p, L) {
 					hideVLine();
 					return;
 				}
-				if (id === "bottom" && hit.type === "student") {
-					openDifferentiatorWindow(hit.s);
-					return;
-				}
 				if (_pinned === hit) {
 					_pinned = null;
 					hideTip();
@@ -201,6 +197,20 @@ function setupHover(middleChart, topChart, bottomChart, p, L) {
 			},
 			sig,
 		);
+
+		if (id === "bottom") {
+			canvas.addEventListener(
+				"dblclick",
+				(e) => {
+					if (PAN_STATE.active) return;
+					const hit = findHit(e, canvas, id, p, L);
+					if (hit && hit.type === "student") {
+						openDifferentiatorWindow(hit.s);
+					}
+				},
+				sig,
+			);
+		}
 	}
 }
 
