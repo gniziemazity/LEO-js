@@ -216,6 +216,54 @@ async function loadJsonData(file, data) {
 	}
 }
 
+async function _tryAutoLoadDashboard() {
+	const handle = await _idbGet("lastDir");
+	if (!handle || handle.kind !== "directory") return false;
+	try {
+		const perm = await handle.requestPermission({ mode: "read" });
+		if (perm !== "granted") return false;
+	} catch {
+		return false;
+	}
+	_dirHandle = handle;
+	showLoading(true);
+	const files = [];
+	const pathMap = new Map();
+	await readDirHandle(handle, "", pathMap, files);
+	_allFiles = pathMap;
+	handleFiles(files);
+	return true;
+}
+
+(async function () {
+	const qs = new URLSearchParams(location.search);
+	if (qs.get("autoload") !== "1") return;
+	if (typeof XLSX === "undefined") {
+		await new Promise((resolve) => {
+			const s = document.querySelector('script[src*="xlsx"]');
+			if (s) {
+				s.addEventListener("load", resolve, { once: true });
+				s.addEventListener("error", resolve, { once: true });
+			} else {
+				resolve();
+			}
+		});
+	}
+	const ok = await _tryAutoLoadDashboard();
+	if (!ok) {
+		const btn = document.createElement("button");
+		btn.className = "landing-btn";
+		btn.textContent = "🔄 Load Lesson";
+		btn.onclick = async () => {
+			btn.disabled = true;
+			await _tryAutoLoadDashboard();
+			btn.disabled = false;
+		};
+		const landingButtons = document.getElementById("landing-buttons");
+		if (landingButtons) landingButtons.prepend(btn);
+	}
+})();
+
 window.addEventListener("resize", () => {
 	clearTimeout(window._rt);
 	window._rt = setTimeout(() => {
