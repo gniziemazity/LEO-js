@@ -24,13 +24,284 @@ from .token_log import (
     _build_ro_diff_marks,
     _build_teacher_token_timestamps,
     _parse_teacher_tokens,
+    _read_text_normalized,
     _refresh_missing_timestamps,
+    _split_tokens_by_comment,
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
 
 
 _RECO_EXTS = {'.html', '.htm', '.css', '.js', '.py'}
+_LANG_EXT_LABEL = (('.html', 'HTML'), ('.css', 'CSS'), ('.js', 'JS'), ('.py', 'Py'))
+_EMBEDDED_LANG_TO_EXT = {'javascript': '.js', 'css': '.css'}
+
+
+def _ext_of(fname: str) -> Optional[str]:
+    s = (fname or '').lower()
+    for ext, _ in _LANG_EXT_LABEL:
+        if s.endswith(ext):
+            return ext
+    return None
+
+
+def _embedded_lang_ranges_for(text: str, file_ext: Optional[str]) -> Dict[str, List[Tuple[int, int]]]:
+    if not file_ext or file_ext.lower() not in ('.html', '.htm'):
+        return {}
+    from languages import get_profile
+    from languages import _embedded_tag_ranges
+    profile = get_profile(file_ext)
+    if profile is None or not profile.get('embeddedTags'):
+        return {}
+    by_tag = _embedded_tag_ranges(text, profile)
+    out: Dict[str, List[Tuple[int, int]]] = {}
+    for entry in profile.get('embeddedTags', []) or []:
+        ext = _EMBEDDED_LANG_TO_EXT.get(entry.get('language', ''))
+        if ext is None:
+            continue
+        ranges = by_tag.get(entry['tag'], [])
+        if ranges:
+            out.setdefault(ext, []).extend(ranges)
+    return out
+
+
+def _effective_ext_at(pos: int, file_ext: str, ranges_by_ext: Dict[str, List[Tuple[int, int]]]) -> str:
+    for ext, ranges in (ranges_by_ext or {}).items():
+        for lo, hi in ranges:
+            if lo <= pos < hi:
+                return ext
+    return file_ext
+
+
+def _per_language_follow_stats(
+    diff_marks: dict,
+    teacher_files: Dict[str, Path],
+    student_files: Optional[Dict[str, Path]] = None,
+    teacher_ghosts: Optional[dict] = None,
+    removal_ts_by_token: Optional[Dict[str, List[str]]] = None,
+    teacher_entries: Optional[list] = None,
+    teacher_token_timestamps: Optional[Dict[str, list]] = None,
+) -> Dict[str, dict]:
+    student_files = student_files or {}
+
+    ghost_ts_by_pair: dict = {}
+    if teacher_ghosts:
+        from .similarity_measures import ts_to_local, _CHAR_TOKEN_RE
+        for fname, blobs in teacher_ghosts.items():
+            for blob in blobs or []:
+                blob_pos = blob.get('pos')
+                if blob_pos is None:
+                    continue
+                blob_del_ts = blob.get('del_ts')
+                char_del_ts = blob.get('char_del_ts') or []
+                blob_text = blob.get('text') or ''
+                for tok_match in _CHAR_TOKEN_RE.finditer(blob_text):
+                    start_rel = tok_match.start()
+                    end_rel = tok_match.end() - 1
+                    if start_rel < len(char_del_ts):
+                        slice_end = min(end_rel, len(char_del_ts) - 1)
+                        slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
+                                      if t is not None]
+                        raw_ts = max(slice_vals) if slice_vals else blob_del_ts
+                    else:
+                        raw_ts = blob_del_ts
+                    if raw_ts is None:
+                        continue
+                    ts_str = (ts_to_local(raw_ts)
+                              if isinstance(raw_ts, (int, float)) else raw_ts)
+                    ghost_ts_by_pair[(fname, blob_pos + start_rel, tok_match.group())] = ts_str
+
+    ghost_blobs_sorted: Dict[str, list] = {}
+    if teacher_ghosts:
+        for fname, blobs in teacher_ghosts.items():
+            ghost_blobs_sorted[fname] = sorted(
+                (b for b in (blobs or []) if b.get('pos') is not None),
+                key=lambda b: b.get('pos') or 0,
+            )
+
+    def _ghost_final_pos(paired_with: dict) -> Optional[Tuple[str, int]]:
+        if not paired_with or not paired_with.get('ghost'):
+            return None
+        fname = paired_with.get('file')
+        pos = paired_with.get('start')
+        if fname is None or not isinstance(pos, int):
+            return None
+        for blob in ghost_blobs_sorted.get(fname) or []:
+            bp = blob.get('pos')
+            bp_end = bp + len(blob.get('text') or '')
+            if bp <= pos < bp_end:
+                return (fname, bp)
+        return None
+
+    missing_ts_pool: Dict[str, List[str]] = {}
+    for entry in teacher_entries or []:
+        tok = entry[0] if len(entry) > 0 else ''
+        ts = entry[1] if len(entry) > 1 else ''
+        is_cm = entry[2] if len(entry) > 2 else False
+        is_rem = entry[3] if len(entry) > 3 else False
+        if is_cm or is_rem:
+            continue
+        missing_ts_pool.setdefault(tok, []).append(ts)
+
+    ttt_by_pos: Dict[Tuple[str, int, int], str] = {}
+    if teacher_token_timestamps:
+        for fname, entries in teacher_token_timestamps.items():
+            for e in entries or []:
+                s = e.get('start')
+                t_end = e.get('end')
+                ts = e.get('ts')
+                if isinstance(s, int) and isinstance(t_end, int) and ts:
+                    ttt_by_pos[(fname, s, t_end)] = ts
+
+    def _resolve_missing_ts(mark: dict, fname: str) -> str:
+        ts = mark.get('timestamp')
+        if ts:
+            return ts
+        s = mark.get('start')
+        e = mark.get('end')
+        if isinstance(s, int) and isinstance(e, int):
+            pos_ts = ttt_by_pos.get((fname, s, e))
+            if pos_ts:
+                return pos_ts
+        tok = mark.get('token', '')
+        pool = missing_ts_pool.get(tok)
+        if pool:
+            return pool.pop(0)
+        return '00:00:00'
+
+    removal_pool: Dict[str, List[str]] = {
+        tok: list(lst) for tok, lst in (removal_ts_by_token or {}).items()
+    }
+
+    def _resolve_ghost_ts(mark: dict) -> str:
+        pw = mark.get('paired_with') or {}
+        if pw.get('ghost'):
+            key = (pw.get('file'), pw.get('start'), pw.get('token'))
+            ts = ghost_ts_by_pair.get(key)
+            if ts:
+                return ts
+        existing = mark.get('removal_ts')
+        if existing:
+            return existing
+        tok = mark.get('token', '')
+        pool = removal_pool.get(tok)
+        if pool:
+            return pool.pop(0)
+        return '00:00:00'
+
+    def _load(files: Dict[str, Path]):
+        texts: Dict[str, str] = {}
+        ranges: Dict[str, dict] = {}
+        for fname, p in (files or {}).items():
+            if _ext_of(fname) is None:
+                continue
+            try:
+                text = _read_text_normalized(p)
+            except Exception:
+                continue
+            texts[fname] = text
+            ranges[fname] = _embedded_lang_ranges_for(text, _ext_of(fname))
+        return texts, ranges
+
+    teacher_texts, teacher_ranges = _load(teacher_files)
+    student_texts, student_ranges = _load(student_files)
+
+    totals: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
+    per_file_nc: Dict[str, list] = {}
+    for fname, text in teacher_texts.items():
+        file_ext = _ext_of(fname)
+        ranges = teacher_ranges.get(fname, {})
+        nc, _cm = _split_tokens_by_comment(text, file_ext)
+        per_file_nc[fname] = list(nc)
+        for pos, _tok in nc:
+            totals[_effective_ext_at(pos, file_ext, ranges)] += 1
+
+    missing_files = set(diff_marks.get('missing_files') or [])
+    n_missing: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
+    n_ghost_extra: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
+    n_extra_unpaired: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
+    items_by_ext: Dict[str, list] = {ext: [] for ext, _ in _LANG_EXT_LABEL}
+
+    def _add_whole_file_missing(fname: str, file_ext: str) -> None:
+        nc = per_file_nc.get(fname) or []
+        ranges = teacher_ranges.get(fname, {})
+        for pos, _tok in nc:
+            n_missing[_effective_ext_at(pos, file_ext, ranges)] += 1
+        if nc:
+            items_by_ext[file_ext].append(
+                ('99:99:99', f'(whole file missing: {fname} — {len(nc)} tokens)')
+            )
+
+    counted_missing_for: set = set()
+    for fname, marks in (diff_marks.get('teacher_files') or {}).items():
+        file_ext = _ext_of(fname)
+        if file_ext is None:
+            continue
+        if fname in missing_files:
+            _add_whole_file_missing(fname, file_ext)
+            counted_missing_for.add(fname)
+        else:
+            ranges = teacher_ranges.get(fname, {})
+            for m in marks or []:
+                if m.get('label') != 'missing':
+                    continue
+                pos = m.get('start', 0)
+                eff_ext = _effective_ext_at(pos, file_ext, ranges)
+                n_missing[eff_ext] += 1
+                ts = _resolve_missing_ts(m, fname)
+                items_by_ext[eff_ext].append((ts, f'-{m.get("token", "")}'))
+    for fname in missing_files:
+        file_ext = _ext_of(fname)
+        if file_ext is None or fname in counted_missing_for:
+            continue
+        _add_whole_file_missing(fname, file_ext)
+
+    for fname, marks in (diff_marks.get('student_files') or {}).items():
+        file_ext = _ext_of(fname)
+        if file_ext is None:
+            continue
+        ranges = student_ranges.get(fname, {})
+        for m in marks or []:
+            pos = m.get('start', 0)
+            eff_ext = _effective_ext_at(pos, file_ext, ranges)
+            lbl = m.get('label')
+            if lbl == 'ghost_extra':
+                ghost_final = _ghost_final_pos(m.get('paired_with') or {})
+                ge_ext = None
+                if ghost_final is not None:
+                    t_fname, t_pos = ghost_final
+                    t_file_ext = _ext_of(t_fname)
+                    if t_file_ext:
+                        t_ranges = teacher_ranges.get(t_fname, {})
+                        ge_ext = _effective_ext_at(t_pos, t_file_ext, t_ranges)
+                if ge_ext is None:
+                    ge_ext = eff_ext
+                n_ghost_extra[ge_ext] += 1
+                ts = _resolve_ghost_ts(m)
+                items_by_ext[ge_ext].append((ts, f'+{m.get("token", "")}*'))
+            elif lbl == 'extra' and not m.get('paired_with'):
+                n_extra_unpaired[eff_ext] += 1
+                items_by_ext[eff_ext].append(('00:00:00', f'+{m.get("token", "")}'))
+
+    out: Dict[str, dict] = {}
+    for ext, _label in _LANG_EXT_LABEL:
+        total = totals[ext]
+        if total <= 0:
+            out[ext] = None
+            continue
+        deduction = n_missing[ext] + n_ghost_extra[ext] + n_extra_unpaired[ext]
+        score = round(max(0.0, (total - deduction) / total * 100), 1)
+        sorted_items = sorted(items_by_ext[ext])
+        items_text = [
+            s if ts == '99:99:99' else f'{s} ({ts})'
+            for ts, s in sorted_items
+        ]
+        out[ext] = {
+            'score': score,
+            'items': items_text,
+            'text': ', '.join(items_text),
+        }
+    return out
 
 
 def _fmt_item(ts_str: str, s: str) -> str:
@@ -122,6 +393,7 @@ class TokenLogMixin:
         out_path = self.reference_dir / 'tokens.txt'
         n_typed, n_removed, n_unique = _write_teacher_tokens_file(
             all_events, out_path,
+            lesson_file=getattr(self, '_lesson_file', None),
         )
         if not n_typed and not n_removed:
             print('  Keyword log skipped \u2014 no key-log data.')
@@ -581,12 +853,19 @@ class TokenLogMixin:
                 )
 
             teacher_ghosts = diff_marks.get('teacher_ghosts')
-            if teacher_ghosts is None:
+            teacher_token_timestamps = diff_marks.get('teacher_token_timestamps')
+            if teacher_ghosts is None or teacher_token_timestamps is None:
                 leo_star_path = anon_dir / 'diff_marks_leo_star.json'
                 if leo_star_path.is_file():
                     try:
                         with open(leo_star_path, encoding='utf-8') as fh:
-                            teacher_ghosts = json.load(fh).get('teacher_ghosts')
+                            ls = json.load(fh)
+                            if teacher_ghosts is None:
+                                teacher_ghosts = ls.get('teacher_ghosts')
+                            if teacher_token_timestamps is None:
+                                teacher_token_timestamps = ls.get(
+                                    'teacher_token_timestamps'
+                                )
                     except Exception:
                         pass
 
@@ -595,6 +874,28 @@ class TokenLogMixin:
                 if is_rem and removal_ts:
                     fresh_removal.setdefault(tok, []).append(removal_ts)
 
+            if teacher_token_timestamps:
+                ttt_lookup: Dict[Tuple[str, int, int], str] = {}
+                for fname_t, entries in teacher_token_timestamps.items():
+                    for e in entries or []:
+                        s = e.get('start')
+                        en = e.get('end')
+                        ts = e.get('ts')
+                        if isinstance(s, int) and isinstance(en, int) and ts:
+                            ttt_lookup[(fname_t, s, en)] = ts
+                for fname_t, marks_t in (diff_marks.get('teacher_files') or {}).items():
+                    for m in marks_t or []:
+                        if m.get('label') != 'missing':
+                            continue
+                        if m.get('timestamp'):
+                            continue
+                        s = m.get('start')
+                        en = m.get('end')
+                        if isinstance(s, int) and isinstance(en, int):
+                            ts = ttt_lookup.get((fname_t, s, en))
+                            if ts:
+                                m['timestamp'] = ts
+
             all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
                 _build_occ_from_diff_marks(
                     diff_marks, teacher_entries,
@@ -602,7 +903,20 @@ class TokenLogMixin:
                     teacher_ghosts=teacher_ghosts,
                 )
             )
-            out[sid] = _stats_from_occurrences(
+            stats = _stats_from_occurrences(
                 all_occ, score_e, score_c, n_found, n_missing, n_extra,
             )
+            teacher_code_files = self._get_teacher_code_files()
+            student_code_files = {
+                p.name: p for p in anon_dir.iterdir()
+                if p.is_file() and p.suffix.lower() in _RECO_EXTS
+            }
+            stats['follow_e_by_lang'] = _per_language_follow_stats(
+                diff_marks, teacher_code_files, student_code_files,
+                teacher_ghosts=teacher_ghosts,
+                removal_ts_by_token=fresh_removal or removal_ts_by_token,
+                teacher_entries=teacher_entries,
+                teacher_token_timestamps=teacher_token_timestamps,
+            )
+            out[sid] = stats
         return out

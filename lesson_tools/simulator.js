@@ -26,6 +26,39 @@ async function _simReadImageUris(pathMap) {
 	return imageUris;
 }
 
+async function _simReadStudentNameMap(pathMap) {
+	const entry = [...pathMap.entries()].find(
+		([p]) => /students\.csv$/i.test(p) || /name_map\.csv$/i.test(p),
+	);
+	if (!entry) return {};
+	try {
+		const text = await readFileText(entry[1]);
+		return _simParseStudentNameMap(text);
+	} catch {
+		return {};
+	}
+}
+
+function _simParseStudentNameMap(text) {
+	const map = {};
+	const lines = text.split(/\r?\n/).filter(Boolean);
+	if (lines.length < 2) return map;
+	const delim = lines[0].includes(";") ? ";" : ",";
+	const cells = (line) =>
+		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+	const header = cells(lines[0]);
+	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
+	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+	if (idIdx === -1 || nameIdx === -1) return map;
+	for (let i = 1; i < lines.length; i++) {
+		const parts = cells(lines[i]);
+		const id = parts[idIdx];
+		const name = parts[nameIdx];
+		if (id && name) map[id] = name;
+	}
+	return map;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
 	await window.LanguageProfiles.initProfiles();
 	vis = new LogVisualizer();
@@ -55,19 +88,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 			if (logData && logTs >= storedTs) {
 				loadFromData(logData);
 			} else if (parsed) {
-				const { filePath, events, lessonFile } = parsed;
+				const { filePath, events, lessonFile, lessonName, studentNameMap } =
+					parsed;
 				let imageUris = {};
 				try {
 					const raw = localStorage.getItem("dashboard_sim_images");
 					if (raw) imageUris = JSON.parse(raw);
 				} catch {}
 				const micro = expandEvents(events || []);
+				const interactions = (events || []).filter((e) => e.interaction);
 				loadFromData({
 					filePath,
 					micro,
 					error: null,
 					imageUris,
 					lessonFile,
+					lessonName,
+					interactions,
+					studentNameMap: studentNameMap || {},
 				});
 			} else if (logData) {
 				loadFromData(logData);
@@ -113,6 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 					const events = data?.events || data?.keyPresses || [];
 					if (Array.isArray(events) && events.length) {
 						const imageUris = await _simReadImageUris(pathMap);
+						const studentNameMap = await _simReadStudentNameMap(pathMap);
 						const micro = expandEvents(events);
 						loadFromData({
 							filePath: file.name,
@@ -120,6 +159,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 							error: null,
 							imageUris,
 							lessonFile: data?.lessonFile || null,
+							lessonName: dirHandle.name,
+							interactions: events.filter((e) => e.interaction),
+							studentNameMap,
 						});
 						loaded = true;
 						break;
@@ -156,6 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				micro,
 				error: null,
 				lessonFile: json?.lessonFile || null,
+				interactions: events.filter((e) => e.interaction),
 			});
 		} catch (e) {
 			if (e.name !== "AbortError") alert("Failed to load log: " + e.message);

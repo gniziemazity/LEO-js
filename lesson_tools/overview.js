@@ -89,6 +89,7 @@ const PASSING = new Set(["Pass", "Pass'", "Pass*"]);
 
 let _students = [];
 let _globalStudentMap = {};
+let _realToAlterMap = {};
 let _lessonHandles = {};
 let _assignHandles = {};
 let _scatterCharts = [];
@@ -211,9 +212,17 @@ async function loadCourse(rootHandle) {
 		} catch {}
 
 	_globalStudentMap = {};
+	_realToAlterMap = {};
 	try {
 		const fh = await rootHandle.getFileHandle("students.csv");
-		_globalStudentMap = parseStudentCsv(await (await fh.getFile()).text());
+		const text = await readCsvText(await fh.getFile());
+		_globalStudentMap = parseStudentCsv(text);
+		_realToAlterMap = parseAlterEgoCsv(text);
+	} catch {}
+	try {
+		const fh = await rootHandle.getFileHandle("name_map.csv");
+		const text = await readCsvText(await fh.getFile());
+		_realToAlterMap = parseAlterEgoCsv(text);
 	} catch {}
 
 	_lessonHandles = {};
@@ -256,6 +265,23 @@ function finishLoad(filename) {
 	showPage("students");
 }
 
+async function readCsvText(file) {
+	const buf = await file.arrayBuffer();
+	const bytes = new Uint8Array(buf);
+	const stripBom = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
+	try {
+		return stripBom(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+	} catch {}
+	try {
+		return stripBom(new TextDecoder("windows-1252").decode(bytes));
+	} catch {}
+	return stripBom(new TextDecoder("latin1").decode(bytes));
+}
+
+function _nfc(s) {
+	return typeof s === "string" && s.normalize ? s.normalize("NFC") : s;
+}
+
 function parseStudentCsv(text) {
 	const map = {};
 	const lines = text.split(/\r?\n/).filter(Boolean);
@@ -266,6 +292,26 @@ function parseStudentCsv(text) {
 			.split(delim)
 			.map((s) => s.trim().replace(/^"|"$/g, ""));
 		if (parts.length >= 3 && parts[0]) map[parts[0]] = parts[2];
+	}
+	return map;
+}
+
+function parseAlterEgoCsv(text) {
+	const map = {};
+	const lines = text.split(/\r?\n/).filter(Boolean);
+	if (lines.length < 2) return map;
+	const delim = lines[0].includes(";") ? ";" : ",";
+	const cells = (line) =>
+		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+	const header = cells(lines[0]);
+	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
+	if (nameIdx === -1 || alterIdx === -1) return map;
+	for (let i = 1; i < lines.length; i++) {
+		const parts = cells(lines[i]);
+		const realName = parts[nameIdx];
+		const alterEgo = parts[alterIdx];
+		if (realName && alterEgo) map[_nfc(realName)] = alterEgo;
 	}
 	return map;
 }
@@ -401,7 +447,7 @@ function renderTable() {
 		};
 
 		tr.appendChild(cell(s.id, "id-cell col-id sticky-l"));
-		tr.appendChild(cell(s.name, "name-cell col-name sticky-l"));
+		tr.appendChild(cell(studentLabel(s), "name-cell col-name sticky-l"));
 		tr.appendChild(cell(s.number, "num col-num sticky-l"));
 		tr.appendChild(cell(fmtN(s.pre_typing), "num"));
 		tr.appendChild(cell(fmtN(s.self_eval), "num"));
@@ -503,11 +549,24 @@ function applyStickyColumns() {
 
 function onAnonChange(val) {
 	_anonMode = val;
-	const table = document.getElementById("grades-table");
-	table.classList.remove("anon-name", "anon-id");
-	if (val === "name") table.classList.add("anon-name");
-	else if (val === "id") table.classList.add("anon-id");
+	if (_students.length) {
+		renderTable();
+		renderStats();
+		renderProgress();
+	} else {
+		const table = document.getElementById("grades-table");
+		table.classList.remove("anon-name", "anon-id");
+		if (val === "name") table.classList.add("anon-name");
+		else if (val === "id") table.classList.add("anon-id");
+	}
 	requestAnimationFrame(applyStickyColumns);
+}
+
+function studentLabel(s) {
+	if (!s) return "";
+	if (_anonMode === "id") return s.id || "—";
+	if (_anonMode === "name") return _realToAlterMap[_nfc(s.name)] || s.name;
+	return s.name;
 }
 
 function fmtN(v, dec = 0) {
@@ -579,48 +638,58 @@ function attachLessonGroup(th, assignment) {
 		}
 	});
 }
+const _OVERVIEW_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+const _OVERVIEW_CODE_EXT = /\.(html|css|js|py)$/i;
+
 async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	const sid = (student.id || "").trim();
 	if (!sid)
 		throw new Error(`Cannot find anon folder for "${student.name}" (no ID).`);
 
+	const fileMap = new Map();
+	await readDirHandle(dirHandle, "", fileMap, [], { lowercaseKeys: true });
+
+	const recoEntries = [...fileMap.entries()].filter(
+		([p]) => /^reconstructed\//i.test(p) && _OVERVIEW_CODE_EXT.test(p),
+	);
+	const correctEntries = [...fileMap.entries()].filter(
+		([p]) => /^correct\//i.test(p) && _OVERVIEW_CODE_EXT.test(p),
+	);
+	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
+	const studentPrefix = "anon_ids/" + sid.toLowerCase() + "/";
+	const studentEntries = [...fileMap.entries()].filter(
+		([p]) => p.startsWith(studentPrefix) && _OVERVIEW_CODE_EXT.test(p),
+	);
+
 	const teacherFiles = {};
-	const _readCodeFiles = async (dirHandleSrc) => {
-		const out = {};
-		for await (const [name, entry] of dirHandleSrc.entries())
-			if (entry.kind === "file" && /\.(html|css|js|py)$/i.test(name))
-				out[name] = await (await entry.getFile()).text();
-		return out;
-	};
-	try {
-		const recoDir = await dirHandle.getDirectoryHandle("reconstructed");
-		Object.assign(teacherFiles, await _readCodeFiles(recoDir));
-	} catch {}
-	if (!Object.keys(teacherFiles).length) {
-		try {
-			const correctDir = await dirHandle.getDirectoryHandle("correct");
-			Object.assign(teacherFiles, await _readCodeFiles(correctDir));
-		} catch {}
+	for (const [, file] of teacherEntries) {
+		teacherFiles[file.name] = await readFileText(file);
+	}
+	const studentFiles = {};
+	for (const [, file] of studentEntries) {
+		studentFiles[file.name] = await readFileText(file);
 	}
 
-	const studentFiles = {};
-	const allMarks = {};
-	try {
-		const anonDir = await dirHandle.getDirectoryHandle("anon_ids");
-		const studentDir = await anonDir.getDirectoryHandle(sid);
-		for await (const [name, entry] of studentDir.entries()) {
-			if (entry.kind !== "file") continue;
-			if (/\.(html|css|js|py)$/i.test(name))
-				studentFiles[name] = await (await entry.getFile()).text();
+	const imageUris = {};
+	const imageEntries = [...fileMap.entries()].filter(
+		([p]) =>
+			_OVERVIEW_IMAGE_EXT.test(p) &&
+			(/^correct\//i.test(p) || p.startsWith(studentPrefix)),
+	);
+	for (const [, file] of imageEntries) {
+		if (!imageUris[file.name]) {
+			imageUris[file.name] = await readFileDataUri(file);
 		}
-		for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+	}
+
+	const allMarks = {};
+	for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+		const entry = fileMap.get(studentPrefix + fname.toLowerCase());
+		if (entry) {
 			try {
-				const fh = await studentDir.getFileHandle(fname);
-				allMarks[mode] = JSON.parse(await (await fh.getFile()).text());
+				allMarks[mode] = JSON.parse(await readFileText(entry));
 			} catch {}
 		}
-	} catch (e) {
-		console.warn("Student dir error:", e.message);
 	}
 
 	if (!Object.keys(teacherFiles).length && !Object.keys(studentFiles).length) {
@@ -632,8 +701,8 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 		teacherFiles,
 		studentFiles,
 		allMarks,
-		imageUris: {},
-		title: `${student.id ? escHtml(String(student.id)) + ". " : ""}${escHtml(student.name)} (${escHtml(label)})`,
+		imageUris,
+		title: `${student.id ? escHtml(String(student.id)) + ". " : ""}${escHtml(studentLabel(student))} (${escHtml(label)})`,
 	};
 }
 
@@ -705,7 +774,7 @@ function renderStats() {
 
 		addBarCard(
 			body,
-			"Average Grades",
+			"Average Grades (Assignments)",
 			names6,
 			py.assignments.map((a) => a.avg_grade ?? 0),
 			ACCENT,
@@ -714,7 +783,7 @@ function renderStats() {
 		);
 		addBarCard(
 			body,
-			"Trouble Rates",
+			"Trouble Rates (Assignments)",
 			names6,
 			py.assignments.map((a) =>
 				a.trouble_rate != null ? a.trouble_rate * 100 : 0,
@@ -725,7 +794,7 @@ function renderStats() {
 		);
 		addBarCard(
 			body,
-			"AI Use",
+			"AI Use (Assignments)",
 			names6,
 			py.assignments.map((a) => (a.ai_rate != null ? a.ai_rate * 100 : 0)),
 			ACCENT,
@@ -735,7 +804,7 @@ function renderStats() {
 		if (names5.length)
 			addBarCard(
 				body,
-				"Follow Scores",
+				"Follow Scores (Lessons)",
 				names5,
 				py.assignments
 					.filter((a) => a.follow_avg != null)
@@ -765,7 +834,7 @@ function renderStats() {
 				.map((s) => ({
 					x: s.lessons[a.n - 1].follow,
 					y: s.lessons[a.n - 1].grade,
-					name: s.name,
+					name: studentLabel(s),
 					ai: /\bAI\b/i.test(s.lessons[a.n - 1].obs),
 					student: s,
 					assignment: a,
@@ -948,7 +1017,7 @@ function renderStats() {
 }
 
 function addPassingCard(parent, labels, passCounts, participCounts) {
-	const card = mkCard(parent, "Students Passing");
+	const card = mkCard(parent, "Students Passing (Assignments)");
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 	const notPassCounts = participCounts.map((p, i) => p - passCounts[i]);
@@ -1197,9 +1266,12 @@ function renderProgress() {
 	const sorted = sortedStudents();
 
 	for (const s of sorted) {
-		const card = el("div", "prog-card");
+		const card = el(
+			"div",
+			"prog-card" + (s.passed_course ? "" : " not-passed"),
+		);
 		const h4 = el("h4");
-		h4.textContent = s.name;
+		h4.textContent = studentLabel(s);
 		card.appendChild(h4);
 		const box = el("div", "prog-chart-box");
 		card.appendChild(box);

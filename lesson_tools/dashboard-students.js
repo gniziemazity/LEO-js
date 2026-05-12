@@ -15,6 +15,8 @@ const REMARKS_BASES = [
 	{ key: "git", label: "Git" },
 ];
 
+const DEFAULT_BASIS_ORDER = ["required", "ideal", "leo_star", "leo"];
+
 let _basisFiles = new Map();
 let _basisFallbackFile = null;
 let _activeBasis = null;
@@ -44,10 +46,18 @@ async function loadXlsxFiles(files) {
 	}
 
 	let chosenKey = null;
-	for (const { key } of REMARKS_BASES) {
+	for (const key of DEFAULT_BASIS_ORDER) {
 		if (_basisFiles.has(key)) {
 			chosenKey = key;
 			break;
+		}
+	}
+	if (!chosenKey) {
+		for (const { key } of REMARKS_BASES) {
+			if (_basisFiles.has(key)) {
+				chosenKey = key;
+				break;
+			}
 		}
 	}
 	_activeBasis = chosenKey;
@@ -162,6 +172,12 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 		}
 	}
 
+	const langDescCols = {};
+	for (const label of ["HTML", "CSS", "JS", "Py"]) {
+		const col = hdrR.indexOf(`${label} (E) Desc`);
+		if (col !== -1) langDescCols[label] = col;
+	}
+
 	const followData = {};
 	for (let i = 1; i < rowsR.length; i++) {
 		const row = rowsR[i];
@@ -169,9 +185,23 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 		if (!name || name === "undefined") continue;
 		const pct = parseFloat(row[pctColR]);
 		const desc = descColR !== -1 ? String(row[descColR] || "") : "";
+		const events = parseFollowEvents(desc, sessionDate);
+		const langOf = new Map();
+		for (const [label, col] of Object.entries(langDescCols)) {
+			const langDesc = String(row[col] || "");
+			if (!langDesc) continue;
+			for (const ev of parseFollowEvents(langDesc, sessionDate)) {
+				langOf.set(`${ev.kind}|${ev.token}|${ev.ts}`, label);
+			}
+		}
+		for (const ev of events) {
+			const key = `${ev.kind}|${ev.token}|${ev.ts}`;
+			const lang = langOf.get(key);
+			if (lang) ev.lang = lang;
+		}
 		followData[name] = {
 			pct: isNaN(pct) ? null : pct,
-			events: parseFollowEvents(desc, sessionDate),
+			events,
 		};
 	}
 
@@ -197,9 +227,7 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 			follow_dt:
 				(
 					evs
-						.filter(
-							(e) => e.kind === "missing" || e.kind === "extra-star",
-						)
+						.filter(_isMistakeEvent)
 						.reduce((a, b) => (a == null || b.ts < a.ts ? b : a), null) ??
 					evs[0]
 				)?.ts ?? null,

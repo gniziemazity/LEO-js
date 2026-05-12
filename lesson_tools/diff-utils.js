@@ -85,8 +85,8 @@ function diffModeFromFilename(filename) {
 function defaultDiffModeKey(allMarks, requestedMode = null) {
 	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
-	if (has("ideal")) return "ideal";
 	if (has("required")) return "required";
+	if (has("ideal")) return "ideal";
 	if (has("")) return "";
 	if (has("leo")) return "leo";
 	return Object.keys(allMarks)[0] ?? null;

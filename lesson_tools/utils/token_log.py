@@ -96,9 +96,10 @@ _TOKEN_FILE_HEADER_KEYS = ('Occurrences', 'Removed', 'Unique')
 def _write_teacher_tokens_file(
     events: list,
     out_path: Path,
+    lesson_file: str | None = None,
 ) -> Tuple[int, int, int]:
     kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
-        reconstruct_tokens_from_keylog_full(events)
+        reconstruct_tokens_from_keylog_full(events, lesson_file=lesson_file)
     )
 
     all_occ: List[Tuple[int, int, str, bool, bool]] = []
@@ -854,8 +855,10 @@ def _add_seconds_to_hms(hms: str, delta: int) -> Optional[str]:
         return None
 
 
-def _build_removal_ts_map(events: list) -> Dict[str, List[str]]:
-    _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(events)
+def _build_removal_ts_map(events: list, lesson_file: str | None = None) -> Dict[str, List[str]]:
+    _, _, removed_kw_ts, _, _ = reconstruct_tokens_from_keylog_full(
+        events, lesson_file=lesson_file,
+    )
     out: Dict[str, List[str]] = {}
     for tok, pairs in removed_kw_ts.items():
         for _ins_ts, del_ts in pairs:
@@ -1924,6 +1927,27 @@ def _validate_truth_schema(
 
     teacher_marks_by_file = truth.get('teacher_files', {}) or {}
     student_marks_by_file = truth.get('student_files', {}) or {}
+    missing_files_raw = truth.get('missing_files', []) or []
+    if not isinstance(missing_files_raw, list):
+        errors.append(f'missing_files must be a list, got {type(missing_files_raw).__name__}')
+        missing_files_raw = []
+    missing_files: set = set()
+    for entry in missing_files_raw:
+        if not isinstance(entry, str):
+            errors.append(f'missing_files entry must be a string: {entry!r}')
+            continue
+        if entry not in (teacher_files or {}):
+            errors.append(
+                f'missing_files entry {entry!r} is not a teacher file'
+            )
+            continue
+        if entry in (student_files or {}):
+            errors.append(
+                f'missing_files entry {entry!r} is also in student_files — '
+                f'student did submit it'
+            )
+            continue
+        missing_files.add(entry)
 
     for fname, marks in teacher_marks_by_file.items():
         for m in marks or []:
@@ -2097,6 +2121,8 @@ def _validate_truth_schema(
                 )
 
     for fname, marks in teacher_marks_by_file.items():
+        if fname in missing_files:
+            continue
         for m in marks or []:
             if m.get('label') != 'missing':
                 continue

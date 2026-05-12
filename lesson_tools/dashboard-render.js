@@ -112,6 +112,15 @@ const BAR_COLORS = {
 	move: THEME.orange,
 };
 
+const LANG_BAR_COLORS = {
+	HTML: THEME.red,
+	CSS: THEME.blue,
+	JS: THEME.orange,
+	Py: THEME.green,
+	"?": THEME.gray,
+};
+const LANG_STACK_ORDER = ["HTML", "CSS", "JS", "Py", "?"];
+
 function _burstColorKey(b) {
 	if (b.chars > 0) return b.colorType || "normal";
 	if (b.hasCodeInserts) return "normal";
@@ -129,6 +138,42 @@ function _singletonColorKey(kp) {
 	return "normal";
 }
 
+function _buildBottomChartBlocks(p) {
+	const blocks = [];
+	const seen = new Set();
+	for (const b of p.bursts || []) {
+		const key = `b|${b.startTs}|${b.endTs}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		blocks.push({
+			ts1: b.startTs,
+			ts2: b.endTs,
+			centerTs: b.centerTs,
+			dur: b.dur,
+			burst: b,
+			kp: null,
+			colorKey: _burstColorKey(b),
+		});
+	}
+	const half = CFG.BAR_MIN_SECS / 2;
+	for (const kp of p.singletons || []) {
+		const ts = kp.timestamp / 1000;
+		const key = `s|${ts}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		blocks.push({
+			ts1: ts - half,
+			ts2: ts + half,
+			centerTs: ts,
+			dur: 0,
+			burst: null,
+			kp,
+			colorKey: _singletonColorKey(kp),
+		});
+	}
+	return blocks;
+}
+
 const _topChartVisible = {
 	chars: true,
 	inserts: true,
@@ -142,6 +187,7 @@ const _bottomChartVisible = {
 	firstMismatch: true,
 	followRank: true,
 	interactions: true,
+	barMode: true,
 };
 
 let _studentYByName = new Map();
@@ -159,8 +205,10 @@ function _computeStudentYs(students, L) {
 		(a, b) => (b.follow_pct ?? 0) - (a.follow_pct ?? 0),
 	);
 	const N = sorted.length;
+	const pad = L.plotHbotPad || 0;
+	const usableH = Math.max(0, L.plotHbot - 2 * pad);
 	for (let i = 0; i < N; i++) {
-		const y = L.M.top + ((i + 0.5) / N) * L.plotHbot;
+		const y = L.M.top + pad + ((i + 0.5) / N) * usableH;
 		_studentYByName.set(sorted[i].name, y);
 	}
 }
@@ -196,9 +244,19 @@ function setupBottomChartLegend() {
 			scheduleRender();
 		};
 	}
+	const cb4 = document.getElementById("leg-bottom-barmode");
+	if (cb4) {
+		cb4.checked = _bottomChartVisible.barMode;
+		cb4.onchange = () => {
+			_bottomChartVisible.barMode = cb4.checked;
+			scheduleRender();
+		};
+	}
 }
 
 function setupTopChartLegend(p) {
+	const lessonEl = document.getElementById("leg-lesson");
+	if (lessonEl) lessonEl.textContent = _dirHandle?.name || "";
 	const totalEl = document.getElementById("leg-total");
 	if (totalEl) totalEl.textContent = `Total Events: ${p.eventCount}`;
 	const items = [
@@ -522,6 +580,11 @@ function drawBottomChart(ctx, p, students, L) {
 	ctx.fillStyle = "#fff";
 	ctx.fillRect(0, 0, W, H);
 
+	if (_bottomChartVisible.barMode) {
+		_drawBottomChartBars(ctx, p, students, L);
+		return;
+	}
+
 	_computeStudentYs(students, L);
 
 	ctx.save();
@@ -547,10 +610,7 @@ function drawBottomChart(ctx, p, students, L) {
 		const jitter = _shake
 			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
 			: { dx: 0, dy: 0 };
-		const evs = (s.follow_events || []).filter(
-			(e) =>
-				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
-		);
+		const evs = (s.follow_events || []).filter(_isMistakeEvent);
 		if (!evs.length) return;
 		const sorted = [...evs].sort((a, b) => a.ts - b.ts);
 		const clusters = [];
@@ -664,10 +724,7 @@ function drawBottomChart(ctx, p, students, L) {
 
 	if (_hoveredStudent) {
 		const hs = _hoveredStudent;
-		const hEvs = (hs.follow_events || []).filter(
-			(e) =>
-				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
-		);
+		const hEvs = (hs.follow_events || []).filter(_isMistakeEvent);
 		if (hEvs.length) {
 			const hSorted = [...hEvs].sort((a, b) => a.ts - b.ts);
 			const hJitter = _shake
@@ -762,6 +819,150 @@ function drawBottomChart(ctx, p, students, L) {
 	drawBlockMistakeCounts(ctx, p, students, L);
 }
 
+function _drawBottomChartBars(ctx, p, students, L) {
+	const { M, W, Hbot: H, plotW, plotHbot } = L;
+	const bottomY = M.top + plotHbot;
+	const minBarW =
+		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+
+	const blocks = _buildBottomChartBlocks(p);
+
+	const studentEvs = (students || []).map((s) =>
+		(s.follow_events || []).filter(_isMistakeEvent),
+	);
+	const countStudents = (t1, t2) => {
+		let n = 0;
+		for (const evs of studentEvs) {
+			for (const e of evs) {
+				if (e.ts >= t1 && e.ts <= t2) {
+					n++;
+					break;
+				}
+			}
+		}
+		return n;
+	};
+	const langEventCounts = (t1, t2) => {
+		const counts = {};
+		for (const evs of studentEvs) {
+			for (const e of evs) {
+				if (e.ts >= t1 && e.ts <= t2) {
+					const l = e.lang || "?";
+					if (!counts[l]) counts[l] = { ghost: 0, nonGhost: 0 };
+					if (e.kind === "extra-star") counts[l].ghost++;
+					else counts[l].nonGhost++;
+				}
+			}
+		}
+		return counts;
+	};
+
+	const counts = blocks.map((blk) => countStudents(blk.ts1, blk.ts2));
+	const totalStudents = (students || []).length;
+	const denom = Math.max(1, totalStudents);
+
+	ctx.save();
+	ctx.beginPath();
+	ctx.rect(M.left, M.top, plotW, plotHbot);
+	ctx.clip();
+
+	for (let i = 0; i < blocks.length; i++) {
+		const c = counts[i];
+		if (c <= 0) continue;
+		const blk = blocks[i];
+		const x = tsToX(blk.centerTs - blk.dur / 2, L);
+		const x2 = tsToX(blk.centerTs + blk.dur / 2, L);
+		const bw = Math.max(x2 - x, minBarW);
+		const bx = (x + x2) / 2 - bw / 2;
+		const bh = Math.min(plotHbot, (c / denom) * plotHbot);
+		const by = bottomY - bh;
+		const langC = langEventCounts(blk.ts1, blk.ts2);
+		let totalEv = 0;
+		for (const v of Object.values(langC)) totalEv += v.ghost + v.nonGhost;
+		if (totalEv === 0) {
+			ctx.globalAlpha = 0.72;
+			ctx.fillStyle = LANG_BAR_COLORS["?"];
+			ctx.fillRect(bx, by, bw, bh);
+			ctx.globalAlpha = 1;
+		} else {
+			let segBottom = bottomY;
+			for (const lang of LANG_STACK_ORDER) {
+				const v = langC[lang];
+				if (!v) continue;
+				const n = v.ghost + v.nonGhost;
+				if (n === 0) continue;
+				const segH = bh * (n / totalEv);
+				const color = LANG_BAR_COLORS[lang] || THEME.gray;
+				const nonGhostH = segH * (v.nonGhost / n);
+				const ghostH = segH - nonGhostH;
+				ctx.fillStyle = color;
+				if (nonGhostH > 0) {
+					ctx.globalAlpha = 0.72;
+					ctx.fillRect(bx, segBottom - nonGhostH, bw, nonGhostH);
+				}
+				if (ghostH > 0) {
+					ctx.globalAlpha = 0.28;
+					ctx.fillRect(bx, segBottom - segH, bw, ghostH);
+				}
+				ctx.globalAlpha = 1;
+				segBottom -= segH;
+			}
+		}
+	}
+
+	ctx.restore();
+
+	const presentLangs = new Set();
+	for (let i = 0; i < blocks.length; i++) {
+		if (counts[i] <= 0) continue;
+		const lc = langEventCounts(blocks[i].ts1, blocks[i].ts2);
+		for (const l of Object.keys(lc)) {
+			const v = lc[l];
+			if (v.ghost + v.nonGhost > 0) presentLangs.add(l);
+		}
+	}
+	const legendItems = LANG_STACK_ORDER.filter((l) => presentLangs.has(l));
+	if (legendItems.length) {
+		ctx.font = "bold 10px Consolas,monospace";
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		const swatchW = 10;
+		const swatchH = 8;
+		const gapInside = 4;
+		const gapBetween = 12;
+		let lx = M.left + 6;
+		const ly = M.top + 8;
+		for (const l of legendItems) {
+			ctx.globalAlpha = 0.72;
+			ctx.fillStyle = LANG_BAR_COLORS[l];
+			ctx.fillRect(lx, ly - swatchH / 2, swatchW, swatchH);
+			ctx.globalAlpha = 1;
+			ctx.fillStyle = "#333";
+			ctx.fillText(l, lx + swatchW + gapInside, ly);
+			lx += swatchW + gapInside + ctx.measureText(l).width + gapBetween;
+		}
+	}
+
+	ctx.fillStyle = "#555";
+	ctx.font = "11px Consolas,monospace";
+	ctx.textAlign = "right";
+	ctx.textBaseline = "alphabetic";
+	ctx.strokeStyle = "#aaa";
+	ctx.lineWidth = 1;
+	for (const v of [0, totalStudents]) {
+		const y = bottomY - (v / denom) * plotHbot;
+		ctx.beginPath();
+		ctx.moveTo(M.left - 3, y);
+		ctx.lineTo(M.left, y);
+		ctx.stroke();
+		ctx.fillText(String(v), M.left - 3, y + 4);
+	}
+	rotatedLabel(ctx, 22, M.top + plotHbot / 2, "Students", THEME.label);
+
+	drawTimeAxis(ctx, L, M.top + plotHbot, H);
+	drawBlockMistakeCounts(ctx, p, students, L);
+}
+
 function drawBlockBackgrounds(ctx, p, L) {
 	const { M, plotHbot } = L;
 	const minBarW =
@@ -813,10 +1014,7 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 	}
 
 	const studentEvs = students.map((s) =>
-		(s.follow_events || []).filter(
-			(e) =>
-				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
-		),
+		(s.follow_events || []).filter(_isMistakeEvent),
 	);
 
 	function countStudents(t1, t2) {

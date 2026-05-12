@@ -95,6 +95,19 @@ function _interactionStudentId(field) {
 	return null;
 }
 
+function _isMistakeEvent(e) {
+	return e.ts != null && (e.kind === "missing" || e.kind === "extra-star");
+}
+
+function _singletonToTextPart(ev) {
+	if (ev._virtualType === "anchor")
+		return { t: ev._target || "", type: "anchor" };
+	if (ev._virtualType === "move") return { t: ev._target || "", type: "move" };
+	if (ev._virtualType === "code_insert")
+		return { t: ev.code_insert || "", type: "code_insert" };
+	return { t: ev.char || "", type: "char" };
+}
+
 function resolveInteractionStudentDisplayWithId(field) {
 	const name = resolveInteractionStudentDisplay(field);
 	const id = _interactionStudentId(field);

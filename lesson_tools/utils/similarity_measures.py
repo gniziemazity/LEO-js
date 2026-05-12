@@ -33,78 +33,6 @@ def calculate_char_histogram_similarity(lines1: List[str], lines2: List[str]) ->
     total_diff = sum(abs(freq1.get(c, 0) - freq2.get(c, 0)) for c in all_chars)
     return 1.0 - total_diff / (total1 + total2)
 
-_COMMENT_RE = re.compile(
-    r'/\*.*?\*/|<!--.*?-->|(?<!:)//[^\n]*',
-    re.DOTALL,
-)
-_COMMENT_RE_CSS = re.compile(r'/\*.*?\*/', re.DOTALL)
-_HTML_OPEN_RE = re.compile(r'<\s*(script|style)\b[^>]*>', re.IGNORECASE)
-
-
-def _html_tag_block_ranges(text: str) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
-    script_ranges: List[Tuple[int, int]] = []
-    style_ranges: List[Tuple[int, int]] = []
-    pos = 0
-    while True:
-        om = _HTML_OPEN_RE.search(text, pos)
-        if not om:
-            break
-        tag = om.group(1).lower()
-        inner_start = om.end()
-        close_re = re.compile(
-            rf'</\s*{tag}\s*>|<\s*\\\s*/?\s*{tag}\s*>|/\s*{tag}\s*>',
-            re.IGNORECASE,
-        )
-        cm = close_re.search(text, inner_start)
-        inner_end = cm.start() if cm else len(text)
-        if tag == 'script':
-            script_ranges.append((inner_start, inner_end))
-        else:
-            style_ranges.append((inner_start, inner_end))
-        pos = cm.end() if cm else len(text)
-    return script_ranges, style_ranges
-
-
-def _legacy_comment_ranges(text: str, ext=None) -> Tuple[List[int], List[int]]:
-    starts: List[int] = []
-    ends: List[int] = []
-
-    e = ext.lower() if ext else ''
-    if e == '.css':
-        for match in _COMMENT_RE_CSS.finditer(text):
-            starts.append(match.start())
-            ends.append(match.end())
-        return starts, ends
-
-    is_html = e in ('.html', '.htm')
-    script_ranges: List[Tuple[int, int]] = []
-    style_ranges: List[Tuple[int, int]] = []
-    if is_html:
-        script_ranges, style_ranges = _html_tag_block_ranges(text)
-
-    def _in_ranges(pos: int, ranges: List[Tuple[int, int]]) -> bool:
-        for lo, hi in ranges:
-            if lo <= pos < hi:
-                return True
-            if pos < lo:
-                return False
-        return False
-
-    for match in _COMMENT_RE.finditer(text):
-        kind = match.group()[:2]
-        if is_html:
-            pos = match.start()
-            if kind == '//' and not _in_ranges(pos, script_ranges):
-                continue
-            if kind == '/*' and not (
-                _in_ranges(pos, style_ranges) or _in_ranges(pos, script_ranges)
-            ):
-                continue
-        starts.append(match.start())
-        ends.append(match.end())
-    return starts, ends
-
-
 _FALLBACK_DETECT_RE = re.compile(r'/\*[\s\S]*?\*/|<!--[\s\S]*?-->|(?<!:)//[^\n]*')
 
 
@@ -161,6 +89,7 @@ def split_code_tokens(text: str, ext=None) -> Tuple[Counter, Counter]:
 
 def reconstruct_tokens_from_keylog_full(
     events: List[dict],
+    lesson_file: str | None = None,
 ) -> Tuple[
     Dict[str, List[int]],
     Dict[str, List[int]],
@@ -176,9 +105,16 @@ def reconstruct_tokens_from_keylog_full(
     char_ts_final: List[int] = [e[1] for e in surviving]
     n = len(final_text)
 
+    ext = None
+    if lesson_file:
+        try:
+            ext = '.' + lesson_file.rsplit('.', 1)[1].lower()
+        except IndexError:
+            ext = None
+    comment_starts, comment_ends = _comment_ranges(final_text, ext)
     comment_mask_final: List[bool] = [False] * n
-    for cm in _COMMENT_RE.finditer(final_text):
-        for i in range(cm.start(), min(cm.end(), n)):
+    for cs, ce in zip(comment_starts, comment_ends):
+        for i in range(cs, min(ce, n)):
             comment_mask_final[i] = True
 
     kw_ts: Dict[str, List[int]] = {}

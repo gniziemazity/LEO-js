@@ -10,6 +10,8 @@ class LogVisualizer {
 		this._silent = false;
 
 		this._imageUris = {};
+		this._interactions = [];
+		this._studentNameMap = {};
 		this.main = new TextState();
 		this.dev = new TextState();
 		this._files = { MAIN: this.main };
@@ -204,7 +206,104 @@ class LogVisualizer {
 		if (this.elBtnDev) this.elBtnDev.classList.toggle("is-toggle-on", on);
 	}
 
-	loadFile({ filePath, micro, error, imageUris, lessonFile }) {
+	_prepareInteractions(rawInteractions) {
+		const sorted = [...rawInteractions]
+			.filter((it) => it && typeof it.timestamp === "number")
+			.sort((a, b) => a.timestamp - b.timestamp);
+		const typingTs = [];
+		for (const m of this.micro || []) {
+			if ((m[0] === "char" || m[0] === "code_insert_atomic") && m[2]) {
+				typingTs.push(m[2]);
+			}
+		}
+		const nextTypingAfter = (ts) => {
+			for (const t of typingTs) if (t > ts) return t;
+			return Infinity;
+		};
+		return sorted.map((it, i) => {
+			const naturalEnd =
+				it.closed_at != null
+					? it.closed_at
+					: (sorted[i + 1]?.timestamp ?? it.timestamp + 5000);
+			const typingEnd = nextTypingAfter(it.timestamp);
+			return { ...it, endTs: Math.min(naturalEnd, typingEnd) };
+		});
+	}
+
+	_lookupStudentName(field) {
+		if (field == null) return "";
+		const key = String(field).trim();
+		if (!key) return "";
+		const name = this._studentNameMap?.[key];
+		return name || key;
+	}
+
+	_activeInteractionAt(ts) {
+		if (!ts || !this._interactions?.length) return null;
+		for (const it of this._interactions) {
+			if (it.timestamp <= ts && ts <= it.endTs) return it;
+		}
+		return null;
+	}
+
+	_renderInteractionHtml(it) {
+		const KIND = {
+			"teacher-question": { icon: "❓", label: "Teacher Question" },
+			"student-question": { icon: "🙋", label: "Student Question" },
+			"providing-help": { icon: "🤝", label: "Providing Help" },
+		};
+		const k = KIND[it.interaction] || {
+			icon: "💬",
+			label: it.interaction || "Interaction",
+		};
+		const fmtWho = (v) => {
+			let arr;
+			if (Array.isArray(v)) arr = v;
+			else if (typeof v === "string") arr = v.split(",");
+			else if (v != null) arr = [v];
+			else arr = [];
+			return arr
+				.map((x) => this._lookupStudentName(x))
+				.filter(Boolean)
+				.join(", ");
+		};
+		const parts = [
+			`<div class="vis-int-title">${k.icon} ${esc(k.label)}</div>`,
+		];
+		if (it.info) {
+			parts.push(`<div class="vis-int-info">${esc(String(it.info))}</div>`);
+		}
+		const askedBy = fmtWho(it.asked_by);
+		if (askedBy) {
+			parts.push(
+				`<div class="vis-int-line"><span class="vis-int-key">Asked by:</span> ${esc(askedBy)}</div>`,
+			);
+		}
+		const answeredBy = fmtWho(it.answered_by);
+		if (answeredBy) {
+			parts.push(
+				`<div class="vis-int-line"><span class="vis-int-key">Answered by:</span> ${esc(answeredBy)}</div>`,
+			);
+		}
+		const student = fmtWho(it.student);
+		if (student) {
+			parts.push(
+				`<div class="vis-int-line"><span class="vis-int-key">Student:</span> ${esc(student)}</div>`,
+			);
+		}
+		return parts.join("");
+	}
+
+	loadFile({
+		filePath,
+		micro,
+		error,
+		imageUris,
+		lessonFile,
+		lessonName,
+		interactions,
+		studentNameMap,
+	}) {
 		if (error) {
 			console.error("expand error:\n" + error);
 			return;
@@ -213,8 +312,10 @@ class LogVisualizer {
 		this.vscode = new VSCodeSettings();
 		this._imageUris = imageUris || {};
 		this._lessonFile = lessonFile || null;
-
+		this._studentNameMap = studentNameMap || {};
 		this.micro = micro;
+		this._interactions = this._prepareInteractions(interactions || []);
+		document.title = lessonName ? `Simulator: ${lessonName}` : "Simulator";
 
 		this._tsOrigin = 0;
 		for (const act of micro) {
@@ -952,7 +1053,19 @@ class LogVisualizer {
 			else mainFileType = "html";
 		}
 		this.elEditor.innerHTML = renderEditorHtml(this.main, true, mainFileType);
-		this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
+		const interactionTs =
+			(this.microIdx > 0 && this.micro[this.microIdx - 1]?.[2]) ||
+			this.main.tsAtCursor() ||
+			this.dev.tsAtCursor() ||
+			null;
+		const activeInt = this._activeInteractionAt(interactionTs);
+		if (activeInt) {
+			this.elDevEditor.classList.add("vis-int-mode");
+			this.elDevEditor.innerHTML = this._renderInteractionHtml(activeInt);
+		} else {
+			this.elDevEditor.classList.remove("vis-int-mode");
+			this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
+		}
 		if (this.elAutoScroll.checked) {
 			const cur = this.elEditor.querySelector(".vis-cursor");
 			if (cur) cur.scrollIntoView({ block: "nearest" });

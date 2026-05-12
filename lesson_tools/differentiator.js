@@ -20,8 +20,8 @@ let _lineNumbersEnabled =
 	localStorage.getItem("diff-line-numbers") === "on";
 
 const DIFF_MODE_OPTIONS = [
-	{ key: "ideal", label: "Ideal" },
 	{ key: "required", label: "Required" },
+	{ key: "ideal", label: "Ideal" },
 	{ key: "", label: "LEO*" },
 	{ key: "leo", label: "LEO" },
 	{ key: "token-lcs-star", label: "LCS*" },
@@ -75,6 +75,21 @@ function _pairedFileName(fromSide, name) {
 		_CODE_FILE_RE.test(n),
 	);
 	if (!otherNames.length) return null;
+	const filePairs = _currentMarksEntry?.file_pairs;
+	if (filePairs) {
+		if (
+			fromSide === "student" &&
+			filePairs[name] &&
+			otherFiles[filePairs[name]] != null
+		) {
+			return filePairs[name];
+		}
+		if (fromSide === "teacher") {
+			for (const [s, t] of Object.entries(filePairs)) {
+				if (t === name && otherFiles[s] != null) return s;
+			}
+		}
+	}
 	const lower = String(name).toLowerCase();
 	for (const n of otherNames) {
 		if (n.toLowerCase() === lower) return n;
@@ -104,7 +119,7 @@ function _activateFileTab(side, name) {
 	const codeWrap = document.getElementById(`code-${side}`);
 	if (!tabs || !codeWrap) return;
 	const btns = [...tabs.querySelectorAll(".file-tab")];
-	const idx = btns.findIndex((b) => b.textContent === name);
+	const idx = btns.findIndex((b) => b.dataset.fileName === name);
 	if (idx < 0) return;
 	btns.forEach((b) => b.classList.remove("file-tab-active"));
 	codeWrap
@@ -220,7 +235,7 @@ function _applyIncomingData(data) {
 		_studentMarks = _currentMarksEntry?.student_files ?? null;
 	}
 
-	if (data.title) document.title = data.title;
+	if (data.title) document.title = `${data.title} : Differentiator`;
 	const titleText = data.title || "Student";
 	_titleBase =
 		data.titleBase ||
@@ -249,6 +264,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	_diffMode = modeParam;
 	_refreshLinePaddingButton();
 	_refreshLineNumbersButton();
+	_refreshPreviewButton();
 	_applyLineNumbersClass();
 
 	const expectAutoLoad =
@@ -282,6 +298,29 @@ window.addEventListener("DOMContentLoaded", async () => {
 			}
 			_updateTitleScore();
 			_persistDiffState();
+		});
+
+		document.addEventListener("keydown", (ev) => {
+			if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
+			if (typeof _truthCurrentSel !== "undefined" && _truthCurrentSel)
+				return;
+			const t = ev.target;
+			if (
+				t &&
+				t.matches &&
+				t.matches("input, textarea, select, [contenteditable=true]")
+			)
+				return;
+			const SHORTCUTS = { r: "required", i: "ideal", l: "" };
+			const mode = SHORTCUTS[ev.key.toLowerCase()];
+			if (mode === undefined) return;
+			const hasOption = Array.from(modeSelect.options).some(
+				(o) => o.value === mode,
+			);
+			if (!hasOption) return;
+			ev.preventDefault();
+			modeSelect.value = mode;
+			modeSelect.dispatchEvent(new Event("change"));
 		});
 	}
 
@@ -376,7 +415,7 @@ function _saveState(side) {
 	const activeIdx = btns.findIndex((b) =>
 		b.classList.contains("file-tab-active"),
 	);
-	const tabName = activeIdx >= 0 ? btns[activeIdx].textContent : null;
+	const tabName = activeIdx >= 0 ? btns[activeIdx].dataset.fileName : null;
 	const scroll = document.getElementById("diff-scroll");
 	return {
 		tabName,
@@ -392,7 +431,7 @@ function _restoreState(side, saved) {
 	const btns = [...tabs.querySelectorAll(".file-tab")];
 	const wrap = document.getElementById(`code-${side}`);
 	const panes = wrap ? [...wrap.querySelectorAll(".code-pane")] : [];
-	const matchIdx = btns.findIndex((b) => b.textContent === saved.tabName);
+	const matchIdx = btns.findIndex((b) => b.dataset.fileName === saved.tabName);
 	if (matchIdx > 0) {
 		btns.forEach((b) => b.classList.remove("file-tab-active"));
 		panes.forEach((p) => p.classList.remove("active"));
@@ -498,7 +537,7 @@ function _updateTitleScore() {
 	const newTitle = _titleBase + suffix;
 	const el = document.getElementById("title-student");
 	if (el) el.textContent = newTitle;
-	document.title = newTitle;
+	document.title = `${newTitle} : Differentiator`;
 }
 
 function _refreshLinePaddingButton() {
@@ -556,21 +595,26 @@ function toggleLinePadding() {
 	}
 }
 
-function togglePreview() {
-	const btn = document.getElementById("btn-preview");
-	const isPreview = btn && btn.classList.contains("is-toggle-on");
+function _isPreviewMode() {
+	return localStorage.getItem("diff-preview-mode") === "preview";
+}
 
+function _refreshPreviewButton() {
+	const btn = document.getElementById("btn-preview");
+	if (!btn) return;
+	const on = _isPreviewMode();
+	btn.classList.toggle("is-toggle-on", on);
+	btn.textContent = on ? "\u2b1b Preview" : "\u2b1c Preview";
+}
+
+function _applyPreviewMode(isPreview) {
 	for (const side of ["teacher", "student"]) {
 		const codeWrap = document.getElementById(`code-${side}`);
-		const tabs = document.getElementById(`tabs-${side}`);
 		const iframe = document.getElementById(`preview-${side}`);
 		const content = document.getElementById(`content-${side}`);
-		if (!codeWrap || content.style.display === "none") continue;
+		if (!codeWrap || !content || content.style.display === "none") continue;
 
 		if (isPreview) {
-			if (iframe) iframe.style.display = "none";
-			codeWrap.style.display = "";
-		} else {
 			const files = side === "teacher" ? _teacherFiles : _studentFiles;
 			if (!files || !Object.keys(files).length) continue;
 			if (iframe) {
@@ -578,14 +622,18 @@ function togglePreview() {
 				iframe.style.display = "block";
 			}
 			codeWrap.style.display = "none";
+		} else {
+			if (iframe) iframe.style.display = "none";
+			codeWrap.style.display = "";
 		}
 	}
+}
 
-	if (btn) {
-		btn.classList.toggle("is-toggle-on", !isPreview);
-		btn.textContent = isPreview ? "\u2b1c Preview" : "\ud83d\udcc4 Code";
-	}
-	localStorage.setItem("diff-preview-mode", isPreview ? "code" : "preview");
+function togglePreview() {
+	const next = !_isPreviewMode();
+	localStorage.setItem("diff-preview-mode", next ? "preview" : "code");
+	_applyPreviewMode(next);
+	_refreshPreviewButton();
 }
 
 function updatePreview(side, files, iframe) {

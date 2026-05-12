@@ -4,6 +4,18 @@ const tooltipEl = document.getElementById("tooltip");
 const vlineEl = document.getElementById("hover-vline");
 let _pinned = null;
 let _lockKeyDown = false;
+let _barBlockStudents = [];
+
+tooltipEl.addEventListener("click", (e) => {
+	const el = e.target.closest("[data-bar-student-idx]");
+	if (!el) return;
+	const idx = parseInt(el.getAttribute("data-bar-student-idx"), 10);
+	const entry = _barBlockStudents[idx];
+	if (entry && entry.s && typeof openDifferentiatorWindow === "function") {
+		e.stopPropagation();
+		openDifferentiatorWindow(entry.s);
+	}
+});
 
 function _hitTs(hit) {
 	if (!hit) return null;
@@ -168,49 +180,50 @@ function setupHover(middleChart, topChart, bottomChart, p, L) {
 			sig,
 		);
 
+		const handleSelect = (e, openDiff) => {
+			if (PAN_STATE.active) return;
+			const hit = findHit(e, canvas, id, p, L);
+			if (openDiff && id === "bottom" && hit && hit.type === "student") {
+				openDifferentiatorWindow(hit.s);
+			}
+			if (!hit) {
+				_pinned = null;
+				hideTip();
+				hideVLine();
+				return;
+			}
+			if (_pinned === hit) {
+				_pinned = null;
+				hideTip();
+				hideVLine();
+			} else {
+				_pinned = hit;
+				showTip(e.clientX, e.clientY, hit, true, id);
+				if (id === "top" && hit.type !== "interaction") {
+					const ts = _hitTs(hit);
+					if (ts != null) showVLine(ts, L);
+					else hideVLine();
+				} else {
+					hideVLine();
+				}
+			}
+		};
+
 		canvas.addEventListener(
 			"click",
 			(e) => {
-				if (PAN_STATE.active) return;
-				const hit = findHit(e, canvas, id, p, L);
-				if (!hit) {
-					_pinned = null;
-					hideTip();
-					hideVLine();
-					return;
-				}
-				if (_pinned === hit) {
-					_pinned = null;
-					hideTip();
-					hideVLine();
-				} else {
-					_pinned = hit;
-					showTip(e.clientX, e.clientY, hit, true, id);
-					if (id === "top" && hit.type !== "interaction") {
-						const ts = _hitTs(hit);
-						if (ts != null) showVLine(ts, L);
-						else hideVLine();
-					} else {
-						hideVLine();
-					}
-				}
+				handleSelect(e, true);
 			},
 			sig,
 		);
-
-		if (id === "bottom") {
-			canvas.addEventListener(
-				"dblclick",
-				(e) => {
-					if (PAN_STATE.active) return;
-					const hit = findHit(e, canvas, id, p, L);
-					if (hit && hit.type === "student") {
-						openDifferentiatorWindow(hit.s);
-					}
-				},
-				sig,
-			);
-		}
+		canvas.addEventListener(
+			"contextmenu",
+			(e) => {
+				e.preventDefault();
+				handleSelect(e, false);
+			},
+			sig,
+		);
 	}
 }
 
@@ -228,9 +241,15 @@ function findHit(e, canvas, id, p, L) {
 		return null;
 	const ts = xToTs(mx, L);
 	const thT = (L.timeMax - L.timeMin) * (10 / plotW);
-	if (id === "middle") return hitMiddleChart(ts, p, L, thT);
+	if (id === "middle") return hitMiddleChart(ts, my, p, L, thT);
 	if (id === "top") return hitTopChart(ts, my, p, L, thT);
 	if (id === "bottom") {
+		if (
+			typeof _bottomChartVisible !== "undefined" &&
+			_bottomChartVisible.barMode
+		) {
+			return hitBottomBarBlock(ts, my, p, L, thT);
+		}
 		const hit = hitBottomChart(ts, my, p, L, thT);
 		if (_lockedStudent && (!hit || hit.s !== _lockedStudent)) {
 			const restricted = hitBottomChart(ts, my, p, L, thT, _lockedStudent);
@@ -241,11 +260,76 @@ function findHit(e, canvas, id, p, L) {
 	return null;
 }
 
-function hitMiddleChart(ts, p, L, thT) {
+function hitBottomBarBlock(ts, my, p, L, thT) {
+	if (!_students) return null;
+	const blocks = _buildBottomChartBlocks(p);
+	const pad = thT || 0;
+	let blk = null;
+	let bestD = Infinity;
+	for (const b of blocks) {
+		if (ts >= b.ts1 - pad && ts <= b.ts2 + pad) {
+			const d = Math.abs(ts - b.centerTs);
+			if (d < bestD) {
+				bestD = d;
+				blk = b;
+			}
+		}
+	}
+	if (!blk) return null;
+	const studentsAffected = [];
+	const langCounts = {};
+	for (const s of _students) {
+		const evs = (s.follow_events || []).filter(
+			(e) => _isMistakeEvent(e) && e.ts >= blk.ts1 && e.ts <= blk.ts2,
+		);
+		if (!evs.length) continue;
+		studentsAffected.push({ s, evs });
+		for (const e of evs) {
+			const l = e.lang || "?";
+			langCounts[l] = (langCounts[l] || 0) + 1;
+		}
+	}
+	if (!studentsAffected.length) return null;
+	const { M, plotHbot } = L;
+	const bottomY = M.top + plotHbot;
+	const denom = Math.max(1, _students.length);
+	const bh = Math.min(plotHbot, (studentsAffected.length / denom) * plotHbot);
+	const barTop = bottomY - bh;
+	const yPad = 10;
+	if (my < barTop - yPad || my > bottomY) return null;
+	return {
+		type: "bar-block",
+		blk,
+		burst: blk.burst,
+		kp: blk.kp,
+		students: studentsAffected,
+		langCounts,
+	};
+}
+
+function hitMiddleChart(ts, my, p, L, thT) {
+	const { M, plotHmid } = L;
+	const bottomY = M.top + plotHmid;
+	const yPad = 10;
 	let best = null,
 		bestD = Infinity;
 	for (const b of p.bursts) {
 		if (ts >= b.startTs - thT && ts <= b.endTs + thT) {
+			let rate = null;
+			if (b.chars > 0) {
+				const hasVirtual = b.hasCodeInserts || b.hasAnchors || b.hasMoves;
+				rate = hasVirtual ? Math.max(b.rate, 20) : b.rate;
+			} else if (b.hasCodeInserts) {
+				const insLen = b.evs
+					.filter((e) => e._virtualType === "code_insert")
+					.reduce((s, e) => s + (e.code_insert || "").length, 0);
+				rate = Math.max(10, insLen / (CFG.BAR_MIN_SECS / 60));
+			} else if (b.hasAnchors || b.hasMoves) {
+				rate = 20;
+			}
+			if (rate == null) continue;
+			const barTop = rateToY(rate, L);
+			if (my < barTop - yPad || my > bottomY) continue;
 			const d = Math.abs(ts - b.centerTs);
 			if (d < bestD) {
 				bestD = d;
@@ -338,10 +422,7 @@ function hitBottomChart(ts, my, p, L, thT, restrictStudent) {
 		const sy = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
 
 		const dyDash = Math.abs(my - sy);
-		const evs = (s.follow_events || []).filter(
-			(e) =>
-				e.ts != null && (e.kind === "missing" || e.kind === "extra-star"),
-		);
+		const evs = (s.follow_events || []).filter(_isMistakeEvent);
 		if (evs.length && dyDash <= DASH_PY) {
 			const sorted = [...evs].sort((a, b) => a.ts - b.ts);
 			let cl0 = sorted[0].ts;
@@ -403,8 +484,12 @@ function hitInteraction(ts, p) {
 
 function showTip(cx, cy, hit, pinned, chartId) {
 	tooltipEl.innerHTML = formatHit(hit, chartId === "c2");
-	tooltipEl.style.display = "block";
+	const isBar = hit?.type === "bar-block";
+	tooltipEl.style.display = isBar ? "flex" : "block";
+	tooltipEl.style.flexDirection = isBar ? "column" : "";
+	tooltipEl.style.overflowY = isBar ? "hidden" : "";
 	tooltipEl.style.background = bgForHit(hit);
+	tooltipEl.style.maxWidth = isBar ? "50vw" : "";
 	tooltipEl.classList.toggle("pinned", pinned);
 	const tw = tooltipEl.offsetWidth,
 		th = tooltipEl.offsetHeight;
@@ -446,12 +531,62 @@ function bgForHit(hit) {
 	}
 }
 
+function _filterAnchorMoveParts(parts, partColors) {
+	const out = [];
+	const colorsOut = partColors ? new Map() : null;
+	for (let i = 0; i < parts.length; i++) {
+		const p = parts[i];
+		if (p.type === "anchor" || p.type === "move") continue;
+		const newIdx = out.length;
+		out.push(p);
+		if (partColors && partColors.has(i)) {
+			colorsOut.set(newIdx, partColors.get(i));
+		}
+	}
+	return { parts: out, partColors: colorsOut };
+}
+
+function _truncatePartsAtLines(parts, maxLines) {
+	const isNL = (ch) => ch === "↩" || ch === "\n";
+	let n = 0;
+	const out = [];
+	for (const p of parts) {
+		if (p.type === "char" && isNL(p.t)) {
+			if (n >= maxLines) return { parts: out, truncated: true };
+			n++;
+			out.push(p);
+		} else if (p.type === "code_insert") {
+			const t = p.t || "";
+			let newlinesInInsert = 0;
+			for (const ch of t) if (isNL(ch)) newlinesInInsert++;
+			if (n + newlinesInInsert > maxLines) {
+				const remaining = maxLines - n;
+				let seen = 0;
+				let cutAt = t.length;
+				for (let i = 0; i < t.length; i++) {
+					if (isNL(t[i])) {
+						seen++;
+						if (seen > remaining) {
+							cutAt = i;
+							break;
+						}
+					}
+				}
+				out.push({ ...p, t: t.slice(0, cutAt) });
+				return { parts: out, truncated: true };
+			}
+			n += newlinesInInsert;
+			out.push(p);
+		} else {
+			out.push(p);
+		}
+	}
+	return { parts: out, truncated: false };
+}
+
 function textPartsToHtml(parts, partColors) {
 	const colors = partColors || null;
-	let charCount = 0;
-	const MAX = 300;
 	let html = "";
-	let truncated = false;
 	let pendingBuf = "";
 	let pendingColor = null;
 	const flushPending = () => {
@@ -465,18 +600,18 @@ function textPartsToHtml(parts, partColors) {
 		pendingColor = null;
 	};
 	for (let i = 0; i < parts.length; i++) {
-		if (truncated) break;
 		const p = parts[i];
 		if (p.type === "anchor") {
 			flushPending();
-			html += `<span style="color:${BAR_COLORS.anchor}">${escHtml(p.t)}</span>`;
+			html += `<span class="tt-anchor">${escHtml(p.t)}</span>`;
 		} else if (p.type === "move") {
 			flushPending();
-			html += `<span style="color:${BAR_COLORS.move}">→${escHtml(p.t)}</span>`;
+			html += `<span class="tt-move">→${escHtml(p.t)}</span>`;
 		} else if (p.type === "code_insert") {
 			flushPending();
-			const raw = (p.t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
-			const display = raw.length > 200 ? raw.slice(0, 200) + "…" : raw;
+			const display = (p.t || "")
+				.replace(/⚓[^⚓]*⚓/g, "")
+				.replace(/↩/g, "\n");
 			const offsetColors = colors ? colors.get(i) : null;
 			if (offsetColors instanceof Map && offsetColors.size > 0) {
 				let curColor = null;
@@ -486,7 +621,7 @@ function textPartsToHtml(parts, partColors) {
 					if (curColor) {
 						html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline">${escHtml(curBuf)}</span>`;
 					} else {
-						html += `<span style="color:${THEME.muted}">${escHtml(curBuf)}</span>`;
+						html += `<span class="tt-muted">${escHtml(curBuf)}</span>`;
 					}
 					curBuf = "";
 				};
@@ -500,14 +635,10 @@ function textPartsToHtml(parts, partColors) {
 				}
 				flushSeg();
 			} else {
-				html += `<span style="color:${THEME.muted}">${escHtml(display)}</span>`;
+				html += `<span class="tt-muted">${escHtml(display)}</span>`;
 			}
 		} else {
-			if (charCount >= MAX) {
-				flushPending();
-				html += escHtml("\n… (+more chars)");
-				truncated = true;
-			} else {
+			{
 				const ch = p.t;
 				if (DELETE_CHARS.has(ch)) {
 					flushPending();
@@ -521,8 +652,8 @@ function textPartsToHtml(parts, partColors) {
 							.join("");
 						isPaleRed = nextChars.startsWith("</");
 					}
-					const col = isPaleRed ? THEME.paleRed : THEME.red;
-					html += `<span style="color:${col}">${escHtml(ch)}</span>`;
+					const cls = isPaleRed ? "tt-delete-pale" : "tt-delete";
+					html += `<span class="${cls}">${escHtml(ch)}</span>`;
 				} else {
 					const color = colors ? colors.get(i) || null : null;
 					const rendered = escHtml(ch === "↩" ? "\n" : ch);
@@ -532,7 +663,6 @@ function textPartsToHtml(parts, partColors) {
 					}
 					pendingBuf += rendered;
 				}
-				charCount++;
 			}
 		}
 	}
@@ -635,20 +765,96 @@ function formatHit(hit, simple = false) {
 				lines.push(_trimBlankLines(textPartsToHtml(b.textParts)));
 			break;
 		}
+		case "bar-block": {
+			const { blk, burst, kp, students, langCounts } = hit;
+			const MAX_HEADER_LINES = 10;
+			let headerHtml = "";
+			if (burst && burst.textParts) {
+				const { parts: filtered } = _filterAnchorMoveParts(
+					burst.textParts,
+					null,
+				);
+				const { parts: trunc, truncated } = _truncatePartsAtLines(
+					filtered,
+					MAX_HEADER_LINES,
+				);
+				headerHtml = _trimBlankLines(textPartsToHtml(trunc));
+				if (truncated) headerHtml += "\n…";
+			} else if (kp) {
+				if (kp._virtualType === "code_insert") {
+					const raw = (kp.code_insert || "")
+						.replace(/⚓[^⚓]*⚓/g, "")
+						.replace(/↩/g, "\n");
+					const trimmed = raw
+						.replace(/^(?:[ \t]*\n)+/, "")
+						.replace(/\n+[ \t]*$/, "");
+					const allLines = trimmed.split("\n");
+					const truncated = allLines.length > MAX_HEADER_LINES;
+					const display = truncated
+						? allLines.slice(0, MAX_HEADER_LINES).join("\n") + "\n…"
+						: trimmed;
+					headerHtml = `<span class="tt-muted">${escHtml(display)}</span>`;
+				} else if (
+					kp._virtualType === "anchor" ||
+					kp._virtualType === "move"
+				) {
+					headerHtml = "";
+				} else {
+					headerHtml = escHtml(kp.char || "");
+				}
+			}
+			const headerLine =
+				headerHtml ||
+				`<b>${escHtml(fmtTime(blk.ts1))} – ${escHtml(fmtTime(blk.ts2))}</b>`;
+			const sorted = [...students].sort(
+				(a, b) => (b.s.follow_pct ?? 0) - (a.s.follow_pct ?? 0),
+			);
+			_barBlockStudents = sorted;
+			const langClass = (lang) =>
+				lang && LANG_BAR_COLORS[lang]
+					? `tt-lang-${lang.toLowerCase()}`
+					: "tt-lang-unk";
+			const blockLangs = LANG_STACK_ORDER.filter(
+				(l) => l !== "?" && (langCounts[l] || 0) > 0,
+			);
+			let grid = '<div class="tt-grid">';
+			sorted.forEach(({ s, evs }, i) => {
+				const perLang = {};
+				for (const e of evs) {
+					const l = e.lang || "?";
+					perLang[l] = (perLang[l] || 0) + 1;
+				}
+				const langCells = blockLangs
+					.map(
+						(l) =>
+							`<span class="${langClass(l)}">${perLang[l] || 0}</span>`,
+					)
+					.join('<span class="tt-lang-sep">+</span>');
+				const tokenSpans = evs
+					.map((e) => {
+						const tok = e.token != null ? e.token : e.label || "";
+						const cls = langClass(e.lang);
+						const ghost = e.kind === "extra-star" ? " tt-ghost" : "";
+						return `<span class="${cls}${ghost}">${escHtml(tok)}</span>`;
+					})
+					.join(" ");
+				const idPrefix = s.id ? `${escHtml(s.id)}: ` : "";
+				grid += `<div><span data-bar-student-idx="${i}" class="tt-student">${idPrefix}${escHtml(s.name)}</span></div><div class="tt-langcell">${langCells}</div><div class="tt-tokens">${tokenSpans}</div>`;
+			});
+			grid += "</div>";
+			return [
+				`<div class="tt-bar-fixed">${headerLine}</div>`,
+				`<div class="tt-bar-fixed">──────────</div>`,
+				`<div class="tt-bar-scroll">${grid}</div>`,
+			].join("");
+		}
 		case "code_insert": {
 			const code = hit.ev.code_insert || "";
 			const raw = code.replace(/↩/g, "\n");
 			const trimmed = raw
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
-			const display =
-				trimmed.length > 280
-					? trimmed.slice(0, 280) +
-						`\n… (+${trimmed.length - 280} more chars)`
-					: trimmed;
-			lines.push(
-				`<span style="color:${THEME.muted}">${escHtml(display)}</span>`,
-			);
+			lines.push(`<span class="tt-muted">${escHtml(trimmed)}</span>`);
 			break;
 		}
 		case "student": {
@@ -692,11 +898,7 @@ function formatHit(hit, simple = false) {
 			let cluster = hit.cluster;
 			const isDashHover = cluster != null;
 			if (!cluster) {
-				const evs = (s.follow_events || []).filter(
-					(e) =>
-						e.ts != null &&
-						(e.kind === "missing" || e.kind === "extra-star"),
-				);
+				const evs = (s.follow_events || []).filter(_isMistakeEvent);
 				if (evs.length) {
 					const sorted = [...evs].sort((a, b) => a.ts - b.ts);
 					let cl0 = sorted[0].ts;
@@ -726,21 +928,10 @@ function formatHit(hit, simple = false) {
 					})
 					.map((kp) => {
 						const ts = kp.timestamp / 1000;
-						let textPart;
-						if (kp._virtualType === "anchor")
-							textPart = { t: kp._target || "", type: "anchor" };
-						else if (kp._virtualType === "move")
-							textPart = { t: kp._target || "", type: "move" };
-						else if (kp._virtualType === "code_insert")
-							textPart = {
-								t: kp.code_insert || "",
-								type: "code_insert",
-							};
-						else textPart = { t: kp.char || "", type: "char" };
 						return {
 							startTs: ts,
 							endTs: ts,
-							textParts: [textPart],
+							textParts: [_singletonToTextPart(kp)],
 							evs: [kp],
 						};
 					});
@@ -757,9 +948,17 @@ function formatHit(hit, simple = false) {
 							b,
 							allMissings,
 						);
-						return _trimBlankLines(
-							textPartsToHtml(b.textParts, partColors),
+						const { parts: filtered, partColors: filteredColors } =
+							_filterAnchorMoveParts(b.textParts, partColors);
+						const { parts: trunc, truncated } = _truncatePartsAtLines(
+							filtered,
+							10,
 						);
+						let h = _trimBlankLines(
+							textPartsToHtml(trunc, filteredColors),
+						);
+						if (truncated) h += "\n…";
+						return h;
 					})
 					.filter(Boolean);
 				if (blockHtmls.length) {
@@ -795,18 +994,16 @@ function formatHit(hit, simple = false) {
 				html += order
 					.map((key) => {
 						const { ev, n } = counts.get(key);
-						const color =
+						const markCls =
 							ev.kind === "missing"
-								? _cssVar("--clr-mark-missing")
+								? "tt-mark-missing"
 								: ev.kind === "extra-star"
-									? _cssVar("--clr-mark-ghost")
-									: _cssVar("--clr-mark-extra");
+									? "tt-mark-ghost"
+									: "tt-mark-extra";
 						const label = escHtml(ev.token || ev.label);
 						const suffix = n > 1 ? `<b>×${n}</b>` : "";
-						const emph = inSection.has(key)
-							? "font-weight:bold;text-decoration:underline;"
-							: "";
-						return `<span style="color:${color};${emph}">${label}${suffix}</span>`;
+						const emphCls = inSection.has(key) ? " tt-emph" : "";
+						return `<span class="${markCls}${emphCls}">${label}${suffix}</span>`;
 					})
 					.join(", ");
 			}
@@ -832,22 +1029,17 @@ function formatHitSimple(hit) {
 			return escHtml(hit.ev.char);
 		}
 		case "move": {
-			return `<span style="color:${BAR_COLORS.move}">→${escHtml(hit.mv.target)}</span>`;
+			return `<span class="tt-move">→${escHtml(hit.mv.target)}</span>`;
 		}
 		case "anchor": {
-			return `<span style="color:${BAR_COLORS.anchor}">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
+			return `<span class="tt-anchor">${hit.anc.ids.map(escHtml).join("\n")}</span>`;
 		}
 		case "code_insert": {
 			const raw = (hit.ev.code_insert || "").replace(/↩/g, "\n");
 			const trimmed = raw
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
-			const display =
-				trimmed.length > 280
-					? trimmed.slice(0, 280) +
-						`\n… (+${trimmed.length - 280} more chars)`
-					: trimmed;
-			return `<span style="color:${THEME.muted}">${escHtml(display)}</span>`;
+			return `<span class="tt-muted">${escHtml(trimmed)}</span>`;
 		}
 		case "interaction": {
 			const q = hit.q;

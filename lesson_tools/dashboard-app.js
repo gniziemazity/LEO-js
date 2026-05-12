@@ -5,6 +5,7 @@ let _allFiles = new Map();
 let _dirHandle = null;
 let _studentIdMap = {};
 let _realToAlterMap = {};
+let _studentNameMap = {};
 
 const landingEl = document.getElementById("landing");
 
@@ -79,10 +80,32 @@ async function loadStudentsCsv(file) {
 	try {
 		const text = await file.text();
 		_realToAlterMap = parseStudentsCsvForAlterEgo(text);
+		_studentNameMap = parseStudentsCsvForIdName(text);
 		if (_p) scheduleRender();
 	} catch {
 		_realToAlterMap = {};
+		_studentNameMap = {};
 	}
+}
+
+function parseStudentsCsvForIdName(text) {
+	const map = {};
+	const lines = text.split(/\r?\n/).filter(Boolean);
+	if (lines.length < 2) return map;
+	const delim = lines[0].includes(";") ? ";" : ",";
+	const cells = (line) =>
+		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+	const header = cells(lines[0]);
+	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
+	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+	if (idIdx === -1 || nameIdx === -1) return map;
+	for (let i = 1; i < lines.length; i++) {
+		const parts = cells(lines[i]);
+		const id = parts[idIdx];
+		const name = parts[nameIdx];
+		if (id && name) map[id] = name;
+	}
+	return map;
 }
 
 function parseStudentsCsvForAlterEgo(text) {
@@ -173,7 +196,9 @@ async function _readImageUris(fileMap) {
 }
 
 async function loadJsonData(file, data) {
-	document.title = "Dashboard";
+	document.title = _dirHandle?.name
+		? `Dashboard: ${_dirHandle.name}`
+		: "Dashboard";
 	_zoomMin = _zoomMax = null;
 	_studentIdMap = {};
 	const p = processData(data);
@@ -188,6 +213,8 @@ async function loadJsonData(file, data) {
 			JSON.stringify({
 				filePath: file.name,
 				lessonFile: data.lessonFile || null,
+				lessonName: _dirHandle?.name || null,
+				studentNameMap: _studentNameMap,
 				events: data.events || data.keyPresses || [],
 				loadedAt: Date.now(),
 			}),

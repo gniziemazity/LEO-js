@@ -85,8 +85,9 @@ def regen_teacher_tokens(case_dir: Path) -> None:
         return
 
     events = _load_events(log_path)
+    lesson_file = _load_lesson_file(log_path)
     n_typed, n_removed, n_unique = _write_teacher_tokens_file(
-        events, case_dir / "tokens.txt",
+        events, case_dir / "tokens.txt", lesson_file=lesson_file,
     )
     print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {n_unique} unique)")
 

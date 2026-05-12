@@ -358,6 +358,9 @@ td.asn-sep {
 	width: 280px;
 	flex-shrink: 0;
 }
+.prog-card.not-passed {
+	background: var(--clr-toolbar);
+}
 .prog-card h4 {
 	font-size: 11px;
 	margin-bottom: 4px;

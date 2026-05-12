@@ -37,10 +37,27 @@ class ExcelReportMixin:
         has_log = bool(self._lesson_keypresses)
         has_sim = not has_log
 
+        _LANG_COLS = (('.html', 'HTML (E)'), ('.css', 'CSS (E)'),
+                       ('.js', 'JS (E)'), ('.py', 'Py (E)'))
+        if has_log:
+            present_lang_exts = []
+            for ext, _label in _LANG_COLS:
+                if any(
+                    (v.get('follow_e_by_lang') or {}).get(ext) is not None
+                    for v in self._student_token_stats.values()
+                ):
+                    present_lang_exts.append(ext)
+        else:
+            present_lang_exts = []
+
+        lang_label_by_ext = dict(_LANG_COLS)
         header = ['ID', 'Student', 'Number', 'Remarks', 'Extra', 'Extra Desc', 'Inc']
         if has_log:
             header.extend(['Follow (C)', 'Follow (C) Desc',
                             'Follow (E)', 'Follow (E) Desc', 'Interactions'])
+            for ext in present_lang_exts:
+                header.append(lang_label_by_ext[ext])
+                header.append(f'{lang_label_by_ext[ext]} Desc')
         if has_sim:
             header.extend(['Similarity', 'Similarity Desc'])
         if self.required_items or self.not_expected_items:
@@ -51,12 +68,17 @@ class ExcelReportMixin:
         COL_EXTRA_T = 6
         COL_INC     = 7
         _next = 8
+        COL_LANG_BY_EXT: Dict[str, int] = {}
+        COL_LANG_DESC_BY_EXT: Dict[str, int] = {}
         if has_log:
             COL_FOLLOWC   = _next; _next += 1
             COL_FOLLOWC_T = _next; _next += 1
             COL_FOLLOWE   = _next; _next += 1
             COL_FOLLOWE_T = _next; _next += 1
             COL_INTERACT  = _next; _next += 1
+            for ext in present_lang_exts:
+                COL_LANG_BY_EXT[ext] = _next; _next += 1
+                COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
         else:
             COL_FOLLOWC = COL_FOLLOWC_T = COL_FOLLOWE = COL_FOLLOWE_T = COL_INTERACT = None
         if has_sim:
@@ -142,6 +164,15 @@ class ExcelReportMixin:
                     row.extend([comment_pct, comment_text,
                                  follow_e_pct, extra_e_text,
                                  student_interactions.get(sid, '')])
+                    lang_scores = (_ts or {}).get('follow_e_by_lang') or {}
+                    for ext in present_lang_exts:
+                        v = lang_scores.get(ext)
+                        if v is None:
+                            row.append('')
+                            row.append('')
+                        else:
+                            row.append(v.get('score', ''))
+                            row.append(v.get('text', ''))
                 if has_sim:
                     sim_pct, sim_desc, sim_items = self._similarity_info(
                         sid, has_submission, code_not_found)
@@ -212,6 +243,20 @@ class ExcelReportMixin:
                 c.height = min(200 + 80 * len(_e_items), 6000)
                 sheet.cell(row=cur, column=COL_FOLLOWE).comment = c
 
+            if has_log and not code_not_found and _ts:
+                _lang_scores = _ts.get('follow_e_by_lang') or {}
+                for ext, col_n in COL_LANG_BY_EXT.items():
+                    lang_v = _lang_scores.get(ext)
+                    if not lang_v:
+                        continue
+                    items = lang_v.get('items') or []
+                    if not items:
+                        continue
+                    c = Comment(', '.join(items), 'sim_check')
+                    c.width  = 400
+                    c.height = min(200 + 80 * len(items), 6000)
+                    sheet.cell(row=cur, column=col_n).comment = c
+
             if has_sim and sim_items and COL_SIM:
                 c = Comment(', '.join(sim_items), 'sim_check')
                 c.width  = 400
@@ -226,6 +271,8 @@ class ExcelReportMixin:
         _hidden = [get_column_letter(COL_EXTRA_T)]
         if has_log:
             _hidden += [get_column_letter(COL_FOLLOWC_T), get_column_letter(COL_FOLLOWE_T)]
+            for col_n in COL_LANG_DESC_BY_EXT.values():
+                _hidden.append(get_column_letter(col_n))
         if has_sim and COL_SIM_T:
             _hidden.append(get_column_letter(COL_SIM_T))
         if self.required_items and COL_EXPECTED_T:
@@ -255,7 +302,8 @@ class ExcelReportMixin:
                 ColorScaleRule(start_type='num', start_value=0, start_color='F8696B',
                                end_type='num', end_value=100, end_color='FFFFFF'))
             if has_log:
-                for col_n in [COL_FOLLOWC, COL_FOLLOWE]:
+                lang_cols = list(COL_LANG_BY_EXT.values())
+                for col_n in [COL_FOLLOWC, COL_FOLLOWE, *lang_cols]:
                     if col_n:
                         ltr = get_column_letter(col_n)
                         sheet.conditional_formatting.add(

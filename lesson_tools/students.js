@@ -69,7 +69,7 @@ async function _tryAutoLoad() {
 	await readDirHandle(handle, "", _allFiles, files, { lowercaseKeys: true });
 	lessonNameEl.textContent = handle.name;
 	lessonNameEl.classList.add("clickable");
-	document.title = "Students – " + handle.name;
+	document.title = "Students: " + handle.name;
 	await loadXlsxFiles(files);
 	return true;
 }
@@ -119,7 +119,7 @@ async function openFolderPicker() {
 		const name = dirHandle.name;
 		lessonNameEl.textContent = name;
 		lessonNameEl.classList.add("clickable");
-		document.title = "Students – " + name;
+		document.title = "Students: " + name;
 		await loadXlsxFiles(files);
 	} catch (e) {
 		if (e.name !== "AbortError") alert("Could not open folder: " + e.message);

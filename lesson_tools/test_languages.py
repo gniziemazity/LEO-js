@@ -9,11 +9,10 @@ from languages import (
     should_decrease_on_line,
     should_increase_after,
 )
-from utils.similarity_measures import _comment_ranges, _legacy_comment_ranges
+from utils.similarity_measures import _comment_ranges
 
 _ROOT = Path(__file__).resolve().parent
 _TEST = _ROOT / "test"
-_PARITY_EXTS = (".html", ".htm", ".css", ".js")
 
 
 _EXPECTED_JS_KEYWORDS = {
@@ -82,52 +81,6 @@ class TestLanguageProfiles(unittest.TestCase):
         self.assertIsNone(get_profile("ruby"))
         self.assertIsNone(get_profile(".rb"))
         self.assertIsNone(get_profile(""))
-
-
-class TestCommentRangesParity(unittest.TestCase):
-    """Phase 2 byte-parity guard: profile-driven _comment_ranges must produce
-    identical (starts, ends) to the legacy implementation on every fixture."""
-
-    @classmethod
-    def setUpClass(cls):
-        if not _TEST.is_dir():
-            raise unittest.SkipTest(f"test fixtures not present at {_TEST}")
-        cls.files = [
-            p for p in _TEST.rglob("*")
-            if p.is_file() and p.suffix.lower() in _PARITY_EXTS
-        ]
-        if not cls.files:
-            raise unittest.SkipTest(f"no fixture files under {_TEST}")
-
-    def test_parity_on_all_fixtures(self):
-        mismatches = []
-        for path in self.files:
-            try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception as exc:
-                self.fail(f"failed to read {path}: {exc}")
-            ext = path.suffix.lower()
-            legacy = _legacy_comment_ranges(text, ext)
-            new = _comment_ranges(text, ext)
-            if legacy != new:
-                mismatches.append((path, legacy, new))
-        if mismatches:
-            sample = mismatches[0]
-            self.fail(
-                f"{len(mismatches)}/{len(self.files)} fixtures diverged. "
-                f"first: {sample[0]}\n  legacy: {sample[1]}\n  new:    {sample[2]}"
-            )
-
-    def test_parity_on_unknown_extension(self):
-        text = "/* a */ // b\n<!-- c -->"
-        self.assertEqual(
-            _legacy_comment_ranges(text, ".unknown"),
-            _comment_ranges(text, ".unknown"),
-        )
-        self.assertEqual(
-            _legacy_comment_ranges(text, None),
-            _comment_ranges(text, None),
-        )
 
 
 class TestIndentHelpers(unittest.TestCase):

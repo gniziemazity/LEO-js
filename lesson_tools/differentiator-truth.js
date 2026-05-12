@@ -42,7 +42,12 @@ function _truthEnsureButtons() {
 	};
 	make("btn-save-truth", "💾 Download", _truthDownload, "truth-only-btn");
 	make("btn-copy-truth", "📋 Copy", _truthCopyToClipboard, "truth-only-btn");
-	make("btn-summarize-truth", "📑 Summary", _truthSummarize, "truth-only-btn");
+	make(
+		"btn-summarize-truth",
+		"📑 Corrections",
+		_truthSummarize,
+		"truth-only-btn",
+	);
 	make("btn-preview-truth", "👁 Test", _truthPreview, "truth-only-btn");
 }
 
@@ -113,6 +118,7 @@ function _truthEnable() {
 			token_matching: key === "required" ? "required" : "ideal",
 			teacher_files: (base && base.teacher_files) || {},
 			student_files: (base && base.student_files) || {},
+			file_pairs: (base && base.file_pairs) || {},
 		};
 		if (base) {
 			if (base.alignments) seed.alignments = base.alignments;
@@ -141,6 +147,82 @@ function _truthEnable() {
 	document.body.classList.add("truth-edit-mode");
 	_truthInstallListeners();
 	_persistDiffState();
+}
+
+function _truthHideFilePairMenu() {
+	const menu = document.getElementById("file-pair-menu");
+	if (!menu) return;
+	if (menu._cleanup) menu._cleanup();
+	menu.remove();
+}
+
+function _truthShowFilePairMenu(anchor, studentFile) {
+	_truthHideFilePairMenu();
+	const teacherCodeFiles = sortFileNames(
+		Object.keys(_teacherFiles || {}).filter((n) =>
+			/\.(html|css|js|py)$/i.test(n),
+		),
+		true,
+	);
+	const filePairs = _currentMarksEntry?.file_pairs || {};
+	const current = filePairs[studentFile] || "";
+	const menu = document.createElement("div");
+	menu.id = "file-pair-menu";
+	menu.className = "file-pair-menu";
+
+	const addItem = (label, value) => {
+		const item = document.createElement("button");
+		item.className = "file-pair-menu-item";
+		item.textContent = label;
+		if (value === current) item.classList.add("is-current");
+		item.addEventListener("click", (ev) => {
+			ev.stopPropagation();
+			_truthHideFilePairMenu();
+			_truthSetFilePair(studentFile, value);
+		});
+		menu.appendChild(item);
+	};
+	addItem(studentFile, "");
+	for (const tName of teacherCodeFiles) {
+		if (tName === studentFile) continue;
+		addItem(tName, tName);
+	}
+
+	document.body.appendChild(menu);
+	const r = anchor.getBoundingClientRect();
+	menu.style.position = "fixed";
+	menu.style.top = r.bottom + 2 + "px";
+	menu.style.left = r.left + "px";
+
+	const onOutside = (ev) => {
+		if (!menu.contains(ev.target) && ev.target !== anchor) {
+			_truthHideFilePairMenu();
+		}
+	};
+	const onEsc = (ev) => {
+		if (ev.key === "Escape") _truthHideFilePairMenu();
+	};
+	setTimeout(() => {
+		document.addEventListener("click", onOutside);
+		document.addEventListener("keydown", onEsc);
+	}, 0);
+	menu._cleanup = () => {
+		document.removeEventListener("click", onOutside);
+		document.removeEventListener("keydown", onEsc);
+	};
+}
+
+function _truthSetFilePair(studentFile, teacherFile) {
+	const t = _truthMarks();
+	if (!t) return;
+	if (!t.file_pairs) t.file_pairs = {};
+	const prev = t.file_pairs[studentFile] || "";
+	const next = teacherFile || "";
+	if (prev === next) return;
+	_truthSnapshot();
+	if (next) t.file_pairs[studentFile] = next;
+	else delete t.file_pairs[studentFile];
+	_truthRerender();
 }
 
 function _truthSnapshot() {

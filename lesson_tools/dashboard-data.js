@@ -200,13 +200,7 @@ function makeBurst(evs) {
 	const chars = charEvs.length;
 	const rate = (chars / dur) * 60;
 	const centerTs = (startTs + endTs) / 2;
-	const textParts = evs.map((e) => {
-		if (e._virtualType === "anchor") return { t: e._target, type: "anchor" };
-		if (e._virtualType === "move") return { t: e._target, type: "move" };
-		if (e._virtualType === "code_insert")
-			return { t: e.code_insert || "", type: "code_insert" };
-		return { t: e.char || "", type: "char" };
-	});
+	const textParts = evs.map(_singletonToTextPart);
 	const hasCodeInserts = evs.some((e) => e._virtualType === "code_insert");
 	const hasAnchors = evs.some((e) => e._virtualType === "anchor");
 	const hasMoves = evs.some((e) => e._virtualType === "move");

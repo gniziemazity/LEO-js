@@ -61,6 +61,9 @@ function _truthBuildJson() {
 		teacher_files: teacherFiles,
 		student_files: studentFiles,
 	};
+	if (t.file_pairs && Object.keys(t.file_pairs).length) {
+		out.file_pairs = { ...t.file_pairs };
+	}
 	return JSON.stringify(out, null, 2) + "\n";
 }
 
@@ -195,6 +198,7 @@ function _truthApplyToStudent() {
 	if (!truthData) return out;
 	const studentNames = Object.keys(_studentFiles || {});
 	const groups = _truthGroupMarks();
+	const filePairs = (truthData && truthData.file_pairs) || {};
 
 	for (const studentName of studentNames) {
 		let text = _truthSrcText("student", studentName);
@@ -433,7 +437,8 @@ function _truthApplyToStudent() {
 			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);
 		}
-		out[studentName] = text;
+		const outName = filePairs[studentName] || studentName;
+		out[outName] = text;
 	}
 
 	const teacherNames = Object.keys(_teacherFiles || {});
@@ -457,22 +462,57 @@ function _truthPreview() {
 
 	if (!Object.keys(out).length) {
 		body.textContent = "No student files to preview.";
-		_truthShowFloatWin("Test", body);
+		_truthShowFloatWin("Test Corrections", body);
 		return;
 	}
 
 	const left = document.createElement("div");
 	left.className = "tw-preview-code";
-	for (const [name, text] of Object.entries(out)) {
-		const h = document.createElement("div");
-		h.className = "tw-section-title";
-		h.textContent = name;
-		left.appendChild(h);
+
+	const tabBar = document.createElement("div");
+	tabBar.className = "tw-preview-tabs";
+	const panes = document.createElement("div");
+	panes.className = "tw-preview-panes";
+
+	const _previewExtRank = (n) => {
+		const m = n.toLowerCase().match(/\.([^.]+)$/);
+		const ext = m ? m[1] : "";
+		if (ext === "html" || ext === "htm") return 0;
+		if (ext === "js") return 1;
+		if (ext === "css") return 2;
+		return 3;
+	};
+	const sortedEntries = Object.entries(out).sort(([a], [b]) => {
+		const ra = _previewExtRank(a);
+		const rb = _previewExtRank(b);
+		if (ra !== rb) return ra - rb;
+		return a.localeCompare(b);
+	});
+
+	sortedEntries.forEach(([name, text], i) => {
+		const btn = document.createElement("button");
+		btn.className = "file-tab" + (i === 0 ? " file-tab-active" : "");
+		btn.textContent = name;
+		btn.onclick = () => {
+			tabBar
+				.querySelectorAll(".file-tab")
+				.forEach((t) => t.classList.remove("file-tab-active"));
+			panes
+				.querySelectorAll(".tw-pre")
+				.forEach((p) => p.classList.remove("active"));
+			btn.classList.add("file-tab-active");
+			panes.children[i].classList.add("active");
+		};
+		tabBar.appendChild(btn);
+
 		const pre = document.createElement("pre");
-		pre.className = "tw-pre";
+		pre.className = "tw-pre" + (i === 0 ? " active" : "");
 		pre.textContent = text;
-		left.appendChild(pre);
-	}
+		panes.appendChild(pre);
+	});
+
+	left.appendChild(tabBar);
+	left.appendChild(panes);
 
 	const right = document.createElement("div");
 	right.className = "tw-preview-render";
@@ -483,7 +523,7 @@ function _truthPreview() {
 
 	body.appendChild(left);
 	body.appendChild(right);
-	_truthShowFloatWin("Test", body);
+	_truthShowFloatWin("Test Corrections", body);
 
 	if (typeof updatePreview === "function") {
 		updatePreview("student", { ...out }, iframe);
@@ -494,8 +534,8 @@ function _truthSummarize() {
 	const groups = _truthGroupMarks();
 	const body = document.createElement("div");
 	if (!groups.length) {
-		body.textContent = "No truth marks defined.";
-		_truthShowFloatWin("Summary", body);
+		body.textContent = "Empty";
+		_truthShowFloatWin("Corrections Summary", body);
 		return;
 	}
 
@@ -562,10 +602,12 @@ function _truthSummarize() {
 
 				if (mode === "before") {
 					if (eEnd > eStart) {
+						const deleted = text.slice(eStart, eEnd);
+						const cls = /^\s+$/.test(deleted)
+							? "tw-del tw-del-ws"
+							: "tw-del";
 						html +=
-							`<span class="tw-del">` +
-							escHtml(text.slice(eStart, eEnd)) +
-							`</span>`;
+							`<span class="${cls}">` + escHtml(deleted) + `</span>`;
 					}
 				} else {
 					if (
@@ -738,65 +780,111 @@ function _truthSummarize() {
 	const grid = document.createElement("div");
 	grid.className = "tw-summary-grid";
 
+	const _isBlankHtml = (html) =>
+		!String(html || "")
+			.replace(/<[^>]*>/g, "")
+			.trim();
+
+	const fileOrder = [];
+	const bucketsByFile = new Map();
+	const orphansByFile = new Map();
+	const _enrolFile = (f) => {
+		if (!fileOrder.includes(f)) fileOrder.push(f);
+	};
 	for (const b of mergedOrder) {
-		const text = _truthSrcText("student", b.file);
-		const beforeHtml = _trimBlankLines(
-			_renderBefore(text, b.fullLo, b.fullHi, b.edits),
-		);
-		const afterHtml = _trimBlankLines(
-			_renderAfter(text, b.fullLo, b.fullHi, b.edits),
-		);
-
-		const lo = Math.min(...b.edits.map((e) => e.start));
-		const hi = Math.max(...b.edits.map((e) => Math.max(e.end, e.start)));
-		const lineLabel = `line ${_posLine(text, lo)}`;
-		const titleAttr = `[${lo}–${hi}]`;
-		const midCell =
-			`<div class="tw-mid">` +
-			`<span class="tw-loc" title="${escAttr(titleAttr)}">` +
-			`${escHtml(lineLabel)}</span>` +
-			`<span class="tw-arrow">→</span>` +
-			`</div>`;
-
-		grid.insertAdjacentHTML(
-			"beforeend",
-			`<pre class="tw-summary-pre">${beforeHtml}</pre>` +
-				midCell +
-				`<pre class="tw-summary-pre">${afterHtml}</pre>`,
-		);
+		_enrolFile(b.file);
+		if (!bucketsByFile.has(b.file)) bucketsByFile.set(b.file, []);
+		bucketsByFile.get(b.file).push(b);
 	}
-
 	for (const g of _orphans) {
-		const text = _truthSrcText(g.side, g.file);
-		const [fLo, fHi] = _expandToLines(text, g.lo, g.hi);
-		const sorted = (g.marks || []).slice().sort((a, b) => a.start - b.start);
-		let html = "";
-		let cursor = fLo;
-		for (const m of sorted) {
-			const ms = Math.max(m.start, cursor);
-			const me = Math.min(m.end, fHi);
-			if (me <= ms) continue;
-			if (ms > cursor) html += escHtml(text.slice(cursor, ms));
-			html +=
-				`<span class="tw-ins">` + escHtml(text.slice(ms, me)) + `</span>`;
-			cursor = me;
+		_enrolFile(g.file);
+		if (!orphansByFile.has(g.file)) orphansByFile.set(g.file, []);
+		orphansByFile.get(g.file).push(g);
+	}
+	const _extPriority = (f) => {
+		const ext = (f.toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1] || "";
+		const order = { html: 0, htm: 0, css: 1, js: 2 };
+		return ext in order ? order[ext] : 3;
+	};
+	fileOrder.sort((a, b) => _extPriority(a) - _extPriority(b));
+	const showHeaders = fileOrder.length > 1;
+
+	for (const file of fileOrder) {
+		if (showHeaders) {
+			grid.insertAdjacentHTML(
+				"beforeend",
+				`<div class="tw-summary-file-header">${escHtml(file)}</div>`,
+			);
 		}
-		if (cursor < fHi) html += escHtml(text.slice(cursor, fHi));
-		html = _trimBlankLines(html);
-		const lineLabel = _lineRange(text, g.lo, g.hi);
-		const titleAttr = `[${g.lo}–${g.hi}]`;
-		grid.insertAdjacentHTML(
-			"beforeend",
-			`<pre class="tw-summary-pre">${html}</pre>` +
-				`<div class="tw-mid">` +
+
+		for (const b of bucketsByFile.get(file) || []) {
+			const text = _truthSrcText("student", b.file);
+			const beforeHtml = _renderBefore(text, b.fullLo, b.fullHi, b.edits);
+			const afterHtml = _renderAfter(text, b.fullLo, b.fullHi, b.edits);
+
+			const lo = Math.min(...b.edits.map((e) => e.start));
+			const hi = Math.max(...b.edits.map((e) => Math.max(e.end, e.start)));
+			const lineLabel = `line ${_posLine(text, lo)}`;
+			const titleAttr = `[${lo}–${hi}]`;
+
+			const lineCell =
+				`<div class="tw-line">` +
+				`<span class="tw-loc" title="${escAttr(titleAttr)}">` +
+				`${escHtml(lineLabel)}</span>` +
+				`</div>`;
+			const midCell = `<div class="tw-mid"><span class="tw-arrow">→</span></div>`;
+			const rightHtml = _isBlankHtml(afterHtml)
+				? `<span></span>`
+				: `<pre class="tw-summary-pre">${afterHtml}</pre>`;
+
+			grid.insertAdjacentHTML(
+				"beforeend",
+				lineCell +
+					`<pre class="tw-summary-pre">${beforeHtml}</pre>` +
+					midCell +
+					rightHtml,
+			);
+		}
+
+		for (const g of orphansByFile.get(file) || []) {
+			const text = _truthSrcText(g.side, g.file);
+			const [fLo, fHi] = _expandToLines(text, g.lo, g.hi);
+			const sorted = (g.marks || [])
+				.slice()
+				.sort((a, b) => a.start - b.start);
+			let html = "";
+			let cursor = fLo;
+			for (const m of sorted) {
+				const ms = Math.max(m.start, cursor);
+				const me = Math.min(m.end, fHi);
+				if (me <= ms) continue;
+				if (ms > cursor) html += escHtml(text.slice(cursor, ms));
+				html +=
+					`<span class="tw-ins">` +
+					escHtml(text.slice(ms, me)) +
+					`</span>`;
+				cursor = me;
+			}
+			if (cursor < fHi) html += escHtml(text.slice(cursor, fHi));
+			const lineLabel = _lineRange(text, g.lo, g.hi);
+			const titleAttr = `[${g.lo}–${g.hi}]`;
+			const lineCell =
+				`<div class="tw-line">` +
 				`<span class="tw-loc" title="${escAttr(titleAttr)}">${escHtml(lineLabel)}</span>` +
-				`</div>` +
-				`<span></span>`,
-		);
+				`</div>`;
+			const rightHtml = `<span></span>`;
+			grid.insertAdjacentHTML(
+				"beforeend",
+				lineCell +
+					`<pre class="tw-summary-pre">${html}</pre>` +
+					`<div class="tw-mid"><span class="tw-arrow">→</span></div>` +
+					rightHtml,
+			);
+		}
 	}
 
 	body.appendChild(grid);
-	_truthShowFloatWin("Summary", body);
+	_truthShowFloatWin("Corrections Summary", body);
 }
 
 function _truthShowFloatWin(title, bodyEl) {

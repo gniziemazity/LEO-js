@@ -237,9 +237,10 @@ body {
 	border-radius: 4px;
 	pointer-events: none;
 	z-index: 1000;
-	max-width: 440px;
-	max-height: 320px;
-	overflow: hidden;
+	max-width: min(440px, 50vw);
+	max-height: 50vh;
+	overflow-y: auto;
+	overflow-x: hidden;
 	white-space: pre-wrap;
 	word-break: break-all;
 	box-shadow: var(--shadow-pin);
@@ -249,6 +250,81 @@ body {
 #tooltip.pinned {
 	border-left-color: var(--clr-accent);
 	pointer-events: auto;
+}
+.tt-muted {
+	color: var(--clr-muted);
+}
+.tt-student {
+	color: var(--clr-text);
+	cursor: pointer;
+}
+.tt-lang-sep {
+	color: var(--clr-muted);
+}
+.tt-ghost {
+	opacity: 0.5;
+}
+.tt-lang-html {
+	color: var(--clr-red);
+}
+.tt-lang-css {
+	color: var(--clr-accent);
+}
+.tt-lang-js {
+	color: var(--clr-orange);
+}
+.tt-lang-py {
+	color: var(--clr-green);
+}
+.tt-lang-unk {
+	color: var(--clr-gray);
+}
+.tt-anchor {
+	color: var(--clr-accent);
+}
+.tt-move {
+	color: var(--clr-orange);
+}
+.tt-mark-missing {
+	color: var(--clr-mark-missing);
+}
+.tt-mark-extra {
+	color: var(--clr-mark-extra);
+}
+.tt-mark-ghost {
+	color: var(--clr-mark-ghost);
+}
+.tt-delete {
+	color: var(--clr-red);
+}
+.tt-delete-pale {
+	color: var(--clr-pale-red);
+}
+.tt-emph {
+	font-weight: bold;
+	text-decoration: underline;
+}
+.tt-grid {
+	display: grid;
+	grid-template-columns: max-content max-content minmax(0, 1fr);
+	column-gap: 0.6em;
+	row-gap: 0.15em;
+}
+.tt-langcell {
+	white-space: nowrap;
+	padding-right: 0.6em;
+}
+.tt-tokens {
+	white-space: nowrap;
+	overflow: hidden;
+}
+.tt-bar-fixed {
+	flex: 0 0 auto;
+}
+.tt-bar-scroll {
+	overflow-y: auto;
+	min-height: 0;
+	flex: 1 1 auto;
 }
 .diff-btns {
 	display: inline-flex;

@@ -246,7 +246,6 @@ function renderPanel(side, files, marks) {
 	const content = document.getElementById(`content-${side}`);
 	const tabs = document.getElementById(`tabs-${side}`);
 	const codeWrap = document.getElementById(`code-${side}`);
-	const previewBtn = document.getElementById("btn-preview");
 	const previewFrame = document.getElementById(`preview-${side}`);
 
 	landing.style.display = "none";
@@ -258,10 +257,6 @@ function renderPanel(side, files, marks) {
 
 	if (previewFrame) {
 		previewFrame.style.display = "none";
-		if (side === "teacher" && previewBtn) {
-			previewBtn.classList.remove("active");
-			previewBtn.textContent = "⬜ Preview";
-		}
 	}
 	codeWrap.style.display = "";
 
@@ -284,10 +279,19 @@ function renderPanel(side, files, marks) {
 	tabs.innerHTML = "";
 	codeWrap.innerHTML = "";
 
+	const inTruthMode = typeof _truthEditMode !== "undefined" && _truthEditMode;
+
+	const filePairsAll = _currentMarksEntry?.file_pairs || {};
+
 	names.forEach((name, i) => {
 		const btn = document.createElement("button");
-		btn.className = "file-tab" + (i === 0 ? " file-tab-active" : "");
-		btn.textContent = name;
+		const pairedAs = side === "student" ? filePairsAll[name] || "" : "";
+		btn.className =
+			"file-tab" +
+			(i === 0 ? " file-tab-active" : "") +
+			(pairedAs ? " file-tab-paired" : "");
+		btn.dataset.fileName = name;
+		btn.textContent = pairedAs || name;
 		btn.onclick = () => {
 			tabs
 				.querySelectorAll(".file-tab")
@@ -306,6 +310,24 @@ function renderPanel(side, files, marks) {
 				_truthRefreshGhostPairs();
 			}
 		};
+		if (side === "student" && inTruthMode) {
+			const caret = document.createElement("span");
+			caret.className = "file-pair-caret";
+			caret.textContent = "▾";
+			if (pairedAs) caret.classList.add("is-paired");
+			caret.title = pairedAs
+				? `Showing as ${pairedAs} (original: ${name})`
+				: "Pair with a teacher file";
+			caret.addEventListener("click", (ev) => {
+				ev.stopPropagation();
+				if (typeof _truthShowFilePairMenu === "function") {
+					_truthShowFilePairMenu(caret, name);
+				}
+			});
+			caret.addEventListener("mousedown", (ev) => ev.stopPropagation());
+			btn.appendChild(caret);
+		}
+
 		tabs.appendChild(btn);
 
 		const pane = document.createElement("div");
@@ -323,7 +345,7 @@ function renderPanel(side, files, marks) {
 
 		if (alignment) {
 			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name)}</div>`;
-		} else if (hasMarks) {
+		} else if (hasMarks || inTruthMode) {
 			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks, side, name)}</div>`;
 		} else {
 			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
@@ -346,9 +368,8 @@ function renderPanel(side, files, marks) {
 			iframe.style.display = "block";
 			codeWrap.style.display = "none";
 		}
-		if (side === "teacher" && previewBtn) {
-			previewBtn.textContent = "📄 Code";
-			previewBtn.classList.add("active");
+		if (side === "teacher" && typeof _refreshPreviewButton === "function") {
+			_refreshPreviewButton();
 		}
 	}
 }
