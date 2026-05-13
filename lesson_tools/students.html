@@ -62,6 +62,15 @@
 				background: var(--clr-bg);
 			}
 
+			#toolbar select.is-curated {
+				color: var(--clr-mark-extra);
+			}
+
+			#toolbar select option[value="ideal"],
+			#toolbar select option[value="required"] {
+				color: var(--clr-mark-extra);
+			}
+
 			#main {
 				display: none;
 				flex-direction: column;
@@ -224,14 +233,12 @@
 				display: flex;
 				align-items: stretch;
 				height: 100%;
-				gap: 4px;
 			}
 			.col-fingerprint .fp-bar {
 				position: relative;
 				flex: 0 0 160px;
 				width: 160px;
 				height: 100%;
-				background: var(--clr-bar-track);
 				overflow: hidden;
 			}
 			.col-fingerprint .fp-mark {
@@ -253,17 +260,22 @@
 			.col-fingerprint .fp-mark.lang-py {
 				background: var(--clr-green);
 			}
+			.col-fingerprint .fp-mark.lang-comment {
+				background: var(--clr-green);
+			}
 			.col-fingerprint .fp-mark.lang-unk {
 				background: var(--clr-gray);
 			}
-			.col-fingerprint .fp2-bar {
+			.col-fingerprint .fp2-bar,
+			.col-fingerprint .fp3-bar {
 				display: flex;
 				align-items: stretch;
 				gap: 1px;
 				width: fit-content;
 				height: 100%;
 			}
-			.col-fingerprint .fp2-byte {
+			.col-fingerprint .fp2-byte,
+			.col-fingerprint .fp3-byte {
 				display: flex;
 				flex-direction: column;
 				flex: 0 0 3px;
@@ -271,11 +283,15 @@
 				background: var(--clr-bar-track);
 				overflow: hidden;
 			}
-			.col-fingerprint .fp2-bit {
+			.col-fingerprint .fp2-bit,
+			.col-fingerprint .fp3-bit {
 				flex: 1;
 			}
 			.col-fingerprint .fp2-bit.on {
 				background: var(--clr-text);
+			}
+			.col-fingerprint .fp3-bit.on {
+				background: var(--clr-green);
 			}
 			.col-mismatch {
 				width: 100%;
@@ -347,6 +363,7 @@
 						<option value="id">ID Only</option>
 					</select>
 				</label>
+				<span id="basis-picker"></span>
 			</div>
 			<div id="table-wrap">
 				<table id="student-table">

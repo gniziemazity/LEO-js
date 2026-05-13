@@ -11,6 +11,13 @@ let _sortCol = "id";
 let _sortDir = "asc";
 let _shownUnicodeCorruptionWarning = false;
 
+const GRADES_KEY = "_grades";
+
+let _basisFiles = new Map();
+let _basisFallbackFile = null;
+let _activeBasis = null;
+let _baseStudents = null;
+
 const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
 const LANG_COL_DEFS = [
@@ -33,7 +40,6 @@ const MISMATCH_COLORS = {
 const UI_COLORS = {
 	faint: _cssVar("--clr-code-muted") || "#aaa",
 	muted: _cssVar("--clr-muted") || "#888",
-	dangerStrong: _cssVar("--clr-danger-strong") || "#c62828",
 };
 
 const landingEl = document.getElementById("landing");
@@ -166,40 +172,191 @@ async function loadXlsxFiles(files) {
 		const m = f.name.match(/_(\d{8,})/);
 		return m ? Number(m[1]) : f.lastModified || 0;
 	};
+
+	_basisFiles = new Map();
+	for (const f of xlsxFiles) {
+		const n = f.name.toLowerCase();
+		for (const { key } of REMARKS_BASES) {
+			if (n === `remarks_${key}.xlsx`) {
+				_basisFiles.set(key, f);
+				break;
+			}
+		}
+	}
+
 	const gradesFiles = xlsxFiles
 		.filter((f) => /grades/i.test(f.name))
 		.sort((a, b) => _ts(b) - _ts(a));
-	const remarksFiles = xlsxFiles
-		.filter((f) => /remarks/i.test(f.name))
-		.sort((a, b) => _ts(b) - _ts(a));
-	const remarksFile = gradesFiles[0] || remarksFiles[0] || null;
-	if (!remarksFile) {
+	_basisFallbackFile = gradesFiles[0] || null;
+
+	let legacyRemarksFile = null;
+	if (!_basisFallbackFile && _basisFiles.size === 0) {
+		const remarksFiles = xlsxFiles
+			.filter((f) => /remarks/i.test(f.name))
+			.sort((a, b) => _ts(b) - _ts(a));
+		legacyRemarksFile = remarksFiles[0] || null;
+	}
+
+	let initialFile = null;
+	if (_basisFallbackFile) {
+		_activeBasis = GRADES_KEY;
+		initialFile = _basisFallbackFile;
+	} else {
+		for (const key of DEFAULT_BASIS_ORDER) {
+			if (_basisFiles.has(key)) {
+				_activeBasis = key;
+				initialFile = _basisFiles.get(key);
+				break;
+			}
+		}
+		if (!initialFile) {
+			for (const { key } of REMARKS_BASES) {
+				if (_basisFiles.has(key)) {
+					_activeBasis = key;
+					initialFile = _basisFiles.get(key);
+					break;
+				}
+			}
+		}
+		if (!initialFile && legacyRemarksFile) {
+			_activeBasis = null;
+			initialFile = legacyRemarksFile;
+		}
+	}
+
+	if (!initialFile) {
 		showLoading(false);
 		alert(
 			"No grades xlsx file found. Make sure a file with 'grades' or 'remarks' in its name exists.",
 		);
 		return;
 	}
+
 	try {
-		showLoading(true);
-		const remarksBuf = await readFileArray(remarksFile);
-		const result = parseStudentRows(remarksBuf);
-		_students = result.students;
-		_remarkCols = result.remarkCols;
-		_hasInteractions = result.hasInteractions;
-		_followLabel = result.followLabel;
-		showLoading(false);
-		if (!_students.length) {
-			alert("No students found in remarks xlsx.");
-			return;
-		}
-		landingEl.style.display = "none";
-		mainEl.style.display = "flex";
-		renderTable();
+		await _loadRemarksFile(initialFile);
+		_renderBasisPicker();
 	} catch (ex) {
 		showLoading(false);
 		alert("Error loading xlsx files:\n" + ex.message);
 	}
+}
+
+async function _loadRemarksFile(file) {
+	showLoading(true);
+	const remarksBuf = await readFileArray(file);
+	const result = parseStudentRows(remarksBuf);
+	_students = result.students;
+	_remarkCols = result.remarkCols;
+	_hasInteractions = result.hasInteractions;
+	_followLabel = result.followLabel;
+	_baseStudents = _students.map((s) => ({ ...s }));
+	showLoading(false);
+	if (!_students.length) {
+		alert("No students found in remarks xlsx.");
+		return;
+	}
+	landingEl.style.display = "none";
+	mainEl.style.display = "flex";
+	renderTable();
+}
+
+async function _overlayBasisFollow(file) {
+	showLoading(true);
+	const buf = await readFileArray(file);
+	const result = parseStudentRows(buf);
+	showLoading(false);
+	if (!_baseStudents) return;
+	const byId = new Map();
+	const byName = new Map();
+	for (const s of result.students) {
+		if (s.id) byId.set(s.id, s);
+		if (s.name) byName.set(s.name, s);
+	}
+	_students = _baseStudents.map((s) => {
+		const o = (s.id && byId.get(s.id)) || (s.name && byName.get(s.name));
+		if (!o) return { ...s };
+		return {
+			...s,
+			followPct: o.followPct,
+			followEvents: o.followEvents,
+			langPcts: o.langPcts,
+			langEvents: o.langEvents,
+			commentEvents: o.commentEvents,
+		};
+	});
+	renderTable();
+}
+
+function _restoreBaseStudents() {
+	if (!_baseStudents) return;
+	_students = _baseStudents.map((s) => ({ ...s }));
+	renderTable();
+}
+
+function _renderBasisPicker() {
+	const container = document.getElementById("basis-picker");
+	if (!container) return;
+
+	const options = [];
+	if (_basisFallbackFile) options.push({ key: GRADES_KEY, label: "Grades" });
+	for (const { key, label } of REMARKS_BASES) {
+		if (_basisFiles.has(key)) options.push({ key, label });
+	}
+
+	if (options.length === 0) {
+		container.innerHTML = "";
+		return;
+	}
+
+	let select = container.querySelector("select");
+	if (!select) {
+		container.innerHTML = "";
+		const label = document.createElement("label");
+		label.appendChild(document.createTextNode("Basis:"));
+		select = document.createElement("select");
+		select.id = "basis-select";
+		label.appendChild(select);
+		container.appendChild(label);
+		select.addEventListener("change", async () => {
+			_activeBasis = select.value;
+			select.classList.toggle(
+				"is-curated",
+				_activeBasis === "ideal" || _activeBasis === "required",
+			);
+			try {
+				if (_activeBasis === GRADES_KEY) {
+					_restoreBaseStudents();
+					return;
+				}
+				const f = _basisFiles.get(_activeBasis);
+				if (!f) return;
+				if (_baseStudents) {
+					await _overlayBasisFollow(f);
+				} else {
+					await _loadRemarksFile(f);
+				}
+			} catch (ex) {
+				showLoading(false);
+				alert("Error loading basis xlsx:\n" + ex.message);
+			}
+		});
+	}
+	select.innerHTML = "";
+	for (const { key, label } of options) {
+		const opt = document.createElement("option");
+		opt.value = key;
+		opt.textContent = label;
+		select.appendChild(opt);
+	}
+	if (_activeBasis && options.some((o) => o.key === _activeBasis)) {
+		select.value = _activeBasis;
+	} else {
+		_activeBasis = select.value;
+	}
+	select.classList.toggle(
+		"is-curated",
+		select.value === "ideal" || select.value === "required",
+	);
 }
 
 function parseStudentRows(remarksBuf) {
@@ -224,6 +381,8 @@ function parseStudentRows(remarksBuf) {
 		iFollowPct = iSimilarity;
 		iFollowDesc = hdrR.indexOf("Similarity Desc");
 	}
+	let iCommentDesc = hdrR.indexOf("Follow (C) Desc");
+	if (iCommentDesc === -1) iCommentDesc = hdrR.indexOf("Sim (C) Desc");
 	const iRemarksDesc = findCol(hdrR, /^remarks?\s*desc/i);
 
 	const iInteractions = findCol(hdrR, /^interactions?$/i);
@@ -324,6 +483,8 @@ function parseStudentRows(remarksBuf) {
 				: "";
 		const langPcts = {};
 		const langEvents = [];
+		const langParser =
+			iSimilarity !== -1 ? parseSimilarityEvents : parseFollowEvents;
 		for (const def of LANG_COL_DEFS) {
 			if (langIdx[def.key] != null) {
 				const v = parseFloat(row[langIdx[def.key]]);
@@ -331,12 +492,21 @@ function parseStudentRows(remarksBuf) {
 			}
 			if (langDescIdx[def.key] != null) {
 				const descText = String(row[langDescIdx[def.key]] ?? "");
-				for (const ev of parseFollowEvents(descText)) {
+				for (const ev of langParser(descText)) {
 					ev.lang = def.key;
 					langEvents.push(ev);
 				}
 			}
 		}
+		const commentDescText =
+			iCommentDesc !== -1 ? String(row[iCommentDesc] ?? "") : "";
+		const commentParser =
+			hdrR[iCommentDesc] === "Sim (C) Desc"
+				? parseSimilarityEvents
+				: parseFollowEvents;
+		const commentEvents = commentDescText
+			? commentParser(commentDescText)
+			: [];
 		students.push({
 			name,
 			id: iId !== -1 ? String(row[iId] ?? "").trim() : "",
@@ -348,6 +518,7 @@ function parseStudentRows(remarksBuf) {
 			interactions,
 			langPcts,
 			langEvents,
+			commentEvents,
 		});
 	}
 	students.sort((a, b) =>
@@ -423,7 +594,20 @@ function findCol(headers, re) {
 function parseSimilarityEvents(descText) {
 	const events = [];
 	for (const part of (descText || "").split(/,\s*/)) {
-		const m = part.trim().match(/^([+-])(.+?)(?:\s+\(x(\d+)\))?$/);
+		const trimmed = part.trim();
+		const tsMatch = trimmed.match(
+			/^([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)$/,
+		);
+		if (tsMatch) {
+			const kind = tsMatch[1] === "-" ? "missing" : "extra";
+			events.push({
+				kind,
+				token: tsMatch[2].trim(),
+				ts: _hmsToSeconds(tsMatch[3]),
+			});
+			continue;
+		}
+		const m = trimmed.match(/^([+-])(.+?)(?:\s+\(x(\d+)\))?$/);
 		if (!m) continue;
 		const kind = m[1] === "-" ? "missing" : "extra";
 		const token = m[2].trim();
@@ -464,8 +648,15 @@ function _sortKeyOf(s, sortCol) {
 	if (sortCol === "num") return { type: "str", v: s.num || "" };
 	if (sortCol === "follow") return { type: "num", v: s.followPct };
 	if (sortCol === "int") return { type: "str", v: s.interactions || "" };
-	if (sortCol === "fingerprint")
-		return { type: "num", v: s._fpHash == null ? NaN : s._fpHash };
+	if (sortCol === "fingerprint") {
+		const a =
+			s._fpHash != null
+				? String(s._fpHash).padStart(15, "0")
+				: "_".repeat(15);
+		const b = s._fp2Hash || "";
+		const c = s._fp3Hash || "";
+		return { type: "str", v: `${a}|${b}|${c}` };
+	}
 	if (sortCol === "fingerprint2") return { type: "str", v: s._fp2Hash || "" };
 	if (sortCol.startsWith("lang:")) {
 		const k = sortCol.slice(5);
@@ -561,6 +752,9 @@ function renderTable() {
 
 	const _hasFpTs = (ev) =>
 		ev.kind && ev.kind !== "normal" && ev.ts != null && ev.ts > 0;
+	const _isFpEvent = (ev) => ev.kind && ev.kind !== "normal";
+	const _isMissingCommentWithTs = (ev) =>
+		ev.kind === "missing" && ev.ts != null && ev.ts > 0;
 	let fpMinTs = Infinity;
 	let fpMaxTs = -Infinity;
 	for (const s of _students) {
@@ -569,18 +763,43 @@ function renderTable() {
 			if (ev.ts < fpMinTs) fpMinTs = ev.ts;
 			if (ev.ts > fpMaxTs) fpMaxTs = ev.ts;
 		}
+		for (const ev of s.commentEvents || []) {
+			if (!_isMissingCommentWithTs(ev)) continue;
+			if (ev.ts < fpMinTs) fpMinTs = ev.ts;
+			if (ev.ts > fpMaxTs) fpMaxTs = ev.ts;
+		}
 	}
 	const fpRange = fpMaxTs - fpMinTs;
-	const showFingerprint =
-		isFinite(fpMinTs) && isFinite(fpMaxTs) && fpRange > 0;
+	const useFpTs = isFinite(fpMinTs) && isFinite(fpMaxTs) && fpRange > 0;
+	const hasAnyFpEvents = _students.some((s) =>
+		(s.langEvents || []).some(_isFpEvent),
+	);
+	const showFingerprint = useFpTs || hasAnyFpEvents;
 	for (const s of _students) {
 		s._fpHash = null;
+		s._fpPositions = [];
 		if (!showFingerprint) continue;
-		const mistakes = (s.langEvents || []).filter(_hasFpTs);
+		const langTagged = (s.langEvents || [])
+			.filter(useFpTs ? _hasFpTs : _isFpEvent)
+			.map((ev) => ({ ev, lang: ev.lang || "unk" }));
+		const commentTagged = useFpTs
+			? (s.commentEvents || [])
+					.filter(_isMissingCommentWithTs)
+					.map((ev) => ({ ev, lang: "comment" }))
+			: [];
+		const mistakes = [...langTagged, ...commentTagged];
 		if (!mistakes.length) continue;
+		const positions = useFpTs
+			? mistakes.map(({ ev }) => (ev.ts - fpMinTs) / fpRange)
+			: mistakes.map((_, i) =>
+					mistakes.length > 1 ? i / (mistakes.length - 1) : 0.5,
+				);
+		s._fpPositions = mistakes.map(({ lang }, i) => ({
+			pos: positions[i],
+			lang,
+		}));
 		const sections = [[], [], [], [], []];
-		for (const ev of mistakes) {
-			const pos = (ev.ts - fpMinTs) / fpRange;
+		for (const pos of positions) {
 			let i = Math.floor(pos * 5);
 			if (i < 0) i = 0;
 			if (i > 4) i = 4;
@@ -630,7 +849,35 @@ function renderTable() {
 		s._fp2Hash = s._fp2Bytes.map((b) => String(b).padStart(3, "0")).join("-");
 	}
 	const hasAnyFp2 = fp2MaxBytes > 0;
-	if (showFingerprint || hasAnyFp2)
+	let fp3MaxBytes = 0;
+	for (const s of _students) {
+		s._fp3Bytes = [];
+		s._fp3Hash = "";
+		const evs = (s.commentEvents || []).filter((ev) => ev.kind === "extra");
+		const bytes = [];
+		let cur = 0;
+		let count = 0;
+		for (const ev of evs) {
+			const tok = ev.token || ev.label || "";
+			const bit = tok.length % 2;
+			cur = (cur << 1) | bit;
+			count++;
+			if (count === 8) {
+				bytes.push(cur);
+				cur = 0;
+				count = 0;
+			}
+		}
+		if (count > 0) bytes.push(cur);
+		s._fp3Bytes = bytes;
+		if (bytes.length > fp3MaxBytes) fp3MaxBytes = bytes.length;
+	}
+	for (const s of _students) {
+		while (s._fp3Bytes.length < fp3MaxBytes) s._fp3Bytes.push(0);
+		s._fp3Hash = s._fp3Bytes.map((b) => String(b).padStart(3, "0")).join("-");
+	}
+	const hasAnyFp3 = fp3MaxBytes > 0;
+	if (showFingerprint || hasAnyFp2 || hasAnyFp3)
 		specs.push({
 			cls: "col-fingerprint",
 			label: "Fingerprint",
@@ -695,7 +942,6 @@ function renderTable() {
 				el.textContent = obsVal;
 				if (obsVal) {
 					el.style.fontWeight = "bold";
-					el.style.color = UI_COLORS.dangerStrong;
 				}
 			} else {
 				el.textContent = rk.val;
@@ -748,7 +994,7 @@ function renderTable() {
 			tr.appendChild(cell);
 		}
 
-		if (showFingerprint || hasAnyFp2) {
+		if (showFingerprint || hasAnyFp2 || hasAnyFp3) {
 			const fpEl = document.createElement("td");
 			fpEl.className = "col-fingerprint";
 			const titles = [];
@@ -757,18 +1003,17 @@ function renderTable() {
 				titles.push(digits.match(/.{3}/g).join("-"));
 			}
 			if (s._fp2Hash) titles.push(s._fp2Hash);
+			if (s._fp3Hash) titles.push(s._fp3Hash);
 			if (titles.length) fpEl.title = titles.join("  |  ");
 			const wrap = document.createElement("div");
 			wrap.className = "fp-wrap";
 			if (showFingerprint) {
 				const bar = document.createElement("div");
 				bar.className = "fp-bar";
-				const mistakes = (s.langEvents || []).filter(_hasFpTs);
-				for (const ev of mistakes) {
-					const pct = ((ev.ts - fpMinTs) / fpRange) * 100;
+				for (const entry of s._fpPositions || []) {
 					const mark = document.createElement("div");
-					mark.className = "fp-mark lang-" + (ev.lang || "unk");
-					mark.style.left = pct + "%";
+					mark.className = "fp-mark lang-" + (entry.lang || "unk");
+					mark.style.left = entry.pos * 100 + "%";
 					bar.appendChild(mark);
 				}
 				wrap.appendChild(bar);
@@ -788,6 +1033,22 @@ function renderTable() {
 					bar2.appendChild(col);
 				}
 				wrap.appendChild(bar2);
+			}
+			if (hasAnyFp3) {
+				const bar3 = document.createElement("div");
+				bar3.className = "fp3-bar";
+				for (const b of s._fp3Bytes) {
+					const col = document.createElement("div");
+					col.className = "fp3-byte";
+					for (let k = 7; k >= 0; k--) {
+						const bit = (b >> k) & 1;
+						const px = document.createElement("div");
+						px.className = "fp3-bit" + (bit ? " on" : "");
+						col.appendChild(px);
+					}
+					bar3.appendChild(col);
+				}
+				wrap.appendChild(bar3);
 			}
 			fpEl.appendChild(wrap);
 			tr.appendChild(fpEl);

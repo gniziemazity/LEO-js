@@ -1,5 +1,22 @@
 "use strict";
 
+const REMARKS_BASES = [
+	{ key: "ideal", label: "Ideal" },
+	{ key: "required", label: "Required" },
+	{ key: "leo_star", label: "LEO*" },
+	{ key: "leo", label: "LEO" },
+	{ key: "lcs_star", label: "LCS*" },
+	{ key: "lcs", label: "LCS" },
+	{ key: "lev_star", label: "Lev*" },
+	{ key: "lev", label: "Lev" },
+	{ key: "ro_star", label: "R/O*" },
+	{ key: "ro", label: "R/O" },
+	{ key: "git_star", label: "Git*" },
+	{ key: "git", label: "Git" },
+];
+
+const DEFAULT_BASIS_ORDER = ["required", "ideal", "leo_star", "leo"];
+
 function _cssVar(name) {
 	return getComputedStyle(document.documentElement)
 		.getPropertyValue(name)

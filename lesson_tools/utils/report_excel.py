@@ -1,15 +1,76 @@
 from collections import Counter
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 from openpyxl import Workbook
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from .similarity_measures import (
+    calculate_containment,
+    iter_code_tokens,
     save_xlsx,
 )
+from .token_log import _split_tokens_by_comment
+from .token_log_mixin import _effective_ext_at, _embedded_lang_ranges_for, _ext_of
+
+
+def _fmt_diff(miss_ctr: Counter, extra_ctr: Counter) -> Tuple[str, List[str]]:
+    parts: List[str] = []
+    items: List[str] = []
+    for kw, n in sorted(miss_ctr.items()):
+        suf = f' (x{n})' if n > 1 else ''
+        parts.append(f'-{kw}{suf}')
+        items.append(f'Missing: {kw}{suf}')
+    for kw, n in sorted(extra_ctr.items()):
+        suf = f' (x{n})' if n > 1 else ''
+        parts.append(f'+{kw}{suf}')
+        items.append(f'Extra: {kw}{suf}')
+    return (', '.join(parts), items)
+
+
+def _ts_str(seconds: int) -> str:
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    return f'{h:02d}:{m:02d}:{s:02d}'
+
+
+def _build_synth_ts(files: Dict[str, Path]) -> Dict[Tuple[str, int], str]:
+    out: Dict[Tuple[str, int], str] = {}
+    counter = 0
+    for _ext, fpath in sorted((files or {}).items(), key=lambda kv: kv[1].name):
+        try:
+            text = fpath.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        file_ext = _ext_of(fpath.name)
+        for pos, _tok, _is_comment in iter_code_tokens(text, file_ext):
+            out[(fpath.name, pos)] = _ts_str(counter)
+            counter += 1
+    return out
+
+
+def _fmt_diff_timed(
+    miss_marks: List[Tuple[str, int, str]],
+    extra_marks: List[Tuple[str, int, str]],
+    ts_teacher: Dict[Tuple[str, int], str],
+) -> Tuple[str, List[str]]:
+    miss_sorted = sorted(
+        ((ts_teacher.get((fn, s), '99:99:99'), tok) for fn, s, tok in miss_marks),
+    )
+    extra_ctr: Counter = Counter(tok for _, _, tok in extra_marks)
+    parts: List[str] = []
+    items: List[str] = []
+    for ts, tok in miss_sorted:
+        parts.append(f'-{tok} ({ts})')
+        items.append(f'Missing: {tok} ({ts})')
+    for kw, n in sorted(extra_ctr.items()):
+        suf = f' (x{n})' if n > 1 else ''
+        parts.append(f'+{kw}{suf}')
+        items.append(f'Extra: {kw}{suf}')
+    return (', '.join(parts), items)
 
 
 class ExcelReportMixin:
@@ -18,19 +79,24 @@ class ExcelReportMixin:
         output_file: str,
         anonymize: bool = False,
         token_stats: 'Dict[str, dict] | None' = None,
+        basis_marks_by_sid: 'Dict[str, dict] | None' = None,
     ) -> None:
         wb = Workbook()
         wb.remove(wb.active)
         prev_stats = None
+        prev_basis = getattr(self, '_basis_marks_by_sid', None)
         if token_stats is not None:
             prev_stats = self._student_token_stats
             self._student_token_stats = token_stats
+        if basis_marks_by_sid is not None:
+            self._basis_marks_by_sid = basis_marks_by_sid
         try:
             self._add_remarks_sheet(wb, anonymize=anonymize)
             save_xlsx(wb, output_file)
         finally:
             if prev_stats is not None:
                 self._student_token_stats = prev_stats
+            self._basis_marks_by_sid = prev_basis
 
     def _add_remarks_sheet(self, wb: Workbook, anonymize: bool = False) -> None:
         sheet   = wb.create_sheet(title='Remarks')
@@ -48,7 +114,10 @@ class ExcelReportMixin:
                 ):
                     present_lang_exts.append(ext)
         else:
-            present_lang_exts = []
+            teacher_by_lang = self._teacher_tokens_by_lang()
+            present_lang_exts = [
+                ext for ext, _label in _LANG_COLS if teacher_by_lang.get(ext)
+            ]
 
         lang_label_by_ext = dict(_LANG_COLS)
         header = ['ID', 'Student', 'Number', 'Remarks', 'Extra', 'Extra Desc', 'Inc']
@@ -59,7 +128,11 @@ class ExcelReportMixin:
                 header.append(lang_label_by_ext[ext])
                 header.append(f'{lang_label_by_ext[ext]} Desc')
         if has_sim:
-            header.extend(['Similarity', 'Similarity Desc'])
+            header.extend(['Sim (C)', 'Sim (C) Desc',
+                           'Similarity', 'Similarity Desc'])
+            for ext in present_lang_exts:
+                header.append(lang_label_by_ext[ext])
+                header.append(f'{lang_label_by_ext[ext]} Desc')
         if self.required_items or self.not_expected_items:
             header.extend(['Expected', 'Expected Desc'])
         header.extend(['Obs', 'Grade', 'Comments'])
@@ -82,10 +155,15 @@ class ExcelReportMixin:
         else:
             COL_FOLLOWC = COL_FOLLOWC_T = COL_FOLLOWE = COL_FOLLOWE_T = COL_INTERACT = None
         if has_sim:
-            COL_SIM   = _next; _next += 1
-            COL_SIM_T = _next; _next += 1
+            COL_SIMC   = _next; _next += 1
+            COL_SIMC_T = _next; _next += 1
+            COL_SIM    = _next; _next += 1
+            COL_SIM_T  = _next; _next += 1
+            for ext in present_lang_exts:
+                COL_LANG_BY_EXT[ext] = _next; _next += 1
+                COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
         else:
-            COL_SIM = COL_SIM_T = None
+            COL_SIM = COL_SIM_T = COL_SIMC = COL_SIMC_T = None
         if self.required_items or self.not_expected_items:
             COL_EXPECTED   = _next; _next += 1
             COL_EXPECTED_T = _next; _next += 1
@@ -103,11 +181,9 @@ class ExcelReportMixin:
         }
         peer_ranking, max_sim = self._compute_peer_ranking(sids, all_extra_counters)
 
-        teacher_agg = self._teacher_aggregates()
-        _teacher_outside_all_ci = teacher_agg['outside_all']
-        _teacher_inside_all_ci  = teacher_agg['inside_all']
-        _teacher_all_ci         = teacher_agg['all']
-        _extra_denom            = max(1, sum(_teacher_outside_all_ci.values()))
+        _extra_denom = max(
+            1, sum(sum(c.values()) for c in self.teacher_outside_by_ext.values())
+        )
 
         student_interactions = self._extract_interactions() if has_log else {}
 
@@ -127,7 +203,6 @@ class ExcelReportMixin:
             inc_pct = self._avg_inc(sid) if has_submission and not code_not_found else ''
 
             _ts = self._student_token_stats.get(sid)
-            ts_denom = self._teacher_token_denom()
 
             if _ts and has_submission and not code_not_found:
                 follow_e_pct  = _ts['follow_e']
@@ -136,13 +211,10 @@ class ExcelReportMixin:
                 extra_pct     = (round(min(_ts['extra'] / ts_denom_r * 100, 100.0), 1)
                                  if _ts['extra'] else 0.0)
                 extra_e_text  = _ts['extra_e_text']
-                extra_e_count = _ts['extra_e_count']
                 comment_text  = _ts['comment_text']
-                comment_count = _ts['comment_count']
                 extra_all     = _ts['extra_all']
             else:
-                follow_e_pct = extra_e_count = ''
-                comment_pct  = comment_count = ''
+                follow_e_pct = comment_pct = ''
                 extra_e_text = comment_text  = ''
                 extra_pct    = (round(min(sum(extra_ctr.values()) / _extra_denom * 100, 100.0), 1)
                                 if has_submission and not code_not_found else '')
@@ -151,6 +223,8 @@ class ExcelReportMixin:
                 sid, has_submission, code_not_found
             )
             sim_items = []
+            simc_items = []
+            sim_by_lang: Dict[str, Dict] = {}
 
             if code_not_found:
                 row = [int(sid), display_name, info['number'], '⛔']
@@ -174,9 +248,35 @@ class ExcelReportMixin:
                             row.append(v.get('score', ''))
                             row.append(v.get('text', ''))
                 if has_sim:
-                    sim_pct, sim_desc, sim_items = self._similarity_info(
+                    simc_pct, simc_desc, simc_items = self._comment_info(
                         sid, has_submission, code_not_found)
+                    row.extend([simc_pct, simc_desc])
+                    basis_marks = (getattr(self, '_basis_marks_by_sid', None) or {}).get(sid)
+                    pb_info = (
+                        self._per_basis_sim_info(sid, basis_marks)
+                        if basis_marks else None
+                    )
+                    if pb_info is not None:
+                        sim_pct, sim_desc, sim_items = pb_info
+                    else:
+                        sim_pct, sim_desc, sim_items = self._similarity_info(
+                            sid, has_submission, code_not_found)
                     row.extend([sim_pct, sim_desc])
+                    sim_by_lang = (
+                        self._similarity_info_by_lang_from_marks(
+                            sid, has_submission, code_not_found, basis_marks)
+                        if basis_marks
+                        else self._similarity_info_by_lang(
+                            sid, has_submission, code_not_found)
+                    )
+                    for ext in present_lang_exts:
+                        v = sim_by_lang.get(ext)
+                        if v is None:
+                            row.append('')
+                            row.append('')
+                        else:
+                            row.append(v['score'])
+                            row.append(v['desc'])
                 if self.required_items or self.not_expected_items:
                     row.extend([req_count, req_details])
                 row.extend(['_' if has_submission else '', ''])
@@ -257,6 +357,23 @@ class ExcelReportMixin:
                     c.height = min(200 + 80 * len(items), 6000)
                     sheet.cell(row=cur, column=col_n).comment = c
 
+            if has_sim and not code_not_found and sim_by_lang:
+                for ext, col_n in COL_LANG_BY_EXT.items():
+                    v = sim_by_lang.get(ext)
+                    if not v or not v.get('items'):
+                        continue
+                    items = v['items']
+                    c = Comment(', '.join(items), 'sim_check')
+                    c.width  = 400
+                    c.height = min(200 + 80 * len(items), 6000)
+                    sheet.cell(row=cur, column=col_n).comment = c
+
+            if has_sim and simc_items and COL_SIMC:
+                c = Comment(', '.join(simc_items), 'sim_check')
+                c.width  = 400
+                c.height = min(200 + 80 * len(simc_items), 6000)
+                sheet.cell(row=cur, column=COL_SIMC).comment = c
+
             if has_sim and sim_items and COL_SIM:
                 c = Comment(', '.join(sim_items), 'sim_check')
                 c.width  = 400
@@ -271,10 +388,12 @@ class ExcelReportMixin:
         _hidden = [get_column_letter(COL_EXTRA_T)]
         if has_log:
             _hidden += [get_column_letter(COL_FOLLOWC_T), get_column_letter(COL_FOLLOWE_T)]
-            for col_n in COL_LANG_DESC_BY_EXT.values():
-                _hidden.append(get_column_letter(col_n))
         if has_sim and COL_SIM_T:
             _hidden.append(get_column_letter(COL_SIM_T))
+        if has_sim and COL_SIMC_T:
+            _hidden.append(get_column_letter(COL_SIMC_T))
+        for col_n in COL_LANG_DESC_BY_EXT.values():
+            _hidden.append(get_column_letter(col_n))
         if self.required_items and COL_EXPECTED_T:
             _hidden.append(get_column_letter(COL_EXPECTED_T))
         for col in _hidden:
@@ -302,8 +421,7 @@ class ExcelReportMixin:
                 ColorScaleRule(start_type='num', start_value=0, start_color='F8696B',
                                end_type='num', end_value=100, end_color='FFFFFF'))
             if has_log:
-                lang_cols = list(COL_LANG_BY_EXT.values())
-                for col_n in [COL_FOLLOWC, COL_FOLLOWE, *lang_cols]:
+                for col_n in [COL_FOLLOWC, COL_FOLLOWE]:
                     if col_n:
                         ltr = get_column_letter(col_n)
                         sheet.conditional_formatting.add(
@@ -312,6 +430,18 @@ class ExcelReportMixin:
                                            end_type='max', end_color='FFFFFF'))
             if has_sim and COL_SIM:
                 ltr = get_column_letter(COL_SIM)
+                sheet.conditional_formatting.add(
+                    f'{ltr}2:{ltr}{max_row}',
+                    ColorScaleRule(start_type='min', start_color='F8696B',
+                                   end_type='max', end_color='FFFFFF'))
+            if has_sim and COL_SIMC:
+                ltr = get_column_letter(COL_SIMC)
+                sheet.conditional_formatting.add(
+                    f'{ltr}2:{ltr}{max_row}',
+                    ColorScaleRule(start_type='min', start_color='F8696B',
+                                   end_type='max', end_color='FFFFFF'))
+            for col_n in COL_LANG_BY_EXT.values():
+                ltr = get_column_letter(col_n)
                 sheet.conditional_formatting.add(
                     f'{ltr}2:{ltr}{max_row}',
                     ColorScaleRule(start_type='min', start_color='F8696B',
@@ -347,39 +477,194 @@ class ExcelReportMixin:
             teacher_agg += teacher_ext
         student_agg: Counter = getattr(self, '_student_all_outside', {}).get(sid, Counter())
 
-        parts     = []
-        sim_items = []
-        for kw, n in sorted((teacher_agg - student_agg).items()):
-            parts.append(f'-{kw} (x{n})' if n > 1 else f'-{kw}')
-            sim_items.append(f'Missing: {kw}' + (f' (x{n})' if n > 1 else ''))
-        for kw, n in sorted((student_agg - teacher_agg).items()):
-            parts.append(f'+{kw} (x{n})' if n > 1 else f'+{kw}')
-            sim_items.append(f'Extra: {kw}' + (f' (x{n})' if n > 1 else ''))
-        sim_pct  = round(sum(inc_vals) / len(inc_vals), 1) if inc_vals else ''
-        sim_desc = ', '.join(parts)
+        sim_desc, sim_items = _fmt_diff(teacher_agg - student_agg, student_agg - teacher_agg)
+        sim_pct = round(sum(inc_vals) / len(inc_vals), 1) if inc_vals else ''
         return (sim_pct, sim_desc, sim_items)
 
-    def _teacher_token_denom(self) -> int:
-        _ts_denom = next(
-            (v['teacher_total_e'] for v in self._student_token_stats.values()
-             if v.get('teacher_total_e')),
-            None,
+    def _build_synth_teacher_timestamps(self) -> None:
+        self._synth_ts_teacher = _build_synth_ts(
+            self.get_code_files(self.reference_dir)
         )
-        if _ts_denom:
-            return _ts_denom
-        teacher_outside = (
-            sum(self.teacher_outside_by_ext.values(), Counter())
-        )
-        return max(1, sum(teacher_outside.values()))
 
-    def _teacher_aggregates(self) -> Dict:
-        outside_all = sum(self.teacher_outside_by_ext.values(), Counter())
-        inside_all = sum(self.teacher_inside_by_ext.values(), Counter())
-        return {
-            'outside_all': outside_all,
-            'inside_all':  inside_all,
-            'all':         outside_all + inside_all,
-        }
+    def _per_basis_sim_info(self, sid: str, basis_marks: dict):
+        if not basis_marks:
+            return None
+        miss_marks: List[Tuple[str, int, str]] = []
+        extra_marks: List[Tuple[str, int, str]] = []
+        for fname, marks in (basis_marks.get('teacher_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') == 'missing':
+                    miss_marks.append((fname, m.get('start', 0), m.get('token', '')))
+        for fname, marks in (basis_marks.get('student_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') in ('extra', 'ghost_extra'):
+                    extra_marks.append((fname, m.get('start', 0), m.get('token', '')))
+        teacher_by_lang = self._teacher_tokens_by_lang()
+        teacher_total = sum(sum(ctr.values()) for ctr in teacher_by_lang.values())
+        if not teacher_total:
+            return None
+        score = round(max(0.0, (teacher_total - len(miss_marks)) / teacher_total * 100), 1)
+        ts_teacher = getattr(self, '_synth_ts_teacher', None) or {}
+        if ts_teacher:
+            desc, items = _fmt_diff_timed(miss_marks, extra_marks, ts_teacher)
+        else:
+            miss_ctr = Counter(tok for _, _, tok in miss_marks)
+            extra_ctr = Counter(tok for _, _, tok in extra_marks)
+            desc, items = _fmt_diff(miss_ctr, extra_ctr)
+        return (score, desc, items)
+
+    def _similarity_info_by_lang_from_marks(
+        self, sid: str, has_submission: bool, code_not_found: bool, basis_marks: dict,
+    ) -> Dict[str, Dict]:
+        if not has_submission or code_not_found or not basis_marks:
+            return {}
+        teacher_by_lang = self._teacher_tokens_by_lang()
+        teacher_files = self.get_code_files(self.reference_dir)
+        teacher_texts: Dict[str, str] = {}
+        teacher_ranges: Dict[str, Dict[str, List[Tuple[int, int]]]] = {}
+        for ext, fpath in (teacher_files or {}).items():
+            try:
+                text = fpath.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                continue
+            teacher_texts[fpath.name] = text
+            teacher_ranges[fpath.name] = _embedded_lang_ranges_for(text, ext)
+        student_dir = getattr(self, 'student_dir_by_sid', {}).get(sid)
+        student_files = self.get_code_files(student_dir) if student_dir else {}
+        student_ranges: Dict[str, Dict[str, List[Tuple[int, int]]]] = {}
+        for ext, fpath in (student_files or {}).items():
+            try:
+                text = fpath.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                continue
+            student_ranges[fpath.name] = _embedded_lang_ranges_for(text, ext)
+
+        def _ext_of_name(fname: str) -> str:
+            f = (fname or '').lower()
+            for e in ('.html', '.css', '.js', '.py'):
+                if f.endswith(e):
+                    return e
+            return ''
+
+        miss_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
+        extra_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
+        for fname, marks in (basis_marks.get('teacher_files') or {}).items():
+            file_ext = _ext_of_name(fname)
+            if not file_ext:
+                continue
+            ranges = teacher_ranges.get(fname, {})
+            for m in marks or []:
+                if m.get('label') != 'missing':
+                    continue
+                pos = m.get('start', 0)
+                eff = _effective_ext_at(pos, file_ext, ranges) if ranges else file_ext
+                miss_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', '')))
+        for fname, marks in (basis_marks.get('student_files') or {}).items():
+            file_ext = _ext_of_name(fname)
+            if not file_ext:
+                continue
+            ranges = student_ranges.get(fname, {})
+            for m in marks or []:
+                if m.get('label') not in ('extra', 'ghost_extra'):
+                    continue
+                pos = m.get('start', 0)
+                eff = _effective_ext_at(pos, file_ext, ranges) if ranges else file_ext
+                extra_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', '')))
+
+        ts_teacher = getattr(self, '_synth_ts_teacher', None) or {}
+
+        out: Dict[str, Dict] = {}
+        for ext in ('.html', '.css', '.js', '.py'):
+            teacher_ext_total = sum(teacher_by_lang.get(ext, Counter()).values())
+            miss = miss_by_lang.get(ext, [])
+            extra = extra_by_lang.get(ext, [])
+            if not teacher_ext_total and not miss and not extra:
+                continue
+            n_miss = len(miss)
+            score = (
+                round(max(0.0, (teacher_ext_total - n_miss) / teacher_ext_total * 100), 1)
+                if teacher_ext_total else 0.0
+            )
+            if ts_teacher:
+                desc, items = _fmt_diff_timed(miss, extra, ts_teacher)
+            else:
+                miss_ctr = Counter(tok for _, _, tok in miss)
+                extra_ctr = Counter(tok for _, _, tok in extra)
+                desc, items = _fmt_diff(miss_ctr, extra_ctr)
+            out[ext] = {
+                'score': score,
+                'desc':  desc,
+                'items': items,
+            }
+        return out
+
+    def _comment_info(self, sid: str, has_submission: bool, code_not_found: bool):
+        if not has_submission or code_not_found:
+            return ('', '', [])
+        data = self.results.get(sid, {})
+        if not data or not data.get('files_compared'):
+            return ('', '', [])
+        teacher_agg: Counter = sum(self.teacher_inside_by_ext.values(), Counter())
+        student_agg: Counter = Counter()
+        for ext in ['.html', '.css', '.js', '.py']:
+            fd = data['files_compared'].get(ext)
+            if not fd or fd.get('status') != 'success':
+                continue
+            student_agg += fd.get('student_inside', Counter())
+        if not teacher_agg and not student_agg:
+            return ('', '', [])
+        desc, items = _fmt_diff(teacher_agg - student_agg, student_agg - teacher_agg)
+        simc_pct = calculate_containment(teacher_agg, student_agg) if teacher_agg else 0.0
+        return (simc_pct, desc, items)
+
+    def _tokens_by_effective_lang(self, files: Dict[str, Path]) -> Dict[str, Counter]:
+        by_lang: Dict[str, Counter] = {}
+        for ext, file_path in (files or {}).items():
+            try:
+                text = file_path.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                continue
+            ranges = _embedded_lang_ranges_for(text, ext)
+            nc, _cm = _split_tokens_by_comment(text, ext)
+            for pos, tok in nc:
+                eff = _effective_ext_at(pos, ext, ranges) if ranges else ext
+                by_lang.setdefault(eff, Counter())[tok] += 1
+        return by_lang
+
+    def _teacher_tokens_by_lang(self) -> Dict[str, Counter]:
+        cache = getattr(self, '_teacher_by_lang_cache', None)
+        if cache is None:
+            cache = self._tokens_by_effective_lang(
+                self.get_code_files(self.reference_dir)
+            )
+            self._teacher_by_lang_cache = cache
+        return cache
+
+    def _student_tokens_by_lang(self, sid: str) -> Dict[str, Counter]:
+        student_dir = getattr(self, 'student_dir_by_sid', {}).get(sid)
+        if student_dir is None:
+            return {}
+        return self._tokens_by_effective_lang(self.get_code_files(student_dir))
+
+    def _similarity_info_by_lang(self, sid: str, has_submission: bool, code_not_found: bool) -> Dict[str, Dict]:
+        if not has_submission or code_not_found:
+            return {}
+        teacher_by_lang = self._teacher_tokens_by_lang()
+        student_by_lang = self._student_tokens_by_lang(sid)
+        out: Dict[str, Dict] = {}
+        for ext in ['.html', '.css', '.js', '.py']:
+            teacher_ext = teacher_by_lang.get(ext, Counter())
+            student_ext = student_by_lang.get(ext, Counter())
+            if not teacher_ext and not student_ext:
+                continue
+            score = calculate_containment(teacher_ext, student_ext)
+            desc, items = _fmt_diff(teacher_ext - student_ext, student_ext - teacher_ext)
+            out[ext] = {
+                'score': score,
+                'desc':  desc,
+                'items': items,
+            }
+        return out
 
     def _avg_inc(self, sid: str) -> str:
         inc_vals = [fd['inc_sim']
