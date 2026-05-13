@@ -98,6 +98,18 @@
 				letter-spacing: 0.5px;
 				white-space: nowrap;
 				z-index: 2;
+				user-select: none;
+			}
+			thead th.sortable {
+				cursor: pointer;
+			}
+			thead th.sortable:hover {
+				background: var(--clr-row-hover);
+			}
+			thead th .sort-arrow {
+				display: inline-block;
+				margin-left: 4px;
+				color: var(--clr-accent);
 			}
 
 			thead th:last-child {
@@ -162,6 +174,108 @@
 				text-align: center;
 				font-family: Consolas, monospace;
 				font-weight: bold;
+			}
+			.col-lang {
+				width: 70px;
+				padding: 4px 8px;
+				font-family: Consolas, monospace;
+				font-size: 11px;
+				text-align: left;
+				vertical-align: middle;
+				overflow: visible;
+				text-overflow: clip;
+			}
+			.col-lang .lang-pct {
+				display: block;
+				font-weight: bold;
+				line-height: 1.1;
+				margin-bottom: 2px;
+				color: var(--clr-text);
+			}
+			.col-lang .lang-bar {
+				height: 5px;
+				background: var(--clr-bar-track);
+				border-radius: 2px;
+				overflow: hidden;
+			}
+			.col-lang .lang-bar-fill {
+				height: 100%;
+				border-radius: 2px;
+			}
+			.col-lang-html .lang-bar-fill {
+				background: var(--clr-red);
+			}
+			.col-lang-css .lang-bar-fill {
+				background: var(--clr-accent);
+			}
+			.col-lang-js .lang-bar-fill {
+				background: var(--clr-orange);
+			}
+			.col-fingerprint {
+				width: auto;
+				padding: 0;
+				height: 1px;
+				vertical-align: middle;
+				overflow: visible;
+				text-overflow: clip;
+				white-space: nowrap;
+			}
+			.col-fingerprint .fp-wrap {
+				display: flex;
+				align-items: stretch;
+				height: 100%;
+				gap: 4px;
+			}
+			.col-fingerprint .fp-bar {
+				position: relative;
+				flex: 0 0 160px;
+				width: 160px;
+				height: 100%;
+				background: var(--clr-bar-track);
+				overflow: hidden;
+			}
+			.col-fingerprint .fp-mark {
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				width: 1px;
+				transform: translateX(-50%);
+			}
+			.col-fingerprint .fp-mark.lang-html {
+				background: var(--clr-red);
+			}
+			.col-fingerprint .fp-mark.lang-css {
+				background: var(--clr-accent);
+			}
+			.col-fingerprint .fp-mark.lang-js {
+				background: var(--clr-orange);
+			}
+			.col-fingerprint .fp-mark.lang-py {
+				background: var(--clr-green);
+			}
+			.col-fingerprint .fp-mark.lang-unk {
+				background: var(--clr-gray);
+			}
+			.col-fingerprint .fp2-bar {
+				display: flex;
+				align-items: stretch;
+				gap: 1px;
+				width: fit-content;
+				height: 100%;
+			}
+			.col-fingerprint .fp2-byte {
+				display: flex;
+				flex-direction: column;
+				flex: 0 0 3px;
+				width: 3px;
+				background: var(--clr-bar-track);
+				overflow: hidden;
+			}
+			.col-fingerprint .fp2-bit {
+				flex: 1;
+			}
+			.col-fingerprint .fp2-bit.on {
+				background: var(--clr-text);
 			}
 			.col-mismatch {
 				width: 100%;

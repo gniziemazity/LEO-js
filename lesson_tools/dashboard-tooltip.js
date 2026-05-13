@@ -17,6 +17,93 @@ tooltipEl.addEventListener("click", (e) => {
 	}
 });
 
+let _studentPreviewEl = null;
+let _previewedStudent = null;
+
+function _ensureStudentPreviewEl() {
+	if (_studentPreviewEl) return _studentPreviewEl;
+	const el = document.createElement("div");
+	el.id = "tooltip-student-preview";
+	const base = window.getComputedStyle(tooltipEl);
+	el.style.position = "fixed";
+	el.style.display = "none";
+	el.style.background = base.background;
+	el.style.color = base.color;
+	el.style.fontFamily = base.fontFamily;
+	el.style.fontSize = base.fontSize;
+	el.style.padding = base.padding;
+	el.style.borderRadius = base.borderRadius;
+	el.style.boxShadow = base.boxShadow;
+	el.style.lineHeight = base.lineHeight;
+	el.style.whiteSpace = "pre-wrap";
+	el.style.wordBreak = "break-all";
+	el.style.maxWidth = "min(440px, 35vw)";
+	el.style.maxHeight = "50vh";
+	el.style.overflow = "hidden";
+	el.style.pointerEvents = "none";
+	el.style.zIndex = "1001";
+	el.style.borderLeft = "3px solid var(--clr-accent)";
+	document.body.appendChild(el);
+	_studentPreviewEl = el;
+	return el;
+}
+
+function _renderStudentPreview(student, evs) {
+	const el = _ensureStudentPreviewEl();
+	let cluster = null;
+	if (evs && evs.length) {
+		let cl0 = evs[0].ts;
+		let clN = evs[0].ts;
+		for (const e of evs) {
+			if (e.ts < cl0) cl0 = e.ts;
+			if (e.ts > clN) clN = e.ts;
+		}
+		cluster = { ts1: cl0, ts2: clN };
+	}
+	el.innerHTML = formatHit({ type: "student", s: student, cluster }, false);
+	el.style.display = "block";
+}
+
+function _positionStudentPreview(cx, cy) {
+	if (!_studentPreviewEl) return;
+	const tw = _studentPreviewEl.offsetWidth;
+	const th = _studentPreviewEl.offsetHeight;
+	let tx = cx + 16;
+	let ty = cy + 16;
+	if (tx + tw > window.innerWidth - 8) tx = cx - tw - 16;
+	if (ty + th > window.innerHeight - 8) ty = cy - th - 8;
+	if (tx < 8) tx = 8;
+	if (ty < 8) ty = 8;
+	_studentPreviewEl.style.left = tx + "px";
+	_studentPreviewEl.style.top = ty + "px";
+}
+
+function _hideStudentPreview() {
+	if (_studentPreviewEl) _studentPreviewEl.style.display = "none";
+	_previewedStudent = null;
+}
+
+tooltipEl.addEventListener("mousemove", (e) => {
+	const el = e.target.closest("[data-bar-student-idx]");
+	if (!el) {
+		if (_previewedStudent) _hideStudentPreview();
+		return;
+	}
+	const idx = parseInt(el.getAttribute("data-bar-student-idx"), 10);
+	const entry = _barBlockStudents[idx];
+	if (!entry || !entry.s) {
+		if (_previewedStudent) _hideStudentPreview();
+		return;
+	}
+	if (_previewedStudent !== entry.s) {
+		_previewedStudent = entry.s;
+		_renderStudentPreview(entry.s, entry.evs);
+	}
+	_positionStudentPreview(e.clientX, e.clientY);
+});
+
+tooltipEl.addEventListener("mouseleave", _hideStudentPreview);
+
 function _hitTs(hit) {
 	if (!hit) return null;
 	if (hit.type === "burst") return hit.b?.centerTs ?? null;
@@ -56,7 +143,13 @@ function _sameCluster(a, b) {
 }
 
 function _trimBlankLines(html) {
-	return html.replace(/^(?:[ \t]*\n)+/, "").replace(/\n+[ \t]*$/, "");
+	return html
+		.replace(/^(?:[ \t]*\n)+/, "")
+		.replace(/^<span\b[^>]*>(?:[ \t]*\n)+<\/span>/, "")
+		.replace(/^(<span\b[^>]*>)(?:[ \t]*\n)+/, "$1")
+		.replace(/<span\b[^>]*>(?:\n[ \t]*)+<\/span>$/, "")
+		.replace(/(\n+[ \t]*)<\/span>$/, "</span>")
+		.replace(/\n+[ \t]*$/, "");
 }
 
 document.addEventListener("keydown", (e) => {
@@ -450,7 +543,7 @@ function hitBottomChart(ts, my, p, L, thT, restrictStudent) {
 			}
 		}
 
-		if (s.follow_dt != null && s.follow_pct === 100) {
+		if (s.follow_dt != null) {
 			const dotXPx = tsToX(s.follow_dt, L) + jitter.dx;
 			const tsXPx = tsToX(ts, L);
 			const dotDxPx = tsXPx - dotXPx;
@@ -685,8 +778,10 @@ function _buildPartColorsForMismatches(b, mismatches) {
 			text = (p.t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
 		}
 		if (!text) continue;
-		const ts = (evs[pi]?.timestamp ?? 0) / 1000;
+		const baseTs = (evs[pi]?.timestamp ?? 0) / 1000;
+		const perCharBump = p.type === "code_insert";
 		for (let k = 0; k < text.length; k++) {
+			const ts = perCharBump ? baseTs + k / 1000 : baseTs;
 			codeChars.push({ partIdx: pi, partOffset: k, ch: text[k], ts });
 		}
 	}
@@ -817,18 +912,32 @@ function formatHit(hit, simple = false) {
 			const blockLangs = LANG_STACK_ORDER.filter(
 				(l) => l !== "?" && (langCounts[l] || 0) > 0,
 			);
-			let grid = '<div class="tt-grid">';
-			sorted.forEach(({ s, evs }, i) => {
-				const perLang = {};
+			const maxIdLen = sorted.reduce(
+				(m, { s }) => Math.max(m, (s.id || "").length),
+				0,
+			);
+			const perLangCounts = sorted.map(({ evs }) => {
+				const pl = {};
 				for (const e of evs) {
 					const l = e.lang || "?";
-					perLang[l] = (perLang[l] || 0) + 1;
+					pl[l] = (pl[l] || 0) + 1;
 				}
+				return blockLangs.map((l) => String(pl[l] || 0));
+			});
+			const maxLangWidths = blockLangs.map((_l, i) =>
+				perLangCounts.reduce((m, arr) => Math.max(m, arr[i].length), 0),
+			);
+			const NBSP = " ";
+			let grid = '<div class="tt-grid">';
+			sorted.forEach(({ s, evs }, i) => {
 				const langCells = blockLangs
-					.map(
-						(l) =>
-							`<span class="${langClass(l)}">${perLang[l] || 0}</span>`,
-					)
+					.map((l, ci) => {
+						const num = perLangCounts[i][ci].padStart(
+							maxLangWidths[ci],
+							NBSP,
+						);
+						return `<span class="${langClass(l)}">${escHtml(num)}</span>`;
+					})
 					.join('<span class="tt-lang-sep">+</span>');
 				const tokenSpans = evs
 					.map((e) => {
@@ -838,7 +947,8 @@ function formatHit(hit, simple = false) {
 						return `<span class="${cls}${ghost}">${escHtml(tok)}</span>`;
 					})
 					.join(" ");
-				const idPrefix = s.id ? `${escHtml(s.id)}: ` : "";
+				const idPadded = (s.id || "").padStart(maxIdLen, NBSP);
+				const idPrefix = s.id ? `${escHtml(idPadded)}: ` : "";
 				grid += `<div><span data-bar-student-idx="${i}" class="tt-student">${idPrefix}${escHtml(s.name)}</span></div><div class="tt-langcell">${langCells}</div><div class="tt-tokens">${tokenSpans}</div>`;
 			});
 			grid += "</div>";

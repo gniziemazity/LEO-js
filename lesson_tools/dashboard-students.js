@@ -225,12 +225,10 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 			follow_pct: fd.pct,
 			follow_events: evs,
 			follow_dt:
-				(
-					evs
-						.filter(_isMistakeEvent)
-						.reduce((a, b) => (a == null || b.ts < a.ts ? b : a), null) ??
-					evs[0]
-				)?.ts ?? null,
+				evs
+					.filter(_isMistakeEvent)
+					.reduce((a, b) => (a == null || b.ts < a.ts ? b : a), null)
+					?.ts ?? sessionEnd + CFG.PADDING / 2,
 		});
 	}
 	return { students, idMap };

@@ -508,12 +508,19 @@ function _getTeacherNonCommentTokenTotal() {
 
 function _computeFollowScore(marksEntry) {
 	if (!marksEntry) return null;
+	if (typeof marksEntry.score === "number") {
+		return Math.round(marksEntry.score * 10) / 10;
+	}
 	const total = _getTeacherNonCommentTokenTotal();
 	if (total === 0) return null;
 	let nMissing = 0;
+	let nPhantomMissing = 0;
 	for (const marks of Object.values(marksEntry.teacher_files || {})) {
 		for (const m of marks || []) {
-			if (m.label === "missing") nMissing++;
+			if (m.label === "missing") {
+				nMissing++;
+				if (m.token && /^\s+$/.test(m.token)) nPhantomMissing++;
+			}
 		}
 	}
 	let nGhostExtra = 0;
@@ -524,9 +531,10 @@ function _computeFollowScore(marksEntry) {
 			else if (m.label === "extra" && !m.paired_with) nExtraUnpaired++;
 		}
 	}
-	const nFound = total - nMissing;
+	const teacherTotal = total + nPhantomMissing;
+	const nFound = total - (nMissing - nPhantomMissing);
 	const raw =
-		Math.max(0, (nFound - nGhostExtra - nExtraUnpaired) / total) * 100;
+		Math.max(0, (nFound - nGhostExtra - nExtraUnpaired) / teacherTotal) * 100;
 	return Math.round(raw * 10) / 10;
 }
 

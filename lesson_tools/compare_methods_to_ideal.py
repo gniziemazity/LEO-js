@@ -43,6 +43,12 @@ from pathlib import Path
 from tkinter import filedialog
 
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
+from utils.token_log_mixin import (
+    _LANG_EXT_LABEL,
+    _effective_ext_at,
+    _embedded_lang_ranges_for,
+    _ext_of,
+)
 
 try:
     import pandas as pd
@@ -593,9 +599,227 @@ def _safe_sheet_name(name: str, used: set[str]) -> str:
     return safe
 
 
+def _evaluate_lesson_languages(lesson_dir: Path) -> dict[str, dict]:
+    students_dir = lesson_dir / "anon_ids"
+    if not students_dir.is_dir():
+        return {}
+    students = _list_students(students_dir)
+    if not students:
+        return {}
+
+    valid_exts = {ext for ext, _ in _LANG_EXT_LABEL}
+    teacher_tokens: dict[str, int] = {}
+    missing_counts: dict[str, int] = {}
+    extra_counts: dict[str, int] = {}
+    ghost_counts: dict[str, int] = {}
+
+    teacher_ranges_cache: dict[str, dict] = {}
+    student_ranges_cache: dict[tuple[str, str], dict] = {}
+
+    referenced_teacher_files: set[str] = set()
+    for student_dir in students:
+        ideal_data = _load_json(student_dir / IDEAL_FILE)
+        for fname in (ideal_data.get("teacher_files") or {}):
+            referenced_teacher_files.add(fname)
+
+    for fname in referenced_teacher_files:
+        ext = _ext_of(fname)
+        if ext not in valid_exts:
+            continue
+        path = _find_teacher_file(lesson_dir, fname)
+        if not path:
+            continue
+        text = _read_text(path)
+        ranges = _embedded_lang_ranges_for(text, ext)
+        teacher_ranges_cache[fname] = ranges
+        starts, ends = _comment_ranges(text, ext)
+        spans = list(zip(starts, ends))
+        for tm in _CHAR_TOKEN_RE.finditer(text):
+            pos = tm.start()
+            in_comment = False
+            for lo, hi in spans:
+                if lo <= pos < hi:
+                    in_comment = True
+                    break
+                if pos < lo:
+                    break
+            if in_comment:
+                continue
+            eff_ext = _effective_ext_at(pos, ext, ranges)
+            if eff_ext in valid_exts:
+                teacher_tokens[eff_ext] = teacher_tokens.get(eff_ext, 0) + 1
+
+    for student_dir in students:
+        ideal_data = _load_json(student_dir / IDEAL_FILE)
+        for fname, items in (ideal_data.get("teacher_files") or {}).items():
+            ext = _ext_of(fname)
+            if ext not in valid_exts:
+                continue
+            ranges = teacher_ranges_cache.get(fname, {})
+            for m in (items or []):
+                if m.get("label") != "missing":
+                    continue
+                pos = m.get("start")
+                if pos is None:
+                    continue
+                eff_ext = _effective_ext_at(pos, ext, ranges)
+                if eff_ext in valid_exts:
+                    missing_counts[eff_ext] = missing_counts.get(eff_ext, 0) + 1
+        for fname, items in (ideal_data.get("student_files") or {}).items():
+            ext = _ext_of(fname)
+            if ext not in valid_exts:
+                continue
+            cache_key = (str(student_dir), fname)
+            if cache_key not in student_ranges_cache:
+                spath = _find_student_file(student_dir, fname)
+                if spath:
+                    text = _read_text(spath)
+                    student_ranges_cache[cache_key] = _embedded_lang_ranges_for(text, ext)
+                else:
+                    student_ranges_cache[cache_key] = {}
+            ranges = student_ranges_cache[cache_key]
+            for m in (items or []):
+                lbl = m.get("label")
+                if lbl not in ("extra", "ghost_extra"):
+                    continue
+                pos = m.get("start")
+                if pos is None:
+                    continue
+                eff_ext = _effective_ext_at(pos, ext, ranges)
+                if eff_ext not in valid_exts:
+                    continue
+                if lbl == "extra":
+                    extra_counts[eff_ext] = extra_counts.get(eff_ext, 0) + 1
+                else:
+                    ghost_counts[eff_ext] = ghost_counts.get(eff_ext, 0) + 1
+
+    n_students = len(students)
+    out: dict[str, dict] = {}
+    for ext, label in _LANG_EXT_LABEL:
+        tt = teacher_tokens.get(ext, 0)
+        miss = missing_counts.get(ext, 0)
+        ext_c = extra_counts.get(ext, 0)
+        gh = ghost_counts.get(ext, 0)
+        if tt == 0 and miss == 0 and ext_c == 0 and gh == 0:
+            continue
+        out[label] = {
+            "teacher_tokens": tt,
+            "students": n_students,
+            "missing": miss,
+            "extra": ext_c,
+            "ghost": gh,
+        }
+    return out
+
+
+_SUMMARY_LABEL_FOR_STAR = ("missing", "extra", "ghost_extra")
+_SUMMARY_LABEL_FOR_PLAIN = ("missing", "extra (incl. ghost)")
+_SUMMARY_LABEL_ORDER = {
+    "missing": 0,
+    "extra": 1,
+    "extra (incl. ghost)": 1,
+    "ghost_extra": 2,
+    "Total": 3,
+}
+
+
+def _summary_metrics_from_stats(a: dict) -> tuple[float, float, float | str]:
+    f1 = round(_f1(a["TP"], a["FP"], a["FN"]), 4)
+    pf1 = round(_f1(a["Pair TP"], a["Pair FP"], a["Pair FN"]), 4)
+    pdn = a.get("Pair Dist N", 0)
+    pmd = round(a["Pair Dist Sum"] / pdn, 2) if pdn else 0.0
+    return f1, pf1, pmd
+
+
+def _build_summary_rows(method_keys, results):
+    rows: list[dict] = []
+    for _, _, mkey, mdisp in method_keys:
+        labels = (_SUMMARY_LABEL_FOR_STAR if _is_star_method(mkey)
+                  else _SUMMARY_LABEL_FOR_PLAIN)
+        for label in labels:
+            row: dict = {"Method": mdisp, "Label": label}
+            for lesson_name, (_ps, tot) in results.items():
+                stats = next(
+                    (r for r in tot
+                     if r.get("_method_key") == mkey and r.get("Label") == label),
+                    None,
+                )
+                if stats is None:
+                    row[f"{lesson_name} F1"] = ""
+                    row[f"{lesson_name} Pair F1"] = ""
+                    row[f"{lesson_name} Pair Mean Dist"] = ""
+                    continue
+                f1, pf1, pmd = _summary_metrics_from_stats(stats)
+                row[f"{lesson_name} F1"] = f1
+                row[f"{lesson_name} Pair F1"] = pf1
+                row[f"{lesson_name} Pair Mean Dist"] = pmd
+            rows.append(row)
+        row = {"Method": mdisp, "Label": "Total"}
+        for lesson_name, (_ps, tot) in results.items():
+            agg = _aggregate_method_stats(tot)
+            a = agg.get(mkey)
+            if a is None:
+                row[f"{lesson_name} F1"] = ""
+                row[f"{lesson_name} Pair F1"] = ""
+                row[f"{lesson_name} Pair Mean Dist"] = ""
+                continue
+            f1, pf1, pmd = _summary_metrics_from_stats(a)
+            row[f"{lesson_name} F1"] = f1
+            row[f"{lesson_name} Pair F1"] = pf1
+            row[f"{lesson_name} Pair Mean Dist"] = pmd
+        rows.append(row)
+    return rows
+
+
+def _build_languages_rows(lang_stats_by_lesson: dict[str, dict]) -> list[dict]:
+    rows: list[dict] = []
+    for lesson_name, stats in lang_stats_by_lesson.items():
+        if not stats:
+            continue
+        for lang, s in stats.items():
+            all_marks = s["missing"] + s["extra"] + s["ghost"]
+            student_tokens = s["teacher_tokens"] * s["students"]
+            err = (round(all_marks / student_tokens * 100, 3)
+                   if student_tokens else 0.0)
+            rows.append({
+                "Lesson": lesson_name,
+                "Language": lang,
+                "Teacher tokens": s["teacher_tokens"],
+                "Students": s["students"],
+                "Missing": s["missing"],
+                "Extra": s["extra"],
+                "Ghost": s["ghost"],
+                "All marks": all_marks,
+                "Errors / 100 tokens": err,
+            })
+        total_tokens = sum(s["teacher_tokens"] for s in stats.values())
+        total_missing = sum(s["missing"] for s in stats.values())
+        total_extra = sum(s["extra"] for s in stats.values())
+        total_ghost = sum(s["ghost"] for s in stats.values())
+        total_marks = total_missing + total_extra + total_ghost
+        n_students = next(iter(stats.values()))["students"]
+        student_tokens_total = total_tokens * n_students
+        rows.append({
+            "Lesson": lesson_name,
+            "Language": "Total",
+            "Teacher tokens": total_tokens,
+            "Students": n_students,
+            "Missing": total_missing,
+            "Extra": total_extra,
+            "Ghost": total_ghost,
+            "All marks": total_marks,
+            "Errors / 100 tokens": (
+                round(total_marks / student_tokens_total * 100, 3)
+                if student_tokens_total else 0.0
+            ),
+        })
+    return rows
+
+
 def write_multi_excel(
     out_path: Path,
     results: dict[str, tuple[list[dict], list[dict]]],
+    lang_stats_by_lesson: dict[str, dict] | None = None,
 ) -> None:
     import pandas as pd
 
@@ -612,41 +836,33 @@ def write_multi_excel(
                                 key, r["Method"]))
     method_keys.sort()
 
-    summary_rows: list[dict] = []
-    for _, _, mkey, mdisp in method_keys:
-        row: dict = {"Method": mdisp}
-        for lesson_name, (_ps, tot) in results.items():
-            agg = _aggregate_method_stats(tot)
-            a = agg.get(mkey)
-            if a is None:
-                row[f"{lesson_name} F1"] = ""
-                row[f"{lesson_name} Pair F1"] = ""
-                row[f"{lesson_name} Pair Mean Dist"] = ""
-                continue
-            row[f"{lesson_name} F1"] = round(_f1(a["TP"], a["FP"], a["FN"]), 4)
-            row[f"{lesson_name} Pair F1"] = round(
-                _f1(a["Pair TP"], a["Pair FP"], a["Pair FN"]), 4,
-            )
-            pdn = a.get("Pair Dist N", 0)
-            row[f"{lesson_name} Pair Mean Dist"] = (
-                round(a["Pair Dist Sum"] / pdn, 2) if pdn else 0.0
-            )
-        summary_rows.append(row)
-
-    summary_cols = ["Method"]
+    summary_rows = _build_summary_rows(method_keys, results)
+    summary_cols = ["Method", "Label"]
     for lesson_name in results:
         summary_cols.append(f"{lesson_name} F1")
         summary_cols.append(f"{lesson_name} Pair F1")
         summary_cols.append(f"{lesson_name} Pair Mean Dist")
     summary_df = pd.DataFrame(summary_rows, columns=summary_cols)
 
+    languages_rows = _build_languages_rows(lang_stats_by_lesson or {})
+    languages_cols = ["Lesson", "Language", "Teacher tokens", "Students",
+                      "Missing", "Extra", "Ghost", "All marks",
+                      "Errors / 100 tokens"]
+    languages_df = pd.DataFrame(languages_rows, columns=languages_cols)
+
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         summary_df.to_excel(writer, sheet_name="Summary", index=False)
         ws = writer.sheets["Summary"]
         _autosize(ws, summary_df)
-        ws.freeze_panes = "B2"
+        ws.freeze_panes = "C2"
 
-        used_sheet_names = {"Summary"}
+        if languages_rows:
+            languages_df.to_excel(writer, sheet_name="Languages", index=False)
+            ws = writer.sheets["Languages"]
+            _autosize(ws, languages_df)
+            ws.freeze_panes = "A2"
+
+        used_sheet_names = {"Summary", "Languages"}
         for lesson_name, (per_student, totals) in results.items():
             sheet = _safe_sheet_name(lesson_name, used_sheet_names)
             tot_df = pd.DataFrame(
@@ -715,6 +931,7 @@ def run_multi(grades_path: Path) -> int:
     print(f"Root: {root}")
     print(f"Lessons folder: {lessons_root}")
     results: dict[str, tuple[list[dict], list[dict]]] = {}
+    lang_stats: dict[str, dict] = {}
     for lesson_dir in lesson_dirs:
         lesson_name = lesson_dir.name
         print(f"\n[{lesson_name}]")
@@ -727,6 +944,7 @@ def run_multi(grades_path: Path) -> int:
             print(f"  skipped: no anon_ids/ or no methods to compare")
             continue
         results[lesson_name] = (per_student, totals)
+        lang_stats[lesson_name] = _evaluate_lesson_languages(lesson_dir)
         print(f"  {len(per_student)} per-student rows · {len(totals)} totals rows")
 
     if not results:
@@ -734,7 +952,7 @@ def run_multi(grades_path: Path) -> int:
         return 1
 
     out_path = root / "Method_Evaluation.xlsx"
-    write_multi_excel(out_path, results)
+    write_multi_excel(out_path, results, lang_stats)
     print(f"\nWrote {out_path}")
     print(f"  {len(results)} lesson(s)")
     return 0

@@ -31,7 +31,10 @@ const COL = {
 const ASSIGNMENTS = [
 	{
 		n: 1,
-		follow: 17,
+		follow_html: 17,
+		follow_css: 18,
+		follow_js: 19,
+		follow: 20,
 		lesson_obs: 22,
 		grade: 23,
 		status: 24,
@@ -40,7 +43,10 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 2,
-		follow: 26,
+		follow_html: 26,
+		follow_css: 27,
+		follow_js: 28,
+		follow: 29,
 		lesson_obs: 31,
 		grade: 32,
 		status: 33,
@@ -49,7 +55,10 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 3,
-		follow: 35,
+		follow_html: 35,
+		follow_css: 36,
+		follow_js: 37,
+		follow: 38,
 		lesson_obs: 40,
 		grade: 41,
 		status: 42,
@@ -58,7 +67,10 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 4,
-		follow: 44,
+		follow_html: 44,
+		follow_css: 45,
+		follow_js: 46,
+		follow: 47,
 		lesson_obs: 49,
 		grade: 50,
 		status: 51,
@@ -67,7 +79,10 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 5,
-		follow: 53,
+		follow_html: 53,
+		follow_css: 54,
+		follow_js: 55,
+		follow: 56,
 		lesson_obs: 58,
 		grade: 59,
 		status: 60,
@@ -76,12 +91,36 @@ const ASSIGNMENTS = [
 	},
 	{
 		n: 6,
+		follow_html: null,
+		follow_css: null,
+		follow_js: null,
 		follow: null,
 		lesson_obs: null,
 		grade: 68,
 		status: 69,
 		obs: 70,
 		name: "Web",
+	},
+];
+
+const LANG_FOLLOW_KEYS = [
+	{
+		key: "follow_html",
+		entryKey: "follow_html",
+		label: "HTML",
+		colorVar: "--clr-mark-missing",
+	},
+	{
+		key: "follow_css",
+		entryKey: "follow_css",
+		label: "CSS",
+		colorVar: "--clr-mark-extra",
+	},
+	{
+		key: "follow_js",
+		entryKey: "follow_js",
+		label: "JS",
+		colorVar: "--clr-orange",
 	},
 ];
 
@@ -348,6 +387,9 @@ function parseStudent(r) {
 			n: a.n,
 			hasFollowCol: a.follow != null,
 			follow: a.follow != null ? num(a.follow) : null,
+			follow_html: a.follow_html != null ? num(a.follow_html) : null,
+			follow_css: a.follow_css != null ? num(a.follow_css) : null,
+			follow_js: a.follow_js != null ? num(a.follow_js) : null,
 			lesson_obs: a.lesson_obs != null ? str(a.lesson_obs) : "",
 			grade: num(a.grade),
 			status: str(a.status),
@@ -1249,6 +1291,55 @@ function addProgressTotals(container) {
 	_progressCharts.push(chart);
 }
 
+function addProgressLanguageTotals(container) {
+	const card = el("div", "prog-totals");
+	const h4 = el("h4");
+	h4.textContent = "Totals by Language";
+	card.appendChild(h4);
+	const box = el("div", "prog-chart-box");
+	box.style.height = "180px";
+	card.appendChild(box);
+	container.appendChild(card);
+
+	const labels = ASSIGNMENTS.map((a) => a.name);
+	const seriesData = LANG_FOLLOW_KEYS.map(({ entryKey }) =>
+		ASSIGNMENTS.map((a) =>
+			a.follow != null
+				? _students
+						.map((s) => s.lessons[a.n - 1][entryKey])
+						.filter((v) => v != null)
+				: [],
+		),
+	);
+	const hasAny = seriesData.some((s) => s.some((arr) => arr.length > 0));
+	if (!hasAny) return;
+
+	const chart = new BoxPlotChart(box, {
+		xLabels: labels,
+		leftAxis: {
+			min: 0,
+			max: 100,
+			ticks: [0, 20, 40, 60, 80, 100],
+			color: OV_CLR.textFaint,
+		},
+	});
+	chart.setData(
+		LANG_FOLLOW_KEYS.map(({ colorVar }, i) => {
+			const c = _cssVar(colorVar) || OV_CLR.label;
+			return {
+				data: seriesData[i],
+				color: _hexToRgba(c, 0.44),
+				borderColor: c,
+				yAxis: "left",
+				coef: 25,
+				outlierColor: _hexToRgba(c, 0.5),
+				outlierRadius: 3,
+			};
+		}),
+	);
+	_progressCharts.push(chart);
+}
+
 function renderProgress() {
 	_progressCharts.forEach((c) => {
 		try {
@@ -1261,6 +1352,7 @@ function renderProgress() {
 	grid.innerHTML = "";
 
 	addProgressTotals(grid);
+	addProgressLanguageTotals(grid);
 
 	const labels = ASSIGNMENTS.map((a) => a.name);
 	const sorted = sortedStudents();
@@ -1300,11 +1392,25 @@ function renderProgress() {
 				const asgn = ASSIGNMENTS[pi];
 				if (!asgn) return;
 				const entry = s.lessons[asgn.n - 1];
-				if (di === 0) openLessonDiff(s, entry);
+				if (di <= LANG_FOLLOW_KEYS.length) openLessonDiff(s, entry);
 				else openAssignDiff(s, entry);
 			},
 		});
+		const langDatasets = LANG_FOLLOW_KEYS.map(({ entryKey, colorVar }) => {
+			const c = _cssVar(colorVar) || OV_CLR.label;
+			return {
+				data: s.lessons.map((l) =>
+					l.hasFollowCol ? (l[entryKey] ?? null) : null,
+				),
+				color: _hexToRgba(c, 0.45),
+				pointFillColor: _hexToRgba(c, 0.25),
+				lineWidth: 1.0,
+				pointRadius: 2.5,
+				yAxis: "left",
+			};
+		});
 		chart.setDatasets([
+			...langDatasets,
 			{
 				data: follows,
 				color: OV_CLR.label,

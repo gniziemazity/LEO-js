@@ -62,8 +62,10 @@ LESSON_TO_COLS: Dict[str, Dict[str, int]] = {
                 'lesson_obs': 58, 'grade': 59, 'status': 60, 'obs': 61},
 }
 
-LESSON_FOLLOW_OFFSETS = (0, 1, 3)
-LESSON_INC_OFFSETS = (2, 4)
+LESSON_LANG_OFFSETS = {'follow_html': 0, 'follow_css': 1, 'follow_js': 2}
+LESSON_FOLLOW_OFFSET = 3
+LESSON_INC_OFFSET = 4
+_LANG_HEADER_BY_OFFSET = {0: 'HTML Follow', 1: 'CSS Follow', 2: 'JS Follow'}
 
 
 def _pick_folder() -> Optional[Path]:
@@ -144,7 +146,8 @@ def _normalize_sid(v) -> str:
 
 
 def main(argv) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    description = __doc__.split('\n')[0] if __doc__ else 'Build overview spreadsheet'
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('root', nargs='?',
                         help='Course root folder (containing lessons/ and assignments/).')
     parser.add_argument('--output', default='Overview.xlsx',
@@ -181,7 +184,8 @@ def main(argv) -> int:
             if xlsx is None:
                 print(f'  [lesson/{lesson_dir.name}] skipped: no grades_*.xlsx or remarks_*.xlsx')
                 continue
-            wanted = ('ID', 'Student', 'Number', 'Inc', 'Follow (E)', 'Obs')
+            wanted = ('ID', 'Student', 'Number', 'Inc', 'Follow (E)',
+                      'HTML (E)', 'CSS (E)', 'JS (E)', 'Obs')
             col_idx, rows = _read_grades_rows(xlsx, wanted)
             missing = [h for h in wanted if col_idx.get(h) is None]
             for h in ('Inc', 'Follow (E)', 'Obs'):
@@ -200,9 +204,12 @@ def main(argv) -> int:
                 if number and 'number' not in student_data[sid]:
                     student_data[sid]['number'] = number
                 student_data[sid][f'lesson_{lesson_key}'] = {
-                    'follow': r.get('Follow (E)'),
-                    'inc':    r.get('Inc'),
-                    'obs':    _to_str(r.get('Obs')),
+                    'follow':      r.get('Follow (E)'),
+                    'follow_html': r.get('HTML (E)'),
+                    'follow_css':  r.get('CSS (E)'),
+                    'follow_js':   r.get('JS (E)'),
+                    'inc':         r.get('Inc'),
+                    'obs':         _to_str(r.get('Obs')),
                 }
                 n += 1
             print(f'  [lesson/{lesson_dir.name}] {n} student row(s) from {xlsx.name}')
@@ -271,16 +278,19 @@ def main(argv) -> int:
     header[3] = 'Number'
     for lk, cols in LESSON_TO_COLS.items():
         first = cols['follow_first']
-        for off in LESSON_FOLLOW_OFFSETS:
+        for off in (0, 1, 2):
             col = first + off
-            header[col] = f'{lk.title()} Follow {off + 1}'
+            header[col] = f'{lk.title()} {_LANG_HEADER_BY_OFFSET[off]}'
             _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
                            _FOLLOW_INC_WIDTHS[off])
-        for off in LESSON_INC_OFFSETS:
-            col = first + off
-            header[col] = f'{lk.title()} Inc {off + 1}'
-            _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
-                           _FOLLOW_INC_WIDTHS[off])
+        col = first + LESSON_FOLLOW_OFFSET
+        header[col] = f'{lk.title()} Follow'
+        _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
+                       _FOLLOW_INC_WIDTHS[LESSON_FOLLOW_OFFSET])
+        col = first + LESSON_INC_OFFSET
+        header[col] = f'{lk.title()} Inc'
+        _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
+                       _FOLLOW_INC_WIDTHS[LESSON_INC_OFFSET])
 
         header[cols['lesson_obs']] = f'{lk.title()} LessonObs'
         _set_col_style(cols['lesson_obs'], _FONT_BOLD, _FONT_DEFAULT,
@@ -327,12 +337,11 @@ def main(argv) -> int:
             first = cols['follow_first']
             lesson_info = info.get(f'lesson_{lk}')
             if lesson_info:
-                follow = lesson_info.get('follow')
-                inc = lesson_info.get('inc')
-                for off in LESSON_FOLLOW_OFFSETS:
-                    row[first + off] = follow
-                for off in LESSON_INC_OFFSETS:
-                    row[first + off] = inc
+                row[first + 0] = lesson_info.get('follow_html')
+                row[first + 1] = lesson_info.get('follow_css')
+                row[first + 2] = lesson_info.get('follow_js')
+                row[first + LESSON_FOLLOW_OFFSET] = lesson_info.get('follow')
+                row[first + LESSON_INC_OFFSET] = lesson_info.get('inc')
                 row[cols['lesson_obs']] = lesson_info.get('obs', '')
             assign_info = info.get(f'assign_{lk}')
             if assign_info:

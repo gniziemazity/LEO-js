@@ -221,6 +221,7 @@ def _per_language_follow_stats(
     n_ghost_extra: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
     n_extra_unpaired: Dict[str, int] = {ext: 0 for ext, _ in _LANG_EXT_LABEL}
     items_by_ext: Dict[str, list] = {ext: [] for ext, _ in _LANG_EXT_LABEL}
+    extras_by_ext: Dict[str, list] = {ext: [] for ext, _ in _LANG_EXT_LABEL}
 
     def _add_whole_file_missing(fname: str, file_ext: str) -> None:
         nc = per_file_nc.get(fname) or []
@@ -281,7 +282,9 @@ def _per_language_follow_stats(
                 items_by_ext[ge_ext].append((ts, f'+{m.get("token", "")}*'))
             elif lbl == 'extra' and not m.get('paired_with'):
                 n_extra_unpaired[eff_ext] += 1
-                items_by_ext[eff_ext].append(('00:00:00', f'+{m.get("token", "")}'))
+                extras_by_ext[eff_ext].append(
+                    (fname, pos, f'+{m.get("token", "")}')
+                )
 
     out: Dict[str, dict] = {}
     for ext, _label in _LANG_EXT_LABEL:
@@ -296,6 +299,9 @@ def _per_language_follow_stats(
             s if ts == '99:99:99' else f'{s} ({ts})'
             for ts, s in sorted_items
         ]
+        sorted_extras = sorted(extras_by_ext[ext], key=lambda t: (t[0], t[1]))
+        for _fname, _pos, label in sorted_extras:
+            items_text.append(f'{label} (00:00:00)')
         out[ext] = {
             'score': score,
             'items': items_text,

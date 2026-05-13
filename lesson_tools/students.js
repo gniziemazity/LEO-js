@@ -7,9 +7,22 @@ let _followLabel = "FOLLOW";
 let _allFiles = new Map();
 let _dirHandle = null;
 let _anonMode = "";
+let _sortCol = "id";
+let _sortDir = "asc";
 let _shownUnicodeCorruptionWarning = false;
 
 const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
+
+const LANG_COL_DEFS = [
+	{
+		key: "html",
+		label: "HTML",
+		header: "HTML (E)",
+		descHeader: "HTML (E) Desc",
+	},
+	{ key: "css", label: "CSS", header: "CSS (E)", descHeader: "CSS (E) Desc" },
+	{ key: "js", label: "JS", header: "JS (E)", descHeader: "JS (E) Desc" },
+];
 
 const MISMATCH_COLORS = {
 	missing: _cssVar("--clr-mark-missing") || "#cc2222",
@@ -214,6 +227,14 @@ function parseStudentRows(remarksBuf) {
 	const iRemarksDesc = findCol(hdrR, /^remarks?\s*desc/i);
 
 	const iInteractions = findCol(hdrR, /^interactions?$/i);
+	const langIdx = {};
+	const langDescIdx = {};
+	for (const def of LANG_COL_DEFS) {
+		const i = hdrR.indexOf(def.header);
+		if (i !== -1) langIdx[def.key] = i;
+		const di = hdrR.indexOf(def.descHeader);
+		if (di !== -1) langDescIdx[def.key] = di;
+	}
 	const specialSet = new Set(
 		[
 			iName,
@@ -223,6 +244,8 @@ function parseStudentRows(remarksBuf) {
 			iFollowDesc,
 			iRemarksDesc,
 			iInteractions,
+			...Object.values(langIdx),
+			...Object.values(langDescIdx),
 		].filter((i) => i !== -1),
 	);
 
@@ -299,6 +322,21 @@ function parseStudentRows(remarksBuf) {
 						.map((t) => INTERACTION_MAP[t.toUpperCase()] || t)
 						.join("")
 				: "";
+		const langPcts = {};
+		const langEvents = [];
+		for (const def of LANG_COL_DEFS) {
+			if (langIdx[def.key] != null) {
+				const v = parseFloat(row[langIdx[def.key]]);
+				if (!isNaN(v)) langPcts[def.key] = v;
+			}
+			if (langDescIdx[def.key] != null) {
+				const descText = String(row[langDescIdx[def.key]] ?? "");
+				for (const ev of parseFollowEvents(descText)) {
+					ev.lang = def.key;
+					langEvents.push(ev);
+				}
+			}
+		}
 		students.push({
 			name,
 			id: iId !== -1 ? String(row[iId] ?? "").trim() : "",
@@ -308,6 +346,8 @@ function parseStudentRows(remarksBuf) {
 			remarksDesc,
 			remarks,
 			interactions,
+			langPcts,
+			langEvents,
 		});
 	}
 	students.sort((a, b) =>
@@ -399,9 +439,88 @@ function parseFollowEvents(descText) {
 	let m;
 	while ((m = re.exec(descText)) !== null) {
 		const rawLabel = m[1].trim();
-		events.push({ label: rawLabel, ...parseFollowLabel(rawLabel) });
+		events.push({
+			label: rawLabel,
+			ts: _hmsToSeconds(m[2]),
+			...parseFollowLabel(rawLabel),
+		});
 	}
 	return events;
+}
+
+function _hmsToSeconds(hms) {
+	const m = (hms || "").match(/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+	if (!m) return null;
+	const h = parseInt(m[1], 10);
+	const mn = parseInt(m[2], 10);
+	const s = parseInt(m[3], 10);
+	const frac = m[4] ? parseInt(m[4], 10) / Math.pow(10, m[4].length) : 0;
+	return h * 3600 + mn * 60 + s + frac;
+}
+
+function _sortKeyOf(s, sortCol) {
+	if (sortCol === "id") return { type: "str", v: s.id || "" };
+	if (sortCol === "name") return { type: "str", v: s.name || "" };
+	if (sortCol === "num") return { type: "str", v: s.num || "" };
+	if (sortCol === "follow") return { type: "num", v: s.followPct };
+	if (sortCol === "int") return { type: "str", v: s.interactions || "" };
+	if (sortCol === "fingerprint")
+		return { type: "num", v: s._fpHash == null ? NaN : s._fpHash };
+	if (sortCol === "fingerprint2") return { type: "str", v: s._fp2Hash || "" };
+	if (sortCol.startsWith("lang:")) {
+		const k = sortCol.slice(5);
+		const v = s.langPcts ? s.langPcts[k] : undefined;
+		return { type: "num", v: v == null ? NaN : v };
+	}
+	if (sortCol.startsWith("remark:")) {
+		const col = sortCol.slice(7);
+		const r = (s.remarks || []).find((x) => x.col === col);
+		return { type: "str", v: r ? r.val || "" : "" };
+	}
+	return { type: "str", v: "" };
+}
+
+function _sortStudents(students, sortCol, sortDir) {
+	const dir = sortDir === "desc" ? -1 : 1;
+	const idCmp = (a, b) =>
+		String(a.id || "").localeCompare(String(b.id || ""), undefined, {
+			numeric: true,
+		});
+	return [...students].sort((a, b) => {
+		const ka = _sortKeyOf(a, sortCol);
+		const kb = _sortKeyOf(b, sortCol);
+		let c;
+		if (ka.type === "num") {
+			const aN = ka.v == null || isNaN(ka.v);
+			const bN = kb.v == null || isNaN(kb.v);
+			if (aN && bN) c = 0;
+			else if (aN) return 1;
+			else if (bN) return -1;
+			else c = ka.v - kb.v;
+		} else {
+			const aE = !ka.v;
+			const bE = !kb.v;
+			if (aE && bE) c = 0;
+			else if (aE) return 1;
+			else if (bE) return -1;
+			else
+				c = String(ka.v).localeCompare(String(kb.v), undefined, {
+					numeric: true,
+				});
+		}
+		if (c === 0) return idCmp(a, b);
+		return c * dir;
+	});
+}
+
+function _onSortHeaderClick(sortKey) {
+	if (_sortCol === sortKey) {
+		_sortDir = _sortDir === "asc" ? "desc" : "asc";
+	} else {
+		_sortCol = sortKey;
+		_sortDir = "asc";
+	}
+	renderTable();
 }
 
 function renderTable() {
@@ -414,21 +533,128 @@ function renderTable() {
 	const showName = _anonMode !== "id";
 	const showNum = _anonMode === "";
 
+	const presentLangs = LANG_COL_DEFS.filter((def) =>
+		_students.some((s) => s.langPcts && s.langPcts[def.key] != null),
+	);
+
 	const specs = [];
-	if (showId) specs.push({ cls: "col-id", label: "ID" });
-	if (showName) specs.push({ cls: "col-name", label: "Name" });
-	if (showNum) specs.push({ cls: "col-num", label: "#" });
+	if (showId) specs.push({ cls: "col-id", label: "ID", sortKey: "id" });
+	if (showName)
+		specs.push({ cls: "col-name", label: "Name", sortKey: "name" });
+	if (showNum) specs.push({ cls: "col-num", label: "#", sortKey: "num" });
 	for (const col of _remarkCols)
-		specs.push({ cls: "col-remark", label: col, title: col });
-	if (_hasInteractions) specs.push({ cls: "col-int", label: "INT" });
-	specs.push({ cls: "col-follow", label: _followLabel });
+		specs.push({
+			cls: "col-remark",
+			label: col,
+			title: col,
+			sortKey: "remark:" + col,
+		});
+	if (_hasInteractions)
+		specs.push({ cls: "col-int", label: "INT", sortKey: "int" });
+	specs.push({ cls: "col-follow", label: _followLabel, sortKey: "follow" });
+	for (const def of presentLangs)
+		specs.push({
+			cls: `col-lang col-lang-${def.key}`,
+			label: def.label,
+			sortKey: "lang:" + def.key,
+		});
+
+	const _hasFpTs = (ev) =>
+		ev.kind && ev.kind !== "normal" && ev.ts != null && ev.ts > 0;
+	let fpMinTs = Infinity;
+	let fpMaxTs = -Infinity;
+	for (const s of _students) {
+		for (const ev of s.langEvents || []) {
+			if (!_hasFpTs(ev)) continue;
+			if (ev.ts < fpMinTs) fpMinTs = ev.ts;
+			if (ev.ts > fpMaxTs) fpMaxTs = ev.ts;
+		}
+	}
+	const fpRange = fpMaxTs - fpMinTs;
+	const showFingerprint =
+		isFinite(fpMinTs) && isFinite(fpMaxTs) && fpRange > 0;
+	for (const s of _students) {
+		s._fpHash = null;
+		if (!showFingerprint) continue;
+		const mistakes = (s.langEvents || []).filter(_hasFpTs);
+		if (!mistakes.length) continue;
+		const sections = [[], [], [], [], []];
+		for (const ev of mistakes) {
+			const pos = (ev.ts - fpMinTs) / fpRange;
+			let i = Math.floor(pos * 5);
+			if (i < 0) i = 0;
+			if (i > 4) i = 4;
+			sections[i].push(pos);
+		}
+		let digits = "";
+		for (const sec of sections) {
+			if (!sec.length) {
+				digits += "000";
+				continue;
+			}
+			const avg = sec.reduce((a, b) => a + b, 0) / sec.length;
+			let n = Math.floor(avg * 1000);
+			if (n > 999) n = 999;
+			if (n < 0) n = 0;
+			digits += String(n).padStart(3, "0");
+		}
+		s._fpHash = parseInt(digits, 10);
+	}
+	let fp2MaxBytes = 0;
+	for (const s of _students) {
+		s._fp2Bytes = [];
+		s._fp2Hash = "";
+		const extras = (s.langEvents || []).filter(
+			(ev) => ev.kind === "extra" || ev.kind === "extra-star",
+		);
+		const bytes = [];
+		let cur = 0;
+		let count = 0;
+		for (const ev of extras) {
+			const tok = ev.token || ev.label || "";
+			const bit = tok.length % 2;
+			cur = (cur << 1) | bit;
+			count++;
+			if (count === 8) {
+				bytes.push(cur);
+				cur = 0;
+				count = 0;
+			}
+		}
+		if (count > 0) bytes.push(cur);
+		s._fp2Bytes = bytes;
+		if (bytes.length > fp2MaxBytes) fp2MaxBytes = bytes.length;
+	}
+	for (const s of _students) {
+		while (s._fp2Bytes.length < fp2MaxBytes) s._fp2Bytes.push(0);
+		s._fp2Hash = s._fp2Bytes.map((b) => String(b).padStart(3, "0")).join("-");
+	}
+	const hasAnyFp2 = fp2MaxBytes > 0;
+	if (showFingerprint || hasAnyFp2)
+		specs.push({
+			cls: "col-fingerprint",
+			label: "Fingerprint",
+			sortKey: "fingerprint",
+		});
 
 	const trh = document.createElement("tr");
 	for (const spec of specs) {
 		const el = document.createElement("th");
-		el.textContent = spec.label;
 		el.className = spec.cls;
 		if (spec.title) el.title = spec.title;
+		if (spec.sortKey) {
+			el.classList.add("sortable");
+			el.textContent = spec.label;
+			if (_sortCol === spec.sortKey) {
+				const arrow = document.createElement("span");
+				arrow.className = "sort-arrow";
+				arrow.textContent = _sortDir === "asc" ? "▲" : "▼";
+				el.appendChild(arrow);
+			}
+			el.addEventListener("click", () => _onSortHeaderClick(spec.sortKey));
+		} else {
+			el.textContent = spec.label;
+		}
 		trh.appendChild(el);
 	}
 	const thMm = document.createElement("th");
@@ -437,7 +663,8 @@ function renderTable() {
 	trh.appendChild(thMm);
 	thead.appendChild(trh);
 
-	for (const s of _students) {
+	const sortedStudents = _sortStudents(_students, _sortCol, _sortDir);
+	for (const s of sortedStudents) {
 		const tr = document.createElement("tr");
 
 		if (showId) {
@@ -500,6 +727,71 @@ function renderTable() {
 			followEl.style.color = UI_COLORS.faint;
 		}
 		tr.appendChild(followEl);
+
+		for (const def of presentLangs) {
+			const cell = document.createElement("td");
+			cell.className = `col-lang col-lang-${def.key}`;
+			const pct = s.langPcts ? s.langPcts[def.key] : undefined;
+			if (pct != null && !isNaN(pct)) {
+				const pctEl = document.createElement("span");
+				pctEl.className = "lang-pct";
+				pctEl.textContent = pct.toFixed(1) + "%";
+				const bar = document.createElement("div");
+				bar.className = "lang-bar";
+				const fill = document.createElement("div");
+				fill.className = "lang-bar-fill";
+				fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+				bar.appendChild(fill);
+				cell.appendChild(pctEl);
+				cell.appendChild(bar);
+			}
+			tr.appendChild(cell);
+		}
+
+		if (showFingerprint || hasAnyFp2) {
+			const fpEl = document.createElement("td");
+			fpEl.className = "col-fingerprint";
+			const titles = [];
+			if (s._fpHash != null) {
+				const digits = String(s._fpHash).padStart(15, "0");
+				titles.push(digits.match(/.{3}/g).join("-"));
+			}
+			if (s._fp2Hash) titles.push(s._fp2Hash);
+			if (titles.length) fpEl.title = titles.join("  |  ");
+			const wrap = document.createElement("div");
+			wrap.className = "fp-wrap";
+			if (showFingerprint) {
+				const bar = document.createElement("div");
+				bar.className = "fp-bar";
+				const mistakes = (s.langEvents || []).filter(_hasFpTs);
+				for (const ev of mistakes) {
+					const pct = ((ev.ts - fpMinTs) / fpRange) * 100;
+					const mark = document.createElement("div");
+					mark.className = "fp-mark lang-" + (ev.lang || "unk");
+					mark.style.left = pct + "%";
+					bar.appendChild(mark);
+				}
+				wrap.appendChild(bar);
+			}
+			if (hasAnyFp2) {
+				const bar2 = document.createElement("div");
+				bar2.className = "fp2-bar";
+				for (const b of s._fp2Bytes) {
+					const col = document.createElement("div");
+					col.className = "fp2-byte";
+					for (let k = 7; k >= 0; k--) {
+						const bit = (b >> k) & 1;
+						const px = document.createElement("div");
+						px.className = "fp2-bit" + (bit ? " on" : "");
+						col.appendChild(px);
+					}
+					bar2.appendChild(col);
+				}
+				wrap.appendChild(bar2);
+			}
+			fpEl.appendChild(wrap);
+			tr.appendChild(fpEl);
+		}
 
 		const mmEl = document.createElement("td");
 		mmEl.className = "col-mismatch";

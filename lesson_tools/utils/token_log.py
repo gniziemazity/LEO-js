@@ -879,10 +879,24 @@ def _upgrade_secprefix(existing: str, candidates: List[str],
 
 
 def _refresh_missing_timestamps(diff_marks: dict, events: list,
-                                 _ts_map: dict = None) -> None:
+                                 _ts_map: dict = None,
+                                 _teacher_token_ts: dict = None) -> None:
     if not events:
         return
     ts_map = _ts_map if _ts_map is not None else _build_file_ordered_ts_map(events)
+    teacher_token_ts = (
+        _teacher_token_ts if _teacher_token_ts is not None
+        else _build_teacher_token_timestamps(events)
+    )
+    pos_ts: Dict[Tuple[str, int, int], str] = {}
+    for fname, entries in (teacher_token_ts or {}).items():
+        for e in entries or []:
+            s = e.get('start')
+            en = e.get('end')
+            ts = e.get('ts')
+            if isinstance(s, int) and isinstance(en, int) and ts:
+                pos_ts[(fname, s, en)] = ts
+
     insert_ts_by_tok_secprefix = _build_token_secprefix_map(ts_map)
     insert_consumed: Dict[Tuple[str, str], int] = {}
     for fname in sorted(diff_marks.get('teacher_files', {})):
@@ -893,6 +907,13 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
             tok = mark.get('token', '')
             existing_ts = mark.get('timestamp', '')
             stored_idx = mark.pop('_tok_idx', None)
+            s = mark.get('start')
+            en = mark.get('end')
+            if isinstance(s, int) and isinstance(en, int):
+                pos_ts_val = pos_ts.get((fname, s, en))
+                if pos_ts_val:
+                    mark['timestamp'] = pos_ts_val
+                    continue
             if existing_ts and '.' in existing_ts:
                 continue
             if existing_ts:

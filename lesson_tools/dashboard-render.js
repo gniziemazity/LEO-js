@@ -249,9 +249,17 @@ function setupBottomChartLegend() {
 		cb4.checked = _bottomChartVisible.barMode;
 		cb4.onchange = () => {
 			_bottomChartVisible.barMode = cb4.checked;
+			_updateShakeButtonVisibility();
 			scheduleRender();
 		};
 	}
+	_updateShakeButtonVisibility();
+}
+
+function _updateShakeButtonVisibility() {
+	const btn = document.getElementById("btn-shake");
+	if (!btn) return;
+	btn.style.display = _bottomChartVisible.barMode ? "none" : "";
 }
 
 function setupTopChartLegend(p) {
@@ -903,6 +911,21 @@ function _drawBottomChartBars(ctx, p, students, L) {
 				if (ghostH > 0) {
 					ctx.globalAlpha = 0.28;
 					ctx.fillRect(bx, segBottom - segH, bw, ghostH);
+					ctx.globalAlpha = 1;
+					ctx.save();
+					ctx.beginPath();
+					ctx.rect(bx, segBottom - segH, bw, ghostH);
+					ctx.clip();
+					ctx.strokeStyle = color;
+					ctx.lineWidth = 2;
+					const step = 5;
+					for (let lx = bx - ghostH; lx < bx + bw + ghostH; lx += step) {
+						ctx.beginPath();
+						ctx.moveTo(lx, segBottom - nonGhostH);
+						ctx.lineTo(lx + ghostH, segBottom - nonGhostH - ghostH);
+						ctx.stroke();
+					}
+					ctx.restore();
 				}
 				ctx.globalAlpha = 1;
 				segBottom -= segH;
@@ -926,8 +949,8 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		ctx.font = "bold 10px Consolas,monospace";
 		ctx.textAlign = "left";
 		ctx.textBaseline = "middle";
-		const swatchW = 10;
-		const swatchH = 8;
+		const swatchW = 7;
+		const swatchH = 7;
 		const gapInside = 4;
 		const gapBetween = 12;
 		let lx = M.left + 6;
