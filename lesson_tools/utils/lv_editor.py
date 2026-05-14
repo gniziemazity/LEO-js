@@ -431,8 +431,6 @@ class HeadlessEditor:
             if kind == "text":
                 for ch in val:
                     self.handle_char(ch)
-                    if self._track_ts:
-                        self._cur_ts += 1
                     ls2 = self._line_start()
                     bef2 = "".join(self._chars[ls2: self._cur])
                     self._ci_indent = re.match(r"^(\s*)", bef2).group(1)

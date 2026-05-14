@@ -133,6 +133,7 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 	const nameColR = hdrR.indexOf("Student");
 	const pctColR = hdrR.indexOf("Follow (E)");
 	const descColR = hdrR.indexOf("Follow (E) Desc");
+	const commentDescColR = hdrR.indexOf("Follow (C) Desc");
 	if (nameColR === -1 || pctColR === -1)
 		throw new Error(
 			'remarks.xlsx: missing "Student" or "Follow (E)" columns',
@@ -182,6 +183,13 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 			const lang = langOf.get(key);
 			if (lang) ev.lang = lang;
 		}
+		if (commentDescColR !== -1) {
+			const cDesc = String(row[commentDescColR] || "");
+			for (const ev of parseFollowEvents(cDesc, sessionDate)) {
+				ev.isComment = true;
+				events.push(ev);
+			}
+		}
 		followData[name] = {
 			pct: isNaN(pct) ? null : pct,
 			events,
@@ -220,12 +228,11 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 function parseFollowEvents(descText, sessionDate) {
 	const events = [];
 	if (!descText) return events;
-	for (const seg of String(descText).split(/,\s+/)) {
-		const m = seg.match(/^(.+?)\s*\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)\s*$/);
-		if (!m) continue;
-		const rawLabel = m[1].trim();
-		if (!rawLabel) continue;
-		const [hms, frac = "0"] = m[2].split(".");
+	const re = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
+	let m;
+	while ((m = re.exec(String(descText))) !== null) {
+		const rawLabel = m[1] + m[2];
+		const [hms, frac = "0"] = m[3].split(".");
 		const [h, min, s] = hms.split(":").map(Number);
 		const ms = Number((frac + "000").slice(0, 3));
 		const dt = new Date(sessionDate);

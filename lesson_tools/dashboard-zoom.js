@@ -74,7 +74,7 @@ function setupZoomPan(canvas, p, L) {
 	};
 	canvas.addEventListener("mouseup", endPan, { signal: sig });
 	canvas.addEventListener("mouseleave", endPan, { signal: sig });
-	canvas.addEventListener("dblclick", () => resetZoom(), { signal: sig });
+	canvas.addEventListener("dblclick", resetZoom, { signal: sig });
 }
 
 function resetZoom() {

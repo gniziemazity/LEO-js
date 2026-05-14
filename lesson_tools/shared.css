@@ -16,6 +16,8 @@
 	--c-green-2: #2a8a3a;
 	--c-yellow-1: #ffdc00;
 	--c-yellow-2: #c79a00;
+	--c-purple-1: #8e44ad;
+	--c-purple-2: #5e2c75;
 
 	/* ── Semantic aliases ─────────────────────────────── */
 	/* Base */
@@ -66,6 +68,7 @@
 	--clr-pale-red: rgba(204, 34, 34, 0.4);
 	--clr-orange: var(--c-orange-1);
 	--clr-green: var(--c-green-1);
+	--clr-purple: var(--c-purple-1);
 
 	/* Danger (red) */
 	--clr-danger: var(--c-red-1);
@@ -126,6 +129,7 @@
 	--clr-tip-bg-blue: rgba(0, 122, 204, 0.1);
 	--clr-tip-bg-orange: rgba(224, 112, 32, 0.1);
 	--clr-tip-bg-green: rgba(102, 187, 106, 0.15);
+	--clr-tip-bg-purple: rgba(142, 68, 173, 0.12);
 
 	/* Misc */
 	--clr-legend-bg: rgba(255, 255, 255, 0.53);

@@ -106,10 +106,11 @@ function redrawBottomChart() {
 
 const BAR_COLORS = {
 	normal: THEME.gray,
-	dev: THEME.green,
+	dev: THEME.purple,
 	remove: THEME.red,
 	anchor: THEME.blue,
 	move: THEME.orange,
+	comment: THEME.green,
 };
 
 const LANG_BAR_COLORS = {
@@ -117,9 +118,32 @@ const LANG_BAR_COLORS = {
 	CSS: THEME.blue,
 	JS: THEME.orange,
 	Py: THEME.green,
+	comment: THEME.green,
 	"?": THEME.gray,
 };
-const LANG_STACK_ORDER = ["HTML", "CSS", "JS", "Py", "?"];
+const LANG_STACK_ORDER = ["HTML", "CSS", "JS", "Py", "comment"];
+
+function _fillStriped(ctx, x, y, w, h, color, baseAlpha = 0.18) {
+	if (w <= 0 || h <= 0) return;
+	ctx.save();
+	ctx.globalAlpha = baseAlpha;
+	ctx.fillStyle = color;
+	ctx.fillRect(x, y, w, h);
+	ctx.globalAlpha = 1;
+	ctx.beginPath();
+	ctx.rect(x, y, w, h);
+	ctx.clip();
+	ctx.strokeStyle = color;
+	ctx.lineWidth = 2;
+	const step = 5;
+	for (let lx = x - h; lx < x + w + h; lx += step) {
+		ctx.beginPath();
+		ctx.moveTo(lx, y + h);
+		ctx.lineTo(lx + h, y);
+		ctx.stroke();
+	}
+	ctx.restore();
+}
 
 function _burstColorKey(b) {
 	if (b.chars > 0) return b.colorType || "normal";
@@ -136,6 +160,39 @@ function _singletonColorKey(kp) {
 	if (kp._editor === "dev") return "dev";
 	if (DELETE_CHARS.has(kp.char)) return "remove";
 	return "normal";
+}
+
+function _studentMistakes(students) {
+	return (students || []).map((s) =>
+		(s.follow_events || []).filter(_isMistakeEvent),
+	);
+}
+
+function _countStudentsInRange(studentEvs, t1, t2) {
+	let n = 0;
+	for (const evs of studentEvs) {
+		for (const e of evs) {
+			if (e.ts >= t1 && e.ts <= t2) {
+				n++;
+				break;
+			}
+		}
+	}
+	return n;
+}
+
+function _minBlockBarW(p, L) {
+	return (
+		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L)
+	);
+}
+
+function _blockBarGeom(centerTs, dur, L, minBarW) {
+	const x = tsToX(centerTs - dur / 2, L);
+	const x2 = tsToX(centerTs + dur / 2, L);
+	const bw = Math.max(x2 - x, minBarW);
+	const bx = (x + x2) / 2 - bw / 2;
+	return { bx, bw };
 }
 
 function _buildBottomChartBlocks(p) {
@@ -263,8 +320,6 @@ function _updateShakeButtonVisibility() {
 }
 
 function setupTopChartLegend(p) {
-	const lessonEl = document.getElementById("leg-lesson");
-	if (lessonEl) lessonEl.textContent = _dirHandle?.name || "";
 	const totalEl = document.getElementById("leg-total");
 	if (totalEl) totalEl.textContent = `Total Events: ${p.eventCount}`;
 	const items = [
@@ -290,8 +345,7 @@ function setupTopChartLegend(p) {
 function drawMiddleChart(ctx, p, L) {
 	const { M, W, Hmid: H, plotW, plotHmid } = L;
 	const bottomY = M.top + plotHmid;
-	const minBarW =
-		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+	const minBarW = _minBlockBarW(p, L);
 
 	ctx.fillStyle = "#fff";
 	ctx.fillRect(0, 0, W, H);
@@ -312,11 +366,7 @@ function drawMiddleChart(ctx, p, L) {
 	}
 
 	function bar(ts, rate, dur, colorKey, alpha = 0.72) {
-		const x = tsToX(ts - dur / 2, L);
-		const x2 = tsToX(ts + dur / 2, L);
-		const bw = Math.max(x2 - x, minBarW);
-		const cx = (x + x2) / 2;
-		const bx = cx - bw / 2;
+		const { bx, bw } = _blockBarGeom(ts, dur, L, minBarW);
 		const y = rateToY(rate, L);
 		const bh = bottomY - y;
 		const fill = BAR_COLORS[colorKey] || BAR_COLORS.normal;
@@ -448,7 +498,10 @@ function drawTopChart(ctx, p, L) {
 		"teacher-question": (q) =>
 			q.answered_by?.length
 				? INTERACTION_COLORS["teacher-question"].spanRgba
-				: INTERACTION_COLORS["teacher-question"].spanRgbaUnanswered,
+				: {
+						striped: true,
+						color: INTERACTION_COLORS["teacher-question"].hex,
+					},
 	});
 
 	if (cum.length > 1) {
@@ -830,32 +883,16 @@ function drawBottomChart(ctx, p, students, L) {
 function _drawBottomChartBars(ctx, p, students, L) {
 	const { M, W, Hbot: H, plotW, plotHbot } = L;
 	const bottomY = M.top + plotHbot;
-	const minBarW =
-		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+	const minBarW = _minBlockBarW(p, L);
 
 	const blocks = _buildBottomChartBlocks(p);
-
-	const studentEvs = (students || []).map((s) =>
-		(s.follow_events || []).filter(_isMistakeEvent),
-	);
-	const countStudents = (t1, t2) => {
-		let n = 0;
-		for (const evs of studentEvs) {
-			for (const e of evs) {
-				if (e.ts >= t1 && e.ts <= t2) {
-					n++;
-					break;
-				}
-			}
-		}
-		return n;
-	};
+	const studentEvs = _studentMistakes(students);
 	const langEventCounts = (t1, t2) => {
 		const counts = {};
 		for (const evs of studentEvs) {
 			for (const e of evs) {
 				if (e.ts >= t1 && e.ts <= t2) {
-					const l = e.lang || "?";
+					const l = e.isComment ? "comment" : e.lang || "?";
 					if (!counts[l]) counts[l] = { ghost: 0, nonGhost: 0 };
 					if (e.kind === "extra-star") counts[l].ghost++;
 					else counts[l].nonGhost++;
@@ -865,7 +902,9 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		return counts;
 	};
 
-	const counts = blocks.map((blk) => countStudents(blk.ts1, blk.ts2));
+	const counts = blocks.map((blk) =>
+		_countStudentsInRange(studentEvs, blk.ts1, blk.ts2),
+	);
 	const totalStudents = (students || []).length;
 	const denom = Math.max(1, totalStudents);
 
@@ -874,64 +913,18 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	ctx.rect(M.left, M.top, plotW, plotHbot);
 	ctx.clip();
 
+	ctx.fillStyle = THEME.barTrack;
 	for (let i = 0; i < blocks.length; i++) {
 		const c = counts[i];
 		if (c <= 0) continue;
 		const blk = blocks[i];
-		const x = tsToX(blk.centerTs - blk.dur / 2, L);
-		const x2 = tsToX(blk.centerTs + blk.dur / 2, L);
-		const bw = Math.max(x2 - x, minBarW);
-		const bx = (x + x2) / 2 - bw / 2;
+		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L, minBarW);
 		const bh = Math.min(plotHbot, (c / denom) * plotHbot);
 		const by = bottomY - bh;
-		const langC = langEventCounts(blk.ts1, blk.ts2);
-		let totalEv = 0;
-		for (const v of Object.values(langC)) totalEv += v.ghost + v.nonGhost;
-		if (totalEv === 0) {
-			ctx.globalAlpha = 0.72;
-			ctx.fillStyle = LANG_BAR_COLORS["?"];
-			ctx.fillRect(bx, by, bw, bh);
-			ctx.globalAlpha = 1;
-		} else {
-			let segBottom = bottomY;
-			for (const lang of LANG_STACK_ORDER) {
-				const v = langC[lang];
-				if (!v) continue;
-				const n = v.ghost + v.nonGhost;
-				if (n === 0) continue;
-				const segH = bh * (n / totalEv);
-				const color = LANG_BAR_COLORS[lang] || THEME.gray;
-				const nonGhostH = segH * (v.nonGhost / n);
-				const ghostH = segH - nonGhostH;
-				ctx.fillStyle = color;
-				if (nonGhostH > 0) {
-					ctx.globalAlpha = 0.72;
-					ctx.fillRect(bx, segBottom - nonGhostH, bw, nonGhostH);
-				}
-				if (ghostH > 0) {
-					ctx.globalAlpha = 0.28;
-					ctx.fillRect(bx, segBottom - segH, bw, ghostH);
-					ctx.globalAlpha = 1;
-					ctx.save();
-					ctx.beginPath();
-					ctx.rect(bx, segBottom - segH, bw, ghostH);
-					ctx.clip();
-					ctx.strokeStyle = color;
-					ctx.lineWidth = 2;
-					const step = 5;
-					for (let lx = bx - ghostH; lx < bx + bw + ghostH; lx += step) {
-						ctx.beginPath();
-						ctx.moveTo(lx, segBottom - nonGhostH);
-						ctx.lineTo(lx + ghostH, segBottom - nonGhostH - ghostH);
-						ctx.stroke();
-					}
-					ctx.restore();
-				}
-				ctx.globalAlpha = 1;
-				segBottom -= segH;
-			}
-		}
+		ctx.fillRect(bx, by, bw, bh);
 	}
+
+	_drawTokenOverlay(ctx, p, students, L);
 
 	ctx.restore();
 
@@ -986,18 +979,143 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	drawBlockMistakeCounts(ctx, p, students, L);
 }
 
+let _tokenOverlaySlots = [];
+
+function _drawTokenOverlay(ctx, p, students, L) {
+	_tokenOverlaySlots = [];
+	if (!_teacherTokens || !_teacherTokens.length) return;
+	const { M, plotW, plotHbot } = L;
+	const totalStudents = Math.max(1, (students || []).length);
+	const baseY = M.top + plotHbot;
+	const minBarW = _minBlockBarW(p, L);
+	const blocks = _buildBottomChartBlocks(p);
+	const tokenBars = _buildTokenViewBars(students);
+	if (!tokenBars.length) return;
+
+	for (const blk of blocks) {
+		const tbs = tokenBars
+			.filter((t) => t.ts >= blk.ts1 && t.ts <= blk.ts2)
+			.sort((a, b) => a.ts - b.ts);
+		if (!tbs.length) continue;
+		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L, minBarW);
+		const slotW = bw / tbs.length;
+		for (let j = 0; j < tbs.length; j++) {
+			const tb = tbs[j];
+			const sx = bx + j * slotW;
+			const nStudents = tb.students ? tb.students.size : 0;
+			const totalH = (nStudents / totalStudents) * plotHbot;
+			_tokenOverlaySlots.push({ bar: tb, sx, slotW, totalH });
+			if (tb.isComment && nStudents === 0) {
+				ctx.globalAlpha = 0.9;
+				ctx.fillStyle = BAR_COLORS.comment;
+				ctx.fillRect(sx, baseY - 2, slotW, 2);
+				continue;
+			}
+			if (nStudents === 0) continue;
+			const nonGhost = tb.regularStudents ? tb.regularStudents.size : 0;
+			const ghost = tb.ghostStudents ? tb.ghostStudents.size : 0;
+			const subDenom = Math.max(1, nonGhost + ghost);
+			const nonGhostH = totalH * (nonGhost / subDenom);
+			const ghostH = totalH - nonGhostH;
+			const color = tb.isComment
+				? BAR_COLORS.comment
+				: LANG_BAR_COLORS[tb.lang] || LANG_BAR_COLORS["?"];
+			if (nonGhostH > 0) {
+				ctx.globalAlpha = 0.95;
+				ctx.fillStyle = color;
+				ctx.fillRect(sx, baseY - nonGhostH, slotW, nonGhostH);
+				ctx.globalAlpha = 1;
+			}
+			if (ghostH > 0) {
+				_fillStriped(ctx, sx, baseY - totalH, slotW, ghostH, color);
+			}
+		}
+	}
+}
+
+function _tokenOverlayHitTest(mx, my, L) {
+	const slots = _tokenOverlaySlots;
+	if (!slots || !slots.length) return null;
+	const baseY = L.M.top + L.plotHbot;
+	for (let i = 0; i < slots.length; i++) {
+		const sl = slots[i];
+		if (mx < sl.sx || mx > sl.sx + sl.slotW) continue;
+		if (my < baseY - Math.max(sl.totalH, 6) || my > baseY) continue;
+		return { type: "token-bar", bar: sl.bar, idx: i };
+	}
+	return null;
+}
+
+function _buildTokenViewBars(students) {
+	const byKey = new Map();
+	const keyOf = (ts, token) => `${ts}|${token}`;
+	for (const s of students || []) {
+		const perKey = new Map();
+		const evsByKey = new Map();
+		for (const ev of s.follow_events || []) {
+			if (!_isMistakeEvent(ev)) continue;
+			const k = keyOf(ev.ts, ev.token);
+			const cur = perKey.get(k);
+			if (cur !== "ghost") {
+				perKey.set(
+					k,
+					ev.kind === "extra-star" ? "ghost" : cur || "regular",
+				);
+			}
+			if (!evsByKey.has(k)) evsByKey.set(k, []);
+			evsByKey.get(k).push(ev);
+			let entry = byKey.get(k);
+			if (!entry) {
+				entry = {
+					ts: ev.ts,
+					token: ev.token,
+					students: new Set(),
+					studentEntries: [],
+					ghostStudents: new Set(),
+					regularStudents: new Set(),
+					lang: ev.lang || null,
+				};
+				byKey.set(k, entry);
+			}
+			if (!entry.lang && ev.lang) entry.lang = ev.lang;
+		}
+		for (const [k, kind] of perKey) {
+			const entry = byKey.get(k);
+			entry.studentEntries.push({ s, evs: evsByKey.get(k) || [] });
+			entry.students.add(s.name);
+			if (kind === "ghost") entry.ghostStudents.add(s.name);
+			else entry.regularStudents.add(s.name);
+		}
+	}
+
+	const EMPTY_SET = new Set();
+	const EMPTY_ARR = [];
+	return _teacherTokens.map((t) => {
+		const lookupTs = t.isRemoved && t.delTs != null ? t.delTs : t.ts;
+		const m = byKey.get(keyOf(lookupTs, t.token));
+		return {
+			ts: lookupTs,
+			token: t.token,
+			students: m ? m.students : EMPTY_SET,
+			studentEntries: m ? m.studentEntries : EMPTY_ARR,
+			ghostStudents: m ? m.ghostStudents : EMPTY_SET,
+			regularStudents: m ? m.regularStudents : EMPTY_SET,
+			lang: m ? m.lang : null,
+			isComment: t.isComment,
+			isRemoved: t.isRemoved,
+			empty: !m,
+		};
+	});
+}
+
 function drawBlockBackgrounds(ctx, p, L) {
 	const { M, plotHbot } = L;
-	const minBarW =
-		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L);
+	const minBarW = _minBlockBarW(p, L);
 
 	ctx.save();
 
 	const drawBand = (cx, dur, key) => {
-		const x = tsToX(cx - dur / 2, L);
-		const x2 = tsToX(cx + dur / 2, L);
-		const bw = Math.max(x2 - x, minBarW);
-		const bx = (x + x2) / 2 - bw / 2;
+		const { bx, bw } = _blockBarGeom(cx, dur, L, minBarW);
 		const color = BAR_COLORS[key] || BAR_COLORS.normal;
 		ctx.fillStyle = _hexToRgba(color, 0.15);
 		ctx.fillRect(bx, M.top, bw, plotHbot);
@@ -1019,39 +1137,8 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 	const xMax = M.left + plotW;
 	const labelY = Math.max(8, M.top - 10);
 
-	const blocks = [];
-	const seen = new Set();
-	for (const b of p.bursts || []) {
-		const key = `${b.startTs}|${b.endTs}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		blocks.push({ ts1: b.startTs, ts2: b.endTs });
-	}
-	const half = CFG.BAR_MIN_SECS / 2;
-	for (const kp of p.singletons || []) {
-		const ts = kp.timestamp / 1000;
-		const key = `s|${ts}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		blocks.push({ ts1: ts - half, ts2: ts + half });
-	}
-
-	const studentEvs = students.map((s) =>
-		(s.follow_events || []).filter(_isMistakeEvent),
-	);
-
-	function countStudents(t1, t2) {
-		let n = 0;
-		for (const evs of studentEvs) {
-			for (const e of evs) {
-				if (e.ts >= t1 && e.ts <= t2) {
-					n++;
-					break;
-				}
-			}
-		}
-		return n;
-	}
+	const blocks = _buildBottomChartBlocks(p);
+	const studentEvs = _studentMistakes(students);
 
 	ctx.save();
 	ctx.fillStyle = "#222";
@@ -1062,7 +1149,7 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 	for (const blk of blocks) {
 		const cx = (tsToX(blk.ts1, L) + tsToX(blk.ts2, L)) / 2;
 		if (cx < xMin || cx > xMax) continue;
-		const count = countStudents(blk.ts1, blk.ts2);
+		const count = _countStudentsInRange(studentEvs, blk.ts1, blk.ts2);
 		if (count === 0) continue;
 		ctx.fillText(String(count), cx, labelY);
 	}
@@ -1124,8 +1211,14 @@ function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
 			}
 			const x1 = tsToX(q.timestamp, L),
 				x2 = tsToX(endTs, L);
-			ctx.fillStyle = typeof clrOrFn === "function" ? clrOrFn(q) : clrOrFn;
-			ctx.fillRect(x1, plotTop, Math.max(x2 - x1, 2), plotH);
+			const w = Math.max(x2 - x1, 2);
+			const spec = typeof clrOrFn === "function" ? clrOrFn(q) : clrOrFn;
+			if (spec && typeof spec === "object" && spec.striped) {
+				_fillStriped(ctx, x1, plotTop, w, plotH, spec.color);
+			} else {
+				ctx.fillStyle = spec;
+				ctx.fillRect(x1, plotTop, w, plotH);
+			}
 		}
 	}
 }

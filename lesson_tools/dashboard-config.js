@@ -28,6 +28,7 @@ const DELETE_LABELS = {
 
 let _p = null;
 let _students = null;
+let _teacherTokens = [];
 let _zoomMin = null,
 	_zoomMax = null;
 let _renderScheduled = false;
@@ -49,8 +50,10 @@ const THEME = {
 	blue: _cssVar("--clr-accent"),
 	orange: _cssVar("--clr-orange"),
 	green: _cssVar("--clr-green"),
+	purple: _cssVar("--clr-purple"),
 	red: _cssVar("--clr-red"),
 	gray: _cssVar("--clr-gray"),
+	barTrack: _cssVar("--clr-bar-track"),
 	paleRed: _cssVar("--clr-pale-red"),
 	muted: _cssVar("--clr-muted"),
 	label: _cssVar("--clr-label"),

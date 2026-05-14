@@ -593,39 +593,32 @@ function findCol(headers, re) {
 
 function parseSimilarityEvents(descText) {
 	const events = [];
-	for (const part of (descText || "").split(/,\s*/)) {
-		const trimmed = part.trim();
-		const tsMatch = trimmed.match(
-			/^([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)$/,
-		);
-		if (tsMatch) {
-			const kind = tsMatch[1] === "-" ? "missing" : "extra";
-			events.push({
-				kind,
-				token: tsMatch[2].trim(),
-				ts: _hmsToSeconds(tsMatch[3]),
-			});
-			continue;
-		}
-		const m = trimmed.match(/^([+-])(.+?)(?:\s+\(x(\d+)\))?$/);
-		if (!m) continue;
+	const text = String(descText || "");
+	const re =
+		/([+-])(.+?)(?:\s+\(x(\d+)\)|\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\))?(?=,\s+[+-]|$)/g;
+	let m;
+	while ((m = re.exec(text)) !== null) {
 		const kind = m[1] === "-" ? "missing" : "extra";
-		const token = m[2].trim();
-		const count = m[3] ? parseInt(m[3]) : 1;
-		for (let i = 0; i < count; i++) events.push({ kind, token });
+		const token = m[2];
+		if (m[4]) {
+			events.push({ kind, token, ts: _hmsToSeconds(m[4]) });
+		} else {
+			const count = m[3] ? parseInt(m[3]) : 1;
+			for (let i = 0; i < count; i++) events.push({ kind, token });
+		}
 	}
 	return events;
 }
 
 function parseFollowEvents(descText) {
-	const re = /([^(,]+?)\s*\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
+	const re = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
 	const events = [];
 	let m;
-	while ((m = re.exec(descText)) !== null) {
-		const rawLabel = m[1].trim();
+	while ((m = re.exec(String(descText || ""))) !== null) {
+		const rawLabel = m[1] + m[2];
 		events.push({
 			label: rawLabel,
-			ts: _hmsToSeconds(m[2]),
+			ts: _hmsToSeconds(m[3]),
 			...parseFollowLabel(rawLabel),
 		});
 	}
@@ -642,6 +635,57 @@ function _hmsToSeconds(hms) {
 	return h * 3600 + mn * 60 + s + frac;
 }
 
+function _maskToBytes(bits) {
+	const groups = [];
+	for (let i = 0; i < bits.length; i += 8) {
+		const chunk = bits.slice(i, i + 8).padEnd(8, "0");
+		groups.push(parseInt(chunk, 2));
+	}
+	return groups.map((b) => String(b).padStart(3, "0")).join("-");
+}
+
+function _boldFpGroups(hashStr) {
+	return hashStr
+		.split("-")
+		.map((g) => (g === "000" ? g : `<b>${g}</b>`))
+		.join("-");
+}
+
+function _computeFingerprintMask(students) {
+	for (const s of students) s._fpMask = null;
+	const studentTs = students.map(() => new Set());
+	const allTs = new Set();
+	for (let i = 0; i < students.length; i++) {
+		const s = students[i];
+		const ts = studentTs[i];
+		for (const ev of s.langEvents || []) {
+			if (
+				ev.ts != null &&
+				ev.ts > 0 &&
+				(ev.kind === "missing" || ev.kind === "extra-star")
+			) {
+				ts.add(ev.ts);
+				allTs.add(ev.ts);
+			}
+		}
+		for (const ev of s.commentEvents || []) {
+			if (ev.ts != null && ev.ts > 0 && ev.kind === "missing") {
+				ts.add(ev.ts);
+				allTs.add(ev.ts);
+			}
+		}
+	}
+	if (allTs.size === 0) return;
+	const sortedTs = [...allTs].sort((a, b) => a - b);
+	for (let i = 0; i < students.length; i++) {
+		const ts = studentTs[i];
+		if (ts.size === 0) continue;
+		let bits = "";
+		for (const t of sortedTs) bits += ts.has(t) ? "1" : "0";
+		students[i]._fpMask = bits;
+	}
+}
+
 function _sortKeyOf(s, sortCol) {
 	if (sortCol === "id") return { type: "str", v: s.id || "" };
 	if (sortCol === "name") return { type: "str", v: s.name || "" };
@@ -649,15 +693,8 @@ function _sortKeyOf(s, sortCol) {
 	if (sortCol === "follow") return { type: "num", v: s.followPct };
 	if (sortCol === "int") return { type: "str", v: s.interactions || "" };
 	if (sortCol === "fingerprint") {
-		const a =
-			s._fpHash != null
-				? String(s._fpHash).padStart(15, "0")
-				: "_".repeat(15);
-		const b = s._fp2Hash || "";
-		const c = s._fp3Hash || "";
-		return { type: "str", v: `${a}|${b}|${c}` };
+		return { type: "str", v: s._fpMask };
 	}
-	if (sortCol === "fingerprint2") return { type: "str", v: s._fp2Hash || "" };
 	if (sortCol.startsWith("lang:")) {
 		const k = sortCol.slice(5);
 		const v = s.langPcts ? s.langPcts[k] : undefined;
@@ -776,7 +813,6 @@ function renderTable() {
 	);
 	const showFingerprint = useFpTs || hasAnyFpEvents;
 	for (const s of _students) {
-		s._fpHash = null;
 		s._fpPositions = [];
 		if (!showFingerprint) continue;
 		const langTagged = (s.langEvents || [])
@@ -798,26 +834,6 @@ function renderTable() {
 			pos: positions[i],
 			lang,
 		}));
-		const sections = [[], [], [], [], []];
-		for (const pos of positions) {
-			let i = Math.floor(pos * 5);
-			if (i < 0) i = 0;
-			if (i > 4) i = 4;
-			sections[i].push(pos);
-		}
-		let digits = "";
-		for (const sec of sections) {
-			if (!sec.length) {
-				digits += "000";
-				continue;
-			}
-			const avg = sec.reduce((a, b) => a + b, 0) / sec.length;
-			let n = Math.floor(avg * 1000);
-			if (n > 999) n = 999;
-			if (n < 0) n = 0;
-			digits += String(n).padStart(3, "0");
-		}
-		s._fpHash = parseInt(digits, 10);
 	}
 	let fp2MaxBytes = 0;
 	for (const s of _students) {
@@ -877,6 +893,7 @@ function renderTable() {
 		s._fp3Hash = s._fp3Bytes.map((b) => String(b).padStart(3, "0")).join("-");
 	}
 	const hasAnyFp3 = fp3MaxBytes > 0;
+	_computeFingerprintMask(_students);
 	if (showFingerprint || hasAnyFp2 || hasAnyFp3)
 		specs.push({
 			cls: "col-fingerprint",
@@ -997,14 +1014,11 @@ function renderTable() {
 		if (showFingerprint || hasAnyFp2 || hasAnyFp3) {
 			const fpEl = document.createElement("td");
 			fpEl.className = "col-fingerprint";
-			const titles = [];
-			if (s._fpHash != null) {
-				const digits = String(s._fpHash).padStart(15, "0");
-				titles.push(digits.match(/.{3}/g).join("-"));
-			}
-			if (s._fp2Hash) titles.push(s._fp2Hash);
-			if (s._fp3Hash) titles.push(s._fp3Hash);
-			if (titles.length) fpEl.title = titles.join("  |  ");
+			const parts = [];
+			if (s._fpMask) parts.push(_boldFpGroups(_maskToBytes(s._fpMask)));
+			if (s._fp2Hash) parts.push(_boldFpGroups(s._fp2Hash));
+			if (s._fp3Hash) parts.push(_boldFpGroups(s._fp3Hash));
+			if (parts.length) setupTipHtml(fpEl, parts.join("  |  "));
 			const wrap = document.createElement("div");
 			wrap.className = "fp-wrap";
 			if (showFingerprint) {
@@ -1124,6 +1138,12 @@ const tipEl = document.getElementById("tip");
 
 function setupTip(el, text, noWrap = false) {
 	el.addEventListener("mouseenter", (e) => showTip(e, text, noWrap));
+	el.addEventListener("mousemove", (e) => moveTip(e));
+	el.addEventListener("mouseleave", () => hideTip());
+}
+
+function setupTipHtml(el, html) {
+	el.addEventListener("mouseenter", (e) => showTipHtml(e, html));
 	el.addEventListener("mousemove", (e) => moveTip(e));
 	el.addEventListener("mouseleave", () => hideTip());
 }

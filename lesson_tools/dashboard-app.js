@@ -207,6 +207,7 @@ async function loadJsonData(file, data) {
 		return;
 	}
 	_p = p;
+	await _loadTeacherTokens();
 	try {
 		localStorage.setItem(
 			"dashboard_sim_data",
@@ -297,3 +298,77 @@ window.addEventListener("resize", () => {
 		if (_p) scheduleRender();
 	}, 120);
 });
+
+function _hmsToEpochSec(str, sessionDate) {
+	const m = String(str || "").match(
+		/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/,
+	);
+	if (!m) return null;
+	const dt = new Date(sessionDate);
+	const ms = m[4] ? Number((m[4] + "000").slice(0, 3)) : 0;
+	dt.setHours(Number(m[1]), Number(m[2]), Number(m[3]), ms);
+	return dt.getTime() / 1000;
+}
+
+function _parseTeacherTokensTxt(text, sessionDate) {
+	const lines = text.split(/\r?\n/);
+	const tokens = [];
+	for (const line of lines) {
+		if (!line || line.startsWith("#")) continue;
+		const parts = line.replace(/\r$/, "").split("\t");
+		if (parts.length < 2) continue;
+		const ts = _hmsToEpochSec(parts[1], sessionDate);
+		if (ts == null) continue;
+		const rest = parts.slice(2);
+		const isComment = rest.includes("COMMENT");
+		const isRemoved = rest.includes("REMOVED");
+		let delTs = null;
+		if (isRemoved) {
+			const idx = rest.indexOf("REMOVED");
+			if (idx + 1 < rest.length) {
+				delTs = _hmsToEpochSec(rest[idx + 1], sessionDate);
+			}
+		}
+		tokens.push({
+			ts,
+			delTs,
+			token: parts[0],
+			isComment,
+			isRemoved,
+		});
+	}
+	tokens.sort((a, b) => a.ts - b.ts);
+	return tokens;
+}
+
+async function _loadTeacherTokens() {
+	_teacherTokens = [];
+	if (!_allFiles || !_allFiles.size || !_p) return;
+	const candidates = [];
+	for (const [path, file] of _allFiles) {
+		const pl = path.toLowerCase();
+		if (pl === "tokens.txt" || pl.endsWith("/tokens.txt")) {
+			let rank = 9;
+			if (pl.startsWith("correct/")) rank = 0;
+			else if (pl.startsWith("reconstructed/")) rank = 1;
+			else if (pl.startsWith("reference/")) rank = 2;
+			candidates.push({ rank, path, file });
+		}
+	}
+	if (!candidates.length) {
+		console.warn("[Dashboard] tokens.txt not found in project");
+		return;
+	}
+	candidates.sort((a, b) => a.rank - b.rank);
+	const entry = candidates[0].file;
+	try {
+		const text = await entry.text();
+		const sessionDate = new Date(_p.sessionStart * 1000);
+		_teacherTokens = _parseTeacherTokensTxt(text, sessionDate);
+		console.log(
+			`[Dashboard] loaded ${_teacherTokens.length} teacher tokens from ${candidates[0].path}`,
+		);
+	} catch (e) {
+		console.warn("[Dashboard] failed to load tokens.txt:", e?.message);
+	}
+}
