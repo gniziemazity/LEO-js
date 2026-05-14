@@ -224,21 +224,3 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 	}
 	return { students, idMap };
 }
-
-function parseFollowEvents(descText, sessionDate) {
-	const events = [];
-	if (!descText) return events;
-	const re = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
-	let m;
-	while ((m = re.exec(String(descText))) !== null) {
-		const rawLabel = m[1] + m[2];
-		const [hms, frac = "0"] = m[3].split(".");
-		const [h, min, s] = hms.split(":").map(Number);
-		const ms = Number((frac + "000").slice(0, 3));
-		const dt = new Date(sessionDate);
-		dt.setHours(h, min, s, ms);
-		const { kind, token } = parseFollowLabel(rawLabel);
-		events.push({ label: rawLabel, ts: dt.getTime() / 1000, kind, token });
-	}
-	return events;
-}

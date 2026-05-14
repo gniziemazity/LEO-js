@@ -550,7 +550,7 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 	return out;
 }
 
-const _GHOST_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+const _GHOST_TOKEN_RE = newTokenRegex();
 
 function _renderGhostBlob(ghost, tokensTbl) {
 	const text = ghost.text;

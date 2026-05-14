@@ -610,31 +610,6 @@ function parseSimilarityEvents(descText) {
 	return events;
 }
 
-function parseFollowEvents(descText) {
-	const re = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
-	const events = [];
-	let m;
-	while ((m = re.exec(String(descText || ""))) !== null) {
-		const rawLabel = m[1] + m[2];
-		events.push({
-			label: rawLabel,
-			ts: _hmsToSeconds(m[3]),
-			...parseFollowLabel(rawLabel),
-		});
-	}
-	return events;
-}
-
-function _hmsToSeconds(hms) {
-	const m = (hms || "").match(/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
-	if (!m) return null;
-	const h = parseInt(m[1], 10);
-	const mn = parseInt(m[2], 10);
-	const s = parseInt(m[3], 10);
-	const frac = m[4] ? parseInt(m[4], 10) / Math.pow(10, m[4].length) : 0;
-	return h * 3600 + mn * 60 + s + frac;
-}
-
 function _maskToBytes(bits) {
 	const groups = [];
 	for (let i = 0; i < bits.length; i += 8) {

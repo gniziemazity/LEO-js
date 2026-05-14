@@ -611,78 +611,6 @@ function _showTipHtml(cx, cy, html) {
 	tooltipEl.style.top = ty + "px";
 }
 
-function _DEAD_KEEP(cx, cy, bar) {
-	const tokenEsc = escHtml(bar.token || "");
-	const tags = [];
-	if (bar.lang) tags.push(bar.lang);
-	if (bar.isRemoved) tags.push("ghost");
-	const tagStr = tags.length ? ` [${escHtml(tags.join(", "))}]` : "";
-	const entries = bar.studentEntries || [];
-
-	if (!entries.length) {
-		_barBlockStudents = [];
-		tooltipEl.innerHTML = `<b>${tokenEsc}</b>${tagStr}<br><span style="color:#aaa">no mismatches</span>`;
-		tooltipEl.style.display = "block";
-		tooltipEl.style.flexDirection = "";
-		tooltipEl.style.overflowY = "";
-		tooltipEl.style.background = "var(--clr-bg)";
-		tooltipEl.style.maxWidth = "";
-		tooltipEl.classList.remove("pinned");
-	} else {
-		const sorted = [...entries].sort(
-			(a, b) => (b.s.follow_pct ?? 0) - (a.s.follow_pct ?? 0),
-		);
-		_barBlockStudents = sorted;
-		const langClass = (lang) =>
-			lang && LANG_BAR_COLORS[lang]
-				? `tt-lang-${lang.toLowerCase()}`
-				: "tt-lang-unk";
-		const maxIdLen = sorted.reduce(
-			(m, { s }) => Math.max(m, (s.id || "").length),
-			0,
-		);
-		const NBSP = " ";
-		let grid = '<div class="tt-grid">';
-		sorted.forEach(({ s, evs }, i) => {
-			const idPadded = (s.id || "").padStart(maxIdLen, NBSP);
-			const idPrefix = s.id ? `${escHtml(idPadded)}: ` : "";
-			const tokenSpans = (evs || [])
-				.map((e) => {
-					const tok = e.token != null ? e.token : e.label || "";
-					const cls = langClass(e.lang);
-					const ghost = e.kind === "extra-star" ? " tt-ghost" : "";
-					return `<span class="${cls}${ghost}">${escHtml(tok)}</span>`;
-				})
-				.join(" ");
-			grid +=
-				`<div><span data-bar-student-idx="${i}" class="tt-student">${idPrefix}${escHtml(s.name)}</span></div>` +
-				`<div class="tt-langcell"></div>` +
-				`<div class="tt-tokens">${tokenSpans}</div>`;
-		});
-		grid += "</div>";
-		tooltipEl.innerHTML = [
-			`<div class="tt-bar-fixed"><b>${tokenEsc}</b>${tagStr} — ${sorted.length} student(s)</div>`,
-			`<div class="tt-bar-fixed">──────────</div>`,
-			`<div class="tt-bar-scroll">${grid}</div>`,
-		].join("");
-		tooltipEl.style.display = "flex";
-		tooltipEl.style.flexDirection = "column";
-		tooltipEl.style.overflowY = "hidden";
-		tooltipEl.style.background = "var(--clr-bg)";
-		tooltipEl.style.maxWidth = "50vw";
-		tooltipEl.classList.remove("pinned");
-	}
-
-	const tw = tooltipEl.offsetWidth,
-		th = tooltipEl.offsetHeight;
-	let tx = cx + 16,
-		ty = cy + 16;
-	if (tx + tw > window.innerWidth - 8) tx = cx - tw - 16;
-	if (ty + th > window.innerHeight - 8) ty = cy - th - 8;
-	tooltipEl.style.left = tx + "px";
-	tooltipEl.style.top = ty + "px";
-}
-
 function hideTip() {
 	tooltipEl.style.display = "none";
 }
@@ -881,10 +809,10 @@ function _buildPartColorsForMismatches(b, mismatches) {
 		}
 	}
 	const codeStr = codeChars.map((c) => c.ch).join("");
-	const TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+	const tokenRe = newTokenRegex();
 	const burstTokens = [];
 	let m;
-	while ((m = TOKEN_RE.exec(codeStr)) !== null) {
+	while ((m = tokenRe.exec(codeStr)) !== null) {
 		const tok = m[0];
 		const startIdx = m.index;
 		const endIdx = m.index + tok.length;

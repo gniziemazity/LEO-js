@@ -299,17 +299,6 @@ window.addEventListener("resize", () => {
 	}, 120);
 });
 
-function _hmsToEpochSec(str, sessionDate) {
-	const m = String(str || "").match(
-		/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/,
-	);
-	if (!m) return null;
-	const dt = new Date(sessionDate);
-	const ms = m[4] ? Number((m[4] + "000").slice(0, 3)) : 0;
-	dt.setHours(Number(m[1]), Number(m[2]), Number(m[3]), ms);
-	return dt.getTime() / 1000;
-}
-
 function _parseTeacherTokensTxt(text, sessionDate) {
 	const lines = text.split(/\r?\n/);
 	const tokens = [];
@@ -317,7 +306,7 @@ function _parseTeacherTokensTxt(text, sessionDate) {
 		if (!line || line.startsWith("#")) continue;
 		const parts = line.replace(/\r$/, "").split("\t");
 		if (parts.length < 2) continue;
-		const ts = _hmsToEpochSec(parts[1], sessionDate);
+		const ts = _hmsToSeconds(parts[1], sessionDate);
 		if (ts == null) continue;
 		const rest = parts.slice(2);
 		const isComment = rest.includes("COMMENT");
@@ -326,7 +315,7 @@ function _parseTeacherTokensTxt(text, sessionDate) {
 		if (isRemoved) {
 			const idx = rest.indexOf("REMOVED");
 			if (idx + 1 < rest.length) {
-				delTs = _hmsToEpochSec(rest[idx + 1], sessionDate);
+				delTs = _hmsToSeconds(rest[idx + 1], sessionDate);
 			}
 		}
 		tokens.push({

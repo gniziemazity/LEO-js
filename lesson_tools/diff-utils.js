@@ -163,6 +163,44 @@ async function readDirHandle(handle, prefix, pathMap, files, opts = {}) {
 	}
 }
 
+const TOKEN_RE_SRC = "[a-zA-Z0-9]+|[^\\s]";
+function newTokenRegex() {
+	return new RegExp(TOKEN_RE_SRC, "g");
+}
+
+function _hmsToSeconds(hms, sessionDate) {
+	const m = String(hms || "").match(
+		/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/,
+	);
+	if (!m) return null;
+	const h = Number(m[1]);
+	const mn = Number(m[2]);
+	const s = Number(m[3]);
+	const frac = m[4] ? Number((m[4] + "000").slice(0, 3)) / 1000 : 0;
+	if (sessionDate == null) return h * 3600 + mn * 60 + s + frac;
+	const dt = new Date(sessionDate);
+	dt.setHours(h, mn, s, Math.round(frac * 1000));
+	return dt.getTime() / 1000;
+}
+
+const _FOLLOW_DESC_RE = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
+
+function parseFollowEvents(descText, sessionDate) {
+	const events = [];
+	if (!descText) return events;
+	const re = new RegExp(_FOLLOW_DESC_RE.source, "g");
+	let m;
+	while ((m = re.exec(String(descText))) !== null) {
+		const rawLabel = m[1] + m[2];
+		events.push({
+			label: rawLabel,
+			ts: _hmsToSeconds(m[3], sessionDate),
+			...parseFollowLabel(rawLabel),
+		});
+	}
+	return events;
+}
+
 function parseFollowLabel(label) {
 	if (label.startsWith("-")) {
 		return { kind: "missing", token: label.slice(1).trimStart() };

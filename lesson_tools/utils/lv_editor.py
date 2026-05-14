@@ -207,9 +207,12 @@ class HeadlessEditor:
         end = le + 1 if le < len(self._chars) else le
         n = end - ls
         if self._track_ts:
-            for i in range(ls, end):
+            for offset, i in enumerate(range(ls, end)):
                 self._deleted_chars.append(
-                    (self._chars[i], self._char_ts[i], self._cur_ts, self._char_idx[i]))
+                    (self._chars[i], self._char_ts[i],
+                     self._cur_ts + offset, self._char_idx[i]))
+            if n > 0:
+                self._cur_ts += n - 1
             del self._char_ts[ls:end]
             del self._char_idx[ls:end]
         del self._chars[ls:end]
@@ -431,6 +434,8 @@ class HeadlessEditor:
             if kind == "text":
                 for ch in val:
                     self.handle_char(ch)
+                    if self._track_ts:
+                        self._cur_ts += 1
                     ls2 = self._line_start()
                     bef2 = "".join(self._chars[ls2: self._cur])
                     self._ci_indent = re.match(r"^(\s*)", bef2).group(1)

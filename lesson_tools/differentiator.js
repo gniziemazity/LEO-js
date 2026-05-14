@@ -445,7 +445,7 @@ function _restoreState(side, saved) {
 	}
 }
 
-const _DIFF_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+const _DIFF_TOKEN_RE = newTokenRegex();
 const _DIFF_FALLBACK_DETECT_RE =
 	/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?<!:)\/\/[^\n]*/g;
 

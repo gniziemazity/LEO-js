@@ -1,5 +1,113 @@
 "use strict";
 
+const DELETE_LINE_CHAR = "⛔";
+const BACKSPACE_CHARS_SET = new Set(["↢", "⌫"]);
+const DELETE_FWRD_CHARS_SET = new Set(["↣", "⌦"]);
+const CURSOR_LEFT_CHARS = new Set(["←"]);
+const CURSOR_RIGHT_CHARS = new Set(["→"]);
+const CURSOR_UP_CHARS = new Set(["↑", "⇑"]);
+const CURSOR_DOWN_CHARS = new Set(["↓", "⇓"]);
+const CURSOR_HOME_CHARS = new Set(["◄", "⇐"]);
+const CURSOR_END_CHARS = new Set(["►", "⇒"]);
+
+function _annotateRemovedLengths(events) {
+	const lines = [[]];
+	let cursorLine = 0;
+	let cursorCol = 0;
+	let inDev = false;
+
+	const insertChar = (ch) => {
+		if (ch === "\n" || ch === "↩") {
+			const tail = lines[cursorLine].splice(cursorCol);
+			lines.splice(cursorLine + 1, 0, tail);
+			cursorLine++;
+			cursorCol = 0;
+		} else {
+			lines[cursorLine].splice(cursorCol, 0, ch);
+			cursorCol++;
+		}
+	};
+
+	for (const ev of events) {
+		if (ev.move_to === "DEV" || ev.switch_editor === "dev") {
+			inDev = true;
+			continue;
+		}
+		if (ev.move_to === "MAIN" || ev.switch_editor === "main") {
+			inDev = false;
+			continue;
+		}
+		if (inDev) continue;
+		if (ev.char != null) {
+			const ch = ev.char;
+			if (ch === DELETE_LINE_CHAR) {
+				ev._removed_len = lines[cursorLine].length + 1; // +1 for the newline
+				if (cursorLine < lines.length - 1) {
+					lines.splice(cursorLine, 1);
+					if (cursorLine >= lines.length) cursorLine = lines.length - 1;
+				} else {
+					lines[cursorLine] = [];
+				}
+				cursorCol = 0;
+			} else if (BACKSPACE_CHARS_SET.has(ch)) {
+				if (cursorCol > 0) {
+					lines[cursorLine].splice(cursorCol - 1, 1);
+					cursorCol--;
+				} else if (cursorLine > 0) {
+					const prevLen = lines[cursorLine - 1].length;
+					lines[cursorLine - 1] = lines[cursorLine - 1].concat(
+						lines[cursorLine],
+					);
+					lines.splice(cursorLine, 1);
+					cursorLine--;
+					cursorCol = prevLen;
+				}
+			} else if (DELETE_FWRD_CHARS_SET.has(ch)) {
+				if (cursorCol < lines[cursorLine].length) {
+					lines[cursorLine].splice(cursorCol, 1);
+				} else if (cursorLine < lines.length - 1) {
+					lines[cursorLine] = lines[cursorLine].concat(
+						lines[cursorLine + 1],
+					);
+					lines.splice(cursorLine + 1, 1);
+				}
+			} else if (CURSOR_LEFT_CHARS.has(ch)) {
+				if (cursorCol > 0) cursorCol--;
+				else if (cursorLine > 0) {
+					cursorLine--;
+					cursorCol = lines[cursorLine].length;
+				}
+			} else if (CURSOR_RIGHT_CHARS.has(ch)) {
+				if (cursorCol < lines[cursorLine].length) cursorCol++;
+				else if (cursorLine < lines.length - 1) {
+					cursorLine++;
+					cursorCol = 0;
+				}
+			} else if (CURSOR_UP_CHARS.has(ch)) {
+				if (cursorLine > 0) {
+					cursorLine--;
+					cursorCol = Math.min(cursorCol, lines[cursorLine].length);
+				}
+			} else if (CURSOR_DOWN_CHARS.has(ch)) {
+				if (cursorLine < lines.length - 1) {
+					cursorLine++;
+					cursorCol = Math.min(cursorCol, lines[cursorLine].length);
+				}
+			} else if (CURSOR_HOME_CHARS.has(ch)) {
+				cursorCol = 0;
+			} else if (CURSOR_END_CHARS.has(ch)) {
+				cursorCol = lines[cursorLine].length;
+			} else if (ch === "\t" || ch === "―") {
+				insertChar("\t");
+			} else if (ch.length === 1 || ch === "↩") {
+				insertChar(ch);
+			}
+		} else if (typeof ev.code_insert === "string") {
+			for (const ch of ev.code_insert) insertChar(ch);
+		}
+	}
+}
+
 function processData(raw) {
 	const events = raw.events || raw.keyPresses || [];
 	if (!events.length) {
@@ -14,6 +122,8 @@ function processData(raw) {
 		else if (ev.move_to === "MAIN") editor = "main";
 		if (ev._editor == null) ev._editor = editor;
 	}
+
+	_annotateRemovedLengths(events);
 
 	const sessionStart = events[0].timestamp / 1000;
 	const sessionEnd = events[events.length - 1].timestamp / 1000;

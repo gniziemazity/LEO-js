@@ -64,7 +64,6 @@ const INTERACTION_COLORS = {
 	"teacher-question": {
 		hex: THEME.blue,
 		spanRgba: _hexToRgba(THEME.blue, 0.6),
-		spanRgbaUnanswered: _hexToRgba(THEME.blue, 0.15),
 		tipBg: _cssVar("--clr-tip-bg-blue"),
 	},
 	"student-question": {

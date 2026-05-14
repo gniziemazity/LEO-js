@@ -195,6 +195,36 @@ function _blockBarGeom(centerTs, dur, L, minBarW) {
 	return { bx, bw };
 }
 
+function _eventDurationSec(ev) {
+	if (
+		ev._virtualType === "code_insert" &&
+		typeof ev.code_insert === "string"
+	) {
+		return ev.code_insert.length / 1000;
+	}
+	if (ev.char === "⛔" && typeof ev._removed_len === "number") {
+		return ev._removed_len / 1000;
+	}
+	return 0;
+}
+
+function _burstEffectiveSpan(b) {
+	let endTs = b.endTs;
+	for (const ev of b.evs || []) {
+		const extra = _eventDurationSec(ev);
+		if (extra > 0) {
+			const evEnd = ev.timestamp / 1000 + extra;
+			if (evEnd > endTs) endTs = evEnd;
+		}
+	}
+	return {
+		startTs: b.startTs,
+		endTs,
+		centerTs: (b.startTs + endTs) / 2,
+		dur: endTs - b.startTs,
+	};
+}
+
 function _buildBottomChartBlocks(p) {
 	const blocks = [];
 	const seen = new Set();
@@ -202,11 +232,12 @@ function _buildBottomChartBlocks(p) {
 		const key = `b|${b.startTs}|${b.endTs}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
+		const span = _burstEffectiveSpan(b);
 		blocks.push({
-			ts1: b.startTs,
-			ts2: b.endTs,
-			centerTs: b.centerTs,
-			dur: b.dur,
+			ts1: span.startTs,
+			ts2: span.endTs,
+			centerTs: span.centerTs,
+			dur: span.dur,
 			burst: b,
 			kp: null,
 			colorKey: _burstColorKey(b),
@@ -218,11 +249,12 @@ function _buildBottomChartBlocks(p) {
 		const key = `s|${ts}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
+		const extra = _eventDurationSec(kp);
 		blocks.push({
 			ts1: ts - half,
-			ts2: ts + half,
-			centerTs: ts,
-			dur: 0,
+			ts2: ts + half + extra,
+			centerTs: ts + extra / 2,
+			dur: extra,
 			burst: null,
 			kp,
 			colorKey: _singletonColorKey(kp),
@@ -380,37 +412,46 @@ function drawMiddleChart(ctx, p, L) {
 	}
 
 	for (const b of p.bursts) {
+		const span = _burstEffectiveSpan(b);
 		if (b.chars > 0) {
 			const hasVirtual = b.hasCodeInserts || b.hasAnchors || b.hasMoves;
 			const effectiveRate = hasVirtual ? Math.max(b.rate, 20) : b.rate;
-			bar(b.centerTs, effectiveRate, b.dur, b.colorType);
+			bar(span.centerTs, effectiveRate, span.dur, b.colorType);
 		} else if (b.hasCodeInserts) {
 			const insLen = b.evs
 				.filter((e) => e._virtualType === "code_insert")
 				.reduce((s, e) => s + (e.code_insert || "").length, 0);
 			bar(
-				b.centerTs,
+				span.centerTs,
 				Math.max(10, insLen / (CFG.BAR_MIN_SECS / 60)),
-				b.dur,
+				span.dur,
 				"normal",
 			);
 		} else if (b.hasAnchors || b.hasMoves) {
-			bar(b.centerTs, 20, b.dur, b.hasAnchors ? "anchor" : "move", 0.7);
+			bar(
+				span.centerTs,
+				20,
+				span.dur,
+				b.hasAnchors ? "anchor" : "move",
+				0.7,
+			);
 		}
 	}
 	for (const kp of p.singletons) {
+		const ts = kp.timestamp / 1000;
+		const extra = _eventDurationSec(kp);
 		if (kp._virtualType === "anchor") {
-			bar(kp.timestamp / 1000, 20, 0, "anchor", 0.7);
+			bar(ts, 20, 0, "anchor", 0.7);
 		} else if (kp._virtualType === "move") {
-			bar(kp.timestamp / 1000, 20, 0, "move", 0.7);
+			bar(ts, 20, 0, "move", 0.7);
 		} else if (kp._virtualType === "code_insert") {
 			bar(
-				kp.timestamp / 1000,
+				ts + extra / 2,
 				Math.max(
 					10,
 					(kp.code_insert || "").length / (CFG.BAR_MIN_SECS / 60),
 				),
-				0,
+				extra,
 				"normal",
 			);
 		} else {
@@ -420,7 +461,7 @@ function drawMiddleChart(ctx, p, L) {
 					: DELETE_CHARS.has(kp.char)
 						? "remove"
 						: "normal";
-			bar(kp.timestamp / 1000, 20, 0, ck);
+			bar(ts + extra / 2, 20, extra, ck);
 		}
 	}
 
@@ -1122,10 +1163,13 @@ function drawBlockBackgrounds(ctx, p, L) {
 	};
 
 	for (const b of p.bursts || []) {
-		drawBand(b.centerTs, b.dur, _burstColorKey(b));
+		const span = _burstEffectiveSpan(b);
+		drawBand(span.centerTs, span.dur, _burstColorKey(b));
 	}
 	for (const kp of p.singletons || []) {
-		drawBand(kp.timestamp / 1000, 0, _singletonColorKey(kp));
+		const ts = kp.timestamp / 1000;
+		const extra = _eventDurationSec(kp);
+		drawBand(ts + extra / 2, extra, _singletonColorKey(kp));
 	}
 	ctx.restore();
 }
