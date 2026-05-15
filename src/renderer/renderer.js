@@ -13,7 +13,7 @@ const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
 const path = require("path");
 
-const soundPath = path.join(__dirname, "..", "assets", "sounds");
+const soundPath = path.join(__dirname, "..", "..", "assets", "sounds");
 
 const logManager = new LogManager();
 const lessonManager = new LessonManager();

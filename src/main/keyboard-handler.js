@@ -2,6 +2,30 @@ const { keyboard, Key } = require("@computer-use/nut-js");
 const { NUTJS_KEY_MAPPING } = require("../shared/constants");
 const state = require("./state");
 
+const SHIFTED_CHAR_TO_KEY = {
+	"!": Key.Num1,
+	"@": Key.Num2,
+	"#": Key.Num3,
+	$: Key.Num4,
+	"%": Key.Num5,
+	"^": Key.Num6,
+	"&": Key.Num7,
+	"*": Key.Num8,
+	"(": Key.Num9,
+	")": Key.Num0,
+	_: Key.Minus,
+	"+": Key.Equal,
+	"{": Key.LeftBracket,
+	"}": Key.RightBracket,
+	"|": Key.Backslash,
+	":": Key.Semicolon,
+	'"': Key.Quote,
+	"<": Key.Comma,
+	">": Key.Period,
+	"?": Key.Slash,
+	"~": Key.Grave,
+};
+
 const CHAR_TO_KEY = {
 	a: Key.A,
 	b: Key.B,
@@ -253,6 +277,11 @@ class KeyboardHandler {
 			} else {
 				await keyboard.type(keyToType);
 			}
+			return;
+		}
+
+		if (SHIFTED_CHAR_TO_KEY[char]) {
+			await keyboard.type(Key.LeftShift, SHIFTED_CHAR_TO_KEY[char]);
 			return;
 		}
 

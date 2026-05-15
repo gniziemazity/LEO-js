@@ -31,6 +31,7 @@ let imageWindowRect = null;
 let webWindow = null;
 let webWindowPinned = false;
 let webWindowRect = null;
+let visualizerWindow = null;
 
 function resolveStudentName(field) {
 	if (field == null) return null;
@@ -920,8 +921,10 @@ const { spawnSync } = require("child_process");
 
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
 const _VIS_DATA = path.join(__dirname, "../../lesson_tools/.last_vis_data.js");
+const _VIS_PRELOAD = path.join(__dirname, "vis-preload.js");
 
 function openLogVisualizer(logFilePath) {
+	const stamp = Date.now();
 	if (logFilePath) {
 		const scriptPath = path.join(
 			__dirname,
@@ -951,7 +954,7 @@ function openLogVisualizer(logFilePath) {
 		}
 		fs.writeFileSync(
 			_VIS_DATA,
-			`window.__LOG_DATA__ = ${JSON.stringify({ ...payload, loadedAt: Date.now() })};`,
+			`window.__LOG_DATA__ = ${JSON.stringify({ ...payload, loadedAt: stamp })};`,
 			"utf8",
 		);
 	} else {
@@ -959,7 +962,30 @@ function openLogVisualizer(logFilePath) {
 			fs.writeFileSync(_VIS_DATA, "window.__LOG_DATA__ = null;", "utf8");
 		} catch (_) {}
 	}
-	shell.openPath(_VIS_HTML);
+	if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+		visualizerWindow.loadFile(_VIS_HTML);
+		if (visualizerWindow.isMinimized()) visualizerWindow.restore();
+		visualizerWindow.show();
+		visualizerWindow.focus();
+		return;
+	}
+	visualizerWindow = new BrowserWindow({
+		width: 1200,
+		height: 800,
+		title: "Log Visualizer",
+		icon: path.join(__dirname, "../shared/icon.ico"),
+		autoHideMenuBar: true,
+		webPreferences: {
+			nodeIntegration: false,
+			contextIsolation: true,
+			preload: _VIS_PRELOAD,
+		},
+	});
+	visualizerWindow.setMenu(null);
+	visualizerWindow.loadFile(_VIS_HTML);
+	visualizerWindow.on("closed", () => {
+		visualizerWindow = null;
+	});
 }
 
 ipcMain.on("open-log-visualizer", (_event, logFilePath) => {

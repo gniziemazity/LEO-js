@@ -32,12 +32,30 @@ function _hexToRgba(hex, a) {
 	return `rgba(${r},${g},${b},${a})`;
 }
 
+const THEME = {
+	blue: _cssVar("--clr-accent"),
+	orange: _cssVar("--clr-orange"),
+	green: _cssVar("--clr-green"),
+	purple: _cssVar("--clr-purple"),
+	red: _cssVar("--clr-red"),
+	gray: _cssVar("--clr-gray"),
+	muted: _cssVar("--clr-muted"),
+	label: _cssVar("--clr-label"),
+	bg: _cssVar("--clr-bg"),
+	barTrack: _cssVar("--clr-bar-track"),
+	paleRed: _cssVar("--clr-pale-red"),
+	neg: _cssVar("--clr-neg"),
+	textStrong: _cssVar("--clr-text-strong"),
+	textFaint: _cssVar("--clr-text-faint"),
+	codeMuted: _cssVar("--clr-code-muted"),
+};
+
 const LANG_COLORS = {
-	html: _cssVar("--clr-red"),
-	htm: _cssVar("--clr-red"),
-	css: _cssVar("--clr-accent"),
-	js: _cssVar("--clr-orange"),
-	py: _cssVar("--clr-purple"),
+	html: THEME.red,
+	htm: THEME.red,
+	css: THEME.blue,
+	js: THEME.orange,
+	py: THEME.purple,
 };
 
 function langColorFor(key) {
@@ -46,6 +64,19 @@ function langColorFor(key) {
 	if (k === "javascript") k = "js";
 	else if (k === "python") k = "py";
 	return LANG_COLORS[k] || null;
+}
+
+const MARK_COLORS = {
+	missing: _cssVar("--clr-mark-missing"),
+	extra: _cssVar("--clr-mark-extra"),
+	ghost_extra: _cssVar("--clr-mark-ghost"),
+	comment: _cssVar("--clr-mark-comment"),
+};
+
+function markColorFor(key) {
+	if (!key) return null;
+	const k = key === "extra-star" ? "ghost_extra" : key;
+	return MARK_COLORS[k] || null;
 }
 
 function _idbOpen(dbName = "lesson_tools") {
@@ -85,6 +116,44 @@ async function _idbSet(key, value, dbName = "lesson_tools") {
 			tx.onerror = rej;
 		});
 	} catch {}
+}
+
+function parseCsv(text) {
+	const lines = String(text || "")
+		.split(/\r?\n/)
+		.filter(Boolean);
+	if (lines.length < 2) return { header: [], rows: [], delim: "," };
+	const delim = lines[0].includes(";") ? ";" : ",";
+	const cells = (line) =>
+		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+	return { header: cells(lines[0]), rows: lines.slice(1).map(cells), delim };
+}
+
+function getFileExt(name) {
+	if (!name) return "";
+	const m = String(name).match(/\.[^./\\]+$/);
+	return m ? m[0].slice(1).toLowerCase() : "";
+}
+
+async function pickFolderWithMemory(idbKey = "lastDir", dbName = undefined) {
+	const lastDir = await _idbGet(idbKey, dbName);
+	const opts = { mode: "read" };
+	if (lastDir) opts.startIn = lastDir;
+	const handle = await window.showDirectoryPicker(opts);
+	_idbSet(idbKey, handle, dbName);
+	return handle;
+}
+
+async function pickFilesWithMemory(
+	opts = {},
+	idbKey = "lastDir",
+	dbName = undefined,
+) {
+	const lastDir = await _idbGet(idbKey, dbName);
+	if (lastDir) opts.startIn = lastDir;
+	const handles = await window.showOpenFilePicker(opts);
+	if (handles && handles.length) _idbSet(idbKey, handles[0], dbName);
+	return handles || [];
 }
 
 function showLoading(on) {

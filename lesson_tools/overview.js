@@ -1,16 +1,5 @@
 "use strict";
 
-const OV_CLR = {
-	accent: _cssVar("--clr-accent"),
-	red: _cssVar("--clr-red"),
-	label: _cssVar("--clr-label"),
-	muted: _cssVar("--clr-muted"),
-	neg: _cssVar("--clr-neg"),
-	textStrong: _cssVar("--clr-text-strong"),
-	textFaint: _cssVar("--clr-text-faint"),
-	codeMuted: _cssVar("--clr-code-muted"),
-};
-
 const COL = {
 	id: 0,
 	name: 1,
@@ -140,11 +129,7 @@ document.getElementById("open-btn").addEventListener("click", pickFolder);
 
 async function pickFolder() {
 	try {
-		const lastDir = await _idbGet("lastCourseDir", "grades-dash");
-		const opts = { mode: "read" };
-		if (lastDir) opts.startIn = lastDir;
-		const handle = await window.showDirectoryPicker(opts);
-		await _idbSet("lastCourseDir", handle, "grades-dash");
+		const handle = await pickFolderWithMemory("lastCourseDir", "grades-dash");
 		showLoading(true);
 		await loadCourse(handle);
 		showLoading(false);
@@ -321,13 +306,7 @@ function _nfc(s) {
 
 function parseStudentCsv(text) {
 	const map = {};
-	const lines = text.split(/\r?\n/).filter(Boolean);
-	if (lines.length < 2) return map;
-	const delim = lines[0].includes(";") ? ";" : ",";
-	for (let i = 1; i < lines.length; i++) {
-		const parts = lines[i]
-			.split(delim)
-			.map((s) => s.trim().replace(/^"|"$/g, ""));
+	for (const parts of parseCsv(text).rows) {
 		if (parts.length >= 3 && parts[0]) map[parts[0]] = parts[2];
 	}
 	return map;
@@ -335,17 +314,11 @@ function parseStudentCsv(text) {
 
 function parseAlterEgoCsv(text) {
 	const map = {};
-	const lines = text.split(/\r?\n/).filter(Boolean);
-	if (lines.length < 2) return map;
-	const delim = lines[0].includes(";") ? ";" : ",";
-	const cells = (line) =>
-		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
-	const header = cells(lines[0]);
+	const { header, rows } = parseCsv(text);
 	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
 	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
 	if (nameIdx === -1 || alterIdx === -1) return map;
-	for (let i = 1; i < lines.length; i++) {
-		const parts = cells(lines[i]);
+	for (const parts of rows) {
 		const realName = parts[nameIdx];
 		const alterEgo = parts[alterIdx];
 		if (realName && alterEgo) map[_nfc(realName)] = alterEgo;
@@ -551,8 +524,8 @@ function renderTable() {
 		fg.style.color = s.passed_course
 			? ""
 			: s.final_grade != null
-				? OV_CLR.neg
-				: OV_CLR.codeMuted;
+				? THEME.neg
+				: THEME.codeMuted;
 		fg.style.fontWeight = "700";
 		tr.appendChild(fg);
 
@@ -614,10 +587,10 @@ function fmtN(v, dec = 0) {
 	return dec > 0 ? (+v).toFixed(dec) : Math.round(+v).toString();
 }
 function followFg(pct) {
-	if (pct < 40) return OV_CLR.red;
+	if (pct < 40) return THEME.red;
 	if (pct < 60) return _cssVar("--clr-orange");
-	if (pct < 75) return OV_CLR.label;
-	return OV_CLR.textStrong;
+	if (pct < 75) return THEME.label;
+	return THEME.textStrong;
 }
 function statusCellCls(s) {
 	if (!s) return "";
@@ -790,7 +763,7 @@ function renderStats() {
 		return `<span class="${cls}">${r > 0 ? "+" : ""}${r.toFixed(3)}</span>`;
 	};
 	const fmtPct = (v) => (v != null ? (v * 100).toFixed(1) + "%" : "—");
-	const ACCENT = OV_CLR.label;
+	const ACCENT = THEME.label;
 
 	if (py.assignments) {
 		const names6 = py.assignments.map((a) => a.name);
@@ -1072,8 +1045,8 @@ function addPassingCard(parent, labels, passCounts, participCounts) {
 	chart.setData(labels, [
 		{
 			data: passCounts,
-			backgroundColor: OV_CLR.label,
-			borderColor: OV_CLR.label,
+			backgroundColor: THEME.label,
+			borderColor: THEME.label,
 		},
 		{
 			data: notPassCounts,
@@ -1134,10 +1107,10 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		const h = card.querySelector("h3");
 		h.insertAdjacentHTML(
 			"beforeend",
-			`<span style="margin-left:6px;font-size:11px;color:${OV_CLR.textStrong}">●</span>` +
-				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>` +
-				`<span style="font-size:11px;color:${OV_CLR.red}">●</span>` +
-				`<span style="font-size:9px;color:${OV_CLR.muted};font-weight:400;text-transform:none;letter-spacing:0"> AI</span>`,
+			`<span style="margin-left:6px;font-size:11px;color:${THEME.textStrong}">●</span>` +
+				`<span style="font-size:9px;color:${THEME.muted};font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>` +
+				`<span style="font-size:11px;color:${THEME.red}">●</span>` +
+				`<span style="font-size:9px;color:${THEME.muted};font-weight:400;text-transform:none;letter-spacing:0"> AI</span>`,
 		);
 	}
 	const box = el("div", "chart-box");
@@ -1166,7 +1139,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 	chart.setDatasets([
 		{
 			data: noAI,
-			color: _hexToRgba(OV_CLR.textStrong, 0.6),
+			color: _hexToRgba(THEME.textStrong, 0.6),
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1175,7 +1148,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		},
 		{
 			data: aiPts,
-			color: _hexToRgba(OV_CLR.red, 0.6),
+			color: _hexToRgba(THEME.red, 0.6),
 			pointRadius: 4,
 			tooltip: (p) => {
 				const grade = p.student?.lessons[p.assignment?.n - 1]?.grade;
@@ -1185,7 +1158,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 		{
 			data: trend,
 			type: "line",
-			color: OV_CLR.muted,
+			color: THEME.muted,
 			lineDash: [4, 4],
 			lineWidth: 1.5,
 		},
@@ -1257,32 +1230,32 @@ function addProgressTotals(container) {
 			min: 0,
 			max: 100,
 			ticks: [0, 20, 40, 60, 80, 100],
-			color: OV_CLR.textFaint,
+			color: THEME.textFaint,
 		},
 		rightAxis: {
 			min: 0,
 			max: 5,
 			ticks: [0, 1, 2, 3, 4, 5],
-			color: OV_CLR.accent,
+			color: THEME.blue,
 		},
 	});
 	chart.setData([
 		{
 			data: followData,
-			color: _hexToRgba(OV_CLR.label, 0.44),
-			borderColor: OV_CLR.label,
+			color: _hexToRgba(THEME.label, 0.44),
+			borderColor: THEME.label,
 			yAxis: "left",
 			coef: 25,
-			outlierColor: _hexToRgba(OV_CLR.label, 0.5),
+			outlierColor: _hexToRgba(THEME.label, 0.5),
 			outlierRadius: 3,
 		},
 		{
 			data: gradeData,
-			color: _hexToRgba(OV_CLR.accent, 0.44),
-			borderColor: OV_CLR.accent,
+			color: _hexToRgba(THEME.blue, 0.44),
+			borderColor: THEME.blue,
 			yAxis: "right",
 			coef: 25,
-			outlierColor: _hexToRgba(OV_CLR.accent, 0.5),
+			outlierColor: _hexToRgba(THEME.blue, 0.5),
 			outlierRadius: 3,
 		},
 	]);
@@ -1318,12 +1291,12 @@ function addProgressLanguageTotals(container) {
 			min: 0,
 			max: 100,
 			ticks: [0, 20, 40, 60, 80, 100],
-			color: OV_CLR.textFaint,
+			color: THEME.textFaint,
 		},
 	});
 	chart.setData(
 		LANG_FOLLOW_KEYS.map(({ colorVar }, i) => {
-			const c = _cssVar(colorVar) || OV_CLR.label;
+			const c = _cssVar(colorVar) || THEME.label;
 			return {
 				data: seriesData[i],
 				color: _hexToRgba(c, 0.44),
@@ -1378,13 +1351,13 @@ function renderProgress() {
 				min: -4,
 				max: 104,
 				ticks: [0, 20, 40, 60, 80, 100],
-				color: OV_CLR.textFaint,
+				color: THEME.textFaint,
 			},
 			rightAxis: {
 				min: -0.25,
 				max: 5.25,
 				ticks: [0, 1, 2, 3, 4, 5],
-				color: OV_CLR.accent,
+				color: THEME.blue,
 			},
 			onClick: (di, pi) => {
 				const asgn = ASSIGNMENTS[pi];
@@ -1395,7 +1368,7 @@ function renderProgress() {
 			},
 		});
 		const langDatasets = LANG_FOLLOW_KEYS.map(({ entryKey, colorVar }) => {
-			const c = _cssVar(colorVar) || OV_CLR.label;
+			const c = _cssVar(colorVar) || THEME.label;
 			return {
 				data: s.lessons.map((l) =>
 					l.hasFollowCol ? (l[entryKey] ?? null) : null,
@@ -1411,8 +1384,8 @@ function renderProgress() {
 			...langDatasets,
 			{
 				data: follows,
-				color: OV_CLR.label,
-				pointFillColor: _hexToRgba(OV_CLR.label, 0.44),
+				color: THEME.label,
+				pointFillColor: _hexToRgba(THEME.label, 0.44),
 				lineWidth: 1.5,
 				pointRadius: 4,
 				yAxis: "left",
@@ -1420,12 +1393,12 @@ function renderProgress() {
 					const v = l.lesson_obs?.trim();
 					return v && v !== "_" ? v : null;
 				}),
-				labelColor: OV_CLR.label,
+				labelColor: THEME.label,
 			},
 			{
 				data: grades,
-				color: OV_CLR.accent,
-				pointFillColor: _hexToRgba(OV_CLR.accent, 0.44),
+				color: THEME.blue,
+				pointFillColor: _hexToRgba(THEME.blue, 0.44),
 				lineWidth: 1.5,
 				lineDash: [4, 3],
 				pointRadius: 4,
@@ -1434,7 +1407,7 @@ function renderProgress() {
 					const v = l.obs?.trim();
 					return v && v !== "_" ? v : null;
 				}),
-				labelColor: OV_CLR.accent,
+				labelColor: THEME.blue,
 			},
 		]);
 		_progressCharts.push(chart);

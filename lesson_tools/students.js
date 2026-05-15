@@ -32,24 +32,13 @@ const LANG_COL_DEFS = [
 	{ key: "py", label: "Py", header: "Py (E)", descHeader: "Py (E) Desc" },
 ];
 
-const MISMATCH_COLORS = {
-	missing: _cssVar("--clr-mark-missing") || "#cc2222",
-	"extra-star": _cssVar("--clr-mark-ghost") || "#3aa0e0",
-	extra: _cssVar("--clr-mark-extra") || "#007acc",
-};
-
 function _mismatchColor(ev) {
 	if (ev.kind === "missing" || ev.kind === "extra-star") {
 		const c = langColorFor(ev.lang);
 		if (c) return c;
 	}
-	return MISMATCH_COLORS[ev.kind] || UI_COLORS.muted;
+	return markColorFor(ev.kind) || THEME.muted;
 }
-
-const UI_COLORS = {
-	faint: _cssVar("--clr-code-muted") || "#aaa",
-	muted: _cssVar("--clr-muted") || "#888",
-};
 
 const landingEl = document.getElementById("landing");
 const mainEl = document.getElementById("main");
@@ -132,11 +121,7 @@ async function _tryAutoLoad() {
 
 async function openFolderPicker() {
 	try {
-		const lastDir = await _idbGet("lastDir");
-		const opts = { mode: "read" };
-		if (lastDir) opts.startIn = lastDir;
-		const dirHandle = await window.showDirectoryPicker(opts);
-		_idbSet("lastDir", dirHandle);
+		const dirHandle = await pickFolderWithMemory();
 		showLoading(true);
 		_dirHandle = dirHandle;
 		_allFiles.clear();
@@ -979,7 +964,7 @@ function renderTable() {
 			followEl.style.color = `rgb(${r}, 0, 0)`;
 		} else {
 			followEl.textContent = "";
-			followEl.style.color = UI_COLORS.faint;
+			followEl.style.color = THEME.codeMuted;
 		}
 		tr.appendChild(followEl);
 
@@ -1109,7 +1094,7 @@ function renderMismatches(cell, events) {
 		if (order.indexOf(key) < order.length - 1) {
 			const comma = document.createElement("span");
 			comma.textContent = ", ";
-			comma.style.color = UI_COLORS.faint;
+			comma.style.color = THEME.codeMuted;
 			wrap.appendChild(comma);
 		}
 		const esc = ev.token.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -1120,7 +1105,7 @@ function renderMismatches(cell, events) {
 	cell.innerHTML = "";
 	cell.appendChild(wrap);
 	const tipHtml = tipParts.join(
-		`<span style="color:${UI_COLORS.faint}">, </span>`,
+		`<span style="color:${THEME.codeMuted}">, </span>`,
 	);
 	cell.addEventListener("mouseenter", (e) => showTipHtml(e, tipHtml));
 	cell.addEventListener("mousemove", (e) => moveTip(e));

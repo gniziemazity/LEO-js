@@ -62,10 +62,6 @@ function _resolveMarksEntry() {
 }
 
 const _CODE_FILE_RE = /\.(html|css|js|py)$/i;
-function _fileExt(name) {
-	const m = name && name.match(/\.[^./\\]+$/);
-	return m ? m[0].toLowerCase() : "";
-}
 
 function _pairedFileName(fromSide, name) {
 	const otherSide = fromSide === "teacher" ? "student" : "teacher";
@@ -106,9 +102,9 @@ function _pairedFileName(fromSide, name) {
 			if (ref && otherFiles[ref] != null) return ref;
 		}
 	}
-	const ext = _fileExt(name);
+	const ext = getFileExt(name);
 	if (!ext) return null;
-	const sameExt = otherNames.filter((n) => _fileExt(n) === ext);
+	const sameExt = otherNames.filter((n) => getFileExt(n) === ext);
 	if (sameExt.length === 1) return sameExt[0];
 	return null;
 }

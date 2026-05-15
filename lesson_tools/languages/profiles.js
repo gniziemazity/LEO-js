@@ -9,7 +9,8 @@ let _readyPromise = null;
 
 async function _loadJson(id) {
 	if (typeof window !== "undefined") {
-		const r = await fetch(`/languages/${id}.json`);
+		const base = new URL("languages/", window.location.href);
+		const r = await fetch(new URL(`${id}.json`, base));
 		if (!r.ok) throw new Error(`Failed to fetch profile ${id}: ${r.status}`);
 		return r.json();
 	}

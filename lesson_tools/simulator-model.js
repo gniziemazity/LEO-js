@@ -89,13 +89,13 @@ const HTML_VOID_TAGS = new Set([
 const CLR = {
 	blue: _cssVar("--clr-text"),
 	orange: _cssVar("--hl-func"),
-	move: _cssVar("--clr-orange"),
 	green: _cssVar("--hl-builtin"),
-	red: _cssVar("--clr-red"),
-	accent: _cssVar("--clr-accent"),
-	dim: _cssVar("--clr-muted"),
-	muted: _cssVar("--clr-muted"),
-	pale_red: _cssVar("--clr-pale-red"),
+	red: THEME.red,
+	accent: THEME.blue,
+	move: THEME.orange,
+	dim: THEME.muted,
+	muted: THEME.muted,
+	pale_red: THEME.paleRed,
 };
 
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);

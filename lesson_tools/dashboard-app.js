@@ -11,12 +11,8 @@ const landingEl = document.getElementById("landing");
 
 async function openFilePicker() {
 	try {
-		const lastDir = await _idbGet("lastDir");
-		const opts = { multiple: true };
-		if (lastDir) opts.startIn = lastDir;
-		const handles = await window.showOpenFilePicker(opts);
+		const handles = await pickFilesWithMemory({ multiple: true });
 		if (!handles.length) return;
-		_idbSet("lastDir", handles[0]);
 		_allFiles = new Map();
 		showLoading(true);
 		const files = await Promise.all(handles.map((h) => h.getFile()));
@@ -28,11 +24,7 @@ async function openFilePicker() {
 
 async function openFolderPicker() {
 	try {
-		const lastDir = await _idbGet("lastDir");
-		const opts = { mode: "read" };
-		if (lastDir) opts.startIn = lastDir;
-		const dirHandle = await window.showDirectoryPicker(opts);
-		_idbSet("lastDir", dirHandle);
+		const dirHandle = await pickFolderWithMemory();
 		_dirHandle = dirHandle;
 		showLoading(true);
 		const files = [];
@@ -90,17 +82,11 @@ async function loadStudentsCsv(file) {
 
 function parseStudentsCsvForIdName(text) {
 	const map = {};
-	const lines = text.split(/\r?\n/).filter(Boolean);
-	if (lines.length < 2) return map;
-	const delim = lines[0].includes(";") ? ";" : ",";
-	const cells = (line) =>
-		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
-	const header = cells(lines[0]);
+	const { header, rows } = parseCsv(text);
 	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
 	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
 	if (idIdx === -1 || nameIdx === -1) return map;
-	for (let i = 1; i < lines.length; i++) {
-		const parts = cells(lines[i]);
+	for (const parts of rows) {
 		const id = parts[idIdx];
 		const name = parts[nameIdx];
 		if (id && name) map[id] = name;
@@ -110,17 +96,11 @@ function parseStudentsCsvForIdName(text) {
 
 function parseStudentsCsvForAlterEgo(text) {
 	const map = {};
-	const lines = text.split(/\r?\n/).filter(Boolean);
-	if (lines.length < 2) return map;
-	const delim = lines[0].includes(";") ? ";" : ",";
-	const cells = (line) =>
-		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
-	const header = cells(lines[0]);
+	const { header, rows } = parseCsv(text);
 	const nameIdx = header.findIndex((h) => /student.?name/i.test(h));
 	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
 	if (nameIdx === -1 || alterIdx === -1) return map;
-	for (let i = 1; i < lines.length; i++) {
-		const parts = cells(lines[i]);
+	for (const parts of rows) {
 		const realName = parts[nameIdx];
 		const alterEgo = parts[alterIdx];
 		if (realName && alterEgo) map[realName] = alterEgo;

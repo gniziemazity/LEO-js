@@ -1,21 +1,7 @@
 "use strict";
 
-const DIFF_LABEL_COLORS = {
-	missing: _cssVar("--clr-mark-missing"),
-	comment: _cssVar("--clr-mark-comment"),
-	extra: _cssVar("--clr-mark-extra"),
-	ghost_extra: _cssVar("--clr-mark-ghost"),
-};
-
-function _diffLangExtOf(fileName) {
-	if (!fileName) return null;
-	const i = fileName.lastIndexOf(".");
-	if (i < 0) return null;
-	return fileName.slice(i + 1).toLowerCase();
-}
-
 function _diffMissingColorFor(fileName) {
-	return langColorFor(_diffLangExtOf(fileName)) || DIFF_LABEL_COLORS.missing;
+	return langColorFor(getFileExt(fileName)) || MARK_COLORS.missing;
 }
 
 const _DIFF_EMBED_TAG_LANG = { script: "js", style: "css" };
@@ -46,7 +32,7 @@ function _diffEmbeddedRangesFor(text) {
 }
 
 function _diffEffectiveExt(fileName, text, pos) {
-	const ext = _diffLangExtOf(fileName);
+	const ext = getFileExt(fileName);
 	if ((ext === "html" || ext === "htm") && text && typeof pos === "number") {
 		for (const [lo, hi, lang] of _diffEmbeddedRangesFor(text)) {
 			if (lo <= pos && pos < hi) return lang;
@@ -58,7 +44,7 @@ function _diffEffectiveExt(fileName, text, pos) {
 
 function _diffMissingColorAt(fileName, text, pos) {
 	const ext = _diffEffectiveExt(fileName, text, pos);
-	return langColorFor(ext) || DIFF_LABEL_COLORS.missing;
+	return langColorFor(ext) || MARK_COLORS.missing;
 }
 
 function _lineStartOffsets(text) {
@@ -503,7 +489,7 @@ function diffColorizePositions(
 		: null;
 
 	const wrappable = (posMarks || []).filter((m) => {
-		if (m.label && DIFF_LABEL_COLORS[m.label]) return true;
+		if (m.label && MARK_COLORS[m.label]) return true;
 		if (tokensTbl && side && m.token && tokensTbl[m.token]) return true;
 		return false;
 	});
@@ -546,9 +532,7 @@ function diffColorizePositions(
 		if (ev.kind === "open") {
 			const m = ev.mark;
 			let color =
-				m.label && DIFF_LABEL_COLORS[m.label]
-					? DIFF_LABEL_COLORS[m.label]
-					: null;
+				m.label && MARK_COLORS[m.label] ? MARK_COLORS[m.label] : null;
 			if (m.label === "missing" && fileName) {
 				const absStart = m._abs_start ?? m.start;
 				color = _diffMissingColorAt(fileName, fullText || text, absStart);
@@ -670,5 +654,5 @@ function _renderGhostBlob(ghost, tokensTbl) {
 }
 
 function _labelColor(label) {
-	return DIFF_LABEL_COLORS[label] || _cssVar("--clr-btn-hover-dark");
+	return MARK_COLORS[label] || _cssVar("--clr-btn-hover-dark");
 }

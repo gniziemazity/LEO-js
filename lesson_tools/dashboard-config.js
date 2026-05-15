@@ -56,20 +56,6 @@ const _jitterMap = new Map();
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 
-const THEME = {
-	blue: _cssVar("--clr-accent"),
-	orange: _cssVar("--clr-orange"),
-	green: _cssVar("--clr-green"),
-	purple: _cssVar("--clr-purple"),
-	red: _cssVar("--clr-red"),
-	gray: _cssVar("--clr-gray"),
-	barTrack: _cssVar("--clr-bar-track"),
-	paleRed: _cssVar("--clr-pale-red"),
-	muted: _cssVar("--clr-muted"),
-	label: _cssVar("--clr-label"),
-	bg: _cssVar("--clr-bg"),
-};
-
 const INTERACTION_COLORS = {
 	"teacher-question": {
 		hex: THEME.blue,

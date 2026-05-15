@@ -179,7 +179,8 @@ class CursorManager {
 					this._activeMoveToIndex = null;
 					if (this._activeCodeInsertIndex !== step.globalIndex) {
 						this._activeCodeInsertIndex = step.globalIndex;
-						const text = step.element.innerText.replace(/^📋 ?/, "");
+						const fullText = step.element.title || step.element.innerText;
+						const text = fullText.replace(/^📋 ?/, "");
 						this.logManager.addEntry({ code_insert: text });
 					}
 				} else if (subtype === "move-to-comment") {
@@ -413,9 +414,10 @@ class CursorManager {
 					if (seenCodeInsert !== step.globalIndex) {
 						seenCodeInsert = step.globalIndex;
 						seenMoveTo = null;
-						const text = step.element
-							? step.element.innerText.replace(/^📋 ?/, "")
+						const fullText = step.element
+							? step.element.title || step.element.innerText
 							: "";
+						const text = fullText.replace(/^📋 ?/, "");
 						events.push({ timestamp: t, code_insert: text });
 					}
 				} else if (subtype === "move-to-comment") {

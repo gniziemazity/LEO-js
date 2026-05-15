@@ -269,27 +269,29 @@ class LogVisualizer {
 				.join(", ");
 		};
 		const parts = [
-			`<div class="vis-int-title">${k.icon} ${esc(k.label)}</div>`,
+			`<div class="vis-int-title">${k.icon} ${escHtml(k.label)}</div>`,
 		];
 		if (it.info) {
-			parts.push(`<div class="vis-int-info">${esc(String(it.info))}</div>`);
+			parts.push(
+				`<div class="vis-int-info">${escHtml(String(it.info))}</div>`,
+			);
 		}
 		const askedBy = fmtWho(it.asked_by);
 		if (askedBy) {
 			parts.push(
-				`<div class="vis-int-line"><span class="vis-int-key">Asked by:</span> ${esc(askedBy)}</div>`,
+				`<div class="vis-int-line"><span class="vis-int-key">Asked by:</span> ${escHtml(askedBy)}</div>`,
 			);
 		}
 		const answeredBy = fmtWho(it.answered_by);
 		if (answeredBy) {
 			parts.push(
-				`<div class="vis-int-line"><span class="vis-int-key">Answered by:</span> ${esc(answeredBy)}</div>`,
+				`<div class="vis-int-line"><span class="vis-int-key">Answered by:</span> ${escHtml(answeredBy)}</div>`,
 			);
 		}
 		const student = fmtWho(it.student);
 		if (student) {
 			parts.push(
-				`<div class="vis-int-line"><span class="vis-int-key">Student:</span> ${esc(student)}</div>`,
+				`<div class="vis-int-line"><span class="vis-int-key">Student:</span> ${escHtml(student)}</div>`,
 			);
 		}
 		return parts.join("");

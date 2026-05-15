@@ -244,10 +244,6 @@ function fmtTs(tsMs) {
 	}
 }
 
-function esc(s) {
-	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function renderEditorHtml(textState, cursorVisible = true, fileType = "html") {
 	const text = textState.text;
 	const cur = textState.cursor;
@@ -294,7 +290,7 @@ function renderEditorHtml(textState, cursorVisible = true, fileType = "html") {
 		else if (ch === "\t") {
 			closeSpan();
 			html += '<span class="vis-tab">    </span>';
-		} else html += esc(ch);
+		} else html += escHtml(ch);
 	}
 	closeSpan();
 	return html;

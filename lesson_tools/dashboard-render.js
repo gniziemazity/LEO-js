@@ -113,14 +113,12 @@ const BAR_COLORS = {
 	comment: THEME.green,
 };
 
-const LANG_BAR_COLORS = {
-	HTML: THEME.red,
-	CSS: THEME.blue,
-	JS: THEME.orange,
-	Py: THEME.purple,
-	comment: THEME.green,
-	"?": THEME.muted,
-};
+function _langBarColorOf(key) {
+	if (!key) return null;
+	if (key === "comment") return THEME.green;
+	if (key === "?") return THEME.muted;
+	return langColorFor(key);
+}
 const LANG_STACK_ORDER = ["HTML", "CSS", "JS", "Py", "comment"];
 
 function _fillStriped(ctx, x, y, w, h, color, baseAlpha = 0.18) {
@@ -179,18 +177,10 @@ function _countStudentsInRange(studentEvs, t1, t2) {
 	return n;
 }
 
-function _minBlockBarW(p, L) {
-	return (
-		tsToX(p.sessionStart + CFG.BAR_MIN_SECS, L) - tsToX(p.sessionStart, L)
-	);
-}
-
-function _blockBarGeom(centerTs, dur, L, minBarW) {
+function _blockBarGeom(centerTs, dur, L) {
 	const x = tsToX(centerTs - dur / 2, L);
 	const x2 = tsToX(centerTs + dur / 2, L);
-	const bw = Math.max(x2 - x, minBarW);
-	const bx = (x + x2) / 2 - bw / 2;
-	return { bx, bw };
+	return { bx: x, bw: x2 - x };
 }
 
 function _eventDurationSec(ev) {
@@ -371,7 +361,6 @@ function setupTopChartLegend(p) {
 function drawMiddleChart(ctx, p, L) {
 	const { M, W, Hmid: H, plotW, plotHmid } = L;
 	const bottomY = M.top + plotHmid;
-	const minBarW = _minBlockBarW(p, L);
 
 	ctx.fillStyle = "#fff";
 	ctx.fillRect(0, 0, W, H);
@@ -392,7 +381,7 @@ function drawMiddleChart(ctx, p, L) {
 	}
 
 	function bar(ts, rate, dur, colorKey, alpha = 0.72) {
-		const { bx, bw } = _blockBarGeom(ts, dur, L, minBarW);
+		const { bx, bw } = _blockBarGeom(ts, dur, L);
 		const y = rateToY(rate, L);
 		const bh = bottomY - y;
 		const fill = BAR_COLORS[colorKey] || BAR_COLORS.normal;
@@ -892,7 +881,6 @@ function drawBottomChart(ctx, p, students, L) {
 function _drawBottomChartBars(ctx, p, students, L) {
 	const { M, W, Hbot: H, plotW, plotHbot } = L;
 	const bottomY = M.top + plotHbot;
-	const minBarW = _minBlockBarW(p, L);
 
 	const blocks = _buildBottomChartBlocks(p);
 	const studentEvs = _studentMistakes(students);
@@ -914,8 +902,8 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	const counts = blocks.map((blk) =>
 		_countStudentsInRange(studentEvs, blk.ts1, blk.ts2),
 	);
-	const maxCount = counts.reduce((m, c) => (c > m ? c : m), 0);
-	const denom = Math.max(1, maxCount);
+	const totalStudents = (students || []).length;
+	const denom = Math.max(1, totalStudents);
 
 	ctx.save();
 	ctx.beginPath();
@@ -927,7 +915,7 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		const c = counts[i];
 		if (c <= 0) continue;
 		const blk = blocks[i];
-		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L, minBarW);
+		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L);
 		const bh = Math.min(plotHbot, (c / denom) * plotHbot);
 		const by = bottomY - bh;
 		ctx.fillRect(bx, by, bw, bh);
@@ -957,7 +945,7 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		let lx = M.left + 6;
 		const ly = M.top + 8;
 		for (const l of legendItems) {
-			ctx.fillStyle = LANG_BAR_COLORS[l];
+			ctx.fillStyle = _langBarColorOf(l);
 			ctx.fillText(l, lx, ly);
 			lx += ctx.measureText(l).width + gapBetween;
 		}
@@ -969,7 +957,7 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	ctx.textBaseline = "alphabetic";
 	ctx.strokeStyle = "#aaa";
 	ctx.lineWidth = 1;
-	const ticks = maxCount > 0 ? [0, maxCount] : [0];
+	const ticks = totalStudents > 0 ? [0, totalStudents] : [0];
 	for (const v of ticks) {
 		const y = bottomY - (v / denom) * plotHbot;
 		ctx.beginPath();
@@ -992,7 +980,6 @@ function _drawTokenOverlay(ctx, p, students, L, denom) {
 	const { M, plotW, plotHbot } = L;
 	const scaleDenom = Math.max(1, denom || (students || []).length);
 	const baseY = M.top + plotHbot;
-	const minBarW = _minBlockBarW(p, L);
 	const blocks = _buildBottomChartBlocks(p);
 	const tokenBars = _buildTokenViewBars(students);
 	if (!tokenBars.length) return;
@@ -1004,7 +991,7 @@ function _drawTokenOverlay(ctx, p, students, L, denom) {
 		if (!tbs.length) continue;
 		const blockLangCounts = {};
 		for (const t of tbs) {
-			if (!t.lang || !LANG_BAR_COLORS[t.lang]) continue;
+			if (!_langBarColorOf(t.lang)) continue;
 			const w = t.students ? t.students.size : 0;
 			blockLangCounts[t.lang] = (blockLangCounts[t.lang] || 0) + w + 1;
 		}
@@ -1016,22 +1003,22 @@ function _drawTokenOverlay(ctx, p, students, L, denom) {
 				dominantLang = l;
 			}
 		}
-		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L, minBarW);
+		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L);
 		const slotW = bw / tbs.length;
 		for (let j = 0; j < tbs.length; j++) {
 			const tb = tbs[j];
 			const sx = bx + j * slotW;
 			const nStudents = tb.students ? tb.students.size : 0;
+			if (nStudents === 0) continue;
 			const totalH = (nStudents / scaleDenom) * plotHbot;
 			_tokenOverlaySlots.push({ bar: tb, sx, slotW, totalH });
-			if (nStudents === 0) continue;
 			const nonGhost = tb.regularStudents ? tb.regularStudents.size : 0;
 			const ghost = tb.ghostStudents ? tb.ghostStudents.size : 0;
 			const subDenom = Math.max(1, nonGhost + ghost);
 			const nonGhostH = totalH * (nonGhost / subDenom);
 			const ghostH = totalH - nonGhostH;
 			const lang = tb.lang || dominantLang;
-			const color = LANG_BAR_COLORS[lang];
+			const color = _langBarColorOf(lang);
 			if (!color) continue;
 			if (nonGhostH > 0) {
 				ctx.globalAlpha = 0.95;
@@ -1123,12 +1110,11 @@ function _buildTokenViewBars(students) {
 
 function drawBlockBackgrounds(ctx, p, L) {
 	const { M, plotHbot } = L;
-	const minBarW = _minBlockBarW(p, L);
 
 	ctx.save();
 
 	const drawBand = (cx, dur, key) => {
-		const { bx, bw } = _blockBarGeom(cx, dur, L, minBarW);
+		const { bx, bw } = _blockBarGeom(cx, dur, L);
 		const color = BAR_COLORS[key] || BAR_COLORS.normal;
 		ctx.fillStyle = _hexToRgba(color, 0.15);
 		ctx.fillRect(bx, M.top, bw, plotHbot);

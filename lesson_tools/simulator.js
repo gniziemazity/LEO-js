@@ -41,17 +41,11 @@ async function _simReadStudentNameMap(pathMap) {
 
 function _simParseStudentNameMap(text) {
 	const map = {};
-	const lines = text.split(/\r?\n/).filter(Boolean);
-	if (lines.length < 2) return map;
-	const delim = lines[0].includes(";") ? ";" : ",";
-	const cells = (line) =>
-		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
-	const header = cells(lines[0]);
+	const { header, rows } = parseCsv(text);
 	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
 	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
 	if (idIdx === -1 || nameIdx === -1) return map;
-	for (let i = 1; i < lines.length; i++) {
-		const parts = cells(lines[i]);
+	for (const parts of rows) {
 		const id = parts[idIdx];
 		const name = parts[nameIdx];
 		if (id && name) map[id] = name;
@@ -60,7 +54,14 @@ function _simParseStudentNameMap(text) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-	await window.LanguageProfiles.initProfiles();
+	try {
+		await window.LanguageProfiles.initProfiles();
+	} catch (e) {
+		console.warn(
+			"Language profiles failed to load; syntax highlighting disabled.",
+			e,
+		);
+	}
 	vis = new LogVisualizer();
 
 	const landing = document.getElementById("lv-landing");
@@ -115,11 +116,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	btnFolder.addEventListener("click", async () => {
 		try {
-			const lastDir = await _idbGet("lastDir");
-			const opts = { mode: "read" };
-			if (lastDir) opts.startIn = lastDir;
-			const dirHandle = await window.showDirectoryPicker(opts);
-			_idbSet("lastDir", dirHandle);
+			const dirHandle = await pickFolderWithMemory();
 			const files = [];
 			const pathMap = new Map();
 			await readDirHandle(dirHandle, "", pathMap, files);
@@ -177,18 +174,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	btnOpen.addEventListener("click", async () => {
 		try {
-			const lastDir = await _idbGet("lastDir");
-			const opts = {
+			const [fh] = await pickFilesWithMemory({
 				types: [
 					{
 						description: "Log files",
 						accept: { "application/json": [".json"] },
 					},
 				],
-			};
-			if (lastDir) opts.startIn = lastDir;
-			const [fh] = await window.showOpenFilePicker(opts);
-			_idbSet("lastDir", fh);
+			});
+			if (!fh) return;
 			const file = await fh.getFile();
 			const json = JSON.parse(await file.text());
 			const events = json.events || [];

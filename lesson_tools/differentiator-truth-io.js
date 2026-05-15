@@ -443,12 +443,11 @@ function _truthApplyToStudent() {
 
 	const teacherNames = Object.keys(_teacherFiles || {});
 	const studentNamesAll = Object.keys(_studentFiles || {});
-	const _ext = (n) => (n.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
-	const studentExts = new Set(studentNamesAll.map(_ext).filter(Boolean));
+	const studentExts = new Set(studentNamesAll.map(getFileExt).filter(Boolean));
 	for (const teacherName of teacherNames) {
 		if (out[teacherName] != null) continue;
 		if (_studentFiles && _studentFiles[teacherName] != null) continue;
-		const ext = _ext(teacherName);
+		const ext = getFileExt(teacherName);
 		if (ext && studentExts.has(ext)) continue;
 		out[teacherName] = _teacherFiles[teacherName] || "";
 	}

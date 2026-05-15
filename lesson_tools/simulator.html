@@ -332,9 +332,15 @@
 		</div>
 		<div id="vis-root"></div>
 		<script>
-			window.__LOG_DATA__ = null;
+			window.__LOG_DATA__ = window.__LOG_DATA_PRELOAD__ || null;
+			if (!window.__LOG_DATA__) {
+				document.write(
+					"<scr" +
+						'ipt src=".last_vis_data.js" onerror="void 0"><\/scr' +
+						"ipt>",
+				);
+			}
 		</script>
-		<script src=".last_vis_data.js" onerror="void 0"></script>
 		<script src="preview.js"></script>
 		<script src="diff-utils.js"></script>
 		<script src="languages/profiles.js"></script>

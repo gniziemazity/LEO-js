@@ -827,7 +827,7 @@ function _buildPartColorsForMismatches(b, mismatches) {
 		candidates[pair.ci].claimed = true;
 		const bt = burstTokens[pair.bi];
 		const cand = candidates[pair.ci];
-		const color = (cand.lang && LANG_BAR_COLORS[cand.lang]) || fallbackColor;
+		const color = _langBarColorOf(cand.lang) || fallbackColor;
 		for (let j = bt.startIdx; j < bt.endIdx; j++) {
 			const cc = codeChars[j];
 			const part = parts[cc.partIdx];
@@ -847,7 +847,7 @@ function _buildPartColorsForMismatches(b, mismatches) {
 }
 
 function _langClassFor(lang) {
-	return lang && LANG_BAR_COLORS[lang]
+	return _langBarColorOf(lang)
 		? `tt-lang-${lang.toLowerCase()}`
 		: "tt-lang-unk";
 }
@@ -897,14 +897,14 @@ function _renderLangLegend(langs) {
 	if (!langs || !langs.length) return "";
 	const items = [];
 	for (const l of langs) {
-		if (l === "comment" || !LANG_BAR_COLORS[l]) continue;
+		if (l === "comment" || !_langBarColorOf(l)) continue;
 		if (items.indexOf(l) === -1) items.push(l);
 	}
 	if (!items.length) return "";
 	return `<span class="tt-lang-legend">${items
 		.map(
 			(l) =>
-				`<span style="color:${LANG_BAR_COLORS[l]}">${escHtml(l)}</span>`,
+				`<span style="color:${_langBarColorOf(l)}">${escHtml(l)}</span>`,
 		)
 		.join("")}</span>`;
 }
