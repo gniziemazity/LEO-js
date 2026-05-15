@@ -1,3 +1,5 @@
+const { formatCodeForAutoTyping } = require("./code-formatter");
+
 class BlockEditor {
 	constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
 		this.lessonManager = lessonManager;
@@ -61,40 +63,9 @@ class BlockEditor {
 			this.undoManager.saveState("format-block");
 		}
 
-		const formatted = this.formatCodeForAutoTyping(block.text);
+		const formatted = formatCodeForAutoTyping(block.text);
 		this.lessonManager.updateBlock(selectedBlockIndex, formatted);
 		this.lessonRenderer.render();
-	}
-
-	formatCodeForAutoTyping(code) {
-		let text = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-		text = text.replace(/↑►/g, "");
-
-		const tags = ["html", "head", "body", "script", "div"];
-
-		tags.forEach((tag) => {
-			const closingTagRegex = new RegExp("</" + tag + ">", "g");
-			text = text.replace(closingTagRegex, "↓►");
-
-			const openingTagRegex = new RegExp("<" + tag + ">", "g");
-			text = text.replace(openingTagRegex, `<${tag}>\n</${tag}>↑►`);
-		});
-
-		text = text.replace(/ +/g, " ");
-		text = text.replace(/\n /g, "\n");
-		text = text.replace(/\n}/g, "↓►");
-		text = text.replace(/{\n/g, "{\n}↑►\n");
-		text = text.replace(/\n↓►/g, "↓►");
-		text = text.replace(/↓💾/g, "💾");
-		text = text.replace(/↑►↓/g, "↑►");
-
-		text = text.replace(/<\/html>/g, "⌫</html>");
-		text = text.replace(/<\/script>/g, "⌫</script>");
-
-		text = text.replace(/(?:↓►)+$/, "");
-
-		return text;
 	}
 
 	updateBlockContent(blockIdx, content) {
