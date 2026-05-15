@@ -896,12 +896,8 @@ body.side-left .overlay {
 	transform: rotate(-90deg);
 	transform-origin: center;
 }
-body.side-right .q-modal,
-body.side-right .i-modal,
-body.side-right .mt-modal,
-body.side-left .q-modal,
-body.side-left .i-modal,
-body.side-left .mt-modal {
+body.side-right .popup-modal,
+body.side-left .popup-modal {
 	transform: none;
 	width: 100%;
 	max-width: none;
@@ -1074,7 +1070,7 @@ body.side-left .mt-modal {
 	display: flex;
 }
 
-.q-modal {
+.popup-modal {
 	position: relative;
 	border-radius: 0;
 	padding: 26px 28px;
@@ -1085,18 +1081,18 @@ body.side-left .mt-modal {
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
+	color: rgba(0, 0, 0, 0.82);
 }
 
-.q-question-text {
+.popup-title {
 	font-size: 1.2rem;
 	font-weight: 600;
-	color: rgba(0, 0, 0, 0.82);
 	margin-bottom: 20px;
 	line-height: 1.45;
 	word-break: break-word;
 }
 
-.q-grid {
+.popup-student-grid {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
@@ -1107,7 +1103,7 @@ body.side-left .mt-modal {
 	align-content: flex-start;
 }
 
-.q-student-btn {
+.popup-student-btn {
 	background: rgba(0, 0, 0, 0.07);
 	border: 1px solid rgba(0, 0, 0, 0.18);
 	border-radius: 8px;
@@ -1120,8 +1116,8 @@ body.side-left .mt-modal {
 		border-color 0.13s;
 	touch-action: manipulation;
 }
-.q-student-btn:hover,
-.q-student-btn:active {
+.popup-student-btn:hover,
+.popup-student-btn:active {
 	background: rgba(0, 0, 0, 0.14);
 	border-color: rgba(0, 0, 0, 0.35);
 	color: rgba(0, 0, 0, 0.9);
@@ -1154,56 +1150,6 @@ body.side-left .mt-modal {
 	transition: width linear;
 }
 
-.i-modal {
-	position: relative;
-	border-radius: 0;
-	padding: 26px 28px;
-	flex: 1;
-	width: 100%;
-	max-width: none;
-	box-shadow: none;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
-}
-
-.i-title {
-	font-size: 1.05rem;
-	font-weight: 600;
-	color: rgba(0, 0, 0, 0.82);
-	margin-bottom: 16px;
-}
-
-.i-grid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	justify-content: center;
-	flex: 1;
-	overflow-y: auto;
-	margin-bottom: 0;
-	align-content: flex-start;
-}
-
-.i-student-btn {
-	background: rgba(0, 0, 0, 0.07);
-	border: 1px solid rgba(0, 0, 0, 0.18);
-	border-radius: 8px;
-	padding: 9px 15px;
-	color: rgba(0, 0, 0, 0.8);
-	font-size: 0.92rem;
-	cursor: pointer;
-	transition:
-		background 0.13s,
-		border-color 0.13s;
-	touch-action: manipulation;
-}
-.i-student-btn:hover,
-.i-student-btn:active {
-	background: rgba(0, 0, 0, 0.14);
-	border-color: rgba(0, 0, 0, 0.35);
-}
-
 .overlay-close-btn {
 	position: absolute;
 	right: 28px;
@@ -1227,34 +1173,11 @@ body.side-left .mt-modal {
 	color: rgba(0, 0, 0, 0.75);
 }
 
-.mt-modal {
-	position: relative;
-	border-radius: 0;
-	padding: 26px 28px;
-	flex: 1;
-	width: 100%;
-	max-width: none;
-	box-shadow: none;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
-	background: #ecf0f1;
-	color: rgba(0, 0, 0, 0.82);
-}
-
 .mt-modal-emoji {
 	font-size: 40px;
 	line-height: 1;
 	text-align: center;
 	margin-bottom: 8px;
-}
-
-.mt-modal-title {
-	font-size: 1.2rem;
-	font-weight: 600;
-	color: rgba(0, 0, 0, 0.82);
-	line-height: 1.45;
-	margin-bottom: 20px;
 }
 
 .mt-modal-target {

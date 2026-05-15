@@ -49,14 +49,14 @@ function showQuestionOverlay(question, students, bgColor) {
 	if (list) {
 		list.forEach((name) => {
 			const btn = document.createElement("button");
-			btn.className = "q-student-btn";
+			btn.className = "popup-student-btn";
 			btn.textContent = name;
 			btn.onclick = () => onStudentAnswered(name);
 			grid.appendChild(btn);
 		});
 	} else {
 		const btn = document.createElement("button");
-		btn.className = "q-student-btn";
+		btn.className = "popup-student-btn";
 		btn.style.cssText = "width:100%;margin-bottom:4px";
 		btn.textContent = "Answered";
 		btn.onclick = () => onStudentAnswered(null);
@@ -75,11 +75,15 @@ function onStudentAnswered(name) {
 	setInteractionBtnsVisible(true);
 }
 
-function hideQuestionOverlay() {
+function closeQuestionOverlayUI() {
 	clearAutoCloseTimer();
-	sendMessage("dismiss-question", {});
 	document.getElementById("questionOverlay").classList.remove("active");
 	setInteractionBtnsVisible(true);
+}
+
+function closeQuestionOverlay() {
+	sendMessage("dismiss-question", {});
+	closeQuestionOverlayUI();
 }
 
 function clearAutoCloseTimer() {
@@ -105,7 +109,7 @@ function handleInteractionBtn(interactionType) {
 
 function showInteractionOverlay(title, students, type) {
 	const modal = document.getElementById("iModal");
-	modal.className = "i-modal";
+	modal.className = "popup-modal";
 	if (type === "student-question") {
 		document.getElementById("interactionOverlay").style.background =
 			"rgb(255,224,178)";
@@ -129,7 +133,7 @@ function showInteractionOverlay(title, students, type) {
 	grid.innerHTML = "";
 	students.forEach((name) => {
 		const btn = document.createElement("button");
-		btn.className = "i-student-btn";
+		btn.className = "popup-student-btn";
 		btn.textContent = name;
 		btn.onclick = () => {
 			const qText =
@@ -140,6 +144,7 @@ function showInteractionOverlay(title, students, type) {
 	});
 	document.getElementById("interactionOverlay").classList.add("active");
 	setInteractionBtnsVisible(false);
+	sendMessage("interaction-overlay-shown", {});
 }
 
 function onStudentSelected(name, type, questionText) {
@@ -164,7 +169,7 @@ function onStudentSelected(name, type, questionText) {
 	const grid = document.getElementById("iGrid");
 	grid.innerHTML = "";
 	const doneBtn = document.createElement("button");
-	doneBtn.className = "i-student-btn";
+	doneBtn.className = "popup-student-btn";
 	doneBtn.style.cssText =
 		"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
 		"background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:rgba(0,0,0,0.75);";
@@ -298,15 +303,15 @@ function showMoveToOverlay(payload) {
 	}
 }
 
-function hideMoveToOverlay() {
+function closeMoveToOverlayUI() {
 	const overlay = document.getElementById("moveToOverlay");
 	if (overlay) overlay.classList.remove("active");
 	setInteractionBtnsVisible(true);
 }
 
-function confirmMoveTo() {
+function closeMoveToOverlay() {
 	sendMessage("move-to-confirmed", {});
-	hideMoveToOverlay();
+	closeMoveToOverlayUI();
 }
 
 function closeInteractionOverlay() {
@@ -322,4 +327,5 @@ function closeInteractionOverlay() {
 	setInteractionBtnsVisible(true);
 	document.getElementById("iQuestionInput").style.display = "none";
 	pendingInteraction = null;
+	sendMessage("interaction-overlay-closed", {});
 }

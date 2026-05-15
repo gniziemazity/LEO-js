@@ -212,6 +212,10 @@ class LEOBroadcastServer extends EventEmitter {
 			);
 		} else if (type === "move-to-confirmed") {
 			this.emit("client-move-to-confirmed");
+		} else if (type === "interaction-overlay-shown") {
+			this.emit("client-interaction-overlay-shown");
+		} else if (type === "interaction-overlay-closed") {
+			this.emit("client-interaction-overlay-closed");
 		} else if (type === "close-student-interaction") {
 			this.emit(
 				"client-close-student-interaction",

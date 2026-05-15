@@ -94,12 +94,12 @@
 		</div>
 
 		<div id="questionOverlay" class="overlay">
-			<div class="q-modal">
-				<button class="overlay-close-btn" onclick="hideQuestionOverlay()">
+			<div class="popup-modal">
+				<button class="overlay-close-btn" onclick="closeQuestionOverlay()">
 					✕
 				</button>
-				<div class="q-question-text" id="qText"></div>
-				<div class="q-grid" id="qGrid"></div>
+				<div class="popup-title" id="qText"></div>
+				<div class="popup-student-grid" id="qGrid"></div>
 				<div class="q-answered-row" id="qAnsweredRow">
 					<span id="qAnsweredText"></span>
 					<div class="q-close-bar">
@@ -110,14 +110,14 @@
 		</div>
 
 		<div id="interactionOverlay" class="overlay">
-			<div class="i-modal" id="iModal">
+			<div class="popup-modal" id="iModal">
 				<button
 					class="overlay-close-btn"
 					onclick="closeInteractionOverlay()"
 				>
 					✕
 				</button>
-				<div class="i-title" id="iTitle">Select student</div>
+				<div class="popup-title" id="iTitle">Select student</div>
 				<input
 					type="text"
 					class="i-question-input"
@@ -125,20 +125,23 @@
 					placeholder="Type the question here..."
 					style="display: none"
 				/>
-				<div class="i-grid" id="iGrid"></div>
+				<div class="popup-student-grid" id="iGrid"></div>
 			</div>
 		</div>
 
 		<div id="moveToOverlay" class="overlay">
-			<div class="mt-modal" id="mtModal">
+			<div class="popup-modal" id="mtModal">
+				<button class="overlay-close-btn" onclick="closeMoveToOverlay()">
+					✕
+				</button>
 				<div class="mt-modal-emoji" id="mtoEmoji">➡️</div>
-				<div class="mt-modal-title" id="mtoTitle">Move to…</div>
+				<div class="popup-title" id="mtoTitle">Move to…</div>
 				<div class="mt-modal-target" id="mtoTarget"></div>
 				<div class="mt-modal-snippet" id="mtoSnippet"></div>
 				<button
 					class="mt-modal-confirm"
 					id="mtoConfirm"
-					onclick="confirmMoveTo()"
+					onclick="closeMoveToOverlay()"
 				>
 					OK
 				</button>
@@ -186,13 +189,13 @@
 						);
 						break;
 					case "question-ended":
-						hideQuestionOverlay();
+						closeQuestionOverlayUI();
 						break;
 					case "move-to-started":
 						showMoveToOverlay(data);
 						break;
 					case "move-to-ended":
-						hideMoveToOverlay();
+						closeMoveToOverlayUI();
 						break;
 					case "timer-tick":
 						showTimerRunning(data.timeRemaining);

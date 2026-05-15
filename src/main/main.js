@@ -61,6 +61,7 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.mainWindow.webContents.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
+	state.unpause();
 	const resolved = resolveStudentName(studentName);
 	questionWindowStudentAnswered = resolved;
 	if (state.mainWindow) {
@@ -513,6 +514,7 @@ ipcMain.on("broadcast-students", (event, students) => {
 });
 
 ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
+	state.pause();
 	broadcastServer.broadcastQuestionStarted(question, students, bgColor);
 	openQuestionWindow(question, bgColor);
 });
@@ -592,6 +594,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 }
 
 ipcMain.on("close-question-window", () => {
+	state.unpause();
 	if (questionWindow && !questionWindow.isDestroyed()) {
 		questionWindow.close();
 		questionWindow = null;
@@ -618,6 +621,7 @@ broadcastServer.on("client-move-to-confirmed", () => {
 });
 
 broadcastServer.on("client-dismiss-question", () => {
+	state.unpause();
 	if (
 		questionWindowIsLesson &&
 		questionWindow &&
@@ -626,6 +630,17 @@ broadcastServer.on("client-dismiss-question", () => {
 		questionWindow.close();
 		questionWindow = null;
 	}
+});
+
+broadcastServer.on("client-interaction-overlay-shown", () => {
+	state.pause();
+	if (state.mainWindow) {
+		state.mainWindow.webContents.send("stop-auto-typing");
+	}
+});
+
+broadcastServer.on("client-interaction-overlay-closed", () => {
+	state.unpause();
 });
 
 ipcMain.on(
