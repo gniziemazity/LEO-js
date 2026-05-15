@@ -12,8 +12,9 @@ const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
 const path = require("path");
+const fs = require("fs");
 
-const soundPath = path.join(__dirname, "..", "..", "assets", "sounds");
+const soundPath = path.join(__dirname, "..", "assets", "sounds");
 
 const logManager = new LogManager();
 const lessonManager = new LessonManager();
@@ -115,9 +116,24 @@ fileOperations.onStudentsLoaded = (students) => {
 	ipcRenderer.send("broadcast-students", students);
 };
 
+let _fireworksSoundUrl = null;
 function playFireworksSound() {
-	const audio = new Audio(soundPath + "/fireworks (by dragon studio).mp3");
-	audio.play();
+	if (!_fireworksSoundUrl) {
+		try {
+			const filePath = path.join(
+				soundPath,
+				"fireworks (by dragon studio).mp3",
+			);
+			const buffer = fs.readFileSync(filePath);
+			const blob = new Blob([buffer], { type: "audio/mpeg" });
+			_fireworksSoundUrl = URL.createObjectURL(blob);
+		} catch (e) {
+			console.warn("[fireworks] load failed:", e);
+			return;
+		}
+	}
+	const audio = new Audio(_fireworksSoundUrl);
+	audio.play().catch((e) => console.warn("[fireworks] play failed:", e));
 }
 
 window.addEventListener("DOMContentLoaded", () => {
