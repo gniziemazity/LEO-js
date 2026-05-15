@@ -1103,6 +1103,29 @@ body.side-left .popup-modal {
 	align-content: flex-start;
 }
 
+.popup-show-btn {
+	display: none;
+	flex: 1;
+	min-height: 120px;
+	margin: 12px 0;
+	padding: 24px;
+	font-size: 1.8rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	color: #fff;
+	background: #3498db;
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	touch-action: manipulation;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	transition: background 0.13s;
+}
+.popup-show-btn:hover,
+.popup-show-btn:active {
+	background: #2980b9;
+}
+
 .popup-student-btn {
 	background: rgba(0, 0, 0, 0.07);
 	border: 1px solid rgba(0, 0, 0, 0.18);

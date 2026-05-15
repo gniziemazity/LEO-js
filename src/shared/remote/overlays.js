@@ -38,9 +38,11 @@ function showQuestionOverlay(question, students, bgColor) {
 
 	const grid = document.getElementById("qGrid");
 	const answered = document.getElementById("qAnsweredRow");
+	const showBtn = document.getElementById("qShowBtn");
 	grid.innerHTML = "";
-	grid.style.display = "flex";
+	grid.style.display = "none";
 	answered.style.display = "none";
+	if (showBtn) showBtn.style.display = "block";
 	document.getElementById("qCloseBarFill").style.transition = "none";
 	document.getElementById("qCloseBarFill").style.width = "0%";
 
@@ -65,6 +67,13 @@ function showQuestionOverlay(question, students, bgColor) {
 
 	overlay.classList.add("active");
 	setInteractionBtnsVisible(false);
+}
+
+function showQuestionToTeacher() {
+	sendMessage("show-question", {});
+	const showBtn = document.getElementById("qShowBtn");
+	if (showBtn) showBtn.style.display = "none";
+	document.getElementById("qGrid").style.display = "flex";
 }
 
 function onStudentAnswered(name) {

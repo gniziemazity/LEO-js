@@ -529,9 +529,18 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		questionWindow.show();
 		questionWindow.focus();
 	} else {
+		const { screen } = require("electron");
+		const display = screen.getPrimaryDisplay();
+		const workArea = display.workArea;
+		const winW = 900;
+		const winH = 480;
+		const offX = Math.floor(workArea.x + (workArea.width - winW) / 2);
+		const offY = workArea.y + workArea.height + 40;
 		questionWindow = new BrowserWindow({
-			width: 900,
-			height: 480,
+			width: winW,
+			height: winH,
+			x: offX,
+			y: offY,
 			frame: false,
 			transparent: true,
 			resizable: true,
@@ -592,6 +601,52 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		});
 	}
 }
+
+let questionWindowSlideTimer = null;
+function animateQuestionWindowOnScreen() {
+	if (!questionWindow || questionWindow.isDestroyed()) return;
+	if (questionWindowSlideTimer) {
+		clearInterval(questionWindowSlideTimer);
+		questionWindowSlideTimer = null;
+	}
+	const { screen } = require("electron");
+	const display = screen.getPrimaryDisplay();
+	const workArea = display.workArea;
+	const bounds = questionWindow.getBounds();
+	const targetY = Math.floor(
+		workArea.y + (workArea.height - bounds.height) / 2,
+	);
+	const startY = bounds.y;
+	if (startY === targetY) return;
+	const startTime = Date.now();
+	const duration = 600;
+	questionWindowSlideTimer = setInterval(() => {
+		if (!questionWindow || questionWindow.isDestroyed()) {
+			clearInterval(questionWindowSlideTimer);
+			questionWindowSlideTimer = null;
+			return;
+		}
+		const t = Math.min(1, (Date.now() - startTime) / duration);
+		const eased = 1 - Math.pow(1 - t, 3);
+		const newY = Math.round(startY + (targetY - startY) * eased);
+		const b = questionWindow.getBounds();
+		questionWindow.setBounds({
+			x: b.x,
+			y: newY,
+			width: b.width,
+			height: b.height,
+		});
+		if (questionWindowRect) questionWindowRect.y = newY;
+		if (t >= 1) {
+			clearInterval(questionWindowSlideTimer);
+			questionWindowSlideTimer = null;
+		}
+	}, 16);
+}
+
+broadcastServer.on("client-show-question", () => {
+	animateQuestionWindowOnScreen();
+});
 
 ipcMain.on("close-question-window", () => {
 	state.unpause();

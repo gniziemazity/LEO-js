@@ -123,6 +123,7 @@ class CursorManager {
 	_leaveMoveToBlock() {
 		if (!this._moveToWindowOpen) return;
 		this._moveToWindowOpen = false;
+		this._activeMoveToIndex = null;
 		ipcRenderer.send("close-move-to-window");
 		if (this.onLeaveMoveToBlock) this.onLeaveMoveToBlock();
 	}
@@ -160,6 +161,7 @@ class CursorManager {
 				this._leaveQuestionBlock();
 				this._leaveImageBlock();
 				this._leaveWebBlock();
+				this._leaveMoveToBlock();
 				this._clearSpecialBlockState();
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
@@ -170,6 +172,7 @@ class CursorManager {
 				this._leaveQuestionBlock();
 				this._leaveImageBlock();
 				this._leaveWebBlock();
+				this._leaveMoveToBlock();
 				this._clearSpecialBlockState();
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
@@ -210,23 +213,26 @@ class CursorManager {
 				if (subtype === "question-comment") {
 					this._leaveImageBlock();
 					this._leaveWebBlock();
+					this._leaveMoveToBlock();
 					this._clearSpecialBlockState();
 					this._enterQuestionBlock(step.element, step.globalIndex);
 				} else if (subtype === "image-comment") {
 					this._leaveQuestionBlock();
 					this._leaveWebBlock();
+					this._leaveMoveToBlock();
 					this._clearSpecialBlockState();
 					this._enterImageBlock(step.element, step.globalIndex);
 				} else if (subtype === "web-comment") {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
+					this._leaveMoveToBlock();
 					this._clearSpecialBlockState();
 					this._enterWebBlock(step.element, step.globalIndex);
 				} else if (subtype === "code-insert-comment") {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
 					this._leaveWebBlock();
-					this._activeMoveToIndex = null;
+					this._leaveMoveToBlock();
 					if (this._activeCodeInsertIndex !== step.globalIndex) {
 						this._activeCodeInsertIndex = step.globalIndex;
 						const fullText = step.element.title || step.element.innerText;
@@ -247,6 +253,7 @@ class CursorManager {
 					this._leaveQuestionBlock();
 					this._leaveImageBlock();
 					this._leaveWebBlock();
+					this._leaveMoveToBlock();
 					this._clearSpecialBlockState();
 				}
 			}
@@ -254,6 +261,7 @@ class CursorManager {
 			this._leaveQuestionBlock();
 			this._leaveImageBlock();
 			this._leaveWebBlock();
+			this._leaveMoveToBlock();
 		}
 
 		const progress =
