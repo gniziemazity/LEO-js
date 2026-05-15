@@ -88,7 +88,11 @@ class UIManager {
 
 	createBlockElement(block, blockIdx) {
 		const blockDiv = document.createElement("div");
-		blockDiv.className = `block ${block.type}-block`;
+		if (block.type === "move-to") {
+			blockDiv.className = "block comment-block";
+		} else {
+			blockDiv.className = `block ${block.type}-block`;
+		}
 
 		if (block.type === "comment") {
 			blockDiv.dataset.placeholder = "Type comment here";

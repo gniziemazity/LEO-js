@@ -213,6 +213,44 @@ button:hover {
 	color: #ffffff;
 	font-style: normal;
 	opacity: 0.75;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.move-to-arrow {
+	display: inline-flex;
+	align-items: center;
+}
+
+.move-to-anchor {
+	display: inline-flex;
+	align-items: center;
+	background: rgba(100, 100, 255, 0.18);
+	border-radius: 3px;
+	font-size: 0.9em;
+	padding: 0 2px;
+	user-select: none;
+}
+
+.move-to-select,
+.move-to-new-file-input {
+	font: inherit;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 3px;
+	padding: 1px 4px;
+	margin: 0 2px;
+}
+
+.move-to-new-file-input {
+	min-width: 140px;
+}
+
+.move-to-select option {
+	color: #000;
+	background: #fff;
 }
 
 #addMoveToBlockBtn {
@@ -860,8 +898,10 @@ body.side-left .overlay {
 }
 body.side-right .q-modal,
 body.side-right .i-modal,
+body.side-right .mt-modal,
 body.side-left .q-modal,
-body.side-left .i-modal {
+body.side-left .i-modal,
+body.side-left .mt-modal {
 	transform: none;
 	width: 100%;
 	max-width: none;
@@ -1185,6 +1225,121 @@ body.side-left .i-modal {
 .overlay-close-btn:active {
 	background: rgba(0, 0, 0, 0.12);
 	color: rgba(0, 0, 0, 0.75);
+}
+
+.mt-modal {
+	position: relative;
+	border-radius: 0;
+	padding: 26px 28px;
+	flex: 1;
+	width: 100%;
+	max-width: none;
+	box-shadow: none;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	background: #ecf0f1;
+	color: rgba(0, 0, 0, 0.82);
+}
+
+.mt-modal-emoji {
+	font-size: 40px;
+	line-height: 1;
+	text-align: center;
+	margin-bottom: 8px;
+}
+
+.mt-modal-title {
+	font-size: 1.2rem;
+	font-weight: 600;
+	color: rgba(0, 0, 0, 0.82);
+	line-height: 1.45;
+	margin-bottom: 20px;
+}
+
+.mt-modal-target {
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 1.05rem;
+	font-weight: 700;
+	background: rgba(0, 0, 0, 0.08);
+	padding: 6px 12px;
+	border-radius: 6px;
+	align-self: flex-start;
+	margin-bottom: 14px;
+}
+
+.mt-modal-snippet {
+	display: none;
+	background: #fefefe;
+	color: #1c1c1c;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	border-radius: 6px;
+	padding: 10px 0;
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 0.92rem;
+	line-height: 1.5;
+	overflow-x: auto;
+	flex: 1;
+	min-height: 0;
+	tab-size: 4;
+	-moz-tab-size: 4;
+}
+
+.mt-modal-line,
+.mt-modal-marker-row {
+	display: block;
+	padding: 0 12px;
+	white-space: pre;
+	font-family: Consolas, "Courier New", monospace;
+	font-size: inherit;
+	line-height: 1.5;
+}
+
+.mt-modal-marker-row {
+	color: transparent;
+	user-select: none;
+}
+
+.mt-modal-anchor-cursor {
+	display: inline-block;
+	background: #e74c3c;
+	color: #fff;
+	animation: blink 1s infinite;
+	padding: 0 1px;
+	border-radius: 2px;
+}
+
+.mt-modal-line-text {
+	color: inherit;
+}
+
+.mt-modal-empty {
+	color: #888;
+	font-style: italic;
+	padding: 4px 14px;
+}
+
+.mt-modal-confirm {
+	position: absolute;
+	top: var(--mt-confirm-top, 50%);
+	right: 48px;
+	transform: translateY(-50%);
+	padding: 14px 24px;
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: #fff;
+	background: #3498db;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	touch-action: manipulation;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+	z-index: 2;
+}
+
+.mt-modal-confirm:hover,
+.mt-modal-confirm:active {
+	background: #2980b9;
 }
 
 .i-question-input {

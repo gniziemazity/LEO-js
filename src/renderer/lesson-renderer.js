@@ -1,6 +1,15 @@
 const { ipcRenderer } = require("electron");
 
 const { getBlockSubtype } = require("../shared/constants");
+const {
+	TextState,
+	applyTypedText,
+	applyAtomicText,
+} = require("../../lesson_tools/simulator-model");
+const {
+	HL_COLORS,
+	buildHighlightSpans,
+} = require("../../lesson_tools/simulator-highlight");
 
 class LessonRenderer {
 	constructor(lessonManager, uiManager, cursorManager, undoManager = null) {
@@ -93,6 +102,15 @@ class LessonRenderer {
 					globalStepCounter,
 					executionSteps,
 				);
+			} else if (block.type === "move-to") {
+				globalStepCounter = this.renderMoveToBlock(
+					blockDiv,
+					block,
+					blockIdx,
+					isTypingActive,
+					globalStepCounter,
+					executionSteps,
+				);
 			}
 
 			this.uiManager.appendToLessonContainer(blockDiv);
@@ -131,7 +149,9 @@ class LessonRenderer {
 		const isMultilineInsert =
 			subtype === "code-insert-comment" && block.text.includes("\n");
 		const isExpanded =
-			isMultilineInsert && selectedBlockIndex === blockIdx && !isTypingActive;
+			isMultilineInsert &&
+			selectedBlockIndex === blockIdx &&
+			!isTypingActive;
 
 		if (isMultilineInsert && !isExpanded) {
 			blockDiv.contentEditable = "false";
@@ -254,6 +274,273 @@ class LessonRenderer {
 			blockDiv.dataset.stepIndex = globalStepCounter;
 			return globalStepCounter + 1;
 		}
+	}
+
+	renderMoveToBlock(
+		blockDiv,
+		block,
+		blockIdx,
+		isTypingActive,
+		globalStepCounter,
+		executionSteps,
+	) {
+		blockDiv.classList.add("move-to-comment");
+		blockDiv.contentEditable = "false";
+		const target = block.target || "MAIN";
+		blockDiv.dataset.target = target;
+
+		const arrow = document.createElement("span");
+		arrow.className = "move-to-arrow";
+		arrow.textContent = "➡️ ";
+		blockDiv.appendChild(arrow);
+
+		const select = document.createElement("select");
+		select.className = "move-to-select";
+		select.disabled = isTypingActive;
+		this._populateMoveToSelect(select, target);
+		select.addEventListener("mousedown", (e) => {
+			e.stopPropagation();
+			this._populateMoveToSelect(select, block.target);
+		});
+		select.addEventListener("click", (e) => e.stopPropagation());
+		select.addEventListener("change", () => {
+			const v = select.value;
+			if (v === "__new__") {
+				this._promptNewFile(blockDiv, blockIdx, select);
+				return;
+			}
+			this.lessonManager.updateMoveToTarget(blockIdx, v);
+			blockDiv.dataset.target = v;
+		});
+		blockDiv.appendChild(select);
+
+		executionSteps.push({
+			type: "block",
+			subtype: "move-to",
+			target,
+			snippet: this._extractAnchorSnippet(target, blockIdx),
+			element: blockDiv,
+			blockIndex: blockIdx,
+			globalIndex: globalStepCounter,
+		});
+
+		blockDiv.dataset.stepIndex = globalStepCounter;
+		return globalStepCounter + 1;
+	}
+
+	_extractAnchorSnippet(target, currentBlockIdx, before = 5, after = 5) {
+		if (
+			!target ||
+			!target.startsWith("⚓") ||
+			!target.endsWith("⚓") ||
+			target.length < 3
+		) {
+			return null;
+		}
+		const id = target.slice(1, -1);
+		if (/\.[a-z0-9]+$/i.test(id)) return null;
+
+		const editors = { main: new TextState() };
+		let active = "main";
+		const blocks = this.lessonManager.getAllBlocks();
+		const stop = Math.min(currentBlockIdx, blocks.length);
+		for (let i = 0; i < stop; i++) {
+			const b = blocks[i];
+			if (!b) continue;
+			if (b.type === "code") {
+				if (!editors[active]) editors[active] = new TextState();
+				applyTypedText(editors[active], b.text || "");
+			} else if (b.type === "move-to") {
+				const t = b.target || "";
+				if (t === "MAIN") {
+					if (!editors.main) editors.main = new TextState();
+					active = "main";
+				} else if (t === "DEV") {
+					if (!editors.dev) editors.dev = new TextState();
+					active = "dev";
+				} else if (t.startsWith("⚓") && t.endsWith("⚓")) {
+					const inner = t.slice(1, -1);
+					if (/\.[a-z0-9]+$/i.test(inner)) {
+						if (!editors[inner]) editors[inner] = new TextState();
+						active = inner;
+					} else {
+						for (const [name, st] of Object.entries(editors)) {
+							if (st.anchors[inner] != null) {
+								active = name;
+								st.jumpToAnchor(inner);
+								break;
+							}
+						}
+					}
+				}
+			} else if (b.type === "comment") {
+				const txt = (b.text || "").trim();
+				if (txt.startsWith("📋")) {
+					if (!editors[active]) editors[active] = new TextState();
+					const stripped = (b.text || "").replace(/^📋\s?/, "");
+					applyAtomicText(editors[active], stripped);
+				}
+			}
+		}
+
+		let state = null;
+		if (editors[active] && editors[active].anchors[id] != null) {
+			state = editors[active];
+		} else {
+			for (const st of Object.values(editors)) {
+				if (st.anchors[id] != null) {
+					state = st;
+					break;
+				}
+			}
+		}
+		if (!state) return null;
+
+		const pos = state.anchors[id];
+		const beforeText = state.text.slice(0, pos);
+		const lineIdx = (beforeText.match(/\n/g) || []).length;
+		const lineStart = beforeText.lastIndexOf("\n") + 1;
+		const col = pos - lineStart;
+
+		const lines = state.text.split("\n");
+		const start = Math.max(0, lineIdx - before);
+		const end = Math.min(lines.length - 1, lineIdx + after);
+		const sliceLines = lines.slice(start, end + 1);
+		const colored = this._buildColoredLines(state.text, start, end);
+		return {
+			lines: sliceLines,
+			colored,
+			arrowIdx: lineIdx - start,
+			anchorCol: col,
+		};
+	}
+
+	_buildColoredLines(fullText, fromLineIdx, toLineIdx) {
+		let spans = [];
+		try {
+			spans = buildHighlightSpans(fullText, "html");
+		} catch (_) {
+			return null;
+		}
+		const lines = fullText.split("\n");
+		const lineStarts = [0];
+		for (let i = 0; i < lines.length; i++) {
+			lineStarts.push(lineStarts[i] + lines[i].length + 1);
+		}
+		const result = [];
+		let spanIdx = 0;
+		for (let li = fromLineIdx; li <= toLineIdx; li++) {
+			const lineStart = lineStarts[li];
+			const lineEnd = lineStart + lines[li].length;
+			const segs = [];
+			let cursor = lineStart;
+			while (spanIdx < spans.length && spans[spanIdx].end <= lineStart) {
+				spanIdx++;
+			}
+			let sIdx = spanIdx;
+			while (sIdx < spans.length && spans[sIdx].start < lineEnd) {
+				const span = spans[sIdx];
+				const sStart = Math.max(span.start, lineStart);
+				const sEnd = Math.min(span.end, lineEnd);
+				if (cursor < sStart) {
+					segs.push({ text: fullText.slice(cursor, sStart), color: null });
+				}
+				segs.push({
+					text: fullText.slice(sStart, sEnd),
+					color: HL_COLORS[span.cls] || null,
+				});
+				cursor = sEnd;
+				sIdx++;
+			}
+			if (cursor < lineEnd) {
+				segs.push({ text: fullText.slice(cursor, lineEnd), color: null });
+			}
+			result.push(segs);
+		}
+		return result;
+	}
+
+	_populateMoveToSelect(select, currentTarget) {
+		const anchorIds = this.lessonManager.getAllAnchorIds();
+		const fileRe = /\.[a-z0-9]+$/i;
+		const fileLike = anchorIds.filter((id) => fileRe.test(id));
+		const anchorLike = anchorIds
+			.filter((id) => !fileRe.test(id))
+			.sort((a, b) => {
+				const na = Number(a);
+				const nb = Number(b);
+				const aNum = Number.isFinite(na) && /^\d+$/.test(a);
+				const bNum = Number.isFinite(nb) && /^\d+$/.test(b);
+				if (aNum && bNum) return na - nb;
+				if (aNum) return -1;
+				if (bNum) return 1;
+				return a.localeCompare(b);
+			});
+
+		const opts = [];
+		for (const id of anchorLike) {
+			opts.push({ value: `⚓${id}⚓`, label: `⚓${id}⚓` });
+		}
+		for (const id of fileLike) {
+			opts.push({ value: `⚓${id}⚓`, label: `📄 ${id}` });
+		}
+		opts.push({ value: "MAIN", label: "Main Editor" });
+		opts.push({ value: "DEV", label: "Dev Tools" });
+		opts.push({ value: "__new__", label: "+ New File" });
+
+		select.innerHTML = "";
+		let hasCurrent = false;
+		for (const o of opts) {
+			const el = document.createElement("option");
+			el.value = o.value;
+			el.textContent = o.label;
+			if (o.value === currentTarget) {
+				el.selected = true;
+				hasCurrent = true;
+			}
+			select.appendChild(el);
+		}
+		if (!hasCurrent && currentTarget && currentTarget !== "__new__") {
+			const el = document.createElement("option");
+			el.value = currentTarget;
+			el.textContent = `? ${currentTarget}`;
+			el.selected = true;
+			select.appendChild(el);
+		}
+	}
+
+	_promptNewFile(blockDiv, blockIdx, select) {
+		const currentTarget =
+			(this.lessonManager.getBlock(blockIdx) || {}).target || "MAIN";
+		select.style.display = "none";
+		const input = document.createElement("input");
+		input.type = "text";
+		input.className = "move-to-new-file-input";
+		input.placeholder = "filename.ext";
+		input.addEventListener("mousedown", (e) => e.stopPropagation());
+		input.addEventListener("click", (e) => e.stopPropagation());
+		input.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				const val = input.value.trim();
+				if (val) {
+					const target = `⚓${val}⚓`;
+					this.lessonManager.updateMoveToTarget(blockIdx, target);
+					this.render();
+				} else {
+					select.value = currentTarget;
+					input.remove();
+					select.style.display = "";
+				}
+			} else if (e.key === "Escape") {
+				e.preventDefault();
+				select.value = currentTarget;
+				input.remove();
+				select.style.display = "";
+			}
+		});
+		blockDiv.appendChild(input);
+		input.focus();
 	}
 
 	handleBlockClick(e, block, blockIdx) {

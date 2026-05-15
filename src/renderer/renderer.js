@@ -40,7 +40,7 @@ const fileOperations = new FileOperations(
 	undoManager,
 );
 const settingsUI = new SettingsUI();
-const specialKeys = new SpecialKeys(uiManager, blockEditor);
+const specialKeys = new SpecialKeys(uiManager, blockEditor, lessonManager);
 const typingController = new TypingController(
 	uiManager,
 	lessonRenderer,
@@ -95,6 +95,13 @@ cursorManager.onWebBlock = (url, shouldPin) => {
 	ipcRenderer.send("open-web-window", { url, bgColor, shouldPin });
 };
 
+cursorManager.onEnterMoveToBlock = (payload) => {
+	const wasAutoTyping = cursorManager.autoTypingActive;
+	cursorManager._moveToResumeAuto = wasAutoTyping;
+	if (wasAutoTyping) cursorManager.stopAutoTyping();
+	ipcRenderer.send("enter-move-to-block", payload);
+};
+
 function getColor(key, fallback) {
 	return (
 		(settingsUI.currentSettings &&
@@ -137,7 +144,7 @@ function setupEventListeners() {
 	uiManager.getElement("addCodeInsertBlockBtn").onclick = () =>
 		blockEditor.addBlock("comment", "📋 ");
 	uiManager.getElement("addMoveToBlockBtn").onclick = () =>
-		blockEditor.addBlock("comment", "➡️ ");
+		blockEditor.addBlock("move-to", "MAIN");
 	uiManager.getElement("addCodeBtn").onclick = () =>
 		blockEditor.addBlock("code");
 	uiManager.getElement("removeBlockBtn").onclick = () =>
@@ -196,6 +203,16 @@ function setupGlobalIpcListeners() {
 
 	ipcRenderer.on("start-auto-typing", () => cursorManager.startAutoTyping());
 	ipcRenderer.on("stop-auto-typing", () => cursorManager.stopAutoTyping());
+
+	ipcRenderer.on("move-to-confirmed", () => {
+		cursorManager._moveToWindowOpen = false;
+		cursorManager._activeMoveToIndex = null;
+		const shouldResume = cursorManager._moveToResumeAuto;
+		cursorManager._moveToResumeAuto = false;
+		if (shouldResume) {
+			cursorManager.startAutoTyping();
+		}
+	});
 
 	ipcRenderer.on("question-answered", (event, { studentName }) => {
 		if (pendingQuestion) {

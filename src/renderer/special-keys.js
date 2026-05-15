@@ -1,7 +1,8 @@
 class SpecialKeys {
-	constructor(uiManager, blockEditor) {
+	constructor(uiManager, blockEditor, lessonManager) {
 		this.uiManager = uiManager;
 		this.blockEditor = blockEditor;
+		this.lessonManager = lessonManager;
 	}
 
 	initialize() {
@@ -36,7 +37,11 @@ class SpecialKeys {
 	}
 
 	insertSpecialChar(char) {
-		document.execCommand("insertText", false, char);
+		const insertText =
+			char === "⚓" && this.lessonManager
+				? `⚓${this.lessonManager.getNextAnchorId()}⚓`
+				: char;
+		document.execCommand("insertText", false, insertText);
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 
 		if (selectedBlockIndex !== null) {

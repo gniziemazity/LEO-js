@@ -13,6 +13,9 @@ class CursorManager {
 		this.onLeaveQuestionBlock = null;
 		this.onImageBlock = null;
 		this.onWebBlock = null;
+		this.onEnterMoveToBlock = null;
+		this.onLeaveMoveToBlock = null;
+		this._moveToWindowOpen = false;
 
 		this._questionWindowOpen = false;
 		this._imageWindowOpen = false;
@@ -95,6 +98,35 @@ class CursorManager {
 		ipcRenderer.send("close-web-window");
 	}
 
+	_enterMoveToBlock(step) {
+		if (this._activeMoveToIndex === step.globalIndex) return;
+		this._activeMoveToIndex = step.globalIndex;
+		this._moveToWindowOpen = true;
+		this.logManager.addEntry({ move_to: step.target || "MAIN" });
+		if (this.onEnterMoveToBlock) {
+			const target = step.target || "MAIN";
+			let mode = "main";
+			if (target === "DEV") mode = "dev";
+			else if (target === "MAIN") mode = "main";
+			else if (target.startsWith("⚓") && target.endsWith("⚓")) {
+				const inner = target.slice(1, -1);
+				mode = /\.[a-z0-9]+$/i.test(inner) ? "file" : "anchor";
+			}
+			this.onEnterMoveToBlock({
+				mode,
+				target,
+				snippet: step.snippet || null,
+			});
+		}
+	}
+
+	_leaveMoveToBlock() {
+		if (!this._moveToWindowOpen) return;
+		this._moveToWindowOpen = false;
+		ipcRenderer.send("close-move-to-window");
+		if (this.onLeaveMoveToBlock) this.onLeaveMoveToBlock();
+	}
+
 	_clearSpecialBlockState() {
 		this._activeCodeInsertIndex = null;
 		this._activeMoveToIndex = null;
@@ -154,6 +186,24 @@ class CursorManager {
 					behavior: "smooth",
 					block: "center",
 				});
+
+				if (step.subtype === "move-to") {
+					this._leaveQuestionBlock();
+					this._leaveImageBlock();
+					this._leaveWebBlock();
+					this._activeCodeInsertIndex = null;
+					this._enterMoveToBlock(step);
+					const progress =
+						(this.currentStepIndex / this.executionSteps.length) * 100 ||
+						0;
+					this.uiManager.updateProgressBar(progress);
+					ipcRenderer.send("broadcast-cursor", this.currentStepIndex);
+					ipcRenderer.send("broadcast-progress", {
+						currentStep: this.currentStepIndex,
+						totalSteps: this.executionSteps.length,
+					});
+					return;
+				}
 
 				const blockText = step.element.innerText.trim();
 				const subtype = getBlockSubtype(blockText);
@@ -259,6 +309,10 @@ class CursorManager {
 
 	async startAutoTyping() {
 		if (this.autoTypingActive) return;
+		if (this._moveToWindowOpen) {
+			ipcRenderer.send("auto-typing-complete");
+			return;
+		}
 		this.autoTypingActive = true;
 
 		const settings = await ipcRenderer.invoke("get-settings");
@@ -408,6 +462,14 @@ class CursorManager {
 				seenMoveTo = null;
 				events.push({ timestamp: t, anchor: step.value });
 			} else if (step.type === "block") {
+				if (step.subtype === "move-to") {
+					if (seenMoveTo !== step.globalIndex) {
+						seenMoveTo = step.globalIndex;
+						seenCodeInsert = null;
+						events.push({ timestamp: t, move_to: step.target || "MAIN" });
+					}
+					return;
+				}
 				const blockText = step.element ? step.element.innerText.trim() : "";
 				const subtype = getBlockSubtype(blockText);
 				if (subtype === "code-insert-comment") {

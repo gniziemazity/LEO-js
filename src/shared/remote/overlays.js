@@ -173,6 +173,142 @@ function onStudentSelected(name, type, questionText) {
 	grid.appendChild(doneBtn);
 }
 
+function makeSegSpan(text, color) {
+	const span = document.createElement("span");
+	span.textContent = text;
+	if (color) span.style.color = color;
+	return span;
+}
+
+function renderLine(row, segs) {
+	for (const seg of segs) row.appendChild(makeSegSpan(seg.text, seg.color));
+}
+
+function makeCursorSpan() {
+	const cursor = document.createElement("span");
+	cursor.className = "mt-modal-anchor-cursor";
+	cursor.textContent = " ";
+	return cursor;
+}
+
+function renderLineWithArrow(row, segs, col) {
+	let consumed = 0;
+	let inserted = false;
+	for (const seg of segs) {
+		if (!inserted && consumed + seg.text.length >= col) {
+			const cut = col - consumed;
+			if (cut > 0)
+				row.appendChild(makeSegSpan(seg.text.slice(0, cut), seg.color));
+			row.appendChild(makeCursorSpan());
+			if (cut < seg.text.length)
+				row.appendChild(makeSegSpan(seg.text.slice(cut), seg.color));
+			inserted = true;
+		} else {
+			row.appendChild(makeSegSpan(seg.text, seg.color));
+		}
+		consumed += seg.text.length;
+	}
+	if (!inserted) row.appendChild(makeCursorSpan());
+}
+
+function showMoveToOverlay(payload) {
+	const { mode, target, snippet } = payload || {};
+	const overlay = document.getElementById("moveToOverlay");
+	const emojiEl = document.getElementById("mtoEmoji");
+	const titleEl = document.getElementById("mtoTitle");
+	const targetEl = document.getElementById("mtoTarget");
+	const snippetEl = document.getElementById("mtoSnippet");
+	if (!overlay) return;
+
+	overlay.style.background = "#ecf0f1";
+
+	if (emojiEl) emojiEl.style.display = "none";
+	if (titleEl) titleEl.textContent = "Go to:";
+
+	snippetEl.style.display = "none";
+	snippetEl.innerHTML = "";
+	targetEl.style.display = "none";
+	targetEl.textContent = "";
+
+	if (mode === "dev") {
+		targetEl.style.display = "";
+		targetEl.textContent = "Dev Tools";
+	} else if (mode === "main") {
+		targetEl.style.display = "";
+		targetEl.textContent = "Main Editor";
+	} else if (mode === "file") {
+		targetEl.style.display = "";
+		const fname =
+			target && target.startsWith("⚓") && target.endsWith("⚓")
+				? target.slice(1, -1)
+				: target || "";
+		targetEl.textContent = fname;
+	} else if (mode === "anchor") {
+		if (snippet && snippet.lines && snippet.lines.length) {
+			snippetEl.style.display = "block";
+			const col = Math.max(0, snippet.anchorCol || 0);
+			const colored = snippet.colored || null;
+			snippet.lines.forEach((line, i) => {
+				const row = document.createElement("div");
+				row.className = "mt-modal-line";
+				const segs =
+					colored && colored[i]
+						? colored[i]
+						: [{ text: line || "", color: null }];
+				if (i === snippet.arrowIdx) {
+					renderLineWithArrow(row, segs, col);
+				} else {
+					renderLine(row, segs);
+				}
+				snippetEl.appendChild(row);
+			});
+		} else {
+			targetEl.style.display = "";
+			targetEl.textContent = target || "";
+			snippetEl.style.display = "block";
+			const div = document.createElement("div");
+			div.className = "mt-modal-empty";
+			div.textContent =
+				"(Anchor not found in plan — move to the matching position.)";
+			snippetEl.appendChild(div);
+		}
+	} else {
+		targetEl.style.display = "";
+		targetEl.textContent = target || "";
+	}
+
+	overlay.classList.add("active");
+	setInteractionBtnsVisible(false);
+
+	const modal = document.getElementById("mtModal");
+	if (modal) {
+		const snippetVisible = snippetEl.style.display !== "none";
+		if (snippetVisible) {
+			requestAnimationFrame(() => {
+				if (snippetEl.offsetHeight > 0) {
+					const center = snippetEl.offsetTop + snippetEl.offsetHeight / 2;
+					modal.style.setProperty("--mt-confirm-top", center + "px");
+				} else {
+					modal.style.removeProperty("--mt-confirm-top");
+				}
+			});
+		} else {
+			modal.style.removeProperty("--mt-confirm-top");
+		}
+	}
+}
+
+function hideMoveToOverlay() {
+	const overlay = document.getElementById("moveToOverlay");
+	if (overlay) overlay.classList.remove("active");
+	setInteractionBtnsVisible(true);
+}
+
+function confirmMoveTo() {
+	sendMessage("move-to-confirmed", {});
+	hideMoveToOverlay();
+}
+
 function closeInteractionOverlay() {
 	if (interactionWaiting && pendingWaitingData) {
 		sendMessage("close-student-interaction", {

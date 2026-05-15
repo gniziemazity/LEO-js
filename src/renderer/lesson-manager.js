@@ -16,13 +16,30 @@ class LessonManager {
 			}
 
 			try {
-				this.data = JSON.parse(data);
+				const parsed = JSON.parse(data);
+				this.data = LessonManager._migrateBlocks(parsed);
 				this.currentFilePath = filePath;
 				this.hasUnsavedChanges = false;
 				callback(null, this.data);
 			} catch (e) {
 				callback(e, null);
 			}
+		});
+	}
+
+	static _migrateBlocks(blocks) {
+		if (!Array.isArray(blocks)) return blocks;
+		return blocks.map((b) => {
+			if (
+				b &&
+				b.type === "comment" &&
+				typeof b.text === "string" &&
+				b.text.trim().startsWith("➡️")
+			) {
+				const target = b.text.trim().replace(/^➡️\s*/, "");
+				return { type: "move-to", target };
+			}
+			return b;
 		});
 	}
 
@@ -58,13 +75,21 @@ class LessonManager {
 	}
 
 	addBlock(type, afterIndex = null, initialText = null) {
-		const newBlock = {
-			type,
-			text:
-				initialText !== null && initialText !== undefined
-					? initialText
-					: "",
-		};
+		let newBlock;
+		if (type === "move-to") {
+			newBlock = {
+				type,
+				target: typeof initialText === "string" ? initialText : "MAIN",
+			};
+		} else {
+			newBlock = {
+				type,
+				text:
+					initialText !== null && initialText !== undefined
+						? initialText
+						: "",
+			};
+		}
 
 		if (afterIndex === null) {
 			this.data.push(newBlock);
@@ -96,6 +121,38 @@ class LessonManager {
 		return true;
 	}
 
+	updateMoveToTarget(index, target) {
+		if (index < 0 || index >= this.data.length) {
+			return false;
+		}
+		if (this.data[index].type !== "move-to") return false;
+		this.data[index].target = target;
+		this.markAsChanged();
+		return true;
+	}
+
+	getAllAnchorIds() {
+		const seen = new Set();
+		const out = [];
+		const re = /⚓([^⚓]*)⚓/g;
+		for (const block of this.data) {
+			const sources = [];
+			if (typeof block.text === "string") sources.push(block.text);
+			if (typeof block.target === "string") sources.push(block.target);
+			for (const src of sources) {
+				let m;
+				while ((m = re.exec(src)) !== null) {
+					const id = m[1];
+					if (id && !seen.has(id)) {
+						seen.add(id);
+						out.push(id);
+					}
+				}
+			}
+		}
+		return out;
+	}
+
 	getBlock(index) {
 		return this.data[index] || null;
 	}
@@ -106,6 +163,26 @@ class LessonManager {
 
 	getCurrentFilePath() {
 		return this.currentFilePath;
+	}
+
+	getNextAnchorId() {
+		let max = -1;
+		const re = /⚓(\d+)⚓/g;
+		for (const block of this.data) {
+			const text =
+				typeof block.text === "string"
+					? block.text
+					: typeof block.target === "string"
+						? block.target
+						: "";
+			if (!text) continue;
+			let m;
+			while ((m = re.exec(text)) !== null) {
+				const n = parseInt(m[1], 10);
+				if (Number.isFinite(n) && n > max) max = n;
+			}
+		}
+		return max + 1;
 	}
 
 	hasChanges() {

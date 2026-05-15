@@ -599,6 +599,24 @@ ipcMain.on("close-question-window", () => {
 	broadcastServer.broadcastQuestionEnded();
 });
 
+ipcMain.on("enter-move-to-block", (event, payload) => {
+	state.pause();
+	broadcastServer.broadcastMoveToStarted(payload);
+});
+
+ipcMain.on("close-move-to-window", () => {
+	state.unpause();
+	broadcastServer.broadcastMoveToEnded();
+});
+
+broadcastServer.on("client-move-to-confirmed", () => {
+	state.unpause();
+	broadcastServer.broadcastMoveToEnded();
+	if (state.mainWindow) {
+		state.mainWindow.webContents.send("move-to-confirmed");
+	}
+});
+
 broadcastServer.on("client-dismiss-question", () => {
 	if (
 		questionWindowIsLesson &&

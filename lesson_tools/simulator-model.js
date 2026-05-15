@@ -86,17 +86,20 @@ const HTML_VOID_TAGS = new Set([
 	"wbr",
 ]);
 
-const CLR = {
-	blue: _cssVar("--clr-text"),
-	orange: _cssVar("--hl-func"),
-	green: _cssVar("--hl-builtin"),
-	red: THEME.red,
-	accent: THEME.blue,
-	move: THEME.orange,
-	dim: THEME.muted,
-	muted: THEME.muted,
-	pale_red: THEME.paleRed,
-};
+const CLR =
+	typeof _cssVar !== "undefined" && typeof THEME !== "undefined"
+		? {
+				blue: _cssVar("--clr-text"),
+				orange: _cssVar("--hl-func"),
+				green: _cssVar("--hl-builtin"),
+				red: THEME.red,
+				accent: THEME.blue,
+				move: THEME.orange,
+				dim: THEME.muted,
+				muted: THEME.muted,
+				pale_red: THEME.paleRed,
+			}
+		: {};
 
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
 const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
@@ -385,4 +388,238 @@ class VSCodeSettings {
 		if (tag.startsWith("<!") || tag.startsWith("</")) return null;
 		return '""';
 	}
+}
+
+const CLOSING_TAG_PREFIXES = ["</style", "</script", "</html"];
+
+function dedentOneStep(indent) {
+	if (indent.startsWith("\t")) return indent.slice(1);
+	if (indent.startsWith("    ")) return indent.slice(4);
+	if (indent.startsWith("  ")) return indent.slice(2);
+	return indent;
+}
+
+function prevLineOpensTag(state, ls) {
+	if (ls === 0) return false;
+	const prevEnd = ls - 1;
+	const prevLs = lineStartAt(state.text, prevEnd);
+	const prevLine = state.text.slice(prevLs, prevEnd).trimEnd();
+	const m = prevLine.match(/<([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?>$/);
+	if (!m) return false;
+	if (prevLine.endsWith("/>")) return false;
+	if (HTML_VOID_TAGS.has(m[1].toLowerCase())) return false;
+	return true;
+}
+
+function backspaceIsIgnored(state) {
+	if (state.cursor === 0) return false;
+	const prevChar = state.text[state.cursor - 1];
+	if (prevChar === "\n") {
+		const ahead = state.text
+			.slice(state.cursor, state.cursor + 9)
+			.trimStart();
+		return CLOSING_TAG_PREFIXES.some((p) => ahead.startsWith(p));
+	}
+	if (prevChar === " " || prevChar === "\t") {
+		const ls = lineStartAt(state.text, state.cursor);
+		const leRaw = state.text.indexOf("\n", state.cursor);
+		const le = leRaw === -1 ? state.text.length : leRaw;
+		if (state.text.slice(ls, le).trim() === "") {
+			const nextStart = leRaw === -1 ? state.text.length : leRaw + 1;
+			const ahead = state.text.slice(nextStart, nextStart + 9).trimStart();
+			if (CLOSING_TAG_PREFIXES.some((p) => ahead.startsWith(p))) return true;
+			if (prevLineOpensTag(state, ls)) return true;
+		}
+	}
+	return false;
+}
+
+function autoDedent(state, ch, ts = 0) {
+	const ls = lineStartAt(state.text, state.cursor);
+	const before = state.text.slice(ls, state.cursor);
+	const isCloser = "})]".includes(ch);
+	const isHtmlEnd = ch === "/" && /^[ \t]*<$/.test(before);
+	if (!(isCloser || isHtmlEnd)) return;
+	if (isCloser && !/^[ \t]*$/.test(before)) return;
+	if (!before) return;
+
+	let newBefore;
+	if (before.startsWith("\t")) newBefore = before.slice(1);
+	else if (before.startsWith("    ")) newBefore = before.slice(4);
+	else if (before.startsWith("  ")) newBefore = before.slice(2);
+	else return;
+
+	const n = before.length - newBefore.length;
+	const savedCursor = state.cursor;
+	state.cursor = ls;
+	state.deleteForward(n);
+	state.cursor = savedCursor - n;
+}
+
+function autoIndent(state, ts = 0, getOpensCloses = null) {
+	const cur = state.cursor;
+	const prevEnd = lineStartAt(state.text, cur) - 1;
+	const prev2 = prevEnd > 0 ? lineStartAt(state.text, prevEnd) - 1 : -1;
+	const prevLine = state.text.slice(prev2 + 1, prevEnd);
+	const base = leadingIndent(prevLine);
+	const after = state.text.slice(cur, lineEndAt(state.text, cur));
+	const afterTrimmed = after.trimStart();
+
+	let opens, closes, dedentAfter;
+	const supplied =
+		typeof getOpensCloses === "function"
+			? getOpensCloses(prevLine, afterTrimmed)
+			: null;
+	if (supplied) {
+		opens = !!supplied.opens;
+		closes = !!supplied.closes;
+		dedentAfter = !!supplied.dedentAfter;
+	} else {
+		const trimmed = prevLine.trimEnd();
+		const opensWithBrace = /[{([]$/.test(trimmed);
+		const opensWithTag =
+			/<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
+			!/\/>$/.test(trimmed) &&
+			!/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*)?>$/i.test(
+				trimmed,
+			);
+		opens = opensWithBrace || opensWithTag;
+		closes = /^[})\]]/.test(afterTrimmed) || /^<\//.test(afterTrimmed);
+		dedentAfter = false;
+	}
+
+	let indent = base + (opens ? "\t" : "");
+	if (dedentAfter && !opens && !closes) indent = dedentOneStep(base);
+
+	if (opens && closes) {
+		for (const c of indent) state.insert(c, ts);
+		state.insert("\n", ts);
+		for (const c of base) state.insert(c, ts);
+		state.cursor -= base.length + 1;
+	} else if (!opens && closes) {
+		const closingIndent = dedentOneStep(base);
+		for (const c of closingIndent) state.insert(c, ts);
+	} else {
+		for (const c of indent) state.insert(c, ts);
+	}
+}
+
+function applyTypedChar(state, ch, ts = 0, opts = {}) {
+	if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) return;
+	if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
+		state.moveCursor(CURSOR_MOVES[ch]);
+		return;
+	}
+	if (Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)) {
+		state.moveCursor(SHIFT_CURSOR_MOVES[ch]);
+		return;
+	}
+	if (ch === "↩" || ch === "\n") {
+		state.insert("\n", ts);
+		autoIndent(state, ts, opts.getOpensCloses);
+		return;
+	}
+	if (ch === "―" || ch === "\t") {
+		state.insert("\t", ts);
+		return;
+	}
+	if (_EXPAND_BACKSPACE.has(ch)) {
+		if (backspaceIsIgnored(state)) return;
+		state.deleteBack(1);
+		return;
+	}
+	if (_EXPAND_FWD_DEL.has(ch)) {
+		state.deleteForward(1);
+		return;
+	}
+	if (ch === DELETE_LINE_CHAR) {
+		state.deleteLine();
+		return;
+	}
+	autoDedent(state, ch, ts);
+	state.insert(ch, ts);
+}
+
+function applyAtomicChar(state, ch, ts = 0, opts = {}) {
+	if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) return;
+	if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
+		state.moveCursor(CURSOR_MOVES[ch]);
+		return;
+	}
+	if (ch === "↩" || ch === "\n") {
+		state.insert("\n", ts);
+		autoIndent(state, ts, opts.getOpensCloses);
+		return;
+	}
+	if (ch === "―" || ch === "\t") {
+		state.insert("\t", ts);
+		return;
+	}
+	if (_EXPAND_BACKSPACE.has(ch)) {
+		if (backspaceIsIgnored(state)) return;
+		state.deleteBack(1);
+		return;
+	}
+	if (_EXPAND_FWD_DEL.has(ch)) {
+		state.deleteForward(1);
+		return;
+	}
+	if (ch === DELETE_LINE_CHAR) {
+		state.deleteLine();
+		return;
+	}
+	autoDedent(state, ch, ts);
+	state.insert(ch, ts);
+}
+
+function applyTextSegmented(state, text, charHandler, ts = 0, opts = {}) {
+	const segments = _splitCodeWithAnchors(text);
+	for (const [kind, val] of segments) {
+		if (kind === "text") {
+			for (const ch of val) charHandler(state, ch, ts, opts);
+		} else if (kind === "anchor") {
+			state.setAnchor(val.slice(1, -1));
+		}
+	}
+}
+
+function applyTypedText(state, text, ts = 0, opts = {}) {
+	applyTextSegmented(state, text, applyTypedChar, ts, opts);
+}
+
+function applyAtomicText(state, text, ts = 0, opts = {}) {
+	applyTextSegmented(state, text, applyAtomicChar, ts, opts);
+}
+
+if (typeof module !== "undefined" && module.exports) {
+	module.exports = {
+		TextState,
+		VSCodeSettings,
+		CURSOR_MOVES,
+		SHIFT_CURSOR_MOVES,
+		CURSOR_MOVE_LABELS,
+		CHAR_REPLACEMENTS,
+		DELETE_LINE_CHAR,
+		DELETE_FWRD_CHAR,
+		IGNORED_CHARS,
+		PAUSE_CHAR,
+		PAUSE_MS,
+		HTML_VOID_TAGS,
+		CLOSING_TAG_PREFIXES,
+		lineStartAt,
+		lineEndAt,
+		leadingIndent,
+		currentLineIndent,
+		dedentOneStep,
+		prevLineOpensTag,
+		backspaceIsIgnored,
+		autoDedent,
+		autoIndent,
+		applyTypedChar,
+		applyAtomicChar,
+		applyTypedText,
+		applyAtomicText,
+		_splitCodeWithAnchors,
+		expandEvents,
+	};
 }

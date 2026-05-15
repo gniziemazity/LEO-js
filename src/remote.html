@@ -129,6 +129,22 @@
 			</div>
 		</div>
 
+		<div id="moveToOverlay" class="overlay">
+			<div class="mt-modal" id="mtModal">
+				<div class="mt-modal-emoji" id="mtoEmoji">➡️</div>
+				<div class="mt-modal-title" id="mtoTitle">Move to…</div>
+				<div class="mt-modal-target" id="mtoTarget"></div>
+				<div class="mt-modal-snippet" id="mtoSnippet"></div>
+				<button
+					class="mt-modal-confirm"
+					id="mtoConfirm"
+					onclick="confirmMoveTo()"
+				>
+					OK
+				</button>
+			</div>
+		</div>
+
 		<script src="remote/connection.js"></script>
 		<script src="remote/touchpad.js"></script>
 		<script src="remote/timer.js"></script>
@@ -172,6 +188,12 @@
 					case "question-ended":
 						hideQuestionOverlay();
 						break;
+					case "move-to-started":
+						showMoveToOverlay(data);
+						break;
+					case "move-to-ended":
+						hideMoveToOverlay();
+						break;
 					case "timer-tick":
 						showTimerRunning(data.timeRemaining);
 						break;
@@ -198,6 +220,7 @@
 						state.students || [],
 						null,
 					);
+				if (state.activeMoveTo) showMoveToOverlay(state.activeMoveTo);
 				if (state.timeRemaining != null)
 					showTimerRunning(state.timeRemaining);
 				else showTimerStopped();

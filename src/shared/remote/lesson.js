@@ -30,6 +30,18 @@ function buildSettingsCSS(settings) {
 	`;
 }
 
+function renderMoveToTargetLabel(target) {
+	if (!target) return "MAIN";
+	if (target === "MAIN") return "Main Editor";
+	if (target === "DEV") return "Dev Tools";
+	if (target.startsWith("⚓") && target.endsWith("⚓")) {
+		const inner = target.slice(1, -1);
+		if (/\.[a-z0-9]+$/i.test(inner)) return `📄 ${inner}`;
+		return `⚓${inner}⚓`;
+	}
+	return target;
+}
+
 function createCharSpan(char, stepIndex) {
 	let el = document.createElement("span");
 	el.className = "char";
@@ -78,11 +90,27 @@ function updateLessonData(data) {
 	let ctr = 0;
 	blocks.forEach((block) => {
 		const div = document.createElement("div");
+		if (block.type === "move-to") {
+			div.className = "block comment-block move-to-comment";
+			div.innerText = `➡️ ${renderMoveToTargetLabel(block.target)}`;
+			div.dataset.stepIndex = ctr++;
+			div.onclick = handleBlockClick;
+			container.appendChild(div);
+			return;
+		}
 		div.className = `block ${block.type}-block`;
 		if (block.type === "comment") {
-			div.innerText = block.text;
 			const subtype = getBlockSubtype(block.text);
 			if (subtype) div.classList.add(subtype);
+			const isMultilineInsert =
+				subtype === "code-insert-comment" && block.text.includes("\n");
+			if (isMultilineInsert) {
+				div.innerText = block.text.split("\n")[0] + "...";
+				div.title = block.text;
+				div.classList.add("collapsed");
+			} else {
+				div.innerText = block.text;
+			}
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "code") {

@@ -1,21 +1,32 @@
 "use strict";
 
-const HL_COLORS = {
-	hl_comment: _cssVar("--hl-comment"),
-	hl_doctype: _cssVar("--hl-doctype"),
-	hl_tag: _cssVar("--hl-tag"),
-	hl_attr: _cssVar("--hl-attr"),
-	hl_value: _cssVar("--hl-value"),
-	hl_keyword: _cssVar("--hl-keyword"),
-	hl_builtin: _cssVar("--hl-builtin"),
-	hl_number: _cssVar("--hl-number"),
-	hl_string: _cssVar("--hl-string"),
-	hl_func: _cssVar("--hl-func"),
-	hl_css_sel: _cssVar("--hl-css-sel"),
-	hl_css_prop: _cssVar("--hl-css-prop"),
-	hl_css_num: _cssVar("--hl-css-num"),
-	hl_css_at: _cssVar("--hl-css-at"),
+const HL_FALLBACK_COLORS = {
+	hl_comment: "#66bb6a",
+	hl_doctype: "#007acc",
+	hl_tag: "#e07020",
+	hl_attr: "#cc2222",
+	hl_value: "#007acc",
+	hl_keyword: "#007acc",
+	hl_builtin: "#007acc",
+	hl_number: "#007acc",
+	hl_string: "#cc2222",
+	hl_func: "#e07020",
+	hl_css_sel: "#e07020",
+	hl_css_prop: "#cc2222",
+	hl_css_num: "#007acc",
+	hl_css_at: "#005a9e",
 };
+
+const HL_COLORS = (function () {
+	if (typeof _cssVar !== "function") return { ...HL_FALLBACK_COLORS };
+	const out = {};
+	for (const k of Object.keys(HL_FALLBACK_COLORS)) {
+		const cssName = "--" + k.replace(/_/g, "-");
+		const v = _cssVar(cssName);
+		out[k] = v || HL_FALLBACK_COLORS[k];
+	}
+	return out;
+})();
 
 const HL_PRIORITY = [
 	"hl_comment",
@@ -66,10 +77,9 @@ function buildHighlightSpans(content, fileType = "html") {
 
 	if (fileType === "js" || fileType === "py" || fileType === "python") {
 		const profId = fileType === "js" ? ".js" : "python";
-		const prof = window.LanguageProfiles
-			? window.LanguageProfiles.getProfile(profId)
-			: null;
-		if (prof) window.LanguageProfiles.highlight(prof, content, 0, spans);
+		const LP = typeof window !== "undefined" ? window.LanguageProfiles : null;
+		const prof = LP ? LP.getProfile(profId) : null;
+		if (prof) LP.highlight(prof, content, 0, spans);
 		const result = [];
 		const used = new Uint8Array(content.length);
 		for (const cls of HL_PRIORITY) {
@@ -222,9 +232,8 @@ function _hlCss(css, off, spans) {
 }
 
 function _hlJs(js, off, spans) {
-	const prof = window.LanguageProfiles
-		? window.LanguageProfiles.getProfile(".js")
-		: null;
+	if (typeof window === "undefined" || !window.LanguageProfiles) return;
+	const prof = window.LanguageProfiles.getProfile(".js");
 	if (prof) window.LanguageProfiles.highlight(prof, js, off, spans);
 }
 
@@ -294,4 +303,8 @@ function renderEditorHtml(textState, cursorVisible = true, fileType = "html") {
 	}
 	closeSpan();
 	return html;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+	module.exports = { HL_COLORS, HL_PRIORITY, buildHighlightSpans };
 }

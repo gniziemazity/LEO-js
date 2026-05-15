@@ -699,58 +699,22 @@ class LogVisualizer {
 	}
 
 	_dedentOne(indent) {
-		if (indent.startsWith("\t")) return indent.slice(1);
-		if (indent.startsWith("    ")) return indent.slice(4);
-		if (indent.startsWith("  ")) return indent.slice(2);
-		return indent;
+		return dedentOneStep(indent);
 	}
 
 	_autoIndent(ts) {
-		const cur = this.main.cursor;
-		const prevEnd = lineStartAt(this.main.text, cur) - 1;
-		const prev2 = prevEnd > 0 ? lineStartAt(this.main.text, prevEnd) - 1 : -1;
-		const prevLine = this.main.text.slice(prev2 + 1, prevEnd);
-		const base = leadingIndent(prevLine);
-		const after = this.main.text.slice(cur, lineEndAt(this.main.text, cur));
-		const afterTrimmed = after.trimStart();
-
-		const LP = window.LanguageProfiles;
-		const profile = this._activeProfile();
-		let opens, closes, dedentAfter;
-		if (profile && LP) {
-			opens = LP.shouldIncreaseAfter(profile, prevLine);
-			closes = LP.shouldDecreaseOnLine(profile, afterTrimmed);
-			dedentAfter = LP.shouldDecreaseAfter(profile, prevLine);
-		} else {
-			const trimmed = prevLine.trimEnd();
-			const opensWithBrace = /[{([]$/.test(trimmed);
-			const opensWithTag =
-				/<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
-				!/\/>$/.test(trimmed) &&
-				!/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*)?>$/i.test(
-					trimmed,
-				);
-			opens = opensWithBrace || opensWithTag;
-			closes = /^[})\]]/.test(afterTrimmed) || /^<\//.test(afterTrimmed);
-			dedentAfter = false;
-		}
-
-		let indent = base + (opens ? "\t" : "");
-		if (dedentAfter && !opens && !closes) {
-			indent = this._dedentOne(base);
-		}
-
-		if (opens && closes) {
-			for (const c of indent) this.main.insert(c, ts);
-			this.main.insert("\n", ts);
-			for (const c of base) this.main.insert(c, ts);
-			this.main.cursor -= base.length + 1;
-		} else if (!opens && closes) {
-			const closingIndent = this._dedentOne(base);
-			for (const c of closingIndent) this.main.insert(c, ts);
-		} else {
-			for (const c of indent) this.main.insert(c, ts);
-		}
+		autoIndent(this.main, ts, (prevLine, afterTrimmed) => {
+			const LP = window.LanguageProfiles;
+			const profile = this._activeProfile();
+			if (profile && LP) {
+				return {
+					opens: LP.shouldIncreaseAfter(profile, prevLine),
+					closes: LP.shouldDecreaseOnLine(profile, afterTrimmed),
+					dedentAfter: LP.shouldDecreaseAfter(profile, prevLine),
+				};
+			}
+			return null;
+		});
 	}
 
 	_indentSelection(ts) {
@@ -917,60 +881,15 @@ class LogVisualizer {
 	}
 
 	_prevLineOpensTag(st, ls) {
-		if (ls === 0) return false;
-		const prevEnd = ls - 1;
-		const prevLs = lineStartAt(st.text, prevEnd);
-		const prevLine = st.text.slice(prevLs, prevEnd).trimEnd();
-		const m = prevLine.match(/<([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?>$/);
-		if (!m) return false;
-		if (prevLine.endsWith("/>")) return false;
-		if (HTML_VOID_TAGS.has(m[1].toLowerCase())) return false;
-		return true;
+		return prevLineOpensTag(st, ls);
 	}
 
 	_backspaceIsIgnored(st) {
-		if (st.cursor === 0) return false;
-		const CLOSING = ["</style", "</script", "</html"];
-		const prevChar = st.text[st.cursor - 1];
-		if (prevChar === "\n") {
-			const ahead = st.text.slice(st.cursor, st.cursor + 9).trimStart();
-			return CLOSING.some((p) => ahead.startsWith(p));
-		}
-		if (prevChar === " " || prevChar === "\t") {
-			const ls = lineStartAt(st.text, st.cursor);
-			const leRaw = st.text.indexOf("\n", st.cursor);
-			const le = leRaw === -1 ? st.text.length : leRaw;
-			if (st.text.slice(ls, le).trim() === "") {
-				const nextStart = leRaw === -1 ? st.text.length : leRaw + 1;
-				const ahead = st.text.slice(nextStart, nextStart + 9).trimStart();
-				if (CLOSING.some((p) => ahead.startsWith(p))) return true;
-				if (this._prevLineOpensTag(st, ls)) return true;
-			}
-		}
-		return false;
+		return backspaceIsIgnored(st);
 	}
 
 	_autoDedent(ch, ts) {
-		const lineStart = lineStartAt(this.main.text, this.main.cursor);
-		const before = this.main.text.slice(lineStart, this.main.cursor);
-
-		const isCloser = "})]".includes(ch);
-		const isHtmlEnd = ch === "/" && /^[ \t]*<$/.test(before);
-		if (!(isCloser || isHtmlEnd)) return;
-		if (isCloser && !/^[ \t]*$/.test(before)) return;
-		if (!before) return;
-
-		let newBefore;
-		if (before.startsWith("\t")) newBefore = before.slice(1);
-		else if (before.startsWith("    ")) newBefore = before.slice(4);
-		else if (before.startsWith("  ")) newBefore = before.slice(2);
-		else return;
-
-		const n = before.length - newBefore.length;
-		const savedCursor = this.main.cursor;
-		this.main.cursor = lineStart;
-		this.main.deleteForward(n);
-		this.main.cursor = savedCursor - n;
+		autoDedent(this.main, ch, ts);
 	}
 
 	_devSemicolonNewline(ts) {

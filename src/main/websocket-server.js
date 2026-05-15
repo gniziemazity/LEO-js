@@ -141,6 +141,16 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "question-ended", data: {} });
 	}
 
+	broadcastMoveToStarted(payload) {
+		this.currentState.activeMoveTo = payload;
+		this.broadcast({ type: "move-to-started", data: payload });
+	}
+
+	broadcastMoveToEnded() {
+		this.currentState.activeMoveTo = null;
+		this.broadcast({ type: "move-to-ended", data: {} });
+	}
+
 	updateTimer(timeRemaining) {
 		this.currentState.timeRemaining = timeRemaining;
 		this.broadcast({ type: "timer-tick", data: { timeRemaining } });
@@ -200,6 +210,8 @@ class LEOBroadcastServer extends EventEmitter {
 				data.questionText || null,
 				data.openedAt || null,
 			);
+		} else if (type === "move-to-confirmed") {
+			this.emit("client-move-to-confirmed");
 		} else if (type === "close-student-interaction") {
 			this.emit(
 				"client-close-student-interaction",
