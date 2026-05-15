@@ -238,19 +238,20 @@ def _per_language_follow_stats(
         file_ext = _ext_of(fname)
         if file_ext is None:
             continue
-        if fname in missing_files:
+        missing_marks = [m for m in (marks or []) if m.get('label') == 'missing']
+        if fname in missing_files and not missing_marks:
             _add_whole_file_missing(fname, file_ext)
             counted_missing_for.add(fname)
         else:
             ranges = teacher_ranges.get(fname, {})
-            for m in marks or []:
-                if m.get('label') != 'missing':
-                    continue
+            for m in missing_marks:
                 pos = m.get('start', 0)
                 eff_ext = _effective_ext_at(pos, file_ext, ranges)
                 n_missing[eff_ext] += 1
                 ts = _resolve_missing_ts(m, fname)
                 items_by_ext[eff_ext].append((ts, f'-{m.get("token", "")}'))
+            if fname in missing_files:
+                counted_missing_for.add(fname)
     for fname in missing_files:
         file_ext = _ext_of(fname)
         if file_ext is None or fname in counted_missing_for:
@@ -280,8 +281,9 @@ def _per_language_follow_stats(
                 n_ghost_extra[ge_ext] += 1
                 ts = _resolve_ghost_ts(m)
                 items_by_ext[ge_ext].append((ts, f'+{m.get("token", "")}*'))
-            elif lbl == 'extra' and not m.get('paired_with'):
-                n_extra_unpaired[eff_ext] += 1
+            elif lbl == 'extra':
+                if not m.get('paired_with'):
+                    n_extra_unpaired[eff_ext] += 1
                 extras_by_ext[eff_ext].append(
                     (fname, pos, f'+{m.get("token", "")}')
                 )

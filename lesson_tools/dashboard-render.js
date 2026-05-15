@@ -117,9 +117,9 @@ const LANG_BAR_COLORS = {
 	HTML: THEME.red,
 	CSS: THEME.blue,
 	JS: THEME.orange,
-	Py: THEME.green,
+	Py: THEME.purple,
 	comment: THEME.green,
-	"?": THEME.gray,
+	"?": THEME.muted,
 };
 const LANG_STACK_ORDER = ["HTML", "CSS", "JS", "Py", "comment"];
 
@@ -163,9 +163,7 @@ function _singletonColorKey(kp) {
 }
 
 function _studentMistakes(students) {
-	return (students || []).map((s) =>
-		(s.follow_events || []).filter(_isMistakeEvent),
-	);
+	return (students || []).map(_mistakeEventsFor);
 }
 
 function _countStudentsInRange(studentEvs, t1, t2) {
@@ -308,47 +306,43 @@ function studentY(s, L) {
 	return pctToY(s.follow_pct ?? 0, L);
 }
 
+const BOTTOM_LEGEND_ITEMS = [
+	{ id: "leg-bottom-firstmismatch", key: "firstMismatch" },
+	{ id: "leg-bottom-followrank", key: "followRank" },
+	{ id: "leg-bottom-interactions", key: "interactions" },
+	{
+		id: "leg-bottom-barmode",
+		key: "barMode",
+		onChange: _updateBottomLegendState,
+	},
+];
+
 function setupBottomChartLegend() {
-	const cb1 = document.getElementById("leg-bottom-firstmismatch");
-	if (cb1) {
-		cb1.checked = _bottomChartVisible.firstMismatch;
-		cb1.onchange = () => {
-			_bottomChartVisible.firstMismatch = cb1.checked;
+	for (const { id, key, onChange } of BOTTOM_LEGEND_ITEMS) {
+		const cb = document.getElementById(id);
+		if (!cb) continue;
+		cb.checked = _bottomChartVisible[key];
+		cb.onchange = () => {
+			_bottomChartVisible[key] = cb.checked;
+			if (onChange) onChange();
 			scheduleRender();
 		};
 	}
-	const cb2 = document.getElementById("leg-bottom-followrank");
-	if (cb2) {
-		cb2.checked = _bottomChartVisible.followRank;
-		cb2.onchange = () => {
-			_bottomChartVisible.followRank = cb2.checked;
-			scheduleRender();
-		};
-	}
-	const cb3 = document.getElementById("leg-bottom-interactions");
-	if (cb3) {
-		cb3.checked = _bottomChartVisible.interactions;
-		cb3.onchange = () => {
-			_bottomChartVisible.interactions = cb3.checked;
-			scheduleRender();
-		};
-	}
-	const cb4 = document.getElementById("leg-bottom-barmode");
-	if (cb4) {
-		cb4.checked = _bottomChartVisible.barMode;
-		cb4.onchange = () => {
-			_bottomChartVisible.barMode = cb4.checked;
-			_updateShakeButtonVisibility();
-			scheduleRender();
-		};
-	}
-	_updateShakeButtonVisibility();
+	_updateBottomLegendState();
 }
 
-function _updateShakeButtonVisibility() {
+function _updateBottomLegendState() {
 	const btn = document.getElementById("btn-shake");
-	if (!btn) return;
-	btn.style.display = _bottomChartVisible.barMode ? "none" : "";
+	if (btn) btn.style.display = _bottomChartVisible.barMode ? "none" : "";
+	for (const { id, key } of BOTTOM_LEGEND_ITEMS) {
+		if (key === "barMode") continue;
+		const cb = document.getElementById(id);
+		if (!cb) continue;
+		cb.disabled = _bottomChartVisible.barMode;
+		const label = cb.closest("label");
+		if (label)
+			label.classList.toggle("is-disabled", _bottomChartVisible.barMode);
+	}
 }
 
 function setupTopChartLegend(p) {
@@ -709,26 +703,11 @@ function drawBottomChart(ctx, p, students, L) {
 	}
 
 	const drawDashesFor = (s, emphasized) => {
-		const jitter = _shake
-			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
-			: { dx: 0, dy: 0 };
-		const evs = (s.follow_events || []).filter(_isMistakeEvent);
+		const jitter = _jitterFor(s.name);
+		const evs = _mistakeEventsFor(s);
 		if (!evs.length) return;
-		const sorted = [...evs].sort((a, b) => a.ts - b.ts);
-		const clusters = [];
-		let cur = [sorted[0]];
-		for (let i = 1; i < sorted.length; i++) {
-			if (sorted[i].ts - sorted[i - 1].ts < CFG.BURST_GAP)
-				cur.push(sorted[i]);
-			else {
-				clusters.push(cur);
-				cur = [sorted[i]];
-			}
-		}
-		clusters.push(cur);
-		const minY = L.M.top + (L.plotHbotPad || 0);
-		const maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
-		const cy = Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy));
+		const clusters = _clusterMistakes(evs, CFG.BURST_GAP);
+		const cy = _clampStudentY(s, jitter, L);
 		const dotR = emphasized ? 2.0 : 1.5;
 		for (const cl of clusters) {
 			const isActiveCluster =
@@ -759,13 +738,9 @@ function drawBottomChart(ctx, p, students, L) {
 
 	const drawDotFor = (s, emphasized, ans, ask, hlp) => {
 		if (s.follow_dt == null) return;
-		const jitter = _shake
-			? _jitterMap.get(s.name) || { dx: 0, dy: 0 }
-			: { dx: 0, dy: 0 };
+		const jitter = _jitterFor(s.name);
 		const x = tsToX(s.follow_dt, L) + jitter.dx;
-		const _minY = L.M.top + (L.plotHbotPad || 0);
-		const _maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
-		const y = Math.max(_minY, Math.min(_maxY, studentY(s, L) + jitter.dy));
+		const y = _clampStudentY(s, jitter, L);
 		const active = ans || ask || hlp;
 
 		ctx.save();
@@ -826,18 +801,11 @@ function drawBottomChart(ctx, p, students, L) {
 
 	if (_hoveredStudent) {
 		const hs = _hoveredStudent;
-		const hEvs = (hs.follow_events || []).filter(_isMistakeEvent);
+		const hEvs = _mistakeEventsFor(hs);
 		if (hEvs.length) {
 			const hSorted = [...hEvs].sort((a, b) => a.ts - b.ts);
-			const hJitter = _shake
-				? _jitterMap.get(hs.name) || { dx: 0, dy: 0 }
-				: { dx: 0, dy: 0 };
-			const minY = L.M.top + (L.plotHbotPad || 0);
-			const maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
-			const cy = Math.max(
-				minY,
-				Math.min(maxY, studentY(hs, L) + hJitter.dy),
-			);
+			const hJitter = _jitterFor(hs.name);
+			const cy = _clampStudentY(hs, hJitter, L);
 			const x1 = tsToX(hSorted[0].ts, L);
 			const x2 = tsToX(hSorted[hSorted.length - 1].ts, L);
 			const bandH = 10;
@@ -933,7 +901,7 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		for (const evs of studentEvs) {
 			for (const e of evs) {
 				if (e.ts >= t1 && e.ts <= t2) {
-					const l = e.isComment ? "comment" : e.lang || "?";
+					const l = e.lang || "?";
 					if (!counts[l]) counts[l] = { ghost: 0, nonGhost: 0 };
 					if (e.kind === "extra-star") counts[l].ghost++;
 					else counts[l].nonGhost++;
@@ -946,8 +914,8 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	const counts = blocks.map((blk) =>
 		_countStudentsInRange(studentEvs, blk.ts1, blk.ts2),
 	);
-	const totalStudents = (students || []).length;
-	const denom = Math.max(1, totalStudents);
+	const maxCount = counts.reduce((m, c) => (c > m ? c : m), 0);
+	const denom = Math.max(1, maxCount);
 
 	ctx.save();
 	ctx.beginPath();
@@ -965,7 +933,7 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		ctx.fillRect(bx, by, bw, bh);
 	}
 
-	_drawTokenOverlay(ctx, p, students, L);
+	_drawTokenOverlay(ctx, p, students, L, denom);
 
 	ctx.restore();
 
@@ -978,25 +946,20 @@ function _drawBottomChartBars(ctx, p, students, L) {
 			if (v.ghost + v.nonGhost > 0) presentLangs.add(l);
 		}
 	}
-	const legendItems = LANG_STACK_ORDER.filter((l) => presentLangs.has(l));
+	const legendItems = LANG_STACK_ORDER.filter(
+		(l) => l !== "comment" && presentLangs.has(l),
+	);
 	if (legendItems.length) {
 		ctx.font = "bold 10px Consolas,monospace";
 		ctx.textAlign = "left";
 		ctx.textBaseline = "middle";
-		const swatchW = 7;
-		const swatchH = 7;
-		const gapInside = 4;
 		const gapBetween = 12;
 		let lx = M.left + 6;
 		const ly = M.top + 8;
 		for (const l of legendItems) {
-			ctx.globalAlpha = 0.72;
 			ctx.fillStyle = LANG_BAR_COLORS[l];
-			ctx.fillRect(lx, ly - swatchH / 2, swatchW, swatchH);
-			ctx.globalAlpha = 1;
-			ctx.fillStyle = "#333";
-			ctx.fillText(l, lx + swatchW + gapInside, ly);
-			lx += swatchW + gapInside + ctx.measureText(l).width + gapBetween;
+			ctx.fillText(l, lx, ly);
+			lx += ctx.measureText(l).width + gapBetween;
 		}
 	}
 
@@ -1006,7 +969,8 @@ function _drawBottomChartBars(ctx, p, students, L) {
 	ctx.textBaseline = "alphabetic";
 	ctx.strokeStyle = "#aaa";
 	ctx.lineWidth = 1;
-	for (const v of [0, totalStudents]) {
+	const ticks = maxCount > 0 ? [0, maxCount] : [0];
+	for (const v of ticks) {
 		const y = bottomY - (v / denom) * plotHbot;
 		ctx.beginPath();
 		ctx.moveTo(M.left - 3, y);
@@ -1022,11 +986,11 @@ function _drawBottomChartBars(ctx, p, students, L) {
 
 let _tokenOverlaySlots = [];
 
-function _drawTokenOverlay(ctx, p, students, L) {
+function _drawTokenOverlay(ctx, p, students, L, denom) {
 	_tokenOverlaySlots = [];
 	if (!_teacherTokens || !_teacherTokens.length) return;
 	const { M, plotW, plotHbot } = L;
-	const totalStudents = Math.max(1, (students || []).length);
+	const scaleDenom = Math.max(1, denom || (students || []).length);
 	const baseY = M.top + plotHbot;
 	const minBarW = _minBlockBarW(p, L);
 	const blocks = _buildBottomChartBlocks(p);
@@ -1035,32 +999,40 @@ function _drawTokenOverlay(ctx, p, students, L) {
 
 	for (const blk of blocks) {
 		const tbs = tokenBars
-			.filter((t) => t.ts >= blk.ts1 && t.ts <= blk.ts2)
+			.filter((t) => !t.isComment && t.ts >= blk.ts1 && t.ts <= blk.ts2)
 			.sort((a, b) => a.ts - b.ts);
 		if (!tbs.length) continue;
+		const blockLangCounts = {};
+		for (const t of tbs) {
+			if (!t.lang || !LANG_BAR_COLORS[t.lang]) continue;
+			const w = t.students ? t.students.size : 0;
+			blockLangCounts[t.lang] = (blockLangCounts[t.lang] || 0) + w + 1;
+		}
+		let dominantLang = null;
+		let dominantCount = 0;
+		for (const [l, c] of Object.entries(blockLangCounts)) {
+			if (c > dominantCount) {
+				dominantCount = c;
+				dominantLang = l;
+			}
+		}
 		const { bx, bw } = _blockBarGeom(blk.centerTs, blk.dur, L, minBarW);
 		const slotW = bw / tbs.length;
 		for (let j = 0; j < tbs.length; j++) {
 			const tb = tbs[j];
 			const sx = bx + j * slotW;
 			const nStudents = tb.students ? tb.students.size : 0;
-			const totalH = (nStudents / totalStudents) * plotHbot;
+			const totalH = (nStudents / scaleDenom) * plotHbot;
 			_tokenOverlaySlots.push({ bar: tb, sx, slotW, totalH });
-			if (tb.isComment && nStudents === 0) {
-				ctx.globalAlpha = 0.9;
-				ctx.fillStyle = BAR_COLORS.comment;
-				ctx.fillRect(sx, baseY - 2, slotW, 2);
-				continue;
-			}
 			if (nStudents === 0) continue;
 			const nonGhost = tb.regularStudents ? tb.regularStudents.size : 0;
 			const ghost = tb.ghostStudents ? tb.ghostStudents.size : 0;
 			const subDenom = Math.max(1, nonGhost + ghost);
 			const nonGhostH = totalH * (nonGhost / subDenom);
 			const ghostH = totalH - nonGhostH;
-			const color = tb.isComment
-				? BAR_COLORS.comment
-				: LANG_BAR_COLORS[tb.lang] || LANG_BAR_COLORS["?"];
+			const lang = tb.lang || dominantLang;
+			const color = LANG_BAR_COLORS[lang];
+			if (!color) continue;
 			if (nonGhostH > 0) {
 				ctx.globalAlpha = 0.95;
 				ctx.fillStyle = color;

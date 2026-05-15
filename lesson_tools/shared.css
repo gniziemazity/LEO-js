@@ -2,7 +2,7 @@
 	/* ── Raw palette ──────────────────────────────────── */
 	--c-black: #000;
 	--c-white: #fff;
-	--c-gray-1: #ddd;
+	--c-gray-1: #eee;
 	--c-gray-2: #888;
 	--c-gray-3: #222;
 
@@ -28,6 +28,7 @@
 	/* Surfaces */
 	--clr-page: var(--c-gray-1);
 	--clr-surface: var(--c-gray-1);
+	--clr-surface-light: var(--c-gray-1);
 	--clr-surface-soft: var(--c-gray-1);
 	--clr-toolbar: var(--c-gray-1);
 	--clr-tab-hover: var(--c-gray-1);
@@ -50,7 +51,7 @@
 	--clr-border-strong: var(--c-gray-2);
 	--clr-bar-track: var(--c-gray-1);
 	--clr-diff-btn-border: var(--c-gray-2);
-	--clr-code-muted: var(--c-gray-2);
+	--clr-code-muted: #aaa;
 	--clr-btn-hover-dark: var(--c-gray-2);
 	--clr-fail-fade: rgba(0, 0, 0, 0.3);
 
@@ -58,10 +59,10 @@
 	--clr-accent: var(--c-blue-1);
 	--clr-accent-dark: var(--c-blue-2);
 	--clr-accent-light: rgba(0, 122, 204, 0.1);
-	--clr-extra-dark: var(--c-blue-2);
-	--clr-extra-darker: var(--c-blue-2);
-	--clr-ghost-dark: var(--c-blue-2);
-	--clr-ghost-darker: var(--c-blue-2);
+	--clr-extra-dark: var(--c-gray-3);
+	--clr-extra-darker: var(--c-black);
+	--clr-ghost-dark: var(--c-gray-2);
+	--clr-ghost-darker: var(--c-gray-3);
 
 	/* Named hues */
 	--clr-red: var(--c-red-1);
@@ -101,17 +102,19 @@
 
 	/* Marks */
 	--clr-mark-missing: var(--c-red-1);
-	--clr-mark-extra: var(--c-blue-1);
-	--clr-mark-ghost: rgba(0, 122, 204, 0.5);
+	--clr-mark-extra: var(--c-black);
+	--clr-mark-ghost: rgba(0, 0, 0, 0.5);
 	--clr-mark-comment: var(--c-green-1);
 	--clr-mark-extra-comment: var(--c-green-2);
 	--clr-mark-missing-bg: rgba(204, 34, 34, 0.13);
-	--clr-mark-extra-bg: rgba(0, 122, 204, 0.1);
+	--clr-mark-extra-bg: rgba(0, 0, 0, 0.08);
 	--clr-mark-missing-pair-bg: rgba(204, 34, 34, 0.22);
-	--clr-mark-extra-pair-bg: rgba(0, 122, 204, 0.22);
+	--clr-mark-extra-pair-bg: rgba(0, 0, 0, 0.18);
 	--clr-mark-missing-soft-bg: rgba(204, 34, 34, 0.08);
-	--clr-mark-extra-soft-bg: rgba(0, 122, 204, 0.08);
-	--clr-mark-ghost-soft-bg: rgba(0, 122, 204, 0.05);
+	--clr-mark-extra-soft-bg: rgba(0, 0, 0, 0.06);
+	--clr-mark-ghost-soft-bg: rgba(0, 0, 0, 0.04);
+	--clr-ghost-text: #d8d8d8;
+	--clr-ghost-pair: #888;
 
 	/* Status (overview) */
 	--clr-pos: var(--c-green-2);
@@ -322,7 +325,7 @@ body {
 	color: var(--clr-orange);
 }
 .tt-lang-py {
-	color: var(--clr-green);
+	color: var(--clr-purple);
 }
 .tt-lang-unk {
 	color: var(--clr-gray);
@@ -368,6 +371,26 @@ body {
 }
 .tt-bar-fixed {
 	flex: 0 0 auto;
+}
+.tt-bar-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.tt-bar-row > .tt-bar-spacer {
+	flex: 1 1 auto;
+}
+.tt-lang-legend {
+	font:
+		bold 10px Consolas,
+		monospace;
+	white-space: nowrap;
+}
+.tt-lang-legend > span {
+	margin-left: 8px;
+}
+.tt-lang-legend > span:first-child {
+	margin-left: 0;
 }
 .tt-bar-scroll {
 	overflow-y: auto;

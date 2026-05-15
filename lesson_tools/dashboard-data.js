@@ -1,15 +1,5 @@
 "use strict";
 
-const DELETE_LINE_CHAR = "⛔";
-const BACKSPACE_CHARS_SET = new Set(["↢", "⌫"]);
-const DELETE_FWRD_CHARS_SET = new Set(["↣", "⌦"]);
-const CURSOR_LEFT_CHARS = new Set(["←"]);
-const CURSOR_RIGHT_CHARS = new Set(["→"]);
-const CURSOR_UP_CHARS = new Set(["↑", "⇑"]);
-const CURSOR_DOWN_CHARS = new Set(["↓", "⇓"]);
-const CURSOR_HOME_CHARS = new Set(["◄", "⇐"]);
-const CURSOR_END_CHARS = new Set(["►", "⇒"]);
-
 function _annotateRemovedLengths(events) {
 	const lines = [[]];
 	let cursorLine = 0;

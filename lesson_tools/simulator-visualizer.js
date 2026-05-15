@@ -5,7 +5,6 @@ class LogVisualizer {
 		this.micro = [];
 		this.microIdx = 0;
 		this.playing = false;
-		this.timerId = null;
 		this.speed = 8.0;
 		this._silent = false;
 
@@ -30,9 +29,11 @@ class LogVisualizer {
 		this._dragFrac = 0;
 		this._dragTimer = null;
 
-		this._stepStartWall = 0;
-		this._stepDurS = 0.001;
-		this._seekbarRaf = null;
+		this._playMs = 0;
+		this._lastWall = 0;
+		this._rafId = null;
+		this._currentInt = null;
+		this._nextIntIdx = 0;
 
 		this.vscode = new VSCodeSettings();
 		this._selAnchorMain = null;
@@ -78,7 +79,7 @@ class LogVisualizer {
             <iframe id="vis-preview" sandbox="allow-scripts allow-same-origin"></iframe>
             <div id="vis-dev-divider" title="Drag to resize"></div>
             <div id="vis-dev-outer">
-              <div class="pane-title">DevTools</div>
+              <div class="pane-title">Dev Tools</div>
               <pre id="vis-dev-editor"></pre>
             </div>
           </div>
@@ -318,43 +319,44 @@ class LogVisualizer {
 		document.title = lessonName ? `Simulator: ${lessonName}` : "Simulator";
 
 		this._tsOrigin = 0;
-		for (const act of micro) {
-			const ts = act[2];
+		let tsOriginIdx = 0;
+		for (let i = 0; i < micro.length; i++) {
+			const ts = micro[i][2];
 			if (ts && ts > 1_000_000_000_000) {
 				this._tsOrigin = ts;
+				tsOriginIdx = i;
 				break;
 			}
 		}
 
 		this._microCumDelay = new Float64Array(micro.length + 1);
-		let cumD = 0;
-		for (let i = 0; i < micro.length; i++) {
-			this._microCumDelay[i] = cumD;
-			const act = micro[i];
-			let d;
-			switch (act[0]) {
-				case "code_insert_begin":
-				case "code_insert_end":
-					d = act[2];
-					break;
-				default:
-					d = act[3] !== undefined ? act[3] : DELAY_OPS;
-					break;
+		this._microCumDelay[0] = 0;
+		for (let i = 1; i <= micro.length; i++) {
+			const prevTs = micro[i - 1]?.[2];
+			const nextTs = i < micro.length ? micro[i]?.[2] : prevTs;
+			let d = 1;
+			if (
+				prevTs &&
+				nextTs &&
+				prevTs > 1_000_000_000_000 &&
+				nextTs > prevTs
+			) {
+				d = nextTs - prevTs;
 			}
-			cumD += Math.max(1, d);
+			this._microCumDelay[i] = this._microCumDelay[i - 1] + Math.max(1, d);
 		}
-		this._microCumDelay[micro.length] = cumD;
-		this._totalDelay = cumD;
+		this._totalDelay = this._microCumDelay[micro.length];
+		this._tsOriginCum = this._microCumDelay[tsOriginIdx] || 0;
 
-		this._seekTo(this.micro.length);
+		this._seekToMs(this._totalDelay);
 		this.elPlay.disabled = false;
 	}
 
 	togglePlay() {
 		if (this.playing) this._pause();
 		else {
-			if (this.microIdx >= this.micro.length && this.micro.length)
-				this._seekTo(0);
+			if (this.micro.length && this._playMs >= this._totalDelay)
+				this._seekToMs(0);
 			this._play();
 		}
 	}
@@ -363,24 +365,103 @@ class LogVisualizer {
 		this.playing = true;
 		this.elPlay.textContent = "⏸  Pause";
 		this.elPlay.style.background = CLR.red;
-		this._stepStartWall = performance.now();
-		this._stepDurS = 0.001;
-		this._scheduleSeekbarUpdate();
-		this._schedule(0);
+		this._lastWall = performance.now();
+		this._rafId = requestAnimationFrame(() => this._raf());
 	}
 
 	_pause() {
 		this.playing = false;
-		if (this.timerId) {
-			clearTimeout(this.timerId);
-			this.timerId = null;
-		}
-		if (this._seekbarRaf) {
-			cancelAnimationFrame(this._seekbarRaf);
-			this._seekbarRaf = null;
+		if (this._rafId) {
+			cancelAnimationFrame(this._rafId);
+			this._rafId = null;
 		}
 		this.elPlay.textContent = "▶  Play";
 		this.elPlay.style.background = "";
+	}
+
+	_raf() {
+		this._rafId = null;
+		if (!this.playing || this._seeking) return;
+		const now = performance.now();
+		const dtSec = (now - this._lastWall) / 1000;
+		this._lastWall = now;
+		const newPlayMs = Math.min(
+			this._totalDelay,
+			this._playMs + dtSec * 1000 * Math.max(0.1, this.speed),
+		);
+		let eventsFired = false;
+		while (
+			this.microIdx < this.micro.length &&
+			this._microCumDelay[this.microIdx] < newPlayMs
+		) {
+			this._handle(this.micro[this.microIdx]);
+			this.microIdx++;
+			eventsFired = true;
+		}
+		this._playMs = newPlayMs;
+		this._paintHud();
+		if (eventsFired) {
+			this._renderEditors();
+			this._schedulePreview();
+		}
+		if (
+			this.microIdx >= this.micro.length &&
+			this._playMs >= this._totalDelay
+		) {
+			this.playing = false;
+			this.elPlay.textContent = "▶  Play";
+			this.elPlay.style.background = "";
+			this._renderEditors();
+			this._schedulePreview();
+			return;
+		}
+		this._rafId = requestAnimationFrame(() => this._raf());
+	}
+
+	_paintHud() {
+		this._drawSeekbar(this._totalDelay ? this._playMs / this._totalDelay : 0);
+		if (this._tsOrigin) {
+			const ts = this._tsOrigin + (this._playMs - (this._tsOriginCum || 0));
+			this.elTsLbl.textContent = fmtTs(ts).slice(-12);
+			this._updateInteractionOverlay(ts);
+		}
+		this.elProgLbl.textContent = `${this.microIdx} / ${this.micro.length}`;
+	}
+
+	_updateInteractionOverlay(ts) {
+		const activeInt = this._activeInteractionAt(ts);
+		if (activeInt === this._currentInt) return;
+		this._currentInt = activeInt;
+		if (activeInt) {
+			this.elDevEditor.classList.add("vis-int-mode");
+			this.elDevEditor.innerHTML = this._renderInteractionHtml(activeInt);
+			if (!this._loggedInteractions?.has(activeInt)) {
+				this._logInteraction(activeInt);
+			}
+		} else {
+			this.elDevEditor.classList.remove("vis-int-mode");
+			this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
+		}
+	}
+
+	_logInteraction(it) {
+		if (!this._loggedInteractions) this._loggedInteractions = new Set();
+		this._loggedInteractions.add(it);
+		const KIND = {
+			"teacher-question": {
+				icon: "❓",
+				label: "Question",
+				color: CLR.accent,
+			},
+			"student-question": { icon: "🙋", label: "Question", color: CLR.move },
+			"providing-help": { icon: "🤝", label: "Help", color: CLR.green },
+		};
+		const k = KIND[it.interaction] || {
+			icon: "💬",
+			label: "Interaction",
+			color: CLR.dim,
+		};
+		this._log(it.timestamp, `${k.icon}  ${k.label}`, k.color);
 	}
 
 	_resetAllFiles() {
@@ -391,42 +472,13 @@ class LogVisualizer {
 		this._updateFileTabs();
 	}
 
-	_schedule(delayMs) {
-		if (this.playing)
-			this.timerId = setTimeout(() => this._step(), Math.max(1, delayMs));
-	}
-
-	_step() {
-		if (!this.playing) return;
-		if (this.microIdx >= this.micro.length) {
-			this.playing = false;
-			this.elPlay.textContent = "▶  Play";
-			this.elPlay.style.background = "";
-			this._renderEditors();
-			this._schedulePreview();
-			return;
-		}
-		const act = this.micro[this.microIdx++];
-		const delayBase = this._handle(act);
-		this._renderEditors();
-		this._schedulePreview();
-		this._updateProgress();
-		const delayMs = Math.max(
-			1,
-			Math.round(delayBase / Math.max(0.1, this.speed)),
-		);
-		this._stepStartWall = performance.now();
-		this._stepDurS = delayMs / 1000;
-		this._schedule(delayMs);
-	}
-
 	_handle(act) {
 		const kind = act[0];
 
 		if (kind === "switch_editor") {
 			const [, target, , delay] = act;
-			const label = target === "dev" ? "DevTools" : "Main Editor";
-			this._log(act[2], `⇄  switch to ${label}`, CLR.move);
+			const label = target === "dev" ? "Dev Tools" : "Main Editor";
+			this._log(act[2], `→  ${label}`, CLR.move);
 			this._activeEditor = target;
 			if (target === "main") this._switchToFile("MAIN");
 
@@ -434,111 +486,25 @@ class LogVisualizer {
 		} else if (kind === "char") {
 			const [, ch, ts, delay, editor] = act;
 			return this._handleChar(ch, ts, delay, editor);
-		} else if (kind === "code_insert_begin") {
-			const lineStart =
-				this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
-			const m = this.main.text
-				.slice(lineStart, this.main.cursor)
-				.match(/^(\s*)/);
-			this._ciBaseIndent = m ? m[1] : "";
-			return act[2];
-		} else if (kind === "code_insert_end") {
-			this._ciBaseIndent = "";
-			return act[2];
-		} else if (kind === "code_char") {
-			const [, ch, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			if (editor === "main") this._autoDedent(ch, ts);
-			st.insert(ch, ts);
-			return delay;
-		} else if (kind === "log_code_insert") {
-			const clean = act[1].replace(ANCHOR_RE, "");
-			this._log(
-				act[2],
-				`⬇  code_insert: ${JSON.stringify(clean.slice(0, 50))}`,
-				CLR.orange,
-			);
-			return act[3];
 		} else if (kind === "set_anchor") {
 			const [, name, ts, delay] = act;
 			this.main.setAnchor(name);
-			this._log(ts, `⚓  anchor ${name} → ${this.main.cursor}`, CLR.accent);
+			this._log(ts, `⚓  ${name}`, CLR.accent);
 			return delay;
 		} else if (kind === "move_anchor") {
 			const [, name, ts, delay] = act;
 			const ok = this.main.jumpToAnchor(name);
 			if (ok) {
-				this._log(
-					ts,
-					`→  move to ${name} (pos ${this.main.cursor})`,
-					CLR.move,
-				);
+				this._log(ts, `→  ${name}`, CLR.move);
 				this._flashAnchor();
 			} else {
-				this._log(ts, `⚠  unknown anchor: ${name}`, CLR.red);
+				this._log(ts, `⚠  Unknown anchor: ${name}`, CLR.red);
 			}
 			return delay;
 		} else if (kind === "switch_file") {
 			const [, filename, ts, delay] = act;
 			this._switchToFile(filename);
-			this._log(ts, `⇄  switch to file: ${filename}`, CLR.move);
-			return delay;
-		} else if (kind === "code_insert_newline") {
-			const [, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			st.insert("\n", ts);
-			if (editor === "main") {
-				this._autoIndent(ts);
-				const lineStart =
-					this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
-				const m = this.main.text
-					.slice(lineStart, this.main.cursor)
-					.match(/^(\s*)/);
-				this._ciBaseIndent = m ? m[1] : "";
-			}
-			this._log(ts, "↩  Insert Newline (in code_insert)", CLR.orange);
-			return delay;
-		} else if (kind === "code_cursor_move") {
-			const [, ch, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			if (ch in CURSOR_MOVES) {
-				st.moveCursor(CURSOR_MOVES[ch]);
-			}
-			if (editor === "main") {
-				const lineStart =
-					this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
-				const m = this.main.text
-					.slice(lineStart, this.main.cursor)
-					.match(/^(\s*)/);
-				this._ciBaseIndent = m ? m[1] : "";
-			}
-			this._log(ts, `  ${ch} (in code_insert)`, CLR.orange);
-			return delay;
-		} else if (kind === "code_backspace") {
-			const [, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			if (this._backspaceIsIgnored(st)) {
-				this._log(
-					ts,
-					"⌫  Backspace (ignored — in code_insert)",
-					CLR.pale_red,
-				);
-			} else {
-				st.deleteBack(1);
-				this._log(ts, "⌫  Backspace (in code_insert)", CLR.red);
-			}
-			return delay;
-		} else if (kind === "code_fwd_delete") {
-			const [, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			st.deleteForward(1);
-			this._log(ts, "⌦  Delete (in code_insert)", CLR.red);
-			return delay;
-		} else if (kind === "code_delete_line") {
-			const [, ts, delay, editor] = act;
-			const st = editor === "dev" ? this.dev : this.main;
-			st.deleteLine();
-			this._log(ts, "⛔  Delete Line (in code_insert)", CLR.red);
+			this._log(ts, `→  ${filename}`, CLR.move);
 			return delay;
 		} else if (kind === "code_insert_atomic") {
 			return this._handleCodeInsertAtomic(act);
@@ -553,14 +519,16 @@ class LogVisualizer {
 		if (ch in CURSOR_MOVES) {
 			this.main.moveCursor(CURSOR_MOVES[ch]);
 			this._selAnchorMain = null;
-			this._log(ts, `⌨  ${ch}`, CLR.blue);
+			const lbl = CURSOR_MOVE_LABELS[ch];
+			this._log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""}`, CLR.blue);
 			return delay;
 		}
 		if (ch in SHIFT_CURSOR_MOVES) {
 			if (this._selAnchorMain === null)
 				this._selAnchorMain = this.main.cursor;
 			this.main.moveCursor(SHIFT_CURSOR_MOVES[ch]);
-			this._log(ts, `⌨  ${ch} (select)`, CLR.blue);
+			const lbl = CURSOR_MOVE_LABELS[ch];
+			this._log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""} (select)`, CLR.blue);
 			return delay;
 		}
 
@@ -572,22 +540,18 @@ class LogVisualizer {
 				this._selAnchorMain !== null
 			) {
 				this._indentSelection(ts);
-				this._log(ts, "⇥ Tab (indent selection)", CLR.blue);
+				this._log(ts, "⌨  ― Tab", CLR.blue);
 				return delay;
 			}
 			st.insert(real, ts);
 			if (real === "\n" && editor === "main") this._autoIndent(ts);
-			this._log(ts, `⌨  ${real === "\n" ? "↩ Enter" : "⇥ Tab"}`, CLR.blue);
+			this._log(ts, `⌨  ${real === "\n" ? "↩ Enter" : "― Tab"}`, CLR.blue);
 			return delay;
 		}
 
 		if (ch === "⌫" || ch === "↢") {
 			if (this._backspaceIsIgnored(st)) {
-				this._log(
-					ts,
-					"⌫  Backspace (ignored — before closing tag)",
-					CLR.pale_red,
-				);
+				this._log(ts, "⌫  Backspace", CLR.pale_red);
 				return delay;
 			}
 			st.deleteBack(1);
@@ -597,18 +561,18 @@ class LogVisualizer {
 
 		if (ch === DELETE_FWRD_CHAR) {
 			st.deleteForward(1);
-			this._log(ts, "⌦  Delete (forward)", CLR.blue);
+			this._log(ts, "⌦  Delete", CLR.blue);
 			return delay;
 		}
 
 		if (ch === DELETE_LINE_CHAR) {
 			st.deleteLine();
-			this._log(ts, "⛔  Delete Line (Ctrl+Shift+K)", CLR.blue);
+			this._log(ts, "⛔  Delete Line", CLR.red);
 			return delay;
 		}
 
 		if (ch === PAUSE_CHAR) {
-			this._log(ts, "🕛  pause 500 ms", CLR.dim);
+			this._log(ts, "🕛  Pause 500 ms", CLR.dim);
 			return PAUSE_MS;
 		}
 
@@ -631,19 +595,9 @@ class LogVisualizer {
 
 	_handleCodeInsertAtomic(act) {
 		const [, code, ts, delay, editor] = act;
-		const clean = code.replace(ANCHOR_RE, "");
-		this._log(
-			ts,
-			`⬇  code_insert: ${JSON.stringify(clean.slice(0, 50))}`,
-			CLR.orange,
-		);
+		this._log(ts, "⬇  Code Insert", CLR.orange);
 
-		const lineStart =
-			this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
-		const m = this.main.text
-			.slice(lineStart, this.main.cursor)
-			.match(/^(\s*)/);
-		this._ciBaseIndent = m ? m[1] : "";
+		this._ciBaseIndent = currentLineIndent(this.main.text, this.main.cursor);
 
 		const segments = _splitCodeWithAnchors(code);
 		for (const [segKind, segVal] of segments) {
@@ -657,25 +611,19 @@ class LogVisualizer {
 					) {
 						st.moveCursor(CURSOR_MOVES[ch]);
 						if (editor === "main") {
-							const ls =
-								this.main.text.lastIndexOf("\n", this.main.cursor - 1) +
-								1;
-							const mc = this.main.text
-								.slice(ls, this.main.cursor)
-								.match(/^(\s*)/);
-							this._ciBaseIndent = mc ? mc[1] : "";
+							this._ciBaseIndent = currentLineIndent(
+								this.main.text,
+								this.main.cursor,
+							);
 						}
 					} else if (ch === "↩" || ch === "\n") {
 						st.insert("\n", ts);
 						if (editor === "main") {
 							this._autoIndent(ts);
-							const ls =
-								this.main.text.lastIndexOf("\n", this.main.cursor - 1) +
-								1;
-							const mc = this.main.text
-								.slice(ls, this.main.cursor)
-								.match(/^(\s*)/);
-							this._ciBaseIndent = mc ? mc[1] : "";
+							this._ciBaseIndent = currentLineIndent(
+								this.main.text,
+								this.main.cursor,
+							);
 						}
 					} else if (ch === "―" || ch === "\t") {
 						st.insert("\t", ts);
@@ -708,7 +656,7 @@ class LogVisualizer {
 		if (auto) {
 			for (const c of auto) this.main.insert(c, ts);
 			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ auto-quotes: ${JSON.stringify(auto)}`, CLR.green);
+			this._log(ts, `  ↳ Auto-Quotes: ${JSON.stringify(auto)}`, CLR.green);
 			return;
 		}
 
@@ -716,7 +664,7 @@ class LogVisualizer {
 		if (auto) {
 			for (const c of auto) this.main.insert(c, ts);
 			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ auto-tag: ${JSON.stringify(auto)}`, CLR.green);
+			this._log(ts, `  ↳ Auto-Tag: ${JSON.stringify(auto)}`, CLR.green);
 			return;
 		}
 
@@ -724,7 +672,7 @@ class LogVisualizer {
 		if (auto) {
 			for (const c of auto) this.main.insert(c, ts);
 			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ auto-bracket: ${JSON.stringify(auto)}`, CLR.green);
+			this._log(ts, `  ↳ Auto-Bracket: ${JSON.stringify(auto)}`, CLR.green);
 			return;
 		}
 
@@ -732,7 +680,7 @@ class LogVisualizer {
 		if (auto) {
 			for (const c of auto) this.main.insert(c, ts);
 			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ auto-quote: ${JSON.stringify(auto)}`, CLR.green);
+			this._log(ts, `  ↳ Auto-Quote: ${JSON.stringify(auto)}`, CLR.green);
 			return;
 		}
 	}
@@ -757,16 +705,11 @@ class LogVisualizer {
 
 	_autoIndent(ts) {
 		const cur = this.main.cursor;
-		const prevEnd = this.main.text.lastIndexOf("\n", cur - 1);
-		const prev2 =
-			prevEnd > 0 ? this.main.text.lastIndexOf("\n", prevEnd - 1) : -1;
+		const prevEnd = lineStartAt(this.main.text, cur) - 1;
+		const prev2 = prevEnd > 0 ? lineStartAt(this.main.text, prevEnd) - 1 : -1;
 		const prevLine = this.main.text.slice(prev2 + 1, prevEnd);
-		const base = (prevLine.match(/^(\s*)/) || ["", ""])[1];
-		const lineEnd = this.main.text.indexOf("\n", cur);
-		const after =
-			lineEnd === -1
-				? this.main.text.slice(cur)
-				: this.main.text.slice(cur, lineEnd);
+		const base = leadingIndent(prevLine);
+		const after = this.main.text.slice(cur, lineEndAt(this.main.text, cur));
 		const afterTrimmed = after.trimStart();
 
 		const LP = window.LanguageProfiles;
@@ -814,7 +757,7 @@ class LogVisualizer {
 		const text = this.main.text;
 
 		const lineStarts = [];
-		let p = text.lastIndexOf("\n", selStart - 1) + 1;
+		let p = lineStartAt(text, selStart);
 		lineStarts.push(p);
 		while (true) {
 			const nl = text.indexOf("\n", p);
@@ -974,7 +917,7 @@ class LogVisualizer {
 	_prevLineOpensTag(st, ls) {
 		if (ls === 0) return false;
 		const prevEnd = ls - 1;
-		const prevLs = st.text.lastIndexOf("\n", prevEnd - 1) + 1;
+		const prevLs = lineStartAt(st.text, prevEnd);
 		const prevLine = st.text.slice(prevLs, prevEnd).trimEnd();
 		const m = prevLine.match(/<([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?>$/);
 		if (!m) return false;
@@ -992,7 +935,7 @@ class LogVisualizer {
 			return CLOSING.some((p) => ahead.startsWith(p));
 		}
 		if (prevChar === " " || prevChar === "\t") {
-			const ls = st.text.lastIndexOf("\n", st.cursor - 1) + 1;
+			const ls = lineStartAt(st.text, st.cursor);
 			const leRaw = st.text.indexOf("\n", st.cursor);
 			const le = leRaw === -1 ? st.text.length : leRaw;
 			if (st.text.slice(ls, le).trim() === "") {
@@ -1006,8 +949,7 @@ class LogVisualizer {
 	}
 
 	_autoDedent(ch, ts) {
-		const lineStart =
-			this.main.text.lastIndexOf("\n", this.main.cursor - 1) + 1;
+		const lineStart = lineStartAt(this.main.text, this.main.cursor);
 		const before = this.main.text.slice(lineStart, this.main.cursor);
 
 		const isCloser = "})]".includes(ch);
@@ -1030,10 +972,7 @@ class LogVisualizer {
 	}
 
 	_devSemicolonNewline(ts) {
-		const lineStart =
-			this.dev.text.lastIndexOf("\n", this.dev.cursor - 1) + 1;
-		const line = this.dev.text.slice(lineStart, this.dev.cursor);
-		const indent = (line.match(/^(\s*)/) || ["", ""])[1];
+		const indent = currentLineIndent(this.dev.text, this.dev.cursor);
 		this.dev.insert("\n", ts);
 		for (const c of indent) this.dev.insert(c, ts);
 	}
@@ -1053,16 +992,7 @@ class LogVisualizer {
 			else mainFileType = "html";
 		}
 		this.elEditor.innerHTML = renderEditorHtml(this.main, true, mainFileType);
-		const interactionTs =
-			(this.microIdx > 0 && this.micro[this.microIdx - 1]?.[2]) ||
-			this.main.tsAtCursor() ||
-			this.dev.tsAtCursor() ||
-			null;
-		const activeInt = this._activeInteractionAt(interactionTs);
-		if (activeInt) {
-			this.elDevEditor.classList.add("vis-int-mode");
-			this.elDevEditor.innerHTML = this._renderInteractionHtml(activeInt);
-		} else {
+		if (!this._currentInt) {
 			this.elDevEditor.classList.remove("vis-int-mode");
 			this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
 		}
@@ -1070,8 +1000,6 @@ class LogVisualizer {
 			const cur = this.elEditor.querySelector(".vis-cursor");
 			if (cur) cur.scrollIntoView({ block: "nearest" });
 		}
-		const ts = this.main.tsAtCursor() || this.dev.tsAtCursor();
-		if (ts && !this._silent) this.elTsLbl.textContent = fmtTs(ts).slice(-12);
 	}
 
 	_schedulePreview() {
@@ -1132,55 +1060,15 @@ class LogVisualizer {
 		this.elSeekFill.style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
 	}
 
-	_idxToFrac(idx) {
-		if (!this._totalDelay || !this._microCumDelay)
-			return this.micro.length ? idx / this.micro.length : 0;
-		const i = Math.max(0, Math.min(idx, this._microCumDelay.length - 1));
-		return this._microCumDelay[i] / this._totalDelay;
-	}
-
-	_fracToIdx(frac) {
-		if (!this._totalDelay || !this._microCumDelay) {
-			return Math.max(
-				0,
-				Math.min(this.micro.length, Math.round(frac * this.micro.length)),
-			);
-		}
-		const target = frac * this._totalDelay;
-		let lo = 0,
-			hi = this.micro.length;
-		while (lo < hi) {
-			const mid = (lo + hi) >> 1;
-			if (this._microCumDelay[mid] < target) lo = mid + 1;
-			else hi = mid;
-		}
-		return Math.max(0, Math.min(this.micro.length, lo));
-	}
-
-	_scheduleSeekbarUpdate() {
-		if (this._seekbarRaf) cancelAnimationFrame(this._seekbarRaf);
-		if (!this.playing || this._seeking) return;
-		this._seekbarRaf = requestAnimationFrame(() => {
-			this._seekbarRaf = null;
-			if (!this.playing) return;
-			const elapsed = (performance.now() - this._stepStartWall) / 1000;
-			const t =
-				this._stepDurS > 0 ? Math.min(1, elapsed / this._stepDurS) : 1;
-			const prevFrac = this._idxToFrac(Math.max(0, this.microIdx - 1));
-			const nextFrac = this._idxToFrac(this.microIdx);
-			const frac = Math.min(1, prevFrac + (nextFrac - prevFrac) * t);
-			this._drawSeekbar(frac);
-			this._scheduleSeekbarUpdate();
-		});
-	}
-
 	_onSeekPress(e) {
 		if (!this.micro.length) return;
 		this._seeking = true;
 		this._seekWasPlaying = this.playing;
 		if (this.playing) this._pause();
 		const frac = e.offsetX / this.elSeekbar.offsetWidth;
+		this._playMs = frac * this._totalDelay;
 		this._drawSeekbar(frac);
+		if (this._tsOrigin) this._paintHud();
 	}
 
 	_onSeekDrag(e) {
@@ -1191,14 +1079,14 @@ class LogVisualizer {
 			Math.min(1, (e.clientX - rect.left) / rect.width),
 		);
 		this._dragFrac = frac;
+		this._playMs = frac * this._totalDelay;
 		this._drawSeekbar(frac);
+		if (this._tsOrigin) this._paintHud();
 		if (!this._dragTimer)
 			this._dragTimer = setTimeout(() => {
 				this._dragTimer = null;
-				if (this._seeking) {
-					this._seekTo(this._fracToIdx(this._dragFrac));
-					this._drawSeekbar(this._dragFrac);
-				}
+				if (this._seeking)
+					this._seekToMs(this._dragFrac * this._totalDelay);
 			}, 150);
 	}
 
@@ -1216,13 +1104,13 @@ class LogVisualizer {
 			const rect = this.elSeekbar.getBoundingClientRect();
 			frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 		}
-		this._seekTo(this._fracToIdx(frac));
+		this._seekToMs(frac * this._totalDelay);
 		if (this._seekWasPlaying) this._play();
 	}
 
-	_seekTo(targetIdx) {
+	_seekToMs(playMs) {
 		if (!this.micro.length) return;
-		targetIdx = Math.max(0, Math.min(targetIdx, this.micro.length));
+		this._playMs = Math.max(0, Math.min(this._totalDelay, playMs));
 
 		this._silent = true;
 		this.microIdx = 0;
@@ -1232,10 +1120,34 @@ class LogVisualizer {
 		this._activeEditor = "main";
 		this._selAnchorMain = null;
 		this._logBuf = [];
+		this._loggedInteractions = new Set();
 
-		while (this.microIdx < targetIdx) {
+		const sortedInts = this._interactions || [];
+		let intIdx = 0;
+		const lessonTsAtCum = (cum) =>
+			this._tsOrigin + (cum - (this._tsOriginCum || 0));
+		while (
+			this.microIdx < this.micro.length &&
+			this._microCumDelay[this.microIdx] < this._playMs
+		) {
+			const evLessonTs = lessonTsAtCum(this._microCumDelay[this.microIdx]);
+			while (
+				intIdx < sortedInts.length &&
+				sortedInts[intIdx].timestamp <= evLessonTs
+			) {
+				this._logInteraction(sortedInts[intIdx]);
+				intIdx++;
+			}
 			this._handle(this.micro[this.microIdx]);
 			this.microIdx++;
+		}
+		const finalLessonTs = lessonTsAtCum(this._playMs);
+		while (
+			intIdx < sortedInts.length &&
+			sortedInts[intIdx].timestamp <= finalLessonTs
+		) {
+			this._logInteraction(sortedInts[intIdx]);
+			intIdx++;
 		}
 		this._silent = false;
 		this._updateFileTabs();
@@ -1251,15 +1163,9 @@ class LogVisualizer {
 		this.elEventLog.appendChild(frag);
 		this.elEventLog.scrollTop = this.elEventLog.scrollHeight;
 
+		this._currentInt = null;
 		this._renderEditors();
 		this._updatePreview(true);
-		this._updateProgress();
-	}
-
-	_updateProgress() {
-		const t = this.micro.length,
-			i = this.microIdx;
-		if (!this._silent) this.elProgLbl.textContent = `${i} / ${t}`;
-		if (!this.playing || this._seeking) this._drawSeekbar(this._idxToFrac(i));
+		this._paintHud();
 	}
 }

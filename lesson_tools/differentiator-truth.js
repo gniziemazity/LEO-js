@@ -22,6 +22,10 @@ const _TRUTH_IGNORE_SELECTORS = [
 	"#bottom-bar",
 ];
 
+function _deepClone(obj) {
+	return JSON.parse(JSON.stringify(obj));
+}
+
 function _truthIsBackgroundClick(target) {
 	for (const sel of _TRUTH_IGNORE_SELECTORS) {
 		if (target.closest && target.closest(sel)) return true;
@@ -133,7 +137,7 @@ function _truthEnable() {
 				}
 			}
 		}
-		const cloned = JSON.parse(JSON.stringify(seed));
+		const cloned = _deepClone(seed);
 		_truthStripExtentFields(cloned.teacher_files);
 		_truthStripExtentFields(cloned.student_files);
 		_truthWorking[key] = cloned;
@@ -229,14 +233,14 @@ function _truthSnapshot() {
 	const key = _truthWorkingKey();
 	const cur = _truthWorking[key];
 	if (!cur) return;
-	_truthUndoStack.push({ key, state: JSON.parse(JSON.stringify(cur)) });
+	_truthUndoStack.push({ key, state: _deepClone(cur) });
 	if (_truthUndoStack.length > _TRUTH_HISTORY_LIMIT) _truthUndoStack.shift();
 	_truthRedoStack = [];
 }
 
 function _truthApplyHistoryState(entry) {
 	if (!entry) return;
-	_truthWorking[entry.key] = JSON.parse(JSON.stringify(entry.state));
+	_truthWorking[entry.key] = _deepClone(entry.state);
 	_truthCancelPending();
 	_truthClearPairHover();
 	_truthClearGroupHover();
@@ -254,7 +258,7 @@ function _truthUndo() {
 	const cur = _truthWorking[key];
 	const entry = _truthUndoStack.pop();
 	if (cur) {
-		_truthRedoStack.push({ key, state: JSON.parse(JSON.stringify(cur)) });
+		_truthRedoStack.push({ key, state: _deepClone(cur) });
 		if (_truthRedoStack.length > _TRUTH_HISTORY_LIMIT)
 			_truthRedoStack.shift();
 	}
@@ -267,7 +271,7 @@ function _truthRedo() {
 	const cur = _truthWorking[key];
 	const entry = _truthRedoStack.pop();
 	if (cur) {
-		_truthUndoStack.push({ key, state: JSON.parse(JSON.stringify(cur)) });
+		_truthUndoStack.push({ key, state: _deepClone(cur) });
 		if (_truthUndoStack.length > _TRUTH_HISTORY_LIMIT)
 			_truthUndoStack.shift();
 	}
@@ -618,39 +622,9 @@ function _truthSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
 }
 
 function _truthSelectInsertAnchor(anchorEl, x, y) {
-	const moveSourcePosStr = anchorEl.getAttribute(
-		"data-insert-anchor-move-source-pos",
-	);
-	if (moveSourcePosStr != null) {
-		const sFile = anchorEl.getAttribute(
-			"data-insert-anchor-move-source-file",
-		);
-		const sPos = parseInt(moveSourcePosStr, 10);
-		if (sFile && Number.isFinite(sPos)) {
-			const studentMark = _truthFileMarks("student", sFile).find(
-				(m) => m.label === "extra" && m.start === sPos && m.move_to,
-			);
-			if (studentMark) {
-				const range = _truthFindGroupRange("student", sFile, sPos);
-				const rawLo = range ? range.lo : studentMark.start;
-				const rawHi = range ? range.hi : studentMark.end;
-				_truthSelectAndShow("student", sFile, rawLo, rawHi, x, y);
-				return;
-			}
-		}
-	}
-	const tFile = anchorEl.getAttribute("data-insert-anchor-teacher-file");
-	const tPosStr = anchorEl.getAttribute("data-insert-anchor-teacher-pos");
-	const tPos = tPosStr != null ? parseInt(tPosStr, 10) : NaN;
-	if (!tFile || !Number.isFinite(tPos)) return;
-	const teacherMark = _truthFileMarks("teacher", tFile).find(
-		(m) => m.label === "missing" && m.start === tPos,
-	);
-	if (!teacherMark) return;
-	const range = _truthFindGroupRange("teacher", tFile, tPos);
-	const rawLo = range ? range.lo : teacherMark.start;
-	const rawHi = range ? range.hi : teacherMark.end;
-	_truthSelectAndShow("teacher", tFile, rawLo, rawHi, x, y);
+	const r = _truthAnchorRange(anchorEl);
+	if (!r) return;
+	_truthSelectAndShow(r.side, r.file, r.lo, r.hi, x, y);
 }
 
 function _truthGhostFromTarget(target) {

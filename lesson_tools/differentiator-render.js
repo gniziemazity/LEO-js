@@ -5,8 +5,61 @@ const DIFF_LABEL_COLORS = {
 	comment: _cssVar("--clr-mark-comment"),
 	extra: _cssVar("--clr-mark-extra"),
 	ghost_extra: _cssVar("--clr-mark-ghost"),
-	extra_comment: _cssVar("--clr-mark-extra-comment"),
 };
+
+function _diffLangExtOf(fileName) {
+	if (!fileName) return null;
+	const i = fileName.lastIndexOf(".");
+	if (i < 0) return null;
+	return fileName.slice(i + 1).toLowerCase();
+}
+
+function _diffMissingColorFor(fileName) {
+	return langColorFor(_diffLangExtOf(fileName)) || DIFF_LABEL_COLORS.missing;
+}
+
+const _DIFF_EMBED_TAG_LANG = { script: "js", style: "css" };
+const _diffEmbedCache = new Map();
+
+function _diffEmbeddedRangesFor(text) {
+	if (!text) return [];
+	const cached = _diffEmbedCache.get(text);
+	if (cached !== undefined) return cached;
+	const ranges = [];
+	const openRe = /<\s*(script|style)\b[^>]*>/gi;
+	let m;
+	while ((m = openRe.exec(text)) !== null) {
+		const tag = m[1].toLowerCase();
+		const innerStart = m.index + m[0].length;
+		const closeRe = new RegExp(
+			`<\\/\\s*${tag}\\s*>|<\\s*\\\\\\s*\\/?\\s*${tag}\\s*>|\\/\\s*${tag}\\s*>`,
+			"i",
+		);
+		const sub = text.slice(innerStart);
+		const cm = sub.match(closeRe);
+		const innerEnd = cm ? innerStart + cm.index : text.length;
+		ranges.push([innerStart, innerEnd, _DIFF_EMBED_TAG_LANG[tag]]);
+		openRe.lastIndex = cm ? innerEnd + cm[0].length : text.length;
+	}
+	_diffEmbedCache.set(text, ranges);
+	return ranges;
+}
+
+function _diffEffectiveExt(fileName, text, pos) {
+	const ext = _diffLangExtOf(fileName);
+	if ((ext === "html" || ext === "htm") && text && typeof pos === "number") {
+		for (const [lo, hi, lang] of _diffEmbeddedRangesFor(text)) {
+			if (lo <= pos && pos < hi) return lang;
+			if (pos < lo) break;
+		}
+	}
+	return ext;
+}
+
+function _diffMissingColorAt(fileName, text, pos) {
+	const ext = _diffEffectiveExt(fileName, text, pos);
+	return langColorFor(ext) || DIFF_LABEL_COLORS.missing;
+}
 
 function _lineStartOffsets(text) {
 	const starts = [0];
@@ -69,7 +122,7 @@ function _renderAligned(
 			const ln = lineNumFor.numbers[lineIdx];
 			const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
 			parts.push(
-				`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+				`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
 			);
 		}
 	}
@@ -149,7 +202,7 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 				? ` style="--ghost-lines-before:${offset}"`
 				: "";
 		parts.push(
-			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}${styleAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors)}</div>`,
+			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}${styleAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
 		);
 	}
 	return parts.join("");
@@ -427,7 +480,15 @@ function _mergeMarks(realMarks, synthMarks) {
 	return [...byStart.values()].sort((a, b) => a.start - b.start);
 }
 
-function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
+function diffColorizePositions(
+	text,
+	posMarks,
+	side,
+	ghosts,
+	anchors,
+	fileName,
+	fullText,
+) {
 	const ghostList = ghosts || [];
 	const anchorList = anchors || [];
 	if (
@@ -484,16 +545,34 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 		}
 		if (ev.kind === "open") {
 			const m = ev.mark;
-			const color =
+			let color =
 				m.label && DIFF_LABEL_COLORS[m.label]
 					? DIFF_LABEL_COLORS[m.label]
 					: null;
-			const styleAttr = color
-				? ` style="color:${color};font-weight:bold"`
-				: "";
+			if (m.label === "missing" && fileName) {
+				const absStart = m._abs_start ?? m.start;
+				color = _diffMissingColorAt(fileName, fullText || text, absStart);
+			}
 			const absPos = m._abs_start ?? m.start;
 			const otherSide = side === "teacher" ? "student" : "teacher";
 			const isGhostPair = !!(m.paired_with && m.paired_with.ghost);
+			let teacherPairColor = null;
+			if (side === "student" && m.paired_with && !isGhostPair) {
+				const tFile = m.paired_with.file;
+				const tPos = m.paired_with.start;
+				const tText =
+					typeof _teacherFiles !== "undefined" && tFile
+						? (_teacherFiles[tFile] || "").replace(/\r\n/g, "\n")
+						: "";
+				teacherPairColor = _diffMissingColorAt(tFile, tText, tPos);
+			}
+			const decorAttr = teacherPairColor
+				? `text-decoration-color:${teacherPairColor};`
+				: "";
+			const styleAttr =
+				color || decorAttr
+					? ` style="${color ? `color:${color};font-weight:bold;` : ""}${decorAttr}"`
+					: "";
 			const pairedAttrs =
 				m.paired_with && !isGhostPair
 					? ` data-swap-side="${otherSide}"` +
@@ -537,8 +616,18 @@ function diffColorizePositions(text, posMarks, side, ghosts, anchors) {
 					` data-insert-anchor-move-source-pos="${a.move_source_pos}"`
 				: ` data-insert-anchor-teacher-file="${escAttr(a.teacher_file)}"` +
 					` data-insert-anchor-teacher-pos="${a.teacher_pos}"`;
+			let anchorStyle = "";
+			if (!isMove && a.teacher_file != null) {
+				const tFile = a.teacher_file;
+				const tText =
+					typeof _teacherFiles !== "undefined" && tFile
+						? (_teacherFiles[tFile] || "").replace(/\r\n/g, "\n")
+						: "";
+				const c = _diffMissingColorAt(tFile, tText, a.teacher_pos);
+				anchorStyle = ` style="--insert-anchor-color:${c}"`;
+			}
 			out +=
-				`<span class="${cls}"` +
+				`<span class="${cls}"${anchorStyle}` +
 				` data-insert-anchor-pos="${absPos}"` +
 				` data-insert-anchor-token="${escAttr(a.token)}"` +
 				`${sourceAttrs}>▾</span>`;

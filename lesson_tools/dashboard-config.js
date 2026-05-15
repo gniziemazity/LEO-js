@@ -26,6 +26,16 @@ const DELETE_LABELS = {
 	"\u2326": "delete fwd",
 };
 
+const DELETE_LINE_CHAR = "\u26d4";
+const BACKSPACE_CHARS_SET = new Set(["\u21a2", "\u232b"]);
+const DELETE_FWRD_CHARS_SET = new Set(["\u21a3", "\u2326"]);
+const CURSOR_LEFT_CHARS = new Set(["\u2190"]);
+const CURSOR_RIGHT_CHARS = new Set(["\u2192"]);
+const CURSOR_UP_CHARS = new Set(["\u2191", "\u21d1"]);
+const CURSOR_DOWN_CHARS = new Set(["\u2193", "\u21d3"]);
+const CURSOR_HOME_CHARS = new Set(["\u25c4", "\u21d0"]);
+const CURSOR_END_CHARS = new Set(["\u25ba", "\u21d2"]);
+
 let _p = null;
 let _students = null;
 let _teacherTokens = [];

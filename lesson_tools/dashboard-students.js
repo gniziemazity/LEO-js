@@ -133,7 +133,6 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 	const nameColR = hdrR.indexOf("Student");
 	const pctColR = hdrR.indexOf("Follow (E)");
 	const descColR = hdrR.indexOf("Follow (E) Desc");
-	const commentDescColR = hdrR.indexOf("Follow (C) Desc");
 	if (nameColR === -1 || pctColR === -1)
 		throw new Error(
 			'remarks.xlsx: missing "Student" or "Follow (E)" columns',
@@ -182,13 +181,6 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 			const key = `${ev.kind}|${ev.token}|${ev.ts}`;
 			const lang = langOf.get(key);
 			if (lang) ev.lang = lang;
-		}
-		if (commentDescColR !== -1) {
-			const cDesc = String(row[commentDescColR] || "");
-			for (const ev of parseFollowEvents(cDesc, sessionDate)) {
-				ev.isComment = true;
-				events.push(ev);
-			}
 		}
 		followData[name] = {
 			pct: isNaN(pct) ? null : pct,

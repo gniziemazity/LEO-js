@@ -45,8 +45,8 @@ body {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	width: 1px;
-	background: var(--clr-accent);
+	width: 0;
+	border-left: 1px dashed var(--clr-black);
 	pointer-events: none;
 	display: none;
 	z-index: 8;
@@ -102,6 +102,16 @@ body {
 	margin: 0;
 	cursor: pointer;
 	flex-shrink: 0;
+}
+
+#chart-bottom-legend label.is-disabled {
+	color: var(--clr-text-faint);
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+#chart-bottom-legend label.is-disabled input[type="checkbox"] {
+	cursor: not-allowed;
 }
 
 #chart-bottom-basis {

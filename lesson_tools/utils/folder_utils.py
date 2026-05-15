@@ -40,19 +40,3 @@ def select_project_folder(title: str = "Select project folder") -> Path:
     return path
 
 
-def select_xlsx_file(title: str = "Select Excel file") -> Path:
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    file = filedialog.askopenfilename(
-        title=title,
-        initialdir=load_last_folder(),
-        filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-    )
-    root.destroy()
-    if not file:
-        print("No file selected. Aborting.")
-        sys.exit(1)
-    path = Path(file).resolve()
-    save_last_folder(path)
-    return path

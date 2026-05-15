@@ -29,6 +29,7 @@ const LANG_COL_DEFS = [
 	},
 	{ key: "css", label: "CSS", header: "CSS (E)", descHeader: "CSS (E) Desc" },
 	{ key: "js", label: "JS", header: "JS (E)", descHeader: "JS (E) Desc" },
+	{ key: "py", label: "Py", header: "Py (E)", descHeader: "Py (E) Desc" },
 ];
 
 const MISMATCH_COLORS = {
@@ -36,6 +37,14 @@ const MISMATCH_COLORS = {
 	"extra-star": _cssVar("--clr-mark-ghost") || "#3aa0e0",
 	extra: _cssVar("--clr-mark-extra") || "#007acc",
 };
+
+function _mismatchColor(ev) {
+	if (ev.kind === "missing" || ev.kind === "extra-star") {
+		const c = langColorFor(ev.lang);
+		if (c) return c;
+	}
+	return MISMATCH_COLORS[ev.kind] || UI_COLORS.muted;
+}
 
 const UI_COLORS = {
 	faint: _cssVar("--clr-code-muted") || "#aaa",
@@ -497,6 +506,14 @@ function parseStudentRows(remarksBuf) {
 					langEvents.push(ev);
 				}
 			}
+		}
+		const _evLangOf = new Map();
+		for (const ev of langEvents) {
+			_evLangOf.set(`${ev.kind}|${ev.token}|${ev.ts}`, ev.lang);
+		}
+		for (const ev of followEvents) {
+			const _lang = _evLangOf.get(`${ev.kind}|${ev.token}|${ev.ts}`);
+			if (_lang) ev.lang = _lang;
 		}
 		const commentDescText =
 			iCommentDesc !== -1 ? String(row[iCommentDesc] ?? "") : "";
@@ -1062,6 +1079,11 @@ function renderTable() {
 function renderMismatches(cell, events) {
 	const mismatches = (events || []).filter((ev) => ev.kind !== "normal");
 	if (!mismatches.length) return;
+	mismatches.sort((a, b) => {
+		const ea = a.kind === "extra" ? 1 : 0;
+		const eb = b.kind === "extra" ? 1 : 0;
+		return ea - eb;
+	});
 	const counts = new Map();
 	const order = [];
 	for (const ev of mismatches) {
@@ -1077,9 +1099,10 @@ function renderMismatches(cell, events) {
 	const tipParts = [];
 	for (const key of order) {
 		const { ev, n } = counts.get(key);
-		const color = MISMATCH_COLORS[ev.kind] || UI_COLORS.muted;
+		const color = _mismatchColor(ev);
 		const span = document.createElement("span");
 		span.className = "mismatch-token";
+		if (ev.kind === "extra-star") span.style.opacity = "0.5";
 		span.style.color = color;
 		span.textContent = ev.token + (n > 1 ? "×" + n : "");
 		wrap.appendChild(span);

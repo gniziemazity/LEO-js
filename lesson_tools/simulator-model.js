@@ -3,6 +3,23 @@
 const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 
+function lineStartAt(text, pos) {
+	return text.lastIndexOf("\n", pos - 1) + 1;
+}
+
+function lineEndAt(text, pos) {
+	const i = text.indexOf("\n", pos);
+	return i === -1 ? text.length : i;
+}
+
+function leadingIndent(s) {
+	return (s.match(/^(\s*)/) || ["", ""])[1];
+}
+
+function currentLineIndent(text, pos) {
+	return leadingIndent(text.slice(lineStartAt(text, pos), pos));
+}
+
 const CURSOR_MOVES = {
 	"←": [0, -1],
 	"→": [0, +1],
@@ -18,6 +35,20 @@ const SHIFT_CURSOR_MOVES = {
 	"⇓": [+1, 0],
 	"⇐": "linestart",
 	"⇒": "lineend",
+};
+const CURSOR_MOVE_LABELS = {
+	"←": "Left",
+	"→": "Right",
+	"↑": "Up",
+	"↓": "Down",
+	"◄": "Home",
+	"►": "End",
+	"▲": "PgUp",
+	"▼": "PgDown",
+	"⇑": "Up",
+	"⇓": "Down",
+	"⇐": "Home",
+	"⇒": "End",
 };
 
 const CHAR_REPLACEMENTS = { "↩": "\n", "\n": "\n", "―": "\t", "\t": "\t" };
@@ -56,7 +87,7 @@ const HTML_VOID_TAGS = new Set([
 ]);
 
 const CLR = {
-	blue: _cssVar("--clr-accent"),
+	blue: _cssVar("--clr-text"),
 	orange: _cssVar("--hl-func"),
 	move: _cssVar("--clr-orange"),
 	green: _cssVar("--hl-builtin"),
@@ -70,19 +101,7 @@ const CLR = {
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
 const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
 const _EXPAND_FILE_EXTS = [".js", ".css", ".html", ".htm"];
-const _EXPAND_MAX_DELAY = 3000;
-const _CI_SPECIAL = new Set([
-	...Object.keys(CURSOR_MOVES),
-	DELETE_LINE_CHAR,
-	"↩",
-	"\n",
-	"―",
-	"\t",
-	"↢",
-	"⌫",
-	"↣",
-	"⌦",
-]);
+const _EXPAND_MAX_DELAY = Infinity;
 
 function _splitCodeWithAnchors(code) {
 	const result = [];
@@ -222,7 +241,7 @@ class TextState {
 	}
 
 	deleteLine() {
-		const ls = this.text.lastIndexOf("\n", this.cursor - 1) + 1;
+		const ls = lineStartAt(this.text, this.cursor);
 		const raw = this.text.indexOf("\n", this.cursor);
 		const le = raw === -1 ? this.text.length : raw;
 		const end = raw === -1 ? le : le + 1;
@@ -241,16 +260,14 @@ class TextState {
 		this._followingAnchor = null;
 		this._anchorHadBackspace = false;
 		if (dir === "linestart") {
-			const ls = this.text.lastIndexOf("\n", this.cursor - 1) + 1;
-			const leRaw = this.text.indexOf("\n", ls);
-			const le = leRaw === -1 ? this.text.length : leRaw;
+			const ls = lineStartAt(this.text, this.cursor);
+			const le = lineEndAt(this.text, ls);
 			const indent =
 				this.text.slice(ls, le).length -
 				this.text.slice(ls, le).trimStart().length;
 			this.cursor = ls + indent;
 		} else if (dir === "lineend") {
-			const e = this.text.indexOf("\n", this.cursor);
-			this.cursor = e === -1 ? this.text.length : e;
+			this.cursor = lineEndAt(this.text, this.cursor);
 		} else {
 			const [dl, dc] = dir;
 			if (dl === 0) {
@@ -287,7 +304,7 @@ class TextState {
 
 function _moveByLines(text, pos, delta) {
 	const before = text.slice(0, pos);
-	const lineStart = before.lastIndexOf("\n") + 1;
+	const lineStart = lineStartAt(text, pos);
 	const col = pos - lineStart;
 	const lineIdx = (before.match(/\n/g) || []).length;
 	const lines = text.split("\n");

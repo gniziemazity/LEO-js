@@ -206,19 +206,18 @@
 				white-space: pre;
 			}
 			.diff-ghost {
-				color: var(--clr-border) !important;
+				color: var(--clr-ghost-text) !important;
 				font-style: italic;
 				font-weight: normal !important;
-				background: rgba(0, 0, 0, 0.02);
 			}
 			.diff-ghost .leo-mark[data-leo-ghost-offset].truth-ghost-paired {
 				font-weight: bold !important;
-				text-decoration: underline dotted var(--clr-mark-ghost);
+				text-decoration: underline dotted var(--clr-ghost-pair);
 				text-decoration-thickness: 2px;
 				text-underline-offset: 2px;
 			}
 			.leo-mark.truth-paired-ghost-extra {
-				text-decoration: underline dotted var(--clr-pale-red);
+				text-decoration: underline dotted var(--clr-ghost-pair);
 				text-decoration-thickness: 2px;
 				text-underline-offset: 2px;
 			}
@@ -367,13 +366,26 @@
 				text-decoration: underline dotted var(--clr-mark-missing);
 				text-decoration-thickness: 2px;
 			}
+			.swap-paired[data-swap-side="teacher"][data-swap-file$=".html"],
+			.swap-paired[data-swap-side="teacher"][data-swap-file$=".htm"] {
+				text-decoration-color: var(--clr-red);
+			}
+			.swap-paired[data-swap-side="teacher"][data-swap-file$=".css"] {
+				text-decoration-color: var(--clr-accent);
+			}
+			.swap-paired[data-swap-side="teacher"][data-swap-file$=".js"] {
+				text-decoration-color: var(--clr-orange);
+			}
+			.swap-paired[data-swap-side="teacher"][data-swap-file$=".py"] {
+				text-decoration-color: var(--clr-green);
+			}
 			.insert-source {
 				cursor: pointer;
 			}
 			.insert-anchor {
 				display: inline-block;
 				cursor: pointer;
-				color: var(--clr-mark-missing);
+				color: var(--insert-anchor-color, var(--clr-mark-missing));
 				font-size: 9px;
 				line-height: 1;
 				vertical-align: text-top;
@@ -387,11 +399,12 @@
 				opacity: 1;
 			}
 			.insert-anchor.insert-active {
-				color: var(--clr-mark-missing);
+				color: var(--insert-anchor-color, var(--clr-mark-missing));
 				opacity: 1;
 				font-weight: bold;
 				font-size: 13px;
-				text-shadow: 0 0 2px var(--clr-mark-missing);
+				text-shadow: 0 0 2px
+					var(--insert-anchor-color, var(--clr-mark-missing));
 			}
 			.insert-anchor--move {
 				color: var(--clr-mark-extra);
@@ -536,8 +549,8 @@
 				pointer-events: none;
 			}
 			.truth-bg-rect.is-missing {
-				background: var(--clr-mark-missing-soft-bg);
-				box-shadow: 0 0 6px 2px var(--clr-mark-missing-soft-bg);
+				background: var(--clr-mark-extra-soft-bg);
+				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
 			}
 			.truth-bg-rect.is-extra {
 				background: var(--clr-mark-extra-soft-bg);
@@ -566,7 +579,7 @@
 				background-color: rgba(0, 0, 0, 0.1);
 			}
 			.truth-active-rect.is-dark-gray {
-				background-color: rgba(0, 0, 0, 0.28);
+				background-color: rgba(0, 0, 0, 0.42);
 			}
 			.truth-hover-rect {
 				position: absolute;

@@ -32,6 +32,22 @@ function _hexToRgba(hex, a) {
 	return `rgba(${r},${g},${b},${a})`;
 }
 
+const LANG_COLORS = {
+	html: _cssVar("--clr-red"),
+	htm: _cssVar("--clr-red"),
+	css: _cssVar("--clr-accent"),
+	js: _cssVar("--clr-orange"),
+	py: _cssVar("--clr-purple"),
+};
+
+function langColorFor(key) {
+	if (!key) return null;
+	let k = String(key).toLowerCase();
+	if (k === "javascript") k = "js";
+	else if (k === "python") k = "py";
+	return LANG_COLORS[k] || null;
+}
+
 function _idbOpen(dbName = "lesson_tools") {
 	return new Promise((res, rej) => {
 		const req = indexedDB.open(dbName, 1);

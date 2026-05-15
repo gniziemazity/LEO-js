@@ -72,10 +72,6 @@ def iter_code_tokens(text: str, ext=None):
         yield pos, match.group(), _pos_in_comment(pos, starts, ends)
 
 
-def extract_tokens(lines: List[str], ext=None) -> Counter:
-    text = ' '.join(lines)
-    return Counter(tok for _, tok, _ in iter_code_tokens(text, ext))
-
 def split_code_tokens(text: str, ext=None) -> Tuple[Counter, Counter]:
     outside: Counter = Counter()
     inside: Counter = Counter()

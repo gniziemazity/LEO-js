@@ -53,8 +53,8 @@ function _truthBuildJson() {
 		teacher_files: {},
 		student_files: {},
 	};
-	const teacherFiles = JSON.parse(JSON.stringify(t.teacher_files || {}));
-	const studentFiles = JSON.parse(JSON.stringify(t.student_files || {}));
+	const teacherFiles = _deepClone(t.teacher_files || {});
+	const studentFiles = _deepClone(t.student_files || {});
 	_truthBackfillTimestamps(teacherFiles, studentFiles);
 	const out = {
 		token_matching: matching,

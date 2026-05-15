@@ -9,8 +9,6 @@ const OV_CLR = {
 	textStrong: _cssVar("--clr-text-strong"),
 	textFaint: _cssVar("--clr-text-faint"),
 	codeMuted: _cssVar("--clr-code-muted"),
-	borderMid: _cssVar("--clr-border-mid"),
-	textSoft: _cssVar("--clr-text-soft"),
 };
 
 const COL = {

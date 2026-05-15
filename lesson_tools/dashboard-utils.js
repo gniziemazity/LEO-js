@@ -99,6 +99,40 @@ function _isMistakeEvent(e) {
 	return e.ts != null && (e.kind === "missing" || e.kind === "extra-star");
 }
 
+function _mistakeEventsFor(s) {
+	return (s.follow_events || []).filter(_isMistakeEvent);
+}
+
+function _jitterFor(name) {
+	return _shake ? _jitterMap.get(name) || { dx: 0, dy: 0 } : { dx: 0, dy: 0 };
+}
+
+function _clampStudentY(s, jitter, L) {
+	const minY = L.M.top + (L.plotHbotPad || 0);
+	const maxY = L.M.top + L.plotHbot - (L.plotHbotPad || 0);
+	return Math.max(minY, Math.min(maxY, studentY(s, L) + jitter.dy));
+}
+
+function _displayCodeInsert(t) {
+	return (t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
+}
+
+const _NBSP = " ";
+
+function _clusterMistakes(evs, gap) {
+	if (!evs || !evs.length) return [];
+	const sorted = [...evs].sort((a, b) => a.ts - b.ts);
+	const clusters = [[sorted[0]]];
+	for (let i = 1; i < sorted.length; i++) {
+		if (sorted[i].ts - sorted[i - 1].ts < gap) {
+			clusters[clusters.length - 1].push(sorted[i]);
+		} else {
+			clusters.push([sorted[i]]);
+		}
+	}
+	return clusters;
+}
+
 function _singletonToTextPart(ev) {
 	if (ev._virtualType === "anchor")
 		return { t: ev._target || "", type: "anchor" };

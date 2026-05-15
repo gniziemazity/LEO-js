@@ -33,6 +33,51 @@ function _truthBgRectKindClass(kind) {
 	return "is-extra";
 }
 
+function _truthBounds() {
+	return {
+		left: Infinity,
+		right: -Infinity,
+		top: Infinity,
+		bottom: -Infinity,
+	};
+}
+
+function _truthExpand(bounds, r) {
+	if (r.left < bounds.left) bounds.left = r.left;
+	if (r.right > bounds.right) bounds.right = r.right;
+	if (r.top < bounds.top) bounds.top = r.top;
+	if (r.bottom > bounds.bottom) bounds.bottom = r.bottom;
+}
+
+function _truthScanMarks(pane, side, positions, lineSet) {
+	const bounds = _truthBounds();
+	const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
+	for (const el of pane.querySelectorAll(sel)) {
+		const p = parseInt(el.getAttribute("data-leo-pos"), 10);
+		if (!positions.has(p)) continue;
+		const r = el.getBoundingClientRect();
+		if (r.width === 0 && r.height === 0) continue;
+		_truthExpand(bounds, r);
+		if (lineSet) {
+			const lineEl = el.closest(".diff-line");
+			if (lineEl) lineSet.add(lineEl);
+		}
+	}
+	return bounds;
+}
+
+function _truthPaneRect(bounds, pane, pad) {
+	if (!Number.isFinite(bounds.left)) return null;
+	const paneRect = pane.getBoundingClientRect();
+	return {
+		pane,
+		left: bounds.left - paneRect.left - pad,
+		top: bounds.top - paneRect.top - pad,
+		width: bounds.right - bounds.left + 2 * pad,
+		height: bounds.bottom - bounds.top + 2 * pad,
+	};
+}
+
 function _truthSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
 	const wrap = document.getElementById(`code-${side}`);
 	if (!wrap) return null;
@@ -44,51 +89,26 @@ function _truthSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
 		}
 	}
 	if (!pane) return null;
-	let left = Infinity,
-		right = -Infinity,
-		top = Infinity,
-		bottom = -Infinity;
+	let bounds = _truthBounds();
 	if (marks && marks.length) {
 		const positions = new Set(marks.map((m) => m.start));
-		const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
-		for (const el of pane.querySelectorAll(sel)) {
-			const p = parseInt(el.getAttribute("data-leo-pos"), 10);
-			if (!positions.has(p)) continue;
-			const r = el.getBoundingClientRect();
-			if (r.width === 0 && r.height === 0) continue;
-			if (r.left < left) left = r.left;
-			if (r.right > right) right = r.right;
-			if (r.top < top) top = r.top;
-			if (r.bottom > bottom) bottom = r.bottom;
-		}
+		bounds = _truthScanMarks(pane, side, positions, null);
 	}
-	if (!Number.isFinite(left) && tokens) {
+	if (!Number.isFinite(bounds.left) && tokens) {
 		for (const t of tokens) {
 			const bbox = _truthTokenBbox(side, file, t);
 			if (!bbox) continue;
-			if (bbox.left < left) left = bbox.left;
-			if (bbox.right > right) right = bbox.right;
-			if (bbox.top < top) top = bbox.top;
-			if (bbox.bottom > bottom) bottom = bbox.bottom;
+			_truthExpand(bounds, bbox);
 		}
 	}
-	if (!Number.isFinite(left)) return null;
-	const paneRect = pane.getBoundingClientRect();
-	return {
-		pane,
-		left: left - paneRect.left - pad,
-		top: top - paneRect.top - pad,
-		width: right - left + 2 * pad,
-		height: bottom - top + 2 * pad,
-	};
+	return _truthPaneRect(bounds, pane, pad);
 }
 
 function _truthCollectGroupRect(group, pad = 6) {
 	const wrap = document.getElementById(`code-${group.side}`);
 	if (!wrap) return null;
-	const panes = wrap.querySelectorAll(".code-pane");
 	let pane = null;
-	for (const p of panes) {
+	for (const p of wrap.querySelectorAll(".code-pane")) {
 		if (p.dataset.paneFile === group.file && p.classList.contains("active")) {
 			pane = p;
 			break;
@@ -98,34 +118,12 @@ function _truthCollectGroupRect(group, pad = 6) {
 	const positions = new Set();
 	for (const m of group.marks || []) positions.add(m.start);
 	if (!positions.size) return null;
-	const sel = `.leo-mark[data-leo-side="${group.side}"]:not([data-leo-ghost-offset])`;
-	let left = Infinity,
-		right = -Infinity,
-		top = Infinity,
-		bottom = -Infinity;
 	const lineSet = new Set();
-	for (const el of pane.querySelectorAll(sel)) {
-		const p = parseInt(el.getAttribute("data-leo-pos"), 10);
-		if (!positions.has(p)) continue;
-		const r = el.getBoundingClientRect();
-		if (r.width === 0 && r.height === 0) continue;
-		if (r.left < left) left = r.left;
-		if (r.right > right) right = r.right;
-		if (r.top < top) top = r.top;
-		if (r.bottom > bottom) bottom = r.bottom;
-		const lineEl = el.closest(".diff-line");
-		if (lineEl) lineSet.add(lineEl);
-	}
-	if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
-	const paneRect = pane.getBoundingClientRect();
-	return {
-		pane,
-		left: left - paneRect.left - pad,
-		top: top - paneRect.top - pad,
-		width: right - left + 2 * pad,
-		height: bottom - top + 2 * pad,
-		lineCount: lineSet.size,
-	};
+	const bounds = _truthScanMarks(pane, group.side, positions, lineSet);
+	const rect = _truthPaneRect(bounds, pane, pad);
+	if (!rect) return null;
+	rect.lineCount = lineSet.size;
+	return rect;
 }
 
 function _truthRefreshGhostPairs() {
@@ -293,11 +291,6 @@ function _truthCollectAlwaysOnConnectors(items, seenGroups) {
 			if (seenGroups.has(key)) continue;
 			seenGroups.add(key);
 			items.push({ kind: "groupInsert", group: g });
-		} else if (g.side === "student" && g.kind === "extra-move") {
-			const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
-			if (seenGroups.has(key)) continue;
-			seenGroups.add(key);
-			items.push({ kind: "extraMove", group: g });
 		}
 	}
 }
@@ -344,6 +337,35 @@ let _truthActiveGroupRange = null;
 let _truthActiveGhost = null;
 let _truthSelectionRange = null;
 
+function _truthActiveRectBg(marks) {
+	if (!marks || !marks.length) return "rgba(0, 0, 0, 0.1)";
+	const allMissing = marks.every((m) => m.label === "missing");
+	const allExtra = marks.every((m) => m.label === "extra");
+	const allGhost = marks.every((m) => m.label === "ghost_extra");
+	if (allMissing) return "rgba(0, 0, 0, 0.1)";
+	if (allGhost) return "rgba(0, 0, 0, 0.1)";
+	if (allExtra) {
+		const pairedAll = marks.every((m) => m.paired_with);
+		if (!pairedAll) return "rgba(0, 0, 0, 0.1)";
+		const pw = marks[0].paired_with;
+		const tFile = pw && pw.file;
+		const tPos = pw && typeof pw.start === "number" ? pw.start : 0;
+		const tText =
+			tFile && typeof _teacherFiles !== "undefined" && _teacherFiles[tFile]
+				? _teacherFiles[tFile].replace(/\r\n/g, "\n")
+				: "";
+		const c =
+			typeof _diffMissingColorAt === "function"
+				? _diffMissingColorAt(tFile, tText, tPos)
+				: typeof _diffMissingColorFor === "function"
+					? _diffMissingColorFor(tFile)
+					: null;
+		if (c && typeof _hexToRgba === "function") return _hexToRgba(c, 0.22);
+		return c || "rgba(0, 0, 0, 0.1)";
+	}
+	return null;
+}
+
 function _truthDrawActiveRect(range) {
 	const tokens =
 		!range.marks || !range.marks.length
@@ -358,10 +380,8 @@ function _truthDrawActiveRect(range) {
 	if (!layers) return;
 	const div = document.createElement("div");
 	div.className = "truth-active-rect";
-	const color = _truthSelectionColor(range.marks);
-	if (color === "red") div.classList.add("is-red");
-	else if (color === "blue") div.classList.add("is-blue");
-	else if (!range.marks || !range.marks.length) div.classList.add("is-gray");
+	const bg = _truthActiveRectBg(range.marks);
+	if (bg) div.style.backgroundColor = bg;
 	div.style.left = `${r.left}px`;
 	div.style.top = `${r.top}px`;
 	div.style.width = `${r.width}px`;
@@ -520,16 +540,49 @@ function _truthGroupAtPoint(x, y) {
 	return null;
 }
 
-function _truthInsertAnchorAtPoint(x, y) {
-	const el = document.elementFromPoint(x, y);
-	if (!el || !el.closest) return null;
-	const anchor = el.closest(".insert-anchor");
-	if (!anchor) return null;
+function _truthAnchorRange(anchorEl) {
+	if (!anchorEl) return null;
+	const moveSourcePosStr = anchorEl.getAttribute(
+		"data-insert-anchor-move-source-pos",
+	);
+	if (moveSourcePosStr != null) {
+		const sFile = anchorEl.getAttribute(
+			"data-insert-anchor-move-source-file",
+		);
+		const sPos = parseInt(moveSourcePosStr, 10);
+		if (!sFile || !Number.isFinite(sPos)) return null;
+		for (const g of _truthGroupMarks()) {
+			if (g.side !== "student" || g.file !== sFile) continue;
+			if (g.kind !== "extra-move") continue;
+			if (g.lo <= sPos && sPos < g.hi) {
+				return {
+					side: "student",
+					file: sFile,
+					lo: g.lo,
+					hi: g.hi,
+					marks: g.marks,
+					kind: g.kind,
+				};
+			}
+		}
+		const mark = _truthFileMarks("student", sFile).find(
+			(m) => m.label === "extra" && m.start === sPos && m.move_to,
+		);
+		if (!mark) return null;
+		return {
+			side: "student",
+			file: sFile,
+			lo: mark.start,
+			hi: mark.end,
+			marks: [mark],
+			kind: "extra-move",
+		};
+	}
 	const teacherPos = parseInt(
-		anchor.getAttribute("data-insert-anchor-teacher-pos"),
+		anchorEl.getAttribute("data-insert-anchor-teacher-pos"),
 		10,
 	);
-	const teacherFile = anchor.getAttribute("data-insert-anchor-teacher-file");
+	const teacherFile = anchorEl.getAttribute("data-insert-anchor-teacher-file");
 	if (!Number.isFinite(teacherPos) || !teacherFile) return null;
 	for (const g of _truthGroupMarks()) {
 		if (g.side !== "teacher" || g.file !== teacherFile) continue;
@@ -556,6 +609,12 @@ function _truthInsertAnchorAtPoint(x, y) {
 		marks: [mark],
 		kind: "missing-insert",
 	};
+}
+
+function _truthInsertAnchorAtPoint(x, y) {
+	const el = document.elementFromPoint(x, y);
+	if (!el || !el.closest) return null;
+	return _truthAnchorRange(el.closest(".insert-anchor"));
 }
 
 function _truthOnGroupHover(ev) {
@@ -933,6 +992,20 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 		}
 	}
 
+	if (range.side === "student") {
+		const groups = _truthGroupMarks();
+		for (const g of groups) {
+			if (g.side !== "student" || g.file !== range.file) continue;
+			if (g.kind !== "extra-move") continue;
+			if (!g.marks.some((m) => m.start < range.hi && m.end > range.lo))
+				continue;
+			const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
+			if (seenGroups.has(key)) continue;
+			seenGroups.add(key);
+			items.push({ kind: "extraMove", group: g });
+		}
+	}
+
 	if (ghostPairsHere.length === 1) {
 		const p = ghostPairsHere[0];
 		const key = `ghost|${p.ghost.file}|${p.ghost.start}|${p.ghost.token}|${p.studentFile}|${p.studentMark.start}`;
@@ -1105,8 +1178,22 @@ function _truthRefreshPairConnectors() {
 	const missingColor = _cssVar("--clr-mark-missing");
 	const extraColor = _cssVar("--clr-mark-extra");
 	const blackColor = _cssVar("--clr-black");
-	const paleRedColor = _cssVar("--clr-pale-red");
+	const ghostPairColor = _cssVar("--clr-ghost-pair");
 	const paleBlueColor = _cssVar("--clr-mark-ghost");
+
+	const _langForTeacher = (file, marks) => {
+		if (!file) return missingColor;
+		const text =
+			typeof _teacherFiles !== "undefined" && _teacherFiles[file]
+				? _teacherFiles[file].replace(/\r\n/g, "\n")
+				: "";
+		const pos = marks && marks[0] ? marks[0].start : 0;
+		return typeof _diffMissingColorAt === "function"
+			? _diffMissingColorAt(file, text, pos)
+			: typeof _diffMissingColorFor === "function"
+				? _diffMissingColorFor(file)
+				: missingColor;
+	};
 
 	for (const item of _truthPairConnectorItems) {
 		if (item.kind === "ghost-pair" || item.kind === "ghost-pair-group") {
@@ -1124,32 +1211,44 @@ function _truthRefreshPairConnectors() {
 			const sY = _truthElBelowLineY(studentEl);
 			_truthSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
 			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_truthSvgLine(svg, midX, sY, sRect.left, sY, paleRedColor);
-			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, paleRedColor);
+			_truthSvgLine(svg, midX, sY, sRect.left, sY, ghostPairColor);
+			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, ghostPairColor);
 		} else if (item.kind === "pair") {
 			const srcEl = _truthFindMarkEl(item.side, item.mark, item.file);
 			const partnerEl = _truthFindPartnerEl(item.side, item.mark);
 			if (!srcEl || !partnerEl) continue;
 
 			let teacherEl, studentEl;
+			let teacherFile;
 			if (item.side === "teacher") {
 				teacherEl = srcEl;
 				studentEl = partnerEl;
+				teacherFile = item.file;
 			} else {
 				teacherEl = partnerEl;
 				studentEl = srcEl;
+				teacherFile = item.mark?.paired_with?.file || null;
 			}
 			const tRect = teacherEl.getBoundingClientRect();
 			const sRect = studentEl.getBoundingClientRect();
 			const tY = _truthElBelowLineY(teacherEl);
 			const sY = _truthElBelowLineY(studentEl);
 
+			const teacherMarkPos =
+				item.side === "teacher"
+					? item.mark?.start
+					: item.mark?.paired_with?.start;
+			const teacherLangColor = _langForTeacher(teacherFile, [
+				{ start: teacherMarkPos || 0 },
+			]);
+
 			_truthSvgLine(svg, tRect.right, tY, midX, tY, extraColor);
 			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_truthSvgLine(svg, midX, sY, sRect.left, sY, missingColor);
-			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, missingColor);
+			_truthSvgLine(svg, midX, sY, sRect.left, sY, teacherLangColor);
+			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, teacherLangColor);
 		} else if (item.kind === "groupInsert") {
 			const g = item.group;
+			const langColor = _langForTeacher(g.file, g.marks);
 
 			let anchorEl = null;
 			if (g.kind === "missing-insert") {
@@ -1167,20 +1266,20 @@ function _truthRefreshPairConnectors() {
 					const aRect = anchorEl.getBoundingClientRect();
 					const aY = _truthElBelowLineY(anchorEl);
 					const aX = aRect.left + aRect.width / 2;
-					_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
+					_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
 					_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
-					_truthSvgLine(svg, midX, aY, aX, aY, missingColor);
+					_truthSvgLine(svg, midX, aY, aX, aY, langColor);
 					_truthSvgArrowhead(
 						svg,
 						aX,
 						aY,
 						aX >= midX ? 1 : -1,
 						0,
-						missingColor,
+						langColor,
 					);
 				} else {
-					_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
-					_truthSvgX(svg, midX, startY, 10, missingColor);
+					_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
+					_truthSvgX(svg, midX, startY, 10, langColor);
 				}
 				continue;
 			}
@@ -1197,21 +1296,14 @@ function _truthRefreshPairConnectors() {
 				const aY = _truthElBelowLineY(anchorEl);
 				const aX = aRect.left + aRect.width / 2;
 				const startY = Math.max(boxTop, Math.min(boxBottom, aY));
-				_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
+				_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
 				_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
-				_truthSvgLine(svg, midX, aY, aX, aY, missingColor);
-				_truthSvgArrowhead(
-					svg,
-					aX,
-					aY,
-					aX >= midX ? 1 : -1,
-					0,
-					missingColor,
-				);
+				_truthSvgLine(svg, midX, aY, aX, aY, langColor);
+				_truthSvgArrowhead(svg, aX, aY, aX >= midX ? 1 : -1, 0, langColor);
 			} else {
 				const startY = (boxTop + boxBottom) / 2;
-				_truthSvgLine(svg, startX, startY, midX, startY, missingColor);
-				_truthSvgX(svg, midX, startY, 10, missingColor);
+				_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
+				_truthSvgX(svg, midX, startY, 10, langColor);
 			}
 		} else if (item.kind === "extraMove") {
 			const g = item.group;
