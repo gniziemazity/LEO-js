@@ -210,11 +210,14 @@ _CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252')
 
 
 def open_csv_encoded(path, row_fn, delimiter: str = ';',
-                     reset_fn=None) -> bool:
+                     reset_fn=None, dict_reader: bool = True) -> bool:
     for enc in _CSV_ENCODINGS:
         try:
-            with open(path, 'r', encoding=enc) as fh:
-                for row in csv.DictReader(fh, delimiter=delimiter):
+            with open(path, 'r', encoding=enc, newline='') as fh:
+                reader = (csv.DictReader(fh, delimiter=delimiter)
+                          if dict_reader
+                          else csv.reader(fh, delimiter=delimiter))
+                for row in reader:
                     row_fn(row)
             return True
         except (UnicodeDecodeError, UnicodeError):

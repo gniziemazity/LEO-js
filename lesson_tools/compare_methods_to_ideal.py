@@ -37,11 +37,10 @@ from __future__ import annotations
 
 import json
 import sys
-import tkinter as tk
 from collections import defaultdict
 from pathlib import Path
-from tkinter import filedialog
 
+from utils.folder_utils import CODE_EXTS, pick_file
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from utils.token_log_mixin import (
     _LANG_EXT_LABEL,
@@ -60,7 +59,6 @@ except ImportError:
 
 IDEAL_FILE = "diff_marks_ideal.json"
 LABELS = ("missing", "extra", "ghost_extra")
-CODE_EXTS = (".html", ".htm", ".css", ".js", ".py")
 
 METHOD_LABELS = {
     "leo_star":  "LEO*",
@@ -540,8 +538,6 @@ def _autosize(ws, df):
 
 
 def write_excel(out_path: Path, per_student: list[dict], totals: list[dict]) -> None:
-    import pandas as pd
-
     ps_df = pd.DataFrame(
         [{c: r.get(c, "") for c in _PER_STUDENT_COLS} for r in per_student],
         columns=_PER_STUDENT_COLS,
@@ -821,8 +817,6 @@ def write_multi_excel(
     results: dict[str, tuple[list[dict], list[dict]]],
     lang_stats_by_lesson: dict[str, dict] | None = None,
 ) -> None:
-    import pandas as pd
-
     method_keys: list[tuple[int, int, str, str]] = []
     seen: set[str] = set()
     for _, (_ps, tot) in results.items():
@@ -886,15 +880,10 @@ def write_multi_excel(
 
 
 def _pick_grades_file() -> Path | None:
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    root.update()
-    chosen = filedialog.askopenfilename(
-        title="Select the Grades Excel file",
+    chosen = pick_file(
+        "Select the Grades Excel file",
         filetypes=[("Excel files", "*.xls *.xlsx"), ("All files", "*.*")],
     )
-    root.destroy()
     return Path(chosen) if chosen else None
 
 

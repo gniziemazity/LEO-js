@@ -172,14 +172,11 @@ function processData(raw) {
 		const devCharEvs = b.evs.filter(
 			(e) => !e._virtualType && e._editor === "dev",
 		);
-		const nonDevCharEvs = b.evs.filter(
-			(e) => !e._virtualType && e._editor !== "dev",
-		);
-		if (devCharEvs.length > 0 && nonDevCharEvs.length > 0) {
+		const nonDevEvs = b.evs
+			.filter((e) => e._virtualType || e._editor !== "dev")
+			.sort((a, b_) => a.timestamp - b_.timestamp);
+		if (devCharEvs.length > 0 && nonDevEvs.length > 0) {
 			bursts.push(makeBurst(devCharEvs));
-			const nonDevEvs = b.evs
-				.filter((e) => e._virtualType || e._editor !== "dev")
-				.sort((a, b_) => a.timestamp - b_.timestamp);
 			bursts.push(makeBurst(nonDevEvs));
 		} else {
 			bursts.push(b);
@@ -436,6 +433,21 @@ function computePauseStats(charEvents) {
 	return { count: pauses.length, min, max, avg: sum / pauses.length, sum };
 }
 
+const _DEV_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
+function countDevTokens(p) {
+	let text = "";
+	for (const e of p.events) {
+		if (e.char == null) continue;
+		if (e._editor !== "dev") continue;
+		if (DELETE_CHARS.has(e.char)) continue;
+		text += e.char;
+	}
+	let n = 0;
+	_DEV_TOKEN_RE.lastIndex = 0;
+	while (_DEV_TOKEN_RE.exec(text) !== null) n++;
+	return n;
+}
+
 function buildLessonStatsCsv(p, tokens) {
 	const mainChars = p.events.filter(
 		(e) => e.char != null && e._editor !== "dev" && !DELETE_CHARS.has(e.char),
@@ -443,14 +455,17 @@ function buildLessonStatsCsv(p, tokens) {
 	const pause = computePauseStats(mainChars);
 	const segments = computeSegments(p.bursts, p.sessionStart, p.sessionEnd);
 	const duration = (p.sessionEnd - p.sessionStart) / 60;
+	const codingMin = p.bursts.reduce((s, b) => s + (b.dur || 0), 0) / 60;
 	const moves = p.moves.length;
 	const anchors = p.anchors.length;
 	const jumps = moves + anchors;
 	const jumpsPer100c = p.totalChars > 0 ? (jumps / p.totalChars) * 100 : 0;
-	const tk = tokens || { total: 0, html: 0, css: 0, js: 0, py: 0 };
+	const tk = tokens || { total: 0, html: 0, css: 0, js: 0, py: 0, comment: 0 };
+	const devTokens = countDevTokens(p);
 
 	const cols = [
 		["duration_min", duration.toFixed(2)],
+		["coding_min", codingMin.toFixed(2)],
 		["events", p.eventCount],
 		["chars", p.totalChars],
 		["dev_chars", p.devChars.length],
@@ -481,6 +496,8 @@ function buildLessonStatsCsv(p, tokens) {
 		["tokens_css", tk.css],
 		["tokens_js", tk.js],
 		["tokens_py", tk.py],
+		["tokens_comment", tk.comment ?? 0],
+		["tokens_dev", devTokens],
 		["segments", formatSegments(segments)],
 	];
 

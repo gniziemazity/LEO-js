@@ -7,7 +7,6 @@ function headlessReplay(events, lessonFile = null) {
 	const vscode = new VSCodeSettings();
 
 	let activeFilename = "MAIN";
-	let activeEditor = "main";
 	let selAnchorMain = null;
 	let ciBaseIndent = "";
 
@@ -223,7 +222,6 @@ function headlessReplay(events, lessonFile = null) {
 		const kind = act[0];
 		if (kind === "switch_editor") {
 			const [, target] = act;
-			activeEditor = target;
 			if (target === "main") switchToFile("MAIN");
 		} else if (kind === "char") {
 			const [, ch, ts, , editor] = act;

@@ -3,8 +3,7 @@ import math
 import os
 import re
 import sys
-import tkinter as tk
-from tkinter import filedialog
+from utils.folder_utils import pick_file
 import warnings
 from datetime import datetime
 
@@ -1369,7 +1368,7 @@ def plot_follow_vs_grade(st):
             x_line = np.linspace(f_vals.min(), f_vals.max(), 50)
             ax.plot(x_line, np.polyval(z, x_line), "k--", alpha=0.5)
 
-        rp, pp, np_ = safe_corr(follow, grade)
+        rp, _, _ = safe_corr(follow, grade)
         rs, ps, ns = safe_corr(follow, grade, method="spearman")
 
         rp_s = f"{rp:+.2f}" if not np.isnan(rp) else "N/A"
@@ -1418,10 +1417,6 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else None
 
     if not path:
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-
         session_path = os.path.join(os.path.dirname(__file__),
                                      ".grades_session.json")
         last_folder = None
@@ -1434,8 +1429,8 @@ def main():
             path = _pick_default_overview(last_folder)
 
         if not path:
-            path = filedialog.askopenfilename(
-                title="Select OverviewPlus.xlsx or Overview.xlsx",
+            path = pick_file(
+                "Select OverviewPlus.xlsx or Overview.xlsx",
                 filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             )
 

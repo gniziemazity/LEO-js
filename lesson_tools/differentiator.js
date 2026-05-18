@@ -645,8 +645,7 @@ function updatePreview(side, files, iframe) {
 		/\.html$/i.test(name),
 	);
 	if (!htmlEntry) {
-		iframe.srcdoc =
-			"<p style='font-family:sans-serif;padding:20px;color:#888'>No HTML file found.</p>";
+		iframe.srcdoc = `<p style='font-family:sans-serif;padding:20px;color:${THEME.muted}'>No HTML file found.</p>`;
 		return;
 	}
 	const html = htmlEntry[1];

@@ -33,24 +33,10 @@ async function _simReadStudentNameMap(pathMap) {
 	if (!entry) return {};
 	try {
 		const text = await readFileText(entry[1]);
-		return _simParseStudentNameMap(text);
+		return parseStudentIdNameMap(text);
 	} catch {
 		return {};
 	}
-}
-
-function _simParseStudentNameMap(text) {
-	const map = {};
-	const { header, rows } = parseCsv(text);
-	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
-	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
-	if (idIdx === -1 || nameIdx === -1) return map;
-	for (const parts of rows) {
-		const id = parts[idIdx];
-		const name = parts[nameIdx];
-		if (id && name) map[id] = name;
-	}
-	return map;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

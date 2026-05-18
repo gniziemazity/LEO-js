@@ -48,6 +48,20 @@ const THEME = {
 	textStrong: _cssVar("--clr-text-strong"),
 	textFaint: _cssVar("--clr-text-faint"),
 	codeMuted: _cssVar("--clr-code-muted"),
+	black: _cssVar("--clr-black"),
+	ghostPair: _cssVar("--clr-ghost-pair"),
+	chartBg: _cssVar("--clr-chart-bg"),
+	chartGrid: _cssVar("--clr-chart-grid"),
+	chartAxisLine: _cssVar("--clr-chart-axis-line"),
+	chartAxisText: _cssVar("--clr-chart-axis-text"),
+	chartAxisTick: _cssVar("--clr-chart-axis-tick"),
+	chartKpmActive: _cssVar("--clr-chart-kpm-active"),
+	chartKpmSession: _cssVar("--clr-chart-kpm-session"),
+	chartCumulative: _cssVar("--clr-chart-cumulative"),
+	chartCumulativeFill: _cssVar("--clr-chart-cumulative-fill"),
+	chartInsertMarker: _cssVar("--clr-chart-insert-marker"),
+	chartDotMutedFill: _cssVar("--clr-chart-dot-muted-fill"),
+	chartDotMutedStroke: _cssVar("--clr-chart-dot-muted-stroke"),
 };
 
 const LANG_COLORS = {
@@ -129,6 +143,36 @@ function parseCsv(text) {
 	return { header: cells(lines[0]), rows: lines.slice(1).map(cells), delim };
 }
 
+function parseStudentIdNameMap(text) {
+	const map = {};
+	const { header, rows } = parseCsv(text);
+	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
+	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+	if (idIdx === -1 || nameIdx === -1) return map;
+	for (const parts of rows) {
+		const id = parts[idIdx];
+		const name = parts[nameIdx];
+		if (id && name) map[id] = name;
+	}
+	return map;
+}
+
+function parseAlterEgoMap(text, { keyTransform } = {}) {
+	const map = {};
+	const { header, rows } = parseCsv(text);
+	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
+	if (nameIdx === -1 || alterIdx === -1) return map;
+	for (const parts of rows) {
+		const realName = parts[nameIdx];
+		const alterEgo = parts[alterIdx];
+		if (realName && alterEgo) {
+			map[keyTransform ? keyTransform(realName) : realName] = alterEgo;
+		}
+	}
+	return map;
+}
+
 function getFileExt(name) {
 	if (!name) return "";
 	const m = String(name).match(/\.[^./\\]+$/);
@@ -154,6 +198,31 @@ async function pickFilesWithMemory(
 	const handles = await window.showOpenFilePicker(opts);
 	if (handles && handles.length) _idbSet(idbKey, handles[0], dbName);
 	return handles || [];
+}
+
+async function loadSavedDirHandle(idbKey = "lastDir", dbName = undefined) {
+	const handle = await _idbGet(idbKey, dbName);
+	if (!handle || handle.kind !== "directory") return null;
+	try {
+		if ((await handle.requestPermission({ mode: "read" })) !== "granted")
+			return null;
+	} catch {
+		return null;
+	}
+	return handle;
+}
+
+async function waitForXlsxBundle() {
+	if (typeof XLSX !== "undefined") return;
+	await new Promise((resolve) => {
+		const s = document.querySelector('script[src*="xlsx"]');
+		if (s) {
+			s.addEventListener("load", resolve, { once: true });
+			s.addEventListener("error", resolve, { once: true });
+		} else {
+			resolve();
+		}
+	});
 }
 
 function showLoading(on) {

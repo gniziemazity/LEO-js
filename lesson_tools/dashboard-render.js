@@ -362,7 +362,7 @@ function drawMiddleChart(ctx, p, L) {
 	const { M, W, Hmid: H, plotW, plotHmid } = L;
 	const bottomY = M.top + plotHmid;
 
-	ctx.fillStyle = "#fff";
+	ctx.fillStyle = THEME.chartBg;
 	ctx.fillRect(0, 0, W, H);
 
 	ctx.save();
@@ -370,7 +370,7 @@ function drawMiddleChart(ctx, p, L) {
 	ctx.rect(M.left, M.top, plotW, plotHmid);
 	ctx.clip();
 
-	ctx.strokeStyle = "#e8e8e8";
+	ctx.strokeStyle = THEME.chartGrid;
 	ctx.lineWidth = 1;
 	for (const r of [10, 20, 50, 100, 200, 500, 1000]) {
 		const y = rateToY(r, L);
@@ -460,8 +460,8 @@ function drawMiddleChart(ctx, p, L) {
 		ctx.stroke();
 		ctx.setLineDash([]);
 	}
-	rateLine(p.sessionRate, "#888888");
-	rateLine(p.activeRate, "#000000");
+	rateLine(p.sessionRate, THEME.chartKpmSession);
+	rateLine(p.activeRate, THEME.chartKpmActive);
 	ctx.globalAlpha = 1;
 
 	ctx.restore();
@@ -480,8 +480,8 @@ function drawMiddleChart(ctx, p, L) {
 	const lx = M.left + plotW - 110,
 		ly = M.top - 2;
 	[
-		[`Session: ${p.sessionRate.toFixed(1)} kpm`, "#888888"],
-		[`Active:  ${p.activeRate.toFixed(1)} kpm`, "#000000"],
+		[`Session: ${p.sessionRate.toFixed(1)} kpm`, THEME.chartKpmSession],
+		[`Active:  ${p.activeRate.toFixed(1)} kpm`, THEME.chartKpmActive],
 	].forEach(([lbl, clr], i) => {
 		const yy = ly + i * 16;
 		ctx.fillStyle = clr;
@@ -497,7 +497,7 @@ function drawTopChart(ctx, p, L) {
 	const maxN = p.totalChars || 1;
 	const gs = niceStep(maxN, 5);
 
-	ctx.fillStyle = "#fff";
+	ctx.fillStyle = THEME.chartBg;
 	ctx.fillRect(0, 0, W, H);
 
 	ctx.save();
@@ -505,7 +505,7 @@ function drawTopChart(ctx, p, L) {
 	ctx.rect(M.left, M.top, plotW, plotHtop);
 	ctx.clip();
 
-	ctx.strokeStyle = "#e8e8e8";
+	ctx.strokeStyle = THEME.chartGrid;
 	ctx.lineWidth = 1;
 	for (let v = gs; v <= maxN; v += gs) {
 		const y = countToY(v, maxN, L);
@@ -536,12 +536,12 @@ function drawTopChart(ctx, p, L) {
 		ctx.lineTo(pts[pts.length - 1][0], M.top + plotHtop);
 		ctx.lineTo(pts[0][0], M.top + plotHtop);
 		ctx.closePath();
-		ctx.fillStyle = "rgba(204,204,204,0.3)";
+		ctx.fillStyle = THEME.chartCumulativeFill;
 		ctx.fill();
 		ctx.beginPath();
 		ctx.moveTo(pts[0][0], pts[0][1]);
 		for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-		ctx.strokeStyle = "#CCCCCC";
+		ctx.strokeStyle = THEME.chartCumulative;
 		ctx.lineWidth = 2;
 		ctx.stroke();
 	}
@@ -570,7 +570,7 @@ function drawTopChart(ctx, p, L) {
 		ctx.closePath();
 		ctx.fillStyle = fill;
 		ctx.fill();
-		ctx.strokeStyle = "#888";
+		ctx.strokeStyle = THEME.muted;
 		ctx.lineWidth = 2.5;
 		ctx.stroke();
 		const ir = 3;
@@ -580,7 +580,7 @@ function drawTopChart(ctx, p, L) {
 		ctx.lineTo(x, y + ir);
 		ctx.lineTo(x - ir, y);
 		ctx.closePath();
-		ctx.fillStyle = "#000";
+		ctx.fillStyle = THEME.black;
 		ctx.fill();
 		ctx.restore();
 	}
@@ -590,7 +590,7 @@ function drawTopChart(ctx, p, L) {
 			for (const idx of grp.idxs) {
 				const c = cum[idx];
 				if (!c) continue;
-				dot(tsToX(c.ts, L), countToY(c.count, maxN, L), "#000", 1.0);
+				dot(tsToX(c.ts, L), countToY(c.count, maxN, L), THEME.black, 1.0);
 			}
 	if (_topChartVisible.deletes)
 		for (const ev of p.deletes) {
@@ -635,15 +635,19 @@ function drawTopChart(ctx, p, L) {
 	if (_topChartVisible.inserts)
 		for (const ev of p.codeInserts) {
 			const ts = ev.timestamp / 1000;
-			dia(tsToX(ts, L), countToY(charsAt(ts, cum), maxN, L), "#999999");
+			dia(
+				tsToX(ts, L),
+				countToY(charsAt(ts, cum), maxN, L),
+				THEME.chartInsertMarker,
+			);
 		}
 
 	ctx.restore();
 
-	ctx.fillStyle = "#555";
+	ctx.fillStyle = THEME.chartAxisText;
 	ctx.font = "11px Consolas,monospace";
 	ctx.textAlign = "right";
-	ctx.strokeStyle = "#aaa";
+	ctx.strokeStyle = THEME.chartAxisTick;
 	ctx.lineWidth = 1;
 	for (let v = gs; v <= maxN; v += gs) {
 		const y = countToY(v, maxN, L);
@@ -662,7 +666,7 @@ function drawBottomChart(ctx, p, students, L) {
 	const { M, W, Hbot: H, plotW, plotHbot } = L;
 	const gs = 10;
 
-	ctx.fillStyle = "#fff";
+	ctx.fillStyle = THEME.chartBg;
 	ctx.fillRect(0, 0, W, H);
 
 	if (_bottomChartVisible.barMode) {
@@ -680,7 +684,7 @@ function drawBottomChart(ctx, p, students, L) {
 	drawBlockBackgrounds(ctx, p, L);
 
 	if (!_bottomChartVisible.followRank) {
-		ctx.strokeStyle = "#e8e8e8";
+		ctx.strokeStyle = THEME.chartGrid;
 		ctx.lineWidth = 1;
 		for (let v = gs; v <= 100; v += gs) {
 			const y = pctToY(v, L);
@@ -735,7 +739,7 @@ function drawBottomChart(ctx, p, students, L) {
 		ctx.save();
 		if (active) {
 			if (emphasized) {
-				drawStar(ctx, x, y, 9, "#000000", 1.0);
+				drawStar(ctx, x, y, 9, THEME.black, 1.0);
 			} else {
 				drawStudentStar(ctx, x, y, ans, ask, hlp);
 			}
@@ -743,9 +747,9 @@ function drawBottomChart(ctx, p, students, L) {
 			ctx.globalAlpha = emphasized ? 1.0 : 0.65;
 			ctx.beginPath();
 			ctx.arc(x, y, 5, 0, Math.PI * 2);
-			ctx.fillStyle = emphasized ? "#000" : "#A8A8A8";
+			ctx.fillStyle = emphasized ? THEME.black : THEME.chartDotMutedFill;
 			ctx.fill();
-			ctx.strokeStyle = emphasized ? "#000" : "#777";
+			ctx.strokeStyle = emphasized ? THEME.black : THEME.chartDotMutedStroke;
 			ctx.lineWidth = emphasized ? 1.5 : 0.8;
 			ctx.stroke();
 		}
@@ -837,10 +841,10 @@ function drawBottomChart(ctx, p, students, L) {
 
 	ctx.restore();
 
-	ctx.fillStyle = "#555";
+	ctx.fillStyle = THEME.chartAxisText;
 	ctx.font = "11px Consolas,monospace";
 	ctx.textAlign = "right";
-	ctx.strokeStyle = "#aaa";
+	ctx.strokeStyle = THEME.chartAxisTick;
 	ctx.lineWidth = 1;
 	if (_bottomChartVisible.followRank) {
 		const N = students.length;
@@ -951,11 +955,11 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		}
 	}
 
-	ctx.fillStyle = "#555";
+	ctx.fillStyle = THEME.chartAxisText;
 	ctx.font = "11px Consolas,monospace";
 	ctx.textAlign = "right";
 	ctx.textBaseline = "alphabetic";
-	ctx.strokeStyle = "#aaa";
+	ctx.strokeStyle = THEME.chartAxisTick;
 	ctx.lineWidth = 1;
 	const ticks = totalStudents > 0 ? [0, totalStudents] : [0];
 	for (const v of ticks) {
@@ -1143,7 +1147,7 @@ function drawBlockMistakeCounts(ctx, p, students, L) {
 	const studentEvs = _studentMistakes(students);
 
 	ctx.save();
-	ctx.fillStyle = "#222";
+	ctx.fillStyle = THEME.textStrong;
 	ctx.font = "bold 10px Consolas,monospace";
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
@@ -1227,16 +1231,16 @@ function drawInteractionSpans(ctx, p, L, plotTop, plotH, colors) {
 
 function drawYAxisLog(ctx, L) {
 	const { M, plotHmid } = L;
-	ctx.strokeStyle = "#ccc";
+	ctx.strokeStyle = THEME.chartAxisLine;
 	ctx.lineWidth = 1;
 	ctx.beginPath();
 	ctx.moveTo(M.left, M.top);
 	ctx.lineTo(M.left, M.top + plotHmid);
 	ctx.stroke();
-	ctx.fillStyle = "#555";
+	ctx.fillStyle = THEME.chartAxisText;
 	ctx.font = "11px Consolas,monospace";
 	ctx.textAlign = "right";
-	ctx.strokeStyle = "#aaa";
+	ctx.strokeStyle = THEME.chartAxisTick;
 	for (const r of [10, 100, 1000]) {
 		const y = rateToY(r, L);
 		ctx.fillText(r, M.left - 3, y + 4);
@@ -1255,16 +1259,16 @@ function drawTimeAxis(ctx, L, axisY, _H) {
 	const tickInt = targets.find((t) => totalSecs / t <= want) || 3600;
 	const firstTick = Math.ceil(timeMin / tickInt) * tickInt;
 
-	ctx.strokeStyle = "#ccc";
+	ctx.strokeStyle = THEME.chartAxisLine;
 	ctx.lineWidth = 1;
 	ctx.beginPath();
 	ctx.moveTo(M.left, axisY);
 	ctx.lineTo(M.left + plotW, axisY);
 	ctx.stroke();
-	ctx.fillStyle = "#555";
+	ctx.fillStyle = THEME.chartAxisText;
 	ctx.font = "10px Consolas,monospace";
 	ctx.textAlign = "center";
-	ctx.strokeStyle = "#aaa";
+	ctx.strokeStyle = THEME.chartAxisTick;
 	for (let ts = firstTick; ts <= timeMax; ts += tickInt) {
 		const x = tsToX(ts, L);
 		ctx.beginPath();

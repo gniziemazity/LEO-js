@@ -30,7 +30,6 @@ except ImportError:
 
 ANCHOR_RE      = re.compile(r"⚓([^⚓]*)⚓")
 MAX_REAL_DELAY = float("inf")
-DELAY_CODE     = 30
 DELAY_OPS      = 15
 PAGE_LINES     = 20
 

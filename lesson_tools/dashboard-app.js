@@ -71,41 +71,13 @@ function handleFiles(files) {
 async function loadStudentsCsv(file) {
 	try {
 		const text = await file.text();
-		_realToAlterMap = parseStudentsCsvForAlterEgo(text);
-		_studentNameMap = parseStudentsCsvForIdName(text);
+		_realToAlterMap = parseAlterEgoMap(text);
+		_studentNameMap = parseStudentIdNameMap(text);
 		if (_p) scheduleRender();
 	} catch {
 		_realToAlterMap = {};
 		_studentNameMap = {};
 	}
-}
-
-function parseStudentsCsvForIdName(text) {
-	const map = {};
-	const { header, rows } = parseCsv(text);
-	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
-	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
-	if (idIdx === -1 || nameIdx === -1) return map;
-	for (const parts of rows) {
-		const id = parts[idIdx];
-		const name = parts[nameIdx];
-		if (id && name) map[id] = name;
-	}
-	return map;
-}
-
-function parseStudentsCsvForAlterEgo(text) {
-	const map = {};
-	const { header, rows } = parseCsv(text);
-	const nameIdx = header.findIndex((h) => /student.?name/i.test(h));
-	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
-	if (nameIdx === -1 || alterIdx === -1) return map;
-	for (const parts of rows) {
-		const realName = parts[nameIdx];
-		const alterEgo = parts[alterIdx];
-		if (realName && alterEgo) map[realName] = alterEgo;
-	}
-	return map;
 }
 
 async function loadBestJsonFile(jsonFiles) {
@@ -363,14 +335,8 @@ async function saveLessonStatsCsv() {
 }
 
 async function _tryAutoLoadDashboard() {
-	const handle = await _idbGet("lastDir");
-	if (!handle || handle.kind !== "directory") return false;
-	try {
-		const perm = await handle.requestPermission({ mode: "read" });
-		if (perm !== "granted") return false;
-	} catch {
-		return false;
-	}
+	const handle = await loadSavedDirHandle();
+	if (!handle) return false;
 	_dirHandle = handle;
 	showLoading(true);
 	const files = [];
@@ -384,17 +350,7 @@ async function _tryAutoLoadDashboard() {
 (async function () {
 	const qs = new URLSearchParams(location.search);
 	if (qs.get("autoload") !== "1") return;
-	if (typeof XLSX === "undefined") {
-		await new Promise((resolve) => {
-			const s = document.querySelector('script[src*="xlsx"]');
-			if (s) {
-				s.addEventListener("load", resolve, { once: true });
-				s.addEventListener("error", resolve, { once: true });
-			} else {
-				resolve();
-			}
-		});
-	}
+	await waitForXlsxBundle();
 	const ok = await _tryAutoLoadDashboard();
 	if (!ok) {
 		const btn = document.createElement("button");

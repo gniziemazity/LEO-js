@@ -71,14 +71,8 @@ lessonNameEl.addEventListener("click", async () => {
 })();
 
 async function _tryAutoLoad() {
-	const handle = await _idbGet("lastDir");
-	if (!handle || handle.kind !== "directory") return false;
-	try {
-		const perm = await handle.requestPermission({ mode: "read" });
-		if (perm !== "granted") return false;
-	} catch {
-		return false;
-	}
+	const handle = await loadSavedDirHandle();
+	if (!handle) return false;
 	showLoading(true);
 	_dirHandle = handle;
 	_allFiles.clear();
@@ -94,17 +88,7 @@ async function _tryAutoLoad() {
 (async function () {
 	const qs = new URLSearchParams(location.search);
 	if (qs.get("autoload") !== "1") return;
-	if (typeof XLSX === "undefined") {
-		await new Promise((resolve) => {
-			const s = document.querySelector('script[src*="xlsx"]');
-			if (s) {
-				s.addEventListener("load", resolve, { once: true });
-				s.addEventListener("error", resolve, { once: true });
-			} else {
-				resolve();
-			}
-		});
-	}
+	await waitForXlsxBundle();
 	const ok = await _tryAutoLoad();
 	if (!ok) {
 		const btn = document.createElement("button");

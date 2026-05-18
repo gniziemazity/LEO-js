@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
+from .folder_utils import LANG_EXTS
 from .similarity_measures import (
     calculate_containment,
     open_csv_encoded,
@@ -115,22 +116,23 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             return
         self.required_items.clear()
         self.not_expected_items.clear()
-        for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
-            try:
-                with open(path, 'r', encoding=enc, newline='') as f:
-                    for row in csv.reader(f, delimiter=';'):
-                        alts = [s.strip() for s in row
-                                if s.strip() and not s.strip().isdigit()]
-                        if not alts:
-                            continue
-                        if alts[0] == '!' and alts[1:]:
-                            self.not_expected_items.append(alts[1:])
-                        else:
-                            self.required_items.append(alts)
-                break
-            except (UnicodeDecodeError, UnicodeError):
-                self.required_items.clear()
-                self.not_expected_items.clear()
+
+        def _row(row):
+            alts = [s.strip() for s in row
+                    if s.strip() and not s.strip().isdigit()]
+            if not alts:
+                return
+            if alts[0] == '!' and alts[1:]:
+                self.not_expected_items.append(alts[1:])
+            else:
+                self.required_items.append(alts)
+
+        def _reset():
+            self.required_items.clear()
+            self.not_expected_items.clear()
+
+        open_csv_encoded(path, _row, delimiter=';',
+                         reset_fn=_reset, dict_reader=False)
 
     def load_lesson_json(self, project_dir: Path) -> None:
         data, message = load_lesson_log(project_dir)
@@ -149,7 +151,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
     def get_code_files(self, directory: Path) -> Dict[str, Path]:
         files = {}
-        for ext in ('.html', '.css', '.js', '.py'):
+        for ext in LANG_EXTS:
             matching = list(directory.glob(f'*{ext}'))
             if matching:
                 files[ext] = matching[0]
@@ -157,7 +159,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
     def get_all_code_files(self, directory: Path) -> Dict[str, Path]:
         files = {}
-        for ext in ('.html', '.css', '.js', '.py'):
+        for ext in LANG_EXTS:
             for path in sorted(directory.glob(f'*{ext}')):
                 files[path.name] = path
         return files
@@ -246,7 +248,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             simple_extras:    Dict[str, Counter] = {}
             all_outside_parts: List[Counter]     = []
 
-            for ext in ['.html', '.css', '.js', '.py']:
+            for ext in LANG_EXTS:
                 _files = sorted(student_dir.glob(f'*{ext}'))
                 if not _files:
                     simple_extras[ext] = Counter()
@@ -280,7 +282,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                     if cnt > bl_outside[ext].get(tok, 0):
                         bl_outside[ext][tok] = cnt
 
-        for ext in ['.html', '.css', '.js', '.py']:
+        for ext in LANG_EXTS:
             src = None
             if self.start_dir and self.start_dir.is_dir():
                 sf_list = list(self.start_dir.glob(f'*{ext}'))

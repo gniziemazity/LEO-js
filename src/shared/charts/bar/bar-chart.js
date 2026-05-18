@@ -90,6 +90,10 @@ class BarChart {
 		const stackKeys = [];
 		const setSlot = new Array(nSets);
 		for (let si = 0; si < nSets; si++) {
+			if (this._datasets[si].overlap === true) {
+				setSlot[si] = -1;
+				continue;
+			}
 			let key;
 			if (stacked) {
 				key = "__global";
@@ -105,8 +109,10 @@ class BarChart {
 			}
 			setSlot[si] = idx;
 		}
-		const nStacks = stackKeys.length;
+		const nStacks = stackKeys.length || 1;
 		const barW = (groupW * 0.6) / nStacks;
+		const overlapBarW = groupW * 0.6;
+		const overlapOffset = (groupW - overlapBarW) / 2;
 
 		const toY = (v) => top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
 		const toX = (gi, slot) => {
@@ -139,6 +145,7 @@ class BarChart {
 		for (let si = 0; si < nSets; si++) {
 			const ds = this._datasets[si];
 			const slot = setSlot[si];
+			const isOverlap = slot < 0;
 			const bg = ds.backgroundColor ?? "rgba(100,100,100,0.4)";
 			const bd = ds.borderColor ?? "#999";
 			const bgPerBar = Array.isArray(bg);
@@ -147,10 +154,13 @@ class BarChart {
 			if (!bdPerBar) ctx.strokeStyle = bd;
 			ctx.lineWidth = 1;
 			const striped = ds.pattern === "stripes";
+			const useBarW = isOverlap ? overlapBarW : barW;
 			for (let gi = 0; gi < nGroups; gi++) {
 				const val = ds.data[gi] ?? 0;
-				const base = stackTops[slot][gi];
-				const bx = toX(gi, slot);
+				const base = isOverlap ? yMin : stackTops[slot][gi];
+				const bx = isOverlap
+					? left + gi * groupW + overlapOffset
+					: toX(gi, slot);
 				const by = toY(base + val);
 				const bh = toY(base) - by;
 				if (bh > 0) {
@@ -163,7 +173,7 @@ class BarChart {
 							ctx,
 							bx,
 							by,
-							barW,
+							useBarW,
 							bh,
 							fillColor,
 							strokeColor,
@@ -171,20 +181,41 @@ class BarChart {
 					} else {
 						if (bgPerBar) ctx.fillStyle = fillColor;
 						if (bdPerBar) ctx.strokeStyle = strokeColor;
-						ctx.fillRect(bx, by, barW, bh);
-						ctx.strokeRect(bx, by, barW, bh);
+						ctx.fillRect(bx, by, useBarW, bh);
+						ctx.strokeRect(bx, by, useBarW, bh);
 					}
 					this._hitAreas.push({
 						x: bx,
 						y: by,
-						w: barW,
+						w: useBarW,
 						h: bh,
 						gi,
 						si,
 						val,
 					});
+					const labelCb = this._options.barLabel;
+					if (labelCb) {
+						const label = labelCb(gi, si, val, ds);
+						if (label) {
+							ctx.save();
+							ctx.font = "bold 10px sans-serif";
+							ctx.textAlign = "center";
+							ctx.textBaseline = "bottom";
+							const textW = ctx.measureText(label).width;
+							if (useBarW >= textW + 4) {
+								if (bh >= 14) {
+									ctx.fillStyle = ds.labelColor ?? "#fff";
+									ctx.fillText(label, bx + useBarW / 2, by + bh - 2);
+								} else {
+									ctx.fillStyle = ds.outsideLabelColor ?? "#fff";
+									ctx.fillText(label, bx + useBarW / 2, by - 2);
+								}
+							}
+							ctx.restore();
+						}
+					}
 				}
-				stackTops[slot][gi] += val;
+				if (!isOverlap) stackTops[slot][gi] += val;
 			}
 		}
 

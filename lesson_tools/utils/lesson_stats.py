@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .similarity_measures import _comment_ranges
 from .token_log_mixin import _embedded_lang_ranges_for
 
 
@@ -75,16 +77,13 @@ def _split_dev_main_bursts(raw_bursts):
         dev_chars = [e for e in evs
                      if not e.get("_virtualType")
                      and e.get("_editor") == "dev"]
-        non_dev_chars = [e for e in evs
-                         if not e.get("_virtualType")
-                         and e.get("_editor") != "dev"]
-        if dev_chars and non_dev_chars:
+        non_dev_evs = sorted(
+            (e for e in evs
+             if e.get("_virtualType") or e.get("_editor") != "dev"),
+            key=lambda x: x["timestamp"],
+        )
+        if dev_chars and non_dev_evs:
             result.append(_make_burst(dev_chars))
-            non_dev_evs = sorted(
-                (e for e in evs
-                 if e.get("_virtualType") or e.get("_editor") != "dev"),
-                key=lambda x: x["timestamp"],
-            )
             result.append(_make_burst(non_dev_evs))
         else:
             result.append(b)
@@ -145,10 +144,18 @@ def _pause_stats(char_events):
 
 
 def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
-    out = {"total": 0, "html": 0, "css": 0, "js": 0, "py": 0}
+    out = {"total": 0, "html": 0, "css": 0, "js": 0, "py": 0, "comment": 0}
     default = _LANG_EXT_TO_BUCKET.get(file_ext.lower())
     if default is None:
         return out
+    c_starts, c_ends = _comment_ranges(text, file_ext.lower())
+
+    def _in_comment(pos: int) -> bool:
+        if not c_starts:
+            return False
+        i = bisect_right(c_starts, pos) - 1
+        return i >= 0 and pos < c_ends[i]
+
     if default == "html":
         ranges_by_ext = _embedded_lang_ranges_for(text, file_ext.lower())
         flat: List[Tuple[str, int, int]] = []
@@ -160,17 +167,24 @@ def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
                 flat.append((bucket, lo, hi))
         for m in _TOKEN_RE.finditer(text):
             pos = m.start()
+            out["total"] += 1
+            if _in_comment(pos):
+                out["comment"] += 1
+                continue
             bucket = "html"
             for b, lo, hi in flat:
                 if lo <= pos < hi:
                     bucket = b
                     break
             out[bucket] += 1
-            out["total"] += 1
     else:
-        n = sum(1 for _ in _TOKEN_RE.finditer(text))
-        out[default] = n
-        out["total"] = n
+        for m in _TOKEN_RE.finditer(text):
+            pos = m.start()
+            out["total"] += 1
+            if _in_comment(pos):
+                out["comment"] += 1
+            else:
+                out[default] += 1
     return out
 
 
@@ -192,7 +206,7 @@ def _find_teacher_files(project_dir: Path) -> List[Tuple[Path, str]]:
 
 
 def _count_teacher_tokens(project_dir: Path) -> Dict[str, int]:
-    out = {"total": 0, "html": 0, "css": 0, "js": 0, "py": 0}
+    out = {"total": 0, "html": 0, "css": 0, "js": 0, "py": 0, "comment": 0}
     for f, ext in _find_teacher_files(project_dir):
         try:
             text = f.read_text(encoding="utf-8", errors="ignore")
@@ -202,6 +216,14 @@ def _count_teacher_tokens(project_dir: Path) -> Dict[str, int]:
         for k in out:
             out[k] += t[k]
     return out
+
+
+def _count_dev_tokens(dev_chars: list) -> int:
+    text = "".join(
+        e["char"] for e in dev_chars
+        if e.get("char") and e["char"] not in DELETE_CHARS
+    )
+    return sum(1 for _ in _TOKEN_RE.finditer(text))
 
 
 def compute_lesson_stats_csv(
@@ -251,6 +273,8 @@ def compute_lesson_stats_csv(
     segments      = _compute_segments(split_bursts, session_start, session_end)
     duration_s    = max(0.0, session_end - session_start)
     duration_min  = duration_s / 60
+    coding_s      = sum(b["dur"] for b in split_bursts)
+    coding_min    = coding_s / 60
 
     all_chars_count = len(char_events)
     kpm_session = (all_chars_count / (duration_s / 60)) if duration_s > 0 else 0.0
@@ -285,6 +309,7 @@ def compute_lesson_stats_csv(
 
     cols = [
         ("duration_min",   f"{duration_min:.2f}"),
+        ("coding_min",     f"{coding_min:.2f}"),
         ("events",         str(len(evs))),
         ("chars",          str(n_chars)),
         ("dev_chars",      str(len(dev_chars))),
@@ -310,6 +335,8 @@ def compute_lesson_stats_csv(
         ("tokens_css",     str(tokens["css"])),
         ("tokens_js",      str(tokens["js"])),
         ("tokens_py",      str(tokens["py"])),
+        ("tokens_comment", str(tokens["comment"])),
+        ("tokens_dev",     str(_count_dev_tokens(dev_chars))),
         ("segments",       _format_segments(segments)),
     ]
     header = ",".join(c[0] for c in cols)

@@ -18,15 +18,6 @@ const DELETE_CHARS = new Set([
 	"\u232b",
 	"\u2326",
 ]);
-const DELETE_LABELS = {
-	"\u21a2": "backspace",
-	"\u21a3": "delete fwd",
-	"\u26d4": "delete line",
-	"\u232b": "backspace",
-	"\u2326": "delete fwd",
-};
-
-// DELETE_LINE_CHAR is provided by simulator-model.js (loaded before this file).
 const BACKSPACE_CHARS_SET = new Set(["\u21a2", "\u232b"]);
 const DELETE_FWRD_CHARS_SET = new Set(["\u21a3", "\u2326"]);
 const CURSOR_LEFT_CHARS = new Set(["\u2190"]);

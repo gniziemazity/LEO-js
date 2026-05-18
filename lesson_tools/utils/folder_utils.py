@@ -9,6 +9,9 @@ _LAST_FOLDER_FILE = _ROOT / '.last_folder'
 _LAST_PROJECT_JS  = _ROOT / '.last_project.js'
 _LESSONS_DIR      = _ROOT / 'lessons'
 
+CODE_EXTS = ('.html', '.htm', '.css', '.js', '.py')
+LANG_EXTS = ('.html', '.css', '.js', '.py')
+
 
 def load_last_folder() -> str:
     if _LAST_FOLDER_FILE.exists():
@@ -26,12 +29,33 @@ def save_last_folder(path: Path) -> None:
     )
 
 
-def select_project_folder(title: str = "Select project folder") -> Path:
+def pick_folder(title: str, *, initialdir: str | None = None) -> str:
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", True)
-    folder = filedialog.askdirectory(title=title, initialdir=load_last_folder())
+    root.update()
+    chosen = filedialog.askdirectory(title=title, initialdir=initialdir or '')
     root.destroy()
+    return chosen or ''
+
+
+def pick_file(title: str, *, filetypes=None,
+              initialdir: str | None = None) -> str:
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    root.update()
+    chosen = filedialog.askopenfilename(
+        title=title,
+        filetypes=filetypes or [("All files", "*.*")],
+        initialdir=initialdir or '',
+    )
+    root.destroy()
+    return chosen or ''
+
+
+def select_project_folder(title: str = "Select project folder") -> Path:
+    folder = pick_folder(title, initialdir=load_last_folder())
     if not folder:
         print("No folder selected. Aborting.")
         sys.exit(1)

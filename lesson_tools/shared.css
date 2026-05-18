@@ -1,5 +1,4 @@
 :root {
-	/* ── Raw palette ──────────────────────────────────── */
 	--c-black: #000;
 	--c-white: #fff;
 	--c-gray-1: #eee;
@@ -19,13 +18,10 @@
 	--c-purple-1: #8e44ad;
 	--c-purple-2: #5e2c75;
 
-	/* ── Semantic aliases ─────────────────────────────── */
-	/* Base */
 	--clr-bg: var(--c-white);
 	--clr-black: var(--c-black);
 	--clr-white: var(--c-white);
 
-	/* Surfaces */
 	--clr-page: var(--c-gray-1);
 	--clr-surface: var(--c-gray-1);
 	--clr-surface-light: var(--c-gray-1);
@@ -35,7 +31,6 @@
 	--clr-btn-bg-soft: var(--c-gray-1);
 	--clr-code-light: var(--c-gray-1);
 
-	/* Text */
 	--clr-text: var(--c-gray-3);
 	--clr-text-soft: var(--c-gray-3);
 	--clr-text-strong: var(--c-gray-3);
@@ -45,7 +40,6 @@
 	--clr-label: var(--c-gray-2);
 	--clr-muted: var(--c-gray-2);
 
-	/* Borders */
 	--clr-border: var(--c-gray-2);
 	--clr-border-mid: var(--c-gray-2);
 	--clr-border-strong: var(--c-gray-2);
@@ -55,7 +49,6 @@
 	--clr-btn-hover-dark: var(--c-gray-2);
 	--clr-fail-fade: rgba(0, 0, 0, 0.3);
 
-	/* Accent (blue) */
 	--clr-accent: var(--c-blue-1);
 	--clr-accent-dark: var(--c-blue-2);
 	--clr-accent-light: rgba(0, 122, 204, 0.1);
@@ -64,14 +57,12 @@
 	--clr-ghost-dark: var(--c-gray-2);
 	--clr-ghost-darker: var(--c-gray-3);
 
-	/* Named hues */
 	--clr-red: var(--c-red-1);
 	--clr-pale-red: rgba(204, 34, 34, 0.4);
 	--clr-orange: var(--c-orange-1);
 	--clr-green: var(--c-green-1);
 	--clr-purple: var(--c-purple-1);
 
-	/* Danger (red) */
 	--clr-danger: var(--c-red-1);
 	--clr-danger-dark: var(--c-red-1);
 	--clr-danger-darker: var(--c-red-2);
@@ -80,13 +71,11 @@
 	--clr-danger-soft-border: rgba(204, 34, 34, 0.4);
 	--clr-danger-hover-bg: rgba(204, 34, 34, 0.12);
 
-	/* Rows */
 	--clr-row-hover: rgba(0, 122, 204, 0.1);
 	--clr-row-active: rgba(0, 122, 204, 0.2);
 	--clr-row-selected: rgba(0, 122, 204, 0.25);
 	--clr-row-selected-hover: rgba(0, 122, 204, 0.32);
 
-	/* Highlight (yellow) */
 	--clr-highlight-warm: rgba(255, 220, 0, 0.15);
 	--clr-highlight-warm-soft: rgba(255, 220, 0, 0.1);
 	--clr-highlight-warm-border: var(--c-yellow-2);
@@ -94,13 +83,11 @@
 	--clr-highlight-active-bg: rgba(255, 220, 0, 0.45);
 	--clr-highlight-soft-bg: rgba(255, 220, 0, 0.18);
 
-	/* Info pill (blue) */
 	--clr-info-pill-bg: rgba(0, 122, 204, 0.13);
 	--clr-info-pill-border: rgba(0, 122, 204, 0.35);
 	--clr-info-pill-text: var(--c-blue-2);
 	--clr-info-pill-hover: rgba(0, 122, 204, 0.2);
 
-	/* Marks */
 	--clr-mark-missing: var(--c-red-1);
 	--clr-mark-extra: var(--c-black);
 	--clr-mark-ghost: rgba(0, 0, 0, 0.5);
@@ -116,7 +103,6 @@
 	--clr-ghost-text: #d8d8d8;
 	--clr-ghost-pair: #888;
 
-	/* Status (overview) */
 	--clr-pos: var(--c-green-2);
 	--clr-neg: var(--c-red-1);
 	--clr-st-pass: var(--c-blue-2);
@@ -128,17 +114,27 @@
 	--clr-st-fail: var(--c-red-1);
 	--clr-st-fail-bg: rgba(204, 34, 34, 0.12);
 
-	/* Tooltip backgrounds */
 	--clr-tip-bg-blue: rgba(0, 122, 204, 0.1);
 	--clr-tip-bg-orange: rgba(224, 112, 32, 0.1);
 	--clr-tip-bg-green: rgba(102, 187, 106, 0.15);
 	--clr-tip-bg-purple: rgba(142, 68, 173, 0.12);
 
-	/* Misc */
+	--clr-chart-bg: var(--c-white);
+	--clr-chart-grid: #e8e8e8;
+	--clr-chart-axis-line: #ccc;
+	--clr-chart-axis-text: #555;
+	--clr-chart-axis-tick: #aaa;
+	--clr-chart-kpm-active: var(--c-black);
+	--clr-chart-kpm-session: var(--c-gray-2);
+	--clr-chart-cumulative: #cccccc;
+	--clr-chart-cumulative-fill: rgba(204, 204, 204, 0.3);
+	--clr-chart-insert-marker: #999;
+	--clr-chart-dot-muted-fill: #a8a8a8;
+	--clr-chart-dot-muted-stroke: #777;
+
 	--clr-legend-bg: rgba(255, 255, 255, 0.53);
 	--clr-asn-col-bg: rgba(0, 122, 204, 0.04);
 
-	/* Syntax highlighting */
 	--hl-comment: var(--c-green-1);
 	--hl-tag: var(--c-orange-1);
 	--hl-attr: var(--c-red-1);
@@ -154,7 +150,6 @@
 	--hl-css-at: var(--c-blue-2);
 	--hl-doctype: var(--c-blue-1);
 
-	/* Shadows */
 	--shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.18);
 	--shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.18);
 	--shadow-pin: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -349,6 +344,10 @@ body {
 }
 .tt-muted {
 	color: var(--clr-muted);
+}
+.tt-nl {
+	color: var(--clr-muted);
+	opacity: 0.6;
 }
 .tt-student {
 	color: var(--clr-text);

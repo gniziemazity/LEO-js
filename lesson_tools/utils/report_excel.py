@@ -8,6 +8,7 @@ from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from .folder_utils import LANG_EXTS
 from .similarity_measures import (
     calculate_containment,
     iter_code_tokens,
@@ -463,7 +464,7 @@ class ExcelReportMixin:
             return ('', '', [])
         inc_vals    = []
         teacher_agg: Counter = Counter()
-        for ext in ['.html', '.css', '.js', '.py']:
+        for ext in LANG_EXTS:
             fd = data['files_compared'].get(ext)
             if not fd or fd.get('status') != 'success':
                 continue
@@ -541,7 +542,7 @@ class ExcelReportMixin:
 
         def _ext_of_name(fname: str) -> str:
             f = (fname or '').lower()
-            for e in ('.html', '.css', '.js', '.py'):
+            for e in LANG_EXTS:
                 if f.endswith(e):
                     return e
             return ''
@@ -574,7 +575,7 @@ class ExcelReportMixin:
         ts_teacher = getattr(self, '_synth_ts_teacher', None) or {}
 
         out: Dict[str, Dict] = {}
-        for ext in ('.html', '.css', '.js', '.py'):
+        for ext in LANG_EXTS:
             teacher_ext_total = sum(teacher_by_lang.get(ext, Counter()).values())
             miss = miss_by_lang.get(ext, [])
             extra = extra_by_lang.get(ext, [])
@@ -606,7 +607,7 @@ class ExcelReportMixin:
             return ('', '', [])
         teacher_agg: Counter = sum(self.teacher_inside_by_ext.values(), Counter())
         student_agg: Counter = Counter()
-        for ext in ['.html', '.css', '.js', '.py']:
+        for ext in LANG_EXTS:
             fd = data['files_compared'].get(ext)
             if not fd or fd.get('status') != 'success':
                 continue
@@ -652,7 +653,7 @@ class ExcelReportMixin:
         teacher_by_lang = self._teacher_tokens_by_lang()
         student_by_lang = self._student_tokens_by_lang(sid)
         out: Dict[str, Dict] = {}
-        for ext in ['.html', '.css', '.js', '.py']:
+        for ext in LANG_EXTS:
             teacher_ext = teacher_by_lang.get(ext, Counter())
             student_ext = student_by_lang.get(ext, Counter())
             if not teacher_ext and not student_ext:

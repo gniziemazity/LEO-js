@@ -178,14 +178,6 @@ function _combinedScore(packA, packB) {
 	return 0.3 * Math.min(cLeft, cRight) + 0.7 * Math.max(cLeft, cRight);
 }
 
-function _scorePair(ctxA, ctxB) {
-	if (!ctxA || !ctxB) return 0;
-	let best = _combinedScore(ctxA.primary, ctxB.primary);
-	if (ctxA.alt) best = Math.max(best, _combinedScore(ctxA.alt, ctxB.primary));
-	if (ctxB.alt) best = Math.max(best, _combinedScore(ctxA.primary, ctxB.alt));
-	return best;
-}
-
 function _cosineSim(v1, v2) {
 	if (!v1 || !v2 || v1.size === 0 || v2.size === 0) return 0;
 	let dot = 0,

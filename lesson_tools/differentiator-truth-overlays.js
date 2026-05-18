@@ -1175,11 +1175,11 @@ function _truthRefreshPairConnectors() {
 	const spRect = studentPanel.getBoundingClientRect();
 	const midX = (tpRect.right + spRect.left) / 2;
 
-	const missingColor = _cssVar("--clr-mark-missing");
-	const extraColor = _cssVar("--clr-mark-extra");
-	const blackColor = _cssVar("--clr-black");
-	const ghostPairColor = _cssVar("--clr-ghost-pair");
-	const paleBlueColor = _cssVar("--clr-mark-ghost");
+	const missingColor = MARK_COLORS.missing;
+	const extraColor = MARK_COLORS.extra;
+	const blackColor = THEME.black;
+	const ghostPairColor = THEME.ghostPair;
+	const paleBlueColor = MARK_COLORS.ghost_extra;
 
 	const _langForTeacher = (file, marks) => {
 		if (!file) return missingColor;

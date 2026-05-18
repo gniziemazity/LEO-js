@@ -1,10 +1,34 @@
 import bisect
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from . import similarity_measures as _sm
 from .similarity_measures import ts_to_local
+
+
+def iter_ghost_tokens(
+    teacher_ghosts: Optional[Dict[str, list]],
+) -> Iterator[tuple]:
+    for fname, blobs in (teacher_ghosts or {}).items():
+        for blob in blobs or []:
+            blob_pos = blob.get('pos')
+            if blob_pos is None:
+                continue
+            blob_del_ts = blob.get('del_ts')
+            char_del_ts = blob.get('char_del_ts') or []
+            blob_text = blob.get('text') or ''
+            for tok_match in _sm._CHAR_TOKEN_RE.finditer(blob_text):
+                start_rel = tok_match.start()
+                end_rel = tok_match.end() - 1
+                if start_rel < len(char_del_ts):
+                    slice_end = min(end_rel, len(char_del_ts) - 1)
+                    slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
+                                  if t is not None]
+                    raw_ts = max(slice_vals) if slice_vals else blob_del_ts
+                else:
+                    raw_ts = blob_del_ts
+                yield fname, blob_pos, start_rel, tok_match.group(), raw_ts
 
 
 def _missing_mark(
@@ -191,35 +215,15 @@ def _build_occ_from_diff_marks(
     if ghosts_for_lookup is None:
         ghosts_for_lookup = diff_marks.get('teacher_ghosts')
     ghost_ts_by_pair: dict = {}
-    if ghosts_for_lookup:
-        for fname, blobs in ghosts_for_lookup.items():
-            for blob in blobs or []:
-                blob_pos = blob.get('pos')
-                if blob_pos is None:
-                    continue
-                blob_del_ts = blob.get('del_ts')
-                char_del_ts = blob.get('char_del_ts') or []
-                blob_text = blob.get('text') or ''
-                for tok_match in _sm._CHAR_TOKEN_RE.finditer(blob_text):
-                    start_rel = tok_match.start()
-                    end_rel = tok_match.end() - 1
-                    if start_rel < len(char_del_ts):
-                        slice_end = min(end_rel, len(char_del_ts) - 1)
-                        slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
-                                      if t is not None]
-                        raw_ts = max(slice_vals) if slice_vals else blob_del_ts
-                    else:
-                        raw_ts = blob_del_ts
-                    if raw_ts is None:
-                        continue
-                    ts_str = (
-                        ts_to_local(raw_ts)
-                        if isinstance(raw_ts, (int, float))
-                        else raw_ts
-                    )
-                    ghost_ts_by_pair[
-                        (fname, blob_pos + start_rel, tok_match.group())
-                    ] = ts_str
+    for fname, blob_pos, start_rel, tok, raw_ts in iter_ghost_tokens(ghosts_for_lookup):
+        if raw_ts is None:
+            continue
+        ts_str = (
+            ts_to_local(raw_ts)
+            if isinstance(raw_ts, (int, float))
+            else raw_ts
+        )
+        ghost_ts_by_pair[(fname, blob_pos + start_rel, tok)] = ts_str
 
     def _ghost_pair_ts(mark: dict) -> str:
         paired_with = mark.get('paired_with') or {}

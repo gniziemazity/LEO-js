@@ -1,6 +1,5 @@
 import math, os, sys, warnings
-import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import messagebox
 
 import pandas as pd
 import matplotlib
@@ -9,26 +8,23 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
 
+from utils.folder_utils import pick_file
+
 warnings.filterwarnings("ignore")
                                                                                     
 WHISKER_IQR = 25
 
 INCLUDE_FOLLOW = True
-INCLUDE_INC = False # now in agreement with Follow, so not needed
 INCLUDE_ASSIGNMENTS = True
 
-SHOW_OBSERVATIONS = True
-
 C_FOLLOW = "black"
-C_SIM    = "#888888"
-C_ASSIGN = "#2563EB"         
-                                                                            
-PAD_PCT    = 5                                             
-PAD_ASSIGN = 0.25                                        
-                                                                          
+C_ASSIGN = "#2563EB"
+
+PAD_PCT    = 5
+PAD_ASSIGN = 0.25
+
 BLOCK_SIZE = 9
 OFF_SFOL   = 0
-OFF_SSIM   = 2
 OFF_OBS    = 5
 OFF_LNAME  = 6
 OFF_LOBS   = 8
@@ -37,17 +33,6 @@ GRID_ROWS = 3
 GRID_COLS = 3
 GRID_SIZE = GRID_ROWS * GRID_COLS
                                       
-def pick_file() -> str:
-    root = tk.Tk(); root.withdraw()
-    root.attributes("-topmost", True)
-    path = filedialog.askopenfilename(
-        title="Open Grades File",
-        filetypes=[("Excel files", "*.xlsx *.xls *.xlsm"), ("All files", "*.*")],
-    )
-    root.destroy()
-    return path
-
-                                             
 def read_file(path: str) -> pd.DataFrame:
     ext = os.path.splitext(path)[1].lower()
     try:
@@ -70,7 +55,6 @@ def find_lesson_blocks(cols: list) -> list:
                 "label":      s,
                 "lesson":     str(cols[i + OFF_LNAME]).strip(),
                 "col_follow": i + OFF_SFOL,
-                "col_sim":    i + OFF_SSIM,
                 "col_score":  i + OFF_LNAME,
                 "col_obs":    i + OFF_OBS,
                 "col_lobs":   i + OFF_LOBS,
@@ -111,13 +95,11 @@ def row_has_data(row: pd.Series, blocks: list) -> bool:
         selected_values = []
         if INCLUDE_FOLLOW:
             selected_values.append(to_float(row.iloc[b["col_follow"]]))
-        if INCLUDE_INC:
-            selected_values.append(to_float(row.iloc[b["col_sim"]]))
         if INCLUDE_ASSIGNMENTS:
             selected_values.append(to_float(row.iloc[b["col_score"]]))
         if any(v is not None for v in selected_values):
             return True
-    return False       
+    return False
                                                
 def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
                compact: bool = False, show_legend: bool = False,
@@ -129,14 +111,13 @@ def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
     ms        = 4   if compact else 7
     lw        = 1.5 if compact else 2.2
 
-    labels=[]; follow_y=[]; sim_y=[]; score_y=[]; obs_data=[]
+    labels=[]; follow_y=[]; score_y=[]; obs_data=[]
     for i, b in enumerate(blocks):
         labels.append(b["lesson"])
         follow_y.append(to_float(row.iloc[b["col_follow"]]))
-        sim_y.append(   to_float(row.iloc[b["col_sim"]]))
         score_y.append( to_float(row.iloc[b["col_score"]]))
         obs_data.append((
-            i, follow_y[-1], sim_y[-1], score_y[-1],
+            i, follow_y[-1], score_y[-1],
             obs_text(row.iloc[b["col_obs"]]),
             obs_text(row.iloc[b["col_lobs"]]),
         ))
@@ -153,8 +134,6 @@ def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
 
     if INCLUDE_FOLLOW:
         _plot(ax1, follow_y, C_FOLLOW, "o")
-    if INCLUDE_INC:
-        _plot(ax1, sim_y, C_SIM, "s")
     if INCLUDE_ASSIGNMENTS:
         _plot(ax2, score_y, C_ASSIGN, "^", ls="--")
 
@@ -175,18 +154,12 @@ def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
                 bbox=dict(boxstyle="round,pad=0.25", fc="white",
                           ec="#aaaaaa", alpha=0.92, lw=0.7), clip_on=True)
 
-    if SHOW_OBSERVATIONS:
-        for x_pos, fy, sy, sc, obs, lobs in obs_data:
-            if obs:
-                series_for_obs = []
-                if INCLUDE_FOLLOW:
-                    series_for_obs.append(fy)
-                if INCLUDE_INC:
-                    series_for_obs.append(sy)
-                yval = next((v for v in series_for_obs if v is not None), None)
-                _annotate(ax1, x_pos, yval, obs)
-            if INCLUDE_ASSIGNMENTS and lobs:
-                _annotate(ax2, x_pos, sc, lobs)
+    for x_pos, fy, sc, obs, lobs in obs_data:
+        if obs:
+            yval = fy if INCLUDE_FOLLOW else None
+            _annotate(ax1, x_pos, yval, obs)
+        if INCLUDE_ASSIGNMENTS and lobs:
+            _annotate(ax2, x_pos, sc, lobs)
 
                                                                          
     ax1.set_facecolor("white")
@@ -204,7 +177,7 @@ def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
     ax2.set_ylim(-PAD_ASSIGN, 5 + PAD_ASSIGN)
     ax2.yaxis.set_major_locator(MultipleLocator(1))
 
-    if INCLUDE_FOLLOW or INCLUDE_INC:
+    if INCLUDE_FOLLOW:
         ax1.set_ylabel("Lesson (%)", fontsize=fs_ylabel, color="#333333")
         ax1.tick_params(axis="y", labelsize=fs_tick)
     else:
@@ -225,8 +198,6 @@ def draw_chart(ax1, title: str, blocks: list, row: pd.Series,
         legend_items = []
         if INCLUDE_FOLLOW:
             legend_items.append(Line2D([0], [0], color=C_FOLLOW, marker="o", lw=2, label="Follow"))
-        if INCLUDE_INC:
-            legend_items.append(Line2D([0], [0], color=C_SIM, marker="s", lw=2, label="Inc"))
         if INCLUDE_ASSIGNMENTS:
             legend_items.append(Line2D([0], [0], color=C_ASSIGN, marker="^", lw=2, linestyle="--", label="Assignments"))
                                                                                               
@@ -270,8 +241,6 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
                     if (v := to_float(r.iloc[b[key]])) is not None]
         if INCLUDE_FOLLOW:
             groups.append((f"{lesson}\nFollow", _collect("col_follow"), C_FOLLOW, "left"))
-        if INCLUDE_INC:
-            groups.append((f"{lesson}\nInc", _collect("col_sim"), C_SIM, "left"))
         if INCLUDE_ASSIGNMENTS:
             groups.append((f"{lesson}\nAssignment", _collect("col_score"), C_ASSIGN, "right"))
 
@@ -323,7 +292,7 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
     xform_bot = ax_l.get_xaxis_transform()
     xform_top = ax_l.get_xaxis_transform()
 
-    metric_color = {"Follow": C_FOLLOW, "Inc": C_SIM, "Assignment": C_ASSIGN}
+    metric_color = {"Follow": C_FOLLOW, "Assignment": C_ASSIGN}
     lesson_positions: dict = {}
     for pos, (label, *_) in zip(positions, groups):
         lesson, metric = label.split("\n", 1)
@@ -339,7 +308,7 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
                   color="#111111", clip_on=False)
 
                    
-    if INCLUDE_FOLLOW or INCLUDE_INC:
+    if INCLUDE_FOLLOW:
         ax_l.set_ylim(-PAD_PCT, 100 + PAD_PCT)
     else:
         ax_l.set_yticks([])
@@ -350,7 +319,7 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
     else:
         ax_r.set_yticks([])
 
-    if INCLUDE_FOLLOW or INCLUDE_INC:
+    if INCLUDE_FOLLOW:
         ax_l.set_ylabel("Lesson (%)", fontsize=17, color="#333333")
         ax_l.tick_params(axis="y", labelsize=12)
     else:
@@ -362,7 +331,7 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
     else:
         ax_r.set_ylabel("")
                            
-    metrics_per_lesson = int(INCLUDE_FOLLOW) + int(INCLUDE_INC) + int(INCLUDE_ASSIGNMENTS)
+    metrics_per_lesson = int(INCLUDE_FOLLOW) + int(INCLUDE_ASSIGNMENTS)
     if metrics_per_lesson > 0:
         for i in range(1, len(blocks)):
             ax_l.axvline(i * metrics_per_lesson + 0.5, color="#CCCCCC", linewidth=1, linestyle=":")
@@ -373,14 +342,17 @@ def save_totals_chart(data_rows: list, blocks: list, out_path: str):
     print(f"  ✓  {os.path.basename(out_path)}")                                   
                                 
 def main():
-    if not any((INCLUDE_FOLLOW, INCLUDE_INC, INCLUDE_ASSIGNMENTS)):
+    if not any((INCLUDE_FOLLOW, INCLUDE_ASSIGNMENTS)):
         messagebox.showwarning(
             "Nothing selected",
             "Enable at least one metric at the top of scripts/charts.py."
         )
         return
 
-    file_path = pick_file()
+    file_path = pick_file(
+        "Open Grades File",
+        filetypes=[("Excel files", "*.xlsx *.xls *.xlsm"), ("All files", "*.*")],
+    )
     if not file_path:
         print("No file selected."); return
 
@@ -428,9 +400,6 @@ def main():
         for b in blocks:
             if INCLUDE_FOLLOW:
                 v = to_float(_row.iloc[b["col_follow"]])
-                score += v if v is not None else 0.0
-            if INCLUDE_INC:
-                v = to_float(_row.iloc[b["col_sim"]])
                 score += v if v is not None else 0.0
             if INCLUDE_ASSIGNMENTS:
                 v = to_float(_row.iloc[b["col_score"]])

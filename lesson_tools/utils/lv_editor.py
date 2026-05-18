@@ -1,6 +1,6 @@
 import re
 from .lv_constants import (
-    ANCHOR_RE, CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
+    CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS, PAUSE_CHAR, PAUSE_MS,
     PAGE_LINES, split_code_with_anchors,
 )
@@ -12,6 +12,7 @@ from languages import (
     should_decrease_on_line,
     should_increase_after,
 )
+from .folder_utils import CODE_EXTS
 
 
 class HeadlessEditor:
@@ -444,9 +445,6 @@ class HeadlessEditor:
         self._ci_indent = ""
 
 
-_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm", ".py"))
-
-
 def _replay_headless_multi(
     events: list,
     track_timestamps: bool = False,
@@ -469,12 +467,12 @@ def _replay_headless_multi(
             elif t in ("MAIN", "main"):
                 current_context = "main"
                 active = "MAIN"
-            elif any(t.lower().endswith(ext) for ext in _FILE_EXTS):
+            elif any(t.lower().endswith(ext) for ext in CODE_EXTS):
                 current_context = "main"
                 active = t
                 if active not in editors:
                     ext_match = next(
-                        (ext for ext in _FILE_EXTS if t.lower().endswith(ext)),
+                        (ext for ext in CODE_EXTS if t.lower().endswith(ext)),
                         None,
                     )
                     editors[active] = HeadlessEditor(

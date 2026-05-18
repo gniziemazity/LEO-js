@@ -170,14 +170,8 @@ async function pickFolder() {
 }
 
 (async function tryAutoLoad() {
-	const handle = await _idbGet("lastCourseDir", "grades-dash");
-	if (!handle || handle.kind !== "directory") return;
-	try {
-		const perm = await handle.requestPermission({ mode: "read" });
-		if (perm !== "granted") return;
-	} catch {
-		return;
-	}
+	const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
+	if (!handle) return;
 	showLoading(true);
 	try {
 		await loadCourse(handle);
@@ -302,12 +296,12 @@ async function loadCourse(rootHandle) {
 		const fh = await rootHandle.getFileHandle("students.csv");
 		const text = await readCsvText(await fh.getFile());
 		_globalStudentMap = parseStudentCsv(text);
-		_realToAlterMap = parseAlterEgoCsv(text);
+		_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
 	} catch {}
 	try {
 		const fh = await rootHandle.getFileHandle("name_map.csv");
 		const text = await readCsvText(await fh.getFile());
-		_realToAlterMap = parseAlterEgoCsv(text);
+		_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
 	} catch {}
 
 	_lessonHandles = {};
@@ -378,20 +372,6 @@ function parseStudentCsv(text) {
 	const map = {};
 	for (const parts of parseCsv(text).rows) {
 		if (parts.length >= 3 && parts[0]) map[parts[0]] = parts[2];
-	}
-	return map;
-}
-
-function parseAlterEgoCsv(text) {
-	const map = {};
-	const { header, rows } = parseCsv(text);
-	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
-	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
-	if (nameIdx === -1 || alterIdx === -1) return map;
-	for (const parts of rows) {
-		const realName = parts[nameIdx];
-		const alterEgo = parts[alterIdx];
-		if (realName && alterEgo) map[_nfc(realName)] = alterEgo;
 	}
 	return map;
 }
@@ -663,7 +643,7 @@ function cdiffCell(v, vmin, vmax) {
 	td.textContent = n > 0 ? "+" + n : String(n);
 	td.style.fontWeight = "700";
 	if (n === 0) {
-		td.style.color = "#000";
+		td.style.color = THEME.black;
 	} else if (n < 0 && vmin < 0) {
 		const t = Math.min(1, n / vmin);
 		td.style.color = `rgb(${Math.round(204 * t)}, ${Math.round(34 * t)}, ${Math.round(34 * t)})`;
@@ -671,7 +651,7 @@ function cdiffCell(v, vmin, vmax) {
 		const t = Math.min(1, n / vmax);
 		td.style.color = `rgb(0, ${Math.round(122 * t)}, ${Math.round(204 * t)})`;
 	} else {
-		td.style.color = "#000";
+		td.style.color = THEME.black;
 	}
 	return td;
 }
@@ -912,6 +892,10 @@ function renderStats() {
 	const fmtPct = (v) => (v != null ? (v * 100).toFixed(1) + "%" : "—");
 	const ACCENT = THEME.label;
 
+	renderLessonStats(body);
+
+	const _appendStatsTableAtEnd = () => renderLessonStatsTable(body);
+
 	if (py.assignments) {
 		const names6 = py.assignments.map((a) => a.name);
 		const names5 = py.assignments
@@ -952,31 +936,11 @@ function renderStats() {
 					);
 				}).length,
 		);
-		const passedAndFollowedHalf = ASSIGNMENTS.map(
-			(a) =>
-				_students.filter((s) => {
-					const l = s.lessons[a.n - 1];
-					return (
-						PASSING.has(l.status) &&
-						l.hasFollowCol &&
-						l.follow != null &&
-						l.follow >= 50
-					);
-				}).length,
-		);
 		addStackedShareCard(
 			body,
 			"Passed & Followed Lesson",
 			asgNames,
 			passedAndFollowedAny,
-			passCounts,
-			participMax,
-		);
-		addStackedShareCard(
-			body,
-			"Passed & Followed Lesson ≥ 50%",
-			asgNames,
-			passedAndFollowedHalf,
 			passCounts,
 			participMax,
 		);
@@ -993,32 +957,11 @@ function renderStats() {
 					);
 				}).length,
 		);
-		const failedAndFollowedHalf = ASSIGNMENTS.map(
-			(a) =>
-				_students.filter((s) => {
-					const l = s.lessons[a.n - 1];
-					return (
-						(l.obs ?? "").trim() !== "" &&
-						!PASSING.has(l.status) &&
-						l.hasFollowCol &&
-						l.follow != null &&
-						l.follow >= 50
-					);
-				}).length,
-		);
 		addStackedShareCard(
 			body,
 			"Failed & Followed Lesson",
 			asgNames,
 			failedAndFollowedAny,
-			failedCounts,
-			participMax,
-		);
-		addStackedShareCard(
-			body,
-			"Failed & Followed Lesson ≥ 50%",
-			asgNames,
-			failedAndFollowedHalf,
 			failedCounts,
 			participMax,
 		);
@@ -1035,25 +978,13 @@ function renderStats() {
 		const submittedAssn = py.assignments.map((a) => a.n_submitted ?? 0);
 
 		const troubleAssn = py.assignments.map((a) => a.n_trouble ?? 0);
-		addBarCard(
+		addStackedShareCard(
 			body,
 			"Trouble (Assignments)",
 			names6,
 			troubleAssn,
-			ACCENT,
-			Math.max(...troubleAssn, 1) + 1,
-			"int",
-		);
-		addBarCard(
-			body,
-			"Trouble Rate (Assignments)",
-			names6,
-			troubleAssn.map((v, i) =>
-				submittedAssn[i] ? (v / submittedAssn[i]) * 100 : 0,
-			),
-			ACCENT,
-			100,
-			"pct",
+			submittedAssn,
+			Math.max(...submittedAssn, 1) + 1,
 		);
 
 		const lessonTroubleEntries = py.assignments.filter(
@@ -1065,48 +996,24 @@ function renderStats() {
 			);
 			const lessonTotals = lessonTroubleEntries.map((a) => a.n_total ?? 0);
 			const lessonNames = lessonTroubleEntries.map((a) => a.name);
-			addBarCard(
+			addStackedShareCard(
 				body,
 				"Trouble (Lessons)",
 				lessonNames,
 				lessonTroubleVals,
-				ACCENT,
-				Math.max(...lessonTroubleVals, 1) + 1,
-				"int",
-			);
-			addBarCard(
-				body,
-				"Trouble Rate (Lessons)",
-				lessonNames,
-				lessonTroubleVals.map((v, i) =>
-					lessonTotals[i] ? (v / lessonTotals[i]) * 100 : 0,
-				),
-				ACCENT,
-				100,
-				"pct",
+				lessonTotals,
+				Math.max(...lessonTotals, 1) + 1,
 			);
 		}
 
 		const aiAssn = py.assignments.map((a) => a.n_ai ?? 0);
-		addBarCard(
+		addStackedShareCard(
 			body,
 			"AI Use (Assignments)",
 			names6,
 			aiAssn,
-			ACCENT,
-			Math.max(...aiAssn, 1) + 1,
-			"int",
-		);
-		addBarCard(
-			body,
-			"AI Use Rate (Assignments)",
-			names6,
-			aiAssn.map((v, i) =>
-				submittedAssn[i] ? (v / submittedAssn[i]) * 100 : 0,
-			),
-			ACCENT,
-			100,
-			"pct",
+			submittedAssn,
+			Math.max(...submittedAssn, 1) + 1,
 		);
 		if (names5.length)
 			addBarCard(
@@ -1429,7 +1336,7 @@ function renderStats() {
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
-	renderLessonStats(body);
+	_appendStatsTableAtEnd();
 }
 
 function renderLessonStats(body) {
@@ -1470,31 +1377,6 @@ function renderLessonStats(body) {
 		});
 	const anyPos = (arr) => arr.some((v) => v != null && v > 0);
 
-	const cols = ls.header.filter(
-		(h) => h && h !== "Lesson" && h !== "Source" && h !== "segments",
-	);
-	const tableCard = mkCard(body, "Lesson Stats (Teacher Keylog)", "wide");
-	const fmtVal = (v) => {
-		if (v == null || v === "") return "—";
-		if (typeof v === "number") {
-			return Number.isInteger(v) ? String(v) : v.toFixed(2);
-		}
-		const n = +v;
-		if (!isNaN(n) && String(n) === String(v).trim()) return String(n);
-		return escHtml(String(v));
-	};
-	let tableHtml =
-		'<div style="overflow-x:auto"><table class="st-tbl"><tr><th>Stat</th>' +
-		lessonNames.map((n) => `<th>${escHtml(String(n))}</th>`).join("") +
-		"</tr>";
-	cols.forEach((stat) => {
-		tableHtml +=
-			`<tr><td>${escHtml(stat)}</td>` +
-			orderedRows.map((r) => `<td>${fmtVal(r[stat])}</td>`).join("") +
-			"</tr>";
-	});
-	tableCard.insertAdjacentHTML("beforeend", tableHtml + "</table></div>");
-
 	const kpmActive = numFor("kpm_active");
 	const kpmSession = numFor("kpm_session");
 	if (anyPos(kpmActive) || anyPos(kpmSession)) {
@@ -1528,72 +1410,103 @@ function renderLessonStats(body) {
 	const tCss = numFor("tokens_css");
 	const tJs = numFor("tokens_js");
 	const tPy = numFor("tokens_py");
-	if (anyPos(tHtml) || anyPos(tCss) || anyPos(tJs) || anyPos(tPy)) {
+	const tComment = numFor("tokens_comment");
+	const tDev = numFor("tokens_dev");
+	if (
+		anyPos(tHtml) ||
+		anyPos(tCss) ||
+		anyPos(tJs) ||
+		anyPos(tPy) ||
+		anyPos(tComment) ||
+		anyPos(tDev)
+	) {
 		const card = mkCard(body, "Tokens per Lesson");
 		const box = el("div", "chart-box");
 		card.appendChild(box);
 		const totals = lessonNames.map(
 			(_, i) =>
-				(tHtml[i] ?? 0) + (tCss[i] ?? 0) + (tJs[i] ?? 0) + (tPy[i] ?? 0),
+				(tHtml[i] ?? 0) +
+				(tCss[i] ?? 0) +
+				(tJs[i] ?? 0) +
+				(tPy[i] ?? 0) +
+				(tComment[i] ?? 0) +
+				(tDev[i] ?? 0),
 		);
+		const stackNames = ["HTML", "CSS", "JS", "Py", "Comment", "Dev"];
 		const chart = new BarChart(box, {
 			yMin: 0,
 			yMax: Math.max(...totals, 1) * 1.1,
 			stacked: true,
 			tooltipCallback: (_l, val, si) => [
-				["HTML", "CSS", "JS", "Py"][si] + ": " + Math.round(val),
+				stackNames[si] + ": " + Math.round(val),
 			],
 		});
 		const langColor = [
 			_cssVar("--clr-red"),
 			_cssVar("--clr-accent"),
 			_cssVar("--clr-orange"),
+			_cssVar("--clr-black"),
+			_cssVar("--clr-green"),
 			_cssVar("--clr-purple"),
 		];
-		chart.setData(lessonNames, [
-			{
-				data: tHtml.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(langColor[0], 0.5),
-				borderColor: langColor[0],
-			},
-			{
-				data: tCss.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(langColor[1], 0.5),
-				borderColor: langColor[1],
-			},
-			{
-				data: tJs.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(langColor[2], 0.5),
-				borderColor: langColor[2],
-			},
-			{
-				data: tPy.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(langColor[3], 0.5),
-				borderColor: langColor[3],
-			},
-		]);
+		const stackData = [tHtml, tCss, tJs, tPy, tComment, tDev];
+		chart.setData(
+			lessonNames,
+			stackData.map((arr, i) => ({
+				data: arr.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(langColor[i], 0.5),
+				borderColor: langColor[i],
+			})),
+		);
 		_barCharts.push(chart);
 	}
 
-	const duration = numFor("duration_min");
+	const LESSON_MIN = 90;
+	const duration = numFor("coding_min");
 	if (anyPos(duration)) {
-		addBarCard(
-			body,
-			"Coding Duration (min)",
-			lessonNames,
-			duration.map((v) => v ?? 0),
-			THEME.label,
-			Math.max(...duration.filter((v) => v != null), 1) * 1.1,
-			"dec1",
-		);
+		const card = mkCard(body, "Typing Duration (min)");
+		const box = el("div", "chart-box");
+		card.appendChild(box);
+		const durData = duration.map((v) => v ?? 0);
+		const yMax = Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05;
+		const chart = new BarChart(box, {
+			yMin: 0,
+			yMax,
+			tooltipCallback: (_label, _val, si, gi) => {
+				if (si === 0) return [`Lesson length: ${LESSON_MIN} min`];
+				const v = durData[gi];
+				const pct = Math.round((v / LESSON_MIN) * 100);
+				return [`${v.toFixed(1)} min (${pct}%)`];
+			},
+			barLabel: (gi, si) => {
+				if (si !== 1) return null;
+				const v = durData[gi];
+				return Math.round((v / LESSON_MIN) * 100) + "%";
+			},
+		});
+		chart.setData(lessonNames, [
+			{
+				data: durData.map(() => LESSON_MIN),
+				backgroundColor: _hexToRgba(THEME.label, 0.15),
+				borderColor: _hexToRgba(THEME.label, 0.35),
+				overlap: true,
+			},
+			{
+				data: durData,
+				backgroundColor: _hexToRgba(THEME.label, 0.55),
+				borderColor: THEME.label,
+				overlap: true,
+				labelColor: THEME.bg,
+				outsideLabelColor: THEME.bg,
+			},
+		]);
+		_barCharts.push(chart);
 	}
 
 	const segmentsByLesson = orderedRows.map((r) =>
 		_parseSegments(r["segments"]),
 	);
 	if (segmentsByLesson.some((s) => s.length)) {
-		_addSegmentedDurationCard(body, lessonNames, segmentsByLesson);
-
 		const codeCounts = segmentsByLesson.map(
 			(segs) => segs.filter((s) => s.kind !== "p").length,
 		);
@@ -1632,18 +1545,6 @@ function renderLessonStats(body) {
 				.map((s) => s.tokens),
 		);
 		if (codeSegTokensByLesson.some((arr) => arr.length)) {
-			const codeTokenTotals = codeSegTokensByLesson.map((arr) =>
-				arr.reduce((a, b) => a + b, 0),
-			);
-			addBarCard(
-				body,
-				"Code Segment Tokens per Lesson",
-				lessonNames,
-				codeTokenTotals,
-				THEME.label,
-				Math.max(...codeTokenTotals, 1) * 1.1,
-				"int",
-			);
 			_addDurationBoxCard(
 				body,
 				"Tokens per Code Segment",
@@ -1736,6 +1637,59 @@ function renderLessonStats(body) {
 	}
 }
 
+function renderLessonStatsTable(body) {
+	if (!_lessonStats) return;
+	const ls = _lessonStats;
+	const displayByLower = new Map();
+	ASSIGNMENTS.forEach((a) => {
+		displayByLower.set(a.name.toLowerCase(), a.name);
+	});
+	const _lower = (r) =>
+		String(r["Lesson"] ?? "")
+			.trim()
+			.toLowerCase();
+	const orderedRows = [];
+	const seenRows = new Set();
+	ASSIGNMENTS.forEach((a) => {
+		const key = a.name.toLowerCase();
+		const row = ls.rows.find((r) => _lower(r) === key);
+		if (row) {
+			orderedRows.push(row);
+			seenRows.add(row);
+		}
+	});
+	ls.rows.forEach((row) => {
+		if (!seenRows.has(row)) orderedRows.push(row);
+	});
+	const lessonNames = orderedRows.map(
+		(r) => displayByLower.get(_lower(r)) || r["Lesson"],
+	);
+	const cols = ls.header.filter(
+		(h) => h && h !== "Lesson" && h !== "Source" && h !== "segments",
+	);
+	const tableCard = mkCard(body, "Lesson Stats (Teacher Keylog)", "wide");
+	const fmtVal = (v) => {
+		if (v == null || v === "") return "—";
+		if (typeof v === "number") {
+			return Number.isInteger(v) ? String(v) : v.toFixed(2);
+		}
+		const n = +v;
+		if (!isNaN(n) && String(n) === String(v).trim()) return String(n);
+		return escHtml(String(v));
+	};
+	let tableHtml =
+		'<div style="overflow-x:auto"><table class="st-tbl"><tr><th>Stat</th>' +
+		lessonNames.map((n) => `<th>${escHtml(String(n))}</th>`).join("") +
+		"</tr>";
+	cols.forEach((stat) => {
+		tableHtml +=
+			`<tr><td>${escHtml(stat)}</td>` +
+			orderedRows.map((r) => `<td>${fmtVal(r[stat])}</td>`).join("") +
+			"</tr>";
+	});
+	tableCard.insertAdjacentHTML("beforeend", tableHtml + "</table></div>");
+}
+
 function addStackedShareCard(
 	parent,
 	title,
@@ -1755,6 +1709,12 @@ function addStackedShareCard(
 		tooltipCallback: (_label, _val, _si, gi) => [
 			`${subsetCounts[gi]} / ${totalCounts[gi]}`,
 		],
+		barLabel: (gi, si) => {
+			if (si !== 0) return null;
+			const tot = totalCounts[gi];
+			if (!tot) return null;
+			return Math.round((subsetCounts[gi] / tot) * 100) + "%";
+		},
 	});
 	chart.setData(labels, [
 		{
@@ -1780,6 +1740,7 @@ function addBarCard(
 	yMax,
 	tooltipFmt,
 	tooltipFn,
+	opts = {},
 ) {
 	const card = mkCard(parent, title);
 	const box = el("div", "chart-box");
@@ -1796,12 +1757,14 @@ function addBarCard(
 						? val.toFixed(1) + "%"
 						: Math.round(val).toString(),
 			]),
+		barLabel: opts.barLabel,
 	});
 	chart.setData(labels, [
 		{
 			data,
 			backgroundColor: color + "44",
 			borderColor: color,
+			labelColor: opts.labelColor,
 		},
 	]);
 	_barCharts.push(chart);
@@ -1827,67 +1790,21 @@ function _parseSegments(raw) {
 		.filter(Boolean);
 }
 
-function _fmtDur(secs) {
-	if (secs < 60) return secs.toFixed(1) + "s";
-	const m = Math.floor(secs / 60);
-	const s = Math.round(secs - m * 60);
-	return s ? `${m}m ${s}s` : `${m}m`;
-}
-
-function _addSegmentedDurationCard(parent, lessonNames, segmentsByLesson) {
-	const card = mkCard(parent, "Coding Duration (segmented by pauses)");
-	const box = el("div", "chart-box");
-	card.appendChild(box);
-
-	const maxSegs = Math.max(...segmentsByLesson.map((s) => s.length), 0);
-	const totals = segmentsByLesson.map((segs) =>
-		segs.reduce((a, s) => a + s.dur / 60, 0),
-	);
-	const yMax = Math.max(...totals, 1) * 1.1 || 1;
-
-	const typingBg = _hexToRgba(THEME.label, 0.55);
-	const typingBd = THEME.label;
-	const pauseBg = _cssVar("--clr-bar-track") || "#eeeeee";
-	const pauseBd = _hexToRgba(THEME.label, 0.35);
-
-	const datasets = [];
-	for (let si = 0; si < maxSegs; si++) {
-		const data = [];
-		const bg = [];
-		const bd = [];
-		for (let gi = 0; gi < lessonNames.length; gi++) {
-			const seg = segmentsByLesson[gi][si];
-			data.push(seg ? seg.dur / 60 : 0);
-			const isPause = seg && seg.kind === "p";
-			bg.push(isPause ? pauseBg : typingBg);
-			bd.push(isPause ? pauseBd : typingBd);
-		}
-		datasets.push({ data, backgroundColor: bg, borderColor: bd });
-	}
-
-	const chart = new BarChart(box, {
-		yMin: 0,
-		yMax,
-		stacked: true,
-		tooltipCallback: (label, val, si, gi) => {
-			const seg = segmentsByLesson[gi][si];
-			if (!seg) return [label, val.toFixed(2) + " min"];
-			const kindLabel = seg.kind === "p" ? "Pause" : "Typing";
-			return [label, `${kindLabel}: ${_fmtDur(seg.dur)}`];
-		},
-	});
-	chart.setData(lessonNames, datasets);
-	_barCharts.push(chart);
-}
-
 function _autoTicks(maxVal, n = 5) {
 	if (maxVal <= 0) return [0];
 	const step = Math.max(1, Math.ceil(maxVal / n));
 	return Array.from({ length: n + 1 }, (_, i) => i * step);
 }
 
-function _addDurationBoxCard(parent, title, labels, durationsByLesson) {
+function _addDurationBoxCard(
+	parent,
+	title,
+	labels,
+	durationsByLesson,
+	opts = {},
+) {
 	if (!durationsByLesson.some((d) => d.length)) return;
+	const hideOutliers = opts.hideOutliers !== false;
 	const card = mkCard(parent, title);
 	const box = el("div", "chart-box");
 	card.appendChild(box);
@@ -1908,20 +1825,12 @@ function _addDurationBoxCard(parent, title, labels, durationsByLesson) {
 			color: _hexToRgba(THEME.label, 0.44),
 			borderColor: THEME.label,
 			yAxis: "left",
-			coef: 1.5,
-			outlierColor: _hexToRgba(THEME.label, 0.5),
+			coef: hideOutliers ? Infinity : 1.5,
+			outlierColor: hideOutliers ? null : _hexToRgba(THEME.label, 0.5),
 			outlierRadius: 3,
 		},
 	]);
 	_barCharts.push(chart);
-}
-
-function _countPctTooltip(denomArr) {
-	return (_label, val, _si, gi) => {
-		const denom = denomArr[gi];
-		const pct = denom ? ` (${((val / denom) * 100).toFixed(1)}%)` : "";
-		return [`${Math.round(val)}${pct}`];
-	};
 }
 
 function linReg(pts) {

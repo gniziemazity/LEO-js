@@ -11,6 +11,7 @@ _ROOT = Path(__file__).resolve().parent
 _TEST = _ROOT / 'test'
 
 from utils import similarity_measures as _sm
+from utils.folder_utils import LANG_EXTS
 from utils.lv_editor import reconstruct_html_headless
 from utils.similarity_measures import (
     reconstruct_tokens_from_keylog_full,
@@ -475,7 +476,7 @@ def _expected_teacher_tokens(t_text: str, *, include_comment_tokens: bool,
 
 def _project_code_files(d: Path) -> Dict[str, Path]:
     return {p.name: p for p in d.iterdir()
-            if p.is_file() and p.suffix.lower() in ('.html', '.css', '.js', '.py')}
+            if p.is_file() and p.suffix.lower() in LANG_EXTS}
 
 
 def _pair_student_file(t_path: Path, t_name: str,
@@ -1131,6 +1132,7 @@ _NODE_BIN = shutil.which('node')
 _PARITY_READY = bool(_NODE_BIN) and _PARITY_RUNNER.is_file()
 _PARITY_SKIP_COLS = {
     'tokens', 'tokens_html', 'tokens_css', 'tokens_js', 'tokens_py',
+    'tokens_comment',
 }
 
 

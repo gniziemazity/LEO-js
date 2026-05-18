@@ -30,9 +30,9 @@ from .token_log import (
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
+from .folder_utils import CODE_EXTS
 
 
-_RECO_EXTS = {'.html', '.htm', '.css', '.js', '.py'}
 _LANG_EXT_LABEL = (('.html', 'HTML'), ('.css', 'CSS'), ('.js', 'JS'), ('.py', 'Py'))
 _EMBEDDED_LANG_TO_EXT = {'javascript': '.js', 'css': '.css'}
 
@@ -86,30 +86,14 @@ def _per_language_follow_stats(
 
     ghost_ts_by_pair: dict = {}
     if teacher_ghosts:
-        from .similarity_measures import ts_to_local, _CHAR_TOKEN_RE
-        for fname, blobs in teacher_ghosts.items():
-            for blob in blobs or []:
-                blob_pos = blob.get('pos')
-                if blob_pos is None:
-                    continue
-                blob_del_ts = blob.get('del_ts')
-                char_del_ts = blob.get('char_del_ts') or []
-                blob_text = blob.get('text') or ''
-                for tok_match in _CHAR_TOKEN_RE.finditer(blob_text):
-                    start_rel = tok_match.start()
-                    end_rel = tok_match.end() - 1
-                    if start_rel < len(char_del_ts):
-                        slice_end = min(end_rel, len(char_del_ts) - 1)
-                        slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
-                                      if t is not None]
-                        raw_ts = max(slice_vals) if slice_vals else blob_del_ts
-                    else:
-                        raw_ts = blob_del_ts
-                    if raw_ts is None:
-                        continue
-                    ts_str = (ts_to_local(raw_ts)
-                              if isinstance(raw_ts, (int, float)) else raw_ts)
-                    ghost_ts_by_pair[(fname, blob_pos + start_rel, tok_match.group())] = ts_str
+        from .similarity_measures import ts_to_local
+        from .token_log_marks import iter_ghost_tokens
+        for fname, blob_pos, start_rel, tok, raw_ts in iter_ghost_tokens(teacher_ghosts):
+            if raw_ts is None:
+                continue
+            ts_str = (ts_to_local(raw_ts)
+                      if isinstance(raw_ts, (int, float)) else raw_ts)
+            ghost_ts_by_pair[(fname, blob_pos + start_rel, tok)] = ts_str
 
     ghost_blobs_sorted: Dict[str, list] = {}
     if teacher_ghosts:
@@ -389,7 +373,7 @@ class TokenLogMixin:
         if all_events:
             reco_dir = self.reference_dir.parent / 'reconstructed'
             if reco_dir.is_dir():
-                files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in _RECO_EXTS}
+                files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in CODE_EXTS}
                 if files:
                     return files
         return self.get_all_code_files(self.reference_dir)
@@ -424,7 +408,7 @@ class TokenLogMixin:
                 if not (tab_key == 'MAIN' and not reco_text)
             }
             for stale in reco_dir.iterdir():
-                if stale.is_file() and stale.suffix.lower() in _RECO_EXTS \
+                if stale.is_file() and stale.suffix.lower() in CODE_EXTS \
                         and stale.name not in fresh_names:
                     try:
                         stale.unlink()
@@ -765,7 +749,7 @@ class TokenLogMixin:
             print(f'Copied {basis_name} diff marks for {count} student(s) into '
                   f'{anon_names_dir.name}/')
 
-        root_exts = {'.json', '.html', '.htm', '.css', '.js', '.txt', '.py'}
+        root_exts = {'.json', '.txt', *CODE_EXTS}
         root_files = [
             p for p in sorted(curated_dir.iterdir())
             if p.is_file() and p.suffix.lower() in root_exts
@@ -917,7 +901,7 @@ class TokenLogMixin:
             teacher_code_files = self._get_teacher_code_files()
             student_code_files = {
                 p.name: p for p in anon_dir.iterdir()
-                if p.is_file() and p.suffix.lower() in _RECO_EXTS
+                if p.is_file() and p.suffix.lower() in CODE_EXTS
             }
             stats['follow_e_by_lang'] = _per_language_follow_stats(
                 diff_marks, teacher_code_files, student_code_files,

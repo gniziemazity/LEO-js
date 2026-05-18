@@ -1,10 +1,9 @@
 from .lv_constants import (
     CURSOR_MOVES, DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS,
-    MAX_REAL_DELAY, DELAY_CODE, DELAY_OPS,
+    MAX_REAL_DELAY, DELAY_OPS,
     split_code_with_anchors,
 )
-
-_FILE_EXTS = frozenset((".js", ".css", ".html", ".htm", ".py"))
+from .folder_utils import CODE_EXTS
 
 _CI_SPECIAL = frozenset(
     list(CURSOR_MOVES.keys()) + [
@@ -31,7 +30,7 @@ def expand_events(events: list) -> list:
             elif target in ("MAIN", "main"):
                 current_editor = "main"
                 micro.append(("switch_editor", "main", ts, DELAY_OPS))
-            elif any(target.lower().endswith(ext) for ext in _FILE_EXTS):
+            elif any(target.lower().endswith(ext) for ext in CODE_EXTS):
                 current_editor = "main"
                 micro.append(("switch_file", target, ts, DELAY_OPS))
             else:

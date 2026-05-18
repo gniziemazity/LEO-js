@@ -13,15 +13,16 @@ from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
     _CHAR_TOKEN_RE,
     normalize_code,
+    open_csv_encoded,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, calculate_containment,
     save_xlsx,
 )
 from .lesson_log import load_lesson_log
 from .lv_editor import reconstruct_all_with_ghosts
+from .folder_utils import CODE_EXTS, LANG_EXTS
 
 
-_HASH_EXTS = {'.html', '.htm', '.css', '.js', '.py'}
 _NGRAM_SIZE = 3
 
 
@@ -29,7 +30,7 @@ def _folder_fingerprint(folder: Path) -> Optional[str]:
     h = hashlib.sha1()
     files = sorted(
         (p for p in folder.iterdir()
-         if p.is_file() and p.suffix.lower() in _HASH_EXTS),
+         if p.is_file() and p.suffix.lower() in CODE_EXTS),
         key=lambda p: p.name.lower(),
     )
     if not files:
@@ -50,26 +51,22 @@ def _read_name_id_map(name_map_csv: Path) -> Dict[str, str]:
     out: Dict[str, str] = {}
     if not name_map_csv.is_file():
         return out
-    for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
-        try:
-            with open(name_map_csv, encoding=enc) as fh:
-                reader = csv.DictReader(fh, delimiter=';')
-                for row in reader:
-                    sid = (row.get('Student ID') or '').strip()
-                    if not sid:
-                        continue
-                    name = (row.get('Student Name') or '').strip()
-                    alter = (row.get('Alter Ego') or '').strip()
-                    if name:
-                        out[name] = sid
-                    if alter:
-                        out[alter] = sid
-            return out
-        except (UnicodeDecodeError, UnicodeError):
-            out.clear()
-            continue
-        except Exception:
-            return out
+
+    def _row(row):
+        sid = (row.get('Student ID') or '').strip()
+        if not sid:
+            return
+        name = (row.get('Student Name') or '').strip()
+        alter = (row.get('Alter Ego') or '').strip()
+        if name:
+            out[name] = sid
+        if alter:
+            out[alter] = sid
+
+    try:
+        open_csv_encoded(name_map_csv, _row, delimiter=';', reset_fn=out.clear)
+    except Exception:
+        pass
     return out
 
 
@@ -232,7 +229,7 @@ class PeerSimilarityChecker:
         self.indent_df: Counter = Counter()
         self.idf: Dict[str, float] = {}
         self.rare_threshold = 0
-        self.extensions = ['.html', '.css', '.js', '.py']
+        self.extensions = list(LANG_EXTS)
 
     def _read_file(self, directory: Path, ext: str) -> Optional[str]:
         files = list(directory.glob(f'*{ext}'))

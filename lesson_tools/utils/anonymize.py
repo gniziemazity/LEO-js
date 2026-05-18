@@ -5,6 +5,8 @@ import re
 import shutil
 from pathlib import Path
 
+from .similarity_measures import open_csv_encoded
+
 try:
     from docx import Document
     HAS_DOCX = True
@@ -28,29 +30,24 @@ def _safe_folder_name(name):
 def load_students(csv_path):
     students = {}
 
-    for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
-        try:
-            with open(csv_path, "r", encoding=enc) as f:
-                reader = csv.DictReader(f, delimiter=";")
-                for row in reader:
-                    sid = row["Student ID"].strip()
-                    name = row["Student Name"].strip()
-                    number = row["Student Number"].strip()
-                    alter = (row.get("Alter Ego") or "").strip()
-                    students[name] = {
-                        "id": sid,
-                        "name": name,
-                        "number": number,
-                        "alter_ego": alter,
-                    }
-            break
-        except (UnicodeDecodeError, UnicodeError):
-            students.clear()
-            continue
-        except KeyError as e:
-            print(f"ERROR: Missing expected column {e} in students.csv")
-            print("  Expected columns: Student ID;Student Name;Student Number")
-            sys.exit(1)
+    def _row(row):
+        sid = row["Student ID"].strip()
+        name = row["Student Name"].strip()
+        number = row["Student Number"].strip()
+        alter = (row.get("Alter Ego") or "").strip()
+        students[name] = {
+            "id": sid,
+            "name": name,
+            "number": number,
+            "alter_ego": alter,
+        }
+
+    try:
+        open_csv_encoded(csv_path, _row, delimiter=";", reset_fn=students.clear)
+    except KeyError as e:
+        print(f"ERROR: Missing expected column {e} in students.csv")
+        print("  Expected columns: Student ID;Student Name;Student Number")
+        sys.exit(1)
 
     if not students:
         print("ERROR: Could not read students.csv with any encoding.")

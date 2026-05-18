@@ -7,6 +7,16 @@ let _lockKeyDown = false;
 let _barBlockStudents = [];
 
 tooltipEl.addEventListener("click", (e) => {
+	const headerEl = e.target.closest("[data-header-student]");
+	if (
+		headerEl &&
+		_pinned?.s &&
+		typeof openDifferentiatorWindow === "function"
+	) {
+		e.stopPropagation();
+		openDifferentiatorWindow(_pinned.s);
+		return;
+	}
 	const el = e.target.closest("[data-bar-student-idx]");
 	if (!el) return;
 	const idx = parseInt(el.getAttribute("data-bar-student-idx"), 10);
@@ -273,12 +283,9 @@ function setupHover(middleChart, topChart, bottomChart, p, L) {
 			sig,
 		);
 
-		const handleSelect = (e, openDiff) => {
+		const handleSelect = (e) => {
 			if (PAN_STATE.active) return;
 			const hit = findHit(e, canvas, id, p, L);
-			if (openDiff && id === "bottom" && hit && hit.type === "student") {
-				openDifferentiatorWindow(hit.s);
-			}
 			if (!hit) {
 				_pinned = null;
 				hideTip();
@@ -302,18 +309,23 @@ function setupHover(middleChart, topChart, bottomChart, p, L) {
 			}
 		};
 
+		canvas.addEventListener("click", handleSelect, sig);
 		canvas.addEventListener(
-			"click",
+			"mousedown",
 			(e) => {
-				handleSelect(e, true);
+				if (e.button === 1) e.preventDefault();
 			},
 			sig,
 		);
 		canvas.addEventListener(
-			"contextmenu",
+			"auxclick",
 			(e) => {
-				e.preventDefault();
-				handleSelect(e, false);
+				if (e.button !== 1) return;
+				if (PAN_STATE.active) return;
+				const hit = findHit(e, canvas, id, p, L);
+				if (id === "bottom" && hit?.type === "student") {
+					openDifferentiatorWindow(hit.s);
+				}
 			},
 			sig,
 		);
@@ -384,13 +396,7 @@ function hitBottomBarBlock(ts, my, p, L, thT) {
 	if (!studentsAffected.length) return null;
 	const { M, plotHbot } = L;
 	const bottomY = M.top + plotHbot;
-	const allStudentEvs = _students.map(_mistakeEventsFor);
-	let maxCount = 0;
-	for (const b of blocks) {
-		const n = _countStudentsInRange(allStudentEvs, b.ts1, b.ts2);
-		if (n > maxCount) maxCount = n;
-	}
-	const denom = Math.max(1, maxCount);
+	const denom = Math.max(1, _students.length);
 	const bh = Math.min(plotHbot, (studentsAffected.length / denom) * plotHbot);
 	const barTop = bottomY - bh;
 	const yPad = 10;
@@ -566,7 +572,7 @@ function hitInteraction(ts, p) {
 }
 
 function showTip(cx, cy, hit, pinned, chartId) {
-	tooltipEl.innerHTML = formatHit(hit, chartId === "c2");
+	tooltipEl.innerHTML = formatHit(hit, chartId === "top");
 	const isBar = hit?.type === "bar-block" || hit?.type === "token-bar";
 	tooltipEl.style.display = isBar ? "flex" : "block";
 	tooltipEl.style.flexDirection = isBar ? "column" : "";
@@ -696,20 +702,19 @@ function _posInRanges(pos, ranges) {
 function _isInsertableChar(ch) {
 	if (ch == null) return false;
 	if (DELETE_CHARS.has(ch)) return false;
-	if (CURSOR_LEFT_CHARS.has(ch)) return false;
-	if (CURSOR_RIGHT_CHARS.has(ch)) return false;
-	if (CURSOR_UP_CHARS.has(ch)) return false;
-	if (CURSOR_DOWN_CHARS.has(ch)) return false;
-	if (CURSOR_HOME_CHARS.has(ch)) return false;
-	if (CURSOR_END_CHARS.has(ch)) return false;
-	if (typeof IGNORED_CHARS !== "undefined" && IGNORED_CHARS.has(ch))
+	if (
+		typeof CURSOR_MOVES !== "undefined" &&
+		Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
+	)
 		return false;
-	if (typeof PAUSE_CHAR !== "undefined" && ch === PAUSE_CHAR) return false;
 	if (
 		typeof SHIFT_CURSOR_MOVES !== "undefined" &&
 		Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)
 	)
 		return false;
+	if (typeof IGNORED_CHARS !== "undefined" && IGNORED_CHARS.has(ch))
+		return false;
+	if (typeof PAUSE_CHAR !== "undefined" && ch === PAUSE_CHAR) return false;
 	return true;
 }
 
@@ -741,6 +746,7 @@ function _computeBurstDecorations(parts, evs, replay) {
 		const hitsAll = replay.tsToPos.get(ev.timestamp) || [];
 
 		if (p.type === "char") {
+			if (ev._editor === "dev") continue;
 			let didClaim = false;
 			for (const { file, pos } of hitsAll) {
 				if (!claim(file, pos)) continue;
@@ -752,28 +758,78 @@ function _computeBurstDecorations(parts, evs, replay) {
 			if (!didClaim && _isInsertableChar(p.t)) ghostChars.add(i);
 		} else if (p.type === "code_insert") {
 			const text = _displayCodeInsert(p.t || "");
-			let claimedN = 0;
+			const claimedItems = [];
 			for (const { file, pos } of hitsAll) {
-				if (claimedN >= text.length) break;
 				if (!claim(file, pos)) continue;
-				const ranges = replay.commentRangesByFile.get(file);
-				if (_posInRanges(pos, ranges)) {
-					let m = commentInserts.get(i);
-					if (!m) {
-						m = new Set();
-						commentInserts.set(i, m);
-					}
-					m.add(claimedN);
-				}
-				claimedN++;
+				const fileState = replay.files?.get(file);
+				const ch = fileState ? fileState.text[pos] : null;
+				claimedItems.push({ file, pos, ch });
 			}
-			if (claimedN < text.length) {
+			const dispChars = [];
+			const dispOff = [];
+			for (let k = 0; k < text.length; k++) {
+				if (!_isInsertableChar(text[k])) continue;
+				dispChars.push(text[k]);
+				dispOff.push(k);
+			}
+			const nD = dispChars.length;
+			const nS = claimedItems.length;
+			const dp = new Array(nD + 1);
+			for (let a = 0; a <= nD; a++) dp[a] = new Uint16Array(nS + 1);
+			for (let a = 1; a <= nD; a++) {
+				const ca = dispChars[a - 1];
+				for (let b = 1; b <= nS; b++) {
+					if (ca === claimedItems[b - 1].ch) {
+						dp[a][b] = dp[a - 1][b - 1] + 1;
+					} else {
+						dp[a][b] =
+							dp[a - 1][b] >= dp[a][b - 1] ? dp[a - 1][b] : dp[a][b - 1];
+					}
+				}
+			}
+			const matchedItemForOff = new Map();
+			{
+				let a = nD;
+				let b = nS;
+				while (a > 0 && b > 0) {
+					if (dispChars[a - 1] === claimedItems[b - 1].ch) {
+						matchedItemForOff.set(dispOff[a - 1], b - 1);
+						a--;
+						b--;
+					} else if (dp[a - 1][b] >= dp[a][b - 1]) {
+						a--;
+					} else {
+						b--;
+					}
+				}
+			}
+			const ghostSet = new Set();
+			for (let k = 0; k < text.length; k++) {
+				if (!_isInsertableChar(text[k])) continue;
+				if (!matchedItemForOff.has(k)) ghostSet.add(k);
+			}
+			if (ghostSet.size > 0) {
 				let m = ghostInserts.get(i);
 				if (!m) {
 					m = new Set();
 					ghostInserts.set(i, m);
 				}
-				for (let k = claimedN; k < text.length; k++) m.add(k);
+				for (const k of ghostSet) m.add(k);
+			}
+			let cm = null;
+			for (const [off, itemIdx] of matchedItemForOff) {
+				const item = claimedItems[itemIdx];
+				const ranges = replay.commentRangesByFile.get(item.file);
+				if (_posInRanges(item.pos, ranges)) {
+					if (!cm) {
+						cm = commentInserts.get(i);
+						if (!cm) {
+							cm = new Set();
+							commentInserts.set(i, cm);
+						}
+					}
+					cm.add(off);
+				}
 			}
 		}
 	}
@@ -840,14 +896,13 @@ function textPartsToHtml(parts, partColors, evs, replay) {
 			const flushSeg = () => {
 				if (!curBuf) return;
 				if (curColor) {
-					html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline">${escHtml(curBuf)}</span>`;
+					html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+				} else if (curDeco === "ghost") {
+					html += `<span class="tt-mark-ghost" style="text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+				} else if (curDeco === "comment") {
+					html += `<span class="tt-mark-comment" style="text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
 				} else {
-					const open = _decoSpanOpen(curDeco);
-					if (open) {
-						html += `${open}${escHtml(curBuf)}</span>`;
-					} else {
-						html += `<span class="tt-muted">${escHtml(curBuf)}</span>`;
-					}
+					html += `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
 				}
 				curBuf = "";
 			};
@@ -1049,22 +1104,6 @@ function _renderStudentGrid(sorted, blockLangs, perLangCounts, maxLangWidths) {
 	return grid;
 }
 
-function _renderLangLegend(langs) {
-	if (!langs || !langs.length) return "";
-	const items = [];
-	for (const l of langs) {
-		if (l === "comment" || !_langBarColorOf(l)) continue;
-		if (items.indexOf(l) === -1) items.push(l);
-	}
-	if (!items.length) return "";
-	return `<span class="tt-lang-legend">${items
-		.map(
-			(l) =>
-				`<span style="color:${_langBarColorOf(l)}">${escHtml(l)}</span>`,
-		)
-		.join("")}</span>`;
-}
-
 function _wrapBarTooltip(headerHtml, gridHtml) {
 	return [
 		`<div class="tt-bar-fixed">${headerHtml}</div>`,
@@ -1129,7 +1168,7 @@ function formatHit(hit, simple = false) {
 					const display = truncated
 						? allLines.slice(0, MAX_HEADER_LINES).join("\n") + "\n…"
 						: trimmed;
-					headerHtml = `<span class="tt-muted">${escHtml(display)}</span>`;
+					headerHtml = `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(display)}</span>`;
 				} else if (
 					kp._virtualType === "anchor" ||
 					kp._virtualType === "move"
@@ -1203,7 +1242,9 @@ function formatHit(hit, simple = false) {
 			const trimmed = raw
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
-			lines.push(`<span class="tt-muted">${escHtml(trimmed)}</span>`);
+			lines.push(
+				`<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(trimmed)}</span>`,
+			);
 			break;
 		}
 		case "student": {
@@ -1211,7 +1252,7 @@ function formatHit(hit, simple = false) {
 			const pct =
 				s.follow_pct != null ? s.follow_pct.toFixed(1) + "%" : "N/A";
 			const idPrefix = s.id ? `${escHtml(s.id)}. ` : "";
-			let html = `👤 ${idPrefix}${escHtml(s.name)} (${escHtml(pct)})`;
+			let html = `<span class="tt-student" data-header-student="1">👤 ${idPrefix}${escHtml(s.name)} (${escHtml(pct)})</span>`;
 			const interTypes = [];
 			if (_p) {
 				const answered = (_p.interactions["teacher-question"] || []).filter(
@@ -1385,11 +1426,15 @@ function formatHitSimple(hit) {
 	switch (hit.type) {
 		case "char": {
 			const ch = hit.ev.char;
-			return ch === "↩" ? "↩ (Enter)" : escHtml(ch);
+			return ch === "↩" || ch === "\n"
+				? `<span class="tt-nl">\\n</span>`
+				: escHtml(ch);
 		}
 		case "dev_char": {
 			const ch = hit.ev.char;
-			return ch === "↩" ? "↩ (Enter)" : escHtml(ch);
+			return ch === "↩" || ch === "\n"
+				? `<span class="tt-nl">\\n</span>`
+				: escHtml(ch);
 		}
 		case "delete": {
 			return escHtml(hit.ev.char);
@@ -1405,7 +1450,7 @@ function formatHitSimple(hit) {
 			const trimmed = raw
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
-			return `<span class="tt-muted">${escHtml(trimmed)}</span>`;
+			return `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(trimmed)}</span>`;
 		}
 		case "interaction": {
 			const q = hit.q;

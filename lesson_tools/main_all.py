@@ -1,23 +1,19 @@
 import argparse
 import subprocess
 import sys
-import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog
+
+from utils.cli_common import add_grading_flags, forward_grading_flags
+from utils.folder_utils import pick_folder
 
 ROOT_DIR = Path(__file__).resolve().parent
 MAIN_PY = ROOT_DIR / "main.py"
 
 
 def _pick_course_folder() -> Path | None:
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    root.update()
-    chosen = filedialog.askdirectory(
-        title="Select course root folder (containing OverviewPlus.xlsx and lessons/)"
+    chosen = pick_folder(
+        "Select course root folder (containing OverviewPlus.xlsx and lessons/)"
     )
-    root.destroy()
     return Path(chosen).resolve() if chosen else None
 
 
@@ -30,16 +26,7 @@ def _parse_args(argv):
         nargs="?",
         help="Course folder path (the one containing OverviewPlus.xlsx and lessons/)",
     )
-    parser.add_argument(
-        "--anon",
-        action="store_true",
-        help="Forwarded to main.py: use Alter Ego names",
-    )
-    parser.add_argument(
-        "--follow-basis",
-        default="auto",
-        help="Forwarded to main.py: ideal | required | leo_star | leo | ... (default: auto)",
-    )
+    add_grading_flags(parser)
     return parser.parse_args(argv)
 
 
@@ -66,12 +53,7 @@ def _lesson_dirs(course: Path) -> list[Path]:
 
 
 def _build_cmd(lesson_dir: Path, args) -> list[str]:
-    cmd = [sys.executable, str(MAIN_PY), str(lesson_dir)]
-    if args.anon:
-        cmd.append("--anon")
-    if args.follow_basis and args.follow_basis != "auto":
-        cmd.append(f"--follow-basis={args.follow_basis}")
-    return cmd
+    return [sys.executable, str(MAIN_PY), str(lesson_dir), *forward_grading_flags(args)]
 
 
 def main(argv=None) -> int:
@@ -88,11 +70,7 @@ def main(argv=None) -> int:
     print(f"  Course : {course.name}")
     print(f"  Path   : {course}")
     print(f"  Lessons: {len(lessons)} ({', '.join(l.name for l in lessons)})")
-    flags = []
-    if args.anon:
-        flags.append("--anon")
-    if args.follow_basis and args.follow_basis != "auto":
-        flags.append(f"--follow-basis={args.follow_basis}")
+    flags = forward_grading_flags(args)
     print(f"  Flags  : {' '.join(flags) if flags else '(none)'}")
     print(separator)
 

@@ -8,6 +8,7 @@ from scipy.optimize import linear_sum_assignment
 
 from . import similarity_measures as _sm
 from .lv_editor import reconstruct_all_with_ghosts
+from .token_log_marks import iter_ghost_tokens
 
 
 _CONTEXT_K = 10
@@ -462,27 +463,13 @@ def _build_teacher_seq_aug(
 
     ghost_entries: List[tuple] = []
     ghost_counter = 0
-    for fname, ghosts in teacher_ghosts.items():
+    for fname, blob_pos, start_rel, tok, tok_del_ts in iter_ghost_tokens(teacher_ghosts):
         file_order = file_order_by_fname.get(fname, 1_000_000)
-        for ghost in ghosts:
-            blob_pos = ghost['pos']
-            blob_del_ts = ghost['del_ts']
-            char_del_ts = ghost.get('char_del_ts')
-            for tok_match in _sm._CHAR_TOKEN_RE.finditer(ghost['text']):
-                start_rel = tok_match.start()
-                last_char_rel = tok_match.end() - 1
-                if char_del_ts and start_rel < len(char_del_ts):
-                    slice_end = min(last_char_rel, len(char_del_ts) - 1)
-                    slice_vals = [t for t in char_del_ts[start_rel:slice_end + 1]
-                                  if t is not None]
-                    tok_del_ts = max(slice_vals) if slice_vals else blob_del_ts
-                else:
-                    tok_del_ts = blob_del_ts
-                ghost_entries.append((
-                    file_order, blob_pos, 0, ghost_counter,
-                    tok_match.group(), tok_match.start(), fname, tok_del_ts,
-                ))
-                ghost_counter += 1
+        ghost_entries.append((
+            file_order, blob_pos, 0, ghost_counter,
+            tok, start_rel, fname, tok_del_ts,
+        ))
+        ghost_counter += 1
     ghost_entries.sort()
 
     aug_seq: List = []

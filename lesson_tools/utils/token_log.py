@@ -76,8 +76,7 @@ from .token_log_starpass import (
     _upgrade_secprefix,
 )
 
-
-_FILE_EXTS = (".js", ".css", ".html", ".htm", ".py")
+from .folder_utils import CODE_EXTS
 
 
 def _build_file_timeline(events: list) -> list:
@@ -90,7 +89,7 @@ def _build_file_timeline(events: list) -> list:
                 pass
             elif target in ("MAIN", "main"):
                 timeline.append((ts, "MAIN"))
-            elif any(target.lower().endswith(ext) for ext in _FILE_EXTS):
+            elif any(target.lower().endswith(ext) for ext in CODE_EXTS):
                 timeline.append((ts, target))
         elif "switch_editor" in event and event["switch_editor"] not in ("dev", "DEV"):
             timeline.append((ts, "MAIN"))
