@@ -786,7 +786,7 @@ function _truthTokensForFile(side, file) {
 	if (_truthTokenCache.has(key)) return _truthTokenCache.get(key);
 	const text = _truthSrcText(side, file);
 	const out = [];
-	const re = /[a-zA-Z0-9]+|[^\s]/g;
+	const re = /[a-zA-Z0-9]+|[^\s]/gu;
 	let m;
 	while ((m = re.exec(text)) !== null) {
 		out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });

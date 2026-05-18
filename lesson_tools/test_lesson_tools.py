@@ -831,7 +831,10 @@ def _truth_apply_to_student_text(
             if before and after and _ALNUM_RE.match(before) \
                     and _ALNUM_RE.match(after):
                 deleted = text[start:end]
-                if any(not _ALNUM_RE.match(c) for c in deleted):
+                is_all_whitespace = deleted and all(c.isspace() for c in deleted)
+                if not is_all_whitespace and any(
+                    not _ALNUM_RE.match(c) for c in deleted
+                ):
                     body = ' '
         text = text[:start] + body + text[end:]
     return text
@@ -1118,6 +1121,132 @@ def _attach_curated_sanity_tests() -> None:
 
 
 _attach_curated_sanity_tests()
+
+
+import shutil
+import subprocess
+
+_PARITY_RUNNER = _ROOT / '_parity_runner.js'
+_NODE_BIN = shutil.which('node')
+_PARITY_READY = bool(_NODE_BIN) and _PARITY_RUNNER.is_file()
+_PARITY_SKIP_COLS = {
+    'tokens', 'tokens_html', 'tokens_css', 'tokens_js', 'tokens_py',
+}
+
+
+def _parse_lesson_stats_csv(csv_text: str) -> Dict[str, str]:
+    header, row = csv_text.strip().splitlines()
+    return dict(zip(header.split(','), row.split(',')))
+
+
+@unittest.skipUnless(_PARITY_READY,
+                     'node executable or _parity_runner.js not available')
+class TestJsPythonParity(unittest.TestCase):
+
+    def _run_node(self, log_path: Path) -> str:
+        res = subprocess.run(
+            [_NODE_BIN, str(_PARITY_RUNNER), str(log_path)],
+            capture_output=True, text=True, encoding='utf-8',
+        )
+        if res.returncode != 0:
+            self.fail(f'JS parity runner failed (rc={res.returncode}):\n'
+                      f'{res.stderr}')
+        return res.stdout
+
+    def _run_python(self, log_path: Path) -> str:
+        from utils.lesson_stats import compute_lesson_stats_csv
+        events = _load_events(log_path)
+        csv = compute_lesson_stats_csv(events, log_path.parent)
+        self.assertIsNotNone(csv, 'compute_lesson_stats_csv returned None')
+        return csv
+
+    def _check_parity(self, log_path: Path):
+        js = _parse_lesson_stats_csv(self._run_node(log_path))
+        py = _parse_lesson_stats_csv(self._run_python(log_path))
+        self.assertEqual(set(js), set(py), 'CSV columns differ')
+        for col in sorted(set(js)):
+            if col in _PARITY_SKIP_COLS:
+                continue
+            self.assertEqual(
+                js[col], py[col],
+                f'Column {col!r} differs: JS={js[col]!r} PY={py[col]!r}',
+            )
+
+
+def _attach_parity_tests() -> None:
+    for project_dir in sorted(_TEST.iterdir()):
+        if not project_dir.is_dir() or '-' in project_dir.name:
+            continue
+        log_path = project_dir / 'log.json'
+        if not log_path.is_file():
+            continue
+
+        def make_test(p=log_path):
+            def test(self):
+                self._check_parity(p)
+            return test
+
+        setattr(TestJsPythonParity,
+                f'test_parity_{project_dir.name}', make_test())
+
+
+_attach_parity_tests()
+
+
+_REPLAY_RUNNER = _ROOT / '_replay_runner.js'
+_REPLAY_READY = bool(_NODE_BIN) and _REPLAY_RUNNER.is_file()
+
+
+@unittest.skipUnless(_REPLAY_READY,
+                     'node executable or _replay_runner.js not available')
+class TestJsReplayParity(unittest.TestCase):
+    """Asserts the JS headless replay in `simulator-replay.js` produces
+    byte-identical reconstructed text to Python's
+    `lv_editor.reconstruct_html_headless` for every test fixture. The JS
+    replay is what the dashboard tooltip uses for ghost/comment lookup,
+    so any drift would silently break those decorations."""
+
+    def _check_replay(self, log_path: Path, expected_file: Path):
+        res = subprocess.run(
+            [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],
+            capture_output=True, text=True, encoding='utf-8',
+        )
+        if res.returncode != 0:
+            self.fail(f'JS replay runner failed (rc={res.returncode}):\n'
+                      f'{res.stderr}')
+        js_text = res.stdout
+        py_text = expected_file.read_text(encoding='utf-8').replace(
+            '\r\n', '\n'
+        )
+        self.assertEqual(js_text, py_text,
+                         f'JS replay text differs from {expected_file.name}')
+
+
+def _attach_replay_parity_tests() -> None:
+    for project_dir in sorted(_TEST.iterdir()):
+        if not project_dir.is_dir() or '-' in project_dir.name:
+            continue
+        log_path = project_dir / 'log.json'
+        if not log_path.is_file():
+            continue
+        expected = None
+        for cand in sorted(project_dir.iterdir()):
+            if cand.is_file() and cand.name.startswith('reconstructed'):
+                expected = cand
+                break
+        if expected is None:
+            continue
+
+        def make_test(p=log_path, e=expected):
+            def test(self):
+                self._check_replay(p, e)
+            return test
+
+        setattr(TestJsReplayParity,
+                f'test_replay_{project_dir.name}', make_test())
+
+
+_attach_replay_parity_tests()
 
 
 if __name__ == '__main__':

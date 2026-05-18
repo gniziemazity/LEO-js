@@ -388,6 +388,12 @@ def main() -> None:
     print('\nWriting diff mark files...')
     if checker._lesson_keypresses:
         checker.write_keyword_log()
+        from .lesson_stats import write_lesson_stats_csv
+        stats_path = write_lesson_stats_csv(
+            checker._lesson_all_events, current_dir,
+        )
+        if stats_path:
+            print(f'  Written: {stats_path.name}')
         checker.write_student_token_files(names_dir, anon_names_dir,
                                            curated_dir=current_dir / 'curated')
     else:

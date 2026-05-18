@@ -1,107 +1,136 @@
 "use strict";
 
-const COL = {
-	id: 0,
-	name: 1,
-	number: 3,
-	pre_typing: 12,
-	self_eval: 16,
-	quiz_stii: 71,
-	post_typing: 74,
-	avg_assignments: 75,
-	final_grade: 77,
-	answers: 83,
-	questions: 84,
-	help: 85,
+let COL = {};
+let ASSIGNMENTS = [];
+
+const _COL_ALIASES = {
+	id: ["ID"],
+	name: ["Name"],
+	number: ["Number"],
+	pre_typing: ["Pre Typing", "Pre KPM", "Pre-typing", "Pre K/min"],
+	post_typing: ["Post Typing", "Post KPM", "Post-typing", "Post K/min"],
+	self_eval: ["Self Eval", "Self Evaluation", "Self"],
+	kahoot: ["Kahoot"],
+	quiz_stii: ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
+	final_grade: ["Final Grade", "Grade"],
+	avg_assignments: ["Avg Assignments", "Avg Grade"],
+	participation: ["Participation"],
+	answers: ["Total Answers", "Answers"],
+	questions: ["Total Questions", "Questions"],
+	help: ["Total Help", "Help"],
 };
 
-const ASSIGNMENTS = [
-	{
-		n: 1,
-		follow_html: 17,
-		follow_css: 18,
-		follow_js: 19,
-		follow: 20,
-		lesson_obs: 22,
-		grade: 23,
-		status: 24,
-		obs: 25,
-		name: "Wall",
-	},
-	{
-		n: 2,
-		follow_html: 26,
-		follow_css: 27,
-		follow_js: 28,
-		follow: 29,
-		lesson_obs: 31,
-		grade: 32,
-		status: 33,
-		obs: 34,
-		name: "Chess",
-	},
-	{
-		n: 3,
-		follow_html: 35,
-		follow_css: 36,
-		follow_js: 37,
-		follow: 38,
-		lesson_obs: 40,
-		grade: 41,
-		status: 42,
-		obs: 43,
-		name: "Sorting",
-	},
-	{
-		n: 4,
-		follow_html: 44,
-		follow_css: 45,
-		follow_js: 46,
-		follow: 47,
-		lesson_obs: 49,
-		grade: 50,
-		status: 51,
-		obs: 52,
-		name: "JS",
-	},
-	{
-		n: 5,
-		follow_html: 53,
-		follow_css: 54,
-		follow_js: 55,
-		follow: 56,
-		lesson_obs: 58,
-		grade: 59,
-		status: 60,
-		obs: 61,
-		name: "QR",
-	},
-	{
-		n: 6,
-		follow_html: null,
-		follow_css: null,
-		follow_js: null,
-		follow: null,
-		lesson_obs: null,
-		grade: 68,
-		status: 69,
-		obs: 70,
-		name: "Web",
-	},
-];
+function _buildHeaderMap(headerRow) {
+	const m = {};
+	for (let i = 0; i < headerRow.length; i++) {
+		const v = headerRow[i];
+		if (v == null) continue;
+		const orig = String(v).trim();
+		if (!orig) continue;
+		const lower = orig.toLowerCase();
+		if (!(lower in m)) m[lower] = { orig, idx: i };
+	}
+	return m;
+}
+
+function _findCol(headerMap, names) {
+	for (const n of names) {
+		const e = headerMap[n.toLowerCase()];
+		if (e != null) return e.idx;
+	}
+	return null;
+}
+
+function _detectAssignments(headerMap) {
+	const result = [];
+	const seen = new Set();
+	const sorted = Object.values(headerMap).sort((a, b) => a.idx - b.idx);
+
+	for (const { orig, idx } of sorted) {
+		const m = orig.match(/^(.+?) Grade$/i);
+		if (!m) continue;
+		const name = m[1].trim();
+		const lower = name.toLowerCase();
+		if (seen.has(lower)) continue;
+		seen.add(lower);
+
+		const get = (suffix) => {
+			const key1 = (name + " " + suffix).toLowerCase();
+			const key2 = (name + suffix).toLowerCase();
+			const e = headerMap[key1] || headerMap[key2];
+			return e ? e.idx : null;
+		};
+
+		result.push({
+			n: result.length + 1,
+			name,
+			follow_html: get("HTML Follow"),
+			follow_css: get("CSS Follow"),
+			follow_js: get("JS Follow"),
+			follow: get("Follow"),
+			inc: get("Inc"),
+			a: get("A"),
+			q: get("Q"),
+			h: get("H"),
+			c_plus: get("C+"),
+			c_minus: get("C-"),
+			c_diff: get("C Diff"),
+			lesson_obs: get("LessonObs"),
+			grade: idx,
+			status: get("Status"),
+			obs: get("Obs"),
+		});
+	}
+	return result;
+}
+
+function _populateColumnsFromHeader(headerRow) {
+	const headerMap = _buildHeaderMap(headerRow);
+	COL = {};
+	for (const [key, aliases] of Object.entries(_COL_ALIASES)) {
+		COL[key] = _findCol(headerMap, aliases);
+	}
+	ASSIGNMENTS = _detectAssignments(headerMap);
+
+	if (ASSIGNMENTS.length) {
+		const lessonGrades = ASSIGNMENTS.map((a) => a.grade).filter(
+			(g) => g != null,
+		);
+		const firstGrade = Math.min(...lessonGrades);
+		const lastGrade = Math.max(...lessonGrades);
+		const findAllByName = (lower) => {
+			const out = [];
+			for (let i = 0; i < headerRow.length; i++) {
+				const v = headerRow[i];
+				if (v != null && String(v).trim().toLowerCase() === lower)
+					out.push(i);
+			}
+			return out;
+		};
+		const km = findAllByName("k/min");
+		if (COL.pre_typing == null) {
+			const before = km.find((i) => i < firstGrade);
+			if (before != null) COL.pre_typing = before;
+		}
+		if (COL.post_typing == null) {
+			const after = km.find((i) => i > lastGrade);
+			if (after != null) COL.post_typing = after;
+		}
+	}
+}
 
 const LANG_FOLLOW_KEYS = [
 	{
 		key: "follow_html",
 		entryKey: "follow_html",
 		label: "HTML",
-		colorVar: "--clr-mark-missing",
+		colorVar: "--clr-red",
 	},
 	{
 		key: "follow_css",
 		entryKey: "follow_css",
 		label: "CSS",
-		colorVar: "--clr-mark-extra",
+		colorVar: "--clr-accent",
 	},
 	{
 		key: "follow_js",
@@ -122,6 +151,7 @@ let _scatterCharts = [];
 let _barCharts = [];
 let _progressCharts = [];
 let _pyStats = null;
+let _lessonStats = null;
 let _curSort = "name";
 let _anonMode = "name";
 
@@ -165,33 +195,21 @@ async function loadCourse(rootHandle) {
 
 	let gradesFile = null,
 		pyStatsFile = null;
+	let overviewPlusFile = null;
 	let overviewFile = null;
-	const gradesCandidates = [];
 	for await (const [name, entry] of rootHandle.entries()) {
 		if (entry.kind !== "file") continue;
-		if (/^overview\.xlsx?$/i.test(name)) {
+		if (/^overviewplus\.xlsx?$/i.test(name)) {
+			overviewPlusFile = await entry.getFile();
+		} else if (/^overview\.xlsx?$/i.test(name)) {
 			overviewFile = await entry.getFile();
-		} else if (/^grades\.xlsx?$/i.test(name)) {
-			gradesCandidates.unshift(await entry.getFile());
-		} else if (/^grades.*\.xlsx?$/i.test(name)) {
-			gradesCandidates.push(await entry.getFile());
 		}
 		if (/^grades_stats\.json$/i.test(name))
 			pyStatsFile = await entry.getFile();
 	}
-	const fallbackGrades = gradesCandidates[0] ?? null;
-	if (overviewFile && fallbackGrades) {
-		const useOverview = window.confirm(
-			`Both ${overviewFile.name} and ${fallbackGrades.name} were found.\n\n` +
-				`OK    = load ${overviewFile.name} (auto-built)\n` +
-				`Cancel = load ${fallbackGrades.name} (master grades)`,
-		);
-		gradesFile = useOverview ? overviewFile : fallbackGrades;
-	} else {
-		gradesFile = overviewFile || fallbackGrades;
-	}
+	gradesFile = overviewPlusFile || overviewFile;
 	if (!gradesFile) {
-		alert("No Grades.xls / Grades.xlsx / Overview.xlsx found.");
+		alert("No Overview.xlsx or OverviewPlus.xlsx found.");
 		return;
 	}
 
@@ -213,8 +231,53 @@ async function loadCourse(rootHandle) {
 			wb.SheetNames.find((n) => /^grades$/i.test(n)) ?? wb.SheetNames[0]
 		];
 	const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+	_lessonStats = null;
+	const lsName = wb.SheetNames.find((n) => /^lesson\s*stats$/i.test(n));
+	if (lsName) {
+		const lsRows = XLSX.utils.sheet_to_json(wb.Sheets[lsName], {
+			header: 1,
+		});
+		if (lsRows.length >= 2) {
+			const lsHeader = lsRows[0].map((c) =>
+				c != null ? String(c).trim() : "",
+			);
+			const lsData = lsRows
+				.slice(1)
+				.filter(
+					(r) =>
+						Array.isArray(r) &&
+						r[0] != null &&
+						String(r[0]).trim() !== "",
+				)
+				.map((r) => {
+					const obj = {};
+					for (let i = 0; i < lsHeader.length; i++) {
+						const key = lsHeader[i];
+						if (key) obj[key] = r[i];
+					}
+					return obj;
+				});
+			if (lsData.length) _lessonStats = { header: lsHeader, rows: lsData };
+		}
+	}
+	if (!rows.length) {
+		alert("Empty workbook.");
+		return;
+	}
+	_populateColumnsFromHeader(rows[0]);
+	if (COL.id == null) {
+		alert("Could not find 'ID' column in " + gradesFile.name);
+		return;
+	}
+	if (!ASSIGNMENTS.length) {
+		alert(
+			"No assignment columns detected (looking for '<Name> Grade' headers).",
+		);
+		return;
+	}
 	const dataRows = rows
-		.slice(1, 85)
+		.slice(1)
 		.filter(
 			(r) =>
 				Array.isArray(r) &&
@@ -222,7 +285,7 @@ async function loadCourse(rootHandle) {
 				String(r[COL.id]).trim() !== "",
 		);
 	if (!dataRows.length) {
-		alert("No student rows found in rows 2-85.");
+		alert("No student rows found.");
 		return;
 	}
 
@@ -279,11 +342,18 @@ function finishLoad(filename) {
 		`${_students.length} students · ${filename}`;
 	_curSort = "name";
 	document
-		.querySelectorAll(".sort-bar button")
+		.querySelectorAll(".sort-bar button[data-sort]")
 		.forEach((b) => b.classList.toggle("active", b.dataset.sort === "name"));
+	_clusterSort = "total-follow";
+	document
+		.querySelectorAll(".cluster-sort[data-cluster-sort]")
+		.forEach((b) =>
+			b.classList.toggle("active", b.dataset.clusterSort === "total-follow"),
+		);
 	renderTable();
 	renderStats();
 	renderProgress();
+	renderClusters();
 	showPage("students");
 }
 
@@ -327,8 +397,9 @@ function parseAlterEgoCsv(text) {
 }
 
 function parseStudent(r) {
-	const str = (c) => (r[c] != null ? String(r[c]).trim() : "");
+	const str = (c) => (c != null && r[c] != null ? String(r[c]).trim() : "");
 	const num = (c) => {
+		if (c == null) return null;
 		const v = r[c];
 		if (v == null || v === "") return null;
 		const n = +v;
@@ -345,6 +416,8 @@ function parseStudent(r) {
 		post_typing: num(COL.post_typing),
 		avg_assignments: num(COL.avg_assignments),
 		final_grade: num(COL.final_grade),
+		participation: num(COL.participation),
+		kahoot: num(COL.kahoot),
 		answers: num(COL.answers),
 		questions: num(COL.questions),
 		help: num(COL.help),
@@ -357,11 +430,18 @@ function parseStudent(r) {
 			name: a.name,
 			n: a.n,
 			hasFollowCol: a.follow != null,
-			follow: a.follow != null ? num(a.follow) : null,
-			follow_html: a.follow_html != null ? num(a.follow_html) : null,
-			follow_css: a.follow_css != null ? num(a.follow_css) : null,
-			follow_js: a.follow_js != null ? num(a.follow_js) : null,
-			lesson_obs: a.lesson_obs != null ? str(a.lesson_obs) : "",
+			follow: num(a.follow),
+			follow_html: num(a.follow_html),
+			follow_css: num(a.follow_css),
+			follow_js: num(a.follow_js),
+			inc: num(a.inc),
+			a: num(a.a),
+			q: num(a.q),
+			h: num(a.h),
+			c_plus: num(a.c_plus),
+			c_minus: num(a.c_minus),
+			c_diff: num(a.c_diff),
+			lesson_obs: str(a.lesson_obs),
 			grade: num(a.grade),
 			status: str(a.status),
 			obs: str(a.obs),
@@ -369,6 +449,28 @@ function parseStudent(r) {
 		if (!PASSING.has(entry.status)) s.passed_course = false;
 		s.lessons.push(entry);
 	}
+
+	const sumLessons = (key) => {
+		let sum = null;
+		for (const l of s.lessons) {
+			const v = l[key];
+			if (v == null) continue;
+			sum = (sum ?? 0) + v;
+		}
+		return sum;
+	};
+	s.total_a = sumLessons("a");
+	s.total_q = sumLessons("q");
+	s.total_h = sumLessons("h");
+	s.total_cdiff = sumLessons("c_diff");
+
+	if (s.avg_assignments == null) {
+		const grades = s.lessons.map((l) => l.grade).filter((v) => v != null);
+		if (grades.length) {
+			s.avg_assignments = grades.reduce((a, b) => a + b, 0) / grades.length;
+		}
+	}
+
 	return s;
 }
 
@@ -432,7 +534,7 @@ function renderTable() {
 			col("Obs", "ahd");
 		}
 	}
-	grp("", 7, true);
+	grp("", 8, true);
 	col("Quiz", "", true);
 	col("KPM");
 	col("Avg");
@@ -440,10 +542,14 @@ function renderTable() {
 	col("Ans");
 	col("Qs");
 	col("Help");
+	col("Comments");
 
 	thead.appendChild(r1);
 	thead.appendChild(r2);
 	table.appendChild(thead);
+
+	const cdiffMin = Math.min(0, ..._students.map((s) => s.total_cdiff ?? 0));
+	const cdiffMax = Math.max(0, ..._students.map((s) => s.total_cdiff ?? 0));
 
 	const tbody = document.createElement("tbody");
 	_students.forEach((s) => {
@@ -520,21 +626,54 @@ function renderTable() {
 
 		const fg = document.createElement("td");
 		fg.className = "num";
-		fg.textContent = fmtN(s.final_grade, 1) || "—";
+		const finalVal = s.final_grade ?? s.avg_assignments;
+		fg.textContent = fmtN(finalVal, 1) || "—";
 		fg.style.color = s.passed_course
 			? ""
-			: s.final_grade != null
+			: finalVal != null
 				? THEME.neg
 				: THEME.codeMuted;
 		fg.style.fontWeight = "700";
 		tr.appendChild(fg);
 
-		tr.appendChild(cell(fmtN(s.answers), "num"));
-		tr.appendChild(cell(fmtN(s.questions), "num"));
-		tr.appendChild(cell(fmtN(s.help), "num"));
+		tr.appendChild(numCellBold(s.total_a));
+		tr.appendChild(numCellBold(s.total_q));
+		tr.appendChild(numCellBold(s.total_h));
+		tr.appendChild(cdiffCell(s.total_cdiff, cdiffMin, cdiffMax));
 		tbody.appendChild(tr);
 	});
 	table.appendChild(tbody);
+}
+
+function numCellBold(v) {
+	const td = document.createElement("td");
+	td.className = "num";
+	if (v != null && !isNaN(v) && +v !== 0) {
+		td.textContent = Math.round(+v).toString();
+		td.style.fontWeight = "700";
+	}
+	return td;
+}
+
+function cdiffCell(v, vmin, vmax) {
+	const td = document.createElement("td");
+	td.className = "num";
+	if (v == null || isNaN(v)) return td;
+	const n = +v;
+	td.textContent = n > 0 ? "+" + n : String(n);
+	td.style.fontWeight = "700";
+	if (n === 0) {
+		td.style.color = "#000";
+	} else if (n < 0 && vmin < 0) {
+		const t = Math.min(1, n / vmin);
+		td.style.color = `rgb(${Math.round(204 * t)}, ${Math.round(34 * t)}, ${Math.round(34 * t)})`;
+	} else if (n > 0 && vmax > 0) {
+		const t = Math.min(1, n / vmax);
+		td.style.color = `rgb(0, ${Math.round(122 * t)}, ${Math.round(204 * t)})`;
+	} else {
+		td.style.color = "#000";
+	}
+	return td;
 }
 
 function applyStickyColumns() {
@@ -566,6 +705,7 @@ function onAnonChange(val) {
 		renderTable();
 		renderStats();
 		renderProgress();
+		renderClusters();
 	} else {
 		const table = document.getElementById("grades-table");
 		table.classList.remove("anon-name", "anon-id");
@@ -580,6 +720,13 @@ function studentLabel(s) {
 	if (_anonMode === "id") return s.id || "—";
 	if (_anonMode === "name") return _realToAlterMap[_nfc(s.name)] || s.name;
 	return s.name;
+}
+
+function studentLabelWithId(s) {
+	if (!s) return "";
+	if (_anonMode === "id") return s.id || "—";
+	const name = studentLabel(s);
+	return s.id ? `${s.id}. ${name}` : name;
 }
 
 function fmtN(v, dec = 0) {
@@ -783,7 +930,98 @@ function renderStats() {
 					(s) => (s.lessons[a.n - 1].obs ?? "").trim() !== "",
 				).length,
 		);
-		addPassingCard(body, asgNames, passCounts, participCounts);
+		const participMax = Math.max(...participCounts, 1) + 1;
+		const failedCounts = participCounts.map((t, i) =>
+			Math.max(0, t - passCounts[i]),
+		);
+		addStackedShareCard(
+			body,
+			"Students Passing (Assignments)",
+			asgNames,
+			passCounts,
+			participCounts,
+			participMax,
+		);
+
+		const passedAndFollowedAny = ASSIGNMENTS.map(
+			(a) =>
+				_students.filter((s) => {
+					const l = s.lessons[a.n - 1];
+					return (
+						PASSING.has(l.status) && l.hasFollowCol && l.follow != null
+					);
+				}).length,
+		);
+		const passedAndFollowedHalf = ASSIGNMENTS.map(
+			(a) =>
+				_students.filter((s) => {
+					const l = s.lessons[a.n - 1];
+					return (
+						PASSING.has(l.status) &&
+						l.hasFollowCol &&
+						l.follow != null &&
+						l.follow >= 50
+					);
+				}).length,
+		);
+		addStackedShareCard(
+			body,
+			"Passed & Followed Lesson",
+			asgNames,
+			passedAndFollowedAny,
+			passCounts,
+			participMax,
+		);
+		addStackedShareCard(
+			body,
+			"Passed & Followed Lesson ≥ 50%",
+			asgNames,
+			passedAndFollowedHalf,
+			passCounts,
+			participMax,
+		);
+
+		const failedAndFollowedAny = ASSIGNMENTS.map(
+			(a) =>
+				_students.filter((s) => {
+					const l = s.lessons[a.n - 1];
+					return (
+						(l.obs ?? "").trim() !== "" &&
+						!PASSING.has(l.status) &&
+						l.hasFollowCol &&
+						l.follow != null
+					);
+				}).length,
+		);
+		const failedAndFollowedHalf = ASSIGNMENTS.map(
+			(a) =>
+				_students.filter((s) => {
+					const l = s.lessons[a.n - 1];
+					return (
+						(l.obs ?? "").trim() !== "" &&
+						!PASSING.has(l.status) &&
+						l.hasFollowCol &&
+						l.follow != null &&
+						l.follow >= 50
+					);
+				}).length,
+		);
+		addStackedShareCard(
+			body,
+			"Failed & Followed Lesson",
+			asgNames,
+			failedAndFollowedAny,
+			failedCounts,
+			participMax,
+		);
+		addStackedShareCard(
+			body,
+			"Failed & Followed Lesson ≥ 50%",
+			asgNames,
+			failedAndFollowedHalf,
+			failedCounts,
+			participMax,
+		);
 
 		addBarCard(
 			body,
@@ -794,22 +1032,78 @@ function renderStats() {
 			5,
 			"dec1",
 		);
+		const submittedAssn = py.assignments.map((a) => a.n_submitted ?? 0);
+
+		const troubleAssn = py.assignments.map((a) => a.n_trouble ?? 0);
 		addBarCard(
 			body,
-			"Trouble Rates (Assignments)",
+			"Trouble (Assignments)",
 			names6,
-			py.assignments.map((a) =>
-				a.trouble_rate != null ? a.trouble_rate * 100 : 0,
+			troubleAssn,
+			ACCENT,
+			Math.max(...troubleAssn, 1) + 1,
+			"int",
+		);
+		addBarCard(
+			body,
+			"Trouble Rate (Assignments)",
+			names6,
+			troubleAssn.map((v, i) =>
+				submittedAssn[i] ? (v / submittedAssn[i]) * 100 : 0,
 			),
 			ACCENT,
 			100,
 			"pct",
 		);
+
+		const lessonTroubleEntries = py.assignments.filter(
+			(a) => a.follow_avg != null,
+		);
+		if (lessonTroubleEntries.length) {
+			const lessonTroubleVals = lessonTroubleEntries.map(
+				(a) => a.n_lesson_trouble ?? 0,
+			);
+			const lessonTotals = lessonTroubleEntries.map((a) => a.n_total ?? 0);
+			const lessonNames = lessonTroubleEntries.map((a) => a.name);
+			addBarCard(
+				body,
+				"Trouble (Lessons)",
+				lessonNames,
+				lessonTroubleVals,
+				ACCENT,
+				Math.max(...lessonTroubleVals, 1) + 1,
+				"int",
+			);
+			addBarCard(
+				body,
+				"Trouble Rate (Lessons)",
+				lessonNames,
+				lessonTroubleVals.map((v, i) =>
+					lessonTotals[i] ? (v / lessonTotals[i]) * 100 : 0,
+				),
+				ACCENT,
+				100,
+				"pct",
+			);
+		}
+
+		const aiAssn = py.assignments.map((a) => a.n_ai ?? 0);
 		addBarCard(
 			body,
 			"AI Use (Assignments)",
 			names6,
-			py.assignments.map((a) => (a.ai_rate != null ? a.ai_rate * 100 : 0)),
+			aiAssn,
+			ACCENT,
+			Math.max(...aiAssn, 1) + 1,
+			"int",
+		);
+		addBarCard(
+			body,
+			"AI Use Rate (Assignments)",
+			names6,
+			aiAssn.map((v, i) =>
+				submittedAssn[i] ? (v / submittedAssn[i]) * 100 : 0,
+			),
 			ACCENT,
 			100,
 			"pct",
@@ -909,7 +1203,7 @@ function renderStats() {
 	}
 
 	if (py.early_ai?.length) {
-		const card = mkCard(body, "Early AI & Course Pass Rate", "sm");
+		const card = mkCard(body, "Early AI & Course Pass Rate", "mid");
 		let html =
 			'<table class="st-tbl"><tr><th>Group</th><th>With AI</th><th>Without AI</th><th>Fisher p</th></tr>';
 		py.early_ai.forEach((e) => {
@@ -1027,50 +1321,481 @@ function renderStats() {
 		});
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
+
+	if (py.per_language_follow?.length) {
+		const card = mkCard(body, "Per-Language Follow vs Final Grade", "sm");
+		let html =
+			'<table class="st-tbl"><tr><th>Lang</th><th>Mean</th><th>r</th><th>ρ</th><th>p(ρ)</th><th>n</th></tr>';
+		py.per_language_follow.forEach((e) => {
+			html +=
+				`<tr><td>${escHtml(e.lang)}</td>` +
+				`<td>${e.mean != null ? e.mean.toFixed(1) : "—"}</td>` +
+				`<td>${fmtR(e.r)}</td><td>${fmtR(e.rho)}</td>` +
+				`<td>${fmtP(e.p_rho)}</td><td>${e.n}</td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.per_language_follow_per_lesson?.length) {
+		const card = mkCard(
+			body,
+			"Per-Language Follow vs Assignment Grade (per lesson)",
+			"mid",
+		);
+		let html =
+			'<table class="st-tbl"><tr><th>Lesson</th><th>Lang</th><th>r</th><th>ρ</th><th>p(ρ)</th><th>n</th></tr>';
+		py.per_language_follow_per_lesson.forEach((e) => {
+			html +=
+				`<tr><td>${escHtml(e.lesson)}</td><td>${escHtml(e.lang)}</td>` +
+				`<td>${fmtR(e.r)}</td><td>${fmtR(e.rho)}</td>` +
+				`<td>${fmtP(e.p_rho)}</td><td>${e.n}</td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.lesson_interactions?.length) {
+		const card = mkCard(body, "Lesson Interactions (A / Q / H)", "sm");
+		let html =
+			'<table class="st-tbl"><tr><th>Lesson</th>' +
+			"<th>A</th><th>Q</th><th>H</th></tr>";
+		py.lesson_interactions.forEach((e) => {
+			html +=
+				`<tr><td>${escHtml(e.lesson)}</td>` +
+				`<td>${e.A_sum ?? "—"}</td>` +
+				`<td>${e.Q_sum ?? "—"}</td>` +
+				`<td>${e.H_sum ?? "—"}</td>` +
+				"</tr>";
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.comment_diff_per_lesson?.length) {
+		const card = mkCard(
+			body,
+			"Comments per Lesson vs Assignment Grade (Spearman ρ)",
+			"wide",
+		);
+		const f = (v, dec = 1, sign = "") =>
+			v != null ? (sign && v > 0 ? "+" : "") + v.toFixed(dec) : "—";
+		let html =
+			'<table class="st-tbl"><tr><th>Lesson</th>' +
+			"<th>mean C+</th><th>ρ(C+)</th><th>p</th>" +
+			"<th>mean C-</th><th>ρ(C-)</th><th>p</th>" +
+			"<th>mean Δ</th><th>ρ(Δ)</th><th>p</th>" +
+			"<th>n</th></tr>";
+		py.comment_diff_per_lesson.forEach((e) => {
+			html +=
+				`<tr><td>${escHtml(e.lesson)}</td>` +
+				`<td>${f(e.mean_cplus)}</td>` +
+				`<td>${fmtR(e.rho_cplus)}</td>` +
+				`<td>${fmtP(e.p_cplus)}</td>` +
+				`<td>${f(e.mean_cminus)}</td>` +
+				`<td>${fmtR(e.rho_cminus)}</td>` +
+				`<td>${fmtP(e.p_cminus)}</td>` +
+				`<td>${f(e.mean_cdiff, 1, "+")}</td>` +
+				`<td>${fmtR(e.rho)}</td>` +
+				`<td>${fmtP(e.p_rho)}</td>` +
+				`<td>${e.n}</td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.comment_totals?.length) {
+		const card = mkCard(
+			body,
+			"Comment Totals vs Final Grade & Assignment Average",
+			"mid",
+		);
+		let html =
+			'<table class="st-tbl"><tr><th>Metric</th><th>mean</th>' +
+			"<th>ρ → Final</th><th>p</th>" +
+			"<th>ρ → Avg</th><th>p</th>" +
+			"<th>n</th></tr>";
+		py.comment_totals.forEach((e) => {
+			const meanStr =
+				e.mean != null
+					? (e.label.includes("Diff") && e.mean > 0 ? "+" : "") +
+						e.mean.toFixed(1)
+					: "—";
+			html +=
+				`<tr><td>${escHtml(e.label)}</td>` +
+				`<td>${meanStr}</td>` +
+				`<td>${fmtR(e.final_grade_rho)}</td>` +
+				`<td>${fmtP(e.final_grade_p_rho)}</td>` +
+				`<td>${fmtR(e.avg_assignments_rho)}</td>` +
+				`<td>${fmtP(e.avg_assignments_p_rho)}</td>` +
+				`<td>${e.final_grade_n ?? e.avg_assignments_n ?? "—"}</td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	renderLessonStats(body);
 }
 
-function addPassingCard(parent, labels, passCounts, participCounts) {
-	const card = mkCard(parent, "Students Passing (Assignments)");
+function renderLessonStats(body) {
+	if (!_lessonStats) return;
+	const ls = _lessonStats;
+
+	const displayByLower = new Map();
+	ASSIGNMENTS.forEach((a) => {
+		displayByLower.set(a.name.toLowerCase(), a.name);
+	});
+	const _lower = (r) =>
+		String(r["Lesson"] ?? "")
+			.trim()
+			.toLowerCase();
+	const orderedRows = [];
+	const seenRows = new Set();
+	ASSIGNMENTS.forEach((a) => {
+		const key = a.name.toLowerCase();
+		const row = ls.rows.find((r) => _lower(r) === key);
+		if (row) {
+			orderedRows.push(row);
+			seenRows.add(row);
+		}
+	});
+	ls.rows.forEach((row) => {
+		if (!seenRows.has(row)) orderedRows.push(row);
+	});
+
+	const lessonNames = orderedRows.map(
+		(r) => displayByLower.get(_lower(r)) || r["Lesson"],
+	);
+	const numFor = (key) =>
+		orderedRows.map((r) => {
+			const v = r[key];
+			if (v == null || v === "") return null;
+			const n = +v;
+			return isNaN(n) ? null : n;
+		});
+	const anyPos = (arr) => arr.some((v) => v != null && v > 0);
+
+	const cols = ls.header.filter(
+		(h) => h && h !== "Lesson" && h !== "Source" && h !== "segments",
+	);
+	const tableCard = mkCard(body, "Lesson Stats (Teacher Keylog)", "wide");
+	const fmtVal = (v) => {
+		if (v == null || v === "") return "—";
+		if (typeof v === "number") {
+			return Number.isInteger(v) ? String(v) : v.toFixed(2);
+		}
+		const n = +v;
+		if (!isNaN(n) && String(n) === String(v).trim()) return String(n);
+		return escHtml(String(v));
+	};
+	let tableHtml =
+		'<div style="overflow-x:auto"><table class="st-tbl"><tr><th>Stat</th>' +
+		lessonNames.map((n) => `<th>${escHtml(String(n))}</th>`).join("") +
+		"</tr>";
+	cols.forEach((stat) => {
+		tableHtml +=
+			`<tr><td>${escHtml(stat)}</td>` +
+			orderedRows.map((r) => `<td>${fmtVal(r[stat])}</td>`).join("") +
+			"</tr>";
+	});
+	tableCard.insertAdjacentHTML("beforeend", tableHtml + "</table></div>");
+
+	const kpmActive = numFor("kpm_active");
+	const kpmSession = numFor("kpm_session");
+	if (anyPos(kpmActive) || anyPos(kpmSession)) {
+		const card = mkCard(body, "Typing Rate KPM (Active / Session)");
+		const box = el("div", "chart-box");
+		card.appendChild(box);
+		const all = [...kpmActive, ...kpmSession].filter((v) => v != null);
+		const chart = new BarChart(box, {
+			yMin: 0,
+			yMax: (Math.max(...all, 1) * 1.1) | 0 || 1,
+			tooltipCallback: (_l, val, si) => [
+				(si === 0 ? "Active: " : "Session: ") + val.toFixed(1) + " KPM",
+			],
+		});
+		chart.setData(lessonNames, [
+			{
+				data: kpmActive.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(THEME.label, 0.5),
+				borderColor: THEME.label,
+			},
+			{
+				data: kpmSession.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(THEME.label, 0.18),
+				borderColor: _hexToRgba(THEME.label, 0.35),
+			},
+		]);
+		_barCharts.push(chart);
+	}
+
+	const tHtml = numFor("tokens_html");
+	const tCss = numFor("tokens_css");
+	const tJs = numFor("tokens_js");
+	const tPy = numFor("tokens_py");
+	if (anyPos(tHtml) || anyPos(tCss) || anyPos(tJs) || anyPos(tPy)) {
+		const card = mkCard(body, "Tokens per Lesson");
+		const box = el("div", "chart-box");
+		card.appendChild(box);
+		const totals = lessonNames.map(
+			(_, i) =>
+				(tHtml[i] ?? 0) + (tCss[i] ?? 0) + (tJs[i] ?? 0) + (tPy[i] ?? 0),
+		);
+		const chart = new BarChart(box, {
+			yMin: 0,
+			yMax: Math.max(...totals, 1) * 1.1,
+			stacked: true,
+			tooltipCallback: (_l, val, si) => [
+				["HTML", "CSS", "JS", "Py"][si] + ": " + Math.round(val),
+			],
+		});
+		const langColor = [
+			_cssVar("--clr-red"),
+			_cssVar("--clr-accent"),
+			_cssVar("--clr-orange"),
+			_cssVar("--clr-purple"),
+		];
+		chart.setData(lessonNames, [
+			{
+				data: tHtml.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(langColor[0], 0.5),
+				borderColor: langColor[0],
+			},
+			{
+				data: tCss.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(langColor[1], 0.5),
+				borderColor: langColor[1],
+			},
+			{
+				data: tJs.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(langColor[2], 0.5),
+				borderColor: langColor[2],
+			},
+			{
+				data: tPy.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(langColor[3], 0.5),
+				borderColor: langColor[3],
+			},
+		]);
+		_barCharts.push(chart);
+	}
+
+	const duration = numFor("duration_min");
+	if (anyPos(duration)) {
+		addBarCard(
+			body,
+			"Coding Duration (min)",
+			lessonNames,
+			duration.map((v) => v ?? 0),
+			THEME.label,
+			Math.max(...duration.filter((v) => v != null), 1) * 1.1,
+			"dec1",
+		);
+	}
+
+	const segmentsByLesson = orderedRows.map((r) =>
+		_parseSegments(r["segments"]),
+	);
+	if (segmentsByLesson.some((s) => s.length)) {
+		_addSegmentedDurationCard(body, lessonNames, segmentsByLesson);
+
+		const codeCounts = segmentsByLesson.map(
+			(segs) => segs.filter((s) => s.kind !== "p").length,
+		);
+		if (codeCounts.some((v) => v > 0)) {
+			addBarCard(
+				body,
+				"Code Segments per Lesson",
+				lessonNames,
+				codeCounts,
+				THEME.label,
+				Math.max(...codeCounts, 1) + 1,
+				"int",
+			);
+		}
+
+		_addDurationBoxCard(
+			body,
+			"Code Segment Duration (s)",
+			lessonNames,
+			segmentsByLesson.map((segs) =>
+				segs.filter((s) => s.kind !== "p").map((s) => s.dur),
+			),
+		);
+		_addDurationBoxCard(
+			body,
+			"Pause Duration (s)",
+			lessonNames,
+			segmentsByLesson.map((segs) =>
+				segs.filter((s) => s.kind === "p").map((s) => s.dur),
+			),
+		);
+
+		const codeSegTokensByLesson = segmentsByLesson.map((segs) =>
+			segs
+				.filter((s) => s.kind !== "p" && s.tokens != null)
+				.map((s) => s.tokens),
+		);
+		if (codeSegTokensByLesson.some((arr) => arr.length)) {
+			const codeTokenTotals = codeSegTokensByLesson.map((arr) =>
+				arr.reduce((a, b) => a + b, 0),
+			);
+			addBarCard(
+				body,
+				"Code Segment Tokens per Lesson",
+				lessonNames,
+				codeTokenTotals,
+				THEME.label,
+				Math.max(...codeTokenTotals, 1) * 1.1,
+				"int",
+			);
+			_addDurationBoxCard(
+				body,
+				"Tokens per Code Segment",
+				lessonNames,
+				codeSegTokensByLesson,
+			);
+		}
+	}
+
+	const pauseCnt = numFor("pause_count");
+	const pauseAvg = numFor("pause_avg_s");
+	if (anyPos(pauseCnt)) {
+		addBarCard(
+			body,
+			"Pause Count",
+			lessonNames,
+			pauseCnt.map((v) => v ?? 0),
+			THEME.label,
+			Math.max(...pauseCnt.filter((v) => v != null), 1) + 1,
+			"int",
+		);
+	}
+	if (anyPos(pauseAvg)) {
+		addBarCard(
+			body,
+			"Avg Pause Duration (s)",
+			lessonNames,
+			pauseAvg.map((v) => v ?? 0),
+			THEME.label,
+			Math.max(...pauseAvg.filter((v) => v != null), 1) * 1.1,
+			"dec1",
+		);
+	}
+
+	const tQ = numFor("teacher_q");
+	const tQun = numFor("teacher_q_unanswered");
+	const sQ = numFor("student_q");
+	const hG = numFor("help");
+	if (anyPos(tQ) || anyPos(sQ) || anyPos(hG)) {
+		const card = mkCard(body, "Lesson Interactions");
+		const box = el("div", "chart-box");
+		card.appendChild(box);
+		const all = [...tQ, ...sQ, ...hG].filter((v) => v != null);
+		const colors = [
+			_cssVar("--clr-accent"),
+			_cssVar("--clr-orange"),
+			_cssVar("--clr-green"),
+		];
+		const tQAns = tQ.map((v, i) => {
+			const t = v ?? 0;
+			const u = tQun[i] ?? 0;
+			return Math.max(0, t - u);
+		});
+		const tQUna = tQ.map((_, i) => tQun[i] ?? 0);
+		const chart = new BarChart(box, {
+			yMin: 0,
+			yMax: Math.max(...all, 1) + 1,
+			tooltipCallback: (_l, val, si) => [
+				["Answered", "Unanswered", "Question", "Help"][si] +
+					": " +
+					Math.round(val),
+			],
+		});
+		chart.setData(lessonNames, [
+			{
+				data: tQAns,
+				stack: "answer",
+				backgroundColor: _hexToRgba(colors[0], 0.5),
+				borderColor: colors[0],
+			},
+			{
+				data: tQUna,
+				stack: "answer",
+				backgroundColor: colors[0],
+				borderColor: colors[0],
+				pattern: "stripes",
+			},
+			{
+				data: sQ.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(colors[1], 0.5),
+				borderColor: colors[1],
+			},
+			{
+				data: hG.map((v) => v ?? 0),
+				backgroundColor: _hexToRgba(colors[2], 0.5),
+				borderColor: colors[2],
+			},
+		]);
+		_barCharts.push(chart);
+	}
+}
+
+function addStackedShareCard(
+	parent,
+	title,
+	labels,
+	subsetCounts,
+	totalCounts,
+	yMax,
+) {
+	const card = mkCard(parent, title);
 	const box = el("div", "chart-box");
 	card.appendChild(box);
-	const notPassCounts = participCounts.map((p, i) => p - passCounts[i]);
+	const restCounts = totalCounts.map((t, i) => t - subsetCounts[i]);
 	const chart = new BarChart(box, {
 		yMin: 0,
-		yMax: Math.max(...participCounts, 1) + 1,
+		yMax: yMax ?? Math.max(...totalCounts, 1) + 1,
 		stacked: true,
 		tooltipCallback: (_label, _val, _si, gi) => [
-			`${passCounts[gi]} / ${participCounts[gi]}`,
+			`${subsetCounts[gi]} / ${totalCounts[gi]}`,
 		],
 	});
 	chart.setData(labels, [
 		{
-			data: passCounts,
+			data: subsetCounts,
 			backgroundColor: THEME.label,
 			borderColor: THEME.label,
 		},
 		{
-			data: notPassCounts,
-			backgroundColor: _cssVar("--clr-border-strong"),
-			borderColor: _cssVar("--clr-code-muted"),
+			data: restCounts,
+			backgroundColor: _hexToRgba(THEME.label, 0.22),
+			borderColor: _hexToRgba(THEME.label, 0.45),
 		},
 	]);
 	_barCharts.push(chart);
 }
 
-function addBarCard(parent, title, labels, data, color, yMax, tooltipFmt) {
+function addBarCard(
+	parent,
+	title,
+	labels,
+	data,
+	color,
+	yMax,
+	tooltipFmt,
+	tooltipFn,
+) {
 	const card = mkCard(parent, title);
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax,
-		tooltipCallback: (_label, val) => [
-			tooltipFmt === "dec1"
-				? val.toFixed(1)
-				: tooltipFmt === "pct"
-					? val.toFixed(1) + "%"
-					: Math.round(val).toString(),
-		],
+		tooltipCallback:
+			tooltipFn ??
+			((_label, val) => [
+				tooltipFmt === "dec1"
+					? val.toFixed(1)
+					: tooltipFmt === "pct"
+						? val.toFixed(1) + "%"
+						: Math.round(val).toString(),
+			]),
 	});
 	chart.setData(labels, [
 		{
@@ -1080,6 +1805,123 @@ function addBarCard(parent, title, labels, data, color, yMax, tooltipFmt) {
 		},
 	]);
 	_barCharts.push(chart);
+}
+
+function _parseSegments(raw) {
+	if (raw == null || raw === "") return [];
+	return String(raw)
+		.split(";")
+		.map((s) => {
+			const parts = s.split(":");
+			if (parts.length < 2) return null;
+			const k = parts[0];
+			const dur = +parts[1];
+			if (!k || isNaN(dur)) return null;
+			const seg = { kind: k, dur };
+			if (parts.length >= 3) {
+				const t = +parts[2];
+				if (!isNaN(t)) seg.tokens = t;
+			}
+			return seg;
+		})
+		.filter(Boolean);
+}
+
+function _fmtDur(secs) {
+	if (secs < 60) return secs.toFixed(1) + "s";
+	const m = Math.floor(secs / 60);
+	const s = Math.round(secs - m * 60);
+	return s ? `${m}m ${s}s` : `${m}m`;
+}
+
+function _addSegmentedDurationCard(parent, lessonNames, segmentsByLesson) {
+	const card = mkCard(parent, "Coding Duration (segmented by pauses)");
+	const box = el("div", "chart-box");
+	card.appendChild(box);
+
+	const maxSegs = Math.max(...segmentsByLesson.map((s) => s.length), 0);
+	const totals = segmentsByLesson.map((segs) =>
+		segs.reduce((a, s) => a + s.dur / 60, 0),
+	);
+	const yMax = Math.max(...totals, 1) * 1.1 || 1;
+
+	const typingBg = _hexToRgba(THEME.label, 0.55);
+	const typingBd = THEME.label;
+	const pauseBg = _cssVar("--clr-bar-track") || "#eeeeee";
+	const pauseBd = _hexToRgba(THEME.label, 0.35);
+
+	const datasets = [];
+	for (let si = 0; si < maxSegs; si++) {
+		const data = [];
+		const bg = [];
+		const bd = [];
+		for (let gi = 0; gi < lessonNames.length; gi++) {
+			const seg = segmentsByLesson[gi][si];
+			data.push(seg ? seg.dur / 60 : 0);
+			const isPause = seg && seg.kind === "p";
+			bg.push(isPause ? pauseBg : typingBg);
+			bd.push(isPause ? pauseBd : typingBd);
+		}
+		datasets.push({ data, backgroundColor: bg, borderColor: bd });
+	}
+
+	const chart = new BarChart(box, {
+		yMin: 0,
+		yMax,
+		stacked: true,
+		tooltipCallback: (label, val, si, gi) => {
+			const seg = segmentsByLesson[gi][si];
+			if (!seg) return [label, val.toFixed(2) + " min"];
+			const kindLabel = seg.kind === "p" ? "Pause" : "Typing";
+			return [label, `${kindLabel}: ${_fmtDur(seg.dur)}`];
+		},
+	});
+	chart.setData(lessonNames, datasets);
+	_barCharts.push(chart);
+}
+
+function _autoTicks(maxVal, n = 5) {
+	if (maxVal <= 0) return [0];
+	const step = Math.max(1, Math.ceil(maxVal / n));
+	return Array.from({ length: n + 1 }, (_, i) => i * step);
+}
+
+function _addDurationBoxCard(parent, title, labels, durationsByLesson) {
+	if (!durationsByLesson.some((d) => d.length)) return;
+	const card = mkCard(parent, title);
+	const box = el("div", "chart-box");
+	card.appendChild(box);
+	const allVals = durationsByLesson.flat();
+	const yMax = Math.ceil(Math.max(...allVals, 1) * 1.1);
+	const chart = new BoxPlotChart(box, {
+		xLabels: labels,
+		leftAxis: {
+			min: 0,
+			max: yMax,
+			ticks: _autoTicks(yMax, 5),
+			color: THEME.textFaint,
+		},
+	});
+	chart.setData([
+		{
+			data: durationsByLesson,
+			color: _hexToRgba(THEME.label, 0.44),
+			borderColor: THEME.label,
+			yAxis: "left",
+			coef: 1.5,
+			outlierColor: _hexToRgba(THEME.label, 0.5),
+			outlierRadius: 3,
+		},
+	]);
+	_barCharts.push(chart);
+}
+
+function _countPctTooltip(denomArr) {
+	return (_label, val, _si, gi) => {
+		const denom = denomArr[gi];
+		const pct = denom ? ` (${((val / denom) * 100).toFixed(1)}%)` : "";
+		return [`${Math.round(val)}${pct}`];
+	};
 }
 
 function linReg(pts) {
@@ -1166,18 +2008,22 @@ function addScatterCard(parent, assignment, points, isFirst) {
 	_scatterCharts.push(chart);
 }
 
-function sortedStudents() {
-	const sl = [..._students];
-	if (_curSort === "avg-follow")
-		sl.sort((a, b) => followAvg(b) - followAvg(a));
-	else if (_curSort === "total-follow")
+function _sortStudents(list, key) {
+	const sl = [...list];
+	if (key === "avg-follow") sl.sort((a, b) => followAvg(b) - followAvg(a));
+	else if (key === "total-follow")
 		sl.sort((a, b) => followTotal(b) - followTotal(a));
-	else if (_curSort === "avg-grade")
+	else if (key === "avg-grade")
 		sl.sort((a, b) => (b.avg_assignments ?? -1) - (a.avg_assignments ?? -1));
-	else if (_curSort === "total-grade")
+	else if (key === "total-grade")
 		sl.sort((a, b) => gradeTotal(b) - gradeTotal(a));
+	else if (key === "ai-count") sl.sort((a, b) => aiCount(a) - aiCount(b));
 	else sl.sort((a, b) => a.name.localeCompare(b.name));
 	return sl;
+}
+
+function sortedStudents() {
+	return _sortStudents(_students, _curSort);
 }
 const followAvg = (s) => {
 	const vs = s.lessons
@@ -1191,6 +2037,11 @@ const followTotal = (s) =>
 		.reduce((a, l) => a + l.follow, 0);
 const gradeTotal = (s) =>
 	s.lessons.filter((l) => l.grade != null).reduce((a, l) => a + l.grade, 0);
+const aiCount = (s) =>
+	s.lessons.reduce(
+		(n, l) => n + ((l.obs || "").match(/\bAI\b/gi)?.length || 0),
+		0,
+	);
 
 document.querySelectorAll(".sort-bar button[data-sort]").forEach((btn) => {
 	btn.addEventListener("click", () => {
@@ -1202,7 +2053,471 @@ document.querySelectorAll(".sort-bar button[data-sort]").forEach((btn) => {
 	});
 });
 
+const _HIDE_PAIRS = [
+	{ key: "grade", ids: ["prog-hide-grade", "cluster-hide-grade"] },
+	{
+		key: "totalFollow",
+		ids: ["prog-hide-total-follow", "cluster-hide-total-follow"],
+	},
+	{
+		key: "langFollow",
+		ids: ["prog-hide-lang-follow", "cluster-hide-lang-follow"],
+	},
+];
+
+function _progressHide() {
+	const state = {};
+	for (const { key, ids } of _HIDE_PAIRS) {
+		state[key] = ids.some(
+			(id) => document.getElementById(id)?.checked === true,
+		);
+	}
+	return state;
+}
+
+(function _initProgressHidePrefs() {
+	try {
+		const saved = JSON.parse(localStorage.getItem("progress_hide") || "{}");
+		for (const { key, ids } of _HIDE_PAIRS) {
+			if (!saved[key]) continue;
+			for (const id of ids) {
+				const el = document.getElementById(id);
+				if (el) el.checked = true;
+			}
+		}
+	} catch {}
+})();
+
+for (const { ids } of _HIDE_PAIRS) {
+	for (const id of ids) {
+		document.getElementById(id)?.addEventListener("change", (e) => {
+			const checked = e.currentTarget.checked;
+			for (const other of ids) {
+				if (other === id) continue;
+				const el = document.getElementById(other);
+				if (el) el.checked = checked;
+			}
+			try {
+				localStorage.setItem(
+					"progress_hide",
+					JSON.stringify(_progressHide()),
+				);
+			} catch {}
+			if (_students.length) {
+				renderProgress();
+				renderClusters();
+			}
+		});
+	}
+}
+
+let _clusterCharts = [];
+let _clusterSeed = 42;
+let _clusterSort = "total-follow";
+
+const _DEFAULT_MANUAL_A_PARTITIONS = [
+	"80, 81, 78, 50, 55, 23, 82, 20, 24, 3",
+	"70, 77, 48, 72, 18, 30, 76, 67, 4, 74, 58, 34, 69, 35, 49, 8",
+	"61, 29, 25, 11, 44, 63, 71, 31, 47, 45, 36, 65, 10, 41, 38, 60, 28, 17, 62, 73, 84, 13, 59, 66, 15, 22, 53",
+	"rest",
+].join("\n");
+
+const _DEFAULT_MANUAL_B_PARTITIONS = [
+	"80, 81, 78, 23, 20, 30, 61, 29, 44, 70, 50, 4",
+	"24, 3, 72, 18, 11, 63, 45, 38, 10, 53, 59, 47, 74, 60, 34",
+	"rest",
+].join("\n");
+
+const _MANUAL_LS_KEYS = {
+	A: "cluster_manual_text_a_v1",
+	B: "cluster_manual_text_b_v1",
+};
+const _MANUAL_DEFAULTS = {
+	A: _DEFAULT_MANUAL_A_PARTITIONS,
+	B: _DEFAULT_MANUAL_B_PARTITIONS,
+};
+
+function _clusterMode() {
+	const v = document.getElementById("cluster-mode")?.value;
+	return v === "manualA" || v === "manualB" ? v : "kmeans";
+}
+
+function _manualSlot() {
+	return _clusterMode() === "manualB" ? "B" : "A";
+}
+
+function _clusterOpts() {
+	return {
+		k: Math.max(
+			2,
+			Math.min(25, +document.getElementById("cluster-k")?.value || 4),
+		),
+		useFollow:
+			document.getElementById("cluster-feat-follow")?.checked ?? true,
+		useGrade: document.getElementById("cluster-feat-grade")?.checked ?? true,
+		useLang: document.getElementById("cluster-feat-lang")?.checked ?? true,
+	};
+}
+
+function _parseManualPartitions(text, students) {
+	const lines = String(text || "")
+		.split(/\r?\n/)
+		.map((l) => l.trim())
+		.filter((l) => l.length);
+	const idMap = new Map();
+	students.forEach((s, i) => {
+		if (s.id != null && s.id !== "") idMap.set(String(s.id).trim(), i);
+	});
+	const labels = new Array(students.length).fill(-1);
+	let restLineIdx = -1;
+	lines.forEach((line, ci) => {
+		if (/^rest$/i.test(line)) {
+			restLineIdx = ci;
+			return;
+		}
+		const tokens = line.split(/[\s,;]+/).filter(Boolean);
+		for (const t of tokens) {
+			const idx = idMap.get(t);
+			if (idx != null && labels[idx] === -1) labels[idx] = ci;
+		}
+	});
+	if (restLineIdx === -1) restLineIdx = lines.length;
+	for (let i = 0; i < labels.length; i++) {
+		if (labels[i] === -1) labels[i] = restLineIdx;
+	}
+	const numClusters = Math.max(
+		lines.length,
+		restLineIdx === lines.length ? lines.length + 1 : 0,
+	);
+	return { labels, numClusters };
+}
+
+function _applyClusterModeUI() {
+	const mode = _clusterMode();
+	const isManual = mode === "manualA" || mode === "manualB";
+	document
+		.querySelectorAll(".cluster-kmeans-only")
+		.forEach((el) => (el.style.display = mode === "kmeans" ? "" : "none"));
+	const panel = document.getElementById("cluster-manual-panel");
+	if (panel) panel.style.display = isManual ? "" : "none";
+	const slot = _manualSlot();
+	document
+		.querySelectorAll("[data-manual]")
+		.forEach(
+			(el) => (el.style.display = el.dataset.manual === slot ? "" : "none"),
+		);
+}
+
+function _buildClusterFeatures(students, opts) {
+	const numOrNull = (v) => (v == null || isNaN(v) ? null : +v);
+	const rows = [];
+	for (const s of students) {
+		const row = [];
+		for (const l of s.lessons) {
+			if (opts.useFollow) {
+				row.push(l.hasFollowCol ? numOrNull(l.follow) : null);
+			}
+			if (opts.useGrade) row.push(numOrNull(l.grade));
+			if (opts.useLang) {
+				for (const { entryKey } of LANG_FOLLOW_KEYS) {
+					row.push(l.hasFollowCol ? numOrNull(l[entryKey]) : null);
+				}
+			}
+		}
+		rows.push(row);
+	}
+	const nCols = rows[0]?.length || 0;
+	for (let c = 0; c < nCols; c++) {
+		let hi = 0;
+		for (const r of rows) {
+			const v = r[c];
+			if (v != null && v > hi) hi = v;
+		}
+		if (hi <= 0) {
+			for (const r of rows) r[c] = 0;
+			continue;
+		}
+		for (const r of rows) {
+			const v = r[c];
+			r[c] = v == null ? -1 : v / hi;
+		}
+	}
+	return rows;
+}
+
+function _seededRng(seed) {
+	let s = seed >>> 0;
+	return () => {
+		s = (s * 1664525 + 1013904223) >>> 0;
+		return s / 0x100000000;
+	};
+}
+
+function _sqDist(a, b) {
+	let d = 0;
+	for (let i = 0; i < a.length; i++) {
+		const v = a[i] - b[i];
+		d += v * v;
+	}
+	return d;
+}
+
+function _kmeansPlusPlusInit(points, k, rng) {
+	const n = points.length;
+	const centroids = [points[Math.floor(rng() * n)].slice()];
+	while (centroids.length < k) {
+		const d2 = points.map((p) => {
+			let m = Infinity;
+			for (const c of centroids) {
+				const d = _sqDist(p, c);
+				if (d < m) m = d;
+			}
+			return m;
+		});
+		const sum = d2.reduce((a, b) => a + b, 0);
+		if (!sum) {
+			centroids.push(points[Math.floor(rng() * n)].slice());
+			continue;
+		}
+		let r = rng() * sum;
+		let picked = n - 1;
+		for (let i = 0; i < n; i++) {
+			r -= d2[i];
+			if (r <= 0) {
+				picked = i;
+				break;
+			}
+		}
+		centroids.push(points[picked].slice());
+	}
+	return centroids;
+}
+
+function _kmeans(points, k, maxIter = 10000, seed = 42) {
+	if (!points.length) return { labels: [], centroids: [] };
+	if (points.length <= k) {
+		return {
+			labels: points.map((_, i) => i),
+			centroids: points.map((p) => p.slice()),
+		};
+	}
+	const rng = _seededRng(seed);
+	let centroids = _kmeansPlusPlusInit(points, k, rng);
+	const labels = new Array(points.length).fill(0);
+	for (let iter = 0; iter < maxIter; iter++) {
+		let changed = false;
+		for (let i = 0; i < points.length; i++) {
+			let best = 0,
+				bestD = Infinity;
+			for (let c = 0; c < k; c++) {
+				const d = _sqDist(points[i], centroids[c]);
+				if (d < bestD) {
+					bestD = d;
+					best = c;
+				}
+			}
+			if (labels[i] !== best) {
+				labels[i] = best;
+				changed = true;
+			}
+		}
+		const sums = Array.from({ length: k }, () =>
+			new Array(points[0].length).fill(0),
+		);
+		const counts = new Array(k).fill(0);
+		for (let i = 0; i < points.length; i++) {
+			const c = labels[i];
+			counts[c]++;
+			for (let j = 0; j < points[0].length; j++) sums[c][j] += points[i][j];
+		}
+		for (let c = 0; c < k; c++) {
+			if (counts[c] === 0) {
+				const farthest = points
+					.map((p, i) => ({
+						i,
+						d: _sqDist(p, centroids[labels[i]]),
+					}))
+					.sort((a, b) => b.d - a.d)[0];
+				centroids[c] = points[farthest.i].slice();
+			} else {
+				for (let j = 0; j < points[0].length; j++)
+					centroids[c][j] = sums[c][j] / counts[c];
+			}
+		}
+		if (!changed) break;
+	}
+	return { labels, centroids };
+}
+
+function renderClusters() {
+	_clusterCharts.forEach((c) => {
+		try {
+			c.destroy();
+		} catch {}
+	});
+	_clusterCharts = [];
+
+	const body = document.getElementById("clusters-body");
+	if (!body) return;
+	body.innerHTML = "";
+	if (!_students.length) return;
+
+	const mode = _clusterMode();
+	const labelsX = ASSIGNMENTS.map((a) => a.name);
+	let labels, centroids, k;
+
+	if (mode === "manualA" || mode === "manualB") {
+		const slot = _manualSlot();
+		const ta = document.querySelector(`[data-manual-text="${slot}"]`);
+		const text = (ta && ta.value) || _MANUAL_DEFAULTS[slot];
+		const parsed = _parseManualPartitions(text, _students);
+		labels = parsed.labels;
+		k = parsed.numClusters;
+		const opts = { useFollow: true, useGrade: true, useLang: true };
+		const features = _buildClusterFeatures(_students, opts);
+		const nCols = features[0]?.length || 0;
+		centroids = Array.from({ length: k }, () => new Array(nCols).fill(0));
+		const counts = new Array(k).fill(0);
+		for (let i = 0; i < _students.length; i++) {
+			const c = labels[i];
+			counts[c]++;
+			for (let j = 0; j < nCols; j++) centroids[c][j] += features[i][j];
+		}
+		for (let c = 0; c < k; c++) {
+			if (counts[c] === 0) continue;
+			for (let j = 0; j < nCols; j++) centroids[c][j] /= counts[c];
+		}
+	} else {
+		const opts = _clusterOpts();
+		if (!opts.useFollow && !opts.useGrade && !opts.useLang) {
+			body.innerHTML =
+				'<div class="cluster-empty">Pick at least one feature to cluster on.</div>';
+			return;
+		}
+		const features = _buildClusterFeatures(_students, opts);
+		k = Math.min(opts.k, _students.length);
+		const res = _kmeans(features, k, 10000, _clusterSeed);
+		labels = res.labels;
+		centroids = res.centroids;
+	}
+
+	const buckets = Array.from({ length: k }, () => []);
+	_students.forEach((s, i) => buckets[labels[i]].push(s));
+
+	const centroidMean = (c) =>
+		c && c.length ? c.reduce((a, b) => a + b, 0) / c.length : 0;
+	const ordered = buckets
+		.map((bucket, idx) => ({
+			idx,
+			bucket,
+			score: centroidMean(centroids[idx]),
+		}))
+		.filter((b) => b.bucket.length)
+		.sort((a, b) => b.score - a.score);
+
+	ordered.forEach((entry, displayIdx) => {
+		const { bucket } = entry;
+		const section = el("div", "cluster-section");
+		const header = el("div", "cluster-header");
+		const h3 = el("h3");
+		h3.textContent = `Cluster ${displayIdx + 1}`;
+		header.appendChild(h3);
+		const meta = el("span", "cluster-meta");
+		const followVals = bucket.map(followAvg).filter((v) => v >= 0);
+		const gradeVals = bucket
+			.map((s) => s.avg_assignments)
+			.filter((v) => v != null);
+		const summarize = (vals, digits, suffix) => {
+			if (!vals.length) return "—";
+			const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+			const mn = Math.min(...vals);
+			const mx = Math.max(...vals);
+			return `${avg.toFixed(digits)}${suffix} (${mn.toFixed(digits)}–${mx.toFixed(digits)})`;
+		};
+		meta.textContent = `${bucket.length} student${bucket.length === 1 ? "" : "s"} · follow ${summarize(followVals, 1, "%")} · grade ${summarize(gradeVals, 2, "")}`;
+		header.appendChild(meta);
+		section.appendChild(header);
+		const grid = el("div", "cluster-grid");
+		const sortedBucket = _sortStudents(bucket, _clusterSort);
+		for (const s of sortedBucket) {
+			const { card, chart } = _buildStudentProgressCard(s, labelsX);
+			grid.appendChild(card);
+			_clusterCharts.push(chart);
+		}
+		section.appendChild(grid);
+		body.appendChild(section);
+	});
+}
+
+document.getElementById("cluster-k")?.addEventListener("change", () => {
+	if (_students.length) renderClusters();
+});
+document.getElementById("cluster-recluster")?.addEventListener("click", () => {
+	_clusterSeed = (_clusterSeed * 1103515245 + 12345) >>> 0;
+	if (_students.length) renderClusters();
+});
+["cluster-feat-follow", "cluster-feat-grade", "cluster-feat-lang"].forEach(
+	(id) => {
+		document.getElementById(id)?.addEventListener("change", () => {
+			if (_students.length) renderClusters();
+		});
+	},
+);
+
+(function _initClusterModeUI() {
+	let legacy = null;
+	try {
+		legacy = localStorage.getItem("cluster_manual_text_v2");
+	} catch {}
+	for (const slot of ["A", "B"]) {
+		const ta = document.querySelector(`[data-manual-text="${slot}"]`);
+		if (!ta || ta.value) continue;
+		let saved = null;
+		try {
+			saved = localStorage.getItem(_MANUAL_LS_KEYS[slot]);
+		} catch {}
+		if (!saved && slot === "A" && legacy) {
+			saved = legacy;
+			try {
+				localStorage.setItem(_MANUAL_LS_KEYS.A, legacy);
+				localStorage.removeItem("cluster_manual_text_v2");
+			} catch {}
+		}
+		ta.value = saved || _MANUAL_DEFAULTS[slot];
+	}
+	_applyClusterModeUI();
+})();
+
+document.getElementById("cluster-mode")?.addEventListener("change", () => {
+	_applyClusterModeUI();
+	if (_students.length) renderClusters();
+});
+
+document
+	.getElementById("cluster-manual-apply")
+	?.addEventListener("click", () => {
+		const slot = _manualSlot();
+		const ta = document.querySelector(`[data-manual-text="${slot}"]`);
+		try {
+			if (ta) localStorage.setItem(_MANUAL_LS_KEYS[slot], ta.value);
+		} catch {}
+		if (_students.length) renderClusters();
+	});
+
+document.querySelectorAll(".cluster-sort[data-cluster-sort]").forEach((btn) => {
+	btn.addEventListener("click", () => {
+		_clusterSort = btn.dataset.clusterSort;
+		document
+			.querySelectorAll(".cluster-sort[data-cluster-sort]")
+			.forEach((b) => b.classList.toggle("active", b === btn));
+		if (_students.length) renderClusters();
+	});
+});
+
 function addProgressTotals(container) {
+	const hide = _progressHide();
+	if (hide.totalFollow && hide.grade) return;
+
 	const card = el("div", "prog-totals");
 	const h4 = el("h4");
 	h4.textContent = "Totals";
@@ -1224,23 +2539,41 @@ function addProgressTotals(container) {
 		_students.map((s) => s.lessons[a.n - 1].grade).filter((v) => v != null),
 	);
 
+	const followAxis = {
+		min: 0,
+		max: 100,
+		ticks: [0, 20, 40, 60, 80, 100],
+		color: THEME.textFaint,
+	};
+	const gradeAxis = {
+		min: 0,
+		max: 5,
+		ticks: [0, 1, 2, 3, 4, 5],
+		color: THEME.blue,
+	};
+
+	let leftAxis,
+		rightAxis,
+		gradeYAxis = "right";
+	if (!hide.totalFollow && !hide.grade) {
+		leftAxis = followAxis;
+		rightAxis = gradeAxis;
+	} else if (!hide.totalFollow) {
+		leftAxis = followAxis;
+	} else {
+		leftAxis = gradeAxis;
+		gradeYAxis = "left";
+	}
+
 	const chart = new BoxPlotChart(box, {
 		xLabels: labels,
-		leftAxis: {
-			min: 0,
-			max: 100,
-			ticks: [0, 20, 40, 60, 80, 100],
-			color: THEME.textFaint,
-		},
-		rightAxis: {
-			min: 0,
-			max: 5,
-			ticks: [0, 1, 2, 3, 4, 5],
-			color: THEME.blue,
-		},
+		leftAxis,
+		rightAxis,
 	});
-	chart.setData([
-		{
+
+	const datasets = [];
+	if (!hide.totalFollow) {
+		datasets.push({
 			data: followData,
 			color: _hexToRgba(THEME.label, 0.44),
 			borderColor: THEME.label,
@@ -1248,21 +2581,26 @@ function addProgressTotals(container) {
 			coef: 25,
 			outlierColor: _hexToRgba(THEME.label, 0.5),
 			outlierRadius: 3,
-		},
-		{
+		});
+	}
+	if (!hide.grade) {
+		datasets.push({
 			data: gradeData,
 			color: _hexToRgba(THEME.blue, 0.44),
 			borderColor: THEME.blue,
-			yAxis: "right",
+			yAxis: gradeYAxis,
 			coef: 25,
 			outlierColor: _hexToRgba(THEME.blue, 0.5),
 			outlierRadius: 3,
-		},
-	]);
+		});
+	}
+	chart.setData(datasets);
 	_progressCharts.push(chart);
 }
 
 function addProgressLanguageTotals(container) {
+	if (_progressHide().langFollow) return;
+
 	const card = el("div", "prog-totals");
 	const h4 = el("h4");
 	h4.textContent = "Totals by Language";
@@ -1329,47 +2667,77 @@ function renderProgress() {
 	const sorted = sortedStudents();
 
 	for (const s of sorted) {
-		const card = el(
-			"div",
-			"prog-card" + (s.passed_course ? "" : " not-passed"),
-		);
-		const h4 = el("h4");
-		h4.textContent = studentLabel(s);
-		card.appendChild(h4);
-		const box = el("div", "prog-chart-box");
-		card.appendChild(box);
+		const { card, chart } = _buildStudentProgressCard(s, labels);
 		grid.appendChild(card);
+		_progressCharts.push(chart);
+	}
+}
 
-		const follows = s.lessons.map((l) =>
-			l.hasFollowCol ? (l.follow ?? null) : null,
-		);
-		const grades = s.lessons.map((l) => l.grade ?? null);
+function _buildStudentProgressCard(s, labels) {
+	const card = el("div", "prog-card" + (s.passed_course ? "" : " not-passed"));
+	const h4 = el("h4");
+	const titleParts = [studentLabelWithId(s)];
+	const avgF = followAvg(s);
+	if (avgF >= 0) titleParts.push(`follow ${avgF.toFixed(1)}%`);
+	const avgG = s.avg_assignments;
+	if (avgG != null) titleParts.push(`grade ${avgG.toFixed(2)}`);
+	h4.textContent = titleParts.join(" · ");
+	card.appendChild(h4);
+	const box = el("div", "prog-chart-box");
+	card.appendChild(box);
 
-		const chart = new LineChart(box, {
-			xLabels: labels,
-			leftAxis: {
-				min: -4,
-				max: 104,
-				ticks: [0, 20, 40, 60, 80, 100],
-				color: THEME.textFaint,
-			},
-			rightAxis: {
-				min: -0.25,
-				max: 5.25,
-				ticks: [0, 1, 2, 3, 4, 5],
-				color: THEME.blue,
-			},
-			onClick: (di, pi) => {
-				const asgn = ASSIGNMENTS[pi];
-				if (!asgn) return;
-				const entry = s.lessons[asgn.n - 1];
-				if (di <= LANG_FOLLOW_KEYS.length) openLessonDiff(s, entry);
-				else openAssignDiff(s, entry);
-			},
-		});
-		const langDatasets = LANG_FOLLOW_KEYS.map(({ entryKey, colorVar }) => {
+	const follows = s.lessons.map((l) =>
+		l.hasFollowCol ? (l.follow ?? null) : null,
+	);
+	const grades = s.lessons.map((l) => l.grade ?? null);
+
+	const hide = _progressHide();
+	const showAnyFollow = !hide.totalFollow || !hide.langFollow;
+	const followAxis = {
+		min: -4,
+		max: 104,
+		ticks: [0, 20, 40, 60, 80, 100],
+		color: THEME.textFaint,
+	};
+	const gradeAxis = {
+		min: -0.25,
+		max: 5.25,
+		ticks: [0, 1, 2, 3, 4, 5],
+		color: THEME.blue,
+	};
+	let lcLeftAxis,
+		lcRightAxis,
+		gradeYAxis = "right";
+	if (showAnyFollow && !hide.grade) {
+		lcLeftAxis = followAxis;
+		lcRightAxis = gradeAxis;
+	} else if (showAnyFollow) {
+		lcLeftAxis = followAxis;
+	} else if (!hide.grade) {
+		lcLeftAxis = gradeAxis;
+		gradeYAxis = "left";
+	}
+	const chart = new LineChart(box, {
+		xLabels: labels,
+		leftAxis: lcLeftAxis,
+		rightAxis: lcRightAxis,
+		onClick: (di, pi) => {
+			const asgn = ASSIGNMENTS[pi];
+			if (!asgn) return;
+			const entry = s.lessons[asgn.n - 1];
+			const langCount = hide.langFollow ? 0 : LANG_FOLLOW_KEYS.length;
+			if (di < langCount) openLessonDiff(s, entry);
+			else if (di === langCount && !hide.totalFollow)
+				openLessonDiff(s, entry);
+			else openAssignDiff(s, entry);
+		},
+	});
+
+	const datasets = [];
+	if (!hide.langFollow) {
+		for (const { entryKey, colorVar } of LANG_FOLLOW_KEYS) {
 			const c = _cssVar(colorVar) || THEME.label;
-			return {
+			datasets.push({
 				data: s.lessons.map((l) =>
 					l.hasFollowCol ? (l[entryKey] ?? null) : null,
 				),
@@ -1378,40 +2746,42 @@ function renderProgress() {
 				lineWidth: 1.0,
 				pointRadius: 2.5,
 				yAxis: "left",
-			};
-		});
-		chart.setDatasets([
-			...langDatasets,
-			{
-				data: follows,
-				color: THEME.label,
-				pointFillColor: _hexToRgba(THEME.label, 0.44),
-				lineWidth: 1.5,
-				pointRadius: 4,
-				yAxis: "left",
-				pointLabels: s.lessons.map((l) => {
-					const v = l.lesson_obs?.trim();
-					return v && v !== "_" ? v : null;
-				}),
-				labelColor: THEME.label,
-			},
-			{
-				data: grades,
-				color: THEME.blue,
-				pointFillColor: _hexToRgba(THEME.blue, 0.44),
-				lineWidth: 1.5,
-				lineDash: [4, 3],
-				pointRadius: 4,
-				yAxis: "right",
-				pointLabels: s.lessons.map((l) => {
-					const v = l.obs?.trim();
-					return v && v !== "_" ? v : null;
-				}),
-				labelColor: THEME.blue,
-			},
-		]);
-		_progressCharts.push(chart);
+			});
+		}
 	}
+	if (!hide.totalFollow) {
+		datasets.push({
+			data: follows,
+			color: THEME.label,
+			pointFillColor: _hexToRgba(THEME.label, 0.44),
+			lineWidth: 1.5,
+			pointRadius: 4,
+			yAxis: "left",
+			pointLabels: s.lessons.map((l) => {
+				const v = l.lesson_obs?.trim();
+				return v && v !== "_" ? v : null;
+			}),
+			labelColor: THEME.label,
+		});
+	}
+	if (!hide.grade) {
+		datasets.push({
+			data: grades,
+			color: THEME.blue,
+			pointFillColor: _hexToRgba(THEME.blue, 0.44),
+			lineWidth: 1.5,
+			lineDash: [4, 3],
+			pointRadius: 4,
+			yAxis: gradeYAxis,
+			pointLabels: s.lessons.map((l) => {
+				const v = l.obs?.trim();
+				return v && v !== "_" ? v : null;
+			}),
+			labelColor: THEME.blue,
+		});
+	}
+	chart.setDatasets(datasets);
+	return { card, chart };
 }
 
 function mkCard(page, title, size = "sm") {

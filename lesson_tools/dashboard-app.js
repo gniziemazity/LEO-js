@@ -181,6 +181,13 @@ async function loadJsonData(file, data) {
 		: "Dashboard";
 	_zoomMin = _zoomMax = null;
 	_studentIdMap = {};
+	if (window.LanguageProfiles) {
+		try {
+			await window.LanguageProfiles.initProfiles();
+		} catch (e) {
+			console.warn("[Dashboard] LanguageProfiles.initProfiles failed:", e);
+		}
+	}
 	const p = processData(data);
 	if (!p) {
 		showLoading(false);
@@ -221,6 +228,137 @@ async function loadJsonData(file, data) {
 	if (_pendingXlsx.length) {
 		loadXlsxFiles(_pendingXlsx);
 		_pendingXlsx = [];
+	}
+	saveLessonStatsCsv();
+}
+
+const _TOKEN_LANG_EXT = {
+	".html": "html",
+	".htm": "html",
+	".css": "css",
+	".js": "js",
+	".py": "py",
+};
+const _TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/gu;
+
+function _findHtmlEmbeddedRanges(text) {
+	const result = { script: [], style: [] };
+	for (const tag of ["script", "style"]) {
+		const openRe = new RegExp(`<\\s*${tag}\\b[^>]*>`, "gi");
+		let om;
+		while ((om = openRe.exec(text)) !== null) {
+			const innerStart = om.index + om[0].length;
+			const closeRe = new RegExp(`<\\/\\s*${tag}\\s*>`, "i");
+			const sub = text.slice(innerStart);
+			const cm = sub.match(closeRe);
+			let innerEnd, nextPos;
+			if (cm) {
+				innerEnd = innerStart + cm.index;
+				nextPos = innerEnd + cm[0].length;
+			} else {
+				innerEnd = text.length;
+				nextPos = text.length;
+			}
+			result[tag].push([innerStart, innerEnd]);
+			openRe.lastIndex = nextPos;
+		}
+	}
+	return result;
+}
+
+function _bucketForPos(pos, ranges, defaultBucket) {
+	for (const [lo, hi] of ranges.script) {
+		if (pos >= lo && pos < hi) return "js";
+	}
+	for (const [lo, hi] of ranges.style) {
+		if (pos >= lo && pos < hi) return "css";
+	}
+	return defaultBucket;
+}
+
+async function loadTeacherCodeTokens() {
+	const empty = { total: 0, html: 0, css: 0, js: 0, py: 0 };
+	if (!_allFiles || !_allFiles.size) return empty;
+
+	let codeFiles = [];
+	for (const dir of ["reconstructed/", "correct/"]) {
+		for (const [path, file] of _allFiles) {
+			const pl = path.toLowerCase();
+			if (!pl.startsWith(dir)) continue;
+			let bucket = null;
+			for (const ext of Object.keys(_TOKEN_LANG_EXT)) {
+				if (pl.endsWith(ext)) {
+					bucket = _TOKEN_LANG_EXT[ext];
+					break;
+				}
+			}
+			if (bucket) codeFiles.push({ path, file, bucket });
+		}
+		if (codeFiles.length) break;
+	}
+	if (!codeFiles.length) {
+		console.warn(
+			"[Dashboard] no code files in reconstructed/ or correct/; token counts will be 0",
+		);
+		return empty;
+	}
+
+	const out = { total: 0, html: 0, css: 0, js: 0, py: 0 };
+	for (const { file, bucket } of codeFiles) {
+		try {
+			const text = await file.text();
+			if (bucket === "html") {
+				const ranges = _findHtmlEmbeddedRanges(text);
+				for (const m of text.matchAll(_TOKEN_RE)) {
+					const b = _bucketForPos(m.index, ranges, "html");
+					out[b]++;
+					out.total++;
+				}
+			} else {
+				const matches = text.match(_TOKEN_RE) || [];
+				out[bucket] += matches.length;
+				out.total += matches.length;
+			}
+		} catch {}
+	}
+	return out;
+}
+
+async function saveLessonStatsCsv() {
+	if (!_p) return;
+	if (!_dirHandle) {
+		console.warn(
+			"[Dashboard] saveLessonStatsCsv: _dirHandle is null (file picker was used, not folder); CSV not written",
+		);
+		return;
+	}
+	try {
+		const perm = await _dirHandle.queryPermission({ mode: "readwrite" });
+		let granted = perm === "granted";
+		if (!granted) {
+			const req = await _dirHandle.requestPermission({ mode: "readwrite" });
+			granted = req === "granted";
+		}
+		if (!granted) {
+			console.warn(
+				"[Dashboard] readwrite permission not granted; skipping lesson_stats.csv save",
+			);
+			return;
+		}
+		const tokens = await loadTeacherCodeTokens();
+		const csv = buildLessonStatsCsv(_p, tokens);
+		const fileHandle = await _dirHandle.getFileHandle("lesson_stats.csv", {
+			create: true,
+		});
+		const writable = await fileHandle.createWritable();
+		await writable.write(csv);
+		await writable.close();
+		console.log(`[Dashboard] wrote lesson_stats.csv (${csv.length} bytes)`);
+	} catch (e) {
+		console.warn(
+			"[Dashboard] could not save lesson_stats.csv:",
+			e?.message || e,
+		);
 	}
 }
 

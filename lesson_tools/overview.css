@@ -118,7 +118,11 @@ th.lhd {
 }
 th.ahd {
 	color: var(--clr-accent);
-	background: var(--clr-accent-light);
+	background-color: var(--clr-surface);
+	background-image: linear-gradient(
+		var(--clr-accent-light),
+		var(--clr-accent-light)
+	);
 }
 td.asn-col {
 	background: var(--clr-asn-col-bg);
@@ -130,7 +134,11 @@ tbody tr:hover td {
 	background: var(--clr-accent-light);
 }
 tbody tr:hover td.sticky-l {
-	background: var(--clr-accent-light);
+	background-color: var(--clr-bg);
+	background-image: linear-gradient(
+		var(--clr-accent-light),
+		var(--clr-accent-light)
+	);
 }
 tbody tr:hover td.st-bg-pass {
 	background: var(--clr-st-pass-bg);
@@ -384,4 +392,48 @@ td.asn-sep {
 	font-size: 11px;
 	margin-bottom: 4px;
 	color: var(--clr-label);
+}
+
+.clusters-body {
+	flex: 1;
+	overflow: auto;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.cluster-section {
+	background: var(--clr-bg);
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+	padding: 10px;
+}
+.cluster-header {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	margin-bottom: 8px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--clr-border);
+}
+.cluster-header h3 {
+	font-size: 13px;
+	color: var(--clr-text);
+	margin: 0;
+}
+.cluster-header .cluster-meta {
+	font-size: 11px;
+	color: var(--clr-label);
+}
+.cluster-grid {
+	display: flex;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 10px;
+}
+.cluster-empty {
+	padding: 24px;
+	text-align: center;
+	color: var(--clr-label);
+	font-size: 12px;
 }

@@ -26,7 +26,7 @@ const DELETE_LABELS = {
 	"\u2326": "delete fwd",
 };
 
-const DELETE_LINE_CHAR = "\u26d4";
+// DELETE_LINE_CHAR is provided by simulator-model.js (loaded before this file).
 const BACKSPACE_CHARS_SET = new Set(["\u21a2", "\u232b"]);
 const DELETE_FWRD_CHARS_SET = new Set(["\u21a3", "\u2326"]);
 const CURSOR_LEFT_CHARS = new Set(["\u2190"]);

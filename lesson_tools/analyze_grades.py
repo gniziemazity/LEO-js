@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 import sys
 import tkinter as tk
 from tkinter import filedialog
@@ -64,108 +65,246 @@ def fmt_r(r):
     return f"{r:+.3f}" if not np.isnan(r) else "N/A"
 
 
-COL = {
-    "id": 0,
-    "exam": 4,
-    "weeklies": 5,
-    "notes": 8,
-    "pre_typing": 12,
-    "kahoot": 15,
-    "self_eval": 16,
-    "post_typing": 74,
-    "quiz_stii": 71,
-    "avg_assignments": 75,  # BX
-    "participation": 76,    # BY (0-1 bonus from follow scores)
-    "final_grade": 77,      # BZ = BX + BY
-    "answers": 83,
-    "questions": 84,
-    "help": 85,
+LESSON_DIFFICULTY = {
+    "wall":    "easy",
+    "chess":   "easy",
+    "sorting": "hard",
+    "js":      "hard",
+    "qr":      "hard",
+    "web":     "project",
 }
 
-ASSIGNMENTS = {
-    1: {"follow": 20, "lesson_obs": 22, "grade": 23, "status": 24, "obs": 25,
-        "name": "Wall", "difficulty": "easy"},
-    2: {"follow": 29, "lesson_obs": 31, "grade": 32, "status": 33, "obs": 34,
-        "name": "Chess", "difficulty": "easy"},
-    3: {"follow": 38, "lesson_obs": 40, "grade": 41, "status": 42, "obs": 43,
-        "name": "Sorting", "difficulty": "hard"},
-    4: {"follow": 47, "lesson_obs": 49, "grade": 50, "status": 51, "obs": 52,
-        "name": "JS", "difficulty": "hard"},
-    5: {"follow": 56, "lesson_obs": 58, "grade": 59, "status": 60, "obs": 61,
-        "name": "QR", "difficulty": "hard"},
-    6: {"follow": None, "lesson_obs": None, "grade": 68, "status": 69, "obs": 70,
-        "name": "Web", "difficulty": "project"},
+_HEADER_ALIASES = {
+    "id":              ["ID"],
+    "name":            ["Name"],
+    "number":          ["Number"],
+    "exam":            ["Exam"],
+    "weeklies":        ["Weeklies"],
+    "notes":           ["Notes"],
+    "pre_typing":      ["Pre Typing", "Pre KPM", "Pre-typing", "Pre K/min"],
+    "post_typing":     ["Post Typing", "Post KPM", "Post-typing", "Post K/min"],
+    "self_eval":       ["Self Eval", "Self Evaluation", "Self"],
+    "kahoot":          ["Kahoot"],
+    "quiz_stii":       ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
+    "final_grade":     ["Final Grade", "Grade"],
+    "avg_assignments": ["Avg Assignments", "Avg Grade"],
+    "participation":   ["Participation"],
+    "answers":         ["Total Answers", "Answers"],
+    "questions":       ["Total Questions", "Questions"],
+    "help":            ["Total Help", "Help"],
 }
 
-POOLED_ASSIGNMENTS = {k: v for k, v in ASSIGNMENTS.items() if k != 6}
+COL: dict = {}
+ASSIGNMENTS: dict = {}
+POOLED_ASSIGNMENTS: dict = {}
 
-DATA_ROWS = slice(1, 85)
+
+def _build_header_map(headers):
+    m = {}
+    for i, h in enumerate(headers):
+        if h is None or (isinstance(h, float) and math.isnan(h)):
+            continue
+        key = str(h).strip().lower()
+        if key and key not in m:
+            m[key] = i
+    return m
+
+
+def _find_col(header_map, aliases):
+    for a in aliases:
+        idx = header_map.get(a.lower())
+        if idx is not None:
+            return idx
+    return None
+
+
+def _detect_assignments(headers, header_map):
+    result = []
+    seen = set()
+    for idx, h in enumerate(headers):
+        if h is None or (isinstance(h, float) and math.isnan(h)):
+            continue
+        orig = str(h).strip()
+        if not orig:
+            continue
+        m = re.match(r"^(.+?)\s+Grade$", orig, re.IGNORECASE)
+        if not m:
+            continue
+        name = m.group(1).strip()
+        lower = name.lower()
+        if lower in seen:
+            continue
+        seen.add(lower)
+
+        def get(suffix, _n=name):
+            return (header_map.get((_n + " " + suffix).lower())
+                    or header_map.get((_n + suffix).lower()))
+
+        result.append({
+            "name":        name,
+            "lower":       lower,
+            "difficulty":  LESSON_DIFFICULTY.get(lower, ""),
+            "follow_html": get("HTML Follow"),
+            "follow_css":  get("CSS Follow"),
+            "follow_js":   get("JS Follow"),
+            "follow":      get("Follow"),
+            "inc":         get("Inc"),
+            "a":           get("A"),
+            "q":           get("Q"),
+            "h":           get("H"),
+            "c_plus":      get("C+"),
+            "c_minus":     get("C-"),
+            "c_diff":      get("C Diff"),
+            "lesson_obs":  get("LessonObs"),
+            "grade":       idx,
+            "status":      get("Status"),
+            "obs":         get("Obs"),
+        })
+    return result
+
+
+def _populate_columns_from_header(df):
+    global COL, ASSIGNMENTS, POOLED_ASSIGNMENTS
+    if df.empty:
+        return
+    headers = df.iloc[0].tolist()
+    header_map = _build_header_map(headers)
+    COL = {k: _find_col(header_map, aliases)
+           for k, aliases in _HEADER_ALIASES.items()}
+    assn_list = _detect_assignments(headers, header_map)
+    ASSIGNMENTS = {(i + 1): a for i, a in enumerate(assn_list)}
+    POOLED_ASSIGNMENTS = {k: v for k, v in ASSIGNMENTS.items()
+                          if v.get("follow") is not None}
+
+    if ASSIGNMENTS:
+        lesson_grades = [a["grade"] for a in ASSIGNMENTS.values()
+                         if a.get("grade") is not None]
+        first_grade = min(lesson_grades) if lesson_grades else None
+        last_grade = max(lesson_grades) if lesson_grades else None
+
+        def _find_all(lower):
+            return [i for i, h in enumerate(headers)
+                    if h is not None
+                    and str(h).strip().lower() == lower]
+
+        if first_grade is not None and last_grade is not None:
+            km = _find_all("k/min")
+            if COL.get("pre_typing") is None:
+                before = next((i for i in km if i < first_grade), None)
+                if before is not None:
+                    COL["pre_typing"] = before
+            if COL.get("post_typing") is None:
+                after = next((i for i in km if i > last_grade), None)
+                if after is not None:
+                    COL["post_typing"] = after
+
+
+def _col_series(st, col_idx, *, numeric=True):
+    if col_idx is None or col_idx >= st.shape[1]:
+        return pd.Series([np.nan] * len(st)) if numeric \
+            else pd.Series([""] * len(st))
+    s = st.iloc[:, col_idx]
+    if numeric:
+        return pd.to_numeric(s, errors="coerce")
+    return s.fillna("").astype(str).str.strip()
 
 
 def load_data(path):
     ext = os.path.splitext(path)[1].lower()
     engine = "openpyxl" if ext == ".xlsx" else "xlrd"
     df = pd.read_excel(path, engine=engine, header=None)
-    return df.iloc[DATA_ROWS].copy().reset_index(drop=True)
+    if df.empty:
+        return df
+    _populate_columns_from_header(df)
+    return df.iloc[1:].copy().reset_index(drop=True)
 
 
 def enrich(st):
-    st["final_grade"] = pd.to_numeric(st.iloc[:, COL["final_grade"]], errors="coerce")
-    st["avg_assignments"] = pd.to_numeric(st.iloc[:, COL["avg_assignments"]], errors="coerce")
+    st["final_grade"]      = _col_series(st, COL.get("final_grade"))
+    st["avg_assignments"]  = _col_series(st, COL.get("avg_assignments"))
+    st["pre_typing"]       = _col_series(st, COL.get("pre_typing"))
+    st["post_typing"]      = _col_series(st, COL.get("post_typing"))
+    st["typing_improvement"] = st["post_typing"] - st["pre_typing"]
+    st["self_eval"]        = _col_series(st, COL.get("self_eval"))
+    st["answers"]          = _col_series(st, COL.get("answers"))
+    st["questions"]        = _col_series(st, COL.get("questions"))
+    st["help"]             = _col_series(st, COL.get("help"))
+    st["participation"]    = _col_series(st, COL.get("participation"))
+    st["kahoot"]           = _col_series(st, COL.get("kahoot"))
+    st["quiz_stii"]        = _col_series(st, COL.get("quiz_stii"))
 
     passing_statuses = {"Pass", "Pass'", "Pass*"}
     all_passed = pd.Series(True, index=st.index)
-    for a_num, a_info in ASSIGNMENTS.items():
-        status = st.iloc[:, a_info["status"]].fillna("").astype(str).str.strip()
+    for _, a in ASSIGNMENTS.items():
+        status = _col_series(st, a["status"], numeric=False)
         all_passed &= status.isin(passing_statuses)
     st["passed_course"] = all_passed
 
-    st["pre_typing"] = pd.to_numeric(st.iloc[:, COL["pre_typing"]], errors="coerce")
-    st["post_typing"] = pd.to_numeric(st.iloc[:, COL["post_typing"]], errors="coerce")
-    st["typing_improvement"] = st["post_typing"] - st["pre_typing"]
-
-    st["self_eval"] = pd.to_numeric(st.iloc[:, COL["self_eval"]], errors="coerce")
-    st["answers"] = pd.to_numeric(st.iloc[:, COL["answers"]], errors="coerce")
-    st["questions"] = pd.to_numeric(st.iloc[:, COL["questions"]], errors="coerce")
-    st["help"] = pd.to_numeric(st.iloc[:, COL["help"]], errors="coerce")
-    st["participation"] = pd.to_numeric(st.iloc[:, COL["participation"]], errors="coerce")
-    st["kahoot"] = pd.to_numeric(st.iloc[:, COL["kahoot"]], errors="coerce")
-    st["quiz_stii"] = pd.to_numeric(st.iloc[:, COL["quiz_stii"]], errors="coerce")
-
     for a_num, a in ASSIGNMENTS.items():
-        obs = st.iloc[:, a["obs"]].fillna("").astype(str).str.strip()
-        status = st.iloc[:, a["status"]].fillna("").astype(str).str.strip()
-        grade = pd.to_numeric(st.iloc[:, a["grade"]], errors="coerce")
+        obs    = _col_series(st, a["obs"], numeric=False)
+        status = _col_series(st, a["status"], numeric=False)
+        grade  = _col_series(st, a["grade"])
 
-        st[f"a{a_num}_obs"] = obs
-        st[f"a{a_num}_status"] = status
-        st[f"a{a_num}_grade"] = grade
-        st[f"a{a_num}_ai"] = obs.str.upper().str.contains("AI", na=False)
-        st[f"a{a_num}_submitted"] = grade.notna()
-
-        #   Pass:    Pass or Pass' (demonstrated knowledge)
-        #   Trouble: everything else: Fail, Fail*, Pass*, no-show
-        st[f"a{a_num}_passed"] = status.isin(["Pass", "Pass'"])
-        st[f"a{a_num}_trouble"] = st[f"a{a_num}_submitted"] & ~status.isin(["Pass", "Pass'"])
+        st[f"a{a_num}_obs"]        = obs
+        st[f"a{a_num}_status"]     = status
+        st[f"a{a_num}_grade"]      = grade
+        st[f"a{a_num}_ai"]         = obs.str.upper().str.contains("AI", na=False)
+        st[f"a{a_num}_submitted"]  = grade.notna()
+        st[f"a{a_num}_passed"]     = status.isin(["Pass", "Pass'"])
+        st[f"a{a_num}_trouble"]    = st[f"a{a_num}_submitted"] & ~status.isin(["Pass", "Pass'"])
         st[f"a{a_num}_pass_clean"] = status == "Pass"
 
-        if a["follow"] is not None:
-            st[f"a{a_num}_follow"] = pd.to_numeric(st.iloc[:, a["follow"]], errors="coerce")
-
-        if a["lesson_obs"] is not None:
-            lobs = st.iloc[:, a["lesson_obs"]].fillna("").astype(str).str.strip()
-            st[f"a{a_num}_lesson_obs"] = lobs
+        st[f"a{a_num}_follow"]      = _col_series(st, a["follow"])
+        st[f"a{a_num}_follow_html"] = _col_series(st, a["follow_html"])
+        st[f"a{a_num}_follow_css"]  = _col_series(st, a["follow_css"])
+        st[f"a{a_num}_follow_js"]   = _col_series(st, a["follow_js"])
+        st[f"a{a_num}_inc"]         = _col_series(st, a["inc"])
+        st[f"a{a_num}_intA"]        = _col_series(st, a["a"])
+        st[f"a{a_num}_intQ"]        = _col_series(st, a["q"])
+        st[f"a{a_num}_intH"]        = _col_series(st, a["h"])
+        st[f"a{a_num}_cplus"]       = _col_series(st, a["c_plus"])
+        st[f"a{a_num}_cminus"]      = _col_series(st, a["c_minus"])
+        st[f"a{a_num}_cdiff"]       = _col_series(st, a["c_diff"])
+        st[f"a{a_num}_lesson_obs"]  = _col_series(st, a["lesson_obs"], numeric=False)
+        _lobs_lower = st[f"a{a_num}_lesson_obs"].str.lower()
+        st[f"a{a_num}_lesson_trouble"] = (
+            _lobs_lower.str.contains("share", na=False)
+            | _lobs_lower.str.contains("copy", na=False)
+        )
 
     ai_cols = [f"a{i}_ai" for i in POOLED_ASSIGNMENTS]
-    st["total_ai_flags"] = st[ai_cols].sum(axis=1)
+    st["total_ai_flags"] = st[ai_cols].sum(axis=1) if ai_cols else 0
 
-    trouble_cols = [f"a{i}_trouble" for i in POOLED_ASSIGNMENTS]
+    trouble_cols   = [f"a{i}_trouble"   for i in POOLED_ASSIGNMENTS]
     submitted_cols = [f"a{i}_submitted" for i in POOLED_ASSIGNMENTS]
-    st["total_troubles"] = st[trouble_cols].sum(axis=1)
-    st["total_submitted"] = st[submitted_cols].sum(axis=1)
+    st["total_troubles"]  = st[trouble_cols].sum(axis=1) if trouble_cols else 0
+    st["total_submitted"] = st[submitted_cols].sum(axis=1) if submitted_cols else 0
 
     grade_cols = [f"a{i}_grade" for i in POOLED_ASSIGNMENTS]
-    st["avg_submitted_only"] = st[grade_cols].mean(axis=1, skipna=True)
+    st["avg_submitted_only"] = (
+        st[grade_cols].mean(axis=1, skipna=True) if grade_cols else np.nan
+    )
+
+    follow_cols = [f"a{i}_follow" for i in POOLED_ASSIGNMENTS]
+    st["mean_follow"] = (
+        st[follow_cols].mean(axis=1, skipna=True) if follow_cols else np.nan
+    )
+
+    for lang in ("html", "css", "js"):
+        cols = [f"a{i}_follow_{lang}" for i in POOLED_ASSIGNMENTS]
+        st[f"mean_follow_{lang}"] = (
+            st[cols].mean(axis=1, skipna=True) if cols else np.nan
+        )
+
+    for key, base in (("intA", "answers"), ("intQ", "questions"), ("intH", "help")):
+        cols = [f"a{i}_{key}" for i in POOLED_ASSIGNMENTS]
+        st[f"total_{base}_lessons"] = st[cols].sum(axis=1, skipna=True) if cols else 0
+
+    for key, alias in (("cplus", "comment_extra"),
+                        ("cminus", "comment_missing"),
+                        ("cdiff", "comment_diff")):
+        cols = [f"a{i}_{key}" for i in POOLED_ASSIGNMENTS]
+        st[f"total_{alias}"] = st[cols].sum(axis=1, skipna=True) if cols else 0
 
     return st
 
@@ -253,6 +392,8 @@ def analyze_ai_vs_trouble(st):
 
 
 def analyze_early_ai_and_passing(st):
+    if "a1_ai" not in st.columns or "a2_ai" not in st.columns:
+        return
     subsection("Early AI usage (easy assignments) and course pass rate")
 
     ai_a2 = st["a2_ai"]
@@ -621,6 +762,167 @@ def analyze_assignment_difficulty(st):
         print(f"  {a['name']:<10} {ai_m:>8.2f} {len(ai_grades):>4} {nai_m:>10.2f} {len(noai_grades):>4} {diff:>+8.2f}")
 
 
+def analyze_per_language_follow(st):
+    section("LANGUAGE-SPECIFIC FOLLOW SCORES")
+
+    print("""
+  Each lesson tracks how closely the student followed the teacher
+  separately for HTML, CSS, and JS. This breakdown reveals which
+  language a student struggled with even when the overall follow
+  score looks fine.""")
+
+    subsection("Per-lesson, per-language follow vs assignment grade")
+    print(f"\n  {'Lesson':<12} {'Lang':<5} {'r':>7} {'ρ':>7} {'p(ρ)':>12} {'n':>5}")
+    print(f"  {'-'*12} {'-'*5} {'-'*7} {'-'*7} {'-'*12} {'-'*5}")
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        grade = st[f"a{a_num}_grade"]
+        for lang in ("html", "css", "js"):
+            col = f"a{a_num}_follow_{lang}"
+            if col not in st.columns:
+                continue
+            follow = st[col]
+            if follow.notna().sum() < 3:
+                continue
+            rp, _, _ = safe_corr(follow, grade)
+            rs, ps, ns = safe_corr(follow, grade, method="spearman")
+            print(f"  {a['name']:<12} {lang.upper():<5} {fmt_r(rp):>7} "
+                  f"{fmt_r(rs):>7} {fmt_p(ps):>12} {ns:>5}")
+
+    subsection("Mean follow per language (across all lessons) vs final grade")
+    print(f"\n  {'Lang':<6} {'mean':>7} {'r':>7} {'ρ':>7} {'p(ρ)':>12} {'n':>5}")
+    print(f"  {'-'*6} {'-'*7} {'-'*7} {'-'*7} {'-'*12} {'-'*5}")
+    for lang in ("html", "css", "js"):
+        mf = st.get(f"mean_follow_{lang}")
+        if mf is None or mf.notna().sum() < 3:
+            continue
+        rp, _, _ = safe_corr(mf, st["final_grade"])
+        rs, ps, ns = safe_corr(mf, st["final_grade"], method="spearman")
+        mean_s = f"{mf.mean():.1f}" if mf.notna().any() else "—"
+        print(f"  {lang.upper():<6} {mean_s:>7} {fmt_r(rp):>7} "
+              f"{fmt_r(rs):>7} {fmt_p(ps):>12} {ns:>5}")
+
+
+def analyze_lesson_interactions(st):
+    section("LESSON-LEVEL INTERACTIONS (A / Q / H)")
+
+    print("""
+  Per-lesson counts of A (answers given), Q (questions asked), and
+  H (help received). Sparse per student, but pooled across lessons
+  might reveal engagement effects on outcomes.""")
+
+    subsection("Mean interactions per lesson — passed vs failed students")
+    print(f"\n  {'Lesson':<12} {'Pass A':>8} {'Fail A':>8} {'Pass Q':>8} "
+          f"{'Fail Q':>8} {'Pass H':>8} {'Fail H':>8}")
+    print(f"  {'-'*12} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        passed = st["passed_course"]
+        cells = []
+        for k in ("intA", "intQ", "intH"):
+            col = f"a{a_num}_{k}"
+            if col not in st.columns:
+                cells.extend(["—", "—"])
+                continue
+            pa = st.loc[passed, col].dropna()
+            fa = st.loc[~passed, col].dropna()
+            cells.append(f"{pa.mean():.2f}" if len(pa) else "—")
+            cells.append(f"{fa.mean():.2f}" if len(fa) else "—")
+        print(f"  {a['name']:<12} {cells[0]:>8} {cells[1]:>8} {cells[2]:>8} "
+              f"{cells[3]:>8} {cells[4]:>8} {cells[5]:>8}")
+
+    subsection("Total lesson interactions vs final grade")
+    for key, label in (("answers", "Answers"),
+                       ("questions", "Questions"),
+                       ("help", "Help")):
+        tot = st.get(f"total_{key}_lessons")
+        if tot is None or (isinstance(tot, pd.Series) and tot.sum() == 0):
+            continue
+        rp, _, _ = safe_corr(tot, st["final_grade"])
+        rs, ps, ns = safe_corr(tot, st["final_grade"], method="spearman")
+        print(f"  {label:<10} → final grade   r = {fmt_r(rp)}  "
+              f"ρ = {fmt_r(rs)}  p = {fmt_p(ps)}  n = {ns}")
+
+
+def analyze_comment_diff(st):
+    section("COMMENT WRITING (C+ / C- / C Diff)")
+
+    print("""
+  C+     = extra comment-tokens beyond the teacher's
+  C-     = comment-tokens the student is missing vs teacher
+  C Diff = C+ - C- (positive: wrote more comments than teacher;
+                   negative: wrote fewer)""")
+
+    subsection("Per-lesson — Spearman ρ vs paired assignment grade")
+    print(f"\n  {'Lesson':<12} "
+          f"{'mean C+':>8} {'ρ(C+)':>8} {'p':>10}  "
+          f"{'mean C-':>8} {'ρ(C-)':>8} {'p':>10}  "
+          f"{'mean Δ':>8} {'ρ(Δ)':>8} {'p':>10}  {'n':>4}")
+    print(f"  {'-'*12} "
+          f"{'-'*8} {'-'*8} {'-'*10}  "
+          f"{'-'*8} {'-'*8} {'-'*10}  "
+          f"{'-'*8} {'-'*8} {'-'*10}  {'-'*4}")
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        col = f"a{a_num}_cdiff"
+        if col not in st.columns:
+            continue
+        cdiff = st[col]
+        if cdiff.notna().sum() < 3:
+            continue
+        grade = st[f"a{a_num}_grade"]
+        cp = st.get(f"a{a_num}_cplus")
+        cm = st.get(f"a{a_num}_cminus")
+
+        rs_d, ps_d, ns = safe_corr(cdiff, grade, method="spearman")
+        rs_p, ps_p, _ = (
+            safe_corr(cp, grade, method="spearman") if cp is not None
+            else (float("nan"), float("nan"), 0)
+        )
+        rs_m, ps_m, _ = (
+            safe_corr(cm, grade, method="spearman") if cm is not None
+            else (float("nan"), float("nan"), 0)
+        )
+
+        cp_s = f"{cp.mean():.1f}" if cp is not None and cp.notna().any() else "—"
+        cm_s = f"{cm.mean():.1f}" if cm is not None and cm.notna().any() else "—"
+        cd_s = f"{cdiff.mean():+.1f}"
+
+        print(f"  {a['name']:<12} "
+              f"{cp_s:>8} {fmt_r(rs_p):>8} {fmt_p(ps_p):>10}  "
+              f"{cm_s:>8} {fmt_r(rs_m):>8} {fmt_p(ps_m):>10}  "
+              f"{cd_s:>8} {fmt_r(rs_d):>8} {fmt_p(ps_d):>10}  {ns:>4}")
+
+    subsection("Totals across lessons vs final grade & assignment average")
+    print(f"\n  {'Metric':<24} "
+          f"{'mean':>8} "
+          f"{'ρ→Final':>10} {'p':>10}  "
+          f"{'ρ→Avg':>10} {'p':>10}  {'n':>4}")
+    print(f"  {'-'*24} {'-'*8} "
+          f"{'-'*10} {'-'*10}  {'-'*10} {'-'*10}  {'-'*4}")
+
+    for label, key in (
+        ("Total C+ (extra)",        "total_comment_extra"),
+        ("Total C- (missing)",      "total_comment_missing"),
+        ("Total C Diff (surplus)",  "total_comment_diff"),
+    ):
+        if key not in st.columns:
+            continue
+        tot = st[key]
+        if tot.notna().sum() < 3:
+            continue
+
+        def _corr_against(target_col):
+            if target_col not in st.columns:
+                return float("nan"), float("nan"), 0
+            return safe_corr(tot, st[target_col], method="spearman")
+
+        rs_f, ps_f, n_f = _corr_against("final_grade")
+        rs_a, ps_a, _   = _corr_against("avg_assignments")
+
+        mean_s = f"{tot.mean():+.1f}" if "Diff" in label else f"{tot.mean():.1f}"
+        print(f"  {label:<24} {mean_s:>8} "
+              f"{fmt_r(rs_f):>10} {fmt_p(ps_f):>10}  "
+              f"{fmt_r(rs_a):>10} {fmt_p(ps_a):>10}  {n_f:>4}")
+
+
 def analyze_correlations_summary(st):
     section("9. CORRELATION SUMMARY TABLE")
 
@@ -681,18 +983,25 @@ def save_stats_json(st, grades_path):
         n_trouble  = int(st[f"a{a_num}_trouble"].sum()) if f"a{a_num}_trouble" in st.columns else 0
         n_ai       = int(st[f"a{a_num}_ai"].sum())      if f"a{a_num}_ai"      in st.columns else 0
 
+        n_lesson_trouble = (
+            int(st[f"a{a_num}_lesson_trouble"].sum())
+            if f"a{a_num}_lesson_trouble" in st.columns else 0
+        )
         entry = {
-            "name":        a["name"],
-            "difficulty":  a.get("difficulty", ""),
-            "n_submitted": n_sub,
-            "n_total":     n_total,
-            "avg_grade":   sf(grades.mean()) if len(grades) > 0 else None,
-            "pass_rate":   sf(n_pass / n_total) if n_total > 0 else None,
-            "trouble_rate":sf(n_trouble / n_sub) if n_sub > 0 else None,
-            "ai_rate":     sf(n_ai / n_sub) if n_sub > 0 else None,
-            "follow_avg":  None,
-            "odds_ratio":  None,
-            "fisher_p":    None,
+            "name":            a["name"],
+            "difficulty":      a.get("difficulty", ""),
+            "n_submitted":     n_sub,
+            "n_total":         n_total,
+            "n_trouble":       n_trouble,
+            "n_lesson_trouble":n_lesson_trouble,
+            "n_ai":            n_ai,
+            "avg_grade":       sf(grades.mean()) if len(grades) > 0 else None,
+            "pass_rate":       sf(n_pass / n_total) if n_total > 0 else None,
+            "trouble_rate":    sf(n_trouble / n_sub) if n_sub > 0 else None,
+            "ai_rate":         sf(n_ai / n_sub) if n_sub > 0 else None,
+            "follow_avg":      None,
+            "odds_ratio":      None,
+            "fisher_p":        None,
         }
 
         if a["follow"] is not None:
@@ -779,6 +1088,120 @@ def save_stats_json(st, grades_path):
             "rho": sf(r_s), "p_rho": sf(p_s),
         })
 
+    result["per_language_follow"] = []
+    for lang in ("html", "css", "js"):
+        mf = st.get(f"mean_follow_{lang}")
+        if mf is None or mf.notna().sum() < 3:
+            continue
+        r_p, p_p, _ = safe_corr(mf, st["final_grade"])
+        r_s, p_s, n_s = safe_corr(mf, st["final_grade"], method="spearman")
+        result["per_language_follow"].append({
+            "lang": lang.upper(),
+            "mean": sf(mf.mean()),
+            "n": n_s,
+            "r": sf(r_p), "p_r": sf(p_p),
+            "rho": sf(r_s), "p_rho": sf(p_s),
+        })
+
+    result["per_language_follow_per_lesson"] = []
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        grade = st[f"a{a_num}_grade"]
+        for lang in ("html", "css", "js"):
+            col = f"a{a_num}_follow_{lang}"
+            if col not in st.columns:
+                continue
+            follow = st[col]
+            if follow.notna().sum() < 3:
+                continue
+            r_p, _, _ = safe_corr(follow, grade)
+            r_s, p_s, n_s = safe_corr(follow, grade, method="spearman")
+            result["per_language_follow_per_lesson"].append({
+                "lesson": a["name"], "lang": lang.upper(), "n": n_s,
+                "r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s),
+                "mean": sf(follow.mean()),
+            })
+
+    result["lesson_interactions"] = []
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        entry = {"lesson": a["name"]}
+        for key, label in (("intA", "A"), ("intQ", "Q"), ("intH", "H")):
+            col = f"a{a_num}_{key}"
+            if col not in st.columns:
+                continue
+            s = st[col].dropna()
+            entry[f"{label}_sum"] = int(s.sum()) if len(s) else 0
+            entry[f"{label}_mean"] = sf(s.mean()) if len(s) else None
+        result["lesson_interactions"].append(entry)
+
+    result["comment_diff_per_lesson"] = []
+    for a_num, a in POOLED_ASSIGNMENTS.items():
+        col = f"a{a_num}_cdiff"
+        if col not in st.columns:
+            continue
+        cdiff = st[col]
+        if cdiff.notna().sum() < 3:
+            continue
+        grade = st[f"a{a_num}_grade"]
+        cp = st.get(f"a{a_num}_cplus")
+        cm = st.get(f"a{a_num}_cminus")
+
+        r_p, _, _ = safe_corr(cdiff, grade)
+        r_s, p_s, n_s = safe_corr(cdiff, grade, method="spearman")
+        r_p_p, _, _ = (safe_corr(cp, grade) if cp is not None
+                       else (float("nan"), float("nan"), 0))
+        r_s_p, p_s_p, _ = (safe_corr(cp, grade, method="spearman")
+                            if cp is not None
+                            else (float("nan"), float("nan"), 0))
+        r_p_m, _, _ = (safe_corr(cm, grade) if cm is not None
+                       else (float("nan"), float("nan"), 0))
+        r_s_m, p_s_m, _ = (safe_corr(cm, grade, method="spearman")
+                            if cm is not None
+                            else (float("nan"), float("nan"), 0))
+
+        result["comment_diff_per_lesson"].append({
+            "lesson":       a["name"],
+            "n":            n_s,
+            "r":            sf(r_p),
+            "rho":          sf(r_s),
+            "p_rho":        sf(p_s),
+            "r_cplus":      sf(r_p_p),
+            "rho_cplus":    sf(r_s_p),
+            "p_cplus":      sf(p_s_p),
+            "r_cminus":     sf(r_p_m),
+            "rho_cminus":   sf(r_s_m),
+            "p_cminus":     sf(p_s_m),
+            "mean_cdiff":   sf(cdiff.mean()),
+            "mean_cplus":   sf(cp.mean()) if cp is not None and cp.notna().any() else None,
+            "mean_cminus":  sf(cm.mean()) if cm is not None and cm.notna().any() else None,
+        })
+
+    result["comment_totals"] = []
+    for label, key in (
+        ("Total C+ (extra)",       "total_comment_extra"),
+        ("Total C- (missing)",     "total_comment_missing"),
+        ("Total C Diff (surplus)", "total_comment_diff"),
+    ):
+        if key not in st.columns:
+            continue
+        tot = st[key]
+        if tot.notna().sum() < 3:
+            continue
+        entry = {"label": label, "mean": sf(tot.mean())}
+        for target_label, target_col in (
+            ("final_grade",     "final_grade"),
+            ("avg_assignments", "avg_assignments"),
+        ):
+            if target_col not in st.columns:
+                continue
+            r_p, p_p, _ = safe_corr(tot, st[target_col])
+            r_s, p_s, n_s = safe_corr(tot, st[target_col],
+                                       method="spearman")
+            entry[f"{target_label}_n"]     = n_s
+            entry[f"{target_label}_r"]     = sf(r_p)
+            entry[f"{target_label}_rho"]   = sf(r_s)
+            entry[f"{target_label}_p_rho"] = sf(p_s)
+        result["comment_totals"].append(entry)
+
     pre  = st["pre_typing"].dropna()
     post = st["post_typing"].dropna()
     has_both = st["pre_typing"].notna() & st["post_typing"].notna()
@@ -818,14 +1241,16 @@ def save_stats_json(st, grades_path):
     }
 
     result["early_ai"] = []
-    early_checks = [
-        ("AI in Wall (A1)",         st["a1_ai"], st["a1_submitted"]),
-        ("AI in Chess (A2)",        st["a2_ai"], st["a2_submitted"]),
-        ("AI in Wall OR Chess",     st["a1_ai"] | st["a2_ai"],
-                                    st["a1_submitted"] | st["a2_submitted"]),
-        ("AI in Wall AND Chess",    st["a1_ai"] & st["a2_ai"],
-                                    st["a1_submitted"] & st["a2_submitted"]),
-    ]
+    early_checks = []
+    if "a1_ai" in st.columns and "a2_ai" in st.columns:
+        early_checks = [
+            ("AI in Wall (A1)",      st["a1_ai"], st["a1_submitted"]),
+            ("AI in Chess (A2)",     st["a2_ai"], st["a2_submitted"]),
+            ("AI in Wall OR Chess",  st["a1_ai"] | st["a2_ai"],
+                                     st["a1_submitted"] | st["a2_submitted"]),
+            ("AI in Wall AND Chess", st["a1_ai"] & st["a2_ai"],
+                                     st["a1_submitted"] & st["a2_submitted"]),
+        ]
     for label, ai_flag, sub_flag in early_checks:
         with_ai    = st[ai_flag & sub_flag]
         without_ai = st[~ai_flag & sub_flag]
@@ -845,13 +1270,24 @@ def save_stats_json(st, grades_path):
         result["early_ai"].append(entry)
 
     result["engagement"] = []
-    for metric in ["answers", "questions", "help"]:
-        if metric not in st.columns: continue
-        has = st[metric].notna() & (st[metric] > 0)
+    _engagement_sources = (
+        ("Answers",   "total_answers_lessons",   "answers"),
+        ("Questions", "total_questions_lessons", "questions"),
+        ("Help",      "total_help_lessons",      "help"),
+    )
+    for label, agg_col, legacy_col in _engagement_sources:
+        if agg_col in st.columns and (st[agg_col].fillna(0) > 0).any():
+            col = agg_col
+        elif legacy_col in st.columns:
+            col = legacy_col
+        else:
+            continue
+        s = st[col]
+        has = s.notna() & (s > 0)
         n_eng = int(has.sum())
         passed = int(st.loc[has, "passed_course"].sum()) if n_eng > 0 else 0
         result["engagement"].append({
-            "label":   metric.capitalize(),
+            "label":   label,
             "n":       n_eng,
             "n_passed":passed,
             "pass_rate": sf(passed / n_eng) if n_eng > 0 else None,
@@ -967,15 +1403,41 @@ def plot_follow_vs_grade(st):
     plt.show()
 
 
-def main():
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
+def _pick_default_overview(folder):
+    candidates = [
+        os.path.join(folder, "OverviewPlus.xlsx"),
+        os.path.join(folder, "Overview.xlsx"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
 
-    path = filedialog.askopenfilename(
-        title="Select the Grades .xls or Overview .xlsx file",
-        filetypes=[("Excel files", "*.xls *.xlsx"), ("All files", "*.*")],
-    )
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if not path:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+
+        session_path = os.path.join(os.path.dirname(__file__),
+                                     ".grades_session.json")
+        last_folder = None
+        try:
+            with open(session_path, encoding="utf-8") as f:
+                last_folder = json.load(f).get("folder")
+        except (OSError, ValueError):
+            pass
+        if last_folder:
+            path = _pick_default_overview(last_folder)
+
+        if not path:
+            path = filedialog.askopenfilename(
+                title="Select OverviewPlus.xlsx or Overview.xlsx",
+                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            )
 
     if not path:
         print("No file selected. Exiting.")
@@ -983,6 +1445,14 @@ def main():
 
     print(f"Loading: {path}\n")
     st = load_data(path)
+    if st.empty or not ASSIGNMENTS:
+        print("error: could not detect assignment columns "
+              "(expected '<Name> Grade' headers).", file=sys.stderr)
+        sys.exit(1)
+    detected = ", ".join(a["name"] for a in ASSIGNMENTS.values())
+    print(f"Detected assignments: {detected}")
+    print(f"Pooled (with follow): "
+          f"{', '.join(a['name'] for a in POOLED_ASSIGNMENTS.values())}")
     st = enrich(st)
 
     print(f"Students loaded: {len(st)}")
@@ -998,6 +1468,9 @@ def main():
     analyze_engagement(st)
     analyze_ai_persistence(st)
     analyze_assignment_difficulty(st)
+    analyze_per_language_follow(st)
+    analyze_lesson_interactions(st)
+    analyze_comment_diff(st)
     analyze_correlations_summary(st)
     save_stats_json(st, path)
 

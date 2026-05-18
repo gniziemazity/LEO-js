@@ -620,30 +620,40 @@ function bgForHit(hit) {
 	}
 }
 
-function _filterAnchorMoveParts(parts, partColors) {
+function _filterAnchorMoveParts(parts, partColors, evs) {
 	const out = [];
+	const evsOut = evs ? [] : null;
 	const colorsOut = partColors ? new Map() : null;
 	for (let i = 0; i < parts.length; i++) {
 		const p = parts[i];
 		if (p.type === "anchor" || p.type === "move") continue;
 		const newIdx = out.length;
 		out.push(p);
+		if (evsOut) evsOut.push(evs[i]);
 		if (partColors && partColors.has(i)) {
 			colorsOut.set(newIdx, partColors.get(i));
 		}
 	}
-	return { parts: out, partColors: colorsOut };
+	return { parts: out, partColors: colorsOut, evs: evsOut };
 }
 
-function _truncatePartsAtLines(parts, maxLines) {
+function _truncatePartsAtLines(parts, maxLines, evs) {
 	const isNL = (ch) => ch === "↩" || ch === "\n";
 	let n = 0;
 	const out = [];
-	for (const p of parts) {
+	const evsOut = evs ? [] : null;
+	const push = (p, srcIdx) => {
+		out.push(p);
+		if (evsOut) evsOut.push(evs[srcIdx]);
+	};
+	for (let i = 0; i < parts.length; i++) {
+		const p = parts[i];
 		if (p.type === "char" && isNL(p.t)) {
-			if (n >= maxLines) return { parts: out, truncated: true };
+			if (n >= maxLines) {
+				return { parts: out, truncated: true, evs: evsOut };
+			}
 			n++;
-			out.push(p);
+			push(p, i);
 		} else if (p.type === "code_insert") {
 			const t = p.t || "";
 			let newlinesInInsert = 0;
@@ -652,41 +662,163 @@ function _truncatePartsAtLines(parts, maxLines) {
 				const remaining = maxLines - n;
 				let seen = 0;
 				let cutAt = t.length;
-				for (let i = 0; i < t.length; i++) {
-					if (isNL(t[i])) {
+				for (let j = 0; j < t.length; j++) {
+					if (isNL(t[j])) {
 						seen++;
 						if (seen > remaining) {
-							cutAt = i;
+							cutAt = j;
 							break;
 						}
 					}
 				}
-				out.push({ ...p, t: t.slice(0, cutAt) });
-				return { parts: out, truncated: true };
+				push({ ...p, t: t.slice(0, cutAt) }, i);
+				return { parts: out, truncated: true, evs: evsOut };
 			}
 			n += newlinesInInsert;
-			out.push(p);
+			push(p, i);
 		} else {
-			out.push(p);
+			push(p, i);
 		}
 	}
-	return { parts: out, truncated: false };
+	return { parts: out, truncated: false, evs: evsOut };
 }
 
-function textPartsToHtml(parts, partColors) {
+function _posInRanges(pos, ranges) {
+	if (!ranges) return false;
+	for (const r of ranges) {
+		const lo = r.length !== undefined ? r[0] : r.lo;
+		const hi = r.length !== undefined ? r[1] : r.hi;
+		if (pos >= lo && pos < hi) return true;
+	}
+	return false;
+}
+
+function _isInsertableChar(ch) {
+	if (ch == null) return false;
+	if (DELETE_CHARS.has(ch)) return false;
+	if (CURSOR_LEFT_CHARS.has(ch)) return false;
+	if (CURSOR_RIGHT_CHARS.has(ch)) return false;
+	if (CURSOR_UP_CHARS.has(ch)) return false;
+	if (CURSOR_DOWN_CHARS.has(ch)) return false;
+	if (CURSOR_HOME_CHARS.has(ch)) return false;
+	if (CURSOR_END_CHARS.has(ch)) return false;
+	if (typeof IGNORED_CHARS !== "undefined" && IGNORED_CHARS.has(ch))
+		return false;
+	if (typeof PAUSE_CHAR !== "undefined" && ch === PAUSE_CHAR) return false;
+	if (
+		typeof SHIFT_CURSOR_MOVES !== "undefined" &&
+		Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)
+	)
+		return false;
+	return true;
+}
+
+function _computeBurstDecorations(parts, evs, replay) {
+	const ghostChars = new Set();
+	const ghostInserts = new Map();
+	const commentChars = new Set();
+	const commentInserts = new Map();
+	if (!replay || !evs) {
+		return { ghostChars, ghostInserts, commentChars, commentInserts };
+	}
+
+	const claimed = new Map();
+	const claim = (file, pos) => {
+		let s = claimed.get(file);
+		if (!s) {
+			s = new Set();
+			claimed.set(file, s);
+		}
+		if (s.has(pos)) return false;
+		s.add(pos);
+		return true;
+	};
+
+	for (let i = 0; i < parts.length; i++) {
+		const p = parts[i];
+		const ev = evs[i];
+		if (!ev || ev.timestamp == null) continue;
+		const hitsAll = replay.tsToPos.get(ev.timestamp) || [];
+
+		if (p.type === "char") {
+			let didClaim = false;
+			for (const { file, pos } of hitsAll) {
+				if (!claim(file, pos)) continue;
+				didClaim = true;
+				const ranges = replay.commentRangesByFile.get(file);
+				if (_posInRanges(pos, ranges)) commentChars.add(i);
+				break;
+			}
+			if (!didClaim && _isInsertableChar(p.t)) ghostChars.add(i);
+		} else if (p.type === "code_insert") {
+			const text = _displayCodeInsert(p.t || "");
+			let claimedN = 0;
+			for (const { file, pos } of hitsAll) {
+				if (claimedN >= text.length) break;
+				if (!claim(file, pos)) continue;
+				const ranges = replay.commentRangesByFile.get(file);
+				if (_posInRanges(pos, ranges)) {
+					let m = commentInserts.get(i);
+					if (!m) {
+						m = new Set();
+						commentInserts.set(i, m);
+					}
+					m.add(claimedN);
+				}
+				claimedN++;
+			}
+			if (claimedN < text.length) {
+				let m = ghostInserts.get(i);
+				if (!m) {
+					m = new Set();
+					ghostInserts.set(i, m);
+				}
+				for (let k = claimedN; k < text.length; k++) m.add(k);
+			}
+		}
+	}
+
+	return { ghostChars, ghostInserts, commentChars, commentInserts };
+}
+
+function _decoForChar(deco, partIdx) {
+	if (deco.ghostChars.has(partIdx)) return "ghost";
+	if (deco.commentChars.has(partIdx)) return "comment";
+	return null;
+}
+
+function _decoForInsertOffset(deco, partIdx, offset) {
+	const g = deco.ghostInserts.get(partIdx);
+	if (g && g.has(offset)) return "ghost";
+	const c = deco.commentInserts.get(partIdx);
+	if (c && c.has(offset)) return "comment";
+	return null;
+}
+
+function _decoSpanOpen(decoKind) {
+	if (decoKind === "ghost") return '<span class="tt-mark-ghost">';
+	if (decoKind === "comment") return '<span class="tt-mark-comment">';
+	return null;
+}
+
+function textPartsToHtml(parts, partColors, evs, replay) {
 	const colors = partColors || null;
+	const deco = _computeBurstDecorations(parts, evs, replay);
 	let html = "";
 	let pendingBuf = "";
 	let pendingColor = null;
+	let pendingDeco = null;
 	const flushPending = () => {
 		if (!pendingBuf) return;
 		if (pendingColor) {
 			html += `<span style="color:${pendingColor};font-weight:bold;text-decoration:underline">${pendingBuf}</span>`;
 		} else {
-			html += pendingBuf;
+			const open = _decoSpanOpen(pendingDeco);
+			html += open ? `${open}${pendingBuf}</span>` : pendingBuf;
 		}
 		pendingBuf = "";
 		pendingColor = null;
+		pendingDeco = null;
 	};
 	for (let i = 0; i < parts.length; i++) {
 		const p = parts[i];
@@ -700,30 +832,36 @@ function textPartsToHtml(parts, partColors) {
 			flushPending();
 			const display = _displayCodeInsert(p.t);
 			const offsetColors = colors ? colors.get(i) : null;
-			if (offsetColors instanceof Map && offsetColors.size > 0) {
-				let curColor = null;
-				let curBuf = "";
-				const flushSeg = () => {
-					if (!curBuf) return;
-					if (curColor) {
-						html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline">${escHtml(curBuf)}</span>`;
+			const offsetColorsMap =
+				offsetColors instanceof Map ? offsetColors : null;
+			let curColor = null;
+			let curDeco = null;
+			let curBuf = "";
+			const flushSeg = () => {
+				if (!curBuf) return;
+				if (curColor) {
+					html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline">${escHtml(curBuf)}</span>`;
+				} else {
+					const open = _decoSpanOpen(curDeco);
+					if (open) {
+						html += `${open}${escHtml(curBuf)}</span>`;
 					} else {
 						html += `<span class="tt-muted">${escHtml(curBuf)}</span>`;
 					}
-					curBuf = "";
-				};
-				for (let k = 0; k < display.length; k++) {
-					const c = offsetColors.get(k) || null;
-					if (c !== curColor) {
-						flushSeg();
-						curColor = c;
-					}
-					curBuf += display[k];
 				}
-				flushSeg();
-			} else {
-				html += `<span class="tt-muted">${escHtml(display)}</span>`;
+				curBuf = "";
+			};
+			for (let k = 0; k < display.length; k++) {
+				const c = offsetColorsMap ? offsetColorsMap.get(k) || null : null;
+				const d = c ? null : _decoForInsertOffset(deco, i, k);
+				if (c !== curColor || d !== curDeco) {
+					flushSeg();
+					curColor = c;
+					curDeco = d;
+				}
+				curBuf += display[k];
 			}
+			flushSeg();
 		} else {
 			{
 				const ch = p.t;
@@ -743,10 +881,12 @@ function textPartsToHtml(parts, partColors) {
 					html += `<span class="${cls}">${escHtml(ch)}</span>`;
 				} else {
 					const color = colors ? colors.get(i) || null : null;
+					const d = color ? null : _decoForChar(deco, i);
 					const rendered = escHtml(ch === "↩" ? "\n" : ch);
-					if (color !== pendingColor) {
+					if (color !== pendingColor || d !== pendingDeco) {
 						flushPending();
 						pendingColor = color;
+						pendingDeco = d;
 					}
 					pendingBuf += rendered;
 				}
@@ -761,10 +901,18 @@ function _buildPartColorsForMismatches(b, mismatches) {
 	const parts = b.textParts || [];
 	const evs = b.evs || [];
 	const codeChars = [];
+	let needsBoundary = false;
 	for (let pi = 0; pi < parts.length; pi++) {
 		const p = parts[pi];
+		if (p.type === "move") {
+			needsBoundary = true;
+			continue;
+		}
 		if (p.type !== "char" && p.type !== "code_insert") continue;
-		if (p.type === "char" && DELETE_CHARS.has(p.t)) continue;
+		if (p.type === "char" && DELETE_CHARS.has(p.t)) {
+			needsBoundary = true;
+			continue;
+		}
 		let text;
 		if (p.type === "char") {
 			text = p.t === "↩" ? "\n" : p.t || "";
@@ -772,6 +920,10 @@ function _buildPartColorsForMismatches(b, mismatches) {
 			text = _displayCodeInsert(p.t);
 		}
 		if (!text) continue;
+		if (needsBoundary && codeChars.length > 0) {
+			codeChars.push({ partIdx: -1, partOffset: -1, ch: " ", ts: 0 });
+		}
+		needsBoundary = false;
 		const baseTs = (evs[pi]?.timestamp ?? 0) / 1000;
 		const perCharBump = p.type === "code_insert";
 		for (let k = 0; k < text.length; k++) {
@@ -798,10 +950,14 @@ function _buildPartColorsForMismatches(b, mismatches) {
 		});
 	}
 	const candidates = [];
+	const candKeys = new Set();
 	for (const mm of mismatches || []) {
 		if (mm.kind !== "missing") continue;
 		const tok = mm.token || mm.label || "";
 		if (!tok || mm.ts == null) continue;
+		const key = `${tok} ${mm.ts}`;
+		if (candKeys.has(key)) continue;
+		candKeys.add(key);
 		candidates.push({
 			token: tok,
 			ts: mm.ts,
@@ -814,11 +970,11 @@ function _buildPartColorsForMismatches(b, mismatches) {
 		for (let ci = 0; ci < candidates.length; ci++) {
 			if (burstTokens[bi].token !== candidates[ci].token) continue;
 			const diff = burstTokens[bi].ts - candidates[ci].ts;
-			if (diff < -0.001 || diff >= 1) continue;
+			if (diff < -1 || diff > 1) continue;
 			pairs.push({ bi, ci, diff });
 		}
 	}
-	pairs.sort((a, b) => a.diff - b.diff);
+	pairs.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
 	const partColors = new Map();
 	const fallbackColor = _cssVar("--clr-mark-missing");
 	for (const pair of pairs) {
@@ -929,7 +1085,11 @@ function formatHit(hit, simple = false) {
 		case "burst": {
 			const b = hit.b;
 			if (b.textParts)
-				lines.push(_trimBlankLines(textPartsToHtml(b.textParts)));
+				lines.push(
+					_trimBlankLines(
+						textPartsToHtml(b.textParts, null, b.evs, _p?.replay),
+					),
+				);
 			break;
 		}
 		case "bar-block": {
@@ -944,14 +1104,18 @@ function formatHit(hit, simple = false) {
 					burst,
 					blockMissings,
 				);
-				const { parts: filtered, partColors: filteredColors } =
-					_filterAnchorMoveParts(burst.textParts, partColors);
-				const { parts: trunc, truncated } = _truncatePartsAtLines(
-					filtered,
-					MAX_HEADER_LINES,
-				);
+				const {
+					parts: filtered,
+					partColors: filteredColors,
+					evs: filteredEvs,
+				} = _filterAnchorMoveParts(burst.textParts, partColors, burst.evs);
+				const {
+					parts: trunc,
+					truncated,
+					evs: truncEvs,
+				} = _truncatePartsAtLines(filtered, MAX_HEADER_LINES, filteredEvs);
 				headerHtml = _trimBlankLines(
-					textPartsToHtml(trunc, filteredColors),
+					textPartsToHtml(trunc, filteredColors, truncEvs, _p?.replay),
 				);
 				if (truncated) headerHtml += "\n…";
 			} else if (kp) {
@@ -1130,14 +1294,23 @@ function formatHit(hit, simple = false) {
 							b,
 							allMissings,
 						);
-						const { parts: filtered, partColors: filteredColors } =
-							_filterAnchorMoveParts(b.textParts, partColors);
-						const { parts: trunc, truncated } = _truncatePartsAtLines(
-							filtered,
-							10,
-						);
+						const {
+							parts: filtered,
+							partColors: filteredColors,
+							evs: filteredEvs,
+						} = _filterAnchorMoveParts(b.textParts, partColors, b.evs);
+						const {
+							parts: trunc,
+							truncated,
+							evs: truncEvs,
+						} = _truncatePartsAtLines(filtered, 10, filteredEvs);
 						let h = _trimBlankLines(
-							textPartsToHtml(trunc, filteredColors),
+							textPartsToHtml(
+								trunc,
+								filteredColors,
+								truncEvs,
+								_p?.replay,
+							),
 						);
 						if (truncated) h += "\n…";
 						return h;

@@ -432,7 +432,8 @@ function _truthApplyToStudent() {
 				const after = text[op.end];
 				if (before && after && _alnum.test(before) && _alnum.test(after)) {
 					const deleted = text.slice(op.start, op.end);
-					if (_nonAlnum.test(deleted)) body = " ";
+					const isAllWhitespace = /^\s+$/.test(deleted);
+					if (!isAllWhitespace && _nonAlnum.test(deleted)) body = " ";
 				}
 			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);

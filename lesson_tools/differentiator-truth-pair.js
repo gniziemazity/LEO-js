@@ -72,7 +72,7 @@ function _truthGhostTokensInFile(file) {
 			: []);
 	if (!blobs || !blobs.length) return [];
 	const out = [];
-	const re = /[a-zA-Z0-9]+|[^\s]/g;
+	const re = /[a-zA-Z0-9]+|[^\s]/gu;
 	for (const blob of blobs) {
 		const text = blob.text || "";
 		re.lastIndex = 0;

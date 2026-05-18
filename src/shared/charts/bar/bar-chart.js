@@ -61,29 +61,58 @@ class BarChart {
 		const yMin = this._options.yMin ?? 0;
 		let yMax = this._options.yMax;
 		if (yMax == null) {
-			if (stacked) {
-				yMax =
-					Math.max(
-						...this._labels.map((_, i) =>
-							this._datasets.reduce((s, ds) => s + (ds.data[i] ?? 0), 0),
-						),
-					) * 1.1 || 1;
-			} else {
-				yMax =
-					Math.max(...this._datasets.flatMap((ds) => ds.data)) * 1.15 || 1;
+			const sumsByStack = new Map();
+			for (let si = 0; si < this._datasets.length; si++) {
+				const ds = this._datasets[si];
+				const key = stacked
+					? "__global"
+					: ds.stack != null
+						? `__s_${ds.stack}`
+						: `__solo_${si}`;
+				let sums = sumsByStack.get(key);
+				if (!sums) {
+					sums = new Array(this._labels.length).fill(0);
+					sumsByStack.set(key, sums);
+				}
+				for (let i = 0; i < this._labels.length; i++)
+					sums[i] += ds.data[i] ?? 0;
 			}
+			let maxStackSum = 0;
+			for (const sums of sumsByStack.values())
+				for (const v of sums) if (v > maxStackSum) maxStackSum = v;
+			yMax = maxStackSum * (stacked ? 1.1 : 1.15) || 1;
 		}
 
 		const nGroups = this._labels.length;
 		const nSets = this._datasets.length;
 		const groupW = plotW / nGroups;
-		const barW = stacked ? groupW * 0.6 : (groupW * 0.6) / nSets;
+
+		const stackKeys = [];
+		const setSlot = new Array(nSets);
+		for (let si = 0; si < nSets; si++) {
+			let key;
+			if (stacked) {
+				key = "__global";
+			} else if (this._datasets[si].stack != null) {
+				key = `__s_${this._datasets[si].stack}`;
+			} else {
+				key = `__solo_${si}`;
+			}
+			let idx = stackKeys.indexOf(key);
+			if (idx < 0) {
+				idx = stackKeys.length;
+				stackKeys.push(key);
+			}
+			setSlot[si] = idx;
+		}
+		const nStacks = stackKeys.length;
+		const barW = (groupW * 0.6) / nStacks;
 
 		const toY = (v) => top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
-		const toX = (gi, si) => {
+		const toX = (gi, slot) => {
 			const gx = left + gi * groupW + groupW / 2;
-			if (stacked) return gx - barW / 2;
-			const offset = (si - (nSets - 1) / 2) * barW;
+			if (nStacks === 1) return gx - barW / 2;
+			const offset = (slot - (nStacks - 1) / 2) * barW;
 			return gx + offset - barW / 2;
 		};
 
@@ -103,22 +132,48 @@ class BarChart {
 			ctx.fillText(v % 1 === 0 ? v : v.toFixed(1), left - 3, py);
 		}
 
-		const stackTops = new Array(nGroups).fill(yMin);
+		const stackTops = [];
+		for (let s = 0; s < nStacks; s++)
+			stackTops.push(new Array(nGroups).fill(yMin));
 
 		for (let si = 0; si < nSets; si++) {
 			const ds = this._datasets[si];
-			ctx.fillStyle = ds.backgroundColor ?? "rgba(100,100,100,0.4)";
-			ctx.strokeStyle = ds.borderColor ?? "#999";
+			const slot = setSlot[si];
+			const bg = ds.backgroundColor ?? "rgba(100,100,100,0.4)";
+			const bd = ds.borderColor ?? "#999";
+			const bgPerBar = Array.isArray(bg);
+			const bdPerBar = Array.isArray(bd);
+			if (!bgPerBar) ctx.fillStyle = bg;
+			if (!bdPerBar) ctx.strokeStyle = bd;
 			ctx.lineWidth = 1;
+			const striped = ds.pattern === "stripes";
 			for (let gi = 0; gi < nGroups; gi++) {
 				const val = ds.data[gi] ?? 0;
-				const base = stacked ? stackTops[gi] : yMin;
-				const bx = toX(gi, si);
+				const base = stackTops[slot][gi];
+				const bx = toX(gi, slot);
 				const by = toY(base + val);
 				const bh = toY(base) - by;
 				if (bh > 0) {
-					ctx.fillRect(bx, by, barW, bh);
-					ctx.strokeRect(bx, by, barW, bh);
+					const fillColor = bgPerBar
+						? (bg[gi] ?? "rgba(100,100,100,0.4)")
+						: bg;
+					const strokeColor = bdPerBar ? (bd[gi] ?? "#999") : bd;
+					if (striped) {
+						_drawStripedBar(
+							ctx,
+							bx,
+							by,
+							barW,
+							bh,
+							fillColor,
+							strokeColor,
+						);
+					} else {
+						if (bgPerBar) ctx.fillStyle = fillColor;
+						if (bdPerBar) ctx.strokeStyle = strokeColor;
+						ctx.fillRect(bx, by, barW, bh);
+						ctx.strokeRect(bx, by, barW, bh);
+					}
 					this._hitAreas.push({
 						x: bx,
 						y: by,
@@ -129,7 +184,7 @@ class BarChart {
 						val,
 					});
 				}
-				if (stacked) stackTops[gi] += val;
+				stackTops[slot][gi] += val;
 			}
 		}
 
@@ -201,4 +256,29 @@ class BarChart {
 		ctx.textBaseline = "top";
 		lines.forEach((l, i) => ctx.fillText(l, tx + pad, ty + pad + i * lh));
 	}
+}
+
+function _drawStripedBar(ctx, x, y, w, h, fillColor, strokeColor) {
+	if (w <= 0 || h <= 0) return;
+	ctx.save();
+	ctx.globalAlpha = 0.25;
+	ctx.fillStyle = fillColor;
+	ctx.fillRect(x, y, w, h);
+	ctx.globalAlpha = 1;
+	ctx.beginPath();
+	ctx.rect(x, y, w, h);
+	ctx.clip();
+	ctx.strokeStyle = strokeColor;
+	ctx.lineWidth = 1;
+	const step = 5;
+	for (let lx = x - h; lx < x + w + h; lx += step) {
+		ctx.beginPath();
+		ctx.moveTo(lx, y + h);
+		ctx.lineTo(lx + h, y);
+		ctx.stroke();
+	}
+	ctx.restore();
+	ctx.strokeStyle = strokeColor;
+	ctx.lineWidth = 1;
+	ctx.strokeRect(x, y, w, h);
 }

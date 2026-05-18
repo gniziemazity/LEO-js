@@ -250,7 +250,7 @@ async function readDirHandle(handle, prefix, pathMap, files, opts = {}) {
 
 const TOKEN_RE_SRC = "[a-zA-Z0-9]+|[^\\s]";
 function newTokenRegex() {
-	return new RegExp(TOKEN_RE_SRC, "g");
+	return new RegExp(TOKEN_RE_SRC, "gu");
 }
 
 function _hmsToSeconds(hms, sessionDate) {

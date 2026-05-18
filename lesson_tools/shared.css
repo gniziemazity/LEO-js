@@ -176,6 +176,7 @@ body {
 
 .is-toggle-on {
 	background: var(--clr-orange) !important;
+	color: #fff !important;
 }
 
 .app-toolbar {
@@ -227,6 +228,50 @@ body {
 	color: var(--clr-text);
 	font-weight: bold;
 	border-bottom: 2px solid var(--clr-accent);
+}
+
+.file-tab[data-file-name$=".html" i],
+.file-tab[data-file-name$=".htm" i] {
+	background: color-mix(in srgb, var(--c-red-1) 14%, var(--clr-surface));
+	border-bottom: 2px solid color-mix(in srgb, var(--c-red-1) 40%, transparent);
+}
+.file-tab-active[data-file-name$=".html" i],
+.file-tab-active[data-file-name$=".htm" i] {
+	background: var(--c-red-1);
+	color: #fff;
+	border-bottom-color: var(--c-red-1);
+}
+
+.file-tab[data-file-name$=".css" i] {
+	background: color-mix(in srgb, var(--c-blue-1) 14%, var(--clr-surface));
+	border-bottom: 2px solid color-mix(in srgb, var(--c-blue-1) 40%, transparent);
+}
+.file-tab-active[data-file-name$=".css" i] {
+	background: var(--c-blue-1);
+	color: #fff;
+	border-bottom-color: var(--c-blue-1);
+}
+
+.file-tab[data-file-name$=".js" i] {
+	background: color-mix(in srgb, var(--c-orange-1) 14%, var(--clr-surface));
+	border-bottom: 2px solid
+		color-mix(in srgb, var(--c-orange-1) 40%, transparent);
+}
+.file-tab-active[data-file-name$=".js" i] {
+	background: var(--c-orange-1);
+	color: #fff;
+	border-bottom-color: var(--c-orange-1);
+}
+
+.file-tab[data-file-name$=".py" i] {
+	background: color-mix(in srgb, var(--c-purple-1) 14%, var(--clr-surface));
+	border-bottom: 2px solid
+		color-mix(in srgb, var(--c-purple-1) 40%, transparent);
+}
+.file-tab-active[data-file-name$=".py" i] {
+	background: var(--c-purple-1);
+	color: #fff;
+	border-bottom-color: var(--c-purple-1);
 }
 
 .landing-btn {
@@ -344,6 +389,9 @@ body {
 }
 .tt-mark-ghost {
 	color: var(--clr-mark-ghost);
+}
+.tt-mark-comment {
+	color: var(--clr-mark-comment);
 }
 .tt-delete {
 	color: var(--clr-red);
