@@ -8,6 +8,8 @@ from pathlib import Path
 from tkinter import filedialog
 from typing import Dict, Optional, Tuple
 
+from utils.anonymize import load_excluded_student_ids
+
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.formatting.rule import ColorScaleRule, FormulaRule
@@ -213,7 +215,7 @@ def _read_lesson_stats_csv(csv_path: Path) -> Optional[Dict[str, object]]:
     return out
 
 
-_LESSON_STATS_SOURCES = ('lesson_stats.csv', 'lesson_stats_py.csv')
+_LESSON_STATS_SOURCES = ('lesson_stats_py.csv', 'lesson_stats.csv')
 
 
 def _add_lesson_stats_sheet(wb: 'Workbook',
@@ -301,6 +303,12 @@ def main(argv) -> int:
     print(f'Assignments: {assignments_root or "(missing)"}')
     print()
 
+    excluded_ids = load_excluded_student_ids(str(root / 'students.csv'))
+    if excluded_ids:
+        print(f'Excluded:    {len(excluded_ids)} student(s) per '
+              f'students.csv (Include != OK)')
+        print()
+
     student_data: Dict[str, dict] = defaultdict(dict)
     lesson_meta: Dict[str, dict] = {}
 
@@ -338,6 +346,8 @@ def main(argv) -> int:
                     student_data[sid]['name'] = name
                 if number and 'number' not in student_data[sid]:
                     student_data[sid]['number'] = number
+                if sid in excluded_ids:
+                    continue
                 student_data[sid][f'lesson_{lesson_key}'] = {
                     'follow':         r.get('Follow (E)'),
                     'follow_html':    r.get('HTML (E)'),
@@ -379,6 +389,8 @@ def main(argv) -> int:
                     student_data[sid]['name'] = name
                 if number and 'number' not in student_data[sid]:
                     student_data[sid]['number'] = number
+                if sid in excluded_ids:
+                    continue
                 student_data[sid][f'assign_{assign_key}'] = {
                     'grade': r.get('Grade'),
                     'obs':   _to_str(r.get('Obs')),
@@ -413,6 +425,7 @@ def main(argv) -> int:
     header[0] = 'ID'
     header[1] = 'Name'
     header[3] = 'Number'
+    header[4] = 'Excluded'
     for lk, cols in LESSON_TO_COLS.items():
         first = cols['follow_first']
         for off in (0, 1, 2):
@@ -477,6 +490,8 @@ def main(argv) -> int:
         row[0] = sid
         row[1] = info.get('name', '')
         row[3] = info.get('number', '')
+        if sid in excluded_ids:
+            row[4] = 'EXCLUDED'
         for lk, cols in LESSON_TO_COLS.items():
             first = cols['follow_first']
             interact_first = cols['interact_first']

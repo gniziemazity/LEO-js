@@ -79,6 +79,69 @@ from .token_log_starpass import (
 from .folder_utils import CODE_EXTS
 
 
+def _remap_marks_to_utf16(
+    diff_marks: dict,
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> dict:
+    _maps: Dict[Tuple[int, str], Optional[List[int]]] = {}
+
+    def _map_for(files: Dict[str, Path], fname: Optional[str]) -> Optional[List[int]]:
+        if fname is None:
+            return None
+        cache_key = (id(files), fname)
+        if cache_key in _maps:
+            return _maps[cache_key]
+        u16map: Optional[List[int]] = None
+        path = (files or {}).get(fname)
+        if path is not None:
+            try:
+                text = _read_text_normalized(path)
+            except Exception:
+                text = ''
+            if text and any(ord(c) > 0xFFFF for c in text):
+                u16map = _build_utf16_map(text)
+        _maps[cache_key] = u16map
+        return u16map
+
+    def _conv(files: Dict[str, Path], fname: Optional[str], idx):
+        u16map = _map_for(files, fname)
+        if u16map is None or not isinstance(idx, int):
+            return idx
+        return u16map[idx] if 0 <= idx < len(u16map) else idx
+
+    def _remap_side(marks_by_file, own_files, partner_files):
+        for fname, marks in (marks_by_file or {}).items():
+            for mk in marks or []:
+                mk['start'] = _conv(own_files, fname, mk.get('start'))
+                mk['end'] = _conv(own_files, fname, mk.get('end'))
+                pw = mk.get('paired_with')
+                if pw and not pw.get('ghost') and pw.get('file') is not None:
+                    pw['start'] = _conv(partner_files, pw['file'], pw.get('start'))
+                    pw['end'] = _conv(partner_files, pw['file'], pw.get('end'))
+                ia = mk.get('insert_at')
+                if ia and ia.get('file') is not None:
+                    ia['pos'] = _conv(partner_files, ia['file'], ia.get('pos'))
+                mv = mk.get('move_to')
+                if mv and mv.get('file') is not None:
+                    mv['pos'] = _conv(own_files, mv['file'], mv.get('pos'))
+
+    _remap_side(diff_marks.get('teacher_files'), teacher_files, student_files)
+    _remap_side(diff_marks.get('student_files'), student_files, teacher_files)
+
+    line_marks = diff_marks.get('line_marks') or {}
+    for fname, marks in (line_marks.get('teacher_files') or {}).items():
+        for mk in marks or []:
+            mk['start'] = _conv(teacher_files, fname, mk.get('start'))
+            mk['end'] = _conv(teacher_files, fname, mk.get('end'))
+    for fname, marks in (line_marks.get('student_files') or {}).items():
+        for mk in marks or []:
+            mk['start'] = _conv(student_files, fname, mk.get('start'))
+            mk['end'] = _conv(student_files, fname, mk.get('end'))
+
+    return diff_marks
+
+
 def _build_file_timeline(events: list) -> list:
     timeline = [(0, "MAIN")]
     for event in events:

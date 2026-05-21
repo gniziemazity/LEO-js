@@ -189,7 +189,7 @@ def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
 
 
 def _find_teacher_files(project_dir: Path) -> List[Tuple[Path, str]]:
-    for sub in ("reconstructed", "correct"):
+    for sub in ("reconstructed", "start", "correct"):
         d = project_dir / sub
         if not d.is_dir():
             continue

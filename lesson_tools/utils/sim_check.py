@@ -6,7 +6,7 @@ import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from .folder_utils import LANG_EXTS
 from .similarity_measures import (
@@ -31,6 +31,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
         self.student_info: Dict[str, dict] = {}
         self.name_to_id:   Dict[str, str]  = {}
+        self.excluded_ids: Set[str]        = set()
 
         self.results:                     Dict[str, dict]              = {}
         self.student_simple_extra_by_ext: Dict[str, Dict[str, Counter]] = {}
@@ -77,10 +78,14 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             if display_name != real_name:
                 self.name_to_id[display_name] = sid
             self._real_to_display[real_name] = display_name
+            include_raw = row.get('Include')
+            if include_raw is not None and include_raw.strip().upper() != 'OK':
+                self.excluded_ids.add(sid)
 
         def _reset():
             self.student_info.clear()
             self.name_to_id.clear()
+            self.excluded_ids.clear()
             self._real_to_display.clear()
 
         open_csv_encoded(
@@ -164,6 +169,12 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 files[path.name] = path
         return files
 
+    def _effective_reference_dir(self) -> Path:
+        if self.start_dir and self.start_dir.is_dir():
+            if self.get_all_code_files(self.start_dir):
+                return self.start_dir
+        return self.reference_dir
+
     def compare_files(self,
                       ref_file: Path, student_file: Path,
                       teacher_tokens: Counter,
@@ -187,7 +198,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             return {'status': 'error'}
 
     def run_check(self) -> None:
-        ref_files = self.get_code_files(self.reference_dir)
+        ref_files = self.get_code_files(self._effective_reference_dir())
 
         t_outside:      Dict[str, Counter] = {}
         t_inside:       Dict[str, Counter] = {}

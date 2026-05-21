@@ -184,14 +184,15 @@ function _blockBarGeom(centerTs, dur, L) {
 }
 
 function _eventDurationSec(ev) {
+	const secPerChar = CFG.CODE_INSERT_MS_PER_CHAR / 1000;
 	if (
 		ev._virtualType === "code_insert" &&
 		typeof ev.code_insert === "string"
 	) {
-		return ev.code_insert.length / 1000;
+		return ev.code_insert.length * secPerChar;
 	}
 	if (ev.char === "⛔" && typeof ev._removed_len === "number") {
-		return ev._removed_len / 1000;
+		return ev._removed_len * secPerChar;
 	}
 	return 0;
 }

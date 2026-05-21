@@ -58,6 +58,8 @@ IGNORED_CHARS: frozenset = frozenset(
 PAUSE_CHAR = "🕛"
 PAUSE_MS   = 500
 
+CODE_INSERT_MS_PER_CHAR = 10
+
 HTML_VOID_TAGS = frozenset({
     "area", "base", "br", "col", "embed", "hr", "img", "input",
     "link", "meta", "param", "source", "track", "wbr",

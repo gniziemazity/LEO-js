@@ -3,6 +3,7 @@ from .lv_constants import (
     CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS, PAUSE_CHAR, PAUSE_MS,
     PAGE_LINES, split_code_with_anchors,
+    CODE_INSERT_MS_PER_CHAR,
 )
 from languages import (
     get_profile,
@@ -436,7 +437,7 @@ class HeadlessEditor:
                 for ch in val:
                     self.handle_char(ch)
                     if self._track_ts:
-                        self._cur_ts += 1
+                        self._cur_ts += CODE_INSERT_MS_PER_CHAR
                     ls2 = self._line_start()
                     bef2 = "".join(self._chars[ls2: self._cur])
                     self._ci_indent = re.match(r"^(\s*)", bef2).group(1)

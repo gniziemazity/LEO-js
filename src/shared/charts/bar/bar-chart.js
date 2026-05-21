@@ -207,7 +207,7 @@ class BarChart {
 									ctx.fillStyle = ds.labelColor ?? "#fff";
 									ctx.fillText(label, bx + useBarW / 2, by + bh - 2);
 								} else {
-									ctx.fillStyle = ds.outsideLabelColor ?? "#fff";
+									ctx.fillStyle = ds.outsideLabelColor ?? "#555";
 									ctx.fillText(label, bx + useBarW / 2, by - 2);
 								}
 							}

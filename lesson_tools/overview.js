@@ -18,6 +18,7 @@ const _COL_ALIASES = {
 	answers: ["Total Answers", "Answers"],
 	questions: ["Total Questions", "Questions"],
 	help: ["Total Help", "Help"],
+	excluded: ["Excluded"],
 };
 
 function _buildHeaderMap(headerRow) {
@@ -151,11 +152,15 @@ let _scatterCharts = [];
 let _barCharts = [];
 let _progressCharts = [];
 let _pyStats = null;
+let _trapSchema = {};
 let _lessonStats = null;
 let _curSort = "name";
 let _anonMode = "name";
 
 document.getElementById("open-btn").addEventListener("click", pickFolder);
+document
+	.getElementById("open-btn-toolbar")
+	?.addEventListener("click", pickFolder);
 
 async function pickFolder() {
 	try {
@@ -187,12 +192,16 @@ async function loadCourse(rootHandle) {
 		return;
 	}
 
+	console.log("[overview] loadCourse rootHandle.name =", rootHandle.name);
+
 	let gradesFile = null,
 		pyStatsFile = null;
 	let overviewPlusFile = null;
 	let overviewFile = null;
+	const rootFileNames = [];
 	for await (const [name, entry] of rootHandle.entries()) {
 		if (entry.kind !== "file") continue;
+		rootFileNames.push(name);
 		if (/^overviewplus\.xlsx?$/i.test(name)) {
 			overviewPlusFile = await entry.getFile();
 		} else if (/^overview\.xlsx?$/i.test(name)) {
@@ -201,11 +210,28 @@ async function loadCourse(rootHandle) {
 		if (/^grades_stats\.json$/i.test(name))
 			pyStatsFile = await entry.getFile();
 	}
+	console.log("[overview] root files:", rootFileNames);
 	gradesFile = overviewPlusFile || overviewFile;
 	if (!gradesFile) {
 		alert("No Overview.xlsx or OverviewPlus.xlsx found.");
 		return;
 	}
+	console.log(
+		"[overview] picked grades file:",
+		gradesFile.name,
+		"size =",
+		gradesFile.size,
+		"lastModified =",
+		new Date(gradesFile.lastModified).toISOString(),
+	);
+	if (pyStatsFile)
+		console.log(
+			"[overview] picked grades_stats.json size =",
+			pyStatsFile.size,
+			"lastModified =",
+			new Date(pyStatsFile.lastModified).toISOString(),
+		);
+	else console.log("[overview] no grades_stats.json present");
 
 	const buf = await gradesFile.arrayBuffer();
 	if (!buf.byteLength) {
@@ -289,6 +315,7 @@ async function loadCourse(rootHandle) {
 		try {
 			_pyStats = JSON.parse(await pyStatsFile.text());
 		} catch {}
+	_trapSchema = _pyStats?.trap_schema || {};
 
 	_globalStudentMap = {};
 	_realToAlterMap = {};
@@ -317,6 +344,12 @@ async function loadCourse(rootHandle) {
 				if (e2.kind === "directory") _assignHandles[n2.toLowerCase()] = e2;
 		}
 	}
+	console.log(
+		"[overview] lesson folders:",
+		Object.keys(_lessonHandles),
+		"assignment folders:",
+		Object.keys(_assignHandles),
+	);
 
 	finishLoad(gradesFile.name);
 }
@@ -390,6 +423,7 @@ function parseStudent(r) {
 		id: str(COL.id),
 		name: str(COL.name),
 		number: str(COL.number),
+		excluded: str(COL.excluded).toUpperCase() === "EXCLUDED",
 		pre_typing: num(COL.pre_typing),
 		self_eval: num(COL.self_eval),
 		quiz_stii: num(COL.quiz_stii),
@@ -449,6 +483,19 @@ function parseStudent(r) {
 		if (grades.length) {
 			s.avg_assignments = grades.reduce((a, b) => a + b, 0) / grades.length;
 		}
+	}
+
+	if (s.participation == null) {
+		const follows = s.lessons
+			.filter((l) => l.hasFollowCol && l.follow != null)
+			.map((l) => l.follow);
+		if (follows.length) {
+			s.participation = follows.reduce((a, b) => a + b, 0) / follows.length;
+		}
+	}
+
+	if (s.final_grade == null && s.avg_assignments != null) {
+		s.final_grade = s.avg_assignments;
 	}
 
 	return s;
@@ -518,7 +565,7 @@ function renderTable() {
 	col("Quiz", "", true);
 	col("KPM");
 	col("Avg");
-	col("Final");
+	col("Part%");
 	col("Ans");
 	col("Qs");
 	col("Help");
@@ -535,13 +582,24 @@ function renderTable() {
 	_students.forEach((s) => {
 		const tr = document.createElement("tr");
 		tr.classList.add(s.passed_course ? "row-pass" : "row-fail");
+		if (s.excluded) tr.classList.add("row-excluded");
 
 		const cell = (content, cls = "") => {
 			const td = document.createElement("td");
 			if (cls) td.className = cls;
-			if (typeof content === "string" && content.includes("<"))
-				td.innerHTML = content;
-			else td.textContent = content ?? "";
+			td.textContent = content ?? "";
+			return td;
+		};
+		const obsCell = (entry, cls = "") => {
+			const td = document.createElement("td");
+			if (cls) td.className = cls;
+			const badges = trapBadges(entry.obs, entry.name);
+			if (badges) {
+				td.innerHTML = badges;
+				td.title = `${entry.name} traps (${entry.obs}) — green = ok, red = trap fired`;
+			} else {
+				td.textContent = obsText(entry.obs);
+			}
 			return td;
 		};
 
@@ -579,7 +637,7 @@ function renderTable() {
 				const sc1 = statusCellCls(entry.status);
 				stc1.className = sc1 || "asn-col";
 				tr.appendChild(stc1);
-				tr.appendChild(cell(obsText(entry.obs), "asn-col"));
+				tr.appendChild(obsCell(entry, "asn-col"));
 			} else {
 				const gc = document.createElement("td");
 				gc.className = "follow clickable asn-sep asn-col";
@@ -596,7 +654,7 @@ function renderTable() {
 				const sc2 = statusCellCls(entry.status);
 				stc2.className = sc2 || "asn-col";
 				tr.appendChild(stc2);
-				tr.appendChild(cell(obsText(entry.obs), "asn-col"));
+				tr.appendChild(obsCell(entry, "asn-col"));
 			}
 		}
 
@@ -604,22 +662,28 @@ function renderTable() {
 		tr.appendChild(cell(fmtN(s.post_typing), "num"));
 		tr.appendChild(cell(fmtN(s.avg_assignments, 1), "num"));
 
-		const fg = document.createElement("td");
-		fg.className = "num";
-		const finalVal = s.final_grade ?? s.avg_assignments;
-		fg.textContent = fmtN(finalVal, 1) || "—";
-		fg.style.color = s.passed_course
-			? ""
-			: finalVal != null
-				? THEME.neg
-				: THEME.codeMuted;
-		fg.style.fontWeight = "700";
-		tr.appendChild(fg);
+		const pc = document.createElement("td");
+		pc.className = "num";
+		if (s.participation != null) {
+			pc.textContent = s.participation.toFixed(0) + "%";
+			pc.style.color = followFg(s.participation);
+		} else {
+			pc.textContent = "—";
+			pc.style.color = THEME.codeMuted;
+		}
+		pc.style.fontWeight = "700";
+		tr.appendChild(pc);
 
 		tr.appendChild(numCellBold(s.total_a));
 		tr.appendChild(numCellBold(s.total_q));
 		tr.appendChild(numCellBold(s.total_h));
 		tr.appendChild(cdiffCell(s.total_cdiff, cdiffMin, cdiffMax));
+		tr.addEventListener("click", () => {
+			tbody
+				.querySelectorAll("tr.selected")
+				.forEach((r) => r.classList.remove("selected"));
+			tr.classList.add("selected");
+		});
 		tbody.appendChild(tr);
 	});
 	table.appendChild(tbody);
@@ -732,11 +796,40 @@ function statusCellCls(s) {
 	);
 }
 function obsText(raw) {
-	return !raw || !raw.trim() ? "" : escHtml(raw.trim());
+	return !raw || !raw.trim() ? "" : raw.trim();
+}
+
+function trapBadges(raw, assignmentName) {
+	const code = (raw ?? "").trim();
+	if (!/^[01]+$/.test(code)) return null;
+	const schema = _trapSchema[(assignmentName || "").toLowerCase()];
+	if (!schema || schema.length !== code.length) return null;
+	return schema
+		.map((t, i) => {
+			const fired = code[i] === "0";
+			const clr = fired ? THEME.red : THEME.green;
+			const title = `${t.label} — ${fired ? "trap fired (0)" : "ok (1)"}`;
+			return (
+				`<span title="${escHtml(title)}" style="display:inline-block;` +
+				`width:9px;height:9px;border-radius:2px;margin:0 1px;` +
+				`vertical-align:middle;background:${clr}"></span>`
+			);
+		})
+		.join("");
 }
 
 async function openLessonDiff(student, entry) {
 	const key = findHandle(_lessonHandles, entry.name);
+	console.log(
+		"[overview] openLessonDiff student.id =",
+		student.id,
+		"entry.name =",
+		entry.name,
+		"entry.follow =",
+		entry.follow,
+		"resolved lesson folder key =",
+		key,
+	);
 	if (!key) {
 		alert(`No lesson folder found for "${entry.name}".`);
 		return;
@@ -745,6 +838,14 @@ async function openLessonDiff(student, entry) {
 }
 async function openAssignDiff(student, entry) {
 	const key = findHandle(_assignHandles, entry.name);
+	console.log(
+		"[overview] openAssignDiff student.id =",
+		student.id,
+		"entry.name =",
+		entry.name,
+		"resolved assign folder key =",
+		key,
+	);
 	if (!key) {
 		alert(`No assignment folder found for "${entry.name}".`);
 		return;
@@ -763,7 +864,7 @@ function attachLessonGroup(th, assignment) {
 	if (!key) return;
 	const handle = _lessonHandles[key];
 	th.classList.add("clickable");
-	th.title = `Open ${assignment.name} dashboard`;
+	th.title = `Open ${assignment.name} timeline`;
 	th.addEventListener("click", async () => {
 		try {
 			const perm = await handle.requestPermission({ mode: "read" });
@@ -772,9 +873,9 @@ function attachLessonGroup(th, assignment) {
 				return;
 			}
 			await _idbSet("lastDir", handle);
-			window.open("dashboard.html?autoload=1", "_blank");
+			window.open("timeline.html?autoload=1", "_blank");
 		} catch (e) {
-			alert("Could not open dashboard: " + e.message);
+			alert("Could not open timeline: " + e.message);
 		}
 	});
 }
@@ -786,16 +887,43 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	if (!sid)
 		throw new Error(`Cannot find anon folder for "${student.name}" (no ID).`);
 
+	console.log(
+		"[overview] _readOverviewDiffPayload dirHandle.name =",
+		dirHandle.name,
+		"sid =",
+		sid,
+		"followPct =",
+		followPct,
+	);
+
 	const fileMap = new Map();
 	await readDirHandle(dirHandle, "", fileMap, [], { lowercaseKeys: true });
+	const anonIdsKeys = [...fileMap.keys()].filter((p) =>
+		p.startsWith("anon_ids/"),
+	);
+	const anonIdFolders = [
+		...new Set(anonIdsKeys.map((p) => p.split("/")[1])),
+	].sort();
+	console.log("[overview] anon_ids/ folders inside lesson:", anonIdFolders);
+	console.log(
+		"[overview] anon_ids/" + sid.toLowerCase() + "/ present? =",
+		anonIdFolders.includes(sid.toLowerCase()),
+	);
 
 	const recoEntries = [...fileMap.entries()].filter(
 		([p]) => /^reconstructed\//i.test(p) && _OVERVIEW_CODE_EXT.test(p),
 	);
+	const startEntries = [...fileMap.entries()].filter(
+		([p]) => /^start\//i.test(p) && _OVERVIEW_CODE_EXT.test(p),
+	);
 	const correctEntries = [...fileMap.entries()].filter(
 		([p]) => /^correct\//i.test(p) && _OVERVIEW_CODE_EXT.test(p),
 	);
-	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
+	const teacherEntries = recoEntries.length
+		? recoEntries
+		: startEntries.length
+			? startEntries
+			: correctEntries;
 	const studentPrefix = "anon_ids/" + sid.toLowerCase() + "/";
 	const studentEntries = [...fileMap.entries()].filter(
 		([p]) => p.startsWith(studentPrefix) && _OVERVIEW_CODE_EXT.test(p),
@@ -814,7 +942,9 @@ async function _readOverviewDiffPayload(dirHandle, student, followPct) {
 	const imageEntries = [...fileMap.entries()].filter(
 		([p]) =>
 			_OVERVIEW_IMAGE_EXT.test(p) &&
-			(/^correct\//i.test(p) || p.startsWith(studentPrefix)),
+			(/^correct\//i.test(p) ||
+				/^start\//i.test(p) ||
+				p.startsWith(studentPrefix)),
 	);
 	for (const [, file] of imageEntries) {
 		if (!imageUris[file.name]) {
@@ -994,7 +1124,9 @@ function renderStats() {
 			const lessonTroubleVals = lessonTroubleEntries.map(
 				(a) => a.n_lesson_trouble ?? 0,
 			);
-			const lessonTotals = lessonTroubleEntries.map((a) => a.n_total ?? 0);
+			const lessonTotals = lessonTroubleEntries.map(
+				(a) => a.n_followed ?? a.n_total ?? 0,
+			);
 			const lessonNames = lessonTroubleEntries.map((a) => a.name);
 			addStackedShareCard(
 				body,
@@ -1103,6 +1235,91 @@ function renderStats() {
 			["Fisher p", a.fisher_p != null ? fmtP(a.fisher_p) : "—"],
 			["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
 			["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
+		].forEach(([k, v]) => {
+			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
+		});
+		card.insertAdjacentHTML("beforeend", html);
+	}
+
+	if (py.assignments?.some((a) => a.traps?.length)) {
+		const card = mkCard(body, "Trap Hit Rate per Assignment", "wide");
+		let html =
+			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fired</th><th>Valid</th><th>Hit rate</th></tr>';
+		py.assignments.forEach((a) => {
+			if (!a.traps?.length) return;
+			a.traps.forEach((t, i) => {
+				html +=
+					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
+					`<td>${escHtml(t.label)}</td><td>${t.n_fired}</td>` +
+					`<td>${a.n_trap_valid ?? "—"}</td><td>${fmtPct(t.hit_rate)}</td></tr>`;
+			});
+			html +=
+				`<tr><td></td><td><b>Any trap fired</b></td>` +
+				`<td>${a.any_trap_fired ?? "—"}</td><td>${a.n_trap_valid ?? "—"}</td>` +
+				`<td><b>${fmtPct(a.any_trap_rate)}</b></td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.assignments?.some((a) => a.traps?.length)) {
+		const card = mkCard(body, "Trap Fired vs Trouble (per trap)", "wide");
+		let html =
+			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fire+Trbl</th><th>Fire+OK</th><th>Ok+Trbl</th><th>Ok+OK</th><th>OR</th><th>p(Fisher)</th><th>Grade fired→ok</th></tr>';
+		py.assignments.forEach((a) => {
+			if (!a.traps?.length) return;
+			a.traps.forEach((t, i) => {
+				const gradeCell =
+					t.fired_avg_grade != null && t.ok_avg_grade != null
+						? `${t.fired_avg_grade.toFixed(2)} → ${t.ok_avg_grade.toFixed(2)}`
+						: "—";
+				html +=
+					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
+					`<td>${escHtml(t.label)}</td>` +
+					`<td>${t.fired_trouble}</td><td>${t.fired_ok}</td>` +
+					`<td>${t.ok_trouble}</td><td>${t.safe_ok}</td>` +
+					`<td>${t.odds_ratio != null ? t.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
+					`<td>${t.fisher_p != null ? fmtP(t.fisher_p) : "—"}</td>` +
+					`<td>${gradeCell}</td></tr>`;
+			});
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.trap_summary) {
+		const t = py.trap_summary;
+		const card = mkCard(body, "Total Traps Fired (per student)", "sm");
+		const gc = t.grade_corr || {};
+		const pc = t.participation_corr || {};
+		let html = "";
+		[
+			["Students with decoded OBS", t.n_students ?? "—"],
+			[
+				"Mean traps fired",
+				t.mean_fired != null ? t.mean_fired.toFixed(2) : "—",
+			],
+			["Max traps fired", t.max_fired ?? "—"],
+			[
+				"Passed-course mean",
+				t.passed_mean != null ? t.passed_mean.toFixed(2) : "—",
+			],
+			[
+				"Failed-course mean",
+				t.failed_mean != null ? t.failed_mean.toFixed(2) : "—",
+			],
+			[
+				"Pass/fail Mann-Whitney p",
+				t.pass_fail_mannwhitney_p != null
+					? fmtP(t.pass_fail_mannwhitney_p)
+					: "—",
+			],
+			[
+				`→ Final grade (ρ, n=${gc.n ?? "—"})`,
+				`${fmtR(gc.rho)} ${gc.p_rho != null ? "p=" + fmtP(gc.p_rho) : ""}`,
+			],
+			[
+				`→ Participation (ρ, n=${pc.n ?? "—"})`,
+				`${fmtR(pc.rho)} ${pc.p_rho != null ? "p=" + fmtP(pc.p_rho) : ""}`,
+			],
 		].forEach(([k, v]) => {
 			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
 		});
@@ -1464,43 +1681,17 @@ function renderLessonStats(body) {
 	const LESSON_MIN = 90;
 	const duration = numFor("coding_min");
 	if (anyPos(duration)) {
-		const card = mkCard(body, "Typing Duration (min)");
-		const box = el("div", "chart-box");
-		card.appendChild(box);
-		const durData = duration.map((v) => v ?? 0);
-		const yMax = Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05;
-		const chart = new BarChart(box, {
-			yMin: 0,
-			yMax,
-			tooltipCallback: (_label, _val, si, gi) => {
-				if (si === 0) return [`Lesson length: ${LESSON_MIN} min`];
-				const v = durData[gi];
-				const pct = Math.round((v / LESSON_MIN) * 100);
-				return [`${v.toFixed(1)} min (${pct}%)`];
-			},
-			barLabel: (gi, si) => {
-				if (si !== 1) return null;
-				const v = durData[gi];
-				return Math.round((v / LESSON_MIN) * 100) + "%";
-			},
-		});
-		chart.setData(lessonNames, [
-			{
-				data: durData.map(() => LESSON_MIN),
-				backgroundColor: _hexToRgba(THEME.label, 0.15),
-				borderColor: _hexToRgba(THEME.label, 0.35),
-				overlap: true,
-			},
-			{
-				data: durData,
-				backgroundColor: _hexToRgba(THEME.label, 0.55),
-				borderColor: THEME.label,
-				overlap: true,
-				labelColor: THEME.bg,
-				outsideLabelColor: THEME.bg,
-			},
-		]);
-		_barCharts.push(chart);
+		const durData = duration.map((v) =>
+			v == null ? 0 : Math.round(v * 10) / 10,
+		);
+		addStackedShareCard(
+			body,
+			"Typing Duration (min)",
+			lessonNames,
+			durData,
+			durData.map(() => LESSON_MIN),
+			Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05,
+		);
 	}
 
 	const segmentsByLesson = orderedRows.map((r) =>
@@ -1575,7 +1766,7 @@ function renderLessonStats(body) {
 			pauseAvg.map((v) => v ?? 0),
 			THEME.label,
 			Math.max(...pauseAvg.filter((v) => v != null), 1) * 1.1,
-			"dec1",
+			"int",
 		);
 	}
 

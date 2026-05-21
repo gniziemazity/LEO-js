@@ -5,6 +5,7 @@ const CFG = {
 	MIN_BURST: 2,
 	PADDING: 120,
 	BAR_MIN_SECS: 8,
+	CODE_INSERT_MS_PER_CHAR: 10,
 	M: { top: 22, right: 24, bottom: 44, left: 68 },
 	DOT_R: 3.5,
 	DIA_R: 8,

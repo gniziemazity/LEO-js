@@ -1,5 +1,5 @@
 """
-Tkinter-based key-press analyzer. Alternative to the LEO dashboard (dashboard.html).
+Tkinter-based key-press analyzer. Alternative to the LEO timeline (timeline.html).
 """
 import json
 import os

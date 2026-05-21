@@ -105,7 +105,7 @@ function studentY() { return 0; }
 
 function loadAPI() {
 	const cfgSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "dashboard-config.js"),
+		path.join(lessonToolsDir, "timeline-config.js"),
 		"utf-8",
 	);
 	const modelSrc = fs.readFileSync(
@@ -113,11 +113,11 @@ function loadAPI() {
 		"utf-8",
 	);
 	const utilsSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "dashboard-utils.js"),
+		path.join(lessonToolsDir, "timeline-utils.js"),
 		"utf-8",
 	);
 	const tooltipSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "dashboard-tooltip.js"),
+		path.join(lessonToolsDir, "timeline-tooltip.js"),
 		"utf-8",
 	);
 	const bundle =

@@ -289,7 +289,7 @@ function _buildReplayIndex(events, lessonFile) {
 	try {
 		result = headlessReplay(events, lessonFile);
 	} catch (e) {
-		console.warn("[Dashboard] headlessReplay failed:", e);
+		console.warn("[Timeline] headlessReplay failed:", e);
 		return null;
 	}
 	const LP = window.LanguageProfiles;
@@ -306,7 +306,7 @@ function _buildReplayIndex(events, lessonFile) {
 					);
 				} catch (e) {
 					console.warn(
-						"[Dashboard] commentRangesOf failed for",
+						"[Timeline] commentRangesOf failed for",
 						filename,
 						e,
 					);

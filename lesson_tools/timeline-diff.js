@@ -21,10 +21,17 @@ async function _buildDiffWindowPayload(student, followPct) {
 	const recoEntries = [..._allFiles.entries()].filter(
 		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
+	const startEntries = [..._allFiles.entries()].filter(
+		([p]) => /^start\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
+	);
 	const correctEntries = [..._allFiles.entries()].filter(
 		([p]) => /^correct\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
-	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
+	const teacherEntries = recoEntries.length
+		? recoEntries
+		: startEntries.length
+			? startEntries
+			: correctEntries;
 	const studentEntries = [..._allFiles.entries()].filter(
 		([p]) =>
 			p.toLowerCase().startsWith(studentDir) &&
@@ -75,7 +82,9 @@ async function _buildDiffWindowPayload(student, followPct) {
 	const imageEntries = [..._allFiles.entries()].filter(
 		([p]) =>
 			IMAGE_EXT.test(p) &&
-			(/^correct\//i.test(p) || p.toLowerCase().startsWith(studentDir)),
+			(/^correct\//i.test(p) ||
+				/^start\//i.test(p) ||
+				p.toLowerCase().startsWith(studentDir)),
 	);
 	for (const [, file] of imageEntries) {
 		if (!imageUris[file.name])
@@ -104,7 +113,7 @@ async function openDifferentiatorWindow(student) {
 			_buildDiffWindowPayload(student, followPct),
 		);
 	} catch (err) {
-		console.error("[Dashboard diff]", err);
+		console.error("[Timeline diff]", err);
 		alert("Error opening differentiator: " + err.message);
 	}
 }

@@ -152,6 +152,25 @@ tbody tr:hover td.st-bg-star {
 tbody tr:hover td.st-bg-fail {
 	background: var(--clr-st-fail-bg);
 }
+tbody tr.selected td {
+	background: var(--clr-row-selected) !important;
+}
+tbody tr.selected td.sticky-l {
+	background-color: var(--clr-bg) !important;
+	background-image: linear-gradient(
+		var(--clr-row-selected),
+		var(--clr-row-selected)
+	) !important;
+}
+tbody tr.selected:hover td {
+	background: var(--clr-row-selected-hover) !important;
+}
+tbody tr.selected:hover td.sticky-l {
+	background-image: linear-gradient(
+		var(--clr-row-selected-hover),
+		var(--clr-row-selected-hover)
+	) !important;
+}
 
 td.num {
 	font-variant-numeric: tabular-nums;
@@ -184,6 +203,9 @@ tr.row-fail > td {
 }
 tr.row-fail > td.st-bg-fail {
 	color: var(--clr-st-fail) !important;
+}
+tr.row-excluded > td.sticky-l {
+	color: var(--clr-pale-red) !important;
 }
 td.st-bg-pass {
 	background: var(--clr-st-pass-bg);

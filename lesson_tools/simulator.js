@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const logTs = logData?.loadedAt || 0;
 			let parsed = null;
 			try {
-				const stored = localStorage.getItem("dashboard_sim_data");
+				const stored = localStorage.getItem("timeline_sim_data");
 				if (stored) parsed = JSON.parse(stored);
 			} catch {}
 			const storedTs = parsed?.loadedAt || 0;
@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 					parsed;
 				let imageUris = {};
 				try {
-					const raw = localStorage.getItem("dashboard_sim_images");
+					const raw = localStorage.getItem("timeline_sim_images");
 					if (raw) imageUris = JSON.parse(raw);
 				} catch {}
 				const micro = expandEvents(events || []);

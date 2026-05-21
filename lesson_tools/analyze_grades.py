@@ -4,8 +4,16 @@ import os
 import re
 import sys
 from utils.folder_utils import pick_file
+from utils.anonymize import load_excluded_student_ids
 import warnings
 from datetime import datetime
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 import numpy as np
 import pandas as pd
@@ -73,6 +81,83 @@ LESSON_DIFFICULTY = {
     "web":     "project",
 }
 
+TRAP_FLAGS = {
+    "wall": [
+        ("illusion", "Mentioned the café-wall illusion"),
+        ("color",    "Correct colors from the video (not hallucinated)"),
+    ],
+    "chess": [
+        ("pieces",     "Correct piece identities / positions"),
+        ("problem",    "Spotted the white-on-white problem (HTML comment)"),
+        ("method",     "Correct loop method (not the hidden 'method 8')"),
+        ("visibility", "Fixed the white-on-white pieces (styling)"),
+    ],
+    "sorting": [
+        ("var_speed", "Used 'speed' (not the hidden 'var_speed')"),
+        ("onchange",  "Used oninput (not the hidden 'onchange')"),
+    ],
+    "js": [
+        ("onclick",    "Used onclick (not the hidden 'onmousedown')"),
+        ("grid_reuse", "Reused the grid (not a from-scratch giant canvas)"),
+    ],
+    "qr": [
+        ("in_stock", "Used inStock (not the hidden 'in_store')"),
+    ],
+}
+
+TRAP_VIEWS = {
+    "wall": [
+        {"key": "color", "label": "Correct colors from the video", "src": [2]},
+    ],
+    "chess": [
+        {"key": "pieces",        "label": "Correct piece identities / positions",       "src": [1]},
+        {"key": "color_problem", "label": "Colour problem identified or fixed",          "src": [2, 4], "combine": "max"},
+        {"key": "method",        "label": "Correct loop method (not the hidden 'method 8')", "src": [3]},
+    ],
+}
+
+
+def _raw_flags(a):
+    return TRAP_FLAGS.get(a.get("lower", ""), [])
+
+
+def _reported_flags(a):
+    raw = _raw_flags(a)
+    view = TRAP_VIEWS.get(a.get("lower", ""))
+    if not view:
+        return [{"key": k, "label": lbl, "src": [i + 1], "combine": "max"}
+                for i, (k, lbl) in enumerate(raw)]
+    out = []
+    for f in view:
+        out.append({
+            "key":     f["key"],
+            "label":   f.get("label", f["key"]),
+            "src":     list(f["src"]),
+            "combine": f.get("combine", "max"),
+        })
+    return out
+
+
+def _parse_trap_digits(obs_series, n):
+    obs = (obs_series.fillna("").astype(str).str.strip()
+           .str.replace(r"^([01])\.0$", r"\1", regex=True))
+    is_code = obs.str.fullmatch(r"[01]+", na=False)
+    right_len = obs.str.len() == n
+    valid = is_code & right_len & (n > 0)
+    did_by_pos = []
+    for i in range(n):
+        digit = obs.str.slice(i, i + 1)
+        did_by_pos.append(valid & (digit == "1"))
+    mismatched = is_code & ~right_len & (n > 0)
+    return did_by_pos, valid, mismatched
+
+
+def _combine_did(did_list, combine):
+    out = did_list[0].copy()
+    for d in did_list[1:]:
+        out = (out | d) if combine in ("max", "or") else (out & d)
+    return out
+
 _HEADER_ALIASES = {
     "id":              ["ID"],
     "name":            ["Name"],
@@ -86,7 +171,7 @@ _HEADER_ALIASES = {
     "kahoot":          ["Kahoot"],
     "quiz_stii":       ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
     "final_grade":     ["Final Grade", "Grade"],
-    "avg_assignments": ["Avg Assignments", "Avg Grade"],
+    "avg_assignments": ["Avg Assignments", "Avg Grade", "Average"],
     "participation":   ["Participation"],
     "answers":         ["Total Answers", "Answers"],
     "questions":       ["Total Questions", "Questions"],
@@ -240,14 +325,40 @@ def enrich(st):
     st["passed_course"] = all_passed
 
     for a_num, a in ASSIGNMENTS.items():
-        obs    = _col_series(st, a["obs"], numeric=False)
-        status = _col_series(st, a["status"], numeric=False)
-        grade  = _col_series(st, a["grade"])
+        obs        = _col_series(st, a["obs"], numeric=False)
+        lesson_obs = _col_series(st, a["lesson_obs"], numeric=False)
+        status     = _col_series(st, a["status"], numeric=False)
+        grade      = _col_series(st, a["grade"])
 
         st[f"a{a_num}_obs"]        = obs
+        st[f"a{a_num}_lesson_obs"] = lesson_obs
         st[f"a{a_num}_status"]     = status
         st[f"a{a_num}_grade"]      = grade
-        st[f"a{a_num}_ai"]         = obs.str.upper().str.contains("AI", na=False)
+
+        raw = _raw_flags(a)
+        did_pos, trap_valid, trap_mismatch = _parse_trap_digits(obs, len(raw))
+        st[f"a{a_num}_trap_valid"] = trap_valid
+        fired_total = pd.Series(0, index=st.index, dtype=int)
+        for rep in _reported_flags(a):
+            srcs = [i - 1 for i in rep["src"] if 1 <= i <= len(raw)]
+            if not srcs:
+                continue
+            did = _combine_did([did_pos[s] for s in srcs], rep["combine"])
+            fired = trap_valid & ~did
+            st[f"a{a_num}_trap_{rep['key']}"] = fired
+            fired_total = fired_total + fired.astype(int)
+        st[f"a{a_num}_traps_fired"] = fired_total.where(trap_valid, np.nan)
+        st[f"a{a_num}_any_trap"]    = trap_valid & (fired_total > 0)
+        n_mismatch = int(trap_mismatch.sum())
+        if n_mismatch:
+            print(f"  warning: {a['name']} has {n_mismatch} OBS code(s) whose "
+                  f"length != {len(raw)} traps; left undecoded")
+
+        st[f"a{a_num}_ai"]         = (
+            st[f"a{a_num}_any_trap"]
+            | obs.str.upper().str.contains("AI", na=False)
+            | lesson_obs.str.upper().str.contains("AI", na=False)
+        )
         st[f"a{a_num}_submitted"]  = grade.notna()
         st[f"a{a_num}_passed"]     = status.isin(["Pass", "Pass'"])
         st[f"a{a_num}_trouble"]    = st[f"a{a_num}_submitted"] & ~status.isin(["Pass", "Pass'"])
@@ -264,15 +375,25 @@ def enrich(st):
         st[f"a{a_num}_cplus"]       = _col_series(st, a["c_plus"])
         st[f"a{a_num}_cminus"]      = _col_series(st, a["c_minus"])
         st[f"a{a_num}_cdiff"]       = _col_series(st, a["c_diff"])
-        st[f"a{a_num}_lesson_obs"]  = _col_series(st, a["lesson_obs"], numeric=False)
-        _lobs_lower = st[f"a{a_num}_lesson_obs"].str.lower()
-        st[f"a{a_num}_lesson_trouble"] = (
-            _lobs_lower.str.contains("share", na=False)
-            | _lobs_lower.str.contains("copy", na=False)
+        st[f"a{a_num}_lesson_trouble"] = lesson_obs.str.contains(
+            r"C\d+[<>]", na=False, regex=True
         )
 
     ai_cols = [f"a{i}_ai" for i in POOLED_ASSIGNMENTS]
     st["total_ai_flags"] = st[ai_cols].sum(axis=1) if ai_cols else 0
+
+    valid_cols = [f"a{i}_trap_valid" for i in ASSIGNMENTS
+                  if f"a{i}_trap_valid" in st.columns]
+    st["n_trap_assignments"] = (
+        st[valid_cols].sum(axis=1) if valid_cols else 0
+    )
+    fired_cols = [f"a{i}_traps_fired" for i in ASSIGNMENTS
+                  if f"a{i}_traps_fired" in st.columns]
+    if fired_cols:
+        raw = st[fired_cols].sum(axis=1, skipna=True)
+        st["total_traps_fired"] = raw.where(st["n_trap_assignments"] > 0, np.nan)
+    else:
+        st["total_traps_fired"] = np.nan
 
     trouble_cols   = [f"a{i}_trouble"   for i in POOLED_ASSIGNMENTS]
     submitted_cols = [f"a{i}_submitted" for i in POOLED_ASSIGNMENTS]
@@ -298,12 +419,38 @@ def enrich(st):
     for key, base in (("intA", "answers"), ("intQ", "questions"), ("intH", "help")):
         cols = [f"a{i}_{key}" for i in POOLED_ASSIGNMENTS]
         st[f"total_{base}_lessons"] = st[cols].sum(axis=1, skipna=True) if cols else 0
+        if COL.get(base) is None:
+            all_cols = [f"a{i}_{key}" for i in ASSIGNMENTS if f"a{i}_{key}" in st.columns]
+            if all_cols:
+                st[base] = st[all_cols].sum(axis=1, skipna=True)
 
     for key, alias in (("cplus", "comment_extra"),
                         ("cminus", "comment_missing"),
                         ("cdiff", "comment_diff")):
         cols = [f"a{i}_{key}" for i in POOLED_ASSIGNMENTS]
         st[f"total_{alias}"] = st[cols].sum(axis=1, skipna=True) if cols else 0
+
+    fallback_msgs = []
+    if COL.get("avg_assignments") is None:
+        grade_cols_all = [f"a{i}_grade" for i in ASSIGNMENTS
+                          if f"a{i}_grade" in st.columns]
+        if grade_cols_all:
+            st["avg_assignments"] = st[grade_cols_all].mean(axis=1, skipna=True)
+            fallback_msgs.append("avg_assignments = mean(lesson grades)")
+
+    if COL.get("participation") is None:
+        follow_cols_all = [f"a{i}_follow" for i in ASSIGNMENTS
+                           if f"a{i}_follow" in st.columns]
+        if follow_cols_all:
+            st["participation"] = st[follow_cols_all].mean(axis=1, skipna=True)
+            fallback_msgs.append("participation = mean(lesson follow %)")
+
+    if COL.get("final_grade") is None and st["avg_assignments"].notna().any():
+        st["final_grade"] = st["avg_assignments"]
+        fallback_msgs.append("final_grade = avg_assignments")
+
+    if fallback_msgs:
+        print(f"Computed fallbacks: {'; '.join(fallback_msgs)}")
 
     return st
 
@@ -932,6 +1079,7 @@ def analyze_correlations_summary(st):
         ("participation",    "avg_submitted_only",  "Participation → Avg submitted only"),
         ("participation",    "pre_typing",          "Participation → Pre-typing speed"),
         ("participation",    "typing_improvement",  "Participation → Typing improvement"),
+        ("participation",    "quiz_stii",           "Participation → Final quiz"),
         ("answers",          "final_grade",         "Answers given → Final grade"),
         ("questions",        "final_grade",         "Questions asked → Final grade"),
         ("help",             "final_grade",         "Help received → Final grade"),
@@ -950,6 +1098,111 @@ def analyze_correlations_summary(st):
         r_p, _, _ = safe_corr(st[col_x], st[col_y])
         r_s, p_s, n_s = safe_corr(st[col_x], st[col_y], method="spearman")
         print(f"  {label:<40} {fmt_r(r_p):>7} {fmt_r(r_s):>7} {fmt_p(p_s):>12} {n_s:>5}")
+
+
+def _trap_schema_for(a):
+    return [(f["key"], f["label"]) for f in _reported_flags(a)]
+
+
+def analyze_traps(st):
+    have = [a_num for a_num, a in ASSIGNMENTS.items()
+            if _trap_schema_for(a) and st.get(f"a{a_num}_trap_valid") is not None
+            and st[f"a{a_num}_trap_valid"].any()]
+    if not have:
+        return
+
+    section("ASSIGNMENT TRAPS (OBS flags)")
+    print("""
+  Each assignment hides 'traps' that fire when a student likely leaned on AI
+  (pasted the task, accepted the answer, never ran or read it). In the OBS
+  column, digit 1 = the student did the human thing; digit 0 = the trap FIRED.
+  A 'hit' is a fired trap. 'Any' = at least one trap fired in that submission.""")
+
+    subsection("Per-trap hit rate per assignment (of valid OBS codes)")
+    print(f"\n  {'Assign':<10} {'Trap':<26} {'Fired':>6} {'Valid':>6} {'Hit rate':>9}")
+    print(f"  {'-'*10} {'-'*26} {'-'*6} {'-'*6} {'-'*9}")
+    for a_num in have:
+        a = ASSIGNMENTS[a_num]
+        valid = st[f"a{a_num}_trap_valid"]
+        n_valid = int(valid.sum())
+        for key, label in _trap_schema_for(a):
+            fired = int(st[f"a{a_num}_trap_{key}"].sum())
+            rate = fired / n_valid if n_valid else float("nan")
+            print(f"  {a['name']:<10} {label[:26]:<26} {fired:>6} {n_valid:>6} {rate:>8.0%}")
+        any_fired = int(st[f"a{a_num}_any_trap"].sum())
+        any_rate = any_fired / n_valid if n_valid else float("nan")
+        tag = " ← easy" if a["difficulty"] == "easy" else ""
+        print(f"  {a['name']:<10} {'ANY trap fired':<26} {any_fired:>6} {n_valid:>6} "
+              f"{any_rate:>8.0%}{tag}")
+
+    subsection("Trap fired vs. trouble (per trap) — Fisher exact + odds ratio")
+    print(f"\n  {'Assign':<10} {'Trap':<24} {'Fire+Trbl':>9} {'Fire+OK':>8} "
+          f"{'Ok+Trbl':>8} {'Ok+OK':>6} {'OR':>7} {'p':>10}")
+    print(f"  {'-'*10} {'-'*24} {'-'*9} {'-'*8} {'-'*8} {'-'*6} {'-'*7} {'-'*10}")
+    for a_num in have:
+        a = ASSIGNMENTS[a_num]
+        trouble = st[f"a{a_num}_trouble"]
+        valid = st[f"a{a_num}_trap_valid"]
+        for key, label in _trap_schema_for(a):
+            fired = st[f"a{a_num}_trap_{key}"]
+            ok = valid & ~fired
+            ft = int((fired & trouble).sum())
+            fo = int((fired & ~trouble).sum())
+            ot = int((ok & trouble).sum())
+            oo = int((ok & ~trouble).sum())
+            if fo * ot > 0:
+                orv = (ft * oo) / (fo * ot)
+            elif (ft + ot) > 0 and (fo + oo) >= 0:
+                orv = float("inf") if ft > 0 else float("nan")
+            else:
+                orv = float("nan")
+            if min(ft + fo, ot + oo) > 0:
+                _, p_f = fisher_exact(np.array([[ft, fo], [ot, oo]]))
+            else:
+                p_f = float("nan")
+            or_s = f"{orv:.1f}×" if not (np.isnan(orv) or np.isinf(orv)) else (
+                "inf" if np.isinf(orv) else "N/A")
+            print(f"  {a['name']:<10} {label[:24]:<24} {ft:>9} {fo:>8} {ot:>8} "
+                  f"{oo:>6} {or_s:>7} {fmt_p(p_f):>10}")
+
+    subsection("Trap fired vs. grade (per trap) — mean assignment grade")
+    print(f"\n  {'Assign':<10} {'Trap':<26} {'Fired avg':>10} {'n':>4} "
+          f"{'Ok avg':>8} {'n':>4} {'Diff':>7}")
+    print(f"  {'-'*10} {'-'*26} {'-'*10} {'-'*4} {'-'*8} {'-'*4} {'-'*7}")
+    for a_num in have:
+        a = ASSIGNMENTS[a_num]
+        grade = st[f"a{a_num}_grade"]
+        valid = st[f"a{a_num}_trap_valid"]
+        for key, label in _trap_schema_for(a):
+            fired = st[f"a{a_num}_trap_{key}"]
+            fg = grade[fired].dropna()
+            og = grade[valid & ~fired].dropna()
+            fm = fg.mean() if len(fg) else float("nan")
+            om = og.mean() if len(og) else float("nan")
+            diff = fm - om if not (np.isnan(fm) or np.isnan(om)) else float("nan")
+            print(f"  {a['name']:<10} {label[:26]:<26} {fm:>10.2f} {len(fg):>4} "
+                  f"{om:>8.2f} {len(og):>4} {diff:>+7.2f}")
+
+    subsection("Per-student total traps fired")
+    tot = st["total_traps_fired"]
+    has_tot = tot.notna()
+    if has_tot.any():
+        print(f"\n  Students with any decoded OBS: {int(has_tot.sum())}")
+        print(f"  Total traps fired — mean = {tot[has_tot].mean():.2f}, "
+              f"max = {int(tot[has_tot].max())}")
+        r, p, n = safe_corr(tot, st["final_grade"], method="spearman")
+        print(f"  Total traps fired vs final grade:  ρ = {fmt_r(r)}, "
+              f"p = {fmt_p(p)}, n = {n}")
+        r, p, n = safe_corr(tot, st["participation"], method="spearman")
+        print(f"  Total traps fired vs participation: ρ = {fmt_r(r)}, "
+              f"p = {fmt_p(p)}, n = {n}")
+        pass_t = tot[st["passed_course"] & has_tot].dropna()
+        fail_t = tot[~st["passed_course"] & has_tot].dropna()
+        if len(pass_t) >= 2 and len(fail_t) >= 2:
+            _, p_mw = mannwhitneyu(pass_t, fail_t, alternative="two-sided")
+            print(f"\n  Passed course: mean traps fired = {pass_t.mean():.2f} (n={len(pass_t)})")
+            print(f"  Failed course: mean traps fired = {fail_t.mean():.2f} (n={len(fail_t)})")
+            print(f"  Mann-Whitney p = {fmt_p(p_mw)}")
 
 
 def save_stats_json(st, grades_path):
@@ -971,6 +1224,9 @@ def save_stats_json(st, grades_path):
         "correlations": [],
         "typing": {},
         "ai_overall": {},
+        "trap_schema": {a["lower"]: [{"key": k, "label": lbl}
+                                     for k, lbl in _raw_flags(a)]
+                        for a in ASSIGNMENTS.values() if _raw_flags(a)},
     }
 
     for a_num, a in ASSIGNMENTS.items():
@@ -1006,6 +1262,7 @@ def save_stats_json(st, grades_path):
         if a["follow"] is not None:
             fv = st[f"a{a_num}_follow"].dropna()
             entry["follow_avg"] = sf(fv.mean()) if len(fv) > 0 else None
+            entry["n_followed"] = int((fv > 0).sum())
 
             gv     = st[f"a{a_num}_grade"]
             ai_col = st[f"a{a_num}_ai"]
@@ -1043,6 +1300,43 @@ def save_stats_json(st, grades_path):
             entry["ai_avg_grade"]   = sf(ai_grades.mean())   if len(ai_grades)   > 0 else None
             entry["no_ai_avg_grade"]= sf(noai_grades.mean()) if len(noai_grades) > 0 else None
 
+        schema = _trap_schema_for(a)
+        if schema and f"a{a_num}_trap_valid" in st.columns:
+            valid   = st[f"a{a_num}_trap_valid"]
+            n_valid = int(valid.sum())
+            trouble = st[f"a{a_num}_trouble"]
+            grade   = st[f"a{a_num}_grade"]
+            entry["lower"]        = a["lower"]
+            entry["n_trap_valid"] = n_valid
+            entry["any_trap_fired"] = int(st[f"a{a_num}_any_trap"].sum())
+            entry["any_trap_rate"]  = sf(entry["any_trap_fired"] / n_valid) if n_valid else None
+            traps = []
+            for key, label in schema:
+                fired = st[f"a{a_num}_trap_{key}"]
+                ok    = valid & ~fired
+                n_f   = int(fired.sum())
+                ft, fo = int((fired & trouble).sum()), int((fired & ~trouble).sum())
+                ot, oo = int((ok & trouble).sum()),    int((ok & ~trouble).sum())
+                orv = (ft * oo) / (fo * ot) if fo * ot > 0 else None
+                p_f = None
+                if min(ft + fo, ot + oo) > 0:
+                    _, p_f = fisher_exact(np.array([[ft, fo], [ot, oo]]))
+                fg = grade[fired].dropna()
+                og = grade[ok].dropna()
+                traps.append({
+                    "key":           key,
+                    "label":         label,
+                    "n_fired":       n_f,
+                    "hit_rate":      sf(n_f / n_valid) if n_valid else None,
+                    "fired_trouble": ft, "fired_ok": fo,
+                    "ok_trouble":    ot, "safe_ok": oo,
+                    "odds_ratio":    sf(orv),
+                    "fisher_p":      sf(p_f),
+                    "fired_avg_grade": sf(fg.mean()) if len(fg) else None,
+                    "ok_avg_grade":    sf(og.mean()) if len(og) else None,
+                })
+            entry["traps"] = traps
+
         result["assignments"].append(entry)
 
     corr_pairs = [
@@ -1053,6 +1347,7 @@ def save_stats_json(st, grades_path):
         ("participation",   "avg_submitted_only", "Participation → Avg submitted only"),
         ("participation",   "pre_typing",         "Participation → Pre-typing speed"),
         ("participation",   "typing_improvement", "Participation → Typing improvement"),
+        ("participation",   "quiz_stii",          "Participation → Final quiz"),
         ("answers",         "final_grade",        "Answers given → Final grade"),
         ("questions",       "final_grade",        "Questions asked → Final grade"),
         ("help",            "final_grade",        "Help received → Final grade"),
@@ -1325,6 +1620,29 @@ def save_stats_json(st, grades_path):
         pass
     result["ai_overall"] = ao
 
+    if "total_traps_fired" in st.columns and st["total_traps_fired"].notna().any():
+        tot     = st["total_traps_fired"]
+        has_tot = tot.notna()
+        pass_t  = tot[st["passed_course"] & has_tot].dropna()
+        fail_t  = tot[~st["passed_course"] & has_tot].dropna()
+        ts = {
+            "n_students":    int(has_tot.sum()),
+            "mean_fired":    sf(tot[has_tot].mean()),
+            "max_fired":     int(tot[has_tot].max()) if has_tot.any() else None,
+            "passed_mean":   sf(pass_t.mean()) if len(pass_t) else None,
+            "failed_mean":   sf(fail_t.mean()) if len(fail_t) else None,
+        }
+        r_p, _, _   = safe_corr(tot, st["final_grade"])
+        r_s, p_s, n = safe_corr(tot, st["final_grade"], method="spearman")
+        ts["grade_corr"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n}
+        r_p, _, _   = safe_corr(tot, st["participation"])
+        r_s, p_s, n = safe_corr(tot, st["participation"], method="spearman")
+        ts["participation_corr"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n}
+        if len(pass_t) >= 2 and len(fail_t) >= 2:
+            _, p_mw = mannwhitneyu(pass_t, fail_t, alternative="two-sided")
+            ts["pass_fail_mannwhitney_p"] = sf(p_mw)
+        result["trap_summary"] = ts
+
     folder   = os.path.dirname(os.path.abspath(grades_path))
     out_path = os.path.join(folder, "grades_stats.json")
     with open(out_path, "w", encoding="utf-8") as f:
@@ -1402,17 +1720,6 @@ def plot_follow_vs_grade(st):
     plt.show()
 
 
-def _pick_default_overview(folder):
-    candidates = [
-        os.path.join(folder, "OverviewPlus.xlsx"),
-        os.path.join(folder, "Overview.xlsx"),
-    ]
-    for c in candidates:
-        if os.path.isfile(c):
-            return c
-    return None
-
-
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else None
 
@@ -1425,14 +1732,12 @@ def main():
                 last_folder = json.load(f).get("folder")
         except (OSError, ValueError):
             pass
-        if last_folder:
-            path = _pick_default_overview(last_folder)
 
-        if not path:
-            path = pick_file(
-                "Select OverviewPlus.xlsx or Overview.xlsx",
-                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-            )
+        path = pick_file(
+            "Select OverviewPlus.xlsx or Overview.xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            initialdir=last_folder or "",
+        )
 
     if not path:
         print("No file selected. Exiting.")
@@ -1448,6 +1753,25 @@ def main():
     print(f"Detected assignments: {detected}")
     print(f"Pooled (with follow): "
           f"{', '.join(a['name'] for a in POOLED_ASSIGNMENTS.values())}")
+
+    excluded_ids = load_excluded_student_ids(
+        os.path.join(os.path.dirname(path), 'students.csv')
+    )
+    if excluded_ids:
+        id_col_idx = COL.get('id')
+        if id_col_idx is not None:
+            ids = _col_series(st, id_col_idx, numeric=False).apply(
+                lambda s: s[:-2] if s.endswith('.0') else s
+            )
+            n_before = len(st)
+            st = st[~ids.isin(excluded_ids)].reset_index(drop=True)
+            n_excluded = n_before - len(st)
+            if n_excluded:
+                print(
+                    f"Excluded {n_excluded} student row(s) per "
+                    f"students.csv (Include != OK)"
+                )
+
     st = enrich(st)
 
     print(f"Students loaded: {len(st)}")
@@ -1463,6 +1787,7 @@ def main():
     analyze_engagement(st)
     analyze_ai_persistence(st)
     analyze_assignment_difficulty(st)
+    analyze_traps(st)
     analyze_per_language_follow(st)
     analyze_lesson_interactions(st)
     analyze_comment_diff(st)

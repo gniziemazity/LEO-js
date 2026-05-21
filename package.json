@@ -7,7 +7,7 @@
 	"scripts": {
 		"start": "electron .",
 		"build": "electron-builder",
-		"dash": "node lesson_tools/open.js dashboard.html",
+		"time": "node lesson_tools/open.js timeline.html",
 		"sim": "node lesson_tools/open.js simulator.html",
 		"diff": "node lesson_tools/open.js differentiator.html",
 		"grades": "node lesson_tools/open.js overview.html",

@@ -45,7 +45,7 @@ const mainEl = document.getElementById("main");
 const lessonNameEl = document.getElementById("lesson-name");
 const anonSelectEl = document.getElementById("anon-select");
 
-lessonNameEl.title = "Open dashboard for this lesson";
+lessonNameEl.title = "Open timeline for this lesson";
 lessonNameEl.addEventListener("click", async () => {
 	if (!_dirHandle) return;
 	try {
@@ -55,9 +55,9 @@ lessonNameEl.addEventListener("click", async () => {
 			return;
 		}
 		await _idbSet("lastDir", _dirHandle);
-		window.open("dashboard.html?autoload=1", "_blank");
+		window.open("timeline.html?autoload=1", "_blank");
 	} catch (e) {
-		alert("Could not open dashboard: " + e.message);
+		alert("Could not open timeline: " + e.message);
 	}
 });
 
@@ -364,6 +364,7 @@ function parseStudentRows(remarksBuf) {
 	const iRemarksDesc = findCol(hdrR, /^remarks?\s*desc/i);
 
 	const iInteractions = findCol(hdrR, /^interactions?$/i);
+	const iExcluded = hdrR.indexOf("Excluded");
 	const langIdx = {};
 	const langDescIdx = {};
 	for (const def of LANG_COL_DEFS) {
@@ -401,6 +402,13 @@ function parseStudentRows(remarksBuf) {
 		const row = rowsR[i];
 		const name = String(row[iName] || "").trim();
 		if (!name || name === "undefined") continue;
+		if (
+			iExcluded !== -1 &&
+			String(row[iExcluded] || "")
+				.trim()
+				.toUpperCase() === "EXCLUDED"
+		)
+			continue;
 		const followPct = iFollowPct !== -1 ? parseFloat(row[iFollowPct]) : NaN;
 		const followDesc =
 			iFollowDesc !== -1 ? String(row[iFollowDesc] || "") : "";
@@ -1159,10 +1167,17 @@ async function _readStudentDiffPayload(student) {
 	const recoEntries = [...fileMap.entries()].filter(
 		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
+	const startEntries = [...fileMap.entries()].filter(
+		([p]) => /^start\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
+	);
 	const correctEntries = [...fileMap.entries()].filter(
 		([p]) => /^correct\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
 	);
-	const teacherEntries = recoEntries.length ? recoEntries : correctEntries;
+	const teacherEntries = recoEntries.length
+		? recoEntries
+		: startEntries.length
+			? startEntries
+			: correctEntries;
 	const studentDir = (student.id + "/").toLowerCase();
 	const anonBase = "anon_ids/";
 	const studentEntries = [...fileMap.entries()].filter(
@@ -1192,7 +1207,9 @@ async function _readStudentDiffPayload(student) {
 	const imageEntries = [...fileMap.entries()].filter(
 		([p]) =>
 			IMAGE_EXT.test(p) &&
-			(/^correct\//i.test(p) || p.startsWith(anonBase + studentDir)),
+			(/^correct\//i.test(p) ||
+				/^start\//i.test(p) ||
+				p.startsWith(anonBase + studentDir)),
 	);
 	for (const [, file] of imageEntries) {
 		if (!imageUris[file.name]) {

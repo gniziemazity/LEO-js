@@ -146,7 +146,7 @@ LEO ships five standalone browser-based analysis tools in the `lesson_tools/` di
 
 | Tool              | Script             | Description                                                      |
 | ----------------- | ------------------ | ---------------------------------------------------------------- |
-| 📊 Dashboard      | `npm run dash`     | Key log charts and session analysis                              |
+| 📊 Timeline       | `npm run time`     | Key log charts and session analysis                              |
 | 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview                  |
 | 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison                     |
 | 📈 Overview       | `npm run grades`   | Multi-student grade browser (reads `grades_*.xlsx`)              |

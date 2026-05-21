@@ -111,6 +111,9 @@ def _find_teacher_file(project_dir: Path, fname: str) -> Path | None:
     reco = project_dir / "reconstructed" / fname
     if reco.is_file():
         return reco
+    start = project_dir / "start" / fname
+    if start.is_file():
+        return start
     correct = project_dir / "correct" / fname
     if correct.is_file():
         return correct

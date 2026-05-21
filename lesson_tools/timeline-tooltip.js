@@ -980,9 +980,10 @@ function _buildPartColorsForMismatches(b, mismatches) {
 		}
 		needsBoundary = false;
 		const baseTs = (evs[pi]?.timestamp ?? 0) / 1000;
-		const perCharBump = p.type === "code_insert";
+		const secPerChar = CFG.CODE_INSERT_MS_PER_CHAR / 1000;
+		const perCharBump = p.type === "code_insert" ? secPerChar : 0;
 		for (let k = 0; k < text.length; k++) {
-			const ts = perCharBump ? baseTs + k / 1000 : baseTs;
+			const ts = baseTs + k * perCharBump;
 			codeChars.push({ partIdx: pi, partOffset: k, ch: text[k], ts });
 		}
 	}
@@ -1020,12 +1021,19 @@ function _buildPartColorsForMismatches(b, mismatches) {
 			claimed: false,
 		});
 	}
+	const maxCodeInsertChars = parts.reduce((acc, p) => {
+		if (p.type !== "code_insert") return acc;
+		const len = _displayCodeInsert(p.t || "").length;
+		return Math.max(acc, len);
+	}, 0);
+	const tolerance =
+		1 + (maxCodeInsertChars * CFG.CODE_INSERT_MS_PER_CHAR) / 1000;
 	const pairs = [];
 	for (let bi = 0; bi < burstTokens.length; bi++) {
 		for (let ci = 0; ci < candidates.length; ci++) {
 			if (burstTokens[bi].token !== candidates[ci].token) continue;
 			const diff = burstTokens[bi].ts - candidates[ci].ts;
-			if (diff < -1 || diff > 1) continue;
+			if (diff < -tolerance || diff > tolerance) continue;
 			pairs.push({ bi, ci, diff });
 		}
 	}
@@ -1159,16 +1167,35 @@ function formatHit(hit, simple = false) {
 				if (truncated) headerHtml += "\n…";
 			} else if (kp) {
 				if (kp._virtualType === "code_insert") {
-					const raw = _displayCodeInsert(kp.code_insert);
-					const trimmed = raw
-						.replace(/^(?:[ \t]*\n)+/, "")
-						.replace(/\n+[ \t]*$/, "");
-					const allLines = trimmed.split("\n");
-					const truncated = allLines.length > MAX_HEADER_LINES;
-					const display = truncated
-						? allLines.slice(0, MAX_HEADER_LINES).join("\n") + "\n…"
-						: trimmed;
-					headerHtml = `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(display)}</span>`;
+					const synthBurst = {
+						textParts: [_singletonToTextPart(kp)],
+						evs: [kp],
+					};
+					const blockMissings = (students || []).flatMap(({ evs }) =>
+						(evs || []).filter((e) => e.kind === "missing"),
+					);
+					const partColors = _buildPartColorsForMismatches(
+						synthBurst,
+						blockMissings,
+					);
+					const {
+						parts: filtered,
+						partColors: filteredColors,
+						evs: filteredEvs,
+					} = _filterAnchorMoveParts(
+						synthBurst.textParts,
+						partColors,
+						synthBurst.evs,
+					);
+					const {
+						parts: trunc,
+						truncated,
+						evs: truncEvs,
+					} = _truncatePartsAtLines(filtered, MAX_HEADER_LINES, filteredEvs);
+					headerHtml = _trimBlankLines(
+						textPartsToHtml(trunc, filteredColors, truncEvs, _p?.replay),
+					);
+					if (truncated) headerHtml += "\n…";
 				} else if (
 					kp._virtualType === "anchor" ||
 					kp._virtualType === "move"

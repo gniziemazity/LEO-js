@@ -91,7 +91,7 @@ async function loadBestJsonFile(jsonFiles) {
 			.map((f) => _filePathFor(f) || f.name)
 			.join("\n  ");
 		console.warn(
-			`[Dashboard] Expected exactly one .json log file, found ${jsonFiles.length}:\n  ${paths}`,
+			`[Timeline] Expected exactly one .json log file, found ${jsonFiles.length}:\n  ${paths}`,
 		);
 		alert(
 			`Expected exactly one .json log file in the folder, found ${jsonFiles.length}:\n${paths}`,
@@ -105,13 +105,13 @@ async function loadBestJsonFile(jsonFiles) {
 		const data = JSON.parse(await file.text());
 		const events = data?.events || data?.keyPresses || [];
 		if (!Array.isArray(events) || events.length === 0) {
-			console.error(`[Dashboard] ${path} has no events`);
+			console.error(`[Timeline] ${path} has no events`);
 			alert(`${path} has no events.`);
 			showLoading(false);
 			return;
 		}
 		console.log(
-			`[Dashboard] Loading log from ${path} ` +
+			`[Timeline] Loading log from ${path} ` +
 				`(${events.length} events, sessionStart=${
 					events[0]?.timestamp
 						? new Date(events[0].timestamp).toISOString()
@@ -120,7 +120,7 @@ async function loadBestJsonFile(jsonFiles) {
 		);
 		await loadJsonData(file, data);
 	} catch (e) {
-		console.error(`[Dashboard] failed to load ${path}: ${e.message}`);
+		console.error(`[Timeline] failed to load ${path}: ${e.message}`);
 		alert(`Failed to load ${path}: ${e.message}`);
 		showLoading(false);
 	}
@@ -149,15 +149,15 @@ async function _readImageUris(fileMap) {
 
 async function loadJsonData(file, data) {
 	document.title = _dirHandle?.name
-		? `Dashboard: ${_dirHandle.name}`
-		: "Dashboard";
+		? `Timeline: ${_dirHandle.name}`
+		: "Timeline";
 	_zoomMin = _zoomMax = null;
 	_studentIdMap = {};
 	if (window.LanguageProfiles) {
 		try {
 			await window.LanguageProfiles.initProfiles();
 		} catch (e) {
-			console.warn("[Dashboard] LanguageProfiles.initProfiles failed:", e);
+			console.warn("[Timeline] LanguageProfiles.initProfiles failed:", e);
 		}
 	}
 	const p = processData(data);
@@ -169,7 +169,7 @@ async function loadJsonData(file, data) {
 	await _loadTeacherTokens();
 	try {
 		localStorage.setItem(
-			"dashboard_sim_data",
+			"timeline_sim_data",
 			JSON.stringify({
 				filePath: file.name,
 				lessonFile: data.lessonFile || null,
@@ -185,13 +185,13 @@ async function loadJsonData(file, data) {
 			const imageUris = await _readImageUris(_allFiles);
 			if (Object.keys(imageUris).length)
 				localStorage.setItem(
-					"dashboard_sim_images",
+					"timeline_sim_images",
 					JSON.stringify(imageUris),
 				);
-			else localStorage.removeItem("dashboard_sim_images");
+			else localStorage.removeItem("timeline_sim_images");
 		} catch {}
 	} else {
-		localStorage.removeItem("dashboard_sim_images");
+		localStorage.removeItem("timeline_sim_images");
 	}
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";
@@ -253,7 +253,7 @@ async function loadTeacherCodeTokens() {
 	if (!_allFiles || !_allFiles.size) return empty;
 
 	let codeFiles = [];
-	for (const dir of ["reconstructed/", "correct/"]) {
+	for (const dir of ["reconstructed/", "start/", "correct/"]) {
 		for (const [path, file] of _allFiles) {
 			const pl = path.toLowerCase();
 			if (!pl.startsWith(dir)) continue;
@@ -270,7 +270,7 @@ async function loadTeacherCodeTokens() {
 	}
 	if (!codeFiles.length) {
 		console.warn(
-			"[Dashboard] no code files in reconstructed/ or correct/; token counts will be 0",
+			"[Timeline] no code files in reconstructed/, start/ or correct/; token counts will be 0",
 		);
 		return empty;
 	}
@@ -300,7 +300,7 @@ async function saveLessonStatsCsv() {
 	if (!_p) return;
 	if (!_dirHandle) {
 		console.warn(
-			"[Dashboard] saveLessonStatsCsv: _dirHandle is null (file picker was used, not folder); CSV not written",
+			"[Timeline] saveLessonStatsCsv: _dirHandle is null (file picker was used, not folder); CSV not written",
 		);
 		return;
 	}
@@ -313,7 +313,7 @@ async function saveLessonStatsCsv() {
 		}
 		if (!granted) {
 			console.warn(
-				"[Dashboard] readwrite permission not granted; skipping lesson_stats.csv save",
+				"[Timeline] readwrite permission not granted; skipping lesson_stats.csv save",
 			);
 			return;
 		}
@@ -325,16 +325,16 @@ async function saveLessonStatsCsv() {
 		const writable = await fileHandle.createWritable();
 		await writable.write(csv);
 		await writable.close();
-		console.log(`[Dashboard] wrote lesson_stats.csv (${csv.length} bytes)`);
+		console.log(`[Timeline] wrote lesson_stats.csv (${csv.length} bytes)`);
 	} catch (e) {
 		console.warn(
-			"[Dashboard] could not save lesson_stats.csv:",
+			"[Timeline] could not save lesson_stats.csv:",
 			e?.message || e,
 		);
 	}
 }
 
-async function _tryAutoLoadDashboard() {
+async function _tryAutoLoadTimeline() {
 	const handle = await loadSavedDirHandle();
 	if (!handle) return false;
 	_dirHandle = handle;
@@ -351,14 +351,14 @@ async function _tryAutoLoadDashboard() {
 	const qs = new URLSearchParams(location.search);
 	if (qs.get("autoload") !== "1") return;
 	await waitForXlsxBundle();
-	const ok = await _tryAutoLoadDashboard();
+	const ok = await _tryAutoLoadTimeline();
 	if (!ok) {
 		const btn = document.createElement("button");
 		btn.className = "landing-btn";
 		btn.textContent = "🔄 Load Lesson";
 		btn.onclick = async () => {
 			btn.disabled = true;
-			await _tryAutoLoadDashboard();
+			await _tryAutoLoadTimeline();
 			btn.disabled = false;
 		};
 		const landingButtons = document.getElementById("landing-buttons");
@@ -419,7 +419,7 @@ async function _loadTeacherTokens() {
 		}
 	}
 	if (!candidates.length) {
-		console.warn("[Dashboard] tokens.txt not found in project");
+		console.warn("[Timeline] tokens.txt not found in project");
 		return;
 	}
 	candidates.sort((a, b) => a.rank - b.rank);
@@ -429,9 +429,9 @@ async function _loadTeacherTokens() {
 		const sessionDate = new Date(_p.sessionStart * 1000);
 		_teacherTokens = _parseTeacherTokensTxt(text, sessionDate);
 		console.log(
-			`[Dashboard] loaded ${_teacherTokens.length} teacher tokens from ${candidates[0].path}`,
+			`[Timeline] loaded ${_teacherTokens.length} teacher tokens from ${candidates[0].path}`,
 		);
 	} catch (e) {
-		console.warn("[Dashboard] failed to load tokens.txt:", e?.message);
+		console.warn("[Timeline] failed to load tokens.txt:", e?.message);
 	}
 }

@@ -18,6 +18,7 @@ from utils.similarity_measures import (
 )
 from utils.token_log import (
     _add_log_metadata,
+    _apply_insert_at_to_unpaired_missings,
     _assemble_diff_marks,
     _build_git_diff_marks,
     _build_lcs_token_diff_marks,
@@ -25,7 +26,10 @@ from utils.token_log import (
     _build_lev_token_diff_marks,
     _build_ro_diff_marks,
     _parse_teacher_tokens,
+    _read_text_normalized,
+    _remap_marks_to_utf16,
     _split_tokens_by_comment,
+    _strip_internal_fields,
     _structural_diff_summary,
     _structural_form,
     _validate_truth_schema,
@@ -308,6 +312,141 @@ def _shuffle_non_comment_tokens(text: str, seed: int) -> str:
     new_texts = [tok for _, tok in nc]
     random.Random(seed).shuffle(new_texts)
     return '\n'.join(new_texts)
+
+
+def _to_utf16_units(s: str):
+    out = []
+    for ch in s:
+        o = ord(ch)
+        if o > 0xFFFF:
+            o -= 0x10000
+            out.extend((0xD800 + (o >> 10), 0xDC00 + (o & 0x3FF)))
+        else:
+            out.append(o)
+    return out
+
+
+class TestUtf16OffsetRemap(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        root = Path(cls._tmp.name)
+        t = root / 'teacher'; t.mkdir()
+        s = root / 'student'; s.mkdir()
+        teacher_src = (
+            'const moto = "\U0001F3CD️";\n'
+            'const count = 50;\n'
+            'let speed = slider.value;\n'
+        )
+        student_src = (
+            'const moto = "\U0001F3CD️";\n'
+            'const count = 100;\n'
+            'let velocity = box.value;\n'
+        )
+        (t / 'script.js').write_text(teacher_src, encoding='utf-8')
+        (s / 'script.js').write_text(student_src, encoding='utf-8')
+        cls.tf = {'script.js': t / 'script.js'}
+        cls.sf = {'script.js': s / 'script.js'}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def _count_mis_sliced(self, diff_marks):
+        bad = 0
+        for files, side in ((self.tf, 'teacher_files'), (self.sf, 'student_files')):
+            for fname, marks in (diff_marks.get(side) or {}).items():
+                units = _to_utf16_units(_read_text_normalized(files[fname]))
+                for m in marks or []:
+                    if units[m['start']:m['end']] != _to_utf16_units(m['token']):
+                        bad += 1
+        return bad
+
+    def _build(self, build_fn):
+        res = build_fn(self.tf, self.sf)
+        tmarks, smarks, score = res[0], res[1], res[2]
+        aligns = res[3] if len(res) > 3 else None
+        lmarks = res[4] if len(res) > 4 else None
+        dm = _assemble_diff_marks('m', tmarks, smarks, score,
+                                  alignments=aligns, line_marks=lmarks)
+        _apply_insert_at_to_unpaired_missings(
+            dm.get('teacher_files', {}), dm.get('student_files', {}),
+            self.tf, self.sf,
+        )
+        _strip_internal_fields(dm)
+        return dm
+
+    def test_codepoint_offsets_break_then_remap_fixes(self):
+        for fn, name in ((_build_git_diff_marks, 'git'),
+                         (_build_lcs_token_diff_marks, 'lcs'),
+                         (_build_lev_token_diff_marks, 'lev'),
+                         (_build_ro_diff_marks, 'ro')):
+            with self.subTest(method=name):
+                dm = self._build(fn)
+                self.assertGreater(
+                    self._count_mis_sliced(dm), 0,
+                    f'{name}: expected raw code-point offsets to mis-slice '
+                    'past the emoji (test would be meaningless otherwise)',
+                )
+                _remap_marks_to_utf16(dm, self.tf, self.sf)
+                self.assertEqual(
+                    self._count_mis_sliced(dm), 0,
+                    f'{name}: remap should make every mark slice correctly '
+                    'in UTF-16 space',
+                )
+
+    def test_leo_already_utf16(self):
+        res = _build_leo_diff_marks(self.tf, self.sf)
+        dm = _assemble_diff_marks('leo', res[0], res[1], res[2])
+        _strip_internal_fields(dm)
+        self.assertEqual(
+            self._count_mis_sliced(dm), 0,
+            'LEO already emits UTF-16 offsets (via _colors_to_position_marks)',
+        )
+
+
+class TestEffectiveReferenceDir(unittest.TestCase):
+    def _checker(self, root: Path):
+        from utils.sim_check import CodeSimilarityChecker
+        c = CodeSimilarityChecker.__new__(CodeSimilarityChecker)
+        c.reference_dir = root / 'correct'
+        sd = root / 'start'
+        c.start_dir = sd if sd.exists() else None
+        c._lesson_all_events = []
+        return c
+
+    def test_prefers_start_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'correct').mkdir(); (root / 'start').mkdir()
+            (root / 'correct' / 'index.html').write_text('<p>correct</p>', encoding='utf-8')
+            (root / 'start' / 'index.html').write_text('<p>start</p>', encoding='utf-8')
+            self.assertEqual(self._checker(root)._effective_reference_dir().name, 'start')
+
+    def test_prefers_start_even_with_keylog(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'correct').mkdir(); (root / 'start').mkdir()
+            (root / 'correct' / 'index.html').write_text('x', encoding='utf-8')
+            (root / 'start' / 'index.html').write_text('y', encoding='utf-8')
+            c = self._checker(root)
+            c._lesson_all_events = [{'timestamp': 1}]
+            self.assertEqual(c._effective_reference_dir().name, 'start')
+
+    def test_falls_back_to_correct_when_no_start(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'correct').mkdir()
+            (root / 'correct' / 'index.html').write_text('x', encoding='utf-8')
+            self.assertEqual(self._checker(root)._effective_reference_dir().name, 'correct')
+
+    def test_falls_back_to_correct_when_start_has_no_code(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'correct').mkdir(); (root / 'start').mkdir()
+            (root / 'correct' / 'index.html').write_text('x', encoding='utf-8')
+            (root / 'start' / 'notes.txt').write_text('not code', encoding='utf-8')
+            self.assertEqual(self._checker(root)._effective_reference_dir().name, 'correct')
 
 
 class TestLEOCountForcedBlindSpot(unittest.TestCase):
@@ -1202,12 +1341,6 @@ _REPLAY_READY = bool(_NODE_BIN) and _REPLAY_RUNNER.is_file()
 @unittest.skipUnless(_REPLAY_READY,
                      'node executable or _replay_runner.js not available')
 class TestJsReplayParity(unittest.TestCase):
-    """Asserts the JS headless replay in `simulator-replay.js` produces
-    byte-identical reconstructed text to Python's
-    `lv_editor.reconstruct_html_headless` for every test fixture. The JS
-    replay is what the dashboard tooltip uses for ghost/comment lookup,
-    so any drift would silently break those decorations."""
-
     def _check_replay(self, log_path: Path, expected_file: Path):
         res = subprocess.run(
             [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],

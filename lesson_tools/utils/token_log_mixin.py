@@ -26,6 +26,7 @@ from .token_log import (
     _parse_teacher_tokens,
     _read_text_normalized,
     _refresh_missing_timestamps,
+    _remap_marks_to_utf16,
     _split_tokens_by_comment,
     _strip_internal_fields,
     _write_teacher_tokens_file,
@@ -376,7 +377,7 @@ class TokenLogMixin:
                 files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in CODE_EXTS}
                 if files:
                     return files
-        return self.get_all_code_files(self.reference_dir)
+        return self.get_all_code_files(self._effective_reference_dir())
 
     def write_keyword_log(self) -> None:
         all_events = getattr(self, '_lesson_all_events', None) or (
@@ -561,6 +562,7 @@ class TokenLogMixin:
         star_filename: Optional[str] = None,
         star_label: Optional[str] = None,
         include_line_marks: bool = True,
+        needs_utf16_remap: bool = False,
     ) -> None:
         teacher_code_files = self._get_teacher_code_files()
         if not teacher_code_files:
@@ -624,6 +626,8 @@ class TokenLogMixin:
             if write_star:
                 non_star = copy.deepcopy(diff_marks)
                 _strip_internal_fields(non_star)
+                if needs_utf16_remap:
+                    _remap_marks_to_utf16(non_star, teacher_code_files, stu_files)
                 with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
                     json.dump(non_star, fh, ensure_ascii=False, indent=2)
                 written += 1
@@ -651,11 +655,15 @@ class TokenLogMixin:
                         max(0.0, (n_found_nc_star - n_ghost_extra_count - n_extra_unpaired_count) / teacher_total_nc * 100), 1
                     )
                 _strip_internal_fields(diff_marks)
+                if needs_utf16_remap:
+                    _remap_marks_to_utf16(diff_marks, teacher_code_files, stu_files)
                 with open(anon_dir / star_filename, 'w', encoding='utf-8') as fh:
                     json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
                 written_star += 1
             else:
                 _strip_internal_fields(diff_marks)
+                if needs_utf16_remap:
+                    _remap_marks_to_utf16(diff_marks, teacher_code_files, stu_files)
                 with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
                     json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
                 written += 1
@@ -682,6 +690,7 @@ class TokenLogMixin:
             star_filename='diff_marks_lcs_star.json' if all_events else None,
             star_label='LCS* diff marks' if all_events else None,
             include_line_marks=False,
+            needs_utf16_remap=True,
         )
 
     def write_lev_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
@@ -694,6 +703,7 @@ class TokenLogMixin:
             star_filename='diff_marks_lev_star.json' if all_events else None,
             star_label='Lev* diff marks' if all_events else None,
             include_line_marks=False,
+            needs_utf16_remap=True,
         )
 
     def write_ro_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
@@ -705,6 +715,7 @@ class TokenLogMixin:
             star_token_matching='ro_star' if all_events else None,
             star_filename='diff_marks_ro_star.json' if all_events else None,
             star_label='R/O* diff marks' if all_events else None,
+            needs_utf16_remap=True,
         )
 
     def write_git_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
@@ -716,6 +727,7 @@ class TokenLogMixin:
             star_token_matching='git_star' if all_events else None,
             star_filename='diff_marks_git_star.json' if all_events else None,
             star_label='Git* diff marks' if all_events else None,
+            needs_utf16_remap=True,
         )
 
     def copy_curated_diff_marks(

@@ -136,7 +136,7 @@ class ExcelReportMixin:
                 header.append(f'{lang_label_by_ext[ext]} Desc')
         if self.required_items or self.not_expected_items:
             header.extend(['Expected', 'Expected Desc'])
-        header.extend(['Obs', 'Grade', 'Comments'])
+        header.extend(['Obs', 'Grade', 'Comments', 'Excluded'])
 
         COL_EXTRA   = 5
         COL_EXTRA_T = 6
@@ -175,12 +175,14 @@ class ExcelReportMixin:
         for cell in sheet[1]:
             cell.font = Font(bold=True)
 
+        excluded = getattr(self, 'excluded_ids', set()) or set()
         sids               = sorted(self.student_info.keys(), key=int)
+        active_sids        = [s for s in sids if s not in excluded]
         all_extra_counters = {
             sid: sum(self.student_simple_extra_by_ext.get(sid, {}).values(), Counter())
-            for sid in sids
+            for sid in active_sids
         }
-        peer_ranking, max_sim = self._compute_peer_ranking(sids, all_extra_counters)
+        peer_ranking, max_sim = self._compute_peer_ranking(active_sids, all_extra_counters)
 
         _extra_denom = max(
             1, sum(sum(c.values()) for c in self.teacher_outside_by_ext.values())
@@ -191,6 +193,12 @@ class ExcelReportMixin:
         for sid in sids:
             info          = self.student_info[sid]
             display_name  = sid if anonymize else info['name']
+            if sid in excluded:
+                row = [int(sid), display_name, info['number']]
+                row.extend([''] * (len(header) - len(row) - 1))
+                row.append('EXCLUDED')
+                sheet.append(row)
+                continue
             extra_ctr     = all_extra_counters.get(sid, Counter())
             extra_all     = [f'{kw} (x{n})' if n > 1 else kw
                              for kw, n in sorted(extra_ctr.items())]
@@ -484,7 +492,7 @@ class ExcelReportMixin:
 
     def _build_synth_teacher_timestamps(self) -> None:
         self._synth_ts_teacher = _build_synth_ts(
-            self.get_code_files(self.reference_dir)
+            self.get_code_files(self._effective_reference_dir())
         )
 
     def _per_basis_sim_info(self, sid: str, basis_marks: dict):
@@ -520,7 +528,7 @@ class ExcelReportMixin:
         if not has_submission or code_not_found or not basis_marks:
             return {}
         teacher_by_lang = self._teacher_tokens_by_lang()
-        teacher_files = self.get_code_files(self.reference_dir)
+        teacher_files = self.get_code_files(self._effective_reference_dir())
         teacher_texts: Dict[str, str] = {}
         teacher_ranges: Dict[str, Dict[str, List[Tuple[int, int]]]] = {}
         for ext, fpath in (teacher_files or {}).items():
@@ -636,7 +644,7 @@ class ExcelReportMixin:
         cache = getattr(self, '_teacher_by_lang_cache', None)
         if cache is None:
             cache = self._tokens_by_effective_lang(
-                self.get_code_files(self.reference_dir)
+                self.get_code_files(self._effective_reference_dir())
             )
             self._teacher_by_lang_cache = cache
         return cache
