@@ -10,7 +10,10 @@ Two modes:
     `<root>/lessons/<lesson>/` for each lesson dir, evaluates every student
     under `<lesson>/anon_ids/`, and writes a combined workbook
     `<root>/Method_Evaluation.xlsx` with:
-      * Summary sheet — F1, Pair F1, and Pair Mean Dist per method × lesson (3 columns/lesson)
+      * Summary sheet — F1, Pair F1, Pair Mean Dist, Result, and Progress
+        per method × lesson (5 columns/lesson; Result and Progress are
+        filled only on the per-method Total row, since they are not
+        per-label metrics)
       * one sheet per lesson — the same totals + per-student tables that
         single-project mode produces.
 
@@ -31,10 +34,35 @@ For each (student, method, label) where label ∈ {missing, extra, ghost_extra}:
     Pair Mean Dist column averages this over comparable pairs (exact matches
     contribute 0). Useful for distinguishing "method picked the right neighborhood
     but the wrong token" from "method was completely off."
+
+Per (student, method) — outcome-based, independent of the label classification:
+  * Result: 1 - edit_distance(method_corrected_tokens, ideal_corrected_tokens)
+    / len(ideal_corrected_tokens), pooled across all student files. Each side
+    is the student source with that diff_marks' actionable edits applied
+    (delete extras/ghost_extras, splice missings at insert_at, replace
+    paired-with partners, relocate move_to extras), tokenized with
+    _CHAR_TOKEN_RE and comments stripped. Higher = method's corrections
+    converge on the same end-state the ideal would produce. Orthogonal to F1:
+    a method with bad pair anchoring (Pair F1 low, Pair Mean Dist high) can
+    still have Result near 1.0 if its mark spans simply land on the right
+    tokens. Conversely, compensating errors — an FP delete cancelled by an
+    FP insert — can score artificially well here; treat as a complement to
+    F1, not a replacement.
+  * Progress: 1 - edit_distance(method_corrected, ideal_corrected) /
+    edit_distance(student_original, ideal_corrected), pooled. Normalises the
+    same numerator as Result by the *amount of work the student needed*
+    rather than total file size — so unchanged-but-already-correct tokens
+    don't inflate the score. Interpretation: "fraction of the student's gap
+    to ideal that this method closed." 1.0 = perfect, 0.0 = method produced
+    no improvement (≈ student original), negative = method made the code
+    further from ideal than the student already was. Much more
+    discriminating than Result on lessons where most tokens are trivially
+    correct (e.g. wall).
 """
 
 from __future__ import annotations
 
+import difflib
 import json
 import sys
 from collections import defaultdict
@@ -102,6 +130,97 @@ def _non_comment_token_count(text: str, ext: str | None = None) -> int:
         if not in_comment:
             n += 1
     return n
+
+
+def _non_comment_tokens(text: str, ext: str | None = None) -> list[str]:
+    starts, ends = _comment_ranges(text, ext)
+    spans = list(zip(starts, ends))
+    out: list[str] = []
+    for tm in _CHAR_TOKEN_RE.finditer(text):
+        pos = tm.start()
+        in_comment = False
+        for lo, hi in spans:
+            if lo <= pos < hi:
+                in_comment = True
+                break
+            if pos < lo:
+                break
+        if not in_comment:
+            out.append(tm.group(0))
+    return out
+
+
+def _build_edit_list(student_marks_for_file, teacher_marks_flat, fname):
+    """Edits to apply to student file `fname` so its content matches the post-
+    correction state implied by these diff marks.
+
+    Each edit is (start, end, replacement_text). Spans are in source code-units
+    (the same offsets the marks carry)."""
+    edits: list[tuple[int, int, str]] = []
+    for m in student_marks_for_file or []:
+        lbl = m.get("label")
+        if lbl not in ("extra", "ghost_extra"):
+            continue
+        s = m.get("start")
+        e = m.get("end")
+        if s is None or e is None:
+            continue
+        mt = m.get("move_to")
+        if isinstance(mt, dict) and mt.get("file") == fname and mt.get("pos") is not None:
+            edits.append((s, e, ""))
+            edits.append((mt["pos"], mt["pos"], m.get("token", "")))
+        else:
+            edits.append((s, e, ""))
+    for m in teacher_marks_flat or []:
+        if m.get("label") != "missing":
+            continue
+        token = m.get("token", "")
+        pw = m.get("paired_with")
+        ia = m.get("insert_at")
+        if isinstance(pw, dict) and pw.get("file") == fname and not pw.get("ghost"):
+            ps = pw.get("start")
+            pe = pw.get("end")
+            if ps is not None and pe is not None:
+                edits.append((ps, pe, token))
+                continue
+        if isinstance(ia, dict) and ia.get("file") == fname and ia.get("pos") is not None:
+            edits.append((ia["pos"], ia["pos"], token))
+    return edits
+
+
+def _apply_edits(text: str, edits) -> str:
+    """Apply edits right-to-left; silently skip any whose span overlaps an
+    already-applied later edit."""
+    if not edits:
+        return text
+    ordered = sorted(edits, key=lambda e: (-e[0], -e[1]))
+    out = text
+    last_start = len(text) + 1
+    for s, e, repl in ordered:
+        if s < 0 or e < s or e > last_start:
+            continue
+        out = out[:s] + repl + out[e:]
+        last_start = s
+    return out
+
+
+def _flatten_teacher_missings(data) -> list:
+    out = []
+    for items in (data.get("teacher_files") or {}).values():
+        for m in items or []:
+            if m.get("label") == "missing":
+                out.append(m)
+    return out
+
+
+def _token_edit_distance(a: list[str], b: list[str]) -> int:
+    sm = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
+    dist = 0
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        dist += max(i2 - i1, j2 - j1)
+    return dist
 
 
 def _find_teacher_file(project_dir: Path, fname: str) -> Path | None:
@@ -351,7 +470,9 @@ _TOTALS_COLS = [
 ]
 
 
-def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[dict], list[dict]]:
+def evaluate(
+    teacher_dir: Path, students_dir: Path | None = None,
+) -> tuple[list[dict], list[dict], dict[str, dict]]:
     if students_dir is None:
         students_dir = teacher_dir
     students = _list_students(students_dir)
@@ -363,6 +484,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
     aggregate: dict[tuple[str, str], dict] = {}
     methods_per_student_count: dict[tuple[str, str], int] = defaultdict(int)
     universe_cache: dict = {}
+    result_aggregate: dict[str, dict] = {}
 
     for student_dir in students:
         student_id = student_dir.name
@@ -428,7 +550,50 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
             for lbl in ideal_marks
         }
 
+        student_text_cache: dict[str, tuple[str, str]] = {}
+        for fname in student_universe:
+            spath = _find_student_file(student_dir, fname)
+            if spath:
+                student_text_cache[fname] = (
+                    _read_text(spath), spath.suffix.lower(),
+                )
+
+        ideal_teacher_missings = _flatten_teacher_missings(ideal_data)
+        ideal_corrected_tokens: dict[str, list[str]] = {}
+        student_baseline_dist = 0
+        for fname, (text, ext) in student_text_cache.items():
+            ideal_student_marks = (ideal_data.get("student_files") or {}).get(fname, [])
+            edits = _build_edit_list(ideal_student_marks, ideal_teacher_missings, fname)
+            ideal_corrected_tokens[fname] = _non_comment_tokens(
+                _apply_edits(text, edits), ext,
+            )
+            original_tokens = _non_comment_tokens(text, ext)
+            student_baseline_dist += _token_edit_distance(
+                original_tokens, ideal_corrected_tokens[fname],
+            )
+
         for method, mdata in per_method_data.items():
+            method_teacher_missings = _flatten_teacher_missings(mdata)
+            student_dist = 0
+            student_ideal_len = 0
+            for fname, (text, ext) in student_text_cache.items():
+                m_student_marks = (mdata.get("student_files") or {}).get(fname, [])
+                edits = _build_edit_list(
+                    m_student_marks, method_teacher_missings, fname,
+                )
+                method_tokens = _non_comment_tokens(_apply_edits(text, edits), ext)
+                ideal_tokens = ideal_corrected_tokens.get(fname, [])
+                student_dist += _token_edit_distance(method_tokens, ideal_tokens)
+                student_ideal_len += len(ideal_tokens)
+            ragg = result_aggregate.setdefault(method, {
+                "Result Dist": 0, "Result Ideal Tokens": 0,
+                "Baseline Dist": 0, "Students": 0,
+            })
+            ragg["Result Dist"] += student_dist
+            ragg["Result Ideal Tokens"] += student_ideal_len
+            ragg["Baseline Dist"] += student_baseline_dist
+            ragg["Students"] += 1
+
             method_marks = _collect_marks(mdata)
             method_marks = {
                 lbl: _filter_marks(
@@ -528,7 +693,7 @@ def evaluate(teacher_dir: Path, students_dir: Path | None = None) -> tuple[list[
         label_order.get(r["Label"], 99),
     ))
 
-    return per_student, totals
+    return per_student, totals, result_aggregate
 
 
 def _autosize(ws, df):
@@ -730,6 +895,33 @@ def _summary_metrics_from_stats(a: dict) -> tuple[float, float, float | str]:
     return f1, pf1, pmd
 
 
+def _result_score(result_agg: dict | None, mkey: str) -> float | str:
+    if not result_agg:
+        return ""
+    r = result_agg.get(mkey)
+    if not r:
+        return ""
+    n = r.get("Result Ideal Tokens", 0)
+    if not n:
+        return ""
+    score = 1.0 - r.get("Result Dist", 0) / n
+    if score < 0.0:
+        score = 0.0
+    return round(score, 4)
+
+
+def _progress_score(result_agg: dict | None, mkey: str) -> float | str:
+    if not result_agg:
+        return ""
+    r = result_agg.get(mkey)
+    if not r:
+        return ""
+    base = r.get("Baseline Dist", 0)
+    if not base:
+        return ""
+    return round(1.0 - r.get("Result Dist", 0) / base, 4)
+
+
 def _build_summary_rows(method_keys, results):
     rows: list[dict] = []
     for _, _, mkey, mdisp in method_keys:
@@ -737,7 +929,7 @@ def _build_summary_rows(method_keys, results):
                   else _SUMMARY_LABEL_FOR_PLAIN)
         for label in labels:
             row: dict = {"Method": mdisp, "Label": label}
-            for lesson_name, (_ps, tot) in results.items():
+            for lesson_name, (_ps, tot, _ragg) in results.items():
                 stats = next(
                     (r for r in tot
                      if r.get("_method_key") == mkey and r.get("Label") == label),
@@ -747,25 +939,33 @@ def _build_summary_rows(method_keys, results):
                     row[f"{lesson_name} F1"] = ""
                     row[f"{lesson_name} Pair F1"] = ""
                     row[f"{lesson_name} Pair Mean Dist"] = ""
+                    row[f"{lesson_name} Result"] = ""
+                    row[f"{lesson_name} Progress"] = ""
                     continue
                 f1, pf1, pmd = _summary_metrics_from_stats(stats)
                 row[f"{lesson_name} F1"] = f1
                 row[f"{lesson_name} Pair F1"] = pf1
                 row[f"{lesson_name} Pair Mean Dist"] = pmd
+                row[f"{lesson_name} Result"] = ""
+                row[f"{lesson_name} Progress"] = ""
             rows.append(row)
         row = {"Method": mdisp, "Label": "Total"}
-        for lesson_name, (_ps, tot) in results.items():
+        for lesson_name, (_ps, tot, ragg) in results.items():
             agg = _aggregate_method_stats(tot)
             a = agg.get(mkey)
             if a is None:
                 row[f"{lesson_name} F1"] = ""
                 row[f"{lesson_name} Pair F1"] = ""
                 row[f"{lesson_name} Pair Mean Dist"] = ""
+                row[f"{lesson_name} Result"] = _result_score(ragg, mkey)
+                row[f"{lesson_name} Progress"] = _progress_score(ragg, mkey)
                 continue
             f1, pf1, pmd = _summary_metrics_from_stats(a)
             row[f"{lesson_name} F1"] = f1
             row[f"{lesson_name} Pair F1"] = pf1
             row[f"{lesson_name} Pair Mean Dist"] = pmd
+            row[f"{lesson_name} Result"] = _result_score(ragg, mkey)
+            row[f"{lesson_name} Progress"] = _progress_score(ragg, mkey)
         rows.append(row)
     return rows
 
@@ -817,12 +1017,12 @@ def _build_languages_rows(lang_stats_by_lesson: dict[str, dict]) -> list[dict]:
 
 def write_multi_excel(
     out_path: Path,
-    results: dict[str, tuple[list[dict], list[dict]]],
+    results: dict[str, tuple[list[dict], list[dict], dict[str, dict]]],
     lang_stats_by_lesson: dict[str, dict] | None = None,
 ) -> None:
     method_keys: list[tuple[int, int, str, str]] = []
     seen: set[str] = set()
-    for _, (_ps, tot) in results.items():
+    for _, (_ps, tot, _ragg) in results.items():
         for r in tot:
             key = r["_method_key"]
             if key in seen:
@@ -839,6 +1039,8 @@ def write_multi_excel(
         summary_cols.append(f"{lesson_name} F1")
         summary_cols.append(f"{lesson_name} Pair F1")
         summary_cols.append(f"{lesson_name} Pair Mean Dist")
+        summary_cols.append(f"{lesson_name} Result")
+        summary_cols.append(f"{lesson_name} Progress")
     summary_df = pd.DataFrame(summary_rows, columns=summary_cols)
 
     languages_rows = _build_languages_rows(lang_stats_by_lesson or {})
@@ -860,7 +1062,7 @@ def write_multi_excel(
             ws.freeze_panes = "A2"
 
         used_sheet_names = {"Summary", "Languages"}
-        for lesson_name, (per_student, totals) in results.items():
+        for lesson_name, (per_student, totals, _result_agg) in results.items():
             sheet = _safe_sheet_name(lesson_name, used_sheet_names)
             tot_df = pd.DataFrame(
                 [{c: r.get(c, "") for c in _TOTALS_COLS} for r in totals],
@@ -901,10 +1103,12 @@ def _list_lesson_dirs(lessons_root: Path) -> list[Path]:
     return sorted(d for d in lessons_root.iterdir() if d.is_dir())
 
 
-def evaluate_lesson(lesson_dir: Path) -> tuple[list[dict], list[dict]]:
+def evaluate_lesson(
+    lesson_dir: Path,
+) -> tuple[list[dict], list[dict], dict[str, dict]]:
     students_dir = lesson_dir / "anon_ids"
     if not students_dir.is_dir():
-        return [], []
+        return [], [], {}
     return evaluate(teacher_dir=lesson_dir, students_dir=students_dir)
 
 
@@ -922,20 +1126,20 @@ def run_multi(grades_path: Path) -> int:
 
     print(f"Root: {root}")
     print(f"Lessons folder: {lessons_root}")
-    results: dict[str, tuple[list[dict], list[dict]]] = {}
+    results: dict[str, tuple[list[dict], list[dict], dict[str, dict]]] = {}
     lang_stats: dict[str, dict] = {}
     for lesson_dir in lesson_dirs:
         lesson_name = lesson_dir.name
         print(f"\n[{lesson_name}]")
         try:
-            per_student, totals = evaluate_lesson(lesson_dir)
+            per_student, totals, result_agg = evaluate_lesson(lesson_dir)
         except SystemExit as e:
             print(f"  skipped: {e}")
             continue
         if not totals:
             print(f"  skipped: no anon_ids/ or no methods to compare")
             continue
-        results[lesson_name] = (per_student, totals)
+        results[lesson_name] = (per_student, totals, result_agg)
         lang_stats[lesson_name] = _evaluate_lesson_languages(lesson_dir)
         print(f"  {len(per_student)} per-student rows · {len(totals)} totals rows")
 
@@ -957,7 +1161,7 @@ def main(argv: list[str]) -> int:
             print(f"error: {project_dir} is not a directory", file=sys.stderr)
             return 1
         print(f"Project: {project_dir}")
-        per_student, totals = evaluate(project_dir)
+        per_student, totals, _result_agg = evaluate(project_dir)
         if not per_student:
             print("No methods to compare.")
             return 0
