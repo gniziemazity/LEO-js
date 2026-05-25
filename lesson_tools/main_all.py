@@ -10,21 +10,24 @@ ROOT_DIR = Path(__file__).resolve().parent
 MAIN_PY = ROOT_DIR / "main.py"
 
 
+_PROJECT_GROUPS = ("lessons", "assignments")
+
+
 def _pick_course_folder() -> Path | None:
     chosen = pick_folder(
-        "Select course root folder (containing OverviewPlus.xlsx and lessons/)"
+        "Select course root folder (containing lessons/ and/or assignments/)"
     )
     return Path(chosen).resolve() if chosen else None
 
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(
-        description="Run the grading pipeline on every lesson in a course folder"
+        description="Run the grading pipeline on every lesson and assignment in a course folder"
     )
     parser.add_argument(
         "course",
         nargs="?",
-        help="Course folder path (the one containing OverviewPlus.xlsx and lessons/)",
+        help="Course folder path (the one containing lessons/ and/or assignments/)",
     )
     add_grading_flags(parser)
     return parser.parse_args(argv)
@@ -44,51 +47,58 @@ def _resolve_course(course_arg) -> Path:
     return picked
 
 
-def _lesson_dirs(course: Path) -> list[Path]:
-    lessons_root = course / "lessons"
-    if not lessons_root.is_dir():
-        print(f"error: no 'lessons/' folder in {course}")
+def _project_dirs(course: Path) -> list[Path]:
+    found: list[Path] = []
+    for group in _PROJECT_GROUPS:
+        root = course / group
+        if root.is_dir():
+            found.extend(sorted(d for d in root.iterdir() if d.is_dir()))
+    if not found:
+        groups = " or ".join(f"'{g}/'" for g in _PROJECT_GROUPS)
+        print(f"error: no {groups} folder in {course}")
         sys.exit(1)
-    return sorted(d for d in lessons_root.iterdir() if d.is_dir())
+    return found
 
 
-def _build_cmd(lesson_dir: Path, args) -> list[str]:
-    return [sys.executable, str(MAIN_PY), str(lesson_dir), *forward_grading_flags(args)]
+def _build_cmd(project_dir: Path, args) -> list[str]:
+    return [sys.executable, str(MAIN_PY), str(project_dir), *forward_grading_flags(args)]
 
 
 def main(argv=None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     course = _resolve_course(args.course)
-    lessons = _lesson_dirs(course)
+    projects = _project_dirs(course)
 
-    if not lessons:
-        print(f"No lesson subfolders found under {course / 'lessons'}")
-        return 1
+    by_group: dict[str, list[str]] = {}
+    for d in projects:
+        by_group.setdefault(d.parent.name, []).append(d.name)
 
     separator = "#" * 70
     print(f"\n{separator}")
     print(f"  Course : {course.name}")
     print(f"  Path   : {course}")
-    print(f"  Lessons: {len(lessons)} ({', '.join(l.name for l in lessons)})")
+    for group, names in by_group.items():
+        print(f"  {group.capitalize():<11}: {len(names)} ({', '.join(names)})")
     flags = forward_grading_flags(args)
     print(f"  Flags  : {' '.join(flags) if flags else '(none)'}")
     print(separator)
 
     failed: list[tuple[str, int]] = []
-    for i, lesson_dir in enumerate(lessons, start=1):
+    for i, project_dir in enumerate(projects, start=1):
+        label = f"{project_dir.parent.name}/{project_dir.name}"
         print(f"\n{separator}")
-        print(f"  Lesson {i}/{len(lessons)}: {lesson_dir.name}")
+        print(f"  Project {i}/{len(projects)}: {label}")
         print(separator)
-        cmd = _build_cmd(lesson_dir, args)
+        cmd = _build_cmd(project_dir, args)
         result = subprocess.run(cmd, cwd=str(ROOT_DIR))
         if result.returncode != 0:
-            print(f"\n** Lesson {lesson_dir.name} failed (exit code {result.returncode}) — continuing **")
-            failed.append((lesson_dir.name, result.returncode))
+            print(f"\n** {label} failed (exit code {result.returncode}) — continuing **")
+            failed.append((label, result.returncode))
 
     print(f"\n{separator}")
-    print(f"  Course pipeline complete: {len(lessons) - len(failed)}/{len(lessons)} lessons succeeded")
+    print(f"  Course pipeline complete: {len(projects) - len(failed)}/{len(projects)} project(s) succeeded")
     if failed:
-        print("  Failed lessons:")
+        print("  Failed:")
         for name, code in failed:
             print(f"    - {name} (exit {code})")
     print(separator)
