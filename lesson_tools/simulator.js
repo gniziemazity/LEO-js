@@ -2,7 +2,6 @@
 
 let vis;
 
-const _SIM_IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 const _SIM_LOG_SKIP = new Set(["diff_marks.json"]);
 const _SIM_LOG_RANK = (name) => {
 	const n = name.toLowerCase();
@@ -16,7 +15,7 @@ async function _simReadImageUris(pathMap) {
 	const imageUris = {};
 	await Promise.all(
 		[...pathMap.entries()]
-			.filter(([p]) => _SIM_IMAGE_EXT.test(p))
+			.filter(([p]) => IMAGE_EXT.test(p))
 			.map(async ([, f]) => {
 				try {
 					imageUris[f.name] = await readFileDataUri(f);

@@ -61,15 +61,11 @@ function _resolveMarksEntry() {
 	return _allMarks[modeKey] ?? Object.values(_allMarks)[0] ?? null;
 }
 
-const _CODE_FILE_RE = /\.(html|css|js|py)$/i;
-
 function _pairedFileName(fromSide, name) {
 	const otherSide = fromSide === "teacher" ? "student" : "teacher";
 	const otherFiles = otherSide === "teacher" ? _teacherFiles : _studentFiles;
 	if (!otherFiles) return null;
-	const otherNames = Object.keys(otherFiles).filter((n) =>
-		_CODE_FILE_RE.test(n),
-	);
+	const otherNames = Object.keys(otherFiles).filter((n) => CODE_EXT.test(n));
 	if (!otherNames.length) return null;
 	const filePairs = _currentMarksEntry?.file_pairs;
 	if (filePairs) {

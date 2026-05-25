@@ -17,87 +17,16 @@ async function _buildDiffWindowPayload(student, followPct) {
 		student.id +
 		"/"
 	).toLowerCase();
-
-	const recoEntries = [..._allFiles.entries()].filter(
-		([p]) => /^reconstructed\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
+	const fileMap = new Map(
+		[..._allFiles.entries()].map(([p, f]) => [p.toLowerCase(), f]),
 	);
-	const startEntries = [..._allFiles.entries()].filter(
-		([p]) => /^start\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
-	);
-	const correctEntries = [..._allFiles.entries()].filter(
-		([p]) => /^correct\//i.test(p) && /\.(html|css|js|py)$/i.test(p),
-	);
-	const teacherEntries = recoEntries.length
-		? recoEntries
-		: startEntries.length
-			? startEntries
-			: correctEntries;
-	const studentEntries = [..._allFiles.entries()].filter(
-		([p]) =>
-			p.toLowerCase().startsWith(studentDir) &&
-			/\.(html|css|js|py)$/i.test(p),
-	);
-
-	const loadDiffMarks = async (filename) => {
-		const key = studentDir + filename;
-		const entry = [..._allFiles.entries()].find(
-			([p]) => p.toLowerCase() === key,
-		);
-		let fileObj = entry ? entry[1] : null;
-		if (!fileObj && _dirHandle) {
-			try {
-				const sub = await _dirHandle.getDirectoryHandle(CFG.STUDENT_SUBDIR);
-				const sdir = await sub.getDirectoryHandle(student.id);
-				const fh = await sdir.getFileHandle(filename);
-				fileObj = await fh.getFile();
-			} catch {}
-		}
-		if (!fileObj) return null;
-		try {
-			return JSON.parse(await readFileText(fileObj));
-		} catch {
-			return null;
-		}
-	};
-
-	const allMarks = {};
-	for (const [m, fname] of Object.entries(DIFF_MARKS_FILES)) {
-		const marks = await loadDiffMarks(fname);
-		if (marks) allMarks[m] = marks;
-	}
-	const defaultMode = defaultDiffModeKey(allMarks);
-	const defaultMarks = defaultMode != null ? allMarks[defaultMode] : null;
-
-	const teacherFiles = {};
-	for (const [, file] of teacherEntries) {
-		teacherFiles[file.name] = await readFileText(file);
-	}
-
-	const studentFiles = {};
-	for (const [, file] of studentEntries) {
-		studentFiles[file.name] = await readFileText(file);
-	}
-
-	const imageUris = {};
-	const imageEntries = [..._allFiles.entries()].filter(
-		([p]) =>
-			IMAGE_EXT.test(p) &&
-			(/^correct\//i.test(p) ||
-				/^start\//i.test(p) ||
-				p.toLowerCase().startsWith(studentDir)),
-	);
-	for (const [, file] of imageEntries) {
-		if (!imageUris[file.name])
-			imageUris[file.name] = await readFileDataUri(file);
-	}
+	const { teacherFiles, studentFiles, allMarks, imageUris } =
+		await buildDiffPayloadData(fileMap, studentDir);
 
 	return {
 		teacherFiles,
 		studentFiles,
 		imageUris,
-		mode: defaultMode,
-		teacherMarks: defaultMarks ? defaultMarks.teacher_files || {} : null,
-		studentMarks: defaultMarks ? defaultMarks.student_files || {} : null,
 		allMarks,
 		title: `${student.id ? escHtml(student.id) + ". " : ""}${escHtml(student.name)} (${escHtml(followPct)})`,
 	};

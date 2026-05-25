@@ -46,8 +46,6 @@ const _hoverAborts = new Map();
 let _shake = false;
 const _jitterMap = new Map();
 
-const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
-
 const INTERACTION_COLORS = {
 	"teacher-question": {
 		hex: THEME.blue,

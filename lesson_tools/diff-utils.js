@@ -179,6 +179,9 @@ function getFileExt(name) {
 	return m ? m[0].slice(1).toLowerCase() : "";
 }
 
+const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+const CODE_EXT = /\.(html|css|js|py)$/i;
+
 async function pickFolderWithMemory(idbKey = "lastDir", dbName = undefined) {
 	const lastDir = await _idbGet(idbKey, dbName);
 	const opts = { mode: "read" };
@@ -402,6 +405,54 @@ if (!window.__getDifferentiatorData) {
 		if (!resolver) return null;
 		return await resolver();
 	};
+}
+
+async function buildDiffPayloadData(fileMap, studentDir) {
+	const entries = [...fileMap.entries()];
+	const teach = (re) =>
+		entries.filter(([p]) => re.test(p) && CODE_EXT.test(p));
+	const recoEntries = teach(/^reconstructed\//i);
+	const startEntries = teach(/^start\//i);
+	const correctEntries = teach(/^correct\//i);
+	const teacherEntries = recoEntries.length
+		? recoEntries
+		: startEntries.length
+			? startEntries
+			: correctEntries;
+	const studentEntries = entries.filter(
+		([p]) => p.startsWith(studentDir) && CODE_EXT.test(p),
+	);
+
+	const teacherFiles = {};
+	for (const [, f] of teacherEntries)
+		teacherFiles[f.name] = await readFileText(f);
+	const studentFiles = {};
+	for (const [, f] of studentEntries)
+		studentFiles[f.name] = await readFileText(f);
+
+	const allMarks = {};
+	for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+		const entry = fileMap.get(studentDir + fname);
+		if (entry) {
+			try {
+				allMarks[mode] = JSON.parse(await readFileText(entry));
+			} catch {}
+		}
+	}
+
+	const imageUris = {};
+	for (const [p, f] of entries) {
+		if (
+			IMAGE_EXT.test(p) &&
+			(/^correct\//i.test(p) ||
+				/^start\//i.test(p) ||
+				p.startsWith(studentDir))
+		) {
+			if (!imageUris[f.name]) imageUris[f.name] = await readFileDataUri(f);
+		}
+	}
+
+	return { teacherFiles, studentFiles, allMarks, imageUris };
 }
 
 function _buildDiffPayload(data) {
