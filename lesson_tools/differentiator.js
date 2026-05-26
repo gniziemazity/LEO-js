@@ -246,6 +246,25 @@ function _showLoading(on) {
 	if (el) el.style.display = on ? "flex" : "none";
 }
 
+async function _loadFromUrlParams({ lesson, group, id, title }) {
+	const ds = await loadLessonDataSource({ lesson, group });
+	if (!ds) return null;
+	await ds.load();
+	const studentPrefix = "anon_ids/" + String(id).toLowerCase() + "/";
+	const data = await buildDiffPayloadData(ds.files, studentPrefix);
+	if (
+		!Object.keys(data.teacherFiles).length &&
+		!Object.keys(data.studentFiles).length
+	) {
+		console.warn(
+			`[Differentiator] No code files found for ${lesson}/anon_ids/${id}/.`,
+		);
+		return null;
+	}
+	data.title = title || `${id}. Student`;
+	return _buildDiffPayload(data);
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
 	await window.LanguageProfiles.initProfiles();
 	const params = new URLSearchParams(location.search);
@@ -254,6 +273,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	_diffSessionKey = keyParam ? `differentiatorSession:${keyParam}` : null;
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
+	const toolParams = parseToolParams();
 	_refreshLinePaddingButton();
 	_refreshLineNumbersButton();
 	_refreshPreviewButton();
@@ -264,7 +284,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 		!!localStorage.getItem(key) ||
 		(_diffSessionKey && !!sessionStorage.getItem(_diffSessionKey)) ||
 		(window.opener &&
-			typeof window.opener.__getDifferentiatorData === "function");
+			typeof window.opener.__getDifferentiatorData === "function") ||
+		(!!toolParams.lesson && !!toolParams.id);
 	if (expectAutoLoad) _showLoading(true);
 
 	const modeSelect = document.getElementById("mode-select");
@@ -317,7 +338,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 	}
 
 	let incoming = null;
-	const raw = localStorage.getItem(key);
+	if (toolParams.lesson && toolParams.id) {
+		try {
+			incoming = await _loadFromUrlParams(toolParams);
+		} catch (e) {
+			console.error("[Differentiator] URL-param load failed", e);
+		}
+	}
+	const raw = !incoming ? localStorage.getItem(key) : null;
 	if (raw) {
 		localStorage.removeItem(key);
 		try {

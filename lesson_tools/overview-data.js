@@ -142,9 +142,15 @@ const PASSING = new Set(["Pass", "Pass'", "Pass*"]);
 
 async function pickFolder() {
 	try {
-		const handle = await pickFolderWithMemory("lastCourseDir", "grades-dash");
+		const ds = new FsDataSource({
+			idbKey: "lastCourseDir",
+			dbName: "grades-dash",
+		});
+		await ds.open();
+		await _idbSet(IDB_KEY_COURSE_ROOT, ds.rootHandle);
 		showLoading(true);
-		await loadCourse(handle);
+		await ds.load();
+		await loadCourse(ds);
 		showLoading(false);
 	} catch (e) {
 		showLoading(false);
@@ -152,52 +158,36 @@ async function pickFolder() {
 	}
 }
 
-async function loadCourse(rootHandle) {
+function _pickLatestOverviewFile(files) {
+	let latest = null;
+	let latestStamp = "";
+	for (const path of files.keys()) {
+		if (path.includes("/")) continue;
+		const m = path.match(/^overview_(\d{8}-\d{6})\.xlsx$/i);
+		if (m && m[1] > latestStamp) {
+			latest = files.get(path);
+			latestStamp = m[1];
+		}
+	}
+	if (latest) return latest;
+	return files.get("overviewplus.xlsx") || files.get("overview.xlsx") || null;
+}
+
+async function loadCourse(ds) {
 	if (typeof XLSX === "undefined") {
 		alert("SheetJS not loaded.");
 		return;
 	}
 
-	console.log("[overview] loadCourse rootHandle.name =", rootHandle.name);
+	console.log("[overview] loadCourse rootName =", ds.rootName);
 
-	let gradesFile = null,
-		pyStatsFile = null;
-	let overviewPlusFile = null;
-	let overviewFile = null;
-	const rootFileNames = [];
-	for await (const [name, entry] of rootHandle.entries()) {
-		if (entry.kind !== "file") continue;
-		rootFileNames.push(name);
-		if (/^overviewplus\.xlsx?$/i.test(name)) {
-			overviewPlusFile = await entry.getFile();
-		} else if (/^overview\.xlsx?$/i.test(name)) {
-			overviewFile = await entry.getFile();
-		}
-		if (/^grades_stats\.json$/i.test(name))
-			pyStatsFile = await entry.getFile();
-	}
-	console.log("[overview] root files:", rootFileNames);
-	gradesFile = overviewPlusFile || overviewFile;
+	const gradesFile = _pickLatestOverviewFile(ds.files);
+	const pyStatsFile = ds.files.get("grades_stats.json") || null;
 	if (!gradesFile) {
 		alert("No Overview.xlsx or OverviewPlus.xlsx found.");
 		return;
 	}
-	console.log(
-		"[overview] picked grades file:",
-		gradesFile.name,
-		"size =",
-		gradesFile.size,
-		"lastModified =",
-		new Date(gradesFile.lastModified).toISOString(),
-	);
-	if (pyStatsFile)
-		console.log(
-			"[overview] picked grades_stats.json size =",
-			pyStatsFile.size,
-			"lastModified =",
-			new Date(pyStatsFile.lastModified).toISOString(),
-		);
-	else console.log("[overview] no grades_stats.json present");
+	console.log("[overview] picked grades file:", gradesFile.name);
 
 	const buf = await gradesFile.arrayBuffer();
 	if (!buf.byteLength) {
@@ -285,30 +275,46 @@ async function loadCourse(rootHandle) {
 
 	_globalStudentMap = {};
 	_realToAlterMap = {};
-	try {
-		const fh = await rootHandle.getFileHandle("students.csv");
-		const text = await readCsvText(await fh.getFile());
-		_globalStudentMap = parseStudentCsv(text);
-		_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
-	} catch {}
-	try {
-		const fh = await rootHandle.getFileHandle("name_map.csv");
-		const text = await readCsvText(await fh.getFile());
-		_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
-	} catch {}
+	const studentsCsvFile = ds.files.get("students.csv");
+	if (studentsCsvFile) {
+		try {
+			const text = await readCsvText(studentsCsvFile);
+			_globalStudentMap = parseStudentCsv(text);
+			_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
+		} catch {}
+	}
+	const nameMapCsvFile = ds.files.get("name_map.csv");
+	if (nameMapCsvFile) {
+		try {
+			const text = await readCsvText(nameMapCsvFile);
+			_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
+		} catch {}
+	}
 
 	_lessonHandles = {};
 	_assignHandles = {};
-	for await (const [name, entry] of rootHandle.entries()) {
-		if (entry.kind !== "directory") continue;
-		if (/^lessons$/i.test(name)) {
-			for await (const [n2, e2] of entry.entries())
-				if (e2.kind === "directory") _lessonHandles[n2.toLowerCase()] = e2;
-		}
-		if (/^assignments$/i.test(name)) {
-			for await (const [n2, e2] of entry.entries())
-				if (e2.kind === "directory") _assignHandles[n2.toLowerCase()] = e2;
-		}
+	for (const path of ds.files.keys()) {
+		const m = path.match(/^(lessons|assignments)\/([^/]+)\//);
+		if (!m) continue;
+		const bucket = m[1] === "lessons" ? _lessonHandles : _assignHandles;
+		bucket[m[2].toLowerCase()] = true;
+	}
+	for (const name of Object.keys(_assignHandles)) {
+		const f = ds.files.get(`assignments/${name}/trap_labels.csv`);
+		if (!f) continue;
+		try {
+			const labels = parseTrapLabelsCsv(await readCsvText(f));
+			if (labels.length) _trapSchema[name] = labels;
+		} catch {}
+	}
+	for (const name of Object.keys(_lessonHandles)) {
+		if (_trapSchema[name]) continue;
+		const f = ds.files.get(`lessons/${name}/trap_labels.csv`);
+		if (!f) continue;
+		try {
+			const labels = parseTrapLabelsCsv(await readCsvText(f));
+			if (labels.length) _trapSchema[name] = labels;
+		} catch {}
 	}
 	console.log(
 		"[overview] lesson folders:",

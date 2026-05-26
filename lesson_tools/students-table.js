@@ -1,5 +1,59 @@
 "use strict";
 
+function _buildByteFingerprint(events, { trackLangs = false } = {}) {
+	const bytes = [];
+	const langs = trackLangs ? [] : null;
+	let cur = 0;
+	let count = 0;
+	for (const ev of events) {
+		const tok = ev.token || ev.label || "";
+		const bit = tok.length % 2;
+		cur = (cur << 1) | bit;
+		if (langs) langs.push(ev.lang || null);
+		count++;
+		if (count === 8) {
+			bytes.push(cur);
+			cur = 0;
+			count = 0;
+		}
+	}
+	if (count > 0) {
+		cur = cur << (8 - count);
+		bytes.push(cur);
+	}
+	return { bytes, langs };
+}
+
+function _renderByteFingerprint(
+	wrap,
+	bytes,
+	{ langs, classPrefix, bytesPerCol = 2 } = {},
+) {
+	const bar = document.createElement("div");
+	bar.className = `${classPrefix}-bar`;
+	for (let i = 0; i < bytes.length; i += bytesPerCol) {
+		const col = document.createElement("div");
+		col.className = `${classPrefix}-byte`;
+		for (let j = 0; j < bytesPerCol; j++) {
+			const byteIdx = i + j;
+			const b = byteIdx < bytes.length ? bytes[byteIdx] : 0;
+			for (let k = 7; k >= 0; k--) {
+				const bit = (b >> k) & 1;
+				const px = document.createElement("div");
+				px.className = `${classPrefix}-bit` + (bit ? " on" : "");
+				if (bit && langs) {
+					const lang = langs[byteIdx * 8 + (7 - k)];
+					const lc = lang ? langColorFor(lang) : null;
+					if (lc) px.style.background = lc;
+				}
+				col.appendChild(px);
+			}
+		}
+		bar.appendChild(col);
+	}
+	wrap.appendChild(bar);
+}
+
 function renderTable() {
 	const thead = document.getElementById("thead");
 	const tbody = document.getElementById("tbody");
@@ -10,16 +64,30 @@ function renderTable() {
 	const showName = _anonMode !== "id";
 	const showNum = _anonMode === "";
 
-	const presentLangs = LANG_COL_DEFS.filter((def) =>
-		_students.some((s) => s.langPcts && s.langPcts[def.key] != null),
-	);
+	const showLangs = !_hiddenCols.has("languages");
+	const presentLangs = showLangs
+		? LANG_COL_DEFS.filter((def) =>
+				_students.some((s) => s.langPcts && s.langPcts[def.key] != null),
+			)
+		: [];
+
+	const _remarkVisible = (col) => {
+		if (/^obs\.?$/i.test(col)) return true;
+		if (/^grade$/i.test(col)) return !_hiddenCols.has("grade");
+		if (/^comments?$/i.test(col)) return !_hiddenCols.has("comments");
+		if (/^expected$/i.test(col)) return !_hiddenCols.has("expected");
+		if (/^remarks?$/i.test(col)) return !_hiddenCols.has("remarks");
+		return true;
+	};
+	const visibleRemarkCols = _remarkCols.filter(_remarkVisible);
+	const showMismatches = !_hiddenCols.has("mismatches");
 
 	const specs = [];
 	if (showId) specs.push({ cls: "col-id", label: "ID", sortKey: "id" });
 	if (showName)
 		specs.push({ cls: "col-name", label: "Name", sortKey: "name" });
 	if (showNum) specs.push({ cls: "col-num", label: "#", sortKey: "num" });
-	for (const col of _remarkCols) {
+	for (const col of visibleRemarkCols) {
 		let cls = "col-remark";
 		if (/^grade$/i.test(col)) cls += " col-grade";
 		else if (/^comments?$/i.test(col)) cls += " col-comments";
@@ -44,18 +112,11 @@ function renderTable() {
 	const _hasFpTs = (ev) =>
 		ev.kind && ev.kind !== "normal" && ev.ts != null && ev.ts > 0;
 	const _isFpEvent = (ev) => ev.kind && ev.kind !== "normal";
-	const _isMissingCommentWithTs = (ev) =>
-		ev.kind === "missing" && ev.ts != null && ev.ts > 0;
 	let fpMinTs = Infinity;
 	let fpMaxTs = -Infinity;
 	for (const s of _students) {
 		for (const ev of s.langEvents || []) {
 			if (!_hasFpTs(ev)) continue;
-			if (ev.ts < fpMinTs) fpMinTs = ev.ts;
-			if (ev.ts > fpMaxTs) fpMaxTs = ev.ts;
-		}
-		for (const ev of s.commentEvents || []) {
-			if (!_isMissingCommentWithTs(ev)) continue;
 			if (ev.ts < fpMinTs) fpMinTs = ev.ts;
 			if (ev.ts > fpMaxTs) fpMaxTs = ev.ts;
 		}
@@ -69,15 +130,9 @@ function renderTable() {
 	for (const s of _students) {
 		s._fpPositions = [];
 		if (!showFingerprint) continue;
-		const langTagged = (s.langEvents || [])
+		const mistakes = (s.langEvents || [])
 			.filter(useFpTs ? _hasFpTs : _isFpEvent)
 			.map((ev) => ({ ev, lang: ev.lang || "unk" }));
-		const commentTagged = useFpTs
-			? (s.commentEvents || [])
-					.filter(_isMissingCommentWithTs)
-					.map((ev) => ({ ev, lang: "comment" }))
-			: [];
-		const mistakes = [...langTagged, ...commentTagged];
 		if (!mistakes.length) continue;
 		const positions = useFpTs
 			? mistakes.map(({ ev }) => (ev.ts - fpMinTs) / fpRange)
@@ -91,29 +146,19 @@ function renderTable() {
 	}
 	let fp2MaxBytes = 0;
 	for (const s of _students) {
-		s._fp2Bytes = [];
-		s._fp2Hash = "";
 		const extras = (s.langEvents || []).filter(
 			(ev) => ev.kind === "extra" || ev.kind === "extra-star",
 		);
-		const bytes = [];
-		let cur = 0;
-		let count = 0;
-		for (const ev of extras) {
-			const tok = ev.token || ev.label || "";
-			const bit = tok.length % 2;
-			cur = (cur << 1) | bit;
-			count++;
-			if (count === 8) {
-				bytes.push(cur);
-				cur = 0;
-				count = 0;
-			}
-		}
-		if (count > 0) bytes.push(cur);
+		const { bytes, langs } = _buildByteFingerprint(extras, {
+			trackLangs: true,
+		});
 		s._fp2Bytes = bytes;
+		s._fp2Langs = langs;
+		s._fp2Hash = "";
+		s._fp2Count = extras.length;
 		if (bytes.length > fp2MaxBytes) fp2MaxBytes = bytes.length;
 	}
+	if (fp2MaxBytes % 2) fp2MaxBytes++;
 	for (const s of _students) {
 		while (s._fp2Bytes.length < fp2MaxBytes) s._fp2Bytes.push(0);
 		s._fp2Hash = s._fp2Bytes.map((b) => String(b).padStart(3, "0")).join("-");
@@ -121,38 +166,40 @@ function renderTable() {
 	const hasAnyFp2 = fp2MaxBytes > 0;
 	let fp3MaxBytes = 0;
 	for (const s of _students) {
-		s._fp3Bytes = [];
-		s._fp3Hash = "";
 		const evs = (s.commentEvents || []).filter((ev) => ev.kind === "extra");
-		const bytes = [];
-		let cur = 0;
-		let count = 0;
-		for (const ev of evs) {
-			const tok = ev.token || ev.label || "";
-			const bit = tok.length % 2;
-			cur = (cur << 1) | bit;
-			count++;
-			if (count === 8) {
-				bytes.push(cur);
-				cur = 0;
-				count = 0;
-			}
-		}
-		if (count > 0) bytes.push(cur);
+		const { bytes } = _buildByteFingerprint(evs);
 		s._fp3Bytes = bytes;
+		s._fp3Hash = "";
+		s._fp3Count = evs.length;
 		if (bytes.length > fp3MaxBytes) fp3MaxBytes = bytes.length;
 	}
+	if (fp3MaxBytes % 2) fp3MaxBytes++;
 	for (const s of _students) {
 		while (s._fp3Bytes.length < fp3MaxBytes) s._fp3Bytes.push(0);
 		s._fp3Hash = s._fp3Bytes.map((b) => String(b).padStart(3, "0")).join("-");
 	}
 	const hasAnyFp3 = fp3MaxBytes > 0;
 	_computeFingerprintMask(_students);
-	if (showFingerprint || hasAnyFp2 || hasAnyFp3)
+	const showFp1 = showFingerprint && !_hiddenCols.has("fingerprint1");
+	const showFp2 = hasAnyFp2 && !_hiddenCols.has("fingerprint2");
+	const showFp3 = hasAnyFp3 && !_hiddenCols.has("fingerprint3");
+	if (showFp1)
 		specs.push({
-			cls: "col-fingerprint",
-			label: "Fingerprint",
-			sortKey: "fingerprint",
+			cls: "col-fingerprint col-fp1",
+			label: "Fingerprint (F)",
+			sortKey: "fingerprint1",
+		});
+	if (showFp2)
+		specs.push({
+			cls: "col-fingerprint col-fp2",
+			label: "Fingerprint (E)",
+			sortKey: "fingerprint2",
+		});
+	if (showFp3)
+		specs.push({
+			cls: "col-fingerprint col-fp3",
+			label: "Fingerprint (C)",
+			sortKey: "fingerprint3",
 		});
 
 	const trh = document.createElement("tr");
@@ -175,35 +222,58 @@ function renderTable() {
 		}
 		trh.appendChild(el);
 	}
-	const thMm = document.createElement("th");
-	thMm.textContent = "Mismatches";
-	thMm.className = "col-mismatch";
-	trh.appendChild(thMm);
+	if (showMismatches) {
+		const thMm = document.createElement("th");
+		thMm.textContent = "Mismatches";
+		thMm.className = "col-mismatch";
+		trh.appendChild(thMm);
+	}
 	thead.appendChild(trh);
 
 	const sortedStudents = _sortStudents(_students, _sortCol, _sortDir);
 	for (const s of sortedStudents) {
 		const tr = document.createElement("tr");
+		const hasFiles = _studentHasFiles(s);
+
+		const openOnClick = (el) => {
+			if (!hasFiles) {
+				el.title = "No submitted files for this student";
+				return;
+			}
+			el.classList.add("clickable-open");
+			el.addEventListener("click", (e) => {
+				e.stopPropagation();
+				document
+					.querySelectorAll("#tbody tr.selected")
+					.forEach((r) => r.classList.remove("selected"));
+				tr.classList.add("selected");
+				openDiffForStudent(s);
+			});
+		};
 
 		if (showId) {
 			const el = document.createElement("td");
 			el.textContent = s.id || "–";
 			el.className = "col-id";
+			openOnClick(el);
 			tr.appendChild(el);
 		}
 		if (showName) {
 			const el = document.createElement("td");
 			el.textContent = s.name;
 			el.className = "col-name";
+			openOnClick(el);
 			tr.appendChild(el);
 		}
 		if (showNum) {
 			const el = document.createElement("td");
 			el.textContent = s.num || "–";
 			el.className = "col-num";
+			openOnClick(el);
 			tr.appendChild(el);
 		}
 		for (const rk of s.remarks) {
+			if (!_remarkVisible(rk.col)) continue;
 			const el = document.createElement("td");
 			let cls = "col-remark";
 			const isObs = /^obs\.?$/i.test(rk.col);
@@ -215,18 +285,34 @@ function renderTable() {
 			else if (isComments) cls += " col-comments";
 			el.className = cls;
 			const editable = isObs || isGrade || isComments;
-			const obsVal = isObs && (rk.val === "_" || !rk.val) ? "" : rk.val;
-			if (isObs && obsVal) el.style.fontWeight = "bold";
-			el.textContent = isObs ? obsVal : rk.val;
-			if (editable) {
-				_makeCellEditable(el, s, rk.col);
+			if (isComments) {
+				const inner = document.createElement("div");
+				inner.className = "comments-inner";
+				inner.textContent = rk.val;
+				if (rk.val) inner.title = rk.val;
+				el.appendChild(inner);
+				_makeCellEditable(inner, s, rk.col);
 			} else {
-				const tipText = rk.note
-					? rk.note
-					: isExpected && rk.val
-						? rk.val
-						: "";
-				if (tipText) setupTip(el, tipText, false);
+				const obsVal = isObs && (rk.val === "_" || !rk.val) ? "" : rk.val;
+				if (isObs) {
+					_makeCellEditable(el, s, rk.col);
+					_renderObsCell(el, obsVal);
+					el.addEventListener("blur", () => {
+						_renderObsCell(el, el.textContent);
+					});
+				} else {
+					el.textContent = rk.val;
+					if (editable) {
+						_makeCellEditable(el, s, rk.col);
+					} else {
+						const tipText = rk.note
+							? rk.note
+							: isExpected && rk.val
+								? rk.val
+								: "";
+						if (tipText) setupTip(el, tipText, false);
+					}
+				}
 			}
 			tr.appendChild(el);
 		}
@@ -239,14 +325,17 @@ function renderTable() {
 		const followEl = document.createElement("td");
 		followEl.className = "col-follow";
 		if (!isNaN(s.followPct)) {
-			followEl.textContent = s.followPct.toFixed(1) + "%";
-			const r = Math.round(
-				Math.max(0, Math.min(1, 1 - s.followPct / 100)) * 200,
-			);
-			followEl.style.color = `rgb(${r}, 0, 0)`;
-		} else {
-			followEl.textContent = "";
-			followEl.style.color = THEME.codeMuted;
+			const pctEl = document.createElement("span");
+			pctEl.className = "follow-pct";
+			pctEl.textContent = s.followPct.toFixed(1) + "%";
+			const bar = document.createElement("div");
+			bar.className = "follow-bar";
+			const fill = document.createElement("div");
+			fill.className = "follow-bar-fill";
+			fill.style.width = Math.max(0, Math.min(100, s.followPct)) + "%";
+			bar.appendChild(fill);
+			followEl.appendChild(pctEl);
+			followEl.appendChild(bar);
 		}
 		tr.appendChild(followEl);
 
@@ -270,77 +359,167 @@ function renderTable() {
 			tr.appendChild(cell);
 		}
 
-		if (showFingerprint || hasAnyFp2 || hasAnyFp3) {
+		if (showFp1) {
 			const fpEl = document.createElement("td");
-			fpEl.className = "col-fingerprint";
-			const parts = [];
-			if (s._fpMask) parts.push(_boldFpGroups(_maskToBytes(s._fpMask)));
-			if (s._fp2Hash) parts.push(_boldFpGroups(s._fp2Hash));
-			if (s._fp3Hash) parts.push(_boldFpGroups(s._fp3Hash));
-			if (parts.length) setupTipHtml(fpEl, parts.join("  |  "));
+			fpEl.className = "col-fingerprint col-fp1";
+			if (s._fpMask) {
+				setupTipHtml(
+					fpEl,
+					_boldFpGroups(
+						_maskToBytes(s._fpMask),
+						_bytesLangs(s._fpMaskLangs || []),
+					),
+				);
+			}
 			const wrap = document.createElement("div");
 			wrap.className = "fp-wrap";
-			if (showFingerprint) {
-				const bar = document.createElement("div");
-				bar.className = "fp-bar";
-				for (const entry of s._fpPositions || []) {
-					const mark = document.createElement("div");
-					mark.className = "fp-mark lang-" + (entry.lang || "unk");
-					mark.style.left = entry.pos * 100 + "%";
-					bar.appendChild(mark);
-				}
-				wrap.appendChild(bar);
+			const bar = document.createElement("div");
+			bar.className = "fp-bar";
+			for (const entry of s._fpPositions || []) {
+				const mark = document.createElement("div");
+				mark.className = "fp-mark lang-" + (entry.lang || "unk");
+				mark.style.left = entry.pos * 100 + "%";
+				bar.appendChild(mark);
 			}
-			if (hasAnyFp2) {
-				const bar2 = document.createElement("div");
-				bar2.className = "fp2-bar";
-				for (const b of s._fp2Bytes) {
-					const col = document.createElement("div");
-					col.className = "fp2-byte";
-					for (let k = 7; k >= 0; k--) {
-						const bit = (b >> k) & 1;
-						const px = document.createElement("div");
-						px.className = "fp2-bit" + (bit ? " on" : "");
-						col.appendChild(px);
-					}
-					bar2.appendChild(col);
-				}
-				wrap.appendChild(bar2);
+			wrap.appendChild(bar);
+			fpEl.appendChild(wrap);
+			tr.appendChild(fpEl);
+		}
+		if (showFp2) {
+			const fpEl = document.createElement("td");
+			fpEl.className = "col-fingerprint col-fp2";
+			if (s._fp2Hash) {
+				setupTipHtml(
+					fpEl,
+					_boldFpGroups(s._fp2Hash, _bytesLangs(s._fp2Langs || [])),
+				);
 			}
-			if (hasAnyFp3) {
-				const bar3 = document.createElement("div");
-				bar3.className = "fp3-bar";
-				for (const b of s._fp3Bytes) {
-					const col = document.createElement("div");
-					col.className = "fp3-byte";
-					for (let k = 7; k >= 0; k--) {
-						const bit = (b >> k) & 1;
-						const px = document.createElement("div");
-						px.className = "fp3-bit" + (bit ? " on" : "");
-						col.appendChild(px);
-					}
-					bar3.appendChild(col);
-				}
-				wrap.appendChild(bar3);
-			}
+			const wrap = document.createElement("div");
+			wrap.className = "fp-wrap";
+			_renderByteFingerprint(wrap, s._fp2Bytes, {
+				langs: s._fp2Langs || [],
+				classPrefix: "fp2",
+			});
+			fpEl.appendChild(wrap);
+			tr.appendChild(fpEl);
+		}
+		if (showFp3) {
+			const fpEl = document.createElement("td");
+			fpEl.className = "col-fingerprint col-fp3";
+			if (s._fp3Hash) setupTipHtml(fpEl, _boldFpGroups(s._fp3Hash));
+			const wrap = document.createElement("div");
+			wrap.className = "fp-wrap";
+			_renderByteFingerprint(wrap, s._fp3Bytes, {
+				classPrefix: "fp3",
+			});
 			fpEl.appendChild(wrap);
 			tr.appendChild(fpEl);
 		}
 
-		const mmEl = document.createElement("td");
-		mmEl.className = "col-mismatch";
-		renderMismatches(mmEl, s.followEvents);
-		tr.appendChild(mmEl);
+		if (showMismatches) {
+			const mmEl = document.createElement("td");
+			mmEl.className = "col-mismatch";
+			renderMismatches(mmEl, s.followEvents);
+			tr.appendChild(mmEl);
+		}
 
-		tr.addEventListener("click", () => {
-			document
-				.querySelectorAll("#tbody tr.selected")
-				.forEach((r) => r.classList.remove("selected"));
-			tr.classList.add("selected");
-			openDiffForStudent(s);
-		});
 		tbody.appendChild(tr);
 	}
+
+	if (sortedStudents.length > 0) {
+		_appendTotalsRow(
+			tbody,
+			specs,
+			sortedStudents,
+			visibleRemarkCols,
+			presentLangs,
+			showName,
+			showMismatches,
+		);
+	}
+}
+
+function _appendTotalsRow(
+	tbody,
+	specs,
+	sortedStudents,
+	visibleRemarkCols,
+	presentLangs,
+	showName,
+	showMismatches,
+) {
+	const totalsRow = document.createElement("tr");
+	totalsRow.className = "totals-row";
+
+	const obsCol = visibleRemarkCols.find((c) => /^obs\.?$/i.test(c));
+	let obsCounts = null;
+	if (obsCol) {
+		obsCounts = [];
+		for (const s of sortedStudents) {
+			const r = (s.remarks || []).find((x) => x.col === obsCol);
+			if (!r || !r.val) continue;
+			const code = String(r.val).trim();
+			if (!/^[01]+$/.test(code)) continue;
+			for (let i = 0; i < code.length; i++) {
+				obsCounts[i] = (obsCounts[i] || 0) + (code[i] === "1" ? 1 : 0);
+			}
+		}
+	}
+
+	const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+	const followVals = sortedStudents
+		.map((s) => s.followPct)
+		.filter((x) => x != null && !isNaN(x));
+	const avgFollow = followVals.length ? mean(followVals) : null;
+
+	const avgByLang = {};
+	for (const def of presentLangs) {
+		const vals = sortedStudents
+			.map((s) => (s.langPcts ? s.langPcts[def.key] : undefined))
+			.filter((x) => x != null && !isNaN(x));
+		avgByLang[def.key] = vals.length ? mean(vals) : null;
+	}
+
+	let countSlotAssigned = false;
+	for (const spec of specs) {
+		const td = document.createElement("td");
+		td.className = spec.cls;
+		const isName = spec.cls.includes("col-name");
+		const isId = spec.cls.includes("col-id");
+		const isObs = spec.cls.includes("col-obs");
+		const isFollow = spec.cls.includes("col-follow");
+		const langMatch = spec.cls.match(/col-lang-(\w+)/);
+		const isLang = !!langMatch;
+
+		if (!countSlotAssigned && (isName || (isId && !showName))) {
+			td.textContent = `${sortedStudents.length} students`;
+			countSlotAssigned = true;
+		} else if (isObs && obsCounts) {
+			td.innerHTML = renderTrapTotals(obsCounts, _trapSchema);
+		} else if (isFollow && avgFollow != null) {
+			const pctEl = document.createElement("span");
+			pctEl.className = "follow-pct";
+			pctEl.textContent = avgFollow.toFixed(1) + "%";
+			td.appendChild(pctEl);
+		} else if (isLang) {
+			const lang = langMatch[1];
+			if (avgByLang[lang] != null) {
+				const pctEl = document.createElement("span");
+				pctEl.className = "lang-pct";
+				pctEl.textContent = avgByLang[lang].toFixed(1) + "%";
+				td.appendChild(pctEl);
+			}
+		}
+		totalsRow.appendChild(td);
+	}
+
+	if (showMismatches) {
+		const td = document.createElement("td");
+		td.className = "col-mismatch";
+		totalsRow.appendChild(td);
+	}
+
+	tbody.appendChild(totalsRow);
 }
 
 function renderMismatches(cell, events) {
@@ -399,8 +578,99 @@ function onAnonChange(val) {
 	renderTable();
 }
 
+function _colsPanelOutsideClick(e) {
+	const panel = document.getElementById("cols-panel");
+	const btn = document.getElementById("cols-btn");
+	if (!panel || !btn) return;
+	if (panel.contains(e.target) || btn.contains(e.target)) return;
+	panel.hidden = true;
+	document.removeEventListener("click", _colsPanelOutsideClick, true);
+}
+
+function _renderColsPanel() {
+	const panel = document.getElementById("cols-panel");
+	if (!panel) return;
+	panel.innerHTML = "";
+	for (const { key, label } of COL_HIDE_KEYS) {
+		const lab = document.createElement("label");
+		const cb = document.createElement("input");
+		cb.type = "checkbox";
+		cb.checked = !_hiddenCols.has(key);
+		cb.addEventListener("change", () => {
+			if (cb.checked) _hiddenCols.delete(key);
+			else _hiddenCols.add(key);
+			_saveHiddenCols();
+			renderTable();
+		});
+		lab.appendChild(cb);
+		lab.appendChild(document.createTextNode(" " + label));
+		panel.appendChild(lab);
+	}
+}
+
+function _toggleColsPanel() {
+	const panel = document.getElementById("cols-panel");
+	if (!panel) return;
+	if (panel.hidden) {
+		_renderColsPanel();
+		panel.hidden = false;
+		setTimeout(() => {
+			document.addEventListener("click", _colsPanelOutsideClick, true);
+		}, 0);
+	} else {
+		panel.hidden = true;
+		document.removeEventListener("click", _colsPanelOutsideClick, true);
+	}
+}
+
+function _studentHasFiles(student) {
+	if (!student) return true;
+	let anonIdsPresent = false;
+	for (const k of _allFiles.keys()) {
+		if (k.includes("anon_ids/")) {
+			anonIdsPresent = true;
+			break;
+		}
+	}
+	if (!anonIdsPresent) return true;
+	if (!student.id) return true;
+	const sid = student.id.toLowerCase();
+	for (const k of _allFiles.keys()) {
+		const idx = k.indexOf("anon_ids/");
+		if (idx < 0) continue;
+		const after = k.slice(idx + "anon_ids/".length);
+		const slash = after.indexOf("/");
+		if (slash < 0) continue;
+		if (after.slice(0, slash) === sid) return true;
+	}
+	return false;
+}
+
+function _renderObsCell(el, val) {
+	const v = val == null ? "" : String(val);
+	const badges = renderTrapBadges(v, _trapSchema);
+	if (badges) {
+		el.innerHTML = badges;
+		el.dataset.rawValue = v;
+		el.style.fontWeight = "";
+		el.title = "";
+		el.dataset.trapTipHtml = buildTrapSummaryHtml(v, _trapSchema);
+		if (!el.dataset.trapTipWired) {
+			attachHtmlTip(el, () => el.dataset.trapTipHtml || "");
+			el.dataset.trapTipWired = "1";
+		}
+	} else {
+		el.textContent = v;
+		delete el.dataset.rawValue;
+		delete el.dataset.trapTipHtml;
+		el.style.fontWeight = v ? "bold" : "";
+		el.title = "";
+	}
+}
+
 function _makeCellEditable(el, student, colName) {
 	if (!student.id) return;
+	if (_isReadOnly) return;
 	el.classList.add("editable-cell");
 	el.contentEditable = "plaintext-only";
 	el.spellcheck = false;
@@ -409,6 +679,9 @@ function _makeCellEditable(el, student, colName) {
 	el.addEventListener("mousedown", (e) => e.stopPropagation());
 	let _origText = el.textContent;
 	el.addEventListener("focus", () => {
+		if (el.dataset.rawValue != null) {
+			el.textContent = el.dataset.rawValue;
+		}
 		_origText = el.textContent;
 		el.classList.add("editing");
 	});
@@ -483,42 +756,15 @@ function hideTip() {
 	tipEl.style.display = "none";
 }
 
-async function _readStudentDiffPayload(student) {
+function openDiffForStudent(student) {
+	if (!_lessonName || !student.id) return;
 	const followPct =
 		student.followPct != null ? student.followPct.toFixed(1) + "%" : "N/A";
-
-	const fileMap = new Map();
-	if (_dirHandle) {
-		await readDirHandle(_dirHandle, "", fileMap, [], { lowercaseKeys: true });
-	} else {
-		for (const [k, v] of _allFiles) fileMap.set(k, v);
-	}
-
-	const studentPrefix = "anon_ids/" + (student.id + "/").toLowerCase();
-	const { teacherFiles, studentFiles, allMarks, imageUris } =
-		await buildDiffPayloadData(fileMap, studentPrefix);
-
-	if (!Object.keys(teacherFiles).length && !Object.keys(studentFiles).length) {
-		throw new Error(
-			`No files found for student "${student.name}". Make sure the folder contains correct/ and anon_ids/ subdirectories.`,
-		);
-	}
-
-	return {
-		teacherFiles,
-		studentFiles,
-		allMarks,
-		imageUris,
-		title: `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`,
-	};
-}
-
-async function openDiffForStudent(student) {
-	if (!_allFiles.size) return;
-	try {
-		await openDifferentiator(() => _readStudentDiffPayload(student));
-	} catch (err) {
-		console.error("[Students] openDiffForStudent", err);
-		alert("Error opening differentiator: " + err.message);
-	}
+	const title = `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`;
+	navigateToDifferentiator({
+		lesson: _lessonName,
+		group: _lessonGroup || undefined,
+		id: student.id,
+		title,
+	});
 }

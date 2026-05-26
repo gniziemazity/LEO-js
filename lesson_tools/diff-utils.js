@@ -15,7 +15,7 @@ const REMARKS_BASES = [
 	{ key: "git", label: "Git" },
 ];
 
-const DEFAULT_BASIS_ORDER = ["required", "ideal", "leo_star", "leo"];
+const DEFAULT_BASIS_ORDER = ["ideal", "required", "leo_star", "leo"];
 
 function _cssVar(name) {
 	return getComputedStyle(document.documentElement)
@@ -35,11 +35,13 @@ function _hexToRgba(hex, a) {
 const THEME = {
 	blue: _cssVar("--clr-accent"),
 	orange: _cssVar("--clr-orange"),
+	yellow: _cssVar("--clr-yellow"),
 	green: _cssVar("--clr-green"),
 	purple: _cssVar("--clr-purple"),
 	red: _cssVar("--clr-red"),
 	gray: _cssVar("--clr-gray"),
 	muted: _cssVar("--clr-muted"),
+	trapOk: _cssVar("--clr-trap-ok"),
 	label: _cssVar("--clr-label"),
 	bg: _cssVar("--clr-bg"),
 	barTrack: _cssVar("--clr-bar-track"),
@@ -143,6 +145,60 @@ function parseCsv(text) {
 	return { header: cells(lines[0]), rows: lines.slice(1).map(cells), delim };
 }
 
+const TRAP_SEVERITY_COLORS = {
+	high: () => THEME.red,
+	medium: () => THEME.orange,
+	med: () => THEME.orange,
+	low: () => THEME.yellow,
+};
+
+function trapFiredColorFor(severity) {
+	const key = String(severity || "")
+		.trim()
+		.toLowerCase();
+	const fn = TRAP_SEVERITY_COLORS[key] || TRAP_SEVERITY_COLORS.high;
+	return fn();
+}
+
+function parseTrapLabelsCsv(text) {
+	const { header, rows } = parseCsv(text);
+	const keyIdx = header.findIndex((h) => /^key$/i.test(h));
+	const labelIdx = header.findIndex((h) => /^label$/i.test(h));
+	const sevIdx = header.findIndex((h) => /^severity$/i.test(h));
+	if (keyIdx === -1 || labelIdx === -1) return [];
+	const out = [];
+	for (const parts of rows) {
+		const key = parts[keyIdx];
+		const label = parts[labelIdx];
+		if (!key || !label) continue;
+		const severity =
+			sevIdx !== -1 ? (parts[sevIdx] || "").trim().toLowerCase() : "high";
+		out.push({ key, label, severity: severity || "high" });
+	}
+	return out;
+}
+
+async function loadTrapLabelsFromHandle(dirHandle) {
+	if (!dirHandle) return [];
+	try {
+		const fh = await dirHandle.getFileHandle("trap_labels.csv");
+		const file = await fh.getFile();
+		return parseTrapLabelsCsv(await readFileText(file));
+	} catch {
+		return [];
+	}
+}
+
+function loadTrapLabelsFromFileMap(fileMap) {
+	if (!fileMap) return null;
+	for (const [k, file] of fileMap) {
+		if (k.endsWith("/trap_labels.csv") || k === "trap_labels.csv") {
+			return file;
+		}
+	}
+	return null;
+}
+
 function parseStudentIdNameMap(text) {
 	const map = {};
 	const { header, rows } = parseCsv(text);
@@ -215,6 +271,269 @@ async function loadSavedDirHandle(idbKey = "lastDir", dbName = undefined) {
 	return handle;
 }
 
+class DataSource {
+	constructor() {
+		this.files = new Map();
+		this.rootName = "";
+		this.rootHandle = null;
+		this.isReadOnly = false;
+		this.manifest = null;
+	}
+	async open() {
+		throw new Error("DataSource.open() must be overridden");
+	}
+	async load(_subPath = "") {
+		throw new Error("DataSource.load() must be overridden");
+	}
+	async lessonFiles(_args) {
+		throw new Error("DataSource.lessonFiles() must be overridden");
+	}
+}
+
+class FsDataSource extends DataSource {
+	constructor({ idbKey = "lastDir", dbName, lowercaseKeys = true } = {}) {
+		super();
+		this._idbKey = idbKey;
+		this._dbName = dbName;
+		this._lowercaseKeys = lowercaseKeys;
+	}
+	async open({ tryResume = false } = {}) {
+		let handle = null;
+		if (tryResume) {
+			handle = await loadSavedDirHandle(this._idbKey, this._dbName);
+		}
+		if (!handle) {
+			handle = await pickFolderWithMemory(this._idbKey, this._dbName);
+		}
+		this.rootHandle = handle;
+		this.rootName = handle.name;
+		return handle;
+	}
+	async load(subPath = "") {
+		if (!this.rootHandle) throw new Error("FsDataSource: no root handle");
+		this.files.clear();
+		const flatFiles = [];
+		const startHandle = subPath
+			? await _resolveSubHandle(this.rootHandle, subPath)
+			: this.rootHandle;
+		const prefix = subPath ? subPath.replace(/\/+$/, "") : "";
+		await readDirHandle(startHandle, prefix, this.files, flatFiles, {
+			lowercaseKeys: this._lowercaseKeys,
+		});
+		return flatFiles;
+	}
+	async lessonFiles({ lesson, group }) {
+		const resolved = await resolveLessonHandle({ lesson, group });
+		if (!resolved) return null;
+		const sub = new FsDataSource({ lowercaseKeys: this._lowercaseKeys });
+		sub.rootHandle = resolved.handle;
+		sub.rootName = resolved.handle.name;
+		return sub;
+	}
+}
+
+class ScopedDataSource extends DataSource {
+	constructor({ files, name, isReadOnly = false, rootHandle = null }) {
+		super();
+		this.files = files;
+		this.rootName = name;
+		this.rootHandle = rootHandle;
+		this.isReadOnly = isReadOnly;
+	}
+	async load() {
+		return [...this.files.values()];
+	}
+}
+
+class HttpFileLike {
+	constructor(url, name) {
+		this.url = url;
+		this.name = name;
+	}
+	async text() {
+		const r = await fetch(this.url);
+		if (!r.ok) throw new Error(`Fetch ${this.url} failed: ${r.status}`);
+		return r.text();
+	}
+	async arrayBuffer() {
+		const r = await fetch(this.url);
+		if (!r.ok) throw new Error(`Fetch ${this.url} failed: ${r.status}`);
+		return r.arrayBuffer();
+	}
+}
+
+class HttpDataSource extends DataSource {
+	constructor({ manifestUrl = "manifest.json" } = {}) {
+		super();
+		this.isReadOnly = true;
+		this._manifestUrl = manifestUrl;
+		this._manifestAbs = null;
+	}
+	async open() {
+		const abs = new URL(this._manifestUrl, location.href);
+		this._manifestAbs = abs;
+		const r = await fetch(abs.href);
+		if (!r.ok) throw new Error(`Manifest fetch failed: ${r.status}`);
+		const manifest = await r.json();
+		this.manifest = manifest;
+		this.rootName = manifest.rootName || "dataset";
+		this.files.clear();
+		const addFile = (path) => {
+			const url = new URL(path, abs).href;
+			const name = path.split("/").pop();
+			this.files.set(path.toLowerCase(), new HttpFileLike(url, name));
+		};
+		for (const p of manifest.rootFiles || []) addFile(p);
+		const groups = manifest.groups || {};
+		for (const [groupName, lessons] of Object.entries(groups)) {
+			for (const [lessonName, info] of Object.entries(lessons || {})) {
+				for (const rel of info.files || []) {
+					addFile(`${groupName}/${lessonName}/${rel}`);
+				}
+			}
+		}
+	}
+	async load(_subPath = "") {
+		return [...this.files.values()];
+	}
+	async lessonFiles({ lesson, group }) {
+		if (!this.manifest) return null;
+		const groups = this.manifest.groups || {};
+		const tryGroups = group ? [group] : ["lessons", "assignments"];
+		const lessonLc = String(lesson).toLowerCase();
+		for (const g of tryGroups) {
+			const groupObj = groups[g];
+			if (!groupObj) continue;
+			const actualKey = Object.keys(groupObj).find(
+				(k) => k.toLowerCase() === lessonLc,
+			);
+			if (!actualKey) continue;
+			const fileMap = new Map();
+			const prefix = `${g}/${actualKey}/`.toLowerCase();
+			for (const [path, file] of this.files) {
+				if (path.startsWith(prefix)) {
+					fileMap.set(path.slice(prefix.length), file);
+				}
+			}
+			return new ScopedDataSource({
+				files: fileMap,
+				name: actualKey,
+				isReadOnly: true,
+			});
+		}
+		return null;
+	}
+}
+
+async function detectDataSource({ manifestUrl } = {}) {
+	let candidates;
+	if (manifestUrl) {
+		candidates = [manifestUrl];
+	} else {
+		const inToolsDir = /\/tools\/[^/]+$/.test(location.pathname);
+		candidates = inToolsDir
+			? ["../manifest.json", "manifest.json"]
+			: ["manifest.json", "../manifest.json"];
+	}
+	for (const url of candidates) {
+		try {
+			const abs = new URL(url, location.href);
+			const r = await fetch(abs.href, { method: "HEAD" });
+			if (r.ok) return new HttpDataSource({ manifestUrl: url });
+		} catch {}
+	}
+	return null;
+}
+
+async function loadLessonDataSource({ lesson, group }) {
+	const httpDs = await detectDataSource();
+	if (httpDs) {
+		await httpDs.open();
+		return httpDs.lessonFiles({ lesson, group });
+	}
+	return new FsDataSource().lessonFiles({ lesson, group });
+}
+
+async function _resolveSubHandle(rootHandle, subPath) {
+	const parts = String(subPath).split("/").filter(Boolean);
+	let cur = rootHandle;
+	for (const p of parts) {
+		cur = await cur.getDirectoryHandle(p);
+	}
+	return cur;
+}
+
+const IDB_KEY_COURSE_ROOT = "courseRoot";
+const IDB_KEY_LESSON_ROOT = "lessonRoot";
+
+function parseToolParams(search = location.search) {
+	const p = new URLSearchParams(search);
+	const lesson = p.get("lesson") || null;
+	const group = p.get("group") || null;
+	const id = p.get("id") || null;
+	const mode = p.get("mode") || null;
+	const title = p.get("title") || null;
+	return { lesson, group, id, mode, title };
+}
+
+async function resolveLessonHandle({ lesson, group } = {}) {
+	if (!lesson) return null;
+	const tryGroups = group ? [group] : ["lessons", "assignments"];
+	const courseRoot = await _idbGet(IDB_KEY_COURSE_ROOT);
+	if (courseRoot && courseRoot.kind === "directory") {
+		try {
+			if (
+				(await courseRoot.requestPermission({ mode: "read" })) === "granted"
+			) {
+				for (const g of tryGroups) {
+					try {
+						const groupHandle = await courseRoot.getDirectoryHandle(g);
+						const lessonHandle =
+							await groupHandle.getDirectoryHandle(lesson);
+						return { handle: lessonHandle, group: g };
+					} catch {}
+				}
+			}
+		} catch {}
+	}
+	const lessonRoot = await _idbGet(IDB_KEY_LESSON_ROOT);
+	if (
+		lessonRoot &&
+		lessonRoot.kind === "directory" &&
+		lessonRoot.name === lesson
+	) {
+		try {
+			if (
+				(await lessonRoot.requestPermission({ mode: "read" })) === "granted"
+			) {
+				return { handle: lessonRoot, group: group || null };
+			}
+		} catch {}
+	}
+	return null;
+}
+
+function buildToolUrl(target, { lesson, group, id, mode, title } = {}) {
+	const params = new URLSearchParams();
+	if (lesson) params.set("lesson", lesson);
+	if (group) params.set("group", group);
+	if (id) params.set("id", id);
+	if (mode) params.set("mode", mode);
+	if (title) params.set("title", title);
+	const qs = params.toString();
+	return qs ? `${target}?${qs}` : target;
+}
+
+function navigateToStudents(args = {}) {
+	window.open(buildToolUrl("students.html", args), "_blank");
+}
+function navigateToDifferentiator(args = {}) {
+	window.open(buildToolUrl("differentiator.html", args), "_blank");
+}
+function navigateToTimeline(args = {}) {
+	window.open(buildToolUrl("timeline.html", args), "_blank");
+}
+
 async function waitForXlsxBundle() {
 	if (typeof XLSX !== "undefined") return;
 	await new Promise((resolve) => {
@@ -261,8 +580,8 @@ function diffModeFromFilename(filename) {
 function defaultDiffModeKey(allMarks, requestedMode = null) {
 	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
-	if (has("required")) return "required";
 	if (has("ideal")) return "ideal";
+	if (has("required")) return "required";
 	if (has("")) return "";
 	if (has("leo")) return "leo";
 	return Object.keys(allMarks)[0] ?? null;
@@ -279,7 +598,147 @@ function escAttr(s) {
 	return escHtml(s).replace(/"/g, "&quot;");
 }
 
+function isTrapPattern(raw) {
+	const s = (raw ?? "").trim();
+	return s.length > 0 && /^[01]+$/.test(s);
+}
+
+function renderTrapBadges(raw, schema) {
+	const code = (raw ?? "").trim();
+	if (!isTrapPattern(code)) return null;
+	const schemaArr = Array.isArray(schema) ? schema : [];
+	return code
+		.split("")
+		.map((ch, i) => {
+			const fired = ch === "1";
+			const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
+			const clr = fired ? trapFiredColorFor(sev) : THEME.trapOk;
+			return (
+				`<span style="display:inline-block;` +
+				`width:14px;height:14px;border-radius:2px;margin:0 1px;` +
+				`vertical-align:middle;background:${clr}"></span>`
+			);
+		})
+		.join("");
+}
+
+function buildTrapSummaryTitle(raw, schema) {
+	const code = (raw ?? "").trim();
+	if (!isTrapPattern(code)) return "";
+	const schemaArr = Array.isArray(schema) ? schema : [];
+	const lines = [];
+	for (let i = 0; i < code.length; i++) {
+		const ch = code[i];
+		const entry = schemaArr[i];
+		const label = entry && entry.label ? entry.label : `bit ${i + 1}`;
+		const sev = (entry && entry.severity) || "high";
+		lines.push(`${ch === "1" ? "✗" : " "} ${label} (${sev})`);
+	}
+	for (let i = code.length; i < schemaArr.length; i++) {
+		const sev = schemaArr[i].severity || "high";
+		lines.push(`? ${schemaArr[i].label} (${sev})`);
+	}
+	return lines.join("\n");
+}
+
+function renderTrapTotals(counts, schema) {
+	const schemaArr = Array.isArray(schema) ? schema : [];
+	const n = Math.max((counts || []).length, schemaArr.length);
+	if (!n) return "";
+	const parts = [];
+	for (let i = 0; i < n; i++) {
+		const count = (counts && counts[i]) || 0;
+		const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
+		const clr = count > 0 ? trapFiredColorFor(sev) : THEME.trapOk;
+		parts.push(
+			`<span style="display:inline-block;` +
+				`min-width:14px;height:14px;border-radius:2px;margin:0 1px;` +
+				`vertical-align:middle;background:${clr};color:white;` +
+				`font-size:10px;font-weight:bold;text-align:center;` +
+				`line-height:14px;padding:0 2px">${count}</span>`,
+		);
+	}
+	return parts.join("");
+}
+
+function buildTrapSummaryHtml(raw, schema) {
+	const code = (raw ?? "").trim();
+	if (!isTrapPattern(code)) return "";
+	const schemaArr = Array.isArray(schema) ? schema : [];
+	const lines = [];
+	const renderLine = (mark, label, fired) => {
+		const style = fired ? "font-weight:bold" : `color:${THEME.muted}`;
+		return `<div style="${style}">${mark} ${escHtml(label)}</div>`;
+	};
+	for (let i = 0; i < code.length; i++) {
+		const ch = code[i];
+		const entry = schemaArr[i];
+		const label = entry && entry.label ? entry.label : `bit ${i + 1}`;
+		const fired = ch === "1";
+		lines.push(renderLine(fired ? "✗" : "&nbsp;", label, fired));
+	}
+	for (let i = code.length; i < schemaArr.length; i++) {
+		lines.push(renderLine("?", schemaArr[i].label, false));
+	}
+	return lines.join("");
+}
+
+let _SHARED_TIP_EL = null;
+
+function _ensureSharedTip() {
+	if (_SHARED_TIP_EL && document.body.contains(_SHARED_TIP_EL))
+		return _SHARED_TIP_EL;
+	let el = document.getElementById("shared-html-tip");
+	if (!el) {
+		el = document.createElement("div");
+		el.id = "shared-html-tip";
+		el.style.cssText =
+			"position:fixed;display:none;background:" +
+			THEME.bg +
+			";color:" +
+			THEME.textStrong +
+			";font-size:11px;font-family:Consolas,monospace;padding:6px 10px;" +
+			"border:1px solid " +
+			THEME.muted +
+			";border-radius:4px;pointer-events:none;z-index:10000;" +
+			"max-width:640px;box-shadow:0 2px 8px rgba(0,0,0,0.25);line-height:1.45;";
+		document.body.appendChild(el);
+	}
+	_SHARED_TIP_EL = el;
+	return el;
+}
+
+function _moveSharedTip(e) {
+	const el = _SHARED_TIP_EL;
+	if (!el) return;
+	const tw = el.offsetWidth;
+	const th = el.offsetHeight;
+	let tx = e.clientX + 14;
+	let ty = e.clientY - 8;
+	if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+	if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 8;
+	el.style.left = tx + "px";
+	el.style.top = ty + "px";
+}
+
+function attachHtmlTip(el, htmlOrFn) {
+	const get = typeof htmlOrFn === "function" ? htmlOrFn : () => htmlOrFn;
+	el.addEventListener("mouseenter", (e) => {
+		const html = get();
+		if (!html) return;
+		const tip = _ensureSharedTip();
+		tip.innerHTML = html;
+		tip.style.display = "block";
+		_moveSharedTip(e);
+	});
+	el.addEventListener("mousemove", _moveSharedTip);
+	el.addEventListener("mouseleave", () => {
+		if (_SHARED_TIP_EL) _SHARED_TIP_EL.style.display = "none";
+	});
+}
+
 function readFileText(file) {
+	if (file && typeof file.text === "function") return file.text();
 	return new Promise((res, rej) => {
 		const r = new FileReader();
 		r.onload = (e) => res(e.target.result);
@@ -297,7 +756,11 @@ function readFileDataUri(file) {
 	});
 }
 
-function readFileArray(file) {
+async function readFileArray(file) {
+	if (file && typeof file.arrayBuffer === "function") {
+		const buf = await file.arrayBuffer();
+		return new Uint8Array(buf);
+	}
 	return new Promise((res, rej) => {
 		const r = new FileReader();
 		r.onload = (e) => res(new Uint8Array(e.target.result));
@@ -448,11 +911,16 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 				/^start\//i.test(p) ||
 				p.startsWith(studentDir))
 		) {
-			if (!imageUris[f.name]) imageUris[f.name] = await readFileDataUri(f);
+			if (!imageUris[f.name]) imageUris[f.name] = fileToUrl(f);
 		}
 	}
 
 	return { teacherFiles, studentFiles, allMarks, imageUris };
+}
+
+function fileToUrl(file) {
+	if (file && typeof file.url === "string") return file.url;
+	return URL.createObjectURL(file);
 }
 
 function _buildDiffPayload(data) {

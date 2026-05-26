@@ -108,17 +108,26 @@ function _splitCellRef(ref) {
 }
 
 function _findSheetTarget(workbookXml, relsXml, sheetName) {
-	const nameEsc = _xmlEscape(sheetName);
-	const sheetRe = new RegExp(
-		`<sheet\\b[^>]*\\bname="${nameEsc}"[^>]*?\\b[A-Za-z]+:id="([^"]+)"`,
-	);
-	const sm = workbookXml.match(sheetRe);
-	if (!sm) return null;
-	const relId = sm[1];
+	const sheetTagRe = /<sheet\b[^>]*\/?>/g;
+	let m;
+	let relId = null;
+	while ((m = sheetTagRe.exec(workbookXml)) !== null) {
+		const tag = m[0];
+		const nm = tag.match(/\bname="([^"]+)"/);
+		if (!nm || nm[1] !== sheetName) continue;
+		const im = tag.match(/\b[A-Za-z][A-Za-z0-9]*:id="([^"]+)"/);
+		if (!im) continue;
+		relId = im[1];
+		break;
+	}
+	if (!relId) return null;
 	const relRe = new RegExp(
 		`<Relationship\\b[^>]*\\bId="${relId}"[^>]*\\bTarget="([^"]+)"`,
 	);
-	const rm = relsXml.match(relRe);
+	const altRelRe = new RegExp(
+		`<Relationship\\b[^>]*\\bTarget="([^"]+)"[^>]*\\bId="${relId}"`,
+	);
+	const rm = relsXml.match(relRe) || relsXml.match(altRelRe);
 	if (!rm) return null;
 	let target = rm[1];
 	if (target.startsWith("/")) return target.slice(1);
@@ -154,7 +163,7 @@ function _patchSheetXml(xml, edits) {
 					if (sm) styleAttr = ` s="${sm[1]}"`;
 				}
 				const v = String(e.value == null ? "" : e.value);
-				const numMatch = /^-?\d+(?:[.,]\d+)?$/.test(v);
+				const numMatch = !e.forceString && /^-?\d+(?:[.,]\d+)?$/.test(v);
 				let newCell;
 				if (v === "") {
 					newCell = `<c r="${e.ref}"${styleAttr}/>`;
@@ -233,7 +242,14 @@ async function _saveActiveBasis() {
 			_activeSheetName,
 		);
 		if (!sheetPath || !zip.files.get(sheetPath)) {
-			throw new Error(`Sheet "${_activeSheetName}" not found in workbook`);
+			const names = Array.from(
+				workbookXml.matchAll(/<sheet\b[^>]*\bname="([^"]+)"/g),
+			)
+				.map((mm) => mm[1])
+				.join(", ");
+			throw new Error(
+				`Sheet "${_activeSheetName}" not found in workbook (sheets present: ${names || "(none)"})`,
+			);
 		}
 
 		const byId = new Map();
@@ -250,6 +266,7 @@ async function _saveActiveBasis() {
 			edits.push({
 				ref: XLSX.utils.encode_cell({ r: s._rowIndex, c }),
 				value: value,
+				forceString: /^obs\.?$/i.test(colName),
 			});
 		}
 

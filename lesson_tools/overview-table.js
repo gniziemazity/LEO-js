@@ -37,6 +37,7 @@ function renderTable() {
 		if (cls) th.className = cls;
 		if (sep) th.classList.add("asn-sep");
 		r2.appendChild(th);
+		return th;
 	};
 
 	col("ID", "col-id sticky-l");
@@ -47,14 +48,27 @@ function renderTable() {
 
 	for (const a of ASSIGNMENTS) {
 		if (a.follow != null) {
-			attachLessonGroup(grp(a.name, 5, true), a);
-			col("Follow%", "lhd", true);
+			_attachStudentsLink(
+				grp(`${a.name} Lesson`, 2, true),
+				a.name,
+				"lessons",
+			);
+			_attachStudentsLink(
+				grp(`${a.name} Assignment`, 3, false),
+				a.name,
+				"assignments",
+			);
+			_attachTimelineLink(col("Follow%", "lhd", true), a.name);
 			col("Obs", "lhd");
 			col("Grade", "ahd");
 			col("Status", "ahd");
 			col("Obs", "ahd");
 		} else {
-			attachLessonGroup(grp(a.name, 3, true), a);
+			_attachStudentsLink(
+				grp(`${a.name} Assignment`, 3, true),
+				a.name,
+				"assignments",
+			);
 			col("Grade", "ahd", true);
 			col("Status", "ahd");
 			col("Obs", "ahd");
@@ -92,10 +106,12 @@ function renderTable() {
 		const obsCell = (entry, cls = "") => {
 			const td = document.createElement("td");
 			if (cls) td.className = cls;
-			const badges = trapBadges(entry.obs, entry.name);
+			const schema = _trapSchema[(entry.name || "").toLowerCase()];
+			const badges = renderTrapBadges(entry.obs, schema);
 			if (badges) {
 				td.innerHTML = badges;
-				td.title = `${entry.name} traps (${entry.obs}) — green = ok, red = trap fired`;
+				const tipHtml = buildTrapSummaryHtml(entry.obs, schema);
+				if (tipHtml) attachHtmlTip(td, tipHtml);
 			} else {
 				td.textContent = obsText(entry.obs);
 			}
@@ -108,52 +124,79 @@ function renderTable() {
 		tr.appendChild(cell(fmtN(s.pre_typing), "num"));
 		tr.appendChild(cell(fmtN(s.self_eval), "num"));
 
+		const makeLessonClickable = (td, entry) => {
+			td.classList.add("clickable");
+			td.addEventListener("click", () => openLessonDiff(s, entry));
+		};
+		const makeAssignClickable = (td, entry) => {
+			td.classList.add("clickable");
+			td.addEventListener("click", () => openAssignDiff(s, entry));
+		};
+
 		for (const entry of s.lessons) {
 			if (entry.hasFollowCol) {
 				const fc = document.createElement("td");
-				fc.className = "follow clickable asn-sep";
-				fc.title = `Open ${entry.name} lesson`;
-				fc.addEventListener("click", () => openLessonDiff(s, entry));
+				fc.className = "follow asn-sep";
 				if (entry.follow != null) {
 					fc.textContent = entry.follow.toFixed(0) + "%";
 					fc.style.color = followFg(entry.follow);
 				}
+				makeLessonClickable(fc, entry);
+				fc.title = `Open ${entry.name} lesson`;
 				tr.appendChild(fc);
-				tr.appendChild(cell(obsText(entry.lesson_obs)));
+
+				const lobs = cell(obsText(entry.lesson_obs));
+				makeLessonClickable(lobs, entry);
+				if (!lobs.title) lobs.title = `Open ${entry.name} lesson`;
+				tr.appendChild(lobs);
 
 				const gc = document.createElement("td");
-				gc.className = "follow clickable asn-col";
-				gc.title = `Open ${entry.name} assignment`;
-				gc.addEventListener("click", () => openAssignDiff(s, entry));
+				gc.className = "follow asn-col";
 				if (entry.grade != null) {
 					gc.textContent = entry.grade;
 					gc.style.color = followFg((entry.grade / 5) * 100);
 					gc.style.fontWeight = "700";
 				}
+				makeAssignClickable(gc, entry);
+				gc.title = `Open ${entry.name} assignment`;
 				tr.appendChild(gc);
+
 				const stc1 = document.createElement("td");
 				stc1.textContent = entry.status || "";
 				const sc1 = statusCellCls(entry.status);
 				stc1.className = sc1 || "asn-col";
+				makeAssignClickable(stc1, entry);
+				if (!stc1.title) stc1.title = `Open ${entry.name} assignment`;
 				tr.appendChild(stc1);
-				tr.appendChild(obsCell(entry, "asn-col"));
+
+				const aobs = obsCell(entry, "asn-col");
+				makeAssignClickable(aobs, entry);
+				if (!aobs.title) aobs.title = `Open ${entry.name} assignment`;
+				tr.appendChild(aobs);
 			} else {
 				const gc = document.createElement("td");
-				gc.className = "follow clickable asn-sep asn-col";
-				gc.title = `Open ${entry.name} assignment`;
-				gc.addEventListener("click", () => openAssignDiff(s, entry));
+				gc.className = "follow asn-sep asn-col";
 				if (entry.grade != null) {
 					gc.textContent = entry.grade;
 					gc.style.color = followFg((entry.grade / 5) * 100);
 					gc.style.fontWeight = "700";
 				}
+				makeAssignClickable(gc, entry);
+				gc.title = `Open ${entry.name} assignment`;
 				tr.appendChild(gc);
+
 				const stc2 = document.createElement("td");
 				stc2.textContent = entry.status || "";
 				const sc2 = statusCellCls(entry.status);
 				stc2.className = sc2 || "asn-col";
+				makeAssignClickable(stc2, entry);
+				if (!stc2.title) stc2.title = `Open ${entry.name} assignment`;
 				tr.appendChild(stc2);
-				tr.appendChild(obsCell(entry, "asn-col"));
+
+				const aobs = obsCell(entry, "asn-col");
+				makeAssignClickable(aobs, entry);
+				if (!aobs.title) aobs.title = `Open ${entry.name} assignment`;
+				tr.appendChild(aobs);
 			}
 		}
 
@@ -299,57 +342,25 @@ function obsText(raw) {
 }
 
 function trapBadges(raw, assignmentName) {
-	const code = (raw ?? "").trim();
-	if (!/^[01]+$/.test(code)) return null;
 	const schema = _trapSchema[(assignmentName || "").toLowerCase()];
-	if (!schema || schema.length !== code.length) return null;
-	return schema
-		.map((t, i) => {
-			const fired = code[i] === "0";
-			const clr = fired ? THEME.red : THEME.green;
-			const title = `${t.label} — ${fired ? "trap fired (0)" : "ok (1)"}`;
-			return (
-				`<span title="${escHtml(title)}" style="display:inline-block;` +
-				`width:9px;height:9px;border-radius:2px;margin:0 1px;` +
-				`vertical-align:middle;background:${clr}"></span>`
-			);
-		})
-		.join("");
+	return renderTrapBadges(raw, schema);
 }
 
 async function openLessonDiff(student, entry) {
 	const key = findHandle(_lessonHandles, entry.name);
-	console.log(
-		"[overview] openLessonDiff student.id =",
-		student.id,
-		"entry.name =",
-		entry.name,
-		"entry.follow =",
-		entry.follow,
-		"resolved lesson folder key =",
-		key,
-	);
 	if (!key) {
 		alert(`No lesson folder found for "${entry.name}".`);
 		return;
 	}
-	await openDiff(_lessonHandles[key], student, entry.follow);
+	openDiff(entry.name, "lessons", student, entry.follow);
 }
 async function openAssignDiff(student, entry) {
 	const key = findHandle(_assignHandles, entry.name);
-	console.log(
-		"[overview] openAssignDiff student.id =",
-		student.id,
-		"entry.name =",
-		entry.name,
-		"resolved assign folder key =",
-		key,
-	);
 	if (!key) {
 		alert(`No assignment folder found for "${entry.name}".`);
 		return;
 	}
-	await openDiff(_assignHandles[key], student, null);
+	openDiff(entry.name, "assignments", student, null);
 }
 function findHandle(handles, name) {
 	const nl = name.toLowerCase();
@@ -358,82 +369,32 @@ function findHandle(handles, name) {
 		if (k.includes(nl) || nl.includes(k)) return k;
 	return null;
 }
-function attachLessonGroup(th, assignment) {
-	const key = findHandle(_lessonHandles, assignment.name);
-	if (!key) return;
-	const handle = _lessonHandles[key];
+function _attachStudentsLink(th, name, group) {
+	const handles = group === "assignments" ? _assignHandles : _lessonHandles;
+	if (!findHandle(handles, name)) return;
 	th.classList.add("clickable");
-	th.title = `Open ${assignment.name} timeline`;
-	th.addEventListener("click", async () => {
-		try {
-			const perm = await handle.requestPermission({ mode: "read" });
-			if (perm !== "granted") {
-				alert(`Permission denied for "${assignment.name}" folder.`);
-				return;
-			}
-			await _idbSet("lastDir", handle);
-			window.open("timeline.html?autoload=1", "_blank");
-		} catch (e) {
-			alert("Could not open timeline: " + e.message);
-		}
+	th.title = `Open ${name} ${group === "assignments" ? "assignment" : "lesson"} students view`;
+	th.addEventListener("click", () => {
+		navigateToStudents({ lesson: name, group });
 	});
 }
 
-async function _readOverviewDiffPayload(dirHandle, student, followPct) {
-	const sid = (student.id || "").trim();
-	if (!sid)
-		throw new Error(`Cannot find anon folder for "${student.name}" (no ID).`);
-
-	console.log(
-		"[overview] _readOverviewDiffPayload dirHandle.name =",
-		dirHandle.name,
-		"sid =",
-		sid,
-		"followPct =",
-		followPct,
-	);
-
-	const fileMap = new Map();
-	await readDirHandle(dirHandle, "", fileMap, [], { lowercaseKeys: true });
-	const anonIdsKeys = [...fileMap.keys()].filter((p) =>
-		p.startsWith("anon_ids/"),
-	);
-	const anonIdFolders = [
-		...new Set(anonIdsKeys.map((p) => p.split("/")[1])),
-	].sort();
-	console.log("[overview] anon_ids/ folders inside lesson:", anonIdFolders);
-	console.log(
-		"[overview] anon_ids/" + sid.toLowerCase() + "/ present? =",
-		anonIdFolders.includes(sid.toLowerCase()),
-	);
-
-	const studentPrefix = "anon_ids/" + sid.toLowerCase() + "/";
-	const { teacherFiles, studentFiles, allMarks, imageUris } =
-		await buildDiffPayloadData(fileMap, studentPrefix);
-
-	if (!Object.keys(teacherFiles).length && !Object.keys(studentFiles).length) {
-		throw new Error(`No code files found for ${student.name}.`);
-	}
-
-	const label = followPct != null ? followPct.toFixed(0) + "%" : "assignment";
-	return {
-		teacherFiles,
-		studentFiles,
-		allMarks,
-		imageUris,
-		title: `${student.id ? escHtml(String(student.id)) + ". " : ""}${escHtml(studentLabel(student))} (${escHtml(label)})`,
-	};
+function _attachTimelineLink(th, name) {
+	if (!findHandle(_lessonHandles, name)) return;
+	th.classList.add("clickable");
+	th.title = `Open ${name} timeline`;
+	th.addEventListener("click", () => {
+		navigateToTimeline({ lesson: name, group: "lessons" });
+	});
 }
 
-async function openDiff(dirHandle, student, followPct) {
-	try {
-		showLoading(true);
-		await openDifferentiator(() =>
-			_readOverviewDiffPayload(dirHandle, student, followPct),
-		);
-		showLoading(false);
-	} catch (e) {
-		showLoading(false);
-		alert("Error: " + e.message);
+function openDiff(lesson, group, student, followPct) {
+	const sid = (student.id || "").trim();
+	if (!sid) {
+		alert(`Cannot find anon folder for "${student.name}" (no ID).`);
+		return;
 	}
+	const label = followPct != null ? followPct.toFixed(0) + "%" : "assignment";
+	const title = `${student.id ? String(student.id) + ". " : ""}${studentLabel(student)} (${label})`;
+	navigateToDifferentiator({ lesson, group, id: sid, title });
 }

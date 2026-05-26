@@ -257,10 +257,17 @@ class ExcelReportMixin:
                             row.append(v.get('score', ''))
                             row.append(v.get('text', ''))
                 if has_sim:
-                    simc_pct, simc_desc, simc_items = self._comment_info(
-                        sid, has_submission, code_not_found)
-                    row.extend([simc_pct, simc_desc])
                     basis_marks = (getattr(self, '_basis_marks_by_sid', None) or {}).get(sid)
+                    pb_c = (
+                        self._per_basis_comment_info(sid, basis_marks)
+                        if basis_marks else None
+                    )
+                    if pb_c is not None:
+                        simc_pct, simc_desc, simc_items = pb_c
+                    else:
+                        simc_pct, simc_desc, simc_items = self._comment_info(
+                            sid, has_submission, code_not_found)
+                    row.extend([simc_pct, simc_desc])
                     pb_info = (
                         self._per_basis_sim_info(sid, basis_marks)
                         if basis_marks else None
@@ -500,26 +507,44 @@ class ExcelReportMixin:
             return None
         miss_marks: List[Tuple[str, int, str]] = []
         extra_marks: List[Tuple[str, int, str]] = []
+        n_extra_unpaired = 0
+        n_ghost_extra = 0
         for fname, marks in (basis_marks.get('teacher_files') or {}).items():
             for m in marks or []:
                 if m.get('label') == 'missing':
                     miss_marks.append((fname, m.get('start', 0), m.get('token', '')))
         for fname, marks in (basis_marks.get('student_files') or {}).items():
             for m in marks or []:
-                if m.get('label') in ('extra', 'ghost_extra'):
-                    extra_marks.append((fname, m.get('start', 0), m.get('token', '')))
+                lbl = m.get('label')
+                if lbl not in ('extra', 'ghost_extra'):
+                    continue
+                extra_marks.append((fname, m.get('start', 0), m.get('token', '')))
+                if lbl == 'ghost_extra':
+                    n_ghost_extra += 1
+                elif not m.get('paired_with'):
+                    n_extra_unpaired += 1
         teacher_by_lang = self._teacher_tokens_by_lang()
         teacher_total = sum(sum(ctr.values()) for ctr in teacher_by_lang.values())
         if not teacher_total:
             return None
-        score = round(max(0.0, (teacher_total - len(miss_marks)) / teacher_total * 100), 1)
+        deduction = len(miss_marks) + n_extra_unpaired + n_ghost_extra
+        score = round(max(0.0, (teacher_total - deduction) / teacher_total * 100), 1)
         ts_teacher = getattr(self, '_synth_ts_teacher', None) or {}
-        if ts_teacher:
-            desc, items = _fmt_diff_timed(miss_marks, extra_marks, ts_teacher)
-        else:
-            miss_ctr = Counter(tok for _, _, tok in miss_marks)
-            extra_ctr = Counter(tok for _, _, tok in extra_marks)
-            desc, items = _fmt_diff(miss_ctr, extra_ctr)
+        miss_sorted = sorted(
+            ((ts_teacher.get((fn, s), '99:99:99'), tok)
+             for fn, s, tok in miss_marks),
+        )
+        extras_sorted = sorted(extra_marks, key=lambda t: (t[0], t[1]))
+        parts: List[str] = []
+        items: List[str] = []
+        for ts, tok in miss_sorted:
+            ts_s = '' if ts == '99:99:99' else f' ({ts})'
+            parts.append(f'-{tok}{ts_s}')
+            items.append(f'Missing: {tok}{ts_s}')
+        for _fname, _pos, tok in extras_sorted:
+            parts.append(f'+{tok} (00:00:00)')
+            items.append(f'Extra: {tok}')
+        desc = ', '.join(parts)
         return (score, desc, items)
 
     def _similarity_info_by_lang_from_marks(
@@ -557,6 +582,8 @@ class ExcelReportMixin:
 
         miss_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
         extra_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
+        n_extra_unpaired_by_lang: Dict[str, int] = {}
+        n_ghost_extra_by_lang: Dict[str, int] = {}
         for fname, marks in (basis_marks.get('teacher_files') or {}).items():
             file_ext = _ext_of_name(fname)
             if not file_ext:
@@ -574,11 +601,16 @@ class ExcelReportMixin:
                 continue
             ranges = student_ranges.get(fname, {})
             for m in marks or []:
-                if m.get('label') not in ('extra', 'ghost_extra'):
+                lbl = m.get('label')
+                if lbl not in ('extra', 'ghost_extra'):
                     continue
                 pos = m.get('start', 0)
                 eff = _effective_ext_at(pos, file_ext, ranges) if ranges else file_ext
                 extra_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', '')))
+                if lbl == 'ghost_extra':
+                    n_ghost_extra_by_lang[eff] = n_ghost_extra_by_lang.get(eff, 0) + 1
+                elif not m.get('paired_with'):
+                    n_extra_unpaired_by_lang[eff] = n_extra_unpaired_by_lang.get(eff, 0) + 1
 
         ts_teacher = getattr(self, '_synth_ts_teacher', None) or {}
 
@@ -590,16 +622,28 @@ class ExcelReportMixin:
             if not teacher_ext_total and not miss and not extra:
                 continue
             n_miss = len(miss)
+            n_extra_unpaired = n_extra_unpaired_by_lang.get(ext, 0)
+            n_ghost_extra = n_ghost_extra_by_lang.get(ext, 0)
+            deduction = n_miss + n_extra_unpaired + n_ghost_extra
             score = (
-                round(max(0.0, (teacher_ext_total - n_miss) / teacher_ext_total * 100), 1)
+                round(max(0.0, (teacher_ext_total - deduction) / teacher_ext_total * 100), 1)
                 if teacher_ext_total else 0.0
             )
-            if ts_teacher:
-                desc, items = _fmt_diff_timed(miss, extra, ts_teacher)
-            else:
-                miss_ctr = Counter(tok for _, _, tok in miss)
-                extra_ctr = Counter(tok for _, _, tok in extra)
-                desc, items = _fmt_diff(miss_ctr, extra_ctr)
+            miss_sorted = sorted(
+                ((ts_teacher.get((fn, s), '99:99:99'), tok)
+                 for fn, s, tok in miss),
+            )
+            extras_sorted = sorted(extra, key=lambda t: (t[0], t[1]))
+            parts: List[str] = []
+            items: List[str] = []
+            for ts, tok in miss_sorted:
+                ts_s = '' if ts == '99:99:99' else f' ({ts})'
+                parts.append(f'-{tok}{ts_s}')
+                items.append(f'Missing: {tok}{ts_s}')
+            for _fname, _pos, tok in extras_sorted:
+                parts.append(f'+{tok} (00:00:00)')
+                items.append(f'Extra: {tok}')
+            desc = ', '.join(parts)
             out[ext] = {
                 'score': score,
                 'desc':  desc,
@@ -624,6 +668,57 @@ class ExcelReportMixin:
             return ('', '', [])
         desc, items = _fmt_diff(teacher_agg - student_agg, student_agg - teacher_agg)
         simc_pct = calculate_containment(teacher_agg, student_agg) if teacher_agg else 0.0
+        return (simc_pct, desc, items)
+
+    def _per_basis_comment_info(self, sid: str, basis_marks: dict):
+        if not basis_marks:
+            return None
+        teacher_ctr: Counter = Counter()
+        for fname, marks in (basis_marks.get('teacher_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') == 'comment':
+                    teacher_ctr[m.get('token', '')] += 1
+        student_in_order: List[Tuple[str, int, str]] = []
+        for fname, marks in (basis_marks.get('student_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') == 'comment':
+                    student_in_order.append(
+                        (fname, m.get('start', 0), m.get('token', ''))
+                    )
+        student_in_order.sort(key=lambda t: (t[0], t[1]))
+
+        if not teacher_ctr and not student_in_order:
+            return None
+
+        teacher_remaining: Counter = Counter(teacher_ctr)
+        extras_in_order: List[Tuple[str, int, str]] = []
+        for fname, pos, tok in student_in_order:
+            if teacher_remaining[tok] > 0:
+                teacher_remaining[tok] -= 1
+            else:
+                extras_in_order.append((fname, pos, tok))
+
+        teacher_total = sum(teacher_ctr.values())
+        n_missing = sum(v for v in teacher_remaining.values() if v > 0)
+        n_extra = len(extras_in_order)
+        deduction = n_missing + n_extra
+        simc_pct = (
+            round(max(0.0, (teacher_total - deduction) / teacher_total * 100), 1)
+            if teacher_total else 0.0
+        )
+
+        parts: List[str] = []
+        items: List[str] = []
+        for tok, n in sorted(teacher_remaining.items()):
+            if n <= 0:
+                continue
+            suf = f' (x{n})' if n > 1 else ''
+            parts.append(f'-{tok}{suf}')
+            items.append(f'Missing: {tok}{suf}')
+        for _fname, _pos, tok in extras_in_order:
+            parts.append(f'+{tok} (00:00:00)')
+            items.append(f'Extra: {tok}')
+        desc = ', '.join(parts)
         return (simc_pct, desc, items)
 
     def _tokens_by_effective_lang(self, files: Dict[str, Path]) -> Dict[str, Counter]:

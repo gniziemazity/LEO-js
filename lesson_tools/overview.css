@@ -183,15 +183,14 @@ td.name-cell {
 }
 
 td.follow,
-td.grade-cell {
+td.grade-cell,
+td.clickable {
 	transition: opacity 0.12s;
 }
-td.follow.clickable,
-td.grade-cell.clickable {
+td.clickable {
 	cursor: pointer;
 }
-td.follow.clickable:hover,
-td.grade-cell.clickable:hover {
+td.clickable:hover {
 	opacity: 0.7;
 }
 td.follow {

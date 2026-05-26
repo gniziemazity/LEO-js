@@ -60,6 +60,8 @@
 	--clr-red: var(--c-red-1);
 	--clr-pale-red: rgba(204, 34, 34, 0.4);
 	--clr-orange: var(--c-orange-1);
+	--clr-yellow: var(--c-yellow-1);
+	--clr-trap-ok: #cccccc;
 	--clr-green: var(--c-green-1);
 	--clr-purple: var(--c-purple-1);
 

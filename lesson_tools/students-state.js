@@ -6,6 +6,10 @@ let _hasInteractions = false;
 let _followLabel = "FOLLOW";
 let _allFiles = new Map();
 let _dirHandle = null;
+let _dataSource = null;
+let _isReadOnly = false;
+let _lessonName = null;
+let _lessonGroup = null;
 let _anonMode = "";
 let _sortCol = "id";
 let _sortDir = "asc";
@@ -27,6 +31,8 @@ let _activeRemarkColIdx = {};
 const _dirtyEdits = new Map();
 const EDITABLE_COL_RE = /^(obs\.?|grade|comments?)$/i;
 
+let _trapSchema = [];
+
 const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
 const LANG_COL_DEFS = [
@@ -40,6 +46,49 @@ const LANG_COL_DEFS = [
 	{ key: "js", label: "JS", header: "JS (E)", descHeader: "JS (E) Desc" },
 	{ key: "py", label: "Py", header: "Py (E)", descHeader: "Py (E) Desc" },
 ];
+
+const COL_HIDE_KEYS = [
+	{ key: "remarks", label: "Remarks" },
+	{ key: "expected", label: "Expected" },
+	{ key: "grade", label: "Grade" },
+	{ key: "comments", label: "Comments" },
+	{ key: "languages", label: "Languages (HTML/CSS/JS/Py)" },
+	{ key: "fingerprint1", label: "Fingerprint · timeline" },
+	{ key: "fingerprint2", label: "Fingerprint · extras" },
+	{ key: "fingerprint3", label: "Fingerprint · comments" },
+	{ key: "mismatches", label: "Mismatches" },
+];
+
+const _hiddenCols = new Set();
+
+function _loadHiddenCols() {
+	try {
+		const raw = localStorage.getItem("students.hiddenCols");
+		if (!raw) return;
+		const arr = JSON.parse(raw);
+		if (!Array.isArray(arr)) return;
+		for (const k of arr) {
+			if (k === "fingerprint") {
+				_hiddenCols.add("fingerprint1");
+				_hiddenCols.add("fingerprint2");
+				_hiddenCols.add("fingerprint3");
+			} else {
+				_hiddenCols.add(k);
+			}
+		}
+	} catch (_e) {}
+}
+
+function _saveHiddenCols() {
+	try {
+		localStorage.setItem(
+			"students.hiddenCols",
+			JSON.stringify([..._hiddenCols]),
+		);
+	} catch (_e) {}
+}
+
+_loadHiddenCols();
 
 function _mismatchColor(ev) {
 	if (ev.kind === "missing" || ev.kind === "extra-star") {

@@ -81,11 +81,39 @@ document
 	?.addEventListener("click", pickFolder);
 
 (async function tryAutoLoad() {
-	const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
-	if (!handle) return;
 	showLoading(true);
+	let httpDs = null;
 	try {
-		await loadCourse(handle);
+		httpDs = await detectDataSource();
+	} catch (e) {
+		console.warn("[overview] manifest detection failed:", e);
+	}
+	if (httpDs) {
+		try {
+			await httpDs.open();
+			await loadCourse(httpDs);
+		} catch (e) {
+			console.error("[overview] web-mode load failed:", e);
+			alert("Error loading from manifest: " + e.message);
+		}
+		showLoading(false);
+		return;
+	}
+	const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
+	if (!handle) {
+		showLoading(false);
+		return;
+	}
+	try {
+		const ds = new FsDataSource({
+			idbKey: "lastCourseDir",
+			dbName: "grades-dash",
+		});
+		ds.rootHandle = handle;
+		ds.rootName = handle.name;
+		await _idbSet(IDB_KEY_COURSE_ROOT, handle);
+		await ds.load();
+		await loadCourse(ds);
 	} catch (e) {
 		if (e.name !== "AbortError") alert("Error: " + e.message);
 	}

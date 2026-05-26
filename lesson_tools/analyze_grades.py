@@ -81,82 +81,70 @@ LESSON_DIFFICULTY = {
     "web":     "project",
 }
 
-TRAP_FLAGS = {
-    "wall": [
-        ("illusion", "Mentioned the café-wall illusion"),
-        ("color",    "Correct colors from the video (not hallucinated)"),
-    ],
-    "chess": [
-        ("pieces",     "Correct piece identities / positions"),
-        ("problem",    "Spotted the white-on-white problem (HTML comment)"),
-        ("method",     "Correct loop method (not the hidden 'method 8')"),
-        ("visibility", "Fixed the white-on-white pieces (styling)"),
-    ],
-    "sorting": [
-        ("var_speed", "Used 'speed' (not the hidden 'var_speed')"),
-        ("onchange",  "Used oninput (not the hidden 'onchange')"),
-    ],
-    "js": [
-        ("onclick",    "Used onclick (not the hidden 'onmousedown')"),
-        ("grid_reuse", "Reused the grid (not a from-scratch giant canvas)"),
-    ],
-    "qr": [
-        ("in_stock", "Used inStock (not the hidden 'in_store')"),
-    ],
-}
+_course_root: str = ""
+_trap_flags_cache: dict = {}
 
-TRAP_VIEWS = {
-    "wall": [
-        {"key": "color", "label": "Correct colors from the video", "src": [2]},
-    ],
-    "chess": [
-        {"key": "pieces",        "label": "Correct piece identities / positions",       "src": [1]},
-        {"key": "color_problem", "label": "Colour problem identified or fixed",          "src": [2, 4], "combine": "max"},
-        {"key": "method",        "label": "Correct loop method (not the hidden 'method 8')", "src": [3]},
-    ],
-}
+
+def _find_assignment_dir(name_lower: str):
+    if not _course_root:
+        return None
+    for sub in ("assignments", "lessons"):
+        sub_path = os.path.join(_course_root, sub)
+        if not os.path.isdir(sub_path):
+            continue
+        for entry in os.listdir(sub_path):
+            if entry.lower() == name_lower:
+                p = os.path.join(sub_path, entry)
+                if os.path.isdir(p):
+                    return p
+    return None
+
+
+def _read_csv_rows(path):
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return list(_csv.DictReader(fh))
+    except (OSError, ValueError):
+        return []
+
+
+def _load_trap_flags(name_lower: str):
+    if name_lower in _trap_flags_cache:
+        return _trap_flags_cache[name_lower]
+    folder = _find_assignment_dir(name_lower)
+    out = []
+    if folder:
+        for row in _read_csv_rows(os.path.join(folder, "trap_labels.csv")):
+            k = (row.get("key") or "").strip()
+            lbl = (row.get("label") or "").strip()
+            if k and lbl:
+                out.append((k, lbl))
+    _trap_flags_cache[name_lower] = out
+    return out
 
 
 def _raw_flags(a):
-    return TRAP_FLAGS.get(a.get("lower", ""), [])
-
-
-def _reported_flags(a):
-    raw = _raw_flags(a)
-    view = TRAP_VIEWS.get(a.get("lower", ""))
-    if not view:
-        return [{"key": k, "label": lbl, "src": [i + 1], "combine": "max"}
-                for i, (k, lbl) in enumerate(raw)]
-    out = []
-    for f in view:
-        out.append({
-            "key":     f["key"],
-            "label":   f.get("label", f["key"]),
-            "src":     list(f["src"]),
-            "combine": f.get("combine", "max"),
-        })
-    return out
+    return _load_trap_flags(a.get("lower", ""))
 
 
 def _parse_trap_digits(obs_series, n):
     obs = (obs_series.fillna("").astype(str).str.strip()
            .str.replace(r"^([01])\.0$", r"\1", regex=True))
     is_code = obs.str.fullmatch(r"[01]+", na=False)
-    right_len = obs.str.len() == n
-    valid = is_code & right_len & (n > 0)
-    did_by_pos = []
+    has_some = obs.str.len() > 0
+    fits = obs.str.len() <= n
+    valid = is_code & fits & has_some & (n > 0)
+    fired_by_pos = []
+    ans_by_pos = []
     for i in range(n):
+        has_digit = valid & (obs.str.len() > i)
         digit = obs.str.slice(i, i + 1)
-        did_by_pos.append(valid & (digit == "1"))
-    mismatched = is_code & ~right_len & (n > 0)
-    return did_by_pos, valid, mismatched
+        fired_by_pos.append(has_digit & (digit == "1"))
+        ans_by_pos.append(has_digit)
+    mismatched = is_code & (obs.str.len() > n) & (n > 0)
+    return fired_by_pos, valid, mismatched, ans_by_pos
 
-
-def _combine_did(did_list, combine):
-    out = did_list[0].copy()
-    for d in did_list[1:]:
-        out = (out | d) if combine in ("max", "or") else (out & d)
-    return out
 
 _HEADER_ALIASES = {
     "id":              ["ID"],
@@ -294,6 +282,9 @@ def _col_series(st, col_idx, *, numeric=True):
 
 
 def load_data(path):
+    global _course_root
+    _course_root = os.path.dirname(os.path.abspath(path))
+    _trap_flags_cache.clear()
     ext = os.path.splitext(path)[1].lower()
     engine = "openpyxl" if ext == ".xlsx" else "xlrd"
     df = pd.read_excel(path, engine=engine, header=None)
@@ -336,23 +327,22 @@ def enrich(st):
         st[f"a{a_num}_grade"]      = grade
 
         raw = _raw_flags(a)
-        did_pos, trap_valid, trap_mismatch = _parse_trap_digits(obs, len(raw))
+        fired_pos, trap_valid, trap_mismatch, ans_pos = _parse_trap_digits(
+            obs, len(raw),
+        )
         st[f"a{a_num}_trap_valid"] = trap_valid
         fired_total = pd.Series(0, index=st.index, dtype=int)
-        for rep in _reported_flags(a):
-            srcs = [i - 1 for i in rep["src"] if 1 <= i <= len(raw)]
-            if not srcs:
-                continue
-            did = _combine_did([did_pos[s] for s in srcs], rep["combine"])
-            fired = trap_valid & ~did
-            st[f"a{a_num}_trap_{rep['key']}"] = fired
+        for i, (key, _label) in enumerate(raw):
+            fired = ans_pos[i] & fired_pos[i]
+            st[f"a{a_num}_trap_{key}"] = fired
+            st[f"a{a_num}_trap_{key}_ans"] = ans_pos[i]
             fired_total = fired_total + fired.astype(int)
         st[f"a{a_num}_traps_fired"] = fired_total.where(trap_valid, np.nan)
         st[f"a{a_num}_any_trap"]    = trap_valid & (fired_total > 0)
         n_mismatch = int(trap_mismatch.sum())
         if n_mismatch:
-            print(f"  warning: {a['name']} has {n_mismatch} OBS code(s) whose "
-                  f"length != {len(raw)} traps; left undecoded")
+            print(f"  warning: {a['name']} has {n_mismatch} OBS code(s) longer "
+                  f"than {len(raw)} traps; left undecoded")
 
         st[f"a{a_num}_ai"]         = (
             st[f"a{a_num}_any_trap"]
@@ -1101,7 +1091,7 @@ def analyze_correlations_summary(st):
 
 
 def _trap_schema_for(a):
-    return [(f["key"], f["label"]) for f in _reported_flags(a)]
+    return _raw_flags(a)
 
 
 def analyze_traps(st):
@@ -1115,7 +1105,7 @@ def analyze_traps(st):
     print("""
   Each assignment hides 'traps' that fire when a student likely leaned on AI
   (pasted the task, accepted the answer, never ran or read it). In the OBS
-  column, digit 1 = the student did the human thing; digit 0 = the trap FIRED.
+  column, digit 1 = the trap FIRED; digit 0 = the student did the human thing.
   A 'hit' is a fired trap. 'Any' = at least one trap fired in that submission.""")
 
     subsection("Per-trap hit rate per assignment (of valid OBS codes)")
@@ -1127,8 +1117,10 @@ def analyze_traps(st):
         n_valid = int(valid.sum())
         for key, label in _trap_schema_for(a):
             fired = int(st[f"a{a_num}_trap_{key}"].sum())
-            rate = fired / n_valid if n_valid else float("nan")
-            print(f"  {a['name']:<10} {label[:26]:<26} {fired:>6} {n_valid:>6} {rate:>8.0%}")
+            ans_col = f"a{a_num}_trap_{key}_ans"
+            n_ans = int(st[ans_col].sum()) if ans_col in st.columns else n_valid
+            rate = fired / n_ans if n_ans else float("nan")
+            print(f"  {a['name']:<10} {label[:26]:<26} {fired:>6} {n_ans:>6} {rate:>8.0%}")
         any_fired = int(st[f"a{a_num}_any_trap"].sum())
         any_rate = any_fired / n_valid if n_valid else float("nan")
         tag = " ← easy" if a["difficulty"] == "easy" else ""
@@ -1145,7 +1137,9 @@ def analyze_traps(st):
         valid = st[f"a{a_num}_trap_valid"]
         for key, label in _trap_schema_for(a):
             fired = st[f"a{a_num}_trap_{key}"]
-            ok = valid & ~fired
+            ans_col = f"a{a_num}_trap_{key}_ans"
+            ans = st[ans_col] if ans_col in st.columns else valid
+            ok = ans & ~fired
             ft = int((fired & trouble).sum())
             fo = int((fired & ~trouble).sum())
             ot = int((ok & trouble).sum())
@@ -1175,8 +1169,10 @@ def analyze_traps(st):
         valid = st[f"a{a_num}_trap_valid"]
         for key, label in _trap_schema_for(a):
             fired = st[f"a{a_num}_trap_{key}"]
+            ans_col = f"a{a_num}_trap_{key}_ans"
+            ans = st[ans_col] if ans_col in st.columns else valid
             fg = grade[fired].dropna()
-            og = grade[valid & ~fired].dropna()
+            og = grade[ans & ~fired].dropna()
             fm = fg.mean() if len(fg) else float("nan")
             om = og.mean() if len(og) else float("nan")
             diff = fm - om if not (np.isnan(fm) or np.isnan(om)) else float("nan")
@@ -1313,7 +1309,10 @@ def save_stats_json(st, grades_path):
             traps = []
             for key, label in schema:
                 fired = st[f"a{a_num}_trap_{key}"]
-                ok    = valid & ~fired
+                ans_col = f"a{a_num}_trap_{key}_ans"
+                ans = st[ans_col] if ans_col in st.columns else valid
+                ok    = ans & ~fired
+                n_ans = int(ans.sum())
                 n_f   = int(fired.sum())
                 ft, fo = int((fired & trouble).sum()), int((fired & ~trouble).sum())
                 ot, oo = int((ok & trouble).sum()),    int((ok & ~trouble).sum())
@@ -1326,8 +1325,9 @@ def save_stats_json(st, grades_path):
                 traps.append({
                     "key":           key,
                     "label":         label,
+                    "n_answered":    n_ans,
                     "n_fired":       n_f,
-                    "hit_rate":      sf(n_f / n_valid) if n_valid else None,
+                    "hit_rate":      sf(n_f / n_ans) if n_ans else None,
                     "fired_trouble": ft, "fired_ok": fo,
                     "ok_trouble":    ot, "safe_ok": oo,
                     "odds_ratio":    sf(orv),

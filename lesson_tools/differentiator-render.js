@@ -435,21 +435,61 @@ function sortFileNames(names, preferReconstructed) {
 	return [...html, ...css, ...js, ...py, ...other];
 }
 
+function _codePointToUtf16Map(text) {
+	for (let i = 0; i < text.length; i++) {
+		const c = text.charCodeAt(i);
+		if (c >= 0xd800 && c <= 0xdbff) {
+			const map = new Array(text.length + 1);
+			let u16 = 0;
+			let cp = 0;
+			let j = 0;
+			while (j < text.length) {
+				map[cp++] = u16;
+				const code = text.charCodeAt(j);
+				if (
+					code >= 0xd800 &&
+					code <= 0xdbff &&
+					j + 1 < text.length &&
+					text.charCodeAt(j + 1) >= 0xdc00 &&
+					text.charCodeAt(j + 1) <= 0xdfff
+				) {
+					u16 += 2;
+					j += 2;
+				} else {
+					u16 += 1;
+					j += 1;
+				}
+			}
+			map[cp] = u16;
+			return map;
+		}
+	}
+	return null;
+}
+
 function _synthesizeLeoMarks(side, fileName) {
 	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
 	if (!tokens || !fileName) return [];
 	const isTruthMode = typeof _truthEditMode !== "undefined" && _truthEditMode;
+	const files = side === "teacher" ? _teacherFiles : _studentFiles;
+	const text = (files && files[fileName] ? files[fileName] : "").replace(
+		/\r\n/g,
+		"\n",
+	);
+	const u16map = _codePointToUtf16Map(text);
+	const toU16 = u16map ? (cp) => (cp < u16map.length ? u16map[cp] : cp) : null;
 	const out = [];
 	for (const [tok, data] of Object.entries(tokens)) {
 		const list = side === "teacher" ? data.teacher : data.student;
 		for (const inst of list) {
 			if (inst.file !== fileName) continue;
 			if (inst.ghost) continue;
+			const start = toU16 ? toU16(inst.pos) : inst.pos;
 			out.push({
 				token: tok,
 				label: isTruthMode ? null : inst.label || null,
-				start: inst.pos,
-				end: inst.pos + tok.length,
+				start,
+				end: start + tok.length,
 				_synth: true,
 			});
 		}

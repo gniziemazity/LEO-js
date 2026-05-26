@@ -3,6 +3,7 @@
 let _pendingXlsx = [];
 let _allFiles = new Map();
 let _dirHandle = null;
+let _lessonName = null;
 let _studentIdMap = {};
 let _realToAlterMap = {};
 let _studentNameMap = {};
@@ -24,14 +25,9 @@ async function openFilePicker() {
 
 async function openFolderPicker() {
 	try {
-		const dirHandle = await pickFolderWithMemory();
-		_dirHandle = dirHandle;
-		showLoading(true);
-		const files = [];
-		const pathMap = new Map();
-		await readDirHandle(dirHandle, "", pathMap, files);
-		_allFiles = pathMap;
-		handleFiles(files);
+		const ds = new FsDataSource();
+		await ds.open();
+		await _loadTimelineFromDataSource(ds);
 	} catch (e) {
 		if (e.name !== "AbortError") alert("Could not open folder: " + e.message);
 	}
@@ -148,9 +144,7 @@ async function _readImageUris(fileMap) {
 }
 
 async function loadJsonData(file, data) {
-	document.title = _dirHandle?.name
-		? `Timeline: ${_dirHandle.name}`
-		: "Timeline";
+	document.title = _lessonName ? `Timeline: ${_lessonName}` : "Timeline";
 	_zoomMin = _zoomMax = null;
 	_studentIdMap = {};
 	if (window.LanguageProfiles) {
@@ -173,7 +167,7 @@ async function loadJsonData(file, data) {
 			JSON.stringify({
 				filePath: file.name,
 				lessonFile: data.lessonFile || null,
-				lessonName: _dirHandle?.name || null,
+				lessonName: _lessonName || null,
 				studentNameMap: _studentNameMap,
 				events: data.events || data.keyPresses || [],
 				loadedAt: Date.now(),
@@ -334,24 +328,54 @@ async function saveLessonStatsCsv() {
 	}
 }
 
+async function _loadTimelineFromDataSource(ds) {
+	_dirHandle = ds.rootHandle;
+	_lessonName = ds.rootName;
+	if (ds.rootHandle) {
+		try {
+			await _idbSet(IDB_KEY_LESSON_ROOT, ds.rootHandle);
+		} catch {}
+	}
+	showLoading(true);
+	const files = await ds.load();
+	_allFiles = ds.files;
+	handleFiles(files);
+}
+
 async function _tryAutoLoadTimeline() {
 	const handle = await loadSavedDirHandle();
 	if (!handle) return false;
-	_dirHandle = handle;
-	showLoading(true);
-	const files = [];
-	const pathMap = new Map();
-	await readDirHandle(handle, "", pathMap, files);
-	_allFiles = pathMap;
-	handleFiles(files);
+	const ds = new FsDataSource();
+	ds.rootHandle = handle;
+	ds.rootName = handle.name;
+	await _loadTimelineFromDataSource(ds);
+	return true;
+}
+
+async function _tryLoadTimelineFromUrlParams() {
+	const { lesson, group } = parseToolParams();
+	if (!lesson) return false;
+	const ds = await loadLessonDataSource({ lesson, group });
+	if (!ds) return false;
+	await _loadTimelineFromDataSource(ds);
 	return true;
 }
 
 (async function () {
 	const qs = new URLSearchParams(location.search);
-	if (qs.get("autoload") !== "1") return;
+	const params = parseToolParams();
+	const wantsAutoload = qs.get("autoload") === "1" || params.lesson != null;
+	if (!wantsAutoload) return;
 	await waitForXlsxBundle();
-	const ok = await _tryAutoLoadTimeline();
+	let ok = false;
+	if (params.lesson) {
+		try {
+			ok = await _tryLoadTimelineFromUrlParams();
+		} catch (e) {
+			console.warn("[Timeline] URL-param load failed:", e);
+		}
+	}
+	if (!ok) ok = await _tryAutoLoadTimeline();
 	if (!ok) {
 		const btn = document.createElement("button");
 		btn.className = "landing-btn";
@@ -372,6 +396,18 @@ window.addEventListener("resize", () => {
 		if (_p) scheduleRender();
 	}, 120);
 });
+
+(function _wireStudentsButton() {
+	const btn = document.getElementById("btn-students");
+	if (!btn) return;
+	btn.addEventListener("click", () => {
+		if (_lessonName) {
+			navigateToStudents({ lesson: _lessonName });
+		} else {
+			window.open("students.html?autoload=1", "_blank");
+		}
+	});
+})();
 
 function _parseTeacherTokensTxt(text, sessionDate) {
 	const lines = text.split(/\r?\n/);

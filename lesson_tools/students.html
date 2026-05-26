@@ -126,7 +126,6 @@
 			}
 
 			tbody tr {
-				cursor: pointer;
 				border-bottom: 1px solid var(--clr-border-mid);
 				transition: background 0.08s;
 			}
@@ -136,6 +135,12 @@
 			}
 			tbody tr:active {
 				background: var(--clr-row-active);
+			}
+			td.clickable-open {
+				cursor: pointer;
+			}
+			td.clickable-open:hover {
+				text-decoration: underline;
 			}
 
 			td {
@@ -180,13 +185,25 @@
 			}
 			.col-comments {
 				width: 220px;
+				max-width: 220px;
+				padding: 0;
+				vertical-align: top;
+			}
+			.comments-inner {
+				display: block;
+				width: 220px;
+				box-sizing: border-box;
+				padding: 5px 8px;
 				text-align: left;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
 			}
-			.col-comments.editable-cell.editing {
+			.comments-inner.editing {
 				white-space: pre-wrap;
+				word-break: break-word;
+				overflow: visible;
+				text-overflow: clip;
 			}
 			.editable-cell {
 				cursor: text;
@@ -210,8 +227,65 @@
 			tbody tr:hover .editable-cell.dirty {
 				background: #fff4c2 !important;
 			}
-			#save-btn {
+			#columns-picker {
+				position: relative;
 				margin-left: auto;
+			}
+			#cols-btn {
+				padding: 3px 10px;
+				font-size: 12px;
+				border: 1px solid var(--clr-diff-btn-border);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				cursor: pointer;
+			}
+			#cols-btn:hover {
+				background: var(--clr-row-hover);
+			}
+			#cols-panel {
+				position: absolute;
+				top: 100%;
+				right: 0;
+				margin-top: 4px;
+				z-index: 100;
+				background: var(--clr-bg);
+				border: 1px solid var(--clr-border);
+				border-radius: 3px;
+				padding: 6px 12px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+				white-space: nowrap;
+				font-size: 12px;
+			}
+			#cols-panel label {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				padding: 3px 0;
+				cursor: pointer;
+				color: var(--clr-text);
+			}
+			#cols-panel label:hover {
+				color: var(--clr-accent);
+			}
+			.col-follow .follow-pct {
+				display: block;
+				font-weight: bold;
+				line-height: 1.1;
+				margin-bottom: 2px;
+				color: var(--clr-text);
+			}
+			.col-follow .follow-bar {
+				height: 5px;
+				background: var(--clr-bar-track);
+				border-radius: 2px;
+				overflow: hidden;
+			}
+			.col-follow .follow-bar-fill {
+				height: 100%;
+				background: var(--clr-text-strong);
+				border-radius: 2px;
+			}
+			#save-btn {
 				padding: 3px 12px;
 				font-size: 12px;
 				border: 1px solid var(--clr-diff-btn-border);
@@ -234,10 +308,13 @@
 				text-overflow: clip;
 			}
 			.col-follow {
-				width: 68px;
-				text-align: center;
+				width: 70px;
+				padding: 4px 8px;
+				text-align: left;
 				font-family: Consolas, monospace;
-				font-weight: bold;
+				vertical-align: middle;
+				overflow: visible;
+				text-overflow: clip;
 			}
 			.col-lang {
 				width: 70px;
@@ -328,7 +405,7 @@
 			.col-fingerprint .fp3-bar {
 				display: flex;
 				align-items: stretch;
-				gap: 1px;
+				gap: 0;
 				width: fit-content;
 				height: 100%;
 			}
@@ -336,10 +413,10 @@
 			.col-fingerprint .fp3-byte {
 				display: flex;
 				flex-direction: column;
-				flex: 0 0 3px;
-				width: 3px;
-				background: var(--clr-bar-track);
+				flex: 0 0 2px;
+				width: 2px;
 				overflow: hidden;
+				margin-right: 1px;
 			}
 			.col-fingerprint .fp2-bit,
 			.col-fingerprint .fp3-bit {
@@ -373,6 +450,14 @@
 			}
 			tbody tr.selected:hover td {
 				background: var(--clr-row-selected-hover) !important;
+			}
+			tbody tr.totals-row td {
+				border-top: 2px solid var(--clr-muted);
+				background: var(--clr-bar-track);
+				font-weight: bold;
+			}
+			tbody tr.totals-row:hover td:not(.col-mismatch) {
+				background: var(--clr-bar-track) !important;
 			}
 
 			.mismatch-token {
@@ -422,6 +507,12 @@
 					</select>
 				</label>
 				<span id="basis-picker"></span>
+				<span id="columns-picker">
+					<button id="cols-btn" type="button" onclick="_toggleColsPanel()">
+						Columns ▾
+					</button>
+					<div id="cols-panel" hidden></div>
+				</span>
 				<button
 					id="save-btn"
 					type="button"

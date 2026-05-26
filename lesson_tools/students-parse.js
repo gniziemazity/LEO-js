@@ -286,33 +286,58 @@ function _maskToBytes(bits) {
 	return groups.map((b) => String(b).padStart(3, "0")).join("-");
 }
 
-function _boldFpGroups(hashStr) {
+function _dominantLang(langs) {
+	const counts = {};
+	let best = null;
+	let bestN = 0;
+	for (const l of langs) {
+		if (!l) continue;
+		counts[l] = (counts[l] || 0) + 1;
+		if (counts[l] > bestN) {
+			best = l;
+			bestN = counts[l];
+		}
+	}
+	return best;
+}
+
+function _bytesLangs(langs) {
+	const out = [];
+	for (let i = 0; i < langs.length; i += 8) {
+		out.push(_dominantLang(langs.slice(i, i + 8)));
+	}
+	return out;
+}
+
+function _boldFpGroups(hashStr, byteLangs) {
+	const langs = byteLangs || [];
 	return hashStr
 		.split("-")
-		.map((g) => (g === "000" ? g : `<b>${g}</b>`))
+		.map((g, i) => {
+			if (g === "000") return g;
+			const color = langs[i] ? langColorFor(langs[i]) : null;
+			return color ? `<b style="color:${color}">${g}</b>` : `<b>${g}</b>`;
+		})
 		.join("-");
 }
 
 function _computeFingerprintMask(students) {
-	for (const s of students) s._fpMask = null;
-	const studentTs = students.map(() => new Set());
+	for (const s of students) {
+		s._fpMask = null;
+		s._fpMaskLangs = null;
+	}
+	const studentTsLang = students.map(() => new Map());
 	const allTs = new Set();
 	for (let i = 0; i < students.length; i++) {
 		const s = students[i];
-		const ts = studentTs[i];
+		const tsLang = studentTsLang[i];
 		for (const ev of s.langEvents || []) {
 			if (
 				ev.ts != null &&
 				ev.ts > 0 &&
 				(ev.kind === "missing" || ev.kind === "extra-star")
 			) {
-				ts.add(ev.ts);
-				allTs.add(ev.ts);
-			}
-		}
-		for (const ev of s.commentEvents || []) {
-			if (ev.ts != null && ev.ts > 0 && ev.kind === "missing") {
-				ts.add(ev.ts);
+				tsLang.set(ev.ts, ev.lang || null);
 				allTs.add(ev.ts);
 			}
 		}
@@ -320,11 +345,21 @@ function _computeFingerprintMask(students) {
 	if (allTs.size === 0) return;
 	const sortedTs = [...allTs].sort((a, b) => a - b);
 	for (let i = 0; i < students.length; i++) {
-		const ts = studentTs[i];
-		if (ts.size === 0) continue;
+		const tsLang = studentTsLang[i];
+		if (tsLang.size === 0) continue;
 		let bits = "";
-		for (const t of sortedTs) bits += ts.has(t) ? "1" : "0";
+		const langs = [];
+		for (const t of sortedTs) {
+			if (tsLang.has(t)) {
+				bits += "1";
+				langs.push(tsLang.get(t));
+			} else {
+				bits += "0";
+				langs.push(null);
+			}
+		}
 		students[i]._fpMask = bits;
+		students[i]._fpMaskLangs = langs;
 	}
 }
 
@@ -334,9 +369,9 @@ function _sortKeyOf(s, sortCol) {
 	if (sortCol === "num") return { type: "str", v: s.num || "" };
 	if (sortCol === "follow") return { type: "num", v: s.followPct };
 	if (sortCol === "int") return { type: "str", v: s.interactions || "" };
-	if (sortCol === "fingerprint") {
-		return { type: "str", v: s._fpMask };
-	}
+	if (sortCol === "fingerprint1") return { type: "str", v: s._fpMask };
+	if (sortCol === "fingerprint2") return { type: "num", v: s._fp2Count };
+	if (sortCol === "fingerprint3") return { type: "num", v: s._fp3Count };
 	if (sortCol.startsWith("lang:")) {
 		const k = sortCol.slice(5);
 		const v = s.langPcts ? s.langPcts[k] : undefined;

@@ -4,9 +4,10 @@ import argparse
 import sys
 import tkinter as tk
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from utils.anonymize import load_excluded_student_ids
 
@@ -276,39 +277,10 @@ def _normalize_sid(v) -> str:
     return s
 
 
-def main(argv) -> int:
-    description = __doc__.split('\n')[0] if __doc__ else 'Build overview spreadsheet'
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('root', nargs='?',
-                        help='Course root folder (containing lessons/ and assignments/).')
-    parser.add_argument('--output', default='Overview.xlsx',
-                        help='Output filename (relative to root).')
-    args = parser.parse_args(argv[1:])
-
-    root = Path(args.root) if args.root else _pick_folder()
-    if root is None or not root.is_dir():
-        print('No root folder selected.', file=sys.stderr)
-        return 1
-    root = root.resolve()
-
-    lessons_root = _find_subdir(root, 'lessons')
-    assignments_root = _find_subdir(root, 'assignments')
-    if lessons_root is None and assignments_root is None:
-        print(f'error: no lessons/ or assignments/ folder in {root}',
-              file=sys.stderr)
-        return 1
-
-    print(f'Root:        {root}')
-    print(f'Lessons:     {lessons_root or "(missing)"}')
-    print(f'Assignments: {assignments_root or "(missing)"}')
-    print()
-
-    excluded_ids = load_excluded_student_ids(str(root / 'students.csv'))
-    if excluded_ids:
-        print(f'Excluded:    {len(excluded_ids)} student(s) per '
-              f'students.csv (Include != OK)')
-        print()
-
+def _collect_student_data(root: Path,
+                          lessons_root: Optional[Path],
+                          assignments_root: Optional[Path],
+                          excluded_ids) -> Tuple[Dict[str, dict], Dict[str, dict]]:
     student_data: Dict[str, dict] = defaultdict(dict)
     lesson_meta: Dict[str, dict] = {}
 
@@ -398,10 +370,149 @@ def main(argv) -> int:
                 n += 1
             print(f'  [assign/{assign_dir.name}] {n} student row(s) from {xlsx.name}')
 
-    if not student_data:
-        print('\nNo student rows collected.', file=sys.stderr)
-        return 1
+    return student_data, lesson_meta
 
+
+_MANAGED_LESSON_SUFFIXES = (
+    'HTML Follow', 'CSS Follow', 'JS Follow',
+    'Follow', 'Inc',
+    'A', 'Q', 'H', 'C+', 'C-', 'C Diff',
+    'LessonObs', 'Grade', 'Obs',
+)
+
+
+def _build_row_values(sid: str,
+                      info: dict,
+                      lesson_meta: Dict[str, dict],
+                      excluded: bool) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        'ID': sid,
+        'Name': info.get('name', ''),
+        'Number': info.get('number', ''),
+        'Excluded': 'EXCLUDED' if excluded else None,
+    }
+    if excluded:
+        return out
+    for lk in LESSON_TO_COLS.keys():
+        prefix = lk.title()
+        lesson_info = info.get(f'lesson_{lk}')
+        meta = lesson_meta.get(lk, {})
+        if lesson_info:
+            out[f'{prefix} HTML Follow'] = lesson_info.get('follow_html')
+            out[f'{prefix} CSS Follow'] = lesson_info.get('follow_css')
+            out[f'{prefix} JS Follow'] = lesson_info.get('follow_js')
+            out[f'{prefix} Follow'] = lesson_info.get('follow')
+            out[f'{prefix} Inc'] = lesson_info.get('inc')
+            attended = lesson_info.get('follow') not in (None, '')
+            if attended and meta.get('has_interactions'):
+                a, q, h = _count_interactions(lesson_info.get('interactions'))
+                out[f'{prefix} A'] = a
+                out[f'{prefix} Q'] = q
+                out[f'{prefix} H'] = h
+            if attended and meta.get('has_follow_c_desc'):
+                cplus, cminus = _count_extra_missing(lesson_info.get('follow_c_desc'))
+                out[f'{prefix} C+'] = cplus
+                out[f'{prefix} C-'] = cminus
+                out[f'{prefix} C Diff'] = cplus - cminus
+            out[f'{prefix} LessonObs'] = lesson_info.get('obs', '')
+        assign_info = info.get(f'assign_{lk}')
+        if assign_info:
+            out[f'{prefix} Grade'] = assign_info.get('grade')
+            out[f'{prefix} Obs'] = assign_info.get('obs', '')
+    return out
+
+
+def _find_latest_overview(root: Path) -> Optional[Path]:
+    candidates = []
+    for p in root.iterdir():
+        if not p.is_file():
+            continue
+        nl = p.name.lower()
+        if not nl.endswith('.xlsx'):
+            continue
+        if not (nl.startswith('overview') or nl == 'overviewplus.xlsx'):
+            continue
+        candidates.append(p)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def _sid_sort_key(sid: str):
+    try:
+        return (0, int(sid))
+    except (ValueError, TypeError):
+        return (1, sid)
+
+
+def _update_existing_workbook(wb: 'Workbook',
+                              student_data: Dict[str, dict],
+                              lesson_meta: Dict[str, dict],
+                              excluded_ids,
+                              lessons_root: Optional[Path]) -> int:
+    if 'Grades' in wb.sheetnames:
+        ws = wb['Grades']
+    else:
+        ws = wb.active
+
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+    col_for_header: Dict[str, int] = {}  # header → 1-based col index
+    for i, h in enumerate(header_row, start=1):
+        if h is None:
+            continue
+        col_for_header[str(h).strip()] = i
+
+    if 'ID' not in col_for_header:
+        raise ValueError("Existing Overview sheet has no 'ID' column header")
+
+    id_col = col_for_header['ID']
+
+    existing_rows: Dict[str, int] = {}
+    for row in range(2, ws.max_row + 1):
+        sid = _normalize_sid(ws.cell(row=row, column=id_col).value)
+        if sid:
+            existing_rows[sid] = row
+
+    appended = 0
+    updated = 0
+    for sid in sorted(student_data.keys(), key=_sid_sort_key):
+        info = student_data[sid]
+        is_excluded = sid in excluded_ids
+        values = _build_row_values(sid, info, lesson_meta, is_excluded)
+
+        if sid in existing_rows:
+            row = existing_rows[sid]
+            updated += 1
+            is_new_row = False
+        else:
+            row = ws.max_row + 1
+            ws.cell(row=row, column=id_col, value=sid)
+            existing_rows[sid] = row
+            appended += 1
+            is_new_row = True
+
+        for header_name, value in values.items():
+            col = col_for_header.get(header_name)
+            if col is None:
+                continue
+            cell = ws.cell(row=row, column=col)
+            if header_name in ('Name', 'Number') and not is_new_row:
+                existing = cell.value
+                if existing not in (None, '', 0):
+                    continue
+            cell.value = value
+
+    if 'Lesson Stats' in wb.sheetnames:
+        del wb['Lesson Stats']
+    _add_lesson_stats_sheet(wb, lessons_root)
+
+    return appended
+
+
+def _build_workbook_from_scratch(student_data: Dict[str, dict],
+                                 lesson_meta: Dict[str, dict],
+                                 excluded_ids,
+                                 lessons_root: Optional[Path]) -> 'Workbook':
     n_cols = max(c for cols in LESSON_TO_COLS.values() for c in cols.values()) + 1
 
     column_styles: Dict[int, dict] = {}
@@ -477,12 +588,6 @@ def main(argv) -> int:
 
     for col_idx, width in column_widths.items():
         ws.column_dimensions[get_column_letter(col_idx + 1)].width = width
-
-    def _sid_sort_key(sid: str):
-        try:
-            return (0, int(sid))
-        except (ValueError, TypeError):
-            return (1, sid)
 
     for sid in sorted(student_data.keys(), key=_sid_sort_key):
         info = student_data[sid]
@@ -567,11 +672,97 @@ def main(argv) -> int:
                 )
 
     _add_lesson_stats_sheet(wb, lessons_root)
+    return wb
 
-    out_path = root / args.output
+
+def main(argv) -> int:
+    description = __doc__.split('\n')[0] if __doc__ else 'Build overview spreadsheet'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('root', nargs='?',
+                        help='Course root folder (containing lessons/ and assignments/).')
+    parser.add_argument('--output', default=None,
+                        help='Output filename (relative to root). '
+                             'Defaults to Overview_<timestamp>.xlsx.')
+    parser.add_argument('--from-scratch', action='store_true',
+                        help='Ignore any existing Overview*.xlsx and build fresh.')
+    parser.add_argument('--basis',
+                        help='Path to a specific Overview xlsx to use as basis '
+                             '(overrides auto-discovery).')
+    args = parser.parse_args(argv[1:])
+
+    root = Path(args.root) if args.root else _pick_folder()
+    if root is None or not root.is_dir():
+        print('No root folder selected.', file=sys.stderr)
+        return 1
+    root = root.resolve()
+
+    lessons_root = _find_subdir(root, 'lessons')
+    assignments_root = _find_subdir(root, 'assignments')
+    if lessons_root is None and assignments_root is None:
+        print(f'error: no lessons/ or assignments/ folder in {root}',
+              file=sys.stderr)
+        return 1
+
+    print(f'Root:        {root}')
+    print(f'Lessons:     {lessons_root or "(missing)"}')
+    print(f'Assignments: {assignments_root or "(missing)"}')
+    print()
+
+    excluded_ids = load_excluded_student_ids(str(root / 'students.csv'))
+    if excluded_ids:
+        print(f'Excluded:    {len(excluded_ids)} student(s) per '
+              f'students.csv (Include != OK)')
+        print()
+
+    student_data, lesson_meta = _collect_student_data(
+        root, lessons_root, assignments_root, excluded_ids,
+    )
+
+    if not student_data:
+        print('\nNo student rows collected.', file=sys.stderr)
+        return 1
+
+    basis_path: Optional[Path] = None
+    if not args.from_scratch:
+        if args.basis:
+            candidate = Path(args.basis)
+            if candidate.is_file():
+                basis_path = candidate.resolve()
+            else:
+                print(f'  WARNING: --basis path not found: {candidate}; '
+                      f'will build from scratch')
+        else:
+            basis_path = _find_latest_overview(root)
+
+    appended = 0
+    if basis_path is not None:
+        print(f'\nUsing basis: {basis_path.name}')
+        wb = load_workbook(basis_path)
+        try:
+            appended = _update_existing_workbook(
+                wb, student_data, lesson_meta, excluded_ids, lessons_root,
+            )
+        except ValueError as e:
+            print(f'  WARNING: {e}; falling back to from-scratch build')
+            wb = _build_workbook_from_scratch(
+                student_data, lesson_meta, excluded_ids, lessons_root,
+            )
+    else:
+        print('\nBuilding from scratch.')
+        wb = _build_workbook_from_scratch(
+            student_data, lesson_meta, excluded_ids, lessons_root,
+        )
+
+    if args.output:
+        out_path = root / args.output
+    else:
+        ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+        out_path = root / f'Overview_{ts}.xlsx'
+
     wb.save(out_path)
     print(f'\nWrote {out_path}')
-    print(f'  {len(student_data)} student row(s)')
+    print(f'  {len(student_data)} student row(s)' +
+          (f' (+{appended} new)' if appended else ''))
     return 0
 
 

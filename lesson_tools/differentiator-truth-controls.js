@@ -132,9 +132,7 @@ function _truthShowControls(sel, x, y, opts) {
 		(allMissing || allExtra || allGhostExtra) &&
 		nonCommentExisting.every((m) => !m.paired_with);
 	const canPair =
-		allMissing ||
-		(allExtra && allUnpaired) ||
-		(allGhostExtra && allUnpaired);
+		allMissing || (allExtra && allUnpaired) || (allGhostExtra && allUnpaired);
 
 	const fullyLabeled = (label) =>
 		nonCommentExisting.length === tokens.length &&
@@ -214,7 +212,8 @@ function _truthShowControls(sel, x, y, opts) {
 		const hasNonComment = existing.some((m) => m.label !== "comment");
 		if (hasNonComment) {
 			const hasPairedNonComment = existing.some(
-				(m) => m.label !== "comment" && m.paired_with && !m.paired_with.ghost,
+				(m) =>
+					m.label !== "comment" && m.paired_with && !m.paired_with.ghost,
 			);
 			const tip = hasPairedNonComment
 				? "Delete mark (D, Delete or Backspace). Hold Shift to also delete its pair."
@@ -428,7 +427,6 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 			break;
 		case "del-all-with-pairs":
 			for (const m of existing.slice()) {
-				if (m.label === "comment") continue;
 				const pw = m.paired_with;
 				if (pw && !pw.ghost) {
 					const otherSide = sel.side === "teacher" ? "student" : "teacher";

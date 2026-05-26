@@ -1,35 +1,52 @@
 "use strict";
 
+async function _loadFromDataSource(ds) {
+	showLoading(true);
+	const files = await ds.load();
+	_dataSource = ds;
+	_dirHandle = ds.rootHandle;
+	_allFiles = ds.files;
+	_isReadOnly = ds.isReadOnly;
+	_lessonName = ds.rootName;
+	if (ds.rootHandle) {
+		try {
+			await _idbSet(IDB_KEY_LESSON_ROOT, ds.rootHandle);
+		} catch {}
+	}
+	const name = ds.rootName;
+	lessonNameEl.textContent = name;
+	lessonNameEl.classList.add("clickable");
+	document.title = "Students: " + name;
+	const saveBtn = document.getElementById("save-btn");
+	if (saveBtn) saveBtn.style.display = _isReadOnly ? "none" : "";
+	await loadXlsxFiles(files);
+}
+
 async function _tryAutoLoad() {
 	const handle = await loadSavedDirHandle();
 	if (!handle) return false;
-	showLoading(true);
-	_dirHandle = handle;
-	_allFiles.clear();
-	const files = [];
-	await readDirHandle(handle, "", _allFiles, files, { lowercaseKeys: true });
-	lessonNameEl.textContent = handle.name;
-	lessonNameEl.classList.add("clickable");
-	document.title = "Students: " + handle.name;
-	await loadXlsxFiles(files);
+	const ds = new FsDataSource();
+	ds.rootHandle = handle;
+	ds.rootName = handle.name;
+	await _loadFromDataSource(ds);
+	return true;
+}
+
+async function _tryLoadFromUrlParams() {
+	const { lesson, group } = parseToolParams();
+	if (!lesson) return false;
+	const ds = await loadLessonDataSource({ lesson, group });
+	if (!ds) return false;
+	_lessonGroup = group || null;
+	await _loadFromDataSource(ds);
 	return true;
 }
 
 async function openFolderPicker() {
 	try {
-		const dirHandle = await pickFolderWithMemory();
-		showLoading(true);
-		_dirHandle = dirHandle;
-		_allFiles.clear();
-		const files = [];
-		await readDirHandle(dirHandle, "", _allFiles, files, {
-			lowercaseKeys: true,
-		});
-		const name = dirHandle.name;
-		lessonNameEl.textContent = name;
-		lessonNameEl.classList.add("clickable");
-		document.title = "Students: " + name;
-		await loadXlsxFiles(files);
+		const ds = new FsDataSource();
+		await ds.open();
+		await _loadFromDataSource(ds);
 	} catch (e) {
 		if (e.name !== "AbortError") alert("Could not open folder: " + e.message);
 		showLoading(false);
@@ -155,6 +172,21 @@ async function loadXlsxFiles(files) {
 	}
 }
 
+async function _loadTrapSchema() {
+	const f = loadTrapLabelsFromFileMap(_allFiles);
+	if (f) {
+		try {
+			return parseTrapLabelsCsv(await readFileText(f));
+		} catch (_e) {
+			return [];
+		}
+	}
+	if (_dirHandle) {
+		return loadTrapLabelsFromHandle(_dirHandle);
+	}
+	return [];
+}
+
 async function _loadRemarksFile(file) {
 	showLoading(true);
 	const remarksBuf = await readFileArray(file);
@@ -172,6 +204,7 @@ async function _loadRemarksFile(file) {
 	_activeRemarkColIdx = result.remarkColIdx || {};
 	_dirtyEdits.clear();
 	_updateSaveButton();
+	_trapSchema = await _loadTrapSchema();
 	showLoading(false);
 	if (!_students.length) {
 		alert("No students found in remarks xlsx.");

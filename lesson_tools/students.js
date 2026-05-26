@@ -1,19 +1,9 @@
 "use strict";
 
 lessonNameEl.title = "Open timeline for this lesson";
-lessonNameEl.addEventListener("click", async () => {
-	if (!_dirHandle) return;
-	try {
-		const perm = await _dirHandle.requestPermission({ mode: "read" });
-		if (perm !== "granted") {
-			alert("Permission denied for the lesson folder.");
-			return;
-		}
-		await _idbSet("lastDir", _dirHandle);
-		window.open("timeline.html?autoload=1", "_blank");
-	} catch (e) {
-		alert("Could not open timeline: " + e.message);
-	}
+lessonNameEl.addEventListener("click", () => {
+	if (!_lessonName) return;
+	navigateToTimeline({ lesson: _lessonName });
 });
 
 (function () {
@@ -27,9 +17,19 @@ lessonNameEl.addEventListener("click", async () => {
 
 (async function () {
 	const qs = new URLSearchParams(location.search);
-	if (qs.get("autoload") !== "1") return;
+	const params = parseToolParams();
+	const wantsAutoload = qs.get("autoload") === "1" || params.lesson != null;
+	if (!wantsAutoload) return;
 	await waitForXlsxBundle();
-	const ok = await _tryAutoLoad();
+	let ok = false;
+	if (params.lesson) {
+		try {
+			ok = await _tryLoadFromUrlParams();
+		} catch (e) {
+			console.warn("[Students] URL-param load failed:", e);
+		}
+	}
+	if (!ok) ok = await _tryAutoLoad();
 	if (!ok) {
 		const btn = document.createElement("button");
 		btn.className = "landing-btn";

@@ -58,7 +58,9 @@ function _truthOnKeyDown(ev) {
 		ev.key === "Backspace" ||
 		ev.key.toLowerCase() === "d"
 	) {
-		if (!existing.some((m) => m.label !== "comment")) return;
+		const hasNonComment = existing.some((m) => m.label !== "comment");
+		const hasComment = existing.some((m) => m.label === "comment");
+		if (!hasNonComment && !(ev.shiftKey && hasComment)) return;
 		ev.preventDefault();
 		const action = ev.shiftKey ? "del-all-with-pairs" : "del-all";
 		_truthOnControlAction(action, sel, tokens, existing);
