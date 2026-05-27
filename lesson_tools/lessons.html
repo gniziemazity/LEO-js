@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Lessons</title>
+		<link rel="stylesheet" href="shared.css" />
+		<style>
+			body {
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				overflow: hidden;
+				background: var(--clr-page);
+			}
+
+			#toolbar button {
+				padding: 2px 10px;
+				border: 1px solid var(--clr-border-strong);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				color: var(--clr-label);
+				cursor: pointer;
+				font-size: 11px;
+				font-family: inherit;
+				transition: 0.12s;
+				text-transform: capitalize;
+			}
+
+			#toolbar button.active {
+				background: var(--clr-accent);
+				color: var(--clr-bg);
+				border-color: var(--clr-accent);
+			}
+
+			#toolbar button:hover:not(.active):not(:disabled) {
+				background: var(--clr-accent-light);
+				border-color: var(--clr-accent);
+				color: var(--clr-accent);
+			}
+
+			#toolbar button:disabled {
+				opacity: 0.4;
+				cursor: default;
+			}
+
+			#main {
+				display: flex;
+				flex: 1;
+				min-height: 0;
+				overflow: hidden;
+				background: var(--clr-bg);
+			}
+
+			#preview-frame {
+				flex: 1;
+				border: none;
+				width: 100%;
+				height: 100%;
+			}
+
+			#no-lesson {
+				flex: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--clr-muted);
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="toolbar" class="app-toolbar">
+			<span
+				style="
+					font-size: 11px;
+					color: var(--clr-label);
+					white-space: nowrap;
+					margin-right: 4px;
+				"
+				>Lesson:</span
+			>
+			<div id="lesson-tabs" style="display: flex; gap: 4px"></div>
+			<div class="sep"></div>
+			<button id="timeline-btn" disabled>Open Timeline</button>
+			<button id="students-btn" disabled>Show Students</button>
+			<button id="assignment-btn" disabled>Open Assignment</button>
+			<div class="sep"></div>
+			<button id="download-plans-btn">Download Plans</button>
+		</div>
+
+		<div id="main">
+			<iframe id="preview-frame" style="display: none"></iframe>
+			<div id="no-lesson">Select a lesson</div>
+		</div>
+
+		<script src="diff-utils.js"></script>
+		<script src="lessons.js"></script>
+	</body>
+</html>

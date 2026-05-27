@@ -236,6 +236,10 @@ function getFileExt(name) {
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
+const AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
+const VIDEO_EXT = /\.(mp4|webm|ogv|mov)$/i;
+const MEDIA_EXT =
+	/\.(png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$/i;
 const CODE_EXT = /\.(html|css|js|py)$/i;
 
 async function pickFolderWithMemory(idbKey = "lastDir", dbName = undefined) {
@@ -478,6 +482,23 @@ function parseToolParams(search = location.search) {
 
 async function resolveLessonHandle({ lesson, group } = {}) {
 	if (!lesson) return null;
+	if (!group) {
+		const lessonRoot = await _idbGet(IDB_KEY_LESSON_ROOT);
+		if (
+			lessonRoot &&
+			lessonRoot.kind === "directory" &&
+			lessonRoot.name === lesson
+		) {
+			try {
+				if (
+					(await lessonRoot.requestPermission({ mode: "read" })) ===
+					"granted"
+				) {
+					return { handle: lessonRoot, group: null };
+				}
+			} catch {}
+		}
+	}
 	const tryGroups = group ? [group] : ["lessons", "assignments"];
 	const courseRoot = await _idbGet(IDB_KEY_COURSE_ROOT);
 	if (courseRoot && courseRoot.kind === "directory") {
@@ -527,11 +548,35 @@ function buildToolUrl(target, { lesson, group, id, mode, title } = {}) {
 function navigateToStudents(args = {}) {
 	window.open(buildToolUrl("students.html", args), "_blank");
 }
+function navigateToAssignments(args = {}) {
+	window.open(buildToolUrl("assignments.html", args), "_blank");
+}
+function navigateToLessons(args = {}) {
+	window.open(buildToolUrl("lessons.html", args), "_blank");
+}
 function navigateToDifferentiator(args = {}) {
 	window.open(buildToolUrl("differentiator.html", args), "_blank");
 }
 function navigateToTimeline(args = {}) {
 	window.open(buildToolUrl("timeline.html", args), "_blank");
+}
+function navigateToCourse(args = {}) {
+	window.open(buildToolUrl("course.html", args), "_blank");
+}
+
+async function listServerDir(path) {
+	const resp = await fetch(path);
+	if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+	const text = await resp.text();
+	try {
+		return JSON.parse(text);
+	} catch {
+		const matches = [...text.matchAll(/href="([^/"]+)\/?"/g)];
+		return matches.map((m) => ({
+			name: m[1],
+			kind: m[1].includes(".") ? "file" : "directory",
+		}));
+	}
 }
 
 async function waitForXlsxBundle() {
@@ -747,7 +792,19 @@ function readFileText(file) {
 	});
 }
 
-function readFileDataUri(file) {
+async function readFileDataUri(file) {
+	if (file && typeof file.url === "string") {
+		const r = await fetch(file.url);
+		if (!r.ok) throw new Error(`Fetch ${file.url} failed: ${r.status}`);
+		const blob = await r.blob();
+		return new Promise((res, rej) => {
+			const reader = new FileReader();
+			reader.onload = (e) => res(e.target.result);
+			reader.onerror = () =>
+				rej(new Error("Could not read: " + (file.name || file.url)));
+			reader.readAsDataURL(blob);
+		});
+	}
 	return new Promise((res, rej) => {
 		const r = new FileReader();
 		r.onload = (e) => res(e.target.result);
@@ -861,15 +918,6 @@ function makeDraggable(handle, target) {
 	});
 }
 
-if (!window.__diffDataResolvers) window.__diffDataResolvers = new Map();
-if (!window.__getDifferentiatorData) {
-	window.__getDifferentiatorData = async function (dataKey) {
-		const resolver = window.__diffDataResolvers.get(dataKey);
-		if (!resolver) return null;
-		return await resolver();
-	};
-}
-
 async function buildDiffPayloadData(fileMap, studentDir) {
 	const entries = [...fileMap.entries()];
 	const teach = (re) =>
@@ -906,7 +954,7 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 	const imageUris = {};
 	for (const [p, f] of entries) {
 		if (
-			IMAGE_EXT.test(p) &&
+			MEDIA_EXT.test(p) &&
 			(/^correct\//i.test(p) ||
 				/^start\//i.test(p) ||
 				p.startsWith(studentDir))
@@ -915,7 +963,26 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		}
 	}
 
-	return { teacherFiles, studentFiles, allMarks, imageUris };
+	const teacherBaseUrl = _deriveHttpBaseUrl(teacherEntries);
+	const studentBaseUrl = _deriveHttpBaseUrl(studentEntries);
+
+	return {
+		teacherFiles,
+		studentFiles,
+		allMarks,
+		imageUris,
+		teacherBaseUrl,
+		studentBaseUrl,
+	};
+}
+
+function _deriveHttpBaseUrl(entries) {
+	for (const [, f] of entries) {
+		if (f && typeof f.url === "string" && /^https?:/i.test(f.url)) {
+			return f.url.replace(/[^/]*$/, "");
+		}
+	}
+	return null;
 }
 
 function fileToUrl(file) {
@@ -937,18 +1004,7 @@ function _buildDiffPayload(data) {
 		studentMarks: defaultMarks?.student_files ?? null,
 		caseSensitive: defaultMarks?.case_sensitive === true,
 		title: data.title,
+		teacherBaseUrl: data.teacherBaseUrl ?? null,
+		studentBaseUrl: data.studentBaseUrl ?? null,
 	};
-}
-
-async function openDifferentiator(loader) {
-	const buildPayload = async () => _buildDiffPayload(await loader());
-	const payload = await buildPayload();
-	const dataKey = "diffData_" + Date.now() + "_" + ((Math.random() * 1e6) | 0);
-	window.__diffDataResolvers.set(dataKey, buildPayload);
-	try {
-		localStorage.setItem(dataKey, JSON.stringify(payload));
-	} catch (e) {
-		console.warn("[Differentiator] localStorage handoff skipped:", e);
-	}
-	window.open(`differentiator.html?key=${dataKey}`, "_blank");
 }

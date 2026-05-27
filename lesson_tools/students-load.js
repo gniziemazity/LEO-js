@@ -3,7 +3,6 @@
 async function _loadFromDataSource(ds) {
 	showLoading(true);
 	const files = await ds.load();
-	_dataSource = ds;
 	_dirHandle = ds.rootHandle;
 	_allFiles = ds.files;
 	_isReadOnly = ds.isReadOnly;

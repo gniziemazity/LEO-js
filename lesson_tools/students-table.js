@@ -233,6 +233,7 @@ function renderTable() {
 	const sortedStudents = _sortStudents(_students, _sortCol, _sortDir);
 	for (const s of sortedStudents) {
 		const tr = document.createElement("tr");
+		if (s.ai_flagged) tr.classList.add("row-ai");
 		const hasFiles = _studentHasFiles(s);
 
 		const openOnClick = (el) => {

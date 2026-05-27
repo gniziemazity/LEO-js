@@ -1,17 +1,17 @@
 "use strict";
 
-function _truthIsCommentPos(side, file, pos) {
-	for (const m of _truthFileMarks(side, file)) {
+function _curatedIsCommentPos(side, file, pos) {
+	for (const m of _curatedFileMarks(side, file)) {
 		if (m.label === "comment" && m.start <= pos && pos < m.end) return true;
 	}
 	return false;
 }
 
-function _truthTokenAtPos(side, file, pos) {
-	const all = _truthTokensForFile(side, file);
+function _curatedTokenAtPos(side, file, pos) {
+	const all = _curatedTokensForFile(side, file);
 	for (const t of all) {
 		if (t.start <= pos && pos < t.end) {
-			if (_truthIsCommentPos(side, file, t.start)) return null;
+			if (_curatedIsCommentPos(side, file, t.start)) return null;
 			return t;
 		}
 		if (t.start > pos) break;
@@ -19,7 +19,7 @@ function _truthTokenAtPos(side, file, pos) {
 	return null;
 }
 
-function _truthResolveSrcPos(node, offset) {
+function _curatedResolveSrcPos(node, offset) {
 	let el = node;
 	if (el && el.nodeType === 3) el = el.parentNode;
 	if (!el) return null;
@@ -43,11 +43,11 @@ function _truthResolveSrcPos(node, offset) {
 	return {
 		side,
 		file,
-		pos: lineStart + _truthCountSourceText(range.cloneContents()),
+		pos: lineStart + _curatedCountSourceText(range.cloneContents()),
 	};
 }
 
-function _truthCountSourceText(root) {
+function _curatedCountSourceText(root) {
 	let total = 0;
 	const walk = (n) => {
 		if (n.nodeType === 1) {
@@ -68,8 +68,8 @@ function _truthCountSourceText(root) {
 	return total;
 }
 
-function _truthSnapToTokens(side, file, lo, hi) {
-	const all = _truthTokensForFile(side, file);
+function _curatedSnapToTokens(side, file, lo, hi) {
+	const all = _curatedTokensForFile(side, file);
 	let first = -1,
 		last = -1;
 	for (let i = 0; i < all.length; i++) {
@@ -86,39 +86,39 @@ function _truthSnapToTokens(side, file, lo, hi) {
 	};
 }
 
-function _truthSrcText(side, file) {
+function _curatedSrcText(side, file) {
 	const text =
 		(side === "teacher" ? _teacherFiles : _studentFiles)[file] || "";
 	return text.replace(/\r\n/g, "\n");
 }
 
-function _truthTokensForFile(side, file) {
+function _curatedTokensForFile(side, file) {
 	const key = side + ":" + file;
-	if (_truthTokenCache.has(key)) return _truthTokenCache.get(key);
-	const text = _truthSrcText(side, file);
+	if (_curatedTokenCache.has(key)) return _curatedTokenCache.get(key);
+	const text = _curatedSrcText(side, file);
 	const out = [];
 	const re = /[a-zA-Z0-9]+|[^\s]/gu;
 	let m;
 	while ((m = re.exec(text)) !== null) {
 		out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });
 	}
-	_truthTokenCache.set(key, out);
+	_curatedTokenCache.set(key, out);
 	return out;
 }
 
-function _truthCommentRanges(side, file) {
+function _curatedCommentRanges(side, file) {
 	const key = side + ":" + file;
-	if (_truthCommentRangeCache.has(key))
-		return _truthCommentRangeCache.get(key);
-	const text = _truthSrcText(side, file);
+	if (_curatedCommentRangeCache.has(key))
+		return _curatedCommentRangeCache.get(key);
+	const text = _curatedSrcText(side, file);
 	const ranges = _diffCommentRanges(text, file);
-	_truthCommentRangeCache.set(key, ranges);
+	_curatedCommentRangeCache.set(key, ranges);
 	return ranges;
 }
 
-function _truthSliceExcludingComments(side, file, lo, hi) {
-	const text = _truthSrcText(side, file);
-	const ranges = _truthCommentRanges(side, file);
+function _curatedSliceExcludingComments(side, file, lo, hi) {
+	const text = _curatedSrcText(side, file);
+	const ranges = _curatedCommentRanges(side, file);
 	let out = "";
 	let cursor = lo;
 	for (const [cLo, cHi] of ranges) {
@@ -132,24 +132,24 @@ function _truthSliceExcludingComments(side, file, lo, hi) {
 	return out;
 }
 
-function _truthTokensInRange(side, file, lo, hi) {
-	return _truthTokensForFile(side, file).filter(
+function _curatedTokensInRange(side, file, lo, hi) {
+	return _curatedTokensForFile(side, file).filter(
 		(t) =>
 			t.start >= lo &&
 			t.end <= hi &&
-			!_truthIsCommentPos(side, file, t.start),
+			!_curatedIsCommentPos(side, file, t.start),
 	);
 }
 
-function _truthIsAllWhitespace(side, file, lo, hi) {
+function _curatedIsAllWhitespace(side, file, lo, hi) {
 	if (lo >= hi) return false;
-	const text = _truthSrcText(side, file);
+	const text = _curatedSrcText(side, file);
 	if (hi > text.length) return false;
 	return /^\s+$/.test(text.slice(lo, hi));
 }
 
-function _truthWhitespaceTokensInRange(side, file, lo, hi) {
-	const text = _truthSrcText(side, file);
+function _curatedWhitespaceTokensInRange(side, file, lo, hi) {
+	const text = _curatedSrcText(side, file);
 	if (lo >= hi || hi > text.length) return [];
 	const out = [];
 	const re = /\s+/g;
@@ -159,7 +159,7 @@ function _truthWhitespaceTokensInRange(side, file, lo, hi) {
 		if (m.index >= hi) break;
 		const s = Math.max(m.index, lo);
 		const e = Math.min(m.index + m[0].length, hi);
-		if (s < e && !_truthIsCommentPos(side, file, s)) {
+		if (s < e && !_curatedIsCommentPos(side, file, s)) {
 			out.push({ start: s, end: e, token: text.slice(s, e) });
 		}
 		if (re.lastIndex >= hi) break;
@@ -167,20 +167,20 @@ function _truthWhitespaceTokensInRange(side, file, lo, hi) {
 	return out;
 }
 
-function _truthMarks() {
-	return _truthWorking[_truthWorkingKey()] ?? null;
+function _curatedMarks() {
+	return _curatedWorking[_curatedWorkingKey()] ?? null;
 }
 
-function _truthFileMarks(side, file) {
-	const t = _truthMarks();
+function _curatedFileMarks(side, file) {
+	const t = _curatedMarks();
 	const sideKey = side === "teacher" ? "teacher_files" : "student_files";
 	if (!t[sideKey]) t[sideKey] = {};
 	if (!t[sideKey][file]) t[sideKey][file] = [];
 	return t[sideKey][file];
 }
 
-function _truthFindMarks(side, file, lo, hi) {
-	return _truthFileMarks(side, file).filter(
+function _curatedFindMarks(side, file, lo, hi) {
+	return _curatedFileMarks(side, file).filter(
 		(m) =>
 			m.start < hi &&
 			m.end > lo &&
@@ -191,8 +191,8 @@ function _truthFindMarks(side, file, lo, hi) {
 	);
 }
 
-function _truthAddMark(side, file, label, tokens, opts) {
-	const arr = _truthFileMarks(side, file);
+function _curatedAddMark(side, file, label, tokens, opts) {
+	const arr = _curatedFileMarks(side, file);
 	const { insertAtPos } = opts || {};
 	const commentSpans =
 		label === "comment"
@@ -211,13 +211,13 @@ function _truthAddMark(side, file, label, tokens, opts) {
 	arr.sort((a, b) => a.start - b.start);
 }
 
-function _truthRemoveMark(side, file, mark) {
-	const arr = _truthFileMarks(side, file);
+function _curatedRemoveMark(side, file, mark) {
+	const arr = _curatedFileMarks(side, file);
 	const i = arr.indexOf(mark);
 	if (i >= 0) arr.splice(i, 1);
 	if (!mark.paired_with) return;
 	const otherSide = side === "teacher" ? "student" : "teacher";
-	for (const m of _truthFileMarks(otherSide, mark.paired_with.file)) {
+	for (const m of _curatedFileMarks(otherSide, mark.paired_with.file)) {
 		if (
 			m.paired_with &&
 			m.paired_with.start === mark.start &&
@@ -228,14 +228,14 @@ function _truthRemoveMark(side, file, mark) {
 	}
 }
 
-function _truthClearPair(mark, side) {
+function _curatedClearPair(mark, side) {
 	if (!mark || !mark.paired_with) return;
 	if (mark.paired_with.ghost) {
 		delete mark.paired_with;
 		return;
 	}
 	const otherSide = side === "teacher" ? "student" : "teacher";
-	const partner = _truthFileMarks(otherSide, mark.paired_with.file).find(
+	const partner = _curatedFileMarks(otherSide, mark.paired_with.file).find(
 		(m) =>
 			m.start === mark.paired_with.start &&
 			m.token === mark.paired_with.token,
@@ -244,9 +244,9 @@ function _truthClearPair(mark, side) {
 	delete mark.paired_with;
 }
 
-function _truthSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
-	_truthClearPair(missingMark, "teacher");
-	_truthClearPair(extraMark, "student");
+function _curatedSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
+	_curatedClearPair(missingMark, "teacher");
+	_curatedClearPair(extraMark, "student");
 	missingMark.paired_with = {
 		file: extraFile,
 		start: extraMark.start,
@@ -279,7 +279,7 @@ function _clearSelectionPreservingScroll() {
 	});
 }
 
-function _truthClickPosition(ev) {
+function _curatedClickPosition(ev) {
 	const pane = ev.target.closest(".code-pane");
 	if (!pane) return null;
 	const side = pane.dataset.paneSide;
@@ -293,7 +293,7 @@ function _truthClickPosition(ev) {
 		? document.caretRangeFromPoint(ev.clientX, ev.clientY)
 		: null;
 	if (cp) {
-		const info = _truthResolveSrcPos(cp.startContainer, cp.startOffset);
+		const info = _curatedResolveSrcPos(cp.startContainer, cp.startOffset);
 		if (info && info.side === side && info.file === file) return info;
 	}
 	const lineEl = ev.target.closest(".diff-line");
@@ -304,15 +304,14 @@ function _truthClickPosition(ev) {
 	return null;
 }
 
-function _truthRerender() {
-	if (_truthEditMode) _truthSwitchToTruthMarks();
+function _curatedRerender() {
+	if (_curatedEditMode) _curatedSwitchToCuratedMarks();
 	else _applyCurrentMarks();
-	_truthRenderPreservingScroll();
+	_curatedRenderPreservingScroll();
 	_updateTitleScore();
-	_persistDiffState();
 }
 
-function _truthGroupKey(m) {
+function _curatedGroupKey(m) {
 	if (m.label === "missing") {
 		if (m.insert_at) return `mi|${m.insert_at.file}|${m.insert_at.pos}`;
 		return `m|free`;
@@ -328,7 +327,7 @@ function _truthGroupKey(m) {
 	return `?|${m.label}`;
 }
 
-function _truthMakeGroup(side, file, m) {
+function _curatedMakeGroup(side, file, m) {
 	const g = { side, file, marks: [], lo: Infinity, hi: -Infinity };
 	if (m.label === "missing") {
 		g.kind = m.insert_at ? "missing-insert" : "missing";
@@ -355,8 +354,8 @@ function _truthMakeGroup(side, file, m) {
 	return g;
 }
 
-function _truthGroupMarks() {
-	const t = _truthMarks();
+function _curatedGroupMarks() {
+	const t = _curatedMarks();
 	if (!t) return [];
 	const groups = [];
 
@@ -367,7 +366,7 @@ function _truthGroupMarks() {
 		const filesObj = t[sideKey] || {};
 		for (const [file, marks] of Object.entries(filesObj)) {
 			const sorted = [...marks].sort((a, b) => a.start - b.start);
-			const allTokens = _truthTokensForFile(side, file);
+			const allTokens = _curatedTokensForFile(side, file);
 			const commentPositions = new Set();
 			for (const m of sorted) {
 				if (m.label === "comment") commentPositions.add(m.start);
@@ -424,13 +423,13 @@ function _truthGroupMarks() {
 				if (side === "teacher" && m.label === "missing" && m.paired_with)
 					continue;
 
-				const key = _truthGroupKey(m);
+				const key = _curatedGroupKey(m);
 				const merge =
 					cur && curKey === key && !hasObstacleInGap(cur.hi, m.start);
 
 				if (!merge) {
 					flush();
-					cur = _truthMakeGroup(side, file, m);
+					cur = _curatedMakeGroup(side, file, m);
 					curKey = key;
 				}
 
@@ -464,4 +463,4 @@ function _truthGroupMarks() {
 	return groups;
 }
 
-window.addEventListener("DOMContentLoaded", _truthEnsureButtons);
+window.addEventListener("DOMContentLoaded", _curatedEnsureButtons);

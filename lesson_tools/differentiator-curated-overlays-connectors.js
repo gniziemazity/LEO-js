@@ -1,29 +1,29 @@
 "use strict";
 
-let _truthPairConnectorSvg = null;
-let _truthPairConnectorItems = [];
+let _curatedPairConnectorSvg = null;
+let _curatedPairConnectorItems = [];
 
-function _truthEnsurePairConnectorSvg() {
-	if (_truthPairConnectorSvg) return _truthPairConnectorSvg;
+function _curatedEnsurePairConnectorSvg() {
+	if (_curatedPairConnectorSvg) return _curatedPairConnectorSvg;
 	const svgNS = "http://www.w3.org/2000/svg";
 	const svg = document.createElementNS(svgNS, "svg");
-	svg.id = "truth-pair-connector-svg";
+	svg.id = "curated-pair-connector-svg";
 	svg.setAttribute("width", "100%");
 	svg.setAttribute("height", "100%");
 	document.body.appendChild(svg);
-	_truthPairConnectorSvg = svg;
+	_curatedPairConnectorSvg = svg;
 	return svg;
 }
 
-function _truthClearPairConnectors() {
-	_truthPairConnectorItems = [];
-	if (_truthPairConnectorSvg) _truthPairConnectorSvg.innerHTML = "";
+function _curatedClearPairConnectors() {
+	_curatedPairConnectorItems = [];
+	if (_curatedPairConnectorSvg) _curatedPairConnectorSvg.innerHTML = "";
 }
 
-function _truthFindPartnerEl(side, mark) {
+function _curatedFindPartnerEl(side, mark) {
 	if (!mark || !mark.paired_with) return null;
 	const partnerSide = side === "teacher" ? "student" : "teacher";
-	return _truthFindLeoMarkEl(
+	return _curatedFindLeoMarkEl(
 		partnerSide,
 		mark.paired_with.start,
 		mark.paired_with.token,
@@ -31,7 +31,7 @@ function _truthFindPartnerEl(side, mark) {
 	);
 }
 
-function _truthFindGhostElement(ghostRef) {
+function _curatedFindGhostElement(ghostRef) {
 	const wrap = document.getElementById("code-teacher");
 	if (!wrap || !ghostRef) return null;
 	const candidates = wrap.querySelectorAll(
@@ -53,7 +53,7 @@ function _truthFindGhostElement(ghostRef) {
 	return null;
 }
 
-function _truthFindMoveAnchorEl(extraMark, sourceFile) {
+function _curatedFindMoveAnchorEl(extraMark, sourceFile) {
 	if (!extraMark || !extraMark.move_to) return null;
 	const wrap = document.getElementById(`code-student`);
 	if (!wrap) return null;
@@ -68,7 +68,7 @@ function _truthFindMoveAnchorEl(extraMark, sourceFile) {
 	return wrap.querySelector(sel);
 }
 
-function _truthFindInsertAnchorEl(teacherMark) {
+function _curatedFindInsertAnchorEl(teacherMark) {
 	if (!teacherMark.insert_at) return null;
 	const wrap = document.getElementById(`code-student`);
 	if (!wrap) return null;
@@ -80,8 +80,13 @@ function _truthFindInsertAnchorEl(teacherMark) {
 	return wrap.querySelector(sel);
 }
 
-function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
-	const marks = _truthFindMarks(range.side, range.file, range.lo, range.hi);
+function _curatedCollectConnectorsForRange(
+	range,
+	items,
+	seenPairs,
+	seenGroups,
+) {
+	const marks = _curatedFindMarks(range.side, range.file, range.lo, range.hi);
 	const ghostPairsHere = [];
 	for (const mark of marks) {
 		if (!mark.paired_with) continue;
@@ -106,7 +111,7 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 		const key = `${teacherFile}|${teacherStart}|${teacherToken}`;
 		if (seenPairs.has(key)) continue;
 		seenPairs.add(key);
-		const teacherMark = _truthFileMarks("teacher", teacherFile).find(
+		const teacherMark = _curatedFileMarks("teacher", teacherFile).find(
 			(m) =>
 				m.start === teacherStart &&
 				m.token === teacherToken &&
@@ -123,7 +128,7 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 	}
 
 	if (range.side === "teacher") {
-		const groups = _truthGroupMarks();
+		const groups = _curatedGroupMarks();
 		for (const g of groups) {
 			if (g.side !== "teacher" || g.file !== range.file) continue;
 			if (g.kind !== "missing-insert" && g.kind !== "missing") continue;
@@ -137,7 +142,7 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 	}
 
 	if (range.side === "student") {
-		const groups = _truthGroupMarks();
+		const groups = _curatedGroupMarks();
 		for (const g of groups) {
 			if (g.side !== "student" || g.file !== range.file) continue;
 			if (g.kind !== "extra-move") continue;
@@ -183,23 +188,23 @@ function _truthCollectConnectorsForRange(range, items, seenPairs, seenGroups) {
 	}
 }
 
-function _truthRebuildPairConnectorsForSelection(side, file, lo, hi) {
-	_truthPairConnectorItems = [];
+function _curatedRebuildPairConnectorsForSelection(side, file, lo, hi) {
+	_curatedPairConnectorItems = [];
 	const seenPairs = new Set();
 	const seenGroups = new Set();
-	_truthCollectAlwaysOnConnectors(_truthPairConnectorItems, seenGroups);
-	_truthCollectConnectorsForRange(
+	_curatedCollectAlwaysOnConnectors(_curatedPairConnectorItems, seenGroups);
+	_curatedCollectConnectorsForRange(
 		{ side, file, lo, hi },
-		_truthPairConnectorItems,
+		_curatedPairConnectorItems,
 		seenPairs,
 		seenGroups,
 	);
 }
 
 const _SVG_NS = "http://www.w3.org/2000/svg";
-const _TRUTH_LINE_GAP = 0.5;
+const _CURATED_LINE_GAP = 0.5;
 
-function _truthSvgLine(svg, x1, y1, x2, y2, color) {
+function _curatedSvgLine(svg, x1, y1, x2, y2, color) {
 	const ln = document.createElementNS(_SVG_NS, "line");
 	ln.setAttribute("x1", x1);
 	ln.setAttribute("y1", y1);
@@ -211,7 +216,7 @@ function _truthSvgLine(svg, x1, y1, x2, y2, color) {
 	svg.appendChild(ln);
 }
 
-function _truthSvgX(svg, cx, cy, size, color) {
+function _curatedSvgX(svg, cx, cy, size, color) {
 	const half = size / 2;
 	for (const [x1, y1, x2, y2] of [
 		[cx - half, cy - half, cx + half, cy + half],
@@ -229,30 +234,30 @@ function _truthSvgX(svg, cx, cy, size, color) {
 	}
 }
 
-const _TRUTH_ARROW_LEN = 5;
-const _TRUTH_ARROW_HALF_WIDTH = 3;
+const _CURATED_ARROW_LEN = 5;
+const _CURATED_ARROW_HALF_WIDTH = 3;
 
-function _truthSvgArrowhead(svg, tipX, tipY, dirX, dirY, color) {
+function _curatedSvgArrowhead(svg, tipX, tipY, dirX, dirY, color) {
 	const len = Math.hypot(dirX, dirY) || 1;
 	const ux = dirX / len;
 	const uy = dirY / len;
 	const px = -uy;
 	const py = ux;
-	const baseCenterX = tipX - ux * _TRUTH_ARROW_LEN;
-	const baseCenterY = tipY - uy * _TRUTH_ARROW_LEN;
-	const b1x = baseCenterX + px * _TRUTH_ARROW_HALF_WIDTH;
-	const b1y = baseCenterY + py * _TRUTH_ARROW_HALF_WIDTH;
-	const b2x = baseCenterX - px * _TRUTH_ARROW_HALF_WIDTH;
-	const b2y = baseCenterY - py * _TRUTH_ARROW_HALF_WIDTH;
+	const baseCenterX = tipX - ux * _CURATED_ARROW_LEN;
+	const baseCenterY = tipY - uy * _CURATED_ARROW_LEN;
+	const b1x = baseCenterX + px * _CURATED_ARROW_HALF_WIDTH;
+	const b1y = baseCenterY + py * _CURATED_ARROW_HALF_WIDTH;
+	const b2x = baseCenterX - px * _CURATED_ARROW_HALF_WIDTH;
+	const b2y = baseCenterY - py * _CURATED_ARROW_HALF_WIDTH;
 	const poly = document.createElementNS(_SVG_NS, "polygon");
 	poly.setAttribute("points", `${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`);
 	poly.setAttribute("fill", color);
 	svg.appendChild(poly);
 }
 
-function _truthSrcPosToClient(side, file, srcPos) {
-	if (typeof _truthSrcPosToDomPoint !== "function") return null;
-	const dom = _truthSrcPosToDomPoint(side, file, srcPos);
+function _curatedSrcPosToClient(side, file, srcPos) {
+	if (typeof _curatedSrcPosToDomPoint !== "function") return null;
+	const dom = _curatedSrcPosToDomPoint(side, file, srcPos);
 	if (!dom) return null;
 	let range;
 	try {
@@ -278,14 +283,14 @@ function _truthSrcPosToClient(side, file, srcPos) {
 			: dom.node.parentElement &&
 				dom.node.parentElement.closest(".diff-line");
 	const lineBottom = lineEl
-		? lineEl.getBoundingClientRect().bottom + _TRUTH_LINE_GAP
-		: rect.bottom + _TRUTH_LINE_GAP;
+		? lineEl.getBoundingClientRect().bottom + _CURATED_LINE_GAP
+		: rect.bottom + _CURATED_LINE_GAP;
 	return { x: rect.left, y: lineBottom };
 }
 
-const _TRUTH_INSERT_ANCHOR_LIFT = 2.25;
+const _CURATED_INSERT_ANCHOR_LIFT = 2.25;
 
-function _truthElBelowLineY(el) {
+function _curatedElBelowLineY(el) {
 	if (el && el.classList && el.classList.contains("insert-anchor")) {
 		const line = el.closest(".diff-line");
 		if (line) {
@@ -298,19 +303,19 @@ function _truthElBelowLineY(el) {
 				return (
 					lr.top +
 					(lineIdx + 1) * lh +
-					_TRUTH_LINE_GAP -
-					_TRUTH_INSERT_ANCHOR_LIFT
+					_CURATED_LINE_GAP -
+					_CURATED_INSERT_ANCHOR_LIFT
 				);
 			}
 		}
 	}
-	return el.getBoundingClientRect().bottom + _TRUTH_LINE_GAP;
+	return el.getBoundingClientRect().bottom + _CURATED_LINE_GAP;
 }
 
-function _truthRefreshPairConnectors() {
-	const svg = _truthEnsurePairConnectorSvg();
+function _curatedRefreshPairConnectors() {
+	const svg = _curatedEnsurePairConnectorSvg();
 	svg.innerHTML = "";
-	if (!_truthPairConnectorItems.length) return;
+	if (!_curatedPairConnectorItems.length) return;
 
 	const teacherPanel = document.getElementById("panel-teacher");
 	const studentPanel = document.getElementById("panel-student");
@@ -339,10 +344,10 @@ function _truthRefreshPairConnectors() {
 				: missingColor;
 	};
 
-	for (const item of _truthPairConnectorItems) {
+	for (const item of _curatedPairConnectorItems) {
 		if (item.kind === "ghost-pair" || item.kind === "ghost-pair-group") {
-			const teacherEl = _truthFindGhostElement(item.ghost);
-			const studentEl = _truthFindLeoMarkEl(
+			const teacherEl = _curatedFindGhostElement(item.ghost);
+			const studentEl = _curatedFindLeoMarkEl(
 				"student",
 				item.studentMark.start,
 				item.studentMark.token,
@@ -351,15 +356,15 @@ function _truthRefreshPairConnectors() {
 			if (!teacherEl || !studentEl) continue;
 			const tRect = teacherEl.getBoundingClientRect();
 			const sRect = studentEl.getBoundingClientRect();
-			const tY = _truthElBelowLineY(teacherEl);
-			const sY = _truthElBelowLineY(studentEl);
-			_truthSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
-			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_truthSvgLine(svg, midX, sY, sRect.left, sY, ghostPairColor);
-			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, ghostPairColor);
+			const tY = _curatedElBelowLineY(teacherEl);
+			const sY = _curatedElBelowLineY(studentEl);
+			_curatedSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
+			_curatedSvgLine(svg, midX, tY, midX, sY, blackColor);
+			_curatedSvgLine(svg, midX, sY, sRect.left, sY, ghostPairColor);
+			_curatedSvgArrowhead(svg, sRect.left, sY, 1, 0, ghostPairColor);
 		} else if (item.kind === "pair") {
-			const srcEl = _truthFindMarkEl(item.side, item.mark, item.file);
-			const partnerEl = _truthFindPartnerEl(item.side, item.mark);
+			const srcEl = _curatedFindMarkEl(item.side, item.mark, item.file);
+			const partnerEl = _curatedFindPartnerEl(item.side, item.mark);
 			if (!srcEl || !partnerEl) continue;
 
 			let teacherEl, studentEl;
@@ -375,8 +380,8 @@ function _truthRefreshPairConnectors() {
 			}
 			const tRect = teacherEl.getBoundingClientRect();
 			const sRect = studentEl.getBoundingClientRect();
-			const tY = _truthElBelowLineY(teacherEl);
-			const sY = _truthElBelowLineY(studentEl);
+			const tY = _curatedElBelowLineY(teacherEl);
+			const sY = _curatedElBelowLineY(studentEl);
 
 			const teacherMarkPos =
 				item.side === "teacher"
@@ -386,10 +391,10 @@ function _truthRefreshPairConnectors() {
 				{ start: teacherMarkPos || 0 },
 			]);
 
-			_truthSvgLine(svg, tRect.right, tY, midX, tY, extraColor);
-			_truthSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_truthSvgLine(svg, midX, sY, sRect.left, sY, teacherLangColor);
-			_truthSvgArrowhead(svg, sRect.left, sY, 1, 0, teacherLangColor);
+			_curatedSvgLine(svg, tRect.right, tY, midX, tY, extraColor);
+			_curatedSvgLine(svg, midX, tY, midX, sY, blackColor);
+			_curatedSvgLine(svg, midX, sY, sRect.left, sY, teacherLangColor);
+			_curatedSvgArrowhead(svg, sRect.left, sY, 1, 0, teacherLangColor);
 		} else if (item.kind === "groupInsert") {
 			const g = item.group;
 			const langColor = _langForTeacher(g.file, g.marks);
@@ -397,23 +402,23 @@ function _truthRefreshPairConnectors() {
 			let anchorEl = null;
 			if (g.kind === "missing-insert") {
 				const firstMark = g.marks[0];
-				if (firstMark) anchorEl = _truthFindInsertAnchorEl(firstMark);
+				if (firstMark) anchorEl = _curatedFindInsertAnchorEl(firstMark);
 			}
 
 			if (g.marks.length === 1) {
-				const teacherEl = _truthFindMarkEl("teacher", g.marks[0], g.file);
+				const teacherEl = _curatedFindMarkEl("teacher", g.marks[0], g.file);
 				if (!teacherEl) continue;
 				const tRect = teacherEl.getBoundingClientRect();
 				const startX = tRect.right;
-				const startY = _truthElBelowLineY(teacherEl);
+				const startY = _curatedElBelowLineY(teacherEl);
 				if (anchorEl) {
 					const aRect = anchorEl.getBoundingClientRect();
-					const aY = _truthElBelowLineY(anchorEl);
+					const aY = _curatedElBelowLineY(anchorEl);
 					const aX = aRect.left + aRect.width / 2;
-					_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
-					_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
-					_truthSvgLine(svg, midX, aY, aX, aY, langColor);
-					_truthSvgArrowhead(
+					_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
+					_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
+					_curatedSvgLine(svg, midX, aY, aX, aY, langColor);
+					_curatedSvgArrowhead(
 						svg,
 						aX,
 						aY,
@@ -422,13 +427,13 @@ function _truthRefreshPairConnectors() {
 						langColor,
 					);
 				} else {
-					_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
-					_truthSvgX(svg, midX, startY, 10, langColor);
+					_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
+					_curatedSvgX(svg, midX, startY, 10, langColor);
 				}
 				continue;
 			}
 
-			const r = _truthCollectGroupRect(g);
+			const r = _curatedCollectGroupRect(g);
 			if (!r) continue;
 			const paneRect = r.pane.getBoundingClientRect();
 			const startX = paneRect.left + r.left + r.width;
@@ -437,29 +442,36 @@ function _truthRefreshPairConnectors() {
 
 			if (anchorEl) {
 				const aRect = anchorEl.getBoundingClientRect();
-				const aY = _truthElBelowLineY(anchorEl);
+				const aY = _curatedElBelowLineY(anchorEl);
 				const aX = aRect.left + aRect.width / 2;
 				const startY = Math.max(boxTop, Math.min(boxBottom, aY));
-				_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
-				_truthSvgLine(svg, midX, startY, midX, aY, blackColor);
-				_truthSvgLine(svg, midX, aY, aX, aY, langColor);
-				_truthSvgArrowhead(svg, aX, aY, aX >= midX ? 1 : -1, 0, langColor);
+				_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
+				_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
+				_curatedSvgLine(svg, midX, aY, aX, aY, langColor);
+				_curatedSvgArrowhead(
+					svg,
+					aX,
+					aY,
+					aX >= midX ? 1 : -1,
+					0,
+					langColor,
+				);
 			} else {
 				const startY = (boxTop + boxBottom) / 2;
-				_truthSvgLine(svg, startX, startY, midX, startY, blackColor);
-				_truthSvgX(svg, midX, startY, 10, langColor);
+				_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
+				_curatedSvgX(svg, midX, startY, 10, langColor);
 			}
 		} else if (item.kind === "extraMove") {
 			const g = item.group;
 			let startX, startY;
 			if (g.marks.length === 1) {
-				const studentEl = _truthFindMarkEl("student", g.marks[0], g.file);
+				const studentEl = _curatedFindMarkEl("student", g.marks[0], g.file);
 				if (!studentEl) continue;
 				const sRect = studentEl.getBoundingClientRect();
 				startX = sRect.right;
-				startY = _truthElBelowLineY(studentEl);
+				startY = _curatedElBelowLineY(studentEl);
 			} else {
-				const r = _truthCollectGroupRect(g);
+				const r = _curatedCollectGroupRect(g);
 				if (!r) continue;
 				const paneRect = r.pane.getBoundingClientRect();
 				startX = paneRect.left + r.left + r.width;
@@ -468,31 +480,31 @@ function _truthRefreshPairConnectors() {
 				startY = (boxTop + boxBottom) / 2;
 			}
 			const rightX = spRect.right - 8;
-			const anchorEl = _truthFindMoveAnchorEl(g.marks[0], g.file);
+			const anchorEl = _curatedFindMoveAnchorEl(g.marks[0], g.file);
 			let targetX, targetY;
 			if (anchorEl) {
 				const aRect = anchorEl.getBoundingClientRect();
 				targetX = aRect.left + aRect.width / 2;
-				targetY = _truthElBelowLineY(anchorEl);
+				targetY = _curatedElBelowLineY(anchorEl);
 			} else {
-				const target = _truthSrcPosToClient(
+				const target = _curatedSrcPosToClient(
 					"student",
 					g.moveFile,
 					g.movePos,
 				);
 				if (!target) {
-					_truthSvgLine(svg, startX, startY, rightX, startY, extraColor);
-					_truthSvgX(svg, rightX, startY, 10, extraColor);
+					_curatedSvgLine(svg, startX, startY, rightX, startY, extraColor);
+					_curatedSvgX(svg, rightX, startY, 10, extraColor);
 					continue;
 				}
 				targetX = target.x;
 				targetY = target.y;
 			}
-			_truthSvgLine(svg, startX, startY, rightX, startY, extraColor);
-			_truthSvgLine(svg, rightX, startY, rightX, targetY, blackColor);
-			_truthSvgLine(svg, rightX, targetY, targetX, targetY, extraColor);
+			_curatedSvgLine(svg, startX, startY, rightX, startY, extraColor);
+			_curatedSvgLine(svg, rightX, startY, rightX, targetY, blackColor);
+			_curatedSvgLine(svg, rightX, targetY, targetX, targetY, extraColor);
 			const dirX = targetX <= rightX ? -1 : 1;
-			_truthSvgArrowhead(svg, targetX, targetY, dirX, 0, extraColor);
+			_curatedSvgArrowhead(svg, targetX, targetY, dirX, 0, extraColor);
 		}
 	}
 }

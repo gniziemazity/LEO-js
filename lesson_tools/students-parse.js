@@ -68,13 +68,14 @@ function parseStudentRows(remarksBuf) {
 		const row = rowsR[i];
 		const name = String(row[iName] || "").trim();
 		if (!name || name === "undefined") continue;
-		if (
-			iExcluded !== -1 &&
-			String(row[iExcluded] || "")
-				.trim()
-				.toUpperCase() === "EXCLUDED"
-		)
-			continue;
+		const _excVal =
+			iExcluded !== -1
+				? String(row[iExcluded] || "")
+						.trim()
+						.toUpperCase()
+				: "";
+		if (_excVal === "EXCLUDED") continue;
+		const ai_flagged = _excVal === "AI";
 		const followPct = iFollowPct !== -1 ? parseFloat(row[iFollowPct]) : NaN;
 		const followDesc =
 			iFollowDesc !== -1 ? String(row[iFollowDesc] || "") : "";
@@ -171,6 +172,7 @@ function parseStudentRows(remarksBuf) {
 			name,
 			id: iId !== -1 ? String(row[iId] ?? "").trim() : "",
 			num: iNum !== -1 ? String(row[iNum] ?? "").trim() : "",
+			ai_flagged,
 			followPct,
 			followEvents,
 			remarksDesc,

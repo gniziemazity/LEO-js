@@ -94,15 +94,25 @@ class LogVisualizer {
 		this.elProgLbl = document.getElementById("prog-label");
 		this.elSeekbar = document.getElementById("vis-seekbar");
 		this.elSeekFill = document.getElementById("vis-seekfill");
-		this.elFileTabs = document.getElementById("vis-file-tabs");
-		this.elEditor = document.getElementById("vis-editor");
 		this.elDevEditor = document.getElementById("vis-dev-editor");
 		this.elDevOuter = document.getElementById("vis-dev-outer");
 		this.elEventLog = document.getElementById("vis-event-log");
 		this.elEventLogWrap = document.getElementById("vis-event-log-wrap");
-		this.elPreview = document.getElementById("vis-preview");
 		this.elBtnLog = document.getElementById("btn-toggle-log");
 		this.elBtnDev = document.getElementById("btn-toggle-devtools");
+
+		this.fileViewer = new FileViewer({
+			editorEl: document.getElementById("vis-editor"),
+			previewEl: document.getElementById("vis-preview"),
+			tabsEl: document.getElementById("vis-file-tabs"),
+			onActiveFileChange: (name) => {
+				this._switchToFile(name);
+				this._renderEditors();
+			},
+		});
+		this.elFileTabs = this.fileViewer._tabsEl;
+		this.elEditor = this.fileViewer.editorEl;
+		this.elPreview = this.fileViewer.previewEl;
 
 		const logOn = localStorage.getItem("sim-event-log") === "on";
 		const devOn = localStorage.getItem("sim-devtools") !== "off";
@@ -848,27 +858,8 @@ class LogVisualizer {
 	}
 
 	_updateFileTabs() {
-		if (!this.elFileTabs) return;
 		const keys = Object.keys(this._files);
-		if (keys.length <= 1) {
-			this.elFileTabs.innerHTML = "";
-			return;
-		}
-		this.elFileTabs.innerHTML = "";
-		for (const name of keys) {
-			const btn = document.createElement("button");
-			btn.className =
-				"file-tab" +
-				(name === this._activeFilename ? " file-tab-active" : "");
-			btn.textContent =
-				name === "MAIN" ? "MAIN" : name.split("/").pop().split("\\").pop();
-			btn.title = name;
-			btn.onclick = () => {
-				this._switchToFile(name);
-				this._renderEditors();
-			};
-			this.elFileTabs.appendChild(btn);
-		}
+		this.fileViewer.setTabs(keys, this._activeFilename);
 	}
 
 	_flashAnchor() {
@@ -912,7 +903,9 @@ class LogVisualizer {
 			else if (lessonExt === ".js") mainFileType = "js";
 			else mainFileType = "html";
 		}
-		this.elEditor.innerHTML = renderEditorHtml(this.main, true, mainFileType);
+		this.fileViewer.setEditorHtml(
+			renderEditorHtml(this.main, true, mainFileType),
+		);
 		if (!this._currentInt) {
 			this.elDevEditor.classList.remove("vis-int-mode");
 			this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
@@ -942,7 +935,7 @@ class LogVisualizer {
 		}
 		try {
 			const html = (this._files["MAIN"] || this.main).text;
-			this.elPreview.srcdoc = this._inlineFiles(html) || "";
+			this.fileViewer.setPreviewSrcdoc(this._inlineFiles(html) || "");
 		} catch (_) {}
 		this._previewDirty = false;
 	}

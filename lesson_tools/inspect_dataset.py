@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import http
 import http.server
+import io
+import os
 import shutil
 import socketserver
 import sys
 import threading
 import time
+import urllib.parse
 import webbrowser
+import zipfile
 from pathlib import Path
 
 from utils.folder_utils import pick_folder
@@ -81,6 +86,26 @@ def _write_manifest(course: Path, *, exclude_pii: bool) -> Path:
     return out_path
 
 
+def _build_plans_zip(course: Path) -> Path | None:
+    lessons_dir = course / "lessons"
+    if not lessons_dir.is_dir():
+        return None
+    plans = []
+    for lesson_dir in sorted(lessons_dir.iterdir()):
+        if not lesson_dir.is_dir():
+            continue
+        plan_file = lesson_dir / f"{lesson_dir.name}.json"
+        if plan_file.is_file():
+            plans.append(plan_file)
+    if not plans:
+        return None
+    out_path = course / "plans.zip"
+    with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for plan in plans:
+            zf.write(plan, arcname=plan.name)
+    return out_path
+
+
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
@@ -90,6 +115,44 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
         super().end_headers()
+
+    def send_head(self):
+        path = self.translate_path(self.path)
+        if os.path.isdir(path):
+            parts = urllib.parse.urlsplit(self.path)
+            if not parts.path.endswith("/"):
+                self.send_response(http.HTTPStatus.MOVED_PERMANENTLY)
+                new_url = urllib.parse.urlunsplit(
+                    (parts[0], parts[1], parts[2] + "/", parts[3], parts[4])
+                )
+                self.send_header("Location", new_url)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return None
+            return self.list_directory(path)
+        return super().send_head()
+
+    def list_directory(self, path):
+        try:
+            names = sorted(os.listdir(path))
+        except OSError:
+            self.send_error(
+                http.HTTPStatus.NOT_FOUND, "No permission to list directory"
+            )
+            return None
+        entries = [
+            {
+                "name": n,
+                "kind": "directory" if os.path.isdir(os.path.join(path, n)) else "file",
+            }
+            for n in names
+        ]
+        body = json.dumps(entries).encode("utf-8")
+        self.send_response(http.HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        return io.BytesIO(body)
 
 
 def _serve(course: Path, port: int) -> socketserver.TCPServer:
@@ -125,6 +188,10 @@ def main(argv=None) -> int:
 
     manifest_path = _write_manifest(course, exclude_pii=args.exclude_pii)
     print(f"Wrote {manifest_path.name}")
+
+    plans_zip = _build_plans_zip(course)
+    if plans_zip is not None:
+        print(f"Wrote {plans_zip.name}")
 
     copied, skipped = _sync_tools(course)
     print(f"Tools: {copied} copied/updated, {skipped} already up-to-date in {course / 'tools'}")

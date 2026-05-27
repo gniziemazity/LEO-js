@@ -68,7 +68,7 @@ def load_students(csv_path):
         if include_raw is None:
             included = True
         else:
-            included = include_raw.strip().upper() == "OK"
+            included = include_raw.strip().upper() in ("OK", "AI")
         students[name] = {
             "id": sid,
             "name": name,

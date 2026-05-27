@@ -96,6 +96,7 @@ function renderTable() {
 		const tr = document.createElement("tr");
 		tr.classList.add(s.passed_course ? "row-pass" : "row-fail");
 		if (s.excluded) tr.classList.add("row-excluded");
+		if (s.ai_flagged) tr.classList.add("row-ai");
 
 		const cell = (content, cls = "") => {
 			const td = document.createElement("td");
@@ -370,12 +371,19 @@ function findHandle(handles, name) {
 	return null;
 }
 function _attachStudentsLink(th, name, group) {
-	const handles = group === "assignments" ? _assignHandles : _lessonHandles;
-	if (!findHandle(handles, name)) return;
+	if (group === "assignments") {
+		th.classList.add("clickable");
+		th.title = `Open ${name} assignment instructions`;
+		th.addEventListener("click", () => {
+			navigateToAssignments({ lesson: name });
+		});
+		return;
+	}
+	if (!findHandle(_lessonHandles, name)) return;
 	th.classList.add("clickable");
-	th.title = `Open ${name} ${group === "assignments" ? "assignment" : "lesson"} students view`;
+	th.title = `Open ${name} lesson`;
 	th.addEventListener("click", () => {
-		navigateToStudents({ lesson: name, group });
+		navigateToLessons({ lesson: name });
 	});
 }
 

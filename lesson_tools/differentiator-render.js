@@ -316,7 +316,8 @@ function renderPanel(side, files, marks) {
 	tabs.innerHTML = "";
 	codeWrap.innerHTML = "";
 
-	const inTruthMode = typeof _truthEditMode !== "undefined" && _truthEditMode;
+	const inCuratedMode =
+		typeof _curatedEditMode !== "undefined" && _curatedEditMode;
 
 	const filePairsAll = _currentMarksEntry?.file_pairs || {};
 
@@ -341,13 +342,13 @@ function renderPanel(side, files, marks) {
 			const otherSide = side === "teacher" ? "student" : "teacher";
 			const otherName = _pairedFileName(side, name);
 			if (otherName) _activateFileTab(otherSide, otherName);
-			if (typeof _truthRefreshOverlays === "function") {
-				_truthRefreshOverlays();
-			} else if (typeof _truthRefreshGhostPairs === "function") {
-				_truthRefreshGhostPairs();
+			if (typeof _curatedRefreshOverlays === "function") {
+				_curatedRefreshOverlays();
+			} else if (typeof _curatedRefreshGhostPairs === "function") {
+				_curatedRefreshGhostPairs();
 			}
 		};
-		if (side === "student" && inTruthMode) {
+		if (side === "student" && inCuratedMode) {
 			const caret = document.createElement("span");
 			caret.className = "file-pair-caret";
 			caret.textContent = "▾";
@@ -357,8 +358,8 @@ function renderPanel(side, files, marks) {
 				: "Pair with a teacher file";
 			caret.addEventListener("click", (ev) => {
 				ev.stopPropagation();
-				if (typeof _truthShowFilePairMenu === "function") {
-					_truthShowFilePairMenu(caret, name);
+				if (typeof _curatedShowFilePairMenu === "function") {
+					_curatedShowFilePairMenu(caret, name);
 				}
 			});
 			caret.addEventListener("mousedown", (ev) => ev.stopPropagation());
@@ -382,7 +383,7 @@ function renderPanel(side, files, marks) {
 
 		if (alignment) {
 			pane.innerHTML = `<div class="code-aligned">${_renderAligned(sourceText, alignment, fileMarks, sideIdx, lineFileMarks, name)}</div>`;
-		} else if (hasMarks || inTruthMode) {
+		} else if (hasMarks || inCuratedMode) {
 			pane.innerHTML = `<div class="code-aligned">${_renderFlat(sourceText, fileMarks, lineFileMarks, side, name)}</div>`;
 		} else {
 			pane.innerHTML = `<pre>${escHtml(sourceText)}</pre>`;
@@ -392,8 +393,8 @@ function renderPanel(side, files, marks) {
 
 	requestAnimationFrame(() => {
 		_syncAlignedRowHeights();
-		if (typeof _truthRefreshGhostPairs === "function") {
-			_truthRefreshGhostPairs();
+		if (typeof _curatedRefreshGhostPairs === "function") {
+			_curatedRefreshGhostPairs();
 		}
 	});
 
@@ -470,7 +471,8 @@ function _codePointToUtf16Map(text) {
 function _synthesizeLeoMarks(side, fileName) {
 	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
 	if (!tokens || !fileName) return [];
-	const isTruthMode = typeof _truthEditMode !== "undefined" && _truthEditMode;
+	const isCuratedMode =
+		typeof _curatedEditMode !== "undefined" && _curatedEditMode;
 	const files = side === "teacher" ? _teacherFiles : _studentFiles;
 	const text = (files && files[fileName] ? files[fileName] : "").replace(
 		/\r\n/g,
@@ -487,7 +489,7 @@ function _synthesizeLeoMarks(side, fileName) {
 			const start = toU16 ? toU16(inst.pos) : inst.pos;
 			out.push({
 				token: tok,
-				label: isTruthMode ? null : inst.label || null,
+				label: isCuratedMode ? null : inst.label || null,
 				start,
 				end: start + tok.length,
 				_synth: true,
@@ -667,7 +669,7 @@ function _renderGhostBlob(ghost, tokensTbl) {
 	const text = ghost.text;
 	const blobPos = ghost._abs_pos ?? ghost.pos;
 	const wrapAll =
-		typeof _truthEditMode !== "undefined" && _truthEditMode === true;
+		typeof _curatedEditMode !== "undefined" && _curatedEditMode === true;
 	let out = '<span class="diff-ghost">';
 	let lastEnd = 0;
 	_GHOST_TOKEN_RE.lastIndex = 0;

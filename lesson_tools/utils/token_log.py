@@ -58,7 +58,7 @@ from .token_log_marks import (
     _structural_diff_summary,
     _structural_form,
     _summarize_occurrence_flags,
-    _validate_truth_schema,
+    _validate_curated_schema,
 )
 
 from .token_log_starpass import (

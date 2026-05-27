@@ -206,6 +206,9 @@ tr.row-fail > td.st-bg-fail {
 tr.row-excluded > td.sticky-l {
 	color: var(--clr-pale-red) !important;
 }
+tr.row-ai > td {
+	color: var(--clr-pale-red) !important;
+}
 td.st-bg-pass {
 	background: var(--clr-st-pass-bg);
 	color: var(--clr-st-pass);

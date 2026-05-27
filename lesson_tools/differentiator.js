@@ -9,7 +9,8 @@ let _allMarks = {};
 let _currentMarksEntry = null;
 let _titleBase = null;
 let _imageUris = {};
-let _diffSessionKey = null;
+let _teacherBaseUrl = null;
+let _studentBaseUrl = null;
 let _linePaddingEnabled =
 	typeof localStorage !== "undefined" &&
 	localStorage.getItem("diff-line-padding") === "off"
@@ -176,39 +177,12 @@ function _applyCurrentMarks() {
 	_studentMarks = _currentMarksEntry?.student_files ?? null;
 }
 
-function _serializeDiffState() {
-	return {
-		teacherFiles: _teacherFiles || {},
-		studentFiles: _studentFiles || {},
-		imageUris: _imageUris || {},
-		allMarks: _allMarks || {},
-		truthWorking: typeof _truthWorking !== "undefined" ? _truthWorking : {},
-		mode: _diffMode,
-		teacherMarks: _currentMarksEntry?.teacher_files ?? _teacherMarks ?? null,
-		studentMarks: _currentMarksEntry?.student_files ?? _studentMarks ?? null,
-		title: document.title || null,
-		titleBase: _titleBase,
-	};
-}
-
-function _persistDiffState() {
-	if (!_diffSessionKey) return;
-	if (!_teacherFiles && !_studentFiles) return;
-	try {
-		sessionStorage.setItem(
-			_diffSessionKey,
-			JSON.stringify(_serializeDiffState()),
-		);
-	} catch {}
-}
-
 function _applyIncomingData(data) {
 	_teacherFiles = data.teacherFiles || {};
 	_studentFiles = data.studentFiles || {};
 	_imageUris = data.imageUris || {};
-	if (data.truthWorking && typeof _truthWorking !== "undefined") {
-		_truthWorking = data.truthWorking;
-	}
+	_teacherBaseUrl = data.teacherBaseUrl || null;
+	_studentBaseUrl = data.studentBaseUrl || null;
 
 	if (data.allMarks) {
 		_allMarks = data.allMarks;
@@ -238,12 +212,58 @@ function _applyIncomingData(data) {
 	renderPanel("teacher", _teacherFiles, _teacherMarks);
 	renderPanel("student", _studentFiles, _studentMarks);
 	_updateTitleScore();
-	if (typeof _truthEnable === "function") _truthEnable();
+	if (typeof _curatedEnable === "function") _curatedEnable();
 }
 
 function _showLoading(on) {
 	const el = document.getElementById("loading");
 	if (el) el.style.display = on ? "flex" : "none";
+}
+
+let _navState = {
+	lesson: null,
+	group: null,
+	dataSource: null,
+	ids: [],
+	currentIdx: -1,
+};
+
+function _sortStudentIds(ids) {
+	return [...ids].sort((a, b) => {
+		const na = Number(a);
+		const nb = Number(b);
+		if (
+			Number.isFinite(na) &&
+			Number.isFinite(nb) &&
+			String(na) === a &&
+			String(nb) === b
+		)
+			return na - nb;
+		return a.localeCompare(b, undefined, { numeric: true });
+	});
+}
+
+function _extractStudentIds(files) {
+	const idSet = new Set();
+	for (const path of files.keys()) {
+		const m = path.match(/^anon_ids\/([^/]+)\//i);
+		if (m) idSet.add(m[1]);
+	}
+	return _sortStudentIds([...idSet]);
+}
+
+function _updateStudentNavButtons() {
+	const prev = document.getElementById("nav-prev-student");
+	const next = document.getElementById("nav-next-student");
+	if (!prev || !next) return;
+	const n = _navState.ids.length;
+	const i = _navState.currentIdx;
+	prev.disabled = !(n > 0 && i > 0);
+	next.disabled = !(n > 0 && i >= 0 && i < n - 1);
+	if (n > 0 && i >= 0) {
+		prev.title = `Previous student (${i}/${n - 1} done)`;
+		next.title = `Next student (${i + 1}/${n - 1} remaining)`;
+	}
 }
 
 async function _loadFromUrlParams({ lesson, group, id, title }) {
@@ -261,16 +281,58 @@ async function _loadFromUrlParams({ lesson, group, id, title }) {
 		);
 		return null;
 	}
+	const ids = _extractStudentIds(ds.files);
+	_navState = {
+		lesson,
+		group: group || null,
+		dataSource: ds,
+		ids,
+		currentIdx: ids.findIndex(
+			(x) => x.toLowerCase() === String(id).toLowerCase(),
+		),
+	};
+	_updateStudentNavButtons();
 	data.title = title || `${id}. Student`;
 	return _buildDiffPayload(data);
+}
+
+async function _navToStudent(idx) {
+	if (!_navState.dataSource) return;
+	if (idx < 0 || idx >= _navState.ids.length) return;
+	const id = _navState.ids[idx];
+	_showLoading(true);
+	try {
+		const data = await buildDiffPayloadData(
+			_navState.dataSource.files,
+			"anon_ids/" + id.toLowerCase() + "/",
+		);
+		if (
+			!Object.keys(data.teacherFiles).length &&
+			!Object.keys(data.studentFiles).length
+		) {
+			console.warn(
+				`[Differentiator] No code files for ${_navState.lesson}/anon_ids/${id}/.`,
+			);
+			return;
+		}
+		data.title = `${id}. Student`;
+		_applyIncomingData(_buildDiffPayload(data));
+		_navState.currentIdx = idx;
+		_updateStudentNavButtons();
+		const url = new URL(location.href);
+		url.searchParams.set("id", id);
+		url.searchParams.delete("title");
+		history.replaceState(null, "", url);
+	} catch (e) {
+		console.error("[Differentiator] Navigation failed:", e);
+	} finally {
+		_showLoading(false);
+	}
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
 	await window.LanguageProfiles.initProfiles();
 	const params = new URLSearchParams(location.search);
-	const keyParam = params.get("key");
-	const key = keyParam || "diffData";
-	_diffSessionKey = keyParam ? `differentiatorSession:${keyParam}` : null;
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
 	const toolParams = parseToolParams();
@@ -279,13 +341,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	_refreshPreviewButton();
 	_applyLineNumbersClass();
 
-	const expectAutoLoad =
-		!!keyParam ||
-		!!localStorage.getItem(key) ||
-		(_diffSessionKey && !!sessionStorage.getItem(_diffSessionKey)) ||
-		(window.opener &&
-			typeof window.opener.__getDifferentiatorData === "function") ||
-		(!!toolParams.lesson && !!toolParams.id);
+	const expectAutoLoad = !!toolParams.lesson && !!toolParams.id;
 	if (expectAutoLoad) _showLoading(true);
 
 	const modeSelect = document.getElementById("mode-select");
@@ -297,8 +353,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 				CURATED_MODES.has(_diffMode),
 			);
 			_applyCurrentMarks();
-			if (typeof _truthEnable === "function") {
-				_truthEnable();
+			if (typeof _curatedEnable === "function") {
+				_curatedEnable();
 			} else {
 				const savedTeacher = _saveState("teacher");
 				const savedStudent = _saveState("student");
@@ -310,12 +366,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 				_restoreState("student", savedStudent);
 			}
 			_updateTitleScore();
-			_persistDiffState();
 		});
 
 		document.addEventListener("keydown", (ev) => {
 			if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
-			if (typeof _truthCurrentSel !== "undefined" && _truthCurrentSel)
+			if (typeof _curatedCurrentSel !== "undefined" && _curatedCurrentSel)
 				return;
 			const t = ev.target;
 			if (
@@ -345,45 +400,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 			console.error("[Differentiator] URL-param load failed", e);
 		}
 	}
-	const raw = !incoming ? localStorage.getItem(key) : null;
-	if (raw) {
-		localStorage.removeItem(key);
-		try {
-			incoming = JSON.parse(raw);
-		} catch (e) {
-			console.error("[Differentiator] Failed to parse diff data", e);
-		}
-	}
-	if (
-		!incoming &&
-		window.opener &&
-		typeof window.opener.__getDifferentiatorData === "function"
-	) {
-		try {
-			incoming = await window.opener.__getDifferentiatorData(key);
-		} catch (e) {
-			console.error("[Differentiator] Failed to fetch from opener", e);
-		}
-	}
 	if (incoming) {
 		_applyIncomingData(incoming);
-		_persistDiffState();
-	} else if (_diffSessionKey) {
-		const savedRaw = sessionStorage.getItem(_diffSessionKey);
-		if (savedRaw) {
-			try {
-				_applyIncomingData(JSON.parse(savedRaw));
-			} catch (e) {
-				console.error("[Differentiator] Failed to restore session data", e);
-			}
-		}
 	}
 	_showLoading(false);
-
-	window.addEventListener("beforeunload", _persistDiffState);
-	document.addEventListener("visibilitychange", () => {
-		if (document.visibilityState === "hidden") _persistDiffState();
-	});
 
 	document.getElementById("input-teacher").addEventListener("change", (e) => {
 		loadFilesFromInput(e.target.files, "teacher");
@@ -391,6 +411,13 @@ window.addEventListener("DOMContentLoaded", async () => {
 	document.getElementById("input-student").addEventListener("change", (e) => {
 		loadFilesFromInput(e.target.files, "student");
 	});
+
+	document
+		.getElementById("nav-prev-student")
+		.addEventListener("click", () => _navToStudent(_navState.currentIdx - 1));
+	document
+		.getElementById("nav-next-student")
+		.addEventListener("click", () => _navToStudent(_navState.currentIdx + 1));
 });
 
 function loadFilesFromInput(files, side) {
@@ -422,8 +449,7 @@ function loadFilesFromInput(files, side) {
 					side === "teacher" ? _teacherMarks : _studentMarks,
 				);
 				_updateTitleScore();
-				if (typeof _truthEnable === "function") _truthEnable();
-				_persistDiffState();
+				if (typeof _curatedEnable === "function") _curatedEnable();
 			}
 		});
 	}
@@ -615,9 +641,9 @@ function toggleLinePadding() {
 		renderPanel("student", _studentFiles, _studentMarks);
 		_restoreState("teacher", savedT);
 		_restoreState("student", savedS);
-		if (typeof _truthEditMode !== "undefined" && _truthEditMode) {
+		if (typeof _curatedEditMode !== "undefined" && _curatedEditMode) {
 			requestAnimationFrame(() => {
-				_truthRefreshOverlays();
+				_curatedRefreshOverlays();
 			});
 		}
 	}
@@ -672,10 +698,44 @@ function updatePreview(side, files, iframe) {
 		iframe.srcdoc = `<p style='font-family:sans-serif;padding:20px;color:${THEME.muted}'>No HTML file found.</p>`;
 		return;
 	}
-	const html = htmlEntry[1];
+	let html = htmlEntry[1];
+	const baseUrl = side === "teacher" ? _teacherBaseUrl : _studentBaseUrl;
+	const headInjects = [];
+	if (baseUrl) headInjects.push(`<base href="${baseUrl}">`);
+	const mediaMap = {};
+	for (const [name, url] of Object.entries(_imageUris)) {
+		if (/^(?:blob|https?):/i.test(url)) mediaMap[name] = url;
+	}
+	if (Object.keys(mediaMap).length) {
+		headInjects.push(_buildMediaShimScript(mediaMap));
+	}
+	if (headInjects.length) html = _injectIntoHead(html, headInjects.join("\n"));
 	const filesMap = { ..._imageUris };
 	for (const [name, content] of Object.entries(files)) {
 		if (!/\.html$/i.test(name)) filesMap[name] = content;
 	}
 	iframe.srcdoc = inlineFilesInHtml(html, filesMap) || "";
+}
+
+function _injectIntoHead(html, snippet) {
+	if (/<head\b[^>]*>/i.test(html)) {
+		return html.replace(/(<head\b[^>]*>)/i, `$1\n${snippet}`);
+	}
+	if (/<html\b[^>]*>/i.test(html)) {
+		return html.replace(/(<html\b[^>]*>)/i, `$1\n<head>${snippet}</head>`);
+	}
+	return `<head>${snippet}</head>${html}`;
+}
+
+function _buildMediaShimScript(mediaMap) {
+	const json = JSON.stringify(mediaMap).replace(/<\/script/gi, "<\\/script");
+	return (
+		"<script>(function(){const __M=" +
+		json +
+		";function _b(s){return String(s).split(/[/\\\\]/).pop();}" +
+		"const _OA=window.Audio;" +
+		"window.Audio=function(src){const m=typeof src==='string'?__M[_b(src)]:null;return new _OA(m||src);};" +
+		"window.Audio.prototype=_OA.prototype;" +
+		"})();</script>"
+	);
 }

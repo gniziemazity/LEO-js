@@ -1,13 +1,13 @@
 "use strict";
 
-let _truthCurrentSel = null;
-let _truthCurrentTokens = null;
-let _truthCurrentExisting = null;
+let _curatedCurrentSel = null;
+let _curatedCurrentTokens = null;
+let _curatedCurrentExisting = null;
 
-function _truthEnsureControls() {
-	if (_truthControlsEl) return _truthControlsEl;
+function _curatedEnsureControls() {
+	if (_curatedControlsEl) return _curatedControlsEl;
 	const el = document.createElement("div");
-	el.id = "truth-controls";
+	el.id = "curated-controls";
 
 	el.addEventListener("mousedown", (e) => {
 		if (e.target.closest("button")) {
@@ -25,35 +25,35 @@ function _truthEnsureControls() {
 		if (!btn) return;
 		e.preventDefault();
 		e.stopPropagation();
-		if (!_truthCurrentSel) return;
-		_truthOnControlAction(
+		if (!_curatedCurrentSel) return;
+		_curatedOnControlAction(
 			btn.dataset.action,
-			_truthCurrentSel,
-			_truthCurrentTokens,
-			_truthCurrentExisting,
+			_curatedCurrentSel,
+			_curatedCurrentTokens,
+			_curatedCurrentExisting,
 		);
 	});
 
-	_truthControlsEl = el;
+	_curatedControlsEl = el;
 	return el;
 }
 
-function _truthHideControls(opts) {
-	if (_truthControlsEl) _truthControlsEl.style.display = "none";
-	_truthCurrentSel = null;
-	_truthCurrentTokens = null;
-	_truthCurrentExisting = null;
+function _curatedHideControls(opts) {
+	if (_curatedControlsEl) _curatedControlsEl.style.display = "none";
+	_curatedCurrentSel = null;
+	_curatedCurrentTokens = null;
+	_curatedCurrentExisting = null;
 	if (!opts || !opts.keepHighlights) {
 		_clearLeoHighlights();
-		_truthActiveGroupRange = null;
-		_truthActiveGhost = null;
-		_truthSelectionRange = null;
-		_truthRefreshActiveOverlay();
-		_truthRefreshConnectorsForCurrent();
+		_curatedActiveGroupRange = null;
+		_curatedActiveGhost = null;
+		_curatedSelectionRange = null;
+		_curatedRefreshActiveOverlay();
+		_curatedRefreshConnectorsForCurrent();
 	}
 }
 
-function _truthBtnLabel(symbol, word, hotkeys, suffix) {
+function _curatedBtnLabel(symbol, word, hotkeys, suffix) {
 	const keys = Array.isArray(hotkeys) ? hotkeys : [hotkeys];
 	const lower = word.toLowerCase();
 	const targets = new Set();
@@ -69,52 +69,52 @@ function _truthBtnLabel(symbol, word, hotkeys, suffix) {
 	return `${symbol} ${label}${suffix ? " " + suffix : ""}`;
 }
 
-function _truthTokenCountSuffix(n) {
+function _curatedTokenCountSuffix(n) {
 	if (!n || n <= 0) return "";
 	return n === 1 ? "1 Token" : `${n} Tokens`;
 }
 
-function _truthShowControls(sel, x, y, opts) {
+function _curatedShowControls(sel, x, y, opts) {
 	if (typeof _hideLeoTooltip === "function") _hideLeoTooltip();
-	const el = _truthEnsureControls();
+	const el = _curatedEnsureControls();
 
 	if (sel.isGhost) {
-		_truthCurrentSel = sel;
-		_truthCurrentTokens = [];
-		_truthCurrentExisting = [];
-		const partner = _truthFindGhostPartner(sel.ghost);
+		_curatedCurrentSel = sel;
+		_curatedCurrentTokens = [];
+		_curatedCurrentExisting = [];
+		const partner = _curatedFindGhostPartner(sel.ghost);
 		const isPaired = !!partner;
 		const pairActive =
-			_truthPending &&
-			_truthPending.kind === "pair" &&
-			_truthPending.anchorGhost &&
-			_truthPending.anchorGhost.file === sel.ghost.file &&
-			_truthPending.anchorGhost.start === sel.ghost.start &&
-			_truthPending.anchorGhost.token === sel.ghost.token;
+			_curatedPending &&
+			_curatedPending.kind === "pair" &&
+			_curatedPending.anchorGhost &&
+			_curatedPending.anchorGhost.file === sel.ghost.file &&
+			_curatedPending.anchorGhost.start === sel.ghost.start &&
+			_curatedPending.anchorGhost.token === sel.ghost.token;
 		const activeAttr = pairActive ? " is-toggle-on" : "";
 		const buttons = [];
 		if (!isPaired) {
 			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair-ghost" title="Pair with a student ghost extra (I or P)">${_truthBtnLabel("⇄", "Pair", "p", _truthTokenCountSuffix(1))}</button>`,
+				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair-ghost" title="Pair with a student ghost extra (I or P)">${_curatedBtnLabel("⇄", "Pair", "p", _curatedTokenCountSuffix(1))}</button>`,
 			);
 		} else {
 			buttons.push(
-				`<button type="button" class="tc-btn-del" data-action="unpair-ghost" title="Remove pair (R)">${_truthBtnLabel("⊘", "Remove pair", "r")}</button>`,
+				`<button type="button" class="tc-btn-del" data-action="unpair-ghost" title="Remove pair (R)">${_curatedBtnLabel("⊘", "Remove pair", "r")}</button>`,
 			);
 		}
 		el.innerHTML = `<div class="tc-row">${buttons.join("")}</div>`;
-		_truthPositionGhostControls(el, sel.ghost);
+		_curatedPositionGhostControls(el, sel.ghost);
 		return;
 	}
 
 	const tokens =
-		sel.tokens || _truthTokensInRange(sel.side, sel.file, sel.lo, sel.hi);
+		sel.tokens || _curatedTokensInRange(sel.side, sel.file, sel.lo, sel.hi);
 	const existing =
-		sel.existing || _truthFindMarks(sel.side, sel.file, sel.lo, sel.hi);
+		sel.existing || _curatedFindMarks(sel.side, sel.file, sel.lo, sel.hi);
 
-	_truthCurrentSel = sel;
-	_truthCurrentTokens = tokens;
-	_truthCurrentExisting = existing;
+	_curatedCurrentSel = sel;
+	_curatedCurrentTokens = tokens;
+	_curatedCurrentExisting = existing;
 
 	const nonCommentExisting = existing.filter((m) => m.label !== "comment");
 	const allMissing =
@@ -140,12 +140,12 @@ function _truthShowControls(sel, x, y, opts) {
 		nonCommentExisting.every((m) => m.label === label);
 
 	const pairActive =
-		_truthPending &&
-		_truthPending.kind === "pair" &&
-		_truthPending.anchorMarks &&
+		_curatedPending &&
+		_curatedPending.kind === "pair" &&
+		_curatedPending.anchorMarks &&
 		nonCommentExisting.length > 0 &&
-		_truthPending.anchorMarks.length === nonCommentExisting.length &&
-		_truthPending.anchorMarks.every((m, i) => nonCommentExisting[i] === m);
+		_curatedPending.anchorMarks.length === nonCommentExisting.length &&
+		_curatedPending.anchorMarks.every((m, i) => nonCommentExisting[i] === m);
 	const activeAttr = pairActive ? " is-toggle-on" : "";
 
 	const buttons = [];
@@ -154,40 +154,40 @@ function _truthShowControls(sel, x, y, opts) {
 	if (sel.side === "teacher") {
 		if (hasContent && !fullyLabeled("missing")) {
 			buttons.push(
-				`<button type="button" class="tc-btn-missing" data-action="set-missing" title="Mark as missing (M)">${_truthBtnLabel("→", "Missing", "m")}</button>`,
+				`<button type="button" class="tc-btn-missing" data-action="set-missing" title="Mark as missing (M)">${_curatedBtnLabel("→", "Missing", "m")}</button>`,
 			);
 		}
 	} else {
 		if (hasContent && !fullyLabeled("extra")) {
 			buttons.push(
-				`<button type="button" class="tc-btn-extra" data-action="set-extra" title="Mark as extra (E)">${_truthBtnLabel("→", "Extra", "e")}</button>`,
+				`<button type="button" class="tc-btn-extra" data-action="set-extra" title="Mark as extra (E)">${_curatedBtnLabel("→", "Extra", "e")}</button>`,
 			);
 		}
 		if (hasContent && !fullyLabeled("ghost_extra")) {
 			buttons.push(
-				`<button type="button" class="tc-btn-ghost" data-action="set-ghost" title="Mark as ghost extra (G)">${_truthBtnLabel("→", "Ghost", "g")}</button>`,
+				`<button type="button" class="tc-btn-ghost" data-action="set-ghost" title="Mark as ghost extra (G)">${_curatedBtnLabel("→", "Ghost", "g")}</button>`,
 			);
 		}
 	}
 	if (canPair) {
 		const n = existing.length;
-		const suffix = _truthTokenCountSuffix(n);
+		const suffix = _curatedTokenCountSuffix(n);
 		if (allMissing && single) {
 			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert this token, or pair with an extra (I or P)">${_truthBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
+				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert this token, or pair with an extra (I or P)">${_curatedBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
 			);
 		} else if (allMissing) {
 			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a student-side position (I)">${_truthBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
+				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a student-side position (I)">${_curatedBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
 			);
 		} else if (allExtra) {
 			if (single) {
 				buttons.push(
-					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert this token at a different student-side position, or pair with a missing (I or P)">${_truthBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
+					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert this token at a different student-side position, or pair with a missing (I or P)">${_curatedBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
 				);
 			} else {
 				buttons.push(
-					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a different student-side position (I)">${_truthBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
+					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a different student-side position (I)">${_curatedBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
 				);
 			}
 		} else if (allGhostExtra) {
@@ -196,7 +196,7 @@ function _truthShowControls(sel, x, y, opts) {
 					? "Pair with a teacher ghost (P)"
 					: "Pair with consecutive teacher ghosts (P)";
 			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="${tip}">${_truthBtnLabel("⇄", "Pair", "p", suffix)}</button>`,
+				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="${tip}">${_curatedBtnLabel("⇄", "Pair", "p", suffix)}</button>`,
 			);
 		}
 	}
@@ -206,7 +206,7 @@ function _truthShowControls(sel, x, y, opts) {
 		const allRelabelable = allMissing || allExtra || allGhostExtra;
 		if (hasAnyPaired && allRelabelable) {
 			buttons.push(
-				`<button type="button" class="tc-btn-del" data-action="unpair" title="Remove pair (R)">${_truthBtnLabel("⊘", "Remove pair", "r")}</button>`,
+				`<button type="button" class="tc-btn-del" data-action="unpair" title="Remove pair (R)">${_curatedBtnLabel("⊘", "Remove pair", "r")}</button>`,
 			);
 		}
 		const hasNonComment = existing.some((m) => m.label !== "comment");
@@ -219,25 +219,25 @@ function _truthShowControls(sel, x, y, opts) {
 				? "Delete mark (D, Delete or Backspace). Hold Shift to also delete its pair."
 				: "Delete mark (D, Delete or Backspace)";
 			buttons.push(
-				`<button type="button" class="tc-btn-del" data-action="del-all" title="${tip}">${_truthBtnLabel("✖", "Delete", "d")}</button>`,
+				`<button type="button" class="tc-btn-del" data-action="del-all" title="${tip}">${_curatedBtnLabel("✖", "Delete", "d")}</button>`,
 			);
 		}
 	}
 
 	if (hasContent) {
 		buttons.push(
-			`<button type="button" class="tc-btn-comment" data-action="set-comment" title="Mark as comment (C)">${_truthBtnLabel("→", "Comment", "c")}</button>`,
+			`<button type="button" class="tc-btn-comment" data-action="set-comment" title="Mark as comment (C)">${_curatedBtnLabel("→", "Comment", "c")}</button>`,
 		);
 	}
 
 	el.innerHTML = `<div class="tc-row">${buttons.join("")}</div>`;
-	_truthPositionControls(el, sel, tokens, existing);
+	_curatedPositionControls(el, sel, tokens, existing);
 }
 
-function _truthPositionGhostControls(el, ghost) {
+function _curatedPositionGhostControls(el, ghost) {
 	const ghostEl =
-		typeof _truthFindGhostElByPos === "function"
-			? _truthFindGhostElByPos(ghost.file, ghost.start, ghost.token)
+		typeof _curatedFindGhostElByPos === "function"
+			? _curatedFindGhostElByPos(ghost.file, ghost.start, ghost.token)
 			: ghost.el || null;
 	if (!ghostEl) {
 		el.style.display = "none";
@@ -269,8 +269,13 @@ function _truthPositionGhostControls(el, ghost) {
 	el.style.top = `${top}px`;
 }
 
-function _truthPositionControls(el, sel, tokens, existing) {
-	const r = _truthSelectionBoundingRect(sel.side, sel.file, tokens, existing);
+function _curatedPositionControls(el, sel, tokens, existing) {
+	const r = _curatedSelectionBoundingRect(
+		sel.side,
+		sel.file,
+		tokens,
+		existing,
+	);
 	if (!r) {
 		el.style.display = "none";
 		return;
@@ -290,7 +295,7 @@ function _truthPositionControls(el, sel, tokens, existing) {
 	el.style.top = `${top}px`;
 }
 
-function _truthSelectGhostAndShow(ghost, x, y) {
+function _curatedSelectGhostAndShow(ghost, x, y) {
 	const sel = {
 		side: "teacher",
 		file: ghost.file,
@@ -304,48 +309,48 @@ function _truthSelectGhostAndShow(ghost, x, y) {
 		existing: [],
 	};
 	_clearLeoHighlights();
-	_truthActiveGroupRange = null;
-	_truthSelectionRange = null;
-	_truthActiveGhost = ghost;
-	_truthRefreshActiveOverlay();
-	_truthRefreshConnectorsForCurrent();
-	_truthShowControls(sel, x, y);
+	_curatedActiveGroupRange = null;
+	_curatedSelectionRange = null;
+	_curatedActiveGhost = ghost;
+	_curatedRefreshActiveOverlay();
+	_curatedRefreshConnectorsForCurrent();
+	_curatedShowControls(sel, x, y);
 }
 
-function _truthOnControlAction(action, sel, tokens, existing) {
+function _curatedOnControlAction(action, sel, tokens, existing) {
 	const opts = {};
 
 	if (sel && sel.isGhost) {
 		if (action === "set-pair-ghost") {
 			const samePending =
-				_truthPending &&
-				_truthPending.kind === "pair" &&
-				_truthPending.anchorGhost &&
-				_truthPending.anchorGhost.file === sel.ghost.file &&
-				_truthPending.anchorGhost.start === sel.ghost.start &&
-				_truthPending.anchorGhost.token === sel.ghost.token;
+				_curatedPending &&
+				_curatedPending.kind === "pair" &&
+				_curatedPending.anchorGhost &&
+				_curatedPending.anchorGhost.file === sel.ghost.file &&
+				_curatedPending.anchorGhost.start === sel.ghost.start &&
+				_curatedPending.anchorGhost.token === sel.ghost.token;
 			if (samePending) {
-				_truthCancelPending();
-				_truthClearPairHover();
+				_curatedCancelPending();
+				_curatedClearPairHover();
 			} else {
-				if (_truthPending && _truthPending.kind === "pair") {
-					_truthCancelPending();
-					_truthClearPairHover();
+				if (_curatedPending && _curatedPending.kind === "pair") {
+					_curatedCancelPending();
+					_curatedClearPairHover();
 				}
-				_truthEnterPairModeForGhost(sel.ghost);
+				_curatedEnterPairModeForGhost(sel.ghost);
 			}
-			_truthSelectGhostAndShow(sel.ghost, 0, 0);
+			_curatedSelectGhostAndShow(sel.ghost, 0, 0);
 			_clearSelectionPreservingScroll();
 			return;
 		}
 		if (action === "unpair-ghost") {
-			const partner = _truthFindGhostPartner(sel.ghost);
+			const partner = _curatedFindGhostPartner(sel.ghost);
 			if (partner) {
-				_truthSnapshot();
+				_curatedSnapshot();
 				delete partner.mark.paired_with;
-				_truthRerender();
+				_curatedRerender();
 			}
-			_truthSelectGhostAndShow(sel.ghost, 0, 0);
+			_curatedSelectGhostAndShow(sel.ghost, 0, 0);
 			_clearSelectionPreservingScroll();
 			return;
 		}
@@ -354,50 +359,50 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 
 	if (
 		action !== "set-pair" &&
-		_truthPending &&
-		_truthPending.kind === "pair"
+		_curatedPending &&
+		_curatedPending.kind === "pair"
 	) {
-		_truthCancelPending();
-		_truthClearPairHover();
+		_curatedCancelPending();
+		_curatedClearPairHover();
 	}
 
 	if (action !== "close" && action !== "set-pair") {
-		_truthSnapshot();
+		_curatedSnapshot();
 	}
 
 	switch (action) {
 		case "close":
-			_truthHideControls();
+			_curatedHideControls();
 			_clearSelectionPreservingScroll();
 			return;
 		case "set-missing":
 			if (sel.side !== "teacher") return;
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_truthAddMark("teacher", sel.file, "missing", tokens, opts);
+				_curatedAddMark("teacher", sel.file, "missing", tokens, opts);
 			}
 			break;
 		case "set-extra":
 			if (sel.side !== "student") return;
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_truthAddMark("student", sel.file, "extra", tokens, opts);
+				_curatedAddMark("student", sel.file, "extra", tokens, opts);
 			}
 			break;
 		case "set-ghost":
 			if (sel.side !== "student") return;
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_truthAddMark("student", sel.file, "ghost_extra", tokens, opts);
+				_curatedAddMark("student", sel.file, "ghost_extra", tokens, opts);
 			}
 			break;
 		case "set-comment": {
@@ -406,23 +411,23 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 			);
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
-			const allTokens = _truthTokensForFile(sel.side, sel.file).filter(
+			const allTokens = _curatedTokensForFile(sel.side, sel.file).filter(
 				(t) =>
 					t.start >= sel.lo &&
 					t.end <= sel.hi &&
 					!existingCommentStarts.has(t.start),
 			);
 			if (allTokens.length) {
-				_truthAddMark(sel.side, sel.file, "comment", allTokens, opts);
+				_curatedAddMark(sel.side, sel.file, "comment", allTokens, opts);
 			}
 			break;
 		}
 		case "del-all":
 			for (const m of existing.slice()) {
 				if (m.label === "comment") continue;
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			break;
 		case "del-all-with-pairs":
@@ -430,35 +435,35 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 				const pw = m.paired_with;
 				if (pw && !pw.ghost) {
 					const otherSide = sel.side === "teacher" ? "student" : "teacher";
-					const partnerArr = _truthFileMarks(otherSide, pw.file);
+					const partnerArr = _curatedFileMarks(otherSide, pw.file);
 					const partner = partnerArr.find(
 						(p) => p.start === pw.start && p.token === pw.token,
 					);
 					if (partner) {
-						_truthRemoveMark(otherSide, pw.file, partner);
+						_curatedRemoveMark(otherSide, pw.file, partner);
 					}
 				}
-				_truthRemoveMark(sel.side, sel.file, m);
+				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			break;
 		case "unpair":
-			for (const m of existing) _truthClearPair(m, sel.side);
+			for (const m of existing) _curatedClearPair(m, sel.side);
 			break;
 		case "set-pair": {
 			const anchorMarks = existing.filter((m) => m.label !== "comment");
 			const samePending =
-				_truthPending &&
-				_truthPending.kind === "pair" &&
-				_truthPending.anchorMarks &&
-				anchorMarks.length === _truthPending.anchorMarks.length &&
-				_truthPending.anchorMarks.every((m, i) => anchorMarks[i] === m);
+				_curatedPending &&
+				_curatedPending.kind === "pair" &&
+				_curatedPending.anchorMarks &&
+				anchorMarks.length === _curatedPending.anchorMarks.length &&
+				_curatedPending.anchorMarks.every((m, i) => anchorMarks[i] === m);
 			if (samePending) {
-				_truthCancelPending();
-				_truthClearPairHover();
+				_curatedCancelPending();
+				_curatedClearPairHover();
 			} else if (anchorMarks.length) {
-				_truthEnterPairMode(anchorMarks, sel.side, sel.file);
+				_curatedEnterPairMode(anchorMarks, sel.side, sel.file);
 			}
-			_truthReselectAfterAction(sel);
+			_curatedReselectAfterAction(sel);
 			_clearSelectionPreservingScroll();
 			return;
 		}
@@ -466,14 +471,14 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 			return;
 	}
 
-	_truthRerender();
+	_curatedRerender();
 
 	const autoPair = {
 		"set-missing": { side: "teacher", label: "missing" },
 		"set-ghost": { side: "student", label: "ghost_extra" },
 	}[action];
 	if (autoPair) {
-		const newMarks = _truthFindMarks(
+		const newMarks = _curatedFindMarks(
 			autoPair.side,
 			sel.file,
 			sel.lo,
@@ -482,20 +487,20 @@ function _truthOnControlAction(action, sel, tokens, existing) {
 			(m) => m.label === autoPair.label && !m.paired_with && !m.insert_at,
 		);
 		if (newMarks.length) {
-			_truthApplyClickHighlights(sel.side, sel.file, sel.lo, sel.hi);
-			_truthEnterPairMode(newMarks, autoPair.side, sel.file);
-			_truthReselectAfterAction(sel);
+			_curatedApplyClickHighlights(sel.side, sel.file, sel.lo, sel.hi);
+			_curatedEnterPairMode(newMarks, autoPair.side, sel.file);
+			_curatedReselectAfterAction(sel);
 			_clearSelectionPreservingScroll();
 			return;
 		}
 	}
 
-	_truthReselectAfterAction(sel);
+	_curatedReselectAfterAction(sel);
 	_clearSelectionPreservingScroll();
 }
 
-function _truthReselectAfterAction(prevSel) {
-	_truthSelectAndShow(
+function _curatedReselectAfterAction(prevSel) {
+	_curatedSelectAndShow(
 		prevSel.side,
 		prevSel.file,
 		prevSel.rawLo,

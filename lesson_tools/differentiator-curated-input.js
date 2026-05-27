@@ -1,10 +1,10 @@
 "use strict";
 
-function _truthOnKeyDown(ev) {
+function _curatedOnKeyDown(ev) {
 	if (ev.key === "Escape") {
-		_truthCancelPending();
-		_truthClearPairHover();
-		_truthHideControls();
+		_curatedCancelPending();
+		_curatedClearPairHover();
+		_curatedHideControls();
 		return;
 	}
 
@@ -18,40 +18,40 @@ function _truthOnKeyDown(ev) {
 		const k = ev.key.toLowerCase();
 		if (k === "z" && !ev.shiftKey) {
 			ev.preventDefault();
-			_truthUndo();
+			_curatedUndo();
 			return;
 		}
 		if (k === "y" || (k === "z" && ev.shiftKey)) {
 			ev.preventDefault();
-			_truthRedo();
+			_curatedRedo();
 			return;
 		}
 	}
 
 	if (inField) return;
 
-	if (!_truthCurrentSel) return;
-	const sel = _truthCurrentSel;
+	if (!_curatedCurrentSel) return;
+	const sel = _curatedCurrentSel;
 
 	if (sel.isGhost) {
 		if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
 		const k = ev.key.toLowerCase();
-		const partner = _truthFindGhostPartner(sel.ghost);
+		const partner = _curatedFindGhostPartner(sel.ghost);
 		if ((k === "i" || k === "p") && !partner) {
 			ev.preventDefault();
-			_truthOnControlAction("set-pair-ghost", sel, [], []);
+			_curatedOnControlAction("set-pair-ghost", sel, [], []);
 			return;
 		}
 		if (k === "r" && partner) {
 			ev.preventDefault();
-			_truthOnControlAction("unpair-ghost", sel, [], []);
+			_curatedOnControlAction("unpair-ghost", sel, [], []);
 			return;
 		}
 		return;
 	}
 
-	const tokens = _truthCurrentTokens || [];
-	const existing = _truthCurrentExisting || [];
+	const tokens = _curatedCurrentTokens || [];
+	const existing = _curatedCurrentExisting || [];
 
 	if (
 		ev.key === "Delete" ||
@@ -63,7 +63,7 @@ function _truthOnKeyDown(ev) {
 		if (!hasNonComment && !(ev.shiftKey && hasComment)) return;
 		ev.preventDefault();
 		const action = ev.shiftKey ? "del-all-with-pairs" : "del-all";
-		_truthOnControlAction(action, sel, tokens, existing);
+		_curatedOnControlAction(action, sel, tokens, existing);
 		return;
 	}
 
@@ -96,44 +96,44 @@ function _truthOnKeyDown(ev) {
 
 	if (k === "m" && sel.side === "teacher" && !fullyLabeled("missing")) {
 		ev.preventDefault();
-		_truthOnControlAction("set-missing", sel, tokens, existing);
+		_curatedOnControlAction("set-missing", sel, tokens, existing);
 	} else if (k === "e" && sel.side === "student" && !fullyLabeled("extra")) {
 		ev.preventDefault();
-		_truthOnControlAction("set-extra", sel, tokens, existing);
+		_curatedOnControlAction("set-extra", sel, tokens, existing);
 	} else if (
 		k === "g" &&
 		sel.side === "student" &&
 		!fullyLabeled("ghost_extra")
 	) {
 		ev.preventDefault();
-		_truthOnControlAction("set-ghost", sel, tokens, existing);
+		_curatedOnControlAction("set-ghost", sel, tokens, existing);
 	} else if (k === "c" && !fullyLabeled("comment")) {
 		ev.preventDefault();
-		_truthOnControlAction("set-comment", sel, tokens, existing);
+		_curatedOnControlAction("set-comment", sel, tokens, existing);
 	} else if ((k === "i" || k === "p") && (tokens.length || existing.length)) {
 		ev.preventDefault();
 		if (sel.side === "teacher") {
 			if (allMissing && fullyLabeled("missing")) {
-				_truthOnControlAction("set-pair", sel, tokens, existing);
+				_curatedOnControlAction("set-pair", sel, tokens, existing);
 			} else {
-				_truthOnControlAction("set-missing", sel, tokens, existing);
+				_curatedOnControlAction("set-missing", sel, tokens, existing);
 			}
 		} else if (sel.side === "student") {
 			if (allGhostExtra && allUnpaired) {
-				_truthOnControlAction("set-pair", sel, tokens, existing);
+				_curatedOnControlAction("set-pair", sel, tokens, existing);
 			} else if (allExtra && fullyLabeled("extra") && allUnpaired) {
-				_truthOnControlAction("set-pair", sel, tokens, existing);
+				_curatedOnControlAction("set-pair", sel, tokens, existing);
 			} else if (existing.length === 0 || allExtra) {
-				_truthOnControlAction("set-extra", sel, tokens, existing);
-				const newMarks = _truthFindMarks(
+				_curatedOnControlAction("set-extra", sel, tokens, existing);
+				const newMarks = _curatedFindMarks(
 					sel.side,
 					sel.file,
 					sel.lo,
 					sel.hi,
 				).filter((m) => m.label === "extra" && !m.paired_with);
 				if (newMarks.length === 1) {
-					_truthEnterPairMode(newMarks, sel.side, sel.file);
-					_truthRefreshCurrentControls();
+					_curatedEnterPairMode(newMarks, sel.side, sel.file);
+					_curatedRefreshCurrentControls();
 				}
 			}
 		}
@@ -143,17 +143,17 @@ function _truthOnKeyDown(ev) {
 		(allMissing || allExtra || allGhostExtra)
 	) {
 		ev.preventDefault();
-		_truthOnControlAction("unpair", sel, tokens, existing);
+		_curatedOnControlAction("unpair", sel, tokens, existing);
 	}
 }
 
-function _truthRefreshCurrentControls() {
-	if (!_truthCurrentSel) return;
-	const sel = _truthCurrentSel;
-	if (sel.isGhost && typeof _truthSelectGhostAndShow === "function") {
-		_truthSelectGhostAndShow(sel.ghost, 0, 0);
+function _curatedRefreshCurrentControls() {
+	if (!_curatedCurrentSel) return;
+	const sel = _curatedCurrentSel;
+	if (sel.isGhost && typeof _curatedSelectGhostAndShow === "function") {
+		_curatedSelectGhostAndShow(sel.ghost, 0, 0);
 	} else if (!sel.isGhost) {
-		_truthSelectAndShow(sel.side, sel.file, sel.rawLo, sel.rawHi, 0, 0, {
+		_curatedSelectAndShow(sel.side, sel.file, sel.rawLo, sel.rawHi, 0, 0, {
 			preservePosition: true,
 		});
 	}
@@ -162,17 +162,21 @@ function _truthRefreshCurrentControls() {
 document.addEventListener(
 	"mousedown",
 	(ev) => {
-		if (!_truthEditMode) return;
-		if (ev.button === 2 && _truthPending && _truthPending.kind === "pair") {
+		if (!_curatedEditMode) return;
+		if (
+			ev.button === 2 &&
+			_curatedPending &&
+			_curatedPending.kind === "pair"
+		) {
 			ev.preventDefault();
 			ev.stopPropagation();
-			_truthCancelPending();
-			_truthClearPairHover();
-			_truthRefreshCurrentControls();
+			_curatedCancelPending();
+			_curatedClearPairHover();
+			_curatedRefreshCurrentControls();
 			return;
 		}
 		if (ev.button !== 0) return;
-		if (_truthIsBackgroundClick(ev.target)) return;
+		if (_curatedIsBackgroundClick(ev.target)) return;
 		if (!ev.target.closest(".code-pane")) return;
 		if (ev.target.closest(".insert-anchor")) return;
 		ev.stopPropagation();
@@ -181,30 +185,30 @@ document.addEventListener(
 );
 
 document.addEventListener("contextmenu", (ev) => {
-	if (_truthPending && _truthPending.kind === "pair") {
+	if (_curatedPending && _curatedPending.kind === "pair") {
 		ev.preventDefault();
 	}
 });
 
-function _truthOnMouseUp(ev) {
-	if (!_truthEditMode) return;
+function _curatedOnMouseUp(ev) {
+	if (!_curatedEditMode) return;
 	if (ev.button !== 0) return;
-	if (_truthPending) {
-		if (_truthHandlePendingClick(ev)) return;
-		if (!ev.target.closest || !ev.target.closest("#truth-controls")) {
-			_truthCancelPending();
-			_truthClearPairHover();
+	if (_curatedPending) {
+		if (_curatedHandlePendingClick(ev)) return;
+		if (!ev.target.closest || !ev.target.closest("#curated-controls")) {
+			_curatedCancelPending();
+			_curatedClearPairHover();
 		}
 	}
-	if (_truthIsBackgroundClick(ev.target)) return;
+	if (_curatedIsBackgroundClick(ev.target)) return;
 	const anchorEl = ev.target.closest && ev.target.closest(".insert-anchor");
 	if (anchorEl) {
-		_truthSelectInsertAnchor(anchorEl, ev.clientX, ev.clientY);
+		_curatedSelectInsertAnchor(anchorEl, ev.clientX, ev.clientY);
 		return;
 	}
-	const clickedGhost = _truthGhostFromTarget(ev.target);
+	const clickedGhost = _curatedGhostFromTarget(ev.target);
 	if (clickedGhost) {
-		_truthSelectGhostAndShow(clickedGhost, ev.clientX, ev.clientY);
+		_curatedSelectGhostAndShow(clickedGhost, ev.clientX, ev.clientY);
 		return;
 	}
 
@@ -214,18 +218,21 @@ function _truthOnMouseUp(ev) {
 	let side, file, rawLo, rawHi;
 	if (hasRange) {
 		const range = sel.getRangeAt(0);
-		const startInfo = _truthResolveSrcPos(
+		const startInfo = _curatedResolveSrcPos(
 			range.startContainer,
 			range.startOffset,
 		);
-		const endInfo = _truthResolveSrcPos(range.endContainer, range.endOffset);
+		const endInfo = _curatedResolveSrcPos(
+			range.endContainer,
+			range.endOffset,
+		);
 		if (
 			!startInfo ||
 			!endInfo ||
 			startInfo.side !== endInfo.side ||
 			startInfo.file !== endInfo.file
 		) {
-			_truthHideControls();
+			_curatedHideControls();
 			return;
 		}
 		side = startInfo.side;
@@ -233,13 +240,13 @@ function _truthOnMouseUp(ev) {
 		rawLo = Math.min(startInfo.pos, endInfo.pos);
 		rawHi = Math.max(startInfo.pos, endInfo.pos);
 		if (rawLo === rawHi) {
-			_truthHideControls();
+			_curatedHideControls();
 			return;
 		}
 	} else {
-		const info = _truthClickPosition(ev);
-		const tok = info && _truthTokenAtPos(info.side, info.file, info.pos);
-		const groupAtPoint = _truthGroupAtPoint(ev.clientX, ev.clientY);
+		const info = _curatedClickPosition(ev);
+		const tok = info && _curatedTokenAtPos(info.side, info.file, info.pos);
+		const groupAtPoint = _curatedGroupAtPoint(ev.clientX, ev.clientY);
 		const tokInGroup =
 			tok &&
 			groupAtPoint &&
@@ -250,7 +257,7 @@ function _truthOnMouseUp(ev) {
 		const tokIsMarked =
 			tok &&
 			info &&
-			!!_truthExistingMarkAtPos(info.side, info.file, tok.start);
+			!!_curatedExistingMarkAtPos(info.side, info.file, tok.start);
 		if (tok && !tokInGroup && !tokIsMarked) {
 			side = info.side;
 			file = info.file;
@@ -264,7 +271,7 @@ function _truthOnMouseUp(ev) {
 		} else if (tok) {
 			side = info.side;
 			file = info.file;
-			const groupRange = _truthFindGroupRange(side, file, tok.start);
+			const groupRange = _curatedFindGroupRange(side, file, tok.start);
 			if (groupRange) {
 				rawLo = groupRange.lo;
 				rawHi = groupRange.hi;
@@ -273,15 +280,15 @@ function _truthOnMouseUp(ev) {
 				rawHi = tok.end;
 			}
 		} else {
-			_truthHideControls();
+			_curatedHideControls();
 			return;
 		}
 	}
 
-	_truthSelectAndShow(side, file, rawLo, rawHi, ev.clientX, ev.clientY);
+	_curatedSelectAndShow(side, file, rawLo, rawHi, ev.clientX, ev.clientY);
 }
 
-function _truthMarkSelColor(mark) {
+function _curatedMarkSelColor(mark) {
 	if (!mark) return null;
 	if (mark.label === "missing") {
 		return mark.paired_with ? "blue" : "red";
@@ -291,11 +298,11 @@ function _truthMarkSelColor(mark) {
 	return null;
 }
 
-function _truthSelectionColor(marks) {
+function _curatedSelectionColor(marks) {
 	if (!marks || !marks.length) return null;
 	let color = null;
 	for (const m of marks) {
-		const c = _truthMarkSelColor(m);
+		const c = _curatedMarkSelColor(m);
 		if (!c) return "yellow";
 		if (color == null) color = c;
 		else if (color !== c) return "yellow";
@@ -303,31 +310,36 @@ function _truthSelectionColor(marks) {
 	return color;
 }
 
-function _truthSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
-	const snapped = _truthSnapToTokens(side, file, rawLo, rawHi);
-	let tokens = _truthTokensInRange(side, file, snapped.lo, snapped.hi);
-	let existing = _truthFindMarks(side, file, snapped.lo, snapped.hi);
+function _curatedSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
+	const snapped = _curatedSnapToTokens(side, file, rawLo, rawHi);
+	let tokens = _curatedTokensInRange(side, file, snapped.lo, snapped.hi);
+	let existing = _curatedFindMarks(side, file, snapped.lo, snapped.hi);
 	let lo = snapped.lo;
 	let hi = snapped.hi;
 	if (
 		!tokens.length &&
 		!existing.length &&
-		_truthIsAllWhitespace(side, file, rawLo, rawHi)
+		_curatedIsAllWhitespace(side, file, rawLo, rawHi)
 	) {
-		const wsTokens = _truthWhitespaceTokensInRange(side, file, rawLo, rawHi);
+		const wsTokens = _curatedWhitespaceTokensInRange(
+			side,
+			file,
+			rawLo,
+			rawHi,
+		);
 		if (wsTokens.length) {
 			tokens = wsTokens;
 			lo = wsTokens[0].start;
 			hi = wsTokens[wsTokens.length - 1].end;
-			existing = _truthFindMarks(side, file, lo, hi);
+			existing = _curatedFindMarks(side, file, lo, hi);
 		}
 	}
 	if (!tokens.length && !existing.length) {
-		_truthHideControls();
+		_curatedHideControls();
 		return false;
 	}
-	_truthApplyClickHighlights(side, file, lo, hi);
-	_truthShowControls(
+	_curatedApplyClickHighlights(side, file, lo, hi);
+	_curatedShowControls(
 		{
 			side,
 			file,
@@ -345,13 +357,13 @@ function _truthSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
 	return true;
 }
 
-function _truthSelectInsertAnchor(anchorEl, x, y) {
-	const r = _truthAnchorRange(anchorEl);
+function _curatedSelectInsertAnchor(anchorEl, x, y) {
+	const r = _curatedAnchorRange(anchorEl);
 	if (!r) return;
-	_truthSelectAndShow(r.side, r.file, r.lo, r.hi, x, y);
+	_curatedSelectAndShow(r.side, r.file, r.lo, r.hi, x, y);
 }
 
-function _truthGhostFromTarget(target) {
+function _curatedGhostFromTarget(target) {
 	if (!target || !target.closest) return null;
 	const markEl = target.closest(".leo-mark[data-leo-ghost-offset]");
 	if (!markEl) return null;
@@ -377,7 +389,7 @@ function _truthGhostFromTarget(target) {
 	};
 }
 
-function _truthGhostMatchesPair(ghost, paired) {
+function _curatedGhostMatchesPair(ghost, paired) {
 	if (!paired || !paired.ghost) return false;
 	return (
 		paired.file === ghost.file &&
@@ -387,14 +399,14 @@ function _truthGhostMatchesPair(ghost, paired) {
 	);
 }
 
-function _truthFindGhostPartner(ghost) {
-	const t = _truthMarks();
+function _curatedFindGhostPartner(ghost) {
+	const t = _curatedMarks();
 	if (!t) return null;
 	const sFiles = t.student_files || {};
 	for (const [file, marks] of Object.entries(sFiles)) {
 		for (const m of marks || []) {
 			if (m.label !== "ghost_extra") continue;
-			if (_truthGhostMatchesPair(ghost, m.paired_with)) {
+			if (_curatedGhostMatchesPair(ghost, m.paired_with)) {
 				return { mark: m, file };
 			}
 		}
@@ -402,8 +414,8 @@ function _truthFindGhostPartner(ghost) {
 	return null;
 }
 
-function _truthSetGhostPair(studentMark, ghost) {
-	_truthClearPair(studentMark, "student");
+function _curatedSetGhostPair(studentMark, ghost) {
+	_curatedClearPair(studentMark, "student");
 	studentMark.paired_with = {
 		file: ghost.file,
 		start: ghost.start,

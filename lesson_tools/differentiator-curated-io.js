@@ -1,6 +1,6 @@
 "use strict";
 
-function _truthBackfillTimestamps(teacherFiles, studentFiles) {
+function _curatedBackfillTimestamps(teacherFiles, studentFiles) {
 	const leoStar = _allMarks[""];
 	if (!leoStar) return;
 	const tsByPos = new Map();
@@ -46,16 +46,16 @@ function _truthBackfillTimestamps(teacherFiles, studentFiles) {
 	}
 }
 
-function _truthBuildJson() {
+function _curatedBuildJson() {
 	const matching = _diffMode === "required" ? "required" : "ideal";
-	const t = _truthMarks() || {
+	const t = _curatedMarks() || {
 		token_matching: matching,
 		teacher_files: {},
 		student_files: {},
 	};
 	const teacherFiles = _deepClone(t.teacher_files || {});
 	const studentFiles = _deepClone(t.student_files || {});
-	_truthBackfillTimestamps(teacherFiles, studentFiles);
+	_curatedBackfillTimestamps(teacherFiles, studentFiles);
 	const out = {
 		token_matching: matching,
 		teacher_files: teacherFiles,
@@ -67,8 +67,8 @@ function _truthBuildJson() {
 	return JSON.stringify(out, null, 2) + "\n";
 }
 
-function _truthDownload() {
-	const json = _truthBuildJson();
+function _curatedDownload() {
+	const json = _curatedBuildJson();
 	const blob = new Blob([json], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
@@ -83,7 +83,7 @@ function _truthDownload() {
 	URL.revokeObjectURL(url);
 }
 
-function _truthFlashButton(id, label) {
+function _curatedFlashButton(id, label) {
 	const btn = document.getElementById(id);
 	if (!btn) return;
 	const orig = btn.textContent;
@@ -95,10 +95,10 @@ function _truthFlashButton(id, label) {
 	}, 900);
 }
 
-function _truthCopyToClipboard() {
-	const json = _truthBuildJson();
-	const done = () => _truthFlashButton("btn-copy-truth", "✓ Copied");
-	const fail = () => _truthFlashButton("btn-copy-truth", "✖ Failed");
+function _curatedCopyToClipboard() {
+	const json = _curatedBuildJson();
+	const done = () => _curatedFlashButton("btn-copy-curated", "✓ Copied");
+	const fail = () => _curatedFlashButton("btn-copy-curated", "✖ Failed");
 	if (navigator.clipboard && navigator.clipboard.writeText) {
 		navigator.clipboard.writeText(json).then(done).catch(fail);
 		return;
@@ -119,21 +119,21 @@ function _truthCopyToClipboard() {
 	else fail();
 }
 
-function _truthBackwardWhitespace(text, pos) {
+function _curatedBackwardWhitespace(text, pos) {
 	if (pos <= 0 || !/\s/.test(text[pos - 1])) return "";
 	let i = pos;
 	while (i > 0 && /\s/.test(text[i - 1])) i--;
 	return text.slice(i, pos);
 }
 
-function _truthForwardWhitespace(text, pos) {
+function _curatedForwardWhitespace(text, pos) {
 	if (pos >= text.length || !/\s/.test(text[pos])) return "";
 	let i = pos;
 	while (i < text.length && /\s/.test(text[i])) i++;
 	return text.slice(pos, i);
 }
 
-function _truthDedentBlock(body) {
+function _curatedDedentBlock(body) {
 	const lines = body.split("\n");
 	if (lines.length < 2) return body;
 	const startIdx = body.startsWith("\n") ? 0 : 1;
@@ -154,7 +154,7 @@ function _truthDedentBlock(body) {
 		.join("\n");
 }
 
-function _truthAlignWhitespace(
+function _curatedAlignWhitespace(
 	srcText,
 	srcStart,
 	srcEnd,
@@ -165,10 +165,10 @@ function _truthAlignWhitespace(
 	canExtendLeft,
 	canExtendRight,
 ) {
-	const srcLead = _truthBackwardWhitespace(srcText, srcStart);
-	const dstLead = _truthBackwardWhitespace(dstText, dstStart);
-	const srcTrail = _truthForwardWhitespace(srcText, srcEnd);
-	const dstTrail = _truthForwardWhitespace(dstText, dstEnd);
+	const srcLead = _curatedBackwardWhitespace(srcText, srcStart);
+	const dstLead = _curatedBackwardWhitespace(dstText, dstStart);
+	const srcTrail = _curatedForwardWhitespace(srcText, srcEnd);
+	const dstTrail = _curatedForwardWhitespace(dstText, dstEnd);
 
 	let text =
 		bodyOverride !== undefined
@@ -192,16 +192,16 @@ function _truthAlignWhitespace(
 	return { text, start: aStart, end: aEnd };
 }
 
-function _truthApplyToStudent() {
+function _curatedApplyToStudent() {
 	const out = {};
-	const truthData = _truthMarks();
-	if (!truthData) return out;
+	const curatedData = _curatedMarks();
+	if (!curatedData) return out;
 	const studentNames = Object.keys(_studentFiles || {});
-	const groups = _truthGroupMarks();
-	const filePairs = (truthData && truthData.file_pairs) || {};
+	const groups = _curatedGroupMarks();
+	const filePairs = (curatedData && curatedData.file_pairs) || {};
 
 	for (const studentName of studentNames) {
-		let text = _truthSrcText("student", studentName);
+		let text = _curatedSrcText("student", studentName);
 		const origText = text;
 		const ops = [];
 		let order = 0;
@@ -230,7 +230,7 @@ function _truthApplyToStudent() {
 			.sort((a, b) => a.lo - b.lo);
 		const teacherFile = teacherMissings[0]?.file ?? null;
 		const allTeacherTokens = teacherFile
-			? _truthTokensForFile("teacher", teacherFile)
+			? _curatedTokensForFile("teacher", teacherFile)
 			: [];
 		const consumedMissings = new Set();
 		for (const extraGroup of studentExtras) {
@@ -263,7 +263,7 @@ function _truthApplyToStudent() {
 			extraGroup._coalesced = {
 				tLo: teacherLo,
 				tHi: teacherHi,
-				body: _truthSliceExcludingComments(
+				body: _curatedSliceExcludingComments(
 					"teacher",
 					contiguous[0].file,
 					teacherLo,
@@ -281,7 +281,7 @@ function _truthApplyToStudent() {
 				group.insertFile === studentName
 			) {
 				if (consumedMissings.has(group)) continue;
-				const body = _truthSliceExcludingComments(
+				const body = _curatedSliceExcludingComments(
 					"teacher",
 					group.file,
 					group.lo,
@@ -301,7 +301,7 @@ function _truthApplyToStudent() {
 				group.kind === "extra-replace" &&
 				group.file === studentName
 			) {
-				const body = _truthSliceExcludingComments(
+				const body = _curatedSliceExcludingComments(
 					"teacher",
 					group.pairFile,
 					group.pairLo,
@@ -384,8 +384,8 @@ function _truthApplyToStudent() {
 				return true;
 			};
 			if (op.kind === "insert" || op.kind === "swap") {
-				const teacherSrc = _truthSrcText("teacher", op.srcFile);
-				const aligned = _truthAlignWhitespace(
+				const teacherSrc = _curatedSrcText("teacher", op.srcFile);
+				const aligned = _curatedAlignWhitespace(
 					teacherSrc,
 					op.srcStart,
 					op.srcEnd,
@@ -455,14 +455,14 @@ function _truthApplyToStudent() {
 	return out;
 }
 
-function _truthPreview() {
-	const out = _truthApplyToStudent();
+function _curatedPreview() {
+	const out = _curatedApplyToStudent();
 	const body = document.createElement("div");
 	body.className = "tw-preview-split";
 
 	if (!Object.keys(out).length) {
 		body.textContent = "No student files to preview.";
-		_truthShowFloatWin("Test Corrections", body);
+		_curatedShowFloatWin("Test Corrections", body);
 		return;
 	}
 
@@ -518,24 +518,27 @@ function _truthPreview() {
 	right.className = "tw-preview-render";
 	const iframe = document.createElement("iframe");
 	iframe.className = "tw-preview-iframe";
-	iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+	iframe.setAttribute(
+		"sandbox",
+		"allow-scripts allow-same-origin allow-modals",
+	);
 	right.appendChild(iframe);
 
 	body.appendChild(left);
 	body.appendChild(right);
-	_truthShowFloatWin("Test Corrections", body);
+	_curatedShowFloatWin("Test Corrections", body);
 
 	if (typeof updatePreview === "function") {
 		updatePreview("student", { ...out }, iframe);
 	}
 }
 
-function _truthSummarize() {
-	const groups = _truthGroupMarks();
+function _curatedSummarize() {
+	const groups = _curatedGroupMarks();
 	const body = document.createElement("div");
 	if (!groups.length) {
 		body.textContent = "Empty";
-		_truthShowFloatWin("Corrections Summary", body);
+		_curatedShowFloatWin("Corrections Summary", body);
 		return;
 	}
 
@@ -648,7 +651,7 @@ function _truthSummarize() {
 	const bucketOrder = [];
 	const bucketMap = new Map();
 	const _addEdit = (file, edit) => {
-		const text = _truthSrcText("student", file);
+		const text = _curatedSrcText("student", file);
 		const probeHi = Math.max(edit.start + 1, edit.end);
 		const [fLo, fHi] = _expandToLines(text, edit.start, probeHi);
 		const key = `${file}|${fLo}|${fHi}`;
@@ -703,7 +706,7 @@ function _truthSummarize() {
 				});
 			}
 		} else if (g.kind === "extra-move") {
-			const studentText = _truthSrcText("student", g.file);
+			const studentText = _curatedSrcText("student", g.file);
 			_addEdit(g.file, {
 				start: g.lo,
 				end: g.hi,
@@ -712,10 +715,10 @@ function _truthSummarize() {
 			_addEdit(g.moveFile, {
 				start: g.movePos,
 				end: g.movePos,
-				insertText: _truthDedentBlock(studentText.slice(g.lo, g.hi)),
+				insertText: _curatedDedentBlock(studentText.slice(g.lo, g.hi)),
 			});
 		} else if (g.kind === "missing-insert") {
-			const teacherText = _truthSrcText("teacher", g.file);
+			const teacherText = _curatedSrcText("teacher", g.file);
 			let body = teacherText.slice(g.lo, g.hi).replace(/[ \t\r\n]+$/, "");
 			let lineStart = g.lo;
 			while (
@@ -731,7 +734,7 @@ function _truthSummarize() {
 			) {
 				body = "\n" + teacherText.slice(lineStart, g.lo) + body;
 			}
-			body = _truthDedentBlock(body);
+			body = _curatedDedentBlock(body);
 			_addEdit(g.insertFile, {
 				start: g.insertPos,
 				end: g.insertPos,
@@ -818,7 +821,7 @@ function _truthSummarize() {
 		}
 
 		for (const b of bucketsByFile.get(file) || []) {
-			const text = _truthSrcText("student", b.file);
+			const text = _curatedSrcText("student", b.file);
 			const beforeHtml = _renderBefore(text, b.fullLo, b.fullHi, b.edits);
 			const afterHtml = _renderAfter(text, b.fullLo, b.fullHi, b.edits);
 
@@ -847,7 +850,7 @@ function _truthSummarize() {
 		}
 
 		for (const g of orphansByFile.get(file) || []) {
-			const text = _truthSrcText(g.side, g.file);
+			const text = _curatedSrcText(g.side, g.file);
 			const [fLo, fHi] = _expandToLines(text, g.lo, g.hi);
 			const sorted = (g.marks || [])
 				.slice()
@@ -884,14 +887,14 @@ function _truthSummarize() {
 	}
 
 	body.appendChild(grid);
-	_truthShowFloatWin("Corrections Summary", body);
+	_curatedShowFloatWin("Corrections Summary", body);
 }
 
-function _truthShowFloatWin(title, bodyEl) {
-	if (!_truthFloatWin) {
+function _curatedShowFloatWin(title, bodyEl) {
+	if (!_curatedFloatWin) {
 		const win = document.createElement("div");
-		win.className = "truth-float-win float-win";
-		win.id = "truth-float-win";
+		win.className = "curated-float-win float-win";
+		win.id = "curated-float-win";
 
 		const header = document.createElement("div");
 		header.className = "float-win__header";
@@ -919,14 +922,14 @@ function _truthShowFloatWin(title, bodyEl) {
 
 		makeDraggable(header, win);
 
-		_truthFloatWin = { win, titleEl, body };
+		_curatedFloatWin = { win, titleEl, body };
 	}
-	_truthFloatWin.titleEl.textContent = title;
-	_truthFloatWin.body.innerHTML = "";
-	_truthFloatWin.body.appendChild(bodyEl);
-	_truthFloatWin.win.style.display = "flex";
-	if (!_truthFloatWin.win.style.left) {
-		_truthFloatWin.win.style.left = "100px";
-		_truthFloatWin.win.style.top = "100px";
+	_curatedFloatWin.titleEl.textContent = title;
+	_curatedFloatWin.body.innerHTML = "";
+	_curatedFloatWin.body.appendChild(bodyEl);
+	_curatedFloatWin.win.style.display = "flex";
+	if (!_curatedFloatWin.win.style.left) {
+		_curatedFloatWin.win.style.left = "100px";
+		_curatedFloatWin.win.style.top = "100px";
 	}
 }

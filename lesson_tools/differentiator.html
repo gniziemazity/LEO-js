@@ -210,13 +210,13 @@
 				font-style: italic;
 				font-weight: normal !important;
 			}
-			.diff-ghost .leo-mark[data-leo-ghost-offset].truth-ghost-paired {
+			.diff-ghost .leo-mark[data-leo-ghost-offset].curated-ghost-paired {
 				font-weight: bold !important;
 				text-decoration: underline dotted var(--clr-ghost-pair);
 				text-decoration-thickness: 2px;
 				text-underline-offset: 2px;
 			}
-			.leo-mark.truth-paired-ghost-extra {
+			.leo-mark.curated-paired-ghost-extra {
 				text-decoration: underline dotted var(--clr-ghost-pair);
 				text-decoration-thickness: 2px;
 				text-underline-offset: 2px;
@@ -524,7 +524,7 @@
 				position: relative;
 				z-index: 2;
 			}
-			.truth-bg-layer {
+			.curated-bg-layer {
 				position: absolute;
 				top: 0;
 				left: 0;
@@ -533,7 +533,7 @@
 				pointer-events: none;
 				z-index: 1;
 			}
-			.truth-fg-layer {
+			.curated-fg-layer {
 				position: absolute;
 				top: 0;
 				left: 0;
@@ -542,64 +542,64 @@
 				pointer-events: none;
 				z-index: 3;
 			}
-			.truth-bg-rect {
+			.curated-bg-rect {
 				position: absolute;
 				border-radius: 3px;
 				box-sizing: border-box;
 				pointer-events: none;
 			}
-			.truth-bg-rect.is-missing {
+			.curated-bg-rect.is-missing {
 				background: var(--clr-mark-extra-soft-bg);
 				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
 			}
-			.truth-bg-rect.is-extra {
+			.curated-bg-rect.is-extra {
 				background: var(--clr-mark-extra-soft-bg);
 				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
 			}
-			.truth-bg-rect.is-ghost {
+			.curated-bg-rect.is-ghost {
 				background: var(--clr-mark-ghost-soft-bg);
 				box-shadow: 0 0 6px 2px var(--clr-mark-ghost-soft-bg);
 			}
 			.leo-mark.is-hover-transparent {
 				opacity: 0.7;
 			}
-			.truth-active-rect {
+			.curated-active-rect {
 				position: absolute;
 				background-color: var(--clr-highlight-active-bg);
 				border-radius: 2px;
 				box-sizing: border-box;
 			}
-			.truth-active-rect.is-red {
+			.curated-active-rect.is-red {
 				background-color: var(--clr-mark-missing-pair-bg);
 			}
-			.truth-active-rect.is-blue {
+			.curated-active-rect.is-blue {
 				background-color: var(--clr-mark-extra-pair-bg);
 			}
-			.truth-active-rect.is-gray {
+			.curated-active-rect.is-gray {
 				background-color: rgba(0, 0, 0, 0.1);
 			}
-			.truth-active-rect.is-dark-gray {
+			.curated-active-rect.is-dark-gray {
 				background-color: rgba(0, 0, 0, 0.42);
 			}
-			.truth-hover-rect {
+			.curated-hover-rect {
 				position: absolute;
 				background-color: rgba(0, 0, 0, 0.07);
 				border-radius: 2px;
 				box-sizing: border-box;
 				pointer-events: none;
 			}
-			.leo-mark.truth-sel-red {
+			.leo-mark.curated-sel-red {
 				background-color: var(--clr-mark-missing-pair-bg);
 				outline: 1px solid var(--clr-mark-missing);
 				border-radius: 2px;
 			}
-			.leo-mark.truth-sel-blue {
+			.leo-mark.curated-sel-blue {
 				background-color: var(--clr-mark-extra-pair-bg);
 				outline: 1px solid var(--clr-mark-extra);
 				border-radius: 2px;
 			}
 
-			#truth-pair-connector-svg {
+			#curated-pair-connector-svg {
 				position: fixed;
 				top: 0;
 				left: 0;
@@ -609,15 +609,15 @@
 				z-index: 9996;
 			}
 
-			.leo-mark.truth-pair-target {
+			.leo-mark.curated-pair-target {
 				text-decoration: underline dotted var(--clr-mark-missing);
 				text-underline-offset: 2px;
 			}
-			body.truth-pair-anchor-extra .leo-mark.truth-pair-target {
+			body.curated-pair-anchor-extra .leo-mark.curated-pair-target {
 				text-decoration-color: var(--clr-mark-extra);
 			}
 
-			#truth-pair-token-hover {
+			#curated-pair-token-hover {
 				position: fixed;
 				display: none;
 				pointer-events: none;
@@ -626,14 +626,14 @@
 				background-color: rgba(0, 0, 0, 0.07);
 				border-bottom: 2px dotted var(--clr-mark-missing);
 			}
-			body.truth-pair-anchor-extra #truth-pair-token-hover {
+			body.curated-pair-anchor-extra #curated-pair-token-hover {
 				border-bottom-color: var(--clr-mark-extra);
 			}
-			#truth-pair-token-hover.no-underline {
+			#curated-pair-token-hover.no-underline {
 				border-bottom: none;
 			}
 
-			#truth-pair-label {
+			#curated-pair-label {
 				position: fixed;
 				display: none;
 				pointer-events: none;
@@ -650,11 +650,11 @@
 				border-radius: 2px;
 				box-shadow: var(--shadow-soft);
 			}
-			#truth-pair-label.is-visible {
+			#curated-pair-label.is-visible {
 				display: block;
 			}
 
-			#truth-pair-arrow {
+			#curated-pair-arrow {
 				position: fixed;
 				display: none;
 				pointer-events: none;
@@ -666,47 +666,47 @@
 				transform: translateX(-50%);
 				text-shadow: 0 0 2px var(--clr-bg);
 			}
-			#truth-pair-arrow.is-visible {
+			#curated-pair-arrow.is-visible {
 				display: block;
 			}
-			body.truth-pair-anchor-extra #truth-pair-arrow {
+			body.curated-pair-anchor-extra #curated-pair-arrow {
 				color: var(--clr-mark-extra);
 			}
 
-			body.truth-pair-mode,
-			body.truth-pair-mode .code-pane,
-			body.truth-pair-mode .code-pane *,
-			body.truth-pair-mode .leo-mark,
-			body.truth-pair-mode .diff-line,
-			body.truth-pair-mode .diff-ghost {
+			body.curated-pair-mode,
+			body.curated-pair-mode .code-pane,
+			body.curated-pair-mode .code-pane *,
+			body.curated-pair-mode .leo-mark,
+			body.curated-pair-mode .diff-line,
+			body.curated-pair-mode .diff-ghost {
 				cursor: default !important;
 			}
-			body.truth-group-hover-active,
-			body.truth-group-hover-active .code-pane,
-			body.truth-group-hover-active .code-pane *,
-			body.truth-group-hover-active .leo-mark,
-			body.truth-group-hover-active .diff-line,
-			body.truth-token-hover-active,
-			body.truth-token-hover-active .code-pane,
-			body.truth-token-hover-active .code-pane *,
-			body.truth-token-hover-active .leo-mark,
-			body.truth-token-hover-active .diff-line {
+			body.curated-group-hover-active,
+			body.curated-group-hover-active .code-pane,
+			body.curated-group-hover-active .code-pane *,
+			body.curated-group-hover-active .leo-mark,
+			body.curated-group-hover-active .diff-line,
+			body.curated-token-hover-active,
+			body.curated-token-hover-active .code-pane,
+			body.curated-token-hover-active .code-pane *,
+			body.curated-token-hover-active .leo-mark,
+			body.curated-token-hover-active .diff-line {
 				cursor: pointer !important;
 			}
-			.btn-edit.truth-only-btn,
-			#btn-generate-truth {
+			.btn-edit.curated-only-btn,
+			#btn-generate-curated {
 				background: var(--clr-info-pill-bg);
 				border-color: var(--clr-info-pill-border);
 				color: var(--clr-info-pill-text);
 			}
-			.btn-edit.truth-only-btn:hover,
-			#btn-generate-truth:hover {
+			.btn-edit.curated-only-btn:hover,
+			#btn-generate-curated:hover {
 				background: var(--clr-info-pill-hover);
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
 
-			#truth-controls {
+			#curated-controls {
 				position: absolute;
 				display: none;
 				z-index: 9998;
@@ -717,13 +717,13 @@
 				box-shadow: var(--shadow-soft);
 				padding: 3px 4px;
 			}
-			#truth-controls .tc-row {
+			#curated-controls .tc-row {
 				display: flex;
 				gap: 6px;
 				align-items: center;
 				flex-wrap: wrap;
 			}
-			#truth-controls .tc-row button {
+			#curated-controls .tc-row button {
 				font-size: 11px;
 				padding: 3px 8px;
 				border: 1px solid var(--clr-diff-btn-border);
@@ -734,70 +734,70 @@
 				appearance: none;
 				-webkit-appearance: none;
 			}
-			#truth-controls .tc-row button:hover {
+			#curated-controls .tc-row button:hover {
 				background: var(--clr-accent-light);
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
-			#truth-controls .tc-row button.tc-btn-del {
+			#curated-controls .tc-row button.tc-btn-del {
 				background: var(--clr-danger-soft-bg);
 				border-color: var(--clr-danger-soft-border);
 				color: var(--clr-danger);
 			}
-			#truth-controls .tc-row button.tc-btn-del:hover {
+			#curated-controls .tc-row button.tc-btn-del:hover {
 				background: var(--clr-danger-hover-bg);
 				color: var(--clr-danger);
 			}
-			#truth-controls .tc-row button.tc-btn-missing {
+			#curated-controls .tc-row button.tc-btn-missing {
 				background: var(--clr-mark-missing);
 				color: var(--clr-bg);
 				border-color: var(--clr-danger-dark);
 				font-weight: 700;
 			}
-			#truth-controls .tc-row button.tc-btn-missing:hover {
+			#curated-controls .tc-row button.tc-btn-missing:hover {
 				background: var(--clr-danger);
 				color: var(--clr-bg);
 				border-color: var(--clr-danger-darker);
 			}
-			#truth-controls .tc-row button.tc-btn-extra {
+			#curated-controls .tc-row button.tc-btn-extra {
 				background: var(--clr-mark-extra);
 				color: var(--clr-bg);
 				border-color: var(--clr-extra-dark);
 				font-weight: 700;
 			}
-			#truth-controls .tc-row button.tc-btn-extra:hover {
+			#curated-controls .tc-row button.tc-btn-extra:hover {
 				background: var(--clr-extra-dark);
 				color: var(--clr-bg);
 				border-color: var(--clr-extra-darker);
 			}
-			#truth-controls .tc-row button.tc-btn-ghost {
+			#curated-controls .tc-row button.tc-btn-ghost {
 				background: var(--clr-mark-ghost);
 				color: var(--clr-bg);
 				border-color: var(--clr-ghost-dark);
 				font-weight: 700;
 			}
-			#truth-controls .tc-row button.tc-btn-ghost:hover {
+			#curated-controls .tc-row button.tc-btn-ghost:hover {
 				background: var(--clr-ghost-dark);
 				color: var(--clr-bg);
 				border-color: var(--clr-ghost-darker);
 			}
-			#truth-controls .tc-row button.tc-btn-comment {
+			#curated-controls .tc-row button.tc-btn-comment {
 				background: var(--clr-mark-comment);
 				color: var(--clr-bg);
 				border-color: var(--clr-mark-comment);
 				font-weight: 700;
 			}
-			#truth-controls .tc-row button.tc-btn-comment:hover {
+			#curated-controls .tc-row button.tc-btn-comment:hover {
 				background: var(--clr-mark-comment);
 				color: var(--clr-bg);
 				filter: brightness(0.85);
 			}
-			#truth-controls .tc-row button.tc-btn-pair.is-toggle-on {
+			#curated-controls .tc-row button.tc-btn-pair.is-toggle-on {
 				color: var(--clr-bg);
 				border-color: var(--clr-orange);
 				font-weight: 700;
 			}
-			#truth-controls .tc-tokens {
+			#curated-controls .tc-tokens {
 				font-size: 11px;
 				color: var(--clr-label);
 				margin-bottom: 6px;
@@ -805,22 +805,22 @@
 				background: var(--clr-surface);
 				border-radius: 3px;
 			}
-			#truth-controls .tc-tokens code {
+			#curated-controls .tc-tokens code {
 				color: var(--clr-gray);
 			}
 
-			.truth-float-win#truth-float-win {
+			.curated-float-win#curated-float-win {
 				z-index: 10000;
 				max-width: 90vw;
 				max-height: 90vh;
 				min-width: 360px;
 			}
-			.truth-float-win .tw-section-title {
+			.curated-float-win .tw-section-title {
 				font-weight: 700;
 				color: var(--clr-label);
 				margin: 6px 0 2px;
 			}
-			.truth-float-win .tw-pre {
+			.curated-float-win .tw-pre {
 				background: var(--clr-surface-soft);
 				border: 1px solid var(--clr-border-mid);
 				padding: 6px;
@@ -832,7 +832,7 @@
 				tab-size: 4;
 				-moz-tab-size: 4;
 			}
-			.truth-float-win .tw-summary-pre {
+			.curated-float-win .tw-summary-pre {
 				background: var(--clr-surface-soft);
 				border: 1px solid var(--clr-border-mid);
 				padding: 2px 6px;
@@ -844,13 +844,13 @@
 				tab-size: 4;
 				-moz-tab-size: 4;
 			}
-			.truth-float-win .tw-summary-chars {
+			.curated-float-win .tw-summary-chars {
 				color: var(--clr-text-dim);
 				font-weight: normal;
 				margin-left: 4px;
 				opacity: 0.7;
 			}
-			.truth-float-win .tw-summary-grid {
+			.curated-float-win .tw-summary-grid {
 				display: grid;
 				grid-template-columns:
 					max-content minmax(0, 1fr)
@@ -858,10 +858,10 @@
 				gap: 11px 12px;
 				align-items: start;
 			}
-			.truth-float-win .tw-summary-grid > * {
+			.curated-float-win .tw-summary-grid > * {
 				min-width: 0;
 			}
-			.truth-float-win .tw-summary-file-header {
+			.curated-float-win .tw-summary-file-header {
 				grid-column: 1 / -1;
 				font-weight: bold;
 				color: var(--clr-text);
@@ -869,23 +869,23 @@
 				padding: 6px 0 2px;
 				border-bottom: 1px solid var(--clr-border);
 			}
-			.truth-float-win .tw-summary-file-header:first-child {
+			.curated-float-win .tw-summary-file-header:first-child {
 				padding-top: 0;
 			}
-			.truth-float-win .tw-line {
+			.curated-float-win .tw-line {
 				display: flex;
 				align-items: flex-start;
 				line-height: 1;
 				margin-top: 5px;
 			}
-			.truth-float-win .tw-mid {
+			.curated-float-win .tw-mid {
 				display: flex;
 				flex-direction: column;
 				align-items: center;
 				line-height: 1;
 				margin-top: 5px;
 			}
-			.truth-float-win .tw-loc {
+			.curated-float-win .tw-loc {
 				font-size: 9px;
 				color: var(--clr-label);
 				white-space: nowrap;
@@ -893,7 +893,7 @@
 				margin-top: -3px;
 				margin-bottom: -4px;
 			}
-			.truth-float-win .tw-arrow {
+			.curated-float-win .tw-arrow {
 				font-size: 14px;
 				font-weight: bold;
 				color: var(--clr-text);
@@ -903,11 +903,11 @@
 				line-height: 1;
 				margin-top: -2px;
 			}
-			.truth-float-win .tw-summary-pre .tw-del {
+			.curated-float-win .tw-summary-pre .tw-del {
 				color: #c00000;
 				font-weight: bold;
 			}
-			.truth-float-win .tw-summary-pre .tw-del-ws {
+			.curated-float-win .tw-summary-pre .tw-del-ws {
 				display: inline-block;
 				min-width: 0.5em;
 				background-color: var(--clr-mark-extra-bg);
@@ -915,12 +915,12 @@
 				outline-offset: -1px;
 				border-radius: 2px;
 			}
-			.truth-float-win .tw-summary-pre .tw-ins {
+			.curated-float-win .tw-summary-pre .tw-ins {
 				color: #0066cc;
 				font-weight: bold;
 			}
 
-			.truth-float-win .tw-preview-split {
+			.curated-float-win .tw-preview-split {
 				display: flex;
 				gap: 8px;
 				min-width: 720px;
@@ -928,8 +928,8 @@
 				max-width: 1400px;
 				height: 80vh;
 			}
-			.truth-float-win .tw-preview-code,
-			.truth-float-win .tw-preview-render {
+			.curated-float-win .tw-preview-code,
+			.curated-float-win .tw-preview-render {
 				flex: 1 1 50%;
 				min-width: 0;
 				display: flex;
@@ -939,11 +939,11 @@
 				background: var(--clr-bg);
 				overflow: hidden;
 			}
-			.truth-float-win .tw-preview-code {
+			.curated-float-win .tw-preview-code {
 				overflow: hidden;
 				padding: 0;
 			}
-			.truth-float-win .tw-preview-tabs {
+			.curated-float-win .tw-preview-tabs {
 				display: flex;
 				background: var(--clr-toolbar);
 				border-bottom: 1px solid var(--clr-border);
@@ -951,16 +951,16 @@
 				scrollbar-width: none;
 				flex: 0 0 auto;
 			}
-			.truth-float-win .tw-preview-tabs::-webkit-scrollbar {
+			.curated-float-win .tw-preview-tabs::-webkit-scrollbar {
 				display: none;
 			}
-			.truth-float-win .tw-preview-panes {
+			.curated-float-win .tw-preview-panes {
 				flex: 1 1 auto;
 				overflow: auto;
 				padding: 4px 6px;
 				min-height: 0;
 			}
-			.truth-float-win .tw-preview-panes .tw-pre {
+			.curated-float-win .tw-preview-panes .tw-pre {
 				display: none;
 				margin: 0;
 				padding: 0;
@@ -968,10 +968,10 @@
 				background: transparent;
 				overflow: visible;
 			}
-			.truth-float-win .tw-preview-panes .tw-pre.active {
+			.curated-float-win .tw-preview-panes .tw-pre.active {
 				display: block;
 			}
-			.truth-float-win .tw-preview-iframe {
+			.curated-float-win .tw-preview-iframe {
 				flex: 1;
 				width: 100%;
 				border: none;
@@ -1008,6 +1008,36 @@
 					<div class="tab-bar" id="tabs-teacher"></div>
 				</div>
 				<div class="panel-header app-toolbar" id="header-student">
+					<button
+						id="nav-prev-student"
+						title="Previous student"
+						disabled
+						style="
+							padding: 0 6px;
+							border: 1px solid var(--clr-border-strong);
+							border-radius: 3px;
+							background: var(--clr-bg);
+							cursor: pointer;
+							font-size: 12px;
+						"
+					>
+						←
+					</button>
+					<button
+						id="nav-next-student"
+						title="Next student"
+						disabled
+						style="
+							padding: 0 6px;
+							border: 1px solid var(--clr-border-strong);
+							border-radius: 3px;
+							background: var(--clr-bg);
+							cursor: pointer;
+							font-size: 12px;
+						"
+					>
+						→
+					</button>
 					<span id="title-student">Student</span>
 					<div class="tab-bar" id="tabs-student"></div>
 				</div>
@@ -1036,7 +1066,7 @@
 						<iframe
 							class="preview-frame"
 							id="preview-teacher"
-							sandbox="allow-scripts allow-same-origin"
+							sandbox="allow-scripts allow-same-origin allow-modals"
 						></iframe>
 					</div>
 				</div>
@@ -1065,7 +1095,7 @@
 						<iframe
 							class="preview-frame"
 							id="preview-student"
-							sandbox="allow-scripts allow-same-origin"
+							sandbox="allow-scripts allow-same-origin allow-modals"
 						></iframe>
 					</div>
 				</div>
@@ -1078,14 +1108,14 @@
 		<script src="differentiator.js"></script>
 		<script src="differentiator-render.js"></script>
 		<script src="differentiator-leo.js"></script>
-		<script src="differentiator-truth.js"></script>
-		<script src="differentiator-truth-input.js"></script>
-		<script src="differentiator-truth-model.js"></script>
-		<script src="differentiator-truth-overlays.js"></script>
-		<script src="differentiator-truth-overlays-hover.js"></script>
-		<script src="differentiator-truth-overlays-connectors.js"></script>
-		<script src="differentiator-truth-pair.js"></script>
-		<script src="differentiator-truth-controls.js"></script>
-		<script src="differentiator-truth-io.js"></script>
+		<script src="differentiator-curated.js"></script>
+		<script src="differentiator-curated-input.js"></script>
+		<script src="differentiator-curated-model.js"></script>
+		<script src="differentiator-curated-overlays.js"></script>
+		<script src="differentiator-curated-overlays-hover.js"></script>
+		<script src="differentiator-curated-overlays-connectors.js"></script>
+		<script src="differentiator-curated-pair.js"></script>
+		<script src="differentiator-curated-controls.js"></script>
+		<script src="differentiator-curated-io.js"></script>
 	</body>
 </html>

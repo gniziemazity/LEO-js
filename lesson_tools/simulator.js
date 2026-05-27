@@ -38,6 +38,56 @@ async function _simReadStudentNameMap(pathMap) {
 	}
 }
 
+async function _simLoadFromFileMap(pathMap, lessonName, loadFromData) {
+	const rootJsonFiles = [...pathMap.entries()]
+		.filter(([p, f]) => {
+			if (p.includes("/")) return false;
+			if (!f.name.toLowerCase().endsWith(".json")) return false;
+			if (_SIM_LOG_SKIP.has(f.name.toLowerCase())) return false;
+			return true;
+		})
+		.map(([, f]) => f);
+	if (!rootJsonFiles.length) return false;
+	const candidates = rootJsonFiles.sort(
+		(a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name),
+	);
+	for (const file of candidates) {
+		try {
+			const text =
+				typeof file.text === "function"
+					? await file.text()
+					: await readFileText(file);
+			const data = JSON.parse(text);
+			const events = data?.events || data?.keyPresses || [];
+			if (!Array.isArray(events) || !events.length) continue;
+			const imageUris = await _simReadImageUris(pathMap);
+			const studentNameMap = await _simReadStudentNameMap(pathMap);
+			const micro = expandEvents(events);
+			loadFromData({
+				filePath: file.name,
+				micro,
+				error: null,
+				imageUris,
+				lessonFile: data?.lessonFile || null,
+				lessonName,
+				interactions: events.filter((e) => e.interaction),
+				studentNameMap,
+			});
+			return true;
+		} catch {}
+	}
+	return false;
+}
+
+async function _trySimAutoloadFromUrlParams(loadFromData) {
+	const { lesson, group } = parseToolParams();
+	if (!lesson) return false;
+	const ds = await loadLessonDataSource({ lesson, group });
+	if (!ds) return false;
+	await ds.load();
+	return _simLoadFromFileMap(ds.files, ds.rootName || lesson, loadFromData);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
 	try {
 		await window.LanguageProfiles.initProfiles();
@@ -60,7 +110,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	const isReload =
 		performance.getEntriesByType("navigation")[0]?.type === "reload";
+
+	let urlAutoloaded = false;
 	if (!isReload) {
+		try {
+			urlAutoloaded = await _trySimAutoloadFromUrlParams(loadFromData);
+		} catch (e) {
+			console.warn("[Simulator] URL-param autoload failed:", e);
+		}
+	}
+
+	if (!isReload && !urlAutoloaded) {
 		try {
 			const logData = window.__LOG_DATA__;
 			const logTs = logData?.loadedAt || 0;
@@ -105,51 +165,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const files = [];
 			const pathMap = new Map();
 			await readDirHandle(dirHandle, "", pathMap, files);
-
-			const isRootLevel = (f) => {
-				for (const [p, fp] of pathMap.entries()) {
-					if (fp === f) return !p.includes("/");
-				}
-				return true;
-			};
-			const jsonFiles = files.filter(
-				(f) =>
-					f.name.toLowerCase().endsWith(".json") &&
-					!_SIM_LOG_SKIP.has(f.name.toLowerCase()) &&
-					isRootLevel(f),
+			const loaded = await _simLoadFromFileMap(
+				pathMap,
+				dirHandle.name,
+				loadFromData,
 			);
-			if (!jsonFiles.length) {
-				alert("No JSON log file found in this folder.");
-				return;
-			}
-
-			const candidates = [...jsonFiles].sort(
-				(a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name),
-			);
-			let loaded = false;
-			for (const file of candidates) {
-				try {
-					const data = JSON.parse(await file.text());
-					const events = data?.events || data?.keyPresses || [];
-					if (Array.isArray(events) && events.length) {
-						const imageUris = await _simReadImageUris(pathMap);
-						const studentNameMap = await _simReadStudentNameMap(pathMap);
-						const micro = expandEvents(events);
-						loadFromData({
-							filePath: file.name,
-							micro,
-							error: null,
-							imageUris,
-							lessonFile: data?.lessonFile || null,
-							lessonName: dirHandle.name,
-							interactions: events.filter((e) => e.interaction),
-							studentNameMap,
-						});
-						loaded = true;
-						break;
-					}
-				} catch {}
-			}
 			if (!loaded) alert("No JSON log file with events found.");
 		} catch (e) {
 			if (e.name !== "AbortError")

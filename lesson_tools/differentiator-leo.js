@@ -450,7 +450,7 @@ function _renderSimpleTooltip(token, mark) {
 }
 
 function _showLeoTooltip(target) {
-	if (typeof _truthHideControls === "function") _truthHideControls();
+	if (typeof _curatedHideControls === "function") _curatedHideControls();
 	const token = target.getAttribute("data-leo-token");
 	const side = target.getAttribute("data-leo-side");
 	const pos = parseInt(target.getAttribute("data-leo-pos"), 10);
@@ -519,8 +519,8 @@ function _clearLeoHighlights() {
 			"leo-highlight-active",
 			"leo-highlight-pair-extra",
 			"leo-highlight-pair-missing",
-			"truth-sel-red",
-			"truth-sel-blue",
+			"curated-sel-red",
+			"curated-sel-blue",
 		);
 	}
 	_leoHighlighted = [];

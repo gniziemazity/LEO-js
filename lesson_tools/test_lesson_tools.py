@@ -32,7 +32,7 @@ from utils.token_log import (
     _strip_internal_fields,
     _structural_diff_summary,
     _structural_form,
-    _validate_truth_schema,
+    _validate_curated_schema,
 )
 
 
@@ -816,7 +816,7 @@ def _align_whitespace(
     return body, a_start, a_end
 
 
-def _truth_apply_to_student_text(
+def _curated_apply_to_student_text(
     diff_marks: dict, t_text: str, s_text: str,
     t_fname: str, s_fname: str,
 ) -> str:
@@ -1044,7 +1044,7 @@ class TestCorrection(unittest.TestCase):
                     encoding='utf-8', errors='ignore',
                 ).replace('\r\n', '\n')
                 t_ext = Path(t_name).suffix.lower()
-                spliced = _truth_apply_to_student_text(
+                spliced = _curated_apply_to_student_text(
                     diff_marks, t_text, s_text, t_name, s_path.name,
                 )
                 expected = _expected_teacher_tokens(
@@ -1167,7 +1167,7 @@ class TestCuratedSanity(unittest.TestCase):
             with self.subTest(project=project_dir.name,
                               student=student_dir.name,
                               pair=f'{t_name}->{s_name}'):
-                spliced = _truth_apply_to_student_text(
+                spliced = _curated_apply_to_student_text(
                     ideal, t_text, s_text, t_name, s_name,
                 )
                 ext = Path(t_name).suffix.lower()
@@ -1190,7 +1190,7 @@ class TestCuratedSanity(unittest.TestCase):
             self.skipTest('project has no code files')
         student_files = _project_code_files(student_dir)
         marks = _load_json(marks_path)
-        errors = _validate_truth_schema(marks, teacher_files, student_files)
+        errors = _validate_curated_schema(marks, teacher_files, student_files)
         with self.subTest(project=project_dir.name,
                           student=student_dir.name,
                           mode=mode):

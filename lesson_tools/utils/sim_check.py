@@ -32,6 +32,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         self.student_info: Dict[str, dict] = {}
         self.name_to_id:   Dict[str, str]  = {}
         self.excluded_ids: Set[str]        = set()
+        self.ai_ids:       Set[str]        = set()
 
         self.results:                     Dict[str, dict]              = {}
         self.student_simple_extra_by_ext: Dict[str, Dict[str, Counter]] = {}
@@ -79,13 +80,18 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 self.name_to_id[display_name] = sid
             self._real_to_display[real_name] = display_name
             include_raw = row.get('Include')
-            if include_raw is not None and include_raw.strip().upper() != 'OK':
-                self.excluded_ids.add(sid)
+            if include_raw is not None:
+                inc = include_raw.strip().upper()
+                if inc not in ('OK', 'AI'):
+                    self.excluded_ids.add(sid)
+                if inc == 'AI':
+                    self.ai_ids.add(sid)
 
         def _reset():
             self.student_info.clear()
             self.name_to_id.clear()
             self.excluded_ids.clear()
+            self.ai_ids.clear()
             self._real_to_display.clear()
 
         open_csv_encoded(

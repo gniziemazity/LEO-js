@@ -6,7 +6,6 @@ let _hasInteractions = false;
 let _followLabel = "FOLLOW";
 let _allFiles = new Map();
 let _dirHandle = null;
-let _dataSource = null;
 let _isReadOnly = false;
 let _lessonName = null;
 let _lessonGroup = null;

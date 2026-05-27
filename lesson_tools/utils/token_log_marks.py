@@ -416,8 +416,8 @@ def _structural_diff_summary(actual_form, expected_form):
     return 'unknown divergence'
 
 
-def _validate_truth_schema(
-    truth: dict,
+def _validate_curated_schema(
+    curated: dict,
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
 ) -> List[str]:
@@ -471,9 +471,9 @@ def _validate_truth_schema(
             return False
         return True
 
-    teacher_marks_by_file = truth.get('teacher_files', {}) or {}
-    student_marks_by_file = truth.get('student_files', {}) or {}
-    missing_files_raw = truth.get('missing_files', []) or []
+    teacher_marks_by_file = curated.get('teacher_files', {}) or {}
+    student_marks_by_file = curated.get('student_files', {}) or {}
+    missing_files_raw = curated.get('missing_files', []) or []
     if not isinstance(missing_files_raw, list):
         errors.append(f'missing_files must be a list, got {type(missing_files_raw).__name__}')
         missing_files_raw = []

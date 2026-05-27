@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Course</title>
+		<link rel="stylesheet" href="shared.css" />
+		<style>
+			body {
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				overflow: hidden;
+				background: var(--clr-page);
+			}
+
+			#toolbar {
+				flex-wrap: wrap;
+				row-gap: 4px;
+			}
+
+			#topic-select {
+				font-size: 12px;
+				font-family: inherit;
+				padding: 2px 6px;
+				border: 1px solid var(--clr-border-strong);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				color: var(--clr-text);
+				min-width: 140px;
+			}
+
+			#toolbar button {
+				padding: 2px 10px;
+				border: 1px solid var(--clr-border-strong);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				color: var(--clr-label);
+				cursor: pointer;
+				font-size: 11px;
+				font-family: inherit;
+				transition: 0.12s;
+				text-transform: capitalize;
+			}
+
+			#toolbar button.active {
+				background: var(--clr-accent);
+				color: var(--clr-bg);
+				border-color: var(--clr-accent);
+			}
+
+			#toolbar button:hover:not(.active):not(:disabled) {
+				background: var(--clr-accent-light);
+				border-color: var(--clr-accent);
+				color: var(--clr-accent);
+			}
+
+			#toolbar button:disabled {
+				opacity: 0.4;
+				cursor: default;
+			}
+
+			#main {
+				display: flex;
+				flex: 1;
+				min-height: 0;
+				overflow: hidden;
+				background: var(--clr-bg);
+			}
+
+			#lesson-frame {
+				flex: 1;
+				border: none;
+				width: 100%;
+				height: 100%;
+				display: none;
+			}
+
+			#viewer-root {
+				display: none;
+			}
+
+			#no-selection {
+				flex: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--clr-muted);
+				font-size: 14px;
+			}
+
+			#mode-toggle,
+			#view-toggle {
+				display: flex;
+				gap: 2px;
+			}
+
+			.mode-group {
+				display: flex;
+				gap: 4px;
+				align-items: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="toolbar" class="app-toolbar">
+			<label
+				style="
+					font-size: 11px;
+					color: var(--clr-label);
+					display: flex;
+					gap: 6px;
+					align-items: center;
+				"
+				>Topic:
+				<select id="topic-select"></select>
+			</label>
+			<div class="sep"></div>
+			<div id="mode-toggle">
+				<button id="btn-mode-lesson" class="active">Lesson</button>
+				<button id="btn-mode-assignment">Assignment</button>
+			</div>
+			<div class="sep"></div>
+
+			<div id="lesson-controls" class="mode-group">
+				<button id="timeline-btn" disabled>Open Timeline</button>
+				<button id="students-btn-lesson" disabled>Show Students</button>
+				<button id="download-plans-btn">Download Plans</button>
+			</div>
+
+			<div id="assignment-controls" class="mode-group" style="display: none">
+				<div id="view-toggle">
+					<button id="btn-instructions" class="active">
+						Instructions
+					</button>
+					<button id="btn-start">Starting Code</button>
+				</div>
+				<div class="sep"></div>
+				<button id="submissions-btn" disabled>Show Submissions</button>
+			</div>
+		</div>
+
+		<div id="main">
+			<iframe id="lesson-frame"></iframe>
+			<div id="viewer-root"></div>
+			<div id="no-selection">Select a topic</div>
+		</div>
+
+		<script src="preview.js"></script>
+		<script src="diff-utils.js"></script>
+		<script src="languages/profiles.js"></script>
+		<script src="simulator-highlight.js"></script>
+		<script src="file-viewer.js"></script>
+		<script src="assignment-loader.js"></script>
+		<script src="course.js"></script>
+	</body>
+</html>

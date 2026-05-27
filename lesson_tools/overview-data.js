@@ -395,7 +395,10 @@ function parseStudent(r) {
 		id: str(COL.id),
 		name: str(COL.name),
 		number: str(COL.number),
-		excluded: str(COL.excluded).toUpperCase() === "EXCLUDED",
+		excluded:
+			str(COL.excluded).toUpperCase() === "EXCLUDED" ||
+			str(COL.excluded).toUpperCase() === "AI",
+		ai_flagged: str(COL.excluded).toUpperCase() === "AI",
 		pre_typing: num(COL.pre_typing),
 		self_eval: num(COL.self_eval),
 		quiz_stii: num(COL.quiz_stii),

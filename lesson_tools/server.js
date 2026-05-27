@@ -140,30 +140,30 @@ http
 			res.end();
 			return;
 		}
+
+		let fstat;
+		try {
+			fstat = fs.statSync(filePath);
+		} catch {}
+		if (fstat?.isDirectory()) {
+			const entries = fs.readdirSync(filePath, { withFileTypes: true });
+			res.writeHead(200, {
+				"Content-Type": "application/json",
+				"Cache-Control": "no-cache",
+			});
+			res.end(
+				JSON.stringify(
+					entries.map((e) => ({
+						name: e.name,
+						kind: e.isDirectory() ? "directory" : "file",
+					})),
+				),
+			);
+			return;
+		}
+
 		fs.readFile(filePath, (err, data) => {
 			if (err) {
-				let dstat;
-				try {
-					dstat = fs.statSync(filePath);
-				} catch {}
-				if (dstat?.isDirectory()) {
-					const entries = fs.readdirSync(filePath, {
-						withFileTypes: true,
-					});
-					res.writeHead(200, {
-						"Content-Type": "application/json",
-						"Cache-Control": "no-cache",
-					});
-					res.end(
-						JSON.stringify(
-							entries.map((e) => ({
-								name: e.name,
-								kind: e.isDirectory() ? "directory" : "file",
-							})),
-						),
-					);
-					return;
-				}
 				res.writeHead(404);
 				res.end();
 				return;

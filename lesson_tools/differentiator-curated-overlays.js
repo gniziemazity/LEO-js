@@ -1,23 +1,23 @@
 "use strict";
 
-function _truthEnsurePaneOverlays(pane) {
+function _curatedEnsurePaneOverlays(pane) {
 	if (!pane) return null;
-	let bg = pane.querySelector(":scope > .truth-bg-layer");
+	let bg = pane.querySelector(":scope > .curated-bg-layer");
 	if (!bg) {
 		bg = document.createElement("div");
-		bg.className = "truth-bg-layer";
+		bg.className = "curated-bg-layer";
 		pane.insertBefore(bg, pane.firstChild);
 	}
-	let fg = pane.querySelector(":scope > .truth-fg-layer");
+	let fg = pane.querySelector(":scope > .curated-fg-layer");
 	if (!fg) {
 		fg = document.createElement("div");
-		fg.className = "truth-fg-layer";
+		fg.className = "curated-fg-layer";
 		pane.appendChild(fg);
 	}
 	return { bg, fg };
 }
 
-function _truthGroupHasBox(kind) {
+function _curatedGroupHasBox(kind) {
 	if (!kind) return false;
 	if (kind.indexOf("missing") === 0) return true;
 	if (kind === "extra" || kind === "extra-replace" || kind === "extra-move")
@@ -26,14 +26,14 @@ function _truthGroupHasBox(kind) {
 	return false;
 }
 
-function _truthBgRectKindClass(kind) {
+function _curatedBgRectKindClass(kind) {
 	if (!kind) return "";
 	if (kind.indexOf("missing") === 0) return "is-missing";
 	if (kind === "ghost_extra") return "is-ghost";
 	return "is-extra";
 }
 
-function _truthBounds() {
+function _curatedBounds() {
 	return {
 		left: Infinity,
 		right: -Infinity,
@@ -42,22 +42,22 @@ function _truthBounds() {
 	};
 }
 
-function _truthExpand(bounds, r) {
+function _curatedExpand(bounds, r) {
 	if (r.left < bounds.left) bounds.left = r.left;
 	if (r.right > bounds.right) bounds.right = r.right;
 	if (r.top < bounds.top) bounds.top = r.top;
 	if (r.bottom > bounds.bottom) bounds.bottom = r.bottom;
 }
 
-function _truthScanMarks(pane, side, positions, lineSet) {
-	const bounds = _truthBounds();
+function _curatedScanMarks(pane, side, positions, lineSet) {
+	const bounds = _curatedBounds();
 	const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
 	for (const el of pane.querySelectorAll(sel)) {
 		const p = parseInt(el.getAttribute("data-leo-pos"), 10);
 		if (!positions.has(p)) continue;
 		const r = el.getBoundingClientRect();
 		if (r.width === 0 && r.height === 0) continue;
-		_truthExpand(bounds, r);
+		_curatedExpand(bounds, r);
 		if (lineSet) {
 			const lineEl = el.closest(".diff-line");
 			if (lineEl) lineSet.add(lineEl);
@@ -66,7 +66,7 @@ function _truthScanMarks(pane, side, positions, lineSet) {
 	return bounds;
 }
 
-function _truthPaneRect(bounds, pane, pad) {
+function _curatedPaneRect(bounds, pane, pad) {
 	if (!Number.isFinite(bounds.left)) return null;
 	const paneRect = pane.getBoundingClientRect();
 	return {
@@ -78,7 +78,7 @@ function _truthPaneRect(bounds, pane, pad) {
 	};
 }
 
-function _truthSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
+function _curatedSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
 	const wrap = document.getElementById(`code-${side}`);
 	if (!wrap) return null;
 	let pane = null;
@@ -89,22 +89,22 @@ function _truthSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
 		}
 	}
 	if (!pane) return null;
-	let bounds = _truthBounds();
+	let bounds = _curatedBounds();
 	if (marks && marks.length) {
 		const positions = new Set(marks.map((m) => m.start));
-		bounds = _truthScanMarks(pane, side, positions, null);
+		bounds = _curatedScanMarks(pane, side, positions, null);
 	}
 	if (!Number.isFinite(bounds.left) && tokens) {
 		for (const t of tokens) {
-			const bbox = _truthTokenBbox(side, file, t);
+			const bbox = _curatedTokenBbox(side, file, t);
 			if (!bbox) continue;
-			_truthExpand(bounds, bbox);
+			_curatedExpand(bounds, bbox);
 		}
 	}
-	return _truthPaneRect(bounds, pane, pad);
+	return _curatedPaneRect(bounds, pane, pad);
 }
 
-function _truthCollectGroupRect(group, pad = 6) {
+function _curatedCollectGroupRect(group, pad = 6) {
 	const wrap = document.getElementById(`code-${group.side}`);
 	if (!wrap) return null;
 	let pane = null;
@@ -119,30 +119,30 @@ function _truthCollectGroupRect(group, pad = 6) {
 	for (const m of group.marks || []) positions.add(m.start);
 	if (!positions.size) return null;
 	const lineSet = new Set();
-	const bounds = _truthScanMarks(pane, group.side, positions, lineSet);
-	const rect = _truthPaneRect(bounds, pane, pad);
+	const bounds = _curatedScanMarks(pane, group.side, positions, lineSet);
+	const rect = _curatedPaneRect(bounds, pane, pad);
 	if (!rect) return null;
 	rect.lineCount = lineSet.size;
 	return rect;
 }
 
-function _truthRefreshGhostPairs() {
+function _curatedRefreshGhostPairs() {
 	const wrapTeacher = document.getElementById("code-teacher");
 	const wrapStudent = document.getElementById("code-student");
 	if (wrapTeacher) {
-		for (const el of wrapTeacher.querySelectorAll(".truth-ghost-paired")) {
-			el.classList.remove("truth-ghost-paired");
+		for (const el of wrapTeacher.querySelectorAll(".curated-ghost-paired")) {
+			el.classList.remove("curated-ghost-paired");
 		}
 	}
 	if (wrapStudent) {
 		for (const el of wrapStudent.querySelectorAll(
-			".truth-paired-ghost-extra",
+			".curated-paired-ghost-extra",
 		)) {
-			el.classList.remove("truth-paired-ghost-extra");
+			el.classList.remove("curated-paired-ghost-extra");
 		}
 	}
 	const t =
-		(typeof _truthMarks === "function" ? _truthMarks() : null) ||
+		(typeof _curatedMarks === "function" ? _curatedMarks() : null) ||
 		_currentMarksEntry ||
 		null;
 	if (!t) return;
@@ -167,19 +167,24 @@ function _truthRefreshGhostPairs() {
 						blobPos + offset === pw.start &&
 						el.dataset.leoToken === pw.token
 					) {
-						el.classList.add("truth-ghost-paired");
+						el.classList.add("curated-ghost-paired");
 					}
 				}
 			}
 			if (wrapStudent) {
-				const studentEl = _truthFindLeoMarkEl("student", m.start, m.token);
-				if (studentEl) studentEl.classList.add("truth-paired-ghost-extra");
+				const studentEl = _curatedFindLeoMarkEl(
+					"student",
+					m.start,
+					m.token,
+				);
+				if (studentEl)
+					studentEl.classList.add("curated-paired-ghost-extra");
 			}
 		}
 	}
 }
 
-function _truthGroupTitleText(kind, count) {
+function _curatedGroupTitleText(kind, count) {
 	let label;
 	if (kind === "missing" || kind === "missing-insert") label = "missing";
 	else if (kind === "ghost_extra") label = "ghost";
@@ -188,104 +193,104 @@ function _truthGroupTitleText(kind, count) {
 	return `${count} ${label} ${noun}`;
 }
 
-function _truthApplyGroupCountTitles(group, marks) {
-	const title = _truthGroupTitleText(group.kind, marks.length);
+function _curatedApplyGroupCountTitles(group, marks) {
+	const title = _curatedGroupTitleText(group.kind, marks.length);
 	for (const mark of marks) {
-		const el = _truthFindLeoMarkEl(group.side, mark.start, mark.token);
+		const el = _curatedFindLeoMarkEl(group.side, mark.start, mark.token);
 		if (el) el.setAttribute("title", title);
 	}
 }
 
-function _truthRefreshOverlays() {
+function _curatedRefreshOverlays() {
 	const wrapTeacher = document.getElementById("code-teacher");
 	const wrapStudent = document.getElementById("code-student");
 	for (const wrap of [wrapTeacher, wrapStudent]) {
 		if (!wrap) continue;
 		for (const pane of wrap.querySelectorAll(".code-pane")) {
-			const layers = _truthEnsurePaneOverlays(pane);
+			const layers = _curatedEnsurePaneOverlays(pane);
 			if (layers) layers.bg.innerHTML = "";
 		}
 	}
-	const groups = _truthGroupMarks();
+	const groups = _curatedGroupMarks();
 	for (const g of groups) {
-		if (!_truthGroupHasBox(g.kind)) continue;
-		const marks = _truthFindMarks(g.side, g.file, g.lo, g.hi);
+		if (!_curatedGroupHasBox(g.kind)) continue;
+		const marks = _curatedFindMarks(g.side, g.file, g.lo, g.hi);
 		if (marks.length <= 1) continue;
-		const r = _truthCollectGroupRect(g);
+		const r = _curatedCollectGroupRect(g);
 		if (!r) continue;
-		const layers = _truthEnsurePaneOverlays(r.pane);
+		const layers = _curatedEnsurePaneOverlays(r.pane);
 		if (!layers) continue;
 		const div = document.createElement("div");
-		div.className = `truth-bg-rect ${_truthBgRectKindClass(g.kind)}`;
+		div.className = `curated-bg-rect ${_curatedBgRectKindClass(g.kind)}`;
 		div.dataset.groupKey = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
 		div.style.left = `${r.left}px`;
 		div.style.top = `${r.top}px`;
 		div.style.width = `${r.width}px`;
 		div.style.height = `${r.height}px`;
 		layers.bg.appendChild(div);
-		_truthApplyGroupCountTitles(g, marks);
+		_curatedApplyGroupCountTitles(g, marks);
 	}
-	_truthRebuildGroupRectCache();
-	if (_truthActiveGroupRange) {
-		_truthActiveGroupRange.marks = _truthFindMarks(
-			_truthActiveGroupRange.side,
-			_truthActiveGroupRange.file,
-			_truthActiveGroupRange.lo,
-			_truthActiveGroupRange.hi,
+	_curatedRebuildGroupRectCache();
+	if (_curatedActiveGroupRange) {
+		_curatedActiveGroupRange.marks = _curatedFindMarks(
+			_curatedActiveGroupRange.side,
+			_curatedActiveGroupRange.file,
+			_curatedActiveGroupRange.lo,
+			_curatedActiveGroupRange.hi,
 		);
 	}
-	_truthRefreshHoverBorder();
-	_truthRefreshActiveOverlay();
-	_truthRefreshConnectorsForCurrent();
-	_truthRefreshGhostPairs();
+	_curatedRefreshHoverBorder();
+	_curatedRefreshActiveOverlay();
+	_curatedRefreshConnectorsForCurrent();
+	_curatedRefreshGhostPairs();
 }
 
-function _truthRefreshConnectorsForCurrent() {
-	_truthPairConnectorItems = [];
+function _curatedRefreshConnectorsForCurrent() {
+	_curatedPairConnectorItems = [];
 	const seenPairs = new Set();
 	const seenGroups = new Set();
-	_truthCollectAlwaysOnConnectors(_truthPairConnectorItems, seenGroups);
-	if (_truthSelectionRange) {
-		_truthCollectConnectorsForRange(
-			_truthSelectionRange,
-			_truthPairConnectorItems,
+	_curatedCollectAlwaysOnConnectors(_curatedPairConnectorItems, seenGroups);
+	if (_curatedSelectionRange) {
+		_curatedCollectConnectorsForRange(
+			_curatedSelectionRange,
+			_curatedPairConnectorItems,
 			seenPairs,
 			seenGroups,
 		);
 	}
-	if (_truthHoverGroupRange) {
-		_truthCollectConnectorsForRange(
-			_truthHoverGroupRange,
-			_truthPairConnectorItems,
+	if (_curatedHoverGroupRange) {
+		_curatedCollectConnectorsForRange(
+			_curatedHoverGroupRange,
+			_curatedPairConnectorItems,
 			seenPairs,
 			seenGroups,
 		);
 	}
-	if (_truthActiveGhost) {
-		const partner = _truthFindGhostPartner(_truthActiveGhost);
+	if (_curatedActiveGhost) {
+		const partner = _curatedFindGhostPartner(_curatedActiveGhost);
 		if (partner) {
-			const key = `ghost|${_truthActiveGhost.file}|${_truthActiveGhost.start}|${_truthActiveGhost.token}|${partner.file}|${partner.mark.start}`;
+			const key = `ghost|${_curatedActiveGhost.file}|${_curatedActiveGhost.start}|${_curatedActiveGhost.token}|${partner.file}|${partner.mark.start}`;
 			if (!seenPairs.has(key)) {
 				seenPairs.add(key);
-				_truthPairConnectorItems.push({
+				_curatedPairConnectorItems.push({
 					kind: "ghost-pair",
 					studentMark: partner.mark,
 					studentFile: partner.file,
 					ghost: {
-						file: _truthActiveGhost.file,
-						start: _truthActiveGhost.start,
-						end: _truthActiveGhost.end,
-						token: _truthActiveGhost.token,
+						file: _curatedActiveGhost.file,
+						start: _curatedActiveGhost.start,
+						end: _curatedActiveGhost.end,
+						token: _curatedActiveGhost.token,
 					},
 				});
 			}
 		}
 	}
-	_truthRefreshPairConnectors();
+	_curatedRefreshPairConnectors();
 }
 
-function _truthCollectAlwaysOnConnectors(items, seenGroups) {
-	for (const g of _truthGroupMarks()) {
+function _curatedCollectAlwaysOnConnectors(items, seenGroups) {
+	for (const g of _curatedGroupMarks()) {
 		if (g.side === "teacher" && g.kind === "missing") {
 			const key = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
 			if (seenGroups.has(key)) continue;
@@ -295,26 +300,26 @@ function _truthCollectAlwaysOnConnectors(items, seenGroups) {
 	}
 }
 
-let _truthHoverGroupKey = null;
-let _truthHoverGroupRange = null;
+let _curatedHoverGroupKey = null;
+let _curatedHoverGroupRange = null;
 
-function _truthClearGroupHover() {
-	_truthHoverGroupKey = null;
-	_truthHoverGroupRange = null;
-	document.body.classList.remove("truth-group-hover-active");
-	_truthRefreshHoverBorder();
-	_truthRefreshConnectorsForCurrent();
-	if (typeof _truthClearGhostHover === "function") _truthClearGhostHover();
+function _curatedClearGroupHover() {
+	_curatedHoverGroupKey = null;
+	_curatedHoverGroupRange = null;
+	document.body.classList.remove("curated-group-hover-active");
+	_curatedRefreshHoverBorder();
+	_curatedRefreshConnectorsForCurrent();
+	if (typeof _curatedClearGhostHover === "function") _curatedClearGhostHover();
 }
 
-function _truthRefreshHoverBorder() {
+function _curatedRefreshHoverBorder() {
 	for (const el of document.querySelectorAll(
 		".leo-mark.is-hover-transparent",
 	)) {
 		el.classList.remove("is-hover-transparent");
 	}
-	if (!_truthHoverGroupRange) return;
-	const { side, file, lo, hi } = _truthHoverGroupRange;
+	if (!_curatedHoverGroupRange) return;
+	const { side, file, lo, hi } = _curatedHoverGroupRange;
 	const wrap = document.getElementById(`code-${side}`);
 	if (!wrap) return;
 	let pane = null;
@@ -333,11 +338,11 @@ function _truthRefreshHoverBorder() {
 	}
 }
 
-let _truthActiveGroupRange = null;
-let _truthActiveGhost = null;
-let _truthSelectionRange = null;
+let _curatedActiveGroupRange = null;
+let _curatedActiveGhost = null;
+let _curatedSelectionRange = null;
 
-function _truthActiveRectBg(marks) {
+function _curatedActiveRectBg(marks) {
 	if (!marks || !marks.length) return "rgba(0, 0, 0, 0.1)";
 	const allMissing = marks.every((m) => m.label === "missing");
 	const allExtra = marks.every((m) => m.label === "extra");
@@ -366,21 +371,27 @@ function _truthActiveRectBg(marks) {
 	return null;
 }
 
-function _truthDrawActiveRect(range) {
+function _curatedDrawActiveRect(range) {
 	const tokens =
 		!range.marks || !range.marks.length
-			? _truthTokensInRange(range.side, range.file, range.lo, range.hi)
+			? _curatedTokensInRange(range.side, range.file, range.lo, range.hi)
 			: null;
 	const r =
 		range.marks && range.marks.length
-			? _truthCollectGroupRect(range, 0)
-			: _truthSelectionBoundingRect(range.side, range.file, tokens, null, 0);
+			? _curatedCollectGroupRect(range, 0)
+			: _curatedSelectionBoundingRect(
+					range.side,
+					range.file,
+					tokens,
+					null,
+					0,
+				);
 	if (!r) return;
-	const layers = _truthEnsurePaneOverlays(r.pane);
+	const layers = _curatedEnsurePaneOverlays(r.pane);
 	if (!layers) return;
 	const div = document.createElement("div");
-	div.className = "truth-active-rect";
-	const bg = _truthActiveRectBg(range.marks);
+	div.className = "curated-active-rect";
+	const bg = _curatedActiveRectBg(range.marks);
 	if (bg) div.style.backgroundColor = bg;
 	div.style.left = `${r.left}px`;
 	div.style.top = `${r.top}px`;
@@ -389,17 +400,17 @@ function _truthDrawActiveRect(range) {
 	layers.bg.appendChild(div);
 }
 
-function _truthRefreshActiveOverlay() {
-	for (const layer of document.querySelectorAll(".truth-bg-layer")) {
-		for (const el of layer.querySelectorAll(".truth-active-rect")) {
+function _curatedRefreshActiveOverlay() {
+	for (const layer of document.querySelectorAll(".curated-bg-layer")) {
+		for (const el of layer.querySelectorAll(".curated-active-rect")) {
 			el.remove();
 		}
 	}
-	if (_truthActiveGhost) {
-		_truthDrawGhostActiveRect(_truthActiveGhost);
-		const partner = _truthFindGhostPartner(_truthActiveGhost);
+	if (_curatedActiveGhost) {
+		_curatedDrawGhostActiveRect(_curatedActiveGhost);
+		const partner = _curatedFindGhostPartner(_curatedActiveGhost);
 		if (partner) {
-			_truthDrawActiveRect({
+			_curatedDrawActiveRect({
 				side: "student",
 				file: partner.file,
 				lo: partner.mark.start,
@@ -409,14 +420,14 @@ function _truthRefreshActiveOverlay() {
 		}
 		return;
 	}
-	if (!_truthActiveGroupRange) return;
-	_truthDrawActiveRect(_truthActiveGroupRange);
+	if (!_curatedActiveGroupRange) return;
+	_curatedDrawActiveRect(_curatedActiveGroupRange);
 
 	const otherSide =
-		_truthActiveGroupRange.side === "teacher" ? "student" : "teacher";
+		_curatedActiveGroupRange.side === "teacher" ? "student" : "teacher";
 	const partnerRanges = new Map();
 	const ghostPartners = [];
-	for (const m of _truthActiveGroupRange.marks || []) {
+	for (const m of _curatedActiveGroupRange.marks || []) {
 		if (!m.paired_with) continue;
 		if (m.paired_with.ghost) {
 			ghostPartners.push(m.paired_with);
@@ -435,8 +446,13 @@ function _truthRefreshActiveOverlay() {
 		}
 	}
 	for (const range of partnerRanges.values()) {
-		const marks = _truthFindMarks(otherSide, range.file, range.lo, range.hi);
-		_truthDrawActiveRect({
+		const marks = _curatedFindMarks(
+			otherSide,
+			range.file,
+			range.lo,
+			range.hi,
+		);
+		_curatedDrawActiveRect({
 			side: otherSide,
 			file: range.file,
 			lo: range.lo,
@@ -445,21 +461,21 @@ function _truthRefreshActiveOverlay() {
 		});
 	}
 	for (const ghost of ghostPartners) {
-		_truthDrawGhostActiveRect(ghost);
+		_curatedDrawGhostActiveRect(ghost);
 	}
 }
 
-function _truthDrawGhostActiveRect(ghost) {
-	const el = _truthFindGhostElement(ghost);
+function _curatedDrawGhostActiveRect(ghost) {
+	const el = _curatedFindGhostElement(ghost);
 	if (!el) return;
 	const pane = el.closest(".code-pane");
 	if (!pane) return;
-	const layers = _truthEnsurePaneOverlays(pane);
+	const layers = _curatedEnsurePaneOverlays(pane);
 	if (!layers) return;
 	const r = el.getBoundingClientRect();
 	const paneRect = pane.getBoundingClientRect();
 	const div = document.createElement("div");
-	div.className = "truth-active-rect is-dark-gray";
+	div.className = "curated-active-rect is-dark-gray";
 	div.style.left = `${r.left - paneRect.left}px`;
 	div.style.top = `${r.top - paneRect.top}px`;
 	div.style.width = `${r.width}px`;

@@ -176,6 +176,7 @@ class ExcelReportMixin:
             cell.font = Font(bold=True)
 
         excluded = getattr(self, 'excluded_ids', set()) or set()
+        ai_ids   = getattr(self, 'ai_ids', set()) or set()
         sids               = sorted(self.student_info.keys(), key=int)
         active_sids        = [s for s in sids if s not in excluded]
         all_extra_counters = {
@@ -299,6 +300,9 @@ class ExcelReportMixin:
 
             sheet.append(row)
             cur = sheet.max_row
+
+            if sid in ai_ids:
+                sheet.cell(row=cur, column=len(header)).value = 'AI'
 
             if req_fill and COL_EXPECTED:
                 sheet.cell(row=cur, column=COL_EXPECTED).fill = req_fill

@@ -530,3 +530,65 @@ body {
 body.is-dragging-overlay iframe {
 	pointer-events: none;
 }
+
+.fv-root {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	background: var(--clr-bg);
+	overflow: hidden;
+}
+
+.fv-left {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.fv-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	background: var(--clr-toolbar);
+	border-bottom: 1px solid var(--clr-border);
+	flex-shrink: 0;
+}
+.fv-tabs:empty {
+	display: none;
+}
+
+.fv-editor {
+	flex: 1 1 0;
+	margin: 0;
+	overflow: auto;
+	background: var(--clr-bg);
+	color: var(--clr-text);
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 12px;
+	line-height: 1.5;
+	padding: 6px 8px;
+	white-space: pre-wrap;
+	word-break: break-all;
+	min-height: 0;
+}
+
+.fv-divider {
+	flex: 0 0 4px;
+	background: var(--clr-border);
+	user-select: none;
+	touch-action: none;
+	cursor: col-resize;
+	transition: background 0.15s;
+}
+.fv-divider:hover {
+	background: var(--clr-accent);
+}
+
+.fv-preview {
+	flex: 0 0 50%;
+	border: none;
+	background: var(--clr-bg);
+	min-width: 0;
+}
