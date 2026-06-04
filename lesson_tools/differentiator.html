@@ -21,7 +21,7 @@
 				height: 100%;
 				overflow-y: auto;
 				overflow-x: hidden;
-				scrollbar-gutter: stable both-edges;
+				scrollbar-gutter: stable;
 				display: grid;
 				grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr);
 				grid-template-rows: auto 1fr;
@@ -93,20 +93,94 @@
 				flex-direction: column;
 			}
 
+			.tab-bar-wrap {
+				position: relative;
+				flex: 1;
+				min-width: 0;
+				display: flex;
+			}
 			.tab-bar {
 				display: flex;
 				flex: 1;
 				min-width: 0;
 				overflow-x: auto;
+				overflow-y: hidden;
+				/* native scrollbar hidden; the .tab-hscroll proxy below is the
+				   visible slider, floating over the tabs so it never grows the
+				   header or pushes the tabs up. */
 				scrollbar-width: none;
 			}
 			.tab-bar::-webkit-scrollbar {
 				display: none;
 			}
+			.tab-bar > .file-tab {
+				flex: 0 0 auto;
+			}
+			.tab-hscroll {
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 6px;
+				overflow-x: auto;
+				overflow-y: hidden;
+				scrollbar-width: thin;
+				display: none;
+				z-index: 5;
+			}
+			.tab-hscroll.is-active {
+				display: block;
+			}
+			.tab-hscroll > div {
+				height: 1px;
+			}
+			.tab-hscroll::-webkit-scrollbar {
+				height: 6px;
+			}
+			.tab-hscroll::-webkit-scrollbar-thumb {
+				background: var(--clr-border-strong);
+				border-radius: 3px;
+			}
+			.tab-hscroll::-webkit-scrollbar-thumb:hover {
+				background: var(--clr-accent);
+			}
 
 			.code-wrap {
 				flex: 1;
 				position: relative;
+				overflow-x: auto;
+				scrollbar-width: none;
+			}
+			.code-wrap::-webkit-scrollbar {
+				display: none;
+			}
+
+			.hscroll-proxy {
+				position: sticky;
+				bottom: 0;
+				z-index: 40;
+				flex: 0 0 auto;
+				height: 14px;
+				overflow-x: auto;
+				overflow-y: hidden;
+				background: var(--clr-bg);
+				display: none;
+			}
+			.hscroll-proxy.is-active {
+				display: block;
+			}
+			.hscroll-proxy::-webkit-scrollbar {
+				height: 14px;
+			}
+			.hscroll-proxy::-webkit-scrollbar-thumb {
+				background: var(--clr-border-strong);
+				border-radius: 6px;
+			}
+			.hscroll-proxy::-webkit-scrollbar-thumb:hover {
+				background: var(--clr-accent);
+			}
+			.hscroll-proxy-inner {
+				height: 1px;
 			}
 
 			.file-pair-caret {
@@ -279,6 +353,22 @@
 				align-items: stretch;
 			}
 
+			body.embed #nav-prev-student,
+			body.embed #nav-next-student,
+			body.embed #nav-counter-student {
+				display: none;
+			}
+			body.embed #bottom-bar > *:not(#btn-preview) {
+				display: none !important;
+			}
+			body.diff-loading #diff-root,
+			body.diff-loading #bottom-bar {
+				display: none !important;
+			}
+			body.diff-loading #loading {
+				display: flex !important;
+			}
+
 			#mode-select {
 				padding: 4px 8px;
 				font-size: 11px;
@@ -306,6 +396,94 @@
 				border: none;
 				background: var(--clr-bg);
 				display: none;
+			}
+
+			#docx-viewer {
+				position: fixed;
+				display: none;
+				flex-direction: column;
+				z-index: 10002;
+				width: 660px;
+				max-width: 92vw;
+				max-height: 84vh;
+				background: var(--clr-bg);
+				border: 1px solid var(--clr-border);
+				border-radius: 6px;
+				box-shadow: var(--shadow-soft);
+				overflow: hidden;
+			}
+			#docx-viewer.is-open {
+				display: flex;
+			}
+			#docx-viewer-head {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 6px 10px;
+				background: var(--clr-toolbar);
+				border-bottom: 1px solid var(--clr-border);
+				cursor: move;
+				font-size: 12px;
+				font-weight: 700;
+				color: var(--clr-label);
+				text-transform: uppercase;
+				letter-spacing: 0.6px;
+			}
+			#docx-viewer-title {
+				flex: 1;
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			#docx-viewer-close {
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-size: 14px;
+				line-height: 1;
+				color: var(--clr-muted);
+				padding: 2px 4px;
+			}
+			#docx-viewer-close:hover {
+				color: var(--clr-text);
+			}
+			#docx-viewer-body {
+				padding: 14px 18px;
+				overflow: auto;
+				font-family:
+					system-ui,
+					-apple-system,
+					Segoe UI,
+					sans-serif;
+				font-size: 13px;
+				line-height: 1.55;
+				color: var(--clr-text);
+				background: var(--clr-bg);
+			}
+			#docx-viewer-body img {
+				max-width: 100%;
+				height: auto;
+			}
+			#docx-viewer-body table {
+				border-collapse: collapse;
+			}
+			#docx-viewer-body td,
+			#docx-viewer-body th {
+				border: 1px solid var(--clr-border);
+				padding: 3px 7px;
+			}
+			.docx-file-name {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--clr-muted);
+				border-bottom: 1px dashed var(--clr-border);
+				margin: 16px 0 8px;
+				padding-bottom: 3px;
+			}
+			.docx-file-name:first-child {
+				margin-top: 0;
 			}
 
 			body.show-line-numbers .diff-line[data-line-num]::before {
@@ -695,13 +873,17 @@
 			}
 			.btn-edit.curated-only-btn,
 			#btn-generate-curated {
-				background: var(--clr-info-pill-bg);
-				border-color: var(--clr-info-pill-border);
+				background: color-mix(in srgb, var(--c-blue-1) 13%, var(--clr-bg));
+				border-color: color-mix(
+					in srgb,
+					var(--c-blue-1) 35%,
+					var(--clr-bg)
+				);
 				color: var(--clr-info-pill-text);
 			}
 			.btn-edit.curated-only-btn:hover,
 			#btn-generate-curated:hover {
-				background: var(--clr-info-pill-hover);
+				background: color-mix(in srgb, var(--c-blue-1) 20%, var(--clr-bg));
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
@@ -980,6 +1162,13 @@
 		</style>
 	</head>
 	<body>
+		<script>
+			(function () {
+				const qs = new URLSearchParams(location.search);
+				if (qs.get("lesson") && qs.get("id"))
+					document.body.classList.add("diff-loading");
+			})();
+		</script>
 		<div id="bottom-bar">
 			<select id="mode-select"></select>
 			<button
@@ -988,6 +1177,14 @@
 				onclick="toggleLinePadding()"
 			>
 				⇲ Padding
+			</button>
+			<button
+				id="btn-smart-padding"
+				class="btn-edit"
+				onclick="toggleSmartPadding()"
+				title="Pair-based padding: aligns missing/extra/ghost across panels for any method"
+			>
+				🪜 Smart
 			</button>
 			<button
 				id="btn-line-numbers"
@@ -999,21 +1196,42 @@
 			<button id="btn-preview" class="btn-edit" onclick="togglePreview()">
 				⬜ Preview
 			</button>
+			<button
+				id="btn-docx"
+				class="btn-edit"
+				onclick="toggleDocxViewer()"
+				style="display: none"
+			>
+				📄 Answer
+			</button>
 		</div>
 		<div id="diff-root">
 			<div id="diff-scroll">
 				<div id="diff-divider"></div>
 				<div class="panel-header app-toolbar" id="header-teacher">
 					<span id="title-teacher">Teacher</span>
-					<div class="tab-bar" id="tabs-teacher"></div>
+					<div class="tab-bar-wrap">
+						<div class="tab-bar" id="tabs-teacher"></div>
+						<div class="tab-hscroll" id="tab-hscroll-teacher">
+							<div></div>
+						</div>
+					</div>
 				</div>
 				<div class="panel-header app-toolbar" id="header-student">
+					<span id="title-student">Student</span>
+					<div class="tab-bar-wrap">
+						<div class="tab-bar" id="tabs-student"></div>
+						<div class="tab-hscroll" id="tab-hscroll-student">
+							<div></div>
+						</div>
+					</div>
 					<button
 						id="nav-prev-student"
 						title="Previous student"
 						disabled
 						style="
 							padding: 0 6px;
+							margin-left: auto;
 							border: 1px solid var(--clr-border-strong);
 							border-radius: 3px;
 							background: var(--clr-bg);
@@ -1023,6 +1241,16 @@
 					>
 						←
 					</button>
+					<span
+						id="nav-counter-student"
+						style="
+							font-size: 11px;
+							font-family: Consolas, monospace;
+							color: var(--clr-muted);
+							min-width: 44px;
+							text-align: center;
+						"
+					></span>
 					<button
 						id="nav-next-student"
 						title="Next student"
@@ -1038,8 +1266,6 @@
 					>
 						→
 					</button>
-					<span id="title-student">Student</span>
-					<div class="tab-bar" id="tabs-student"></div>
 				</div>
 				<div class="diff-panel" id="panel-teacher">
 					<div class="panel-landing" id="landing-teacher">
@@ -1053,7 +1279,7 @@
 							type="file"
 							id="input-teacher"
 							multiple
-							accept=".html,.css,.js,.py,.json"
+							accept=".html,.css,.js,.py,.json,.docx"
 							style="display: none"
 						/>
 					</div>
@@ -1068,6 +1294,9 @@
 							id="preview-teacher"
 							sandbox="allow-scripts allow-same-origin allow-modals"
 						></iframe>
+						<div class="hscroll-proxy" id="hscroll-teacher">
+							<div class="hscroll-proxy-inner"></div>
+						</div>
 					</div>
 				</div>
 				<div class="diff-panel" id="panel-student">
@@ -1082,7 +1311,7 @@
 							type="file"
 							id="input-student"
 							multiple
-							accept=".html,.css,.js,.py,.json"
+							accept=".html,.css,.js,.py,.json,.docx"
 							style="display: none"
 						/>
 					</div>
@@ -1097,6 +1326,9 @@
 							id="preview-student"
 							sandbox="allow-scripts allow-same-origin allow-modals"
 						></iframe>
+						<div class="hscroll-proxy" id="hscroll-student">
+							<div class="hscroll-proxy-inner"></div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1104,6 +1336,7 @@
 		<div id="loading">Loading…</div>
 		<script src="preview.js"></script>
 		<script src="diff-utils.js"></script>
+		<script src="mammoth.browser.min.js"></script>
 		<script src="languages/profiles.js"></script>
 		<script src="differentiator.js"></script>
 		<script src="differentiator-render.js"></script>

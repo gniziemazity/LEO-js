@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -11,10 +12,45 @@ _GROUPS = ("lessons", "assignments")
 _PII_FILES = {"students.csv", "name_map.csv"}
 _SKIP_DIR_NAMES = {"__pycache__", ".git", ".venv", "node_modules"}
 _SKIP_FILE_NAMES = {".DS_Store", "Thumbs.db"}
+_ROOT_KEEP_FILES = {"grades_stats.json"}
+_OVERVIEW_RE = re.compile(r"^overview.*\.xlsx$", re.IGNORECASE)
+_DIFF_MARKS_RE = re.compile(r"^diff_marks_.*\.json$")
+_MEDIA_RE = re.compile(
+    r"\.(?:png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$",
+    re.IGNORECASE,
+)
+_PROJECT_KEEP_DIRS = ("anon_ids", "anon_names", "start", "reconstructed", "correct")
+_PROJECT_DROP_DIRS = ("students", "curated")
+_PROJECT_KEEP_FILES = {"instructions.html", "name_map.csv", "artefact_labels.csv"}
 
 
 def _is_hidden(path: Path) -> bool:
-    return path.name.startswith(".") and path.name not in {".gitignore"}
+    name = path.name
+    if name.startswith("~$"):
+        return True
+    return name.startswith(".") and name not in {".gitignore"}
+
+
+def _keep_root_file(name: str) -> bool:
+    lower = name.lower()
+    return lower in _ROOT_KEEP_FILES or bool(_OVERVIEW_RE.match(lower))
+
+
+def _keep_project_file(rel: str) -> bool:
+    parts = rel.split("/")
+    top = parts[0]
+    if top in _PROJECT_DROP_DIRS:
+        return False
+    lower = parts[-1].lower()
+    if _DIFF_MARKS_RE.match(lower):
+        return False
+    if _MEDIA_RE.search(lower):
+        return False
+    if top in _PROJECT_KEEP_DIRS:
+        return True
+    if len(parts) == 1 and parts[0] in _PROJECT_KEEP_FILES:
+        return True
+    return lower.endswith(".xlsx") and "remarks" in lower
 
 
 def _list_files_relative(root: Path) -> list[str]:
@@ -43,12 +79,14 @@ def _list_root_files(course: Path, *, exclude_pii: bool) -> list[str]:
             continue
         if exclude_pii and p.name in _PII_FILES:
             continue
+        if not _keep_root_file(p.name):
+            continue
         out.append(p.name)
     return out
 
 
 def _build_lesson_entry(lesson_dir: Path) -> dict:
-    files = _list_files_relative(lesson_dir)
+    files = [f for f in _list_files_relative(lesson_dir) if _keep_project_file(f)]
     students: list[str] = []
     anon = lesson_dir / "anon_ids"
     if anon.is_dir():
@@ -67,6 +105,28 @@ def _build_group(group_dir: Path) -> dict:
     return out
 
 
+def _file_mtime_ms(path: Path) -> int:
+    try:
+        return int(path.stat().st_mtime * 1000)
+    except OSError:
+        return 0
+
+
+def _collect_mtimes(course: Path, manifest: dict) -> dict:
+    mtimes: dict = {}
+    for rf in manifest["rootFiles"]:
+        if rf.lower().endswith(".xlsx"):
+            mtimes[rf.lower()] = _file_mtime_ms(course / rf)
+    for group, entries in manifest["groups"].items():
+        for lesson, info in entries.items():
+            for rel in info.get("files", []):
+                if not rel.lower().endswith(".xlsx"):
+                    continue
+                key = f"{group}/{lesson}/{rel}".lower()
+                mtimes[key] = _file_mtime_ms(course / group / lesson / rel)
+    return mtimes
+
+
 def _build_manifest(course: Path, *, exclude_pii: bool) -> dict:
     manifest = {
         "rootName": course.name,
@@ -77,6 +137,7 @@ def _build_manifest(course: Path, *, exclude_pii: bool) -> dict:
         entries = _build_group(course / g)
         if entries:
             manifest["groups"][g] = entries
+    manifest["mtimes"] = _collect_mtimes(course, manifest)
     return manifest
 
 

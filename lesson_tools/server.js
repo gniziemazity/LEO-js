@@ -24,6 +24,9 @@ const MIME = {
 	".png": "image/png",
 	".jpg": "image/jpeg",
 	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".webp": "image/webp",
+	".bmp": "image/bmp",
 	".svg": "image/svg+xml",
 	".ico": "image/x-icon",
 	".txt": "text/plain",
@@ -33,7 +36,10 @@ const MIME = {
 
 http
 	.createServer((req, res) => {
-		const urlPath = req.url.split("?")[0];
+		let urlPath = req.url.split("?")[0];
+		try {
+			urlPath = decodeURIComponent(urlPath);
+		} catch {}
 
 		if (urlPath === "/grades-session") {
 			const folder = getGradesFolder();

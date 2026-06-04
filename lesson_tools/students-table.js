@@ -54,17 +54,164 @@ function _renderByteFingerprint(
 	wrap.appendChild(bar);
 }
 
+function _updateHighlightChip() {
+	const toolbar = document.getElementById("toolbar");
+	if (!toolbar) return;
+	let chip = document.getElementById("highlight-chip");
+	const hasHi = _highlightIds && _highlightIds.size;
+	const hasStar = _starIds && _starIds.size;
+	if (!hasHi && !hasStar) {
+		if (chip) chip.remove();
+		return;
+	}
+	if (!chip) {
+		chip = document.createElement("span");
+		chip.id = "highlight-chip";
+		const ln = document.getElementById("lesson-name");
+		if (ln) ln.after(chip);
+		else toolbar.prepend(chip);
+	}
+	const parts = [];
+	if (hasHi) {
+		const n = _students.filter((s) => _highlightIds.has(String(s.id))).length;
+		parts.push(`Highlighting ${n} of ${_highlightIds.size}`);
+	}
+	if (hasStar) {
+		const n = _students.filter((s) => _starIds.has(String(s.id))).length;
+		parts.push(`★ ${n} of ${_starIds.size}`);
+	}
+	chip.innerHTML = "";
+	const label = document.createElement("span");
+	label.textContent = parts.join("  ·  ");
+	chip.appendChild(label);
+	const clear = document.createElement("button");
+	clear.type = "button";
+	clear.className = "filter-clear";
+	clear.textContent = "× clear";
+	clear.addEventListener("click", () => {
+		_highlightIds = null;
+		_starIds = null;
+		try {
+			const url = new URL(location.href);
+			url.searchParams.delete("ids");
+			url.searchParams.delete("star");
+			history.replaceState(null, "", url);
+		} catch (_e) {}
+		renderTable();
+	});
+	chip.appendChild(clear);
+}
+
+function _makeNameStar() {
+	const star = document.createElement("span");
+	star.className = "name-star";
+	star.textContent = "★";
+	return star;
+}
+
+function _setHeaderLabel(el, spec) {
+	if (spec.artefactIdx != null) {
+		el.innerHTML = escHtml(spec.label).replace(/_(\w+)/g, "<sub>$1</sub>");
+	} else {
+		el.textContent = spec.label;
+	}
+}
+
+function _studentDocFiles(student) {
+	if (!student || !student.id) return [];
+	const sid = String(student.id).toLowerCase();
+	const out = [];
+	for (const [key, file] of _allFiles) {
+		const m = key.match(/(?:^|\/)anon_ids\/([^/]+)\/(.+\.(docx|pdf))$/i);
+		if (m && m[1] === sid) {
+			out.push({
+				name: m[2].split("/").pop(),
+				file,
+				ext: m[3].toLowerCase(),
+			});
+		}
+	}
+	return out;
+}
+
+function _appendDocLinks(el, student) {
+	for (const d of _studentDocFiles(student)) {
+		const a = document.createElement("span");
+		a.className = "doc-link";
+		a.textContent = d.ext === "pdf" ? "📕" : "📄";
+		a.title = "Open " + d.name;
+		a.addEventListener("click", (e) => {
+			e.stopPropagation();
+			_openStudentDoc(d);
+		});
+		el.appendChild(a);
+	}
+}
+
+let _docViewerWired = false;
+function _wireDocViewer() {
+	if (_docViewerWired) return;
+	const win = document.getElementById("doc-viewer");
+	if (!win) return;
+	_docViewerWired = true;
+	const head = document.getElementById("doc-viewer-head");
+	if (head && typeof makeDraggable === "function") makeDraggable(head, win);
+	const close = document.getElementById("doc-viewer-close");
+	if (close)
+		close.addEventListener("click", () => win.classList.remove("is-open"));
+}
+
+async function _openStudentDoc(d) {
+	_wireDocViewer();
+	const win = document.getElementById("doc-viewer");
+	const body = document.getElementById("doc-viewer-body");
+	if (!win || !body) return;
+	document.getElementById("doc-viewer-title").textContent = d.name;
+	win.classList.add("is-open");
+	body.style.padding = "";
+	body.textContent = "Loading…";
+	try {
+		if (d.ext === "pdf") {
+			let url = d.file.url;
+			if (!url) {
+				const buf = await readFileArray(d.file);
+				url = URL.createObjectURL(
+					new Blob([buf], { type: "application/pdf" }),
+				);
+			}
+			body.style.padding = "0";
+			body.innerHTML = "";
+			const frame = document.createElement("iframe");
+			frame.src = url;
+			body.appendChild(frame);
+		} else {
+			if (typeof window.mammoth === "undefined") {
+				body.textContent = "Word viewer (mammoth.js) failed to load.";
+				return;
+			}
+			const buf = await readFileArray(d.file);
+			const res = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+			body.innerHTML = res.value || "(empty document)";
+		}
+	} catch (e) {
+		body.textContent = "Failed to open document: " + ((e && e.message) || e);
+	}
+}
+
 function renderTable() {
 	const thead = document.getElementById("thead");
 	const tbody = document.getElementById("tbody");
 	thead.innerHTML = "";
 	tbody.innerHTML = "";
+	_updateHighlightChip();
+	_restoreSidePanel();
 
 	const showId = true;
-	const showName = _anonMode !== "id";
-	const showNum = _anonMode === "";
+	const showName = _paperMode ? true : !_hiddenCols.has("name");
+	const showNum = _paperMode ? false : !_hiddenCols.has("num");
+	const showFollow = !_paperMode && !_hiddenCols.has("follow");
 
-	const showLangs = !_hiddenCols.has("languages");
+	const showLangs = !_paperMode && !_hiddenCols.has("languages");
 	const presentLangs = showLangs
 		? LANG_COL_DEFS.filter((def) =>
 				_students.some((s) => s.langPcts && s.langPcts[def.key] != null),
@@ -73,6 +220,7 @@ function renderTable() {
 
 	const _remarkVisible = (col) => {
 		if (/^obs\.?$/i.test(col)) return true;
+		if (_paperMode) return false;
 		if (/^grade$/i.test(col)) return !_hiddenCols.has("grade");
 		if (/^comments?$/i.test(col)) return !_hiddenCols.has("comments");
 		if (/^expected$/i.test(col)) return !_hiddenCols.has("expected");
@@ -80,14 +228,28 @@ function renderTable() {
 		return true;
 	};
 	const visibleRemarkCols = _remarkCols.filter(_remarkVisible);
-	const showMismatches = !_hiddenCols.has("mismatches");
+	const showMismatches = !_paperMode && !_hiddenCols.has("mismatches");
 
 	const specs = [];
 	if (showId) specs.push({ cls: "col-id", label: "ID", sortKey: "id" });
 	if (showName)
 		specs.push({ cls: "col-name", label: "Name", sortKey: "name" });
 	if (showNum) specs.push({ cls: "col-num", label: "#", sortKey: "num" });
+	const _hasArtefactSchema = _artefactSchema && _artefactSchema.length > 0;
 	for (const col of visibleRemarkCols) {
+		if (/^obs\.?$/i.test(col) && _hasArtefactSchema) {
+			_artefactSchema.forEach((a, i) => {
+				specs.push({
+					cls: "col-remark col-obs col-artefact",
+					label: a.code || a.key || `A${i + 1}`,
+					title: a.label || "",
+					sortKey: "artefact:" + i,
+					artefactIdx: i,
+					artefactCol: col,
+				});
+			});
+			continue;
+		}
 		let cls = "col-remark";
 		if (/^grade$/i.test(col)) cls += " col-grade";
 		else if (/^comments?$/i.test(col)) cls += " col-comments";
@@ -99,14 +261,40 @@ function renderTable() {
 			sortKey: "remark:" + col,
 		});
 	}
-	if (_hasInteractions)
+	if (!_paperMode && _hasInteractions)
 		specs.push({ cls: "col-int", label: "INT", sortKey: "int" });
-	specs.push({ cls: "col-follow", label: _followLabel, sortKey: "follow" });
+	if (showFollow)
+		specs.push({ cls: "col-follow", label: _followLabel, sortKey: "follow" });
 	for (const def of presentLangs)
 		specs.push({
 			cls: `col-lang col-lang-${def.key}`,
 			label: def.label,
 			sortKey: "lang:" + def.key,
+		});
+	// Divergence / Change relative to the in-class starter, surfaced
+	// per-student from the new Diverge / Change columns of the remarks
+	// xlsx. Hidden if no row carries them (older basis files).
+	const showDiv =
+		!_paperMode &&
+		!_hiddenCols.has("diverge") &&
+		_students.some((s) => s.divergence != null);
+	const showChg =
+		!_paperMode &&
+		!_hiddenCols.has("change") &&
+		_students.some((s) => s.change != null);
+	if (showDiv)
+		specs.push({
+			cls: "col-diverge",
+			label: "Div",
+			title: "Divergence from in-class starter (missing+extra+ghost_extra)",
+			sortKey: "diverge",
+		});
+	if (showChg)
+		specs.push({
+			cls: "col-change",
+			label: "Chg",
+			title: "Change from in-class starter (missing only)",
+			sortKey: "change",
 		});
 
 	const _hasFpTs = (ev) =>
@@ -180,9 +368,10 @@ function renderTable() {
 	}
 	const hasAnyFp3 = fp3MaxBytes > 0;
 	_computeFingerprintMask(_students);
-	const showFp1 = showFingerprint && !_hiddenCols.has("fingerprint1");
-	const showFp2 = hasAnyFp2 && !_hiddenCols.has("fingerprint2");
-	const showFp3 = hasAnyFp3 && !_hiddenCols.has("fingerprint3");
+	const showFp1 =
+		!_paperMode && showFingerprint && !_hiddenCols.has("fingerprint1");
+	const showFp2 = !_paperMode && hasAnyFp2 && !_hiddenCols.has("fingerprint2");
+	const showFp3 = !_paperMode && hasAnyFp3 && !_hiddenCols.has("fingerprint3");
 	if (showFp1)
 		specs.push({
 			cls: "col-fingerprint col-fp1",
@@ -209,7 +398,7 @@ function renderTable() {
 		if (spec.title) el.title = spec.title;
 		if (spec.sortKey) {
 			el.classList.add("sortable");
-			el.textContent = spec.label;
+			_setHeaderLabel(el, spec);
 			if (_sortCol === spec.sortKey) {
 				const arrow = document.createElement("span");
 				arrow.className = "sort-arrow";
@@ -218,7 +407,7 @@ function renderTable() {
 			}
 			el.addEventListener("click", () => _onSortHeaderClick(spec.sortKey));
 		} else {
-			el.textContent = spec.label;
+			_setHeaderLabel(el, spec);
 		}
 		trh.appendChild(el);
 	}
@@ -230,10 +419,31 @@ function renderTable() {
 	}
 	thead.appendChild(trh);
 
-	const sortedStudents = _sortStudents(_students, _sortCol, _sortDir);
+	let sortedStudents = _sortStudents(_students, _sortCol, _sortDir);
+	const _hasHi = _highlightIds && _highlightIds.size;
+	const _hasStar = _starIds && _starIds.size;
+	if (_hasHi || _hasStar) {
+		const starred = [];
+		const highlighted = [];
+		const rest = [];
+		for (const s of sortedStudents) {
+			const id = String(s.id);
+			if (_hasStar && _starIds.has(id)) starred.push(s);
+			else if (_hasHi && _highlightIds.has(id)) highlighted.push(s);
+			else rest.push(s);
+		}
+		sortedStudents = starred.concat(highlighted, rest);
+	}
 	for (const s of sortedStudents) {
 		const tr = document.createElement("tr");
+		tr._student = s;
 		if (s.ai_flagged) tr.classList.add("row-ai");
+		const _sid = String(s.id);
+		const _isStar = _hasStar && _starIds.has(_sid);
+		const _isHi = _hasHi && _highlightIds.has(_sid);
+		if (_hasHi) {
+			tr.classList.add(_isHi ? "row-emphasis" : "row-dim");
+		}
 		const hasFiles = _studentHasFiles(s);
 
 		const openOnClick = (el) => {
@@ -244,25 +454,33 @@ function renderTable() {
 			el.classList.add("clickable-open");
 			el.addEventListener("click", (e) => {
 				e.stopPropagation();
+				if (e.shiftKey) {
+					openDiffForStudent(s);
+					return;
+				}
 				document
 					.querySelectorAll("#tbody tr.selected")
 					.forEach((r) => r.classList.remove("selected"));
 				tr.classList.add("selected");
-				openDiffForStudent(s);
+				selectStudentInline(s);
 			});
 		};
 
 		if (showId) {
 			const el = document.createElement("td");
-			el.textContent = s.id || "–";
 			el.className = "col-id";
+			if (_isStar && !showName) el.appendChild(_makeNameStar());
+			el.appendChild(document.createTextNode(s.id || "–"));
+			if (!showName) _appendDocLinks(el, s);
 			openOnClick(el);
 			tr.appendChild(el);
 		}
 		if (showName) {
 			const el = document.createElement("td");
-			el.textContent = s.name;
 			el.className = "col-name";
+			if (_isStar) el.appendChild(_makeNameStar());
+			el.appendChild(document.createTextNode(s.name));
+			_appendDocLinks(el, s);
 			openOnClick(el);
 			tr.appendChild(el);
 		}
@@ -275,6 +493,20 @@ function renderTable() {
 		}
 		for (const rk of s.remarks) {
 			if (!_remarkVisible(rk.col)) continue;
+			if (
+				/^obs\.?$/i.test(rk.col) &&
+				_artefactSchema &&
+				_artefactSchema.length
+			) {
+				const code = rk.val === "_" || !rk.val ? "" : String(rk.val);
+				_artefactSchema.forEach((a, i) => {
+					const cell = document.createElement("td");
+					cell.className = "col-remark col-obs col-artefact";
+					_renderArtefactCell(cell, s, rk.col, i, code);
+					tr.appendChild(cell);
+				});
+				continue;
+			}
 			const el = document.createElement("td");
 			let cls = "col-remark";
 			const isObs = /^obs\.?$/i.test(rk.col);
@@ -317,28 +549,30 @@ function renderTable() {
 			}
 			tr.appendChild(el);
 		}
-		if (_hasInteractions) {
+		if (!_paperMode && _hasInteractions) {
 			const el = document.createElement("td");
 			el.className = "col-int";
 			el.textContent = s.interactions;
 			tr.appendChild(el);
 		}
-		const followEl = document.createElement("td");
-		followEl.className = "col-follow";
-		if (!isNaN(s.followPct)) {
-			const pctEl = document.createElement("span");
-			pctEl.className = "follow-pct";
-			pctEl.textContent = s.followPct.toFixed(1) + "%";
-			const bar = document.createElement("div");
-			bar.className = "follow-bar";
-			const fill = document.createElement("div");
-			fill.className = "follow-bar-fill";
-			fill.style.width = Math.max(0, Math.min(100, s.followPct)) + "%";
-			bar.appendChild(fill);
-			followEl.appendChild(pctEl);
-			followEl.appendChild(bar);
+		if (showFollow) {
+			const followEl = document.createElement("td");
+			followEl.className = "col-follow";
+			if (!isNaN(s.followPct)) {
+				const pctEl = document.createElement("span");
+				pctEl.className = "follow-pct";
+				pctEl.textContent = s.followPct.toFixed(1) + "%";
+				const bar = document.createElement("div");
+				bar.className = "follow-bar";
+				const fill = document.createElement("div");
+				fill.className = "follow-bar-fill";
+				fill.style.width = Math.max(0, Math.min(100, s.followPct)) + "%";
+				bar.appendChild(fill);
+				followEl.appendChild(pctEl);
+				followEl.appendChild(bar);
+			}
+			tr.appendChild(followEl);
 		}
-		tr.appendChild(followEl);
 
 		for (const def of presentLangs) {
 			const cell = document.createElement("td");
@@ -357,6 +591,34 @@ function renderTable() {
 				cell.appendChild(pctEl);
 				cell.appendChild(bar);
 			}
+			tr.appendChild(cell);
+		}
+
+		const _fmtMarkCount = (n) => {
+			if (n == null) return "";
+			if (n >= 1000) return Math.round(n / 100) / 10 + "k";
+			return String(n);
+		};
+		const _setMarkCell = (cell, total, byLang) => {
+			cell.textContent = _fmtMarkCount(total);
+			if (byLang && Object.keys(byLang).length) {
+				const parts = Object.entries(byLang)
+					.filter(([, v]) => v != null && v > 0)
+					.sort(([, a], [, b]) => b - a)
+					.map(([k, v]) => `${k.toUpperCase()}: ${v}`);
+				if (parts.length) cell.title = parts.join("  ·  ");
+			}
+		};
+		if (showDiv) {
+			const cell = document.createElement("td");
+			cell.className = "col-diverge";
+			_setMarkCell(cell, s.divergence, s.langDiv);
+			tr.appendChild(cell);
+		}
+		if (showChg) {
+			const cell = document.createElement("td");
+			cell.className = "col-change";
+			_setMarkCell(cell, s.change, s.langChg);
 			tr.appendChild(cell);
 		}
 
@@ -457,6 +719,7 @@ function _appendTotalsRow(
 	if (obsCol) {
 		obsCounts = [];
 		for (const s of sortedStudents) {
+			if (s.ai_flagged) continue;
 			const r = (s.remarks || []).find((x) => x.col === obsCol);
 			if (!r || !r.val) continue;
 			const code = String(r.val).trim();
@@ -481,6 +744,7 @@ function _appendTotalsRow(
 		avgByLang[def.key] = vals.length ? mean(vals) : null;
 	}
 
+	const nonAiCount = sortedStudents.filter((s) => !s.ai_flagged).length;
 	let countSlotAssigned = false;
 	for (const spec of specs) {
 		const td = document.createElement("td");
@@ -493,10 +757,16 @@ function _appendTotalsRow(
 		const isLang = !!langMatch;
 
 		if (!countSlotAssigned && (isName || (isId && !showName))) {
-			td.textContent = `${sortedStudents.length} students`;
+			td.textContent = `${nonAiCount} students`;
 			countSlotAssigned = true;
+		} else if (spec.artefactIdx != null && obsCounts) {
+			td.dataset.artefactIdx = String(spec.artefactIdx);
+			td.innerHTML = renderArtefactTotalOne(
+				obsCounts[spec.artefactIdx] || 0,
+				_artefactSchema[spec.artefactIdx],
+			);
 		} else if (isObs && obsCounts) {
-			td.innerHTML = renderTrapTotals(obsCounts, _trapSchema);
+			td.innerHTML = renderArtefactTotals(obsCounts, _artefactSchema);
 		} else if (isFollow && avgFollow != null) {
 			const pctEl = document.createElement("span");
 			pctEl.className = "follow-pct";
@@ -574,11 +844,6 @@ function renderMismatches(cell, events) {
 	cell.addEventListener("mouseleave", () => hideTip());
 }
 
-function onAnonChange(val) {
-	_anonMode = val;
-	renderTable();
-}
-
 function _colsPanelOutsideClick(e) {
 	const panel = document.getElementById("cols-panel");
 	const btn = document.getElementById("cols-btn");
@@ -649,23 +914,105 @@ function _studentHasFiles(student) {
 
 function _renderObsCell(el, val) {
 	const v = val == null ? "" : String(val);
-	const badges = renderTrapBadges(v, _trapSchema);
+	const badges = renderArtefactBadges(v, _artefactSchema);
 	if (badges) {
 		el.innerHTML = badges;
 		el.dataset.rawValue = v;
 		el.style.fontWeight = "";
 		el.title = "";
-		el.dataset.trapTipHtml = buildTrapSummaryHtml(v, _trapSchema);
-		if (!el.dataset.trapTipWired) {
-			attachHtmlTip(el, () => el.dataset.trapTipHtml || "");
-			el.dataset.trapTipWired = "1";
+		el.dataset.artefactTipHtml = buildArtefactSummaryHtml(v, _artefactSchema);
+		if (!el.dataset.artefactTipWired) {
+			attachHtmlTip(el, () => el.dataset.artefactTipHtml || "");
+			el.dataset.artefactTipWired = "1";
 		}
 	} else {
 		el.textContent = v;
 		delete el.dataset.rawValue;
-		delete el.dataset.trapTipHtml;
+		delete el.dataset.artefactTipHtml;
 		el.style.fontWeight = v ? "bold" : "";
 		el.title = "";
+	}
+}
+
+function _snapshotOrigObs(students) {
+	_origObs.clear();
+	for (const s of students || []) {
+		if (s.id == null) continue;
+		const r = (s.remarks || []).find((x) => /^obs\.?$/i.test(x.col));
+		_origObs.set(String(s.id), r && r.val ? String(r.val) : "");
+	}
+}
+
+function _artefactChangedSince(studentId, idx, fired) {
+	const orig = _origObs.get(String(studentId)) || "";
+	const origFired = /^[01]+$/.test(orig) && orig[idx] === "1";
+	return fired !== origFired;
+}
+
+function _renderArtefactCell(el, student, colName, idx, code) {
+	const fired = /^[01]+$/.test(code) && code[idx] === "1";
+	const entry = _artefactSchema[idx];
+	el.innerHTML = renderArtefactCellSquare(fired, entry);
+	let tip = entry && entry.label ? entry.label : "";
+	if (_artefactChangedSince(student.id, idx, fired)) {
+		el.classList.add("artefact-changed");
+		tip = tip ? `${tip} · changed (unsaved)` : "changed (unsaved)";
+	}
+	if (tip) el.title = tip;
+	if (!_isReadOnly && student.id) {
+		el.classList.add("artefact-toggle");
+		el.addEventListener("mousedown", (e) => e.stopPropagation());
+		el.addEventListener("click", (e) => {
+			e.stopPropagation();
+			_toggleArtefact(student, colName, idx, el);
+		});
+	}
+}
+
+function _toggleArtefact(student, colName, idx, el) {
+	const len = _artefactSchema.length;
+	const r = (student.remarks || []).find((x) => x.col === colName);
+	const cur =
+		r && r.val && /^[01]+$/.test(String(r.val).trim())
+			? String(r.val).trim()
+			: "";
+	const arr = [];
+	for (let i = 0; i < len; i++) arr[i] = cur[i] === "1" ? "1" : "0";
+	arr[idx] = arr[idx] === "1" ? "0" : "1";
+	const newVal = arr.join("");
+	_setDirty(student.id, colName, newVal);
+	if (r) r.val = newVal;
+	else
+		(student.remarks || (student.remarks = [])).push({
+			col: colName,
+			val: newVal,
+		});
+	const baseRow =
+		_baseStudents && _baseStudents.find((x) => x.id === student.id);
+	if (baseRow) {
+		const br = (baseRow.remarks || []).find((x) => x.col === colName);
+		if (br) br.val = newVal;
+	}
+	el.innerHTML = renderArtefactCellSquare(
+		arr[idx] === "1",
+		_artefactSchema[idx],
+	);
+	el.classList.toggle(
+		"artefact-changed",
+		_artefactChangedSince(student.id, idx, arr[idx] === "1"),
+	);
+	const totalTd = document.querySelector(
+		`.totals-row td.col-artefact[data-artefact-idx="${idx}"]`,
+	);
+	if (totalTd) {
+		let count = 0;
+		for (const s of _students) {
+			if (s.ai_flagged) continue;
+			const rr = (s.remarks || []).find((x) => x.col === colName);
+			const c = rr && rr.val ? String(rr.val).trim() : "";
+			if (/^[01]+$/.test(c) && c[idx] === "1") count++;
+		}
+		totalTd.innerHTML = renderArtefactTotalOne(count, _artefactSchema[idx]);
 	}
 }
 
@@ -757,15 +1104,18 @@ function hideTip() {
 	tipEl.style.display = "none";
 }
 
-function openDiffForStudent(student) {
-	if (!_lessonName || !student.id) return;
+function _diffTitleFor(student) {
 	const followPct =
 		student.followPct != null ? student.followPct.toFixed(1) + "%" : "N/A";
-	const title = `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`;
+	return `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`;
+}
+
+function openDiffForStudent(student) {
+	if (!_lessonName || !student.id) return;
 	navigateToDifferentiator({
 		lesson: _lessonName,
-		group: _lessonGroup || undefined,
+		group: _groupFolder(),
 		id: student.id,
-		title,
+		title: _diffTitleFor(student),
 	});
 }

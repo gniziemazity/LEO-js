@@ -320,7 +320,7 @@
 	<body>
 		<div id="lv-landing">
 			<div id="lv-landing-box">
-				<div style="display: flex; gap: 12px">
+				<div id="lv-landing-buttons" style="display: flex; gap: 12px">
 					<button id="btn-open-log" class="landing-btn">
 						📄 Open Log File
 					</button>
@@ -330,6 +330,17 @@
 				</div>
 			</div>
 		</div>
+		<div id="loading">Loading…</div>
+		<script>
+			(function () {
+				if (new URLSearchParams(location.search).get("lesson")) {
+					const l = document.getElementById("lv-landing");
+					const o = document.getElementById("loading");
+					if (l) l.style.display = "none";
+					if (o) o.style.display = "flex";
+				}
+			})();
+		</script>
 		<div id="vis-root"></div>
 		<script>
 			window.__LOG_DATA__ = window.__LOG_DATA_PRELOAD__ || null;
@@ -346,6 +357,7 @@
 		<script src="languages/profiles.js"></script>
 		<script src="simulator-model.js"></script>
 		<script src="simulator-highlight.js"></script>
+		<script src="drag-divider.js"></script>
 		<script src="file-viewer.js"></script>
 		<script src="simulator-visualizer.js"></script>
 		<script src="simulator.js"></script>

@@ -8,13 +8,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
 
+from .anonymize import classify_student_row
 from .folder_utils import LANG_EXTS
 from .similarity_measures import (
     calculate_containment,
     open_csv_encoded,
     split_code_tokens,
 )
-from .grade_merge import merge_existing_grades
+from .grade_merge import merge_manual_columns
 from .lesson_log import load_lesson_log
 from .token_log_mixin import TokenLogMixin
 from .report_excel import ExcelReportMixin
@@ -79,13 +80,11 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             if display_name != real_name:
                 self.name_to_id[display_name] = sid
             self._real_to_display[real_name] = display_name
-            include_raw = row.get('Include')
-            if include_raw is not None:
-                inc = include_raw.strip().upper()
-                if inc not in ('OK', 'AI'):
-                    self.excluded_ids.add(sid)
-                if inc == 'AI':
-                    self.ai_ids.add(sid)
+            is_excluded, is_llm = classify_student_row(row)
+            if is_excluded:
+                self.excluded_ids.add(sid)
+            if is_llm:
+                self.ai_ids.add(sid)
 
         def _reset():
             self.student_info.clear()
@@ -103,10 +102,10 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         out_path = Path(project_dir) / 'name_map.csv'
         with open(out_path, 'w', encoding='utf-8-sig', newline='') as fh:
             writer = csv.writer(fh, delimiter=';')
-            writer.writerow(['Student ID', 'Student Name', 'Alter Ego'])
+            writer.writerow(['Student ID', 'Alter Ego'])
             for real_name, alter in name_map.items():
                 sid = self.name_to_id.get(real_name, '')
-                writer.writerow([sid, real_name, alter])
+                writer.writerow([sid, alter])
         print(f'Written {out_path.name} ({len(name_map)} student name mappings)')
 
     def load_remarks_csv(self, csv_path: str) -> None:
@@ -470,22 +469,55 @@ def main() -> None:
             print(f'  {out_path.name}  ({len(basis_marks_by_sid)} student(s))')
 
     chosen_basis = _resolve_follow_basis(follow_basis, generated_bases)
-    remarks_path = current_dir / f'remarks_{folder_name}.xlsx'
+    remarks_path = current_dir / 'remarks.xlsx'
+    print()
+
+    backup_path = None
+    if remarks_path.exists():
+        backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+        backup_path = current_dir / f'bck_{backup_ts}.xlsx'
+        shutil.copy2(str(remarks_path), str(backup_path))
+        print(f'Backed up previous remarks -> {backup_path.name}')
+
+    while True:
+        try:
+            if chosen_basis:
+                src_path = current_dir / f'remarks_{chosen_basis}.xlsx'
+                shutil.copy2(str(src_path), str(remarks_path))
+            else:
+                checker.generate_remarks_report(str(remarks_path))
+            if backup_path is not None:
+                merge_manual_columns(backup_path, remarks_path)
+            break
+        except PermissionError:
+            print(f'\n  Could not write {remarks_path.name} — it looks like it '
+                  f'is open in Excel.')
+            resp = input(
+                '  Close the file, then press Enter to retry '
+                '(or type "q" to abort): '
+            ).strip().lower()
+            if resp == 'q':
+                print('  Aborted; remarks not written.')
+                return
+
     if chosen_basis:
-        src_path = current_dir / f'remarks_{chosen_basis}.xlsx'
-        shutil.copy2(str(src_path), str(remarks_path))
-        print(f'\nFollow basis: {chosen_basis} -> {remarks_path.name}')
+        print(f'Follow basis: {chosen_basis} -> {remarks_path.name}')
     else:
-        checker.generate_remarks_report(str(remarks_path))
-        print(f'\nFollow basis: (default LEO* re-scored) -> {remarks_path.name}')
+        print(f'Follow basis: (default LEO* re-scored) -> {remarks_path.name}')
 
-    grades_ts   = int(datetime.now().timestamp())
-    grades_path = current_dir / f'grades_{folder_name}_{grades_ts}.xlsx'
-    shutil.copy2(str(remarks_path), str(grades_path))
-    merge_existing_grades(current_dir, folder_name, grades_path)
+    removed = 0
+    for old_grades in current_dir.glob(f'grades_{folder_name}_*.xlsx'):
+        try:
+            old_grades.unlink()
+            removed += 1
+        except OSError as e:
+            print(f'  Warning: could not remove {old_grades.name}: {e}')
+    if removed:
+        print(f'  Removed {removed} obsolete grades file(s).')
 
-    print(f'Done — remarks_{folder_name}.xlsx and '
-          f'grades_{folder_name}_{grades_ts}.xlsx generated.')
+    print(f'Done — {remarks_path.name} generated'
+          + (f' (backup: {backup_path.name})' if backup_path else '')
+          + '.')
 
 
 if __name__ == '__main__':

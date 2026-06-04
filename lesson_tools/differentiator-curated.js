@@ -88,6 +88,14 @@ function _curatedSwitchToCuratedMarks() {
 	_studentMarks = _currentMarksEntry?.student_files ?? null;
 }
 
+function _curatedResetForNewStudent() {
+	_curatedWorking = {};
+	_curatedUndoStack = [];
+	_curatedRedoStack = [];
+	_curatedTokenCache.clear();
+	_curatedCommentRangeCache.clear();
+}
+
 let _curatedListenersInstalled = false;
 
 function _curatedInstallListeners() {

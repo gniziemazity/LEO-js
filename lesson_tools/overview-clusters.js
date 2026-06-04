@@ -287,7 +287,10 @@ function renderClusters() {
 	}
 
 	const buckets = Array.from({ length: k }, () => []);
-	_students.forEach((s, i) => buckets[labels[i]].push(s));
+	_students.forEach((s, i) => {
+		if (_hideExcluded && s.excluded) return;
+		buckets[labels[i]].push(s);
+	});
 
 	const centroidMean = (c) =>
 		c && c.length ? c.reduce((a, b) => a + b, 0) / c.length : 0;

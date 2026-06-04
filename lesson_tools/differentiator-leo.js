@@ -458,6 +458,7 @@ function _showLeoTooltip(target) {
 	const ghostOffset =
 		ghostOffsetAttr != null ? parseInt(ghostOffsetAttr, 10) : null;
 	if (!token || !side || Number.isNaN(pos)) return;
+	_jumpToSwapPartnerTab(target);
 	const tokens = _currentMarksEntry?.leo_assignments?.tokens;
 	const data = tokens && tokens[token];
 	const tip = _ensureLeoTooltip();
@@ -465,6 +466,7 @@ function _showLeoTooltip(target) {
 		const mark = _findMarkAtPos(side, token, pos);
 		if (!mark) return;
 		_applyMarkPairHighlight(target);
+		if (_embedMode) return;
 		const label = mark.label || "matched";
 		const color = _labelColor(label);
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
@@ -483,6 +485,7 @@ function _showLeoTooltip(target) {
 	}
 	_clearLeoHighlights();
 	_applyLeoHighlights(target, data, side, pos, ghostOffset);
+	if (_embedMode) return;
 	const nTeacherSurv = data.teacher.filter((t) => !t.ghost).length;
 	const nTeacherGhost = data.teacher.length - nTeacherSurv;
 	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
@@ -526,6 +529,33 @@ function _clearLeoHighlights() {
 	_leoHighlighted = [];
 	for (const el of _insertHighlighted) el.classList.remove("insert-active");
 	_insertHighlighted = [];
+}
+
+function _jumpToSwapPartnerTab(target) {
+	const otherSide = target.getAttribute("data-swap-side");
+	const partnerFile = target.getAttribute("data-swap-file");
+	const partnerPos = target.getAttribute("data-swap-pos");
+	const partnerToken = target.getAttribute("data-swap-token");
+	if (!otherSide || !partnerFile) return;
+	const wrap = document.getElementById(`code-${otherSide}`);
+	if (!wrap) return;
+	const active = wrap.querySelector(".code-pane.active");
+	if (active && active.dataset.paneFile === partnerFile) return;
+	if (typeof _activateFileTab !== "function") return;
+	_activateFileTab(otherSide, partnerFile);
+	const pane = wrap.querySelector(
+		`.code-pane[data-pane-file="${CSS.escape(partnerFile)}"]`,
+	);
+	if (!pane) return;
+	const sel =
+		`.leo-mark[data-leo-side="${otherSide}"]` +
+		`[data-leo-pos="${partnerPos}"]:not([data-leo-ghost-offset])`;
+	for (const el of pane.querySelectorAll(sel)) {
+		if (partnerToken && el.getAttribute("data-leo-token") !== partnerToken)
+			continue;
+		el.scrollIntoView({ block: "nearest", inline: "nearest" });
+		break;
+	}
 }
 
 function _applySwapPartnerHighlight(target) {

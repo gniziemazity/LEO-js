@@ -31,10 +31,10 @@ def find_files_in_directory():
 
 
 def find_xlsx_files(directory):
-    folder_name = os.path.basename(directory)
-    remarks = os.path.join(directory, f'remarks_{folder_name}.xlsx')
+    remarks = os.path.join(directory, 'remarks.xlsx')
     if not os.path.isfile(remarks):
-        remarks = os.path.join(directory, 'remarks.xlsx')
+        folder_name = os.path.basename(directory)
+        remarks = os.path.join(directory, f'remarks_{folder_name}.xlsx')
     return remarks if os.path.isfile(remarks) else None
 
 

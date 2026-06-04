@@ -1,41 +1,49 @@
 "use strict";
 
-const _HIDE_PAIRS = [
-	{ key: "grade", ids: ["prog-hide-grade", "cluster-hide-grade"] },
+const _SHOW_PAIRS = [
+	{ key: "grade", ids: ["prog-show-grade", "cluster-show-grade"] },
 	{
 		key: "totalFollow",
-		ids: ["prog-hide-total-follow", "cluster-hide-total-follow"],
+		ids: ["prog-show-total-follow", "cluster-show-total-follow"],
 	},
 	{
 		key: "langFollow",
-		ids: ["prog-hide-lang-follow", "cluster-hide-lang-follow"],
+		ids: ["prog-show-lang-follow", "cluster-show-lang-follow"],
 	},
+	{ key: "signals", ids: ["prog-show-signals"] },
 ];
 
-function _progressHide() {
+function _progressShow() {
 	const state = {};
-	for (const { key, ids } of _HIDE_PAIRS) {
-		state[key] = ids.some(
-			(id) => document.getElementById(id)?.checked === true,
-		);
+	for (const { key, ids } of _SHOW_PAIRS) {
+		let visible = true;
+		for (const id of ids) {
+			const el = document.getElementById(id);
+			if (el) {
+				visible = el.checked === true;
+				break;
+			}
+		}
+		state[key] = visible;
 	}
 	return state;
 }
 
-(function _initProgressHidePrefs() {
+(function _initProgressShowPrefs() {
 	try {
-		const saved = JSON.parse(localStorage.getItem("progress_hide") || "{}");
-		for (const { key, ids } of _HIDE_PAIRS) {
-			if (!saved[key]) continue;
+		const saved = JSON.parse(localStorage.getItem("progress_show") || "{}");
+		for (const { key, ids } of _SHOW_PAIRS) {
+			if (!(key in saved)) continue;
+			const visible = !!saved[key];
 			for (const id of ids) {
 				const el = document.getElementById(id);
-				if (el) el.checked = true;
+				if (el) el.checked = visible;
 			}
 		}
 	} catch {}
 })();
 
-for (const { ids } of _HIDE_PAIRS) {
+for (const { ids } of _SHOW_PAIRS) {
 	for (const id of ids) {
 		document.getElementById(id)?.addEventListener("change", (e) => {
 			const checked = e.currentTarget.checked;
@@ -46,8 +54,8 @@ for (const { ids } of _HIDE_PAIRS) {
 			}
 			try {
 				localStorage.setItem(
-					"progress_hide",
-					JSON.stringify(_progressHide()),
+					"progress_show",
+					JSON.stringify(_progressShow()),
 				);
 			} catch {}
 			if (_students.length) {
@@ -59,8 +67,8 @@ for (const { ids } of _HIDE_PAIRS) {
 }
 
 function addProgressTotals(container) {
-	const hide = _progressHide();
-	if (hide.totalFollow && hide.grade) return;
+	const show = _progressShow();
+	if (!show.totalFollow && !show.grade) return;
 
 	const card = el("div", "prog-totals");
 	const h4 = el("h4");
@@ -99,10 +107,10 @@ function addProgressTotals(container) {
 	let leftAxis,
 		rightAxis,
 		gradeYAxis = "right";
-	if (!hide.totalFollow && !hide.grade) {
+	if (show.totalFollow && show.grade) {
 		leftAxis = followAxis;
 		rightAxis = gradeAxis;
-	} else if (!hide.totalFollow) {
+	} else if (show.totalFollow) {
 		leftAxis = followAxis;
 	} else {
 		leftAxis = gradeAxis;
@@ -116,7 +124,7 @@ function addProgressTotals(container) {
 	});
 
 	const datasets = [];
-	if (!hide.totalFollow) {
+	if (show.totalFollow) {
 		datasets.push({
 			data: followData,
 			color: _hexToRgba(THEME.label, 0.44),
@@ -127,7 +135,7 @@ function addProgressTotals(container) {
 			outlierRadius: 3,
 		});
 	}
-	if (!hide.grade) {
+	if (show.grade) {
 		datasets.push({
 			data: gradeData,
 			color: _hexToRgba(THEME.blue, 0.44),
@@ -143,7 +151,7 @@ function addProgressTotals(container) {
 }
 
 function addProgressLanguageTotals(container) {
-	if (_progressHide().langFollow) return;
+	if (!_progressShow().langFollow) return;
 
 	const card = el("div", "prog-totals");
 	const h4 = el("h4");
@@ -218,7 +226,12 @@ function renderProgress() {
 }
 
 function _buildStudentProgressCard(s, labels) {
-	const card = el("div", "prog-card" + (s.passed_course ? "" : " not-passed"));
+	const card = el(
+		"div",
+		"prog-card" +
+			(s.passed_course ? "" : " not-passed") +
+			(s.ai_flagged ? " row-ai" : ""),
+	);
 	const h4 = el("h4");
 	const titleParts = [studentLabelWithId(s)];
 	const avgF = followAvg(s);
@@ -235,8 +248,8 @@ function _buildStudentProgressCard(s, labels) {
 	);
 	const grades = s.lessons.map((l) => l.grade ?? null);
 
-	const hide = _progressHide();
-	const showAnyFollow = !hide.totalFollow || !hide.langFollow;
+	const show = _progressShow();
+	const showAnyFollow = show.totalFollow || show.langFollow;
 	const followAxis = {
 		min: -4,
 		max: 104,
@@ -252,12 +265,12 @@ function _buildStudentProgressCard(s, labels) {
 	let lcLeftAxis,
 		lcRightAxis,
 		gradeYAxis = "right";
-	if (showAnyFollow && !hide.grade) {
+	if (showAnyFollow && show.grade) {
 		lcLeftAxis = followAxis;
 		lcRightAxis = gradeAxis;
 	} else if (showAnyFollow) {
 		lcLeftAxis = followAxis;
-	} else if (!hide.grade) {
+	} else if (show.grade) {
 		lcLeftAxis = gradeAxis;
 		gradeYAxis = "left";
 	}
@@ -269,16 +282,16 @@ function _buildStudentProgressCard(s, labels) {
 			const asgn = ASSIGNMENTS[pi];
 			if (!asgn) return;
 			const entry = s.lessons[asgn.n - 1];
-			const langCount = hide.langFollow ? 0 : LANG_FOLLOW_KEYS.length;
+			const langCount = show.langFollow ? LANG_FOLLOW_KEYS.length : 0;
 			if (di < langCount) openLessonDiff(s, entry);
-			else if (di === langCount && !hide.totalFollow)
+			else if (di === langCount && show.totalFollow)
 				openLessonDiff(s, entry);
 			else openAssignDiff(s, entry);
 		},
 	});
 
 	const datasets = [];
-	if (!hide.langFollow) {
+	if (show.langFollow) {
 		for (const { entryKey, colorVar } of LANG_FOLLOW_KEYS) {
 			const c = _cssVar(colorVar) || THEME.label;
 			datasets.push({
@@ -293,7 +306,7 @@ function _buildStudentProgressCard(s, labels) {
 			});
 		}
 	}
-	if (!hide.totalFollow) {
+	if (show.totalFollow) {
 		datasets.push({
 			data: follows,
 			color: THEME.label,
@@ -308,7 +321,7 @@ function _buildStudentProgressCard(s, labels) {
 			labelColor: THEME.label,
 		});
 	}
-	if (!hide.grade) {
+	if (show.grade) {
 		datasets.push({
 			data: grades,
 			color: THEME.blue,
@@ -325,5 +338,51 @@ function _buildStudentProgressCard(s, labels) {
 		});
 	}
 	chart.setDatasets(datasets);
+	if (show.signals) {
+		const signals = _buildSignalsRow(s);
+		if (signals) card.appendChild(signals);
+	}
 	return { card, chart };
+}
+
+function _buildSignalsRow(s) {
+	const cols = [];
+	let maxRows = 0;
+	let anyPattern = false;
+	for (const a of ASSIGNMENTS) {
+		const entry = s.lessons[a.n - 1];
+		const obs = entry?.obs || "";
+		const schema = _artefactSchema[(a.name || "").toLowerCase()];
+		const schemaArr = Array.isArray(schema) ? schema : [];
+		const has = isArtefactPattern(obs);
+		if (has) anyPattern = true;
+		const rows = has ? Math.max(obs.length, schemaArr.length) : 0;
+		if (rows > maxRows) maxRows = rows;
+		cols.push({ entry, obs, schema, schemaArr, has, rows });
+	}
+	if (!anyPattern || maxRows === 0) return null;
+	const row = el("div", "prog-signals-row");
+	row.style.gridTemplateColumns = `repeat(${ASSIGNMENTS.length}, 1fr)`;
+	for (const { entry, obs, schema, schemaArr, has, rows } of cols) {
+		const col = el("div", "prog-signal-col");
+		if (has) {
+			for (let i = 0; i < rows; i++) {
+				const ch = obs[i] || "0";
+				const fired = ch === "1";
+				const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
+				const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
+				const badge = el("div", "prog-signal-badge");
+				badge.style.background = clr;
+				col.appendChild(badge);
+			}
+			const tipHtml = buildArtefactSummaryHtml(obs, schema);
+			if (tipHtml) attachHtmlTip(col, tipHtml);
+			col.style.cursor = "pointer";
+			col.addEventListener("click", () => {
+				if (entry) openAssignDiff(s, entry);
+			});
+		}
+		row.appendChild(col);
+	}
+	return row;
 }

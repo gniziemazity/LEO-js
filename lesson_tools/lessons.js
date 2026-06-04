@@ -1,15 +1,21 @@
 "use strict";
 
 let _current = null;
+let _overlay = null;
 
 async function _init() {
+	_overlay = new StateOverlay({
+		emptyEl: document.getElementById("no-lesson"),
+		contentEls: {
+			preview: document.getElementById("preview-frame"),
+		},
+	});
 	let names;
 	try {
 		const entries = await listServerDir("/lessons/");
 		names = entries.filter((e) => e.kind === "directory").map((e) => e.name);
 	} catch (e) {
-		document.getElementById("no-lesson").textContent =
-			"Failed to load lessons: " + e.message;
+		_overlay.showError("Failed to load lessons: " + e.message);
 		return;
 	}
 
@@ -45,8 +51,7 @@ function _select(name) {
 		lesson: name,
 		group: "lessons",
 	});
-	iframe.style.display = "";
-	document.getElementById("no-lesson").style.display = "none";
+	_overlay.showContent("preview");
 }
 
 document.getElementById("timeline-btn").addEventListener("click", () => {

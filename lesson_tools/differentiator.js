@@ -9,6 +9,8 @@ let _allMarks = {};
 let _currentMarksEntry = null;
 let _titleBase = null;
 let _imageUris = {};
+let _docUris = {};
+let _docHtmlCache = {};
 let _teacherBaseUrl = null;
 let _studentBaseUrl = null;
 let _linePaddingEnabled =
@@ -19,6 +21,9 @@ let _linePaddingEnabled =
 let _lineNumbersEnabled =
 	typeof localStorage !== "undefined" &&
 	localStorage.getItem("diff-line-numbers") === "on";
+let _smartPaddingEnabled =
+	typeof localStorage !== "undefined" &&
+	localStorage.getItem("diff-smart-padding") === "on";
 
 const DIFF_MODE_OPTIONS = [
 	{ key: "required", label: "Required" },
@@ -120,6 +125,7 @@ function _activateFileTab(side, name) {
 		.forEach((p) => p.classList.remove("active"));
 	btns[idx].classList.add("file-tab-active");
 	if (codeWrap.children[idx]) codeWrap.children[idx].classList.add("active");
+	_updateHScrollProxy(side);
 }
 
 const _BORROW_ALIGNMENT_ORDER = [
@@ -177,10 +183,244 @@ function _applyCurrentMarks() {
 	_studentMarks = _currentMarksEntry?.student_files ?? null;
 }
 
+function _posToLine(lineStarts, pos) {
+	let lo = 0;
+	let hi = lineStarts.length - 1;
+	while (lo < hi) {
+		const mid = (lo + hi + 1) >> 1;
+		if (lineStarts[mid] <= pos) lo = mid;
+		else hi = mid - 1;
+	}
+	return lo;
+}
+
+function _pairedTeacherFileFor(sFile, filePairs) {
+	if (!sFile) return null;
+	if (filePairs && filePairs[sFile]) return filePairs[sFile];
+	const lower = sFile.toLowerCase();
+	for (const t of Object.keys(_teacherFiles || {})) {
+		if (t.toLowerCase() === lower) return t;
+	}
+	return null;
+}
+
+function _smartFilePairs() {
+	const filePairs = _currentMarksEntry?.file_pairs || {};
+	const pairs = [];
+	const seenT = new Set();
+	const seenS = new Set();
+	const tHas = (n) => _teacherFiles && _teacherFiles[n] != null;
+	const sHas = (n) => _studentFiles && _studentFiles[n] != null;
+	for (const [sName, tName] of Object.entries(filePairs)) {
+		if (tHas(tName) && sHas(sName)) {
+			pairs.push([tName, sName]);
+			seenT.add(tName);
+			seenS.add(sName);
+		}
+	}
+	const tLower = new Map();
+	for (const t of Object.keys(_teacherFiles || {}))
+		tLower.set(t.toLowerCase(), t);
+	for (const s of Object.keys(_studentFiles || {})) {
+		if (seenS.has(s)) continue;
+		const t = tLower.get(s.toLowerCase());
+		if (t && !seenT.has(t)) {
+			pairs.push([t, s]);
+			seenT.add(t);
+			seenS.add(s);
+		}
+	}
+	const inferred = new Map();
+	const bump = (t, s) => {
+		if (!t || !s || seenT.has(t) || seenS.has(s)) return;
+		if (!tHas(t) || !sHas(s)) return;
+		if (!inferred.has(t)) inferred.set(t, new Map());
+		const sub = inferred.get(t);
+		sub.set(s, (sub.get(s) || 0) + 1);
+	};
+	const teacherMarks = _currentMarksEntry?.teacher_files || {};
+	const studentMarks = _currentMarksEntry?.student_files || {};
+	for (const [tFile, marks] of Object.entries(teacherMarks)) {
+		for (const m of marks || []) {
+			if (m?.label === "missing" && m.insert_at?.file) {
+				bump(tFile, m.insert_at.file);
+			}
+		}
+	}
+	for (const [sFile, marks] of Object.entries(studentMarks)) {
+		for (const m of marks || []) {
+			if (m?.paired_with?.file) bump(m.paired_with.file, sFile);
+		}
+	}
+	const inferredArr = [];
+	for (const [t, sCounts] of inferred) {
+		let bestS = null;
+		let bestCount = 0;
+		for (const [s, c] of sCounts) {
+			if (c > bestCount) {
+				bestS = s;
+				bestCount = c;
+			}
+		}
+		if (bestS) inferredArr.push([t, bestS, bestCount]);
+	}
+	inferredArr.sort((a, b) => b[2] - a[2]);
+	for (const [t, s] of inferredArr) {
+		if (seenT.has(t) || seenS.has(s)) continue;
+		pairs.push([t, s]);
+		seenT.add(t);
+		seenS.add(s);
+	}
+	return pairs;
+}
+
+function _computeSmartAlignments() {
+	if (!_currentMarksEntry) return null;
+	const result = {};
+	const teacherMarks = _currentMarksEntry.teacher_files || {};
+	const studentMarks = _currentMarksEntry.student_files || {};
+
+	for (const [tFile, sFile] of _smartFilePairs()) {
+		const tText = (_teacherFiles[tFile] || "").replace(/\r\n/g, "\n");
+		const sText = (_studentFiles[sFile] || "").replace(/\r\n/g, "\n");
+		const tStarts = _lineStartOffsets(tText);
+		const sStarts = _lineStartOffsets(sText);
+		const tLineCount = Math.max(
+			1,
+			tText.length ? tText.split("\n").length : 1,
+		);
+		const sLineCount = Math.max(
+			1,
+			sText.length ? sText.split("\n").length : 1,
+		);
+
+		const constraints = [];
+		const tPairedLines = new Set();
+		const sPairedLines = new Set();
+		const tMissingLines = new Set();
+		const sExtraLines = new Set();
+		const tMatchedLines = new Set();
+		const sMatchedLines = new Set();
+
+		for (const m of teacherMarks[tFile] || []) {
+			if (!m || m.label !== "missing") continue;
+			const tLine = _posToLine(tStarts, m.start ?? 0);
+			tMissingLines.add(tLine);
+			if (m.insert_at?.file === sFile) {
+				constraints.push([
+					tLine,
+					_posToLine(sStarts, m.insert_at.pos ?? 0),
+				]);
+				tPairedLines.add(tLine);
+			}
+		}
+		for (const m of studentMarks[sFile] || []) {
+			if (!m) continue;
+			if (m.label !== "extra" && m.label !== "ghost_extra") continue;
+			const sLine = _posToLine(sStarts, m.start ?? 0);
+			sExtraLines.add(sLine);
+			if (m.paired_with?.file === tFile) {
+				constraints.push([
+					_posToLine(tStarts, m.paired_with.start ?? 0),
+					sLine,
+				]);
+				sPairedLines.add(sLine);
+			}
+		}
+
+		const isCurated =
+			typeof CURATED_MODES !== "undefined" && CURATED_MODES.has(_diffMode);
+		const tokensMap = isCurated
+			? null
+			: _currentMarksEntry?.leo_assignments?.tokens;
+		if (tokensMap) {
+			for (const data of Object.values(tokensMap)) {
+				const tMatched = (data.teacher || [])
+					.filter((x) => x && x.file === tFile && !x.label && !x.ghost)
+					.sort((a, b) => (a.seq_idx ?? 0) - (b.seq_idx ?? 0));
+				const sMatched = (data.student || [])
+					.filter((x) => x && x.file === sFile && !x.label && !x.ghost)
+					.sort((a, b) => (a.seq_idx ?? 0) - (b.seq_idx ?? 0));
+				const n = Math.min(tMatched.length, sMatched.length);
+				for (let i = 0; i < n; i++) {
+					const tLine = _posToLine(tStarts, tMatched[i].pos ?? 0);
+					const sLine = _posToLine(sStarts, sMatched[i].pos ?? 0);
+					constraints.push([tLine, sLine]);
+					tMatchedLines.add(tLine);
+					sMatchedLines.add(sLine);
+				}
+			}
+		}
+
+		const looseT = new Set();
+		for (const t of tMissingLines) {
+			if (!tPairedLines.has(t) && !tMatchedLines.has(t)) looseT.add(t);
+		}
+		const looseS = new Set();
+		for (const s of sExtraLines) {
+			if (!sPairedLines.has(s) && !sMatchedLines.has(s)) looseS.add(s);
+		}
+
+		constraints.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+		const anchors = [];
+		let lastT = -1;
+		let lastS = -1;
+		for (const [t, s] of constraints) {
+			if (t > lastT && s > lastS) {
+				anchors.push([t, s]);
+				lastT = t;
+				lastS = s;
+			}
+		}
+
+		const alignment = [];
+		let tCur = 0;
+		let sCur = 0;
+		const emitFill = (tEnd, sEnd) => {
+			while (tCur < tEnd || sCur < sEnd) {
+				if (tCur < tEnd && looseT.has(tCur)) {
+					alignment.push([tCur, null]);
+					tCur++;
+				} else if (sCur < sEnd && looseS.has(sCur)) {
+					alignment.push([null, sCur]);
+					sCur++;
+				} else if (tCur < tEnd && sCur < sEnd) {
+					alignment.push([tCur, sCur]);
+					tCur++;
+					sCur++;
+				} else if (tCur < tEnd) {
+					alignment.push([tCur, null]);
+					tCur++;
+				} else {
+					alignment.push([null, sCur]);
+					sCur++;
+				}
+			}
+		};
+		for (const [tA, sA] of anchors) {
+			emitFill(tA, sA);
+			alignment.push([tA, sA]);
+			tCur = tA + 1;
+			sCur = sA + 1;
+		}
+		emitFill(tLineCount, sLineCount);
+
+		result[tFile] = alignment;
+		if (sFile !== tFile) result[sFile] = alignment;
+	}
+
+	return result;
+}
+
 function _applyIncomingData(data) {
 	_teacherFiles = data.teacherFiles || {};
 	_studentFiles = data.studentFiles || {};
 	_imageUris = data.imageUris || {};
+	_docUris = data.docUris || {};
+	_docHtmlCache = {};
+	_closeDocxViewer();
+	_refreshDocxButton();
 	_teacherBaseUrl = data.teacherBaseUrl || null;
 	_studentBaseUrl = data.studentBaseUrl || null;
 
@@ -213,56 +453,93 @@ function _applyIncomingData(data) {
 	renderPanel("student", _studentFiles, _studentMarks);
 	_updateTitleScore();
 	if (typeof _curatedEnable === "function") _curatedEnable();
+	if (_embedMode) _applyPreviewMode(_isPreviewMode());
 }
 
 function _showLoading(on) {
 	const el = document.getElementById("loading");
 	if (el) el.style.display = on ? "flex" : "none";
+	document.body.classList.toggle("diff-loading", on);
 }
 
 let _navState = {
 	lesson: null,
 	group: null,
 	dataSource: null,
-	ids: [],
+	folders: [],
 	currentIdx: -1,
+	idToFolder: {},
+	folderToId: {},
 };
 
-function _sortStudentIds(ids) {
-	return [...ids].sort((a, b) => {
-		const na = Number(a);
-		const nb = Number(b);
-		if (
-			Number.isFinite(na) &&
-			Number.isFinite(nb) &&
-			String(na) === a &&
-			String(nb) === b
-		)
-			return na - nb;
-		return a.localeCompare(b, undefined, { numeric: true });
-	});
+function _sortFolders(names) {
+	return [...names].sort((a, b) =>
+		a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+	);
 }
 
-function _extractStudentIds(files) {
-	const idSet = new Set();
+function _extractStudentFolders(files, prefix) {
+	const set = new Set();
+	const re = new RegExp("^" + prefix + "([^/]+)/", "i");
 	for (const path of files.keys()) {
-		const m = path.match(/^anon_ids\/([^/]+)\//i);
-		if (m) idSet.add(m[1]);
+		const m = path.match(re);
+		if (m) set.add(m[1]);
 	}
-	return _sortStudentIds([...idSet]);
+	return _sortFolders([...set]);
+}
+
+async function _buildIdFolderMaps(ds) {
+	const idToFolder = {};
+	const folderToId = {};
+	const lowerToOriginal = {};
+	const csvEntry =
+		ds.files.get("name_map.csv") || ds.files.get("students.csv");
+	if (!csvEntry) return { idToFolder, folderToId, lowerToOriginal };
+	try {
+		const text = await readFileText(csvEntry);
+		const { header, rows } = parseCsv(text);
+		const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
+		const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
+		const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
+		const folderIdx = alterIdx !== -1 ? alterIdx : nameIdx;
+		if (idIdx === -1 || folderIdx === -1)
+			return { idToFolder, folderToId, lowerToOriginal };
+		for (const parts of rows) {
+			const id = (parts[idIdx] || "").trim();
+			const folder = (parts[folderIdx] || "").trim();
+			if (id && folder) {
+				idToFolder[id.toLowerCase()] = folder;
+				folderToId[folder.toLowerCase()] = id;
+				lowerToOriginal[folder.toLowerCase()] = folder;
+			}
+		}
+	} catch {}
+	return { idToFolder, folderToId, lowerToOriginal };
+}
+
+function _resolveStudentFolder(token, idToFolder, allFolders) {
+	if (!token) return null;
+	const lower = String(token).toLowerCase();
+	if (idToFolder[lower]) return idToFolder[lower];
+	const direct = allFolders.find((f) => f.toLowerCase() === lower);
+	return direct || null;
 }
 
 function _updateStudentNavButtons() {
 	const prev = document.getElementById("nav-prev-student");
 	const next = document.getElementById("nav-next-student");
+	const counter = document.getElementById("nav-counter-student");
 	if (!prev || !next) return;
-	const n = _navState.ids.length;
+	const n = _navState.folders.length;
 	const i = _navState.currentIdx;
 	prev.disabled = !(n > 0 && i > 0);
 	next.disabled = !(n > 0 && i >= 0 && i < n - 1);
+	if (counter) {
+		counter.textContent = n > 0 && i >= 0 ? `${i + 1} / ${n}` : "";
+	}
 	if (n > 0 && i >= 0) {
-		prev.title = `Previous student (${i}/${n - 1} done)`;
-		next.title = `Next student (${i + 1}/${n - 1} remaining)`;
+		prev.title = `Previous student (${i + 1} / ${n})`;
+		next.title = `Next student (${i + 1} / ${n})`;
 	}
 }
 
@@ -270,57 +547,104 @@ async function _loadFromUrlParams({ lesson, group, id, title }) {
 	const ds = await loadLessonDataSource({ lesson, group });
 	if (!ds) return null;
 	await ds.load();
-	const studentPrefix = "anon_ids/" + String(id).toLowerCase() + "/";
+
+	const { idToFolder, folderToId, lowerToOriginal } =
+		await _buildIdFolderMaps(ds);
+	const namesFoldersLc = _extractStudentFolders(ds.files, "anon_names/");
+	const useNames = namesFoldersLc.length > 0;
+	const prefix = useNames ? "anon_names/" : "anon_ids/";
+	const rawFolders = useNames
+		? namesFoldersLc
+		: _extractStudentFolders(ds.files, "anon_ids/");
+	const folders = useNames
+		? rawFolders.map((lc) => lowerToOriginal[lc] || lc)
+		: rawFolders;
+	const folder = useNames
+		? _resolveStudentFolder(id, idToFolder, folders) ||
+			folders.find((f) => f.toLowerCase() === String(id).toLowerCase()) ||
+			null
+		: String(id);
+
+	if (!folder) {
+		console.warn(
+			`[Differentiator] Could not resolve student "${id}" to a folder under ${prefix}.`,
+		);
+		return null;
+	}
+
+	const studentPrefix = prefix + folder.toLowerCase() + "/";
 	const data = await buildDiffPayloadData(ds.files, studentPrefix);
 	if (
 		!Object.keys(data.teacherFiles).length &&
 		!Object.keys(data.studentFiles).length
 	) {
 		console.warn(
-			`[Differentiator] No code files found for ${lesson}/anon_ids/${id}/.`,
+			`[Differentiator] No code files found for ${lesson}/${studentPrefix}.`,
 		);
 		return null;
 	}
-	const ids = _extractStudentIds(ds.files);
+	if (!Object.keys(data.allMarks || {}).length) {
+		console.warn(
+			`[Differentiator] No diff_marks loaded for ${lesson}/${studentPrefix}.`,
+		);
+	}
+
 	_navState = {
 		lesson,
 		group: group || null,
 		dataSource: ds,
-		ids,
-		currentIdx: ids.findIndex(
-			(x) => x.toLowerCase() === String(id).toLowerCase(),
+		folders,
+		currentIdx: folders.findIndex(
+			(f) => f.toLowerCase() === folder.toLowerCase(),
 		),
+		idToFolder,
+		folderToId,
+		lowerToOriginal,
+		prefix,
 	};
 	_updateStudentNavButtons();
-	data.title = title || `${id}. Student`;
+	data.title = title || _formatStudentTitle(folder, folderToId);
 	return _buildDiffPayload(data);
 }
 
-async function _navToStudent(idx) {
+function _formatStudentTitle(folder, folderToId) {
+	const id = folderToId && folderToId[folder.toLowerCase()];
+	return id ? `${id}. ${folder}` : folder;
+}
+
+async function _navToStudent(idx, title) {
 	if (!_navState.dataSource) return;
-	if (idx < 0 || idx >= _navState.ids.length) return;
-	const id = _navState.ids[idx];
+	if (idx < 0 || idx >= _navState.folders.length) return;
+	const folder = _navState.folders[idx];
 	_showLoading(true);
 	try {
+		const studentPrefix = _navState.prefix + folder.toLowerCase() + "/";
 		const data = await buildDiffPayloadData(
 			_navState.dataSource.files,
-			"anon_ids/" + id.toLowerCase() + "/",
+			studentPrefix,
 		);
 		if (
 			!Object.keys(data.teacherFiles).length &&
 			!Object.keys(data.studentFiles).length
 		) {
 			console.warn(
-				`[Differentiator] No code files for ${_navState.lesson}/anon_ids/${id}/.`,
+				`[Differentiator] No code files for ${_navState.lesson}/${studentPrefix}.`,
 			);
 			return;
 		}
-		data.title = `${id}. Student`;
+		data.title = title || _formatStudentTitle(folder, _navState.folderToId);
+		if (typeof _curatedResetForNewStudent === "function") {
+			_curatedResetForNewStudent();
+		}
 		_applyIncomingData(_buildDiffPayload(data));
 		_navState.currentIdx = idx;
 		_updateStudentNavButtons();
+		_updateTitleScore();
 		const url = new URL(location.href);
-		url.searchParams.set("id", id);
+		const idForUrl =
+			(_navState.folderToId && _navState.folderToId[folder.toLowerCase()]) ||
+			folder;
+		url.searchParams.set("id", idForUrl);
 		url.searchParams.delete("title");
 		history.replaceState(null, "", url);
 	} catch (e) {
@@ -330,16 +654,47 @@ async function _navToStudent(idx) {
 	}
 }
 
+async function _navToStudentId(id, title) {
+	if (!_navState.dataSource || !_navState.folders.length) return false;
+	const folders = _navState.folders;
+	const lower = String(id).toLowerCase();
+	let idx = -1;
+	for (const cand of [_navState.idToFolder[lower], String(id)]) {
+		if (!cand) continue;
+		idx = folders.findIndex(
+			(f) => f.toLowerCase() === String(cand).toLowerCase(),
+		);
+		if (idx >= 0) break;
+	}
+	if (idx < 0) return false;
+	if (idx !== _navState.currentIdx) await _navToStudent(idx, title);
+	return true;
+}
+
+window.diffNavToStudentId = _navToStudentId;
+
+let _embedMode = false;
+let _previewOverride = null;
+
 window.addEventListener("DOMContentLoaded", async () => {
 	await window.LanguageProfiles.initProfiles();
 	const params = new URLSearchParams(location.search);
 	const modeParam = params.get("mode") || null;
 	_diffMode = modeParam;
 	const toolParams = parseToolParams();
+	if (params.get("preview") === "1") _previewOverride = true;
 	_refreshLinePaddingButton();
+	_refreshSmartPaddingButton();
 	_refreshLineNumbersButton();
 	_refreshPreviewButton();
 	_applyLineNumbersClass();
+
+	_embedMode = params.get("embed") === "1";
+	if (_embedMode) {
+		document.body.classList.add("embed");
+		const tt = document.getElementById("title-teacher");
+		if (tt) tt.textContent = "Starter Code";
+	}
 
 	const expectAutoLoad = !!toolParams.lesson && !!toolParams.id;
 	if (expectAutoLoad) _showLoading(true);
@@ -418,6 +773,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 	document
 		.getElementById("nav-next-student")
 		.addEventListener("click", () => _navToStudent(_navState.currentIdx + 1));
+
+	let _hscrollResizeRaf = 0;
+	window.addEventListener("resize", () => {
+		if (_hscrollResizeRaf) return;
+		_hscrollResizeRaf = requestAnimationFrame(() => {
+			_hscrollResizeRaf = 0;
+			_updateHScrollProxies();
+			_updateTabHScrolls();
+		});
+	});
 });
 
 function loadFilesFromInput(files, side) {
@@ -426,6 +791,13 @@ function loadFilesFromInput(files, side) {
 	if (!pending) return;
 
 	for (const file of files) {
+		if (DOC_EXT.test(file.name) && !/^~\$/.test(file.name)) {
+			_docUris[file.name] = fileToUrl(file);
+			delete _docHtmlCache[_docUris[file.name]];
+			pending--;
+			if (pending === 0) _refreshDocxButton();
+			continue;
+		}
 		readFileText(file).then((text) => {
 			const mode = diffModeFromFilename(file.name);
 			if (mode != null) {
@@ -450,6 +822,7 @@ function loadFilesFromInput(files, side) {
 				);
 				_updateTitleScore();
 				if (typeof _curatedEnable === "function") _curatedEnable();
+				_refreshDocxButton();
 			}
 		});
 	}
@@ -601,6 +974,13 @@ function _refreshLinePaddingButton() {
 	btn.textContent = _linePaddingEnabled ? "⇲ Padding" : "⇱ Padding";
 }
 
+function _refreshSmartPaddingButton() {
+	const btn = document.getElementById("btn-smart-padding");
+	if (!btn) return;
+	btn.classList.toggle("is-toggle-on", _smartPaddingEnabled);
+	btn.textContent = _smartPaddingEnabled ? "🪜 Smart" : "🪜 Smart";
+}
+
 function _refreshLineNumbersButton() {
 	const btn = document.getElementById("btn-line-numbers");
 	if (!btn) return;
@@ -623,6 +1003,7 @@ function toggleLineNumbers() {
 	} catch {}
 	_refreshLineNumbersButton();
 	_applyLineNumbersClass();
+	requestAnimationFrame(_updateHScrollProxies);
 }
 
 function toggleLinePadding() {
@@ -649,7 +1030,32 @@ function toggleLinePadding() {
 	}
 }
 
+function toggleSmartPadding() {
+	_smartPaddingEnabled = !_smartPaddingEnabled;
+	try {
+		localStorage.setItem(
+			"diff-smart-padding",
+			_smartPaddingEnabled ? "on" : "off",
+		);
+	} catch {}
+	_refreshSmartPaddingButton();
+	if (_teacherFiles && Object.keys(_teacherFiles).length) {
+		const savedT = _saveState("teacher");
+		const savedS = _saveState("student");
+		renderPanel("teacher", _teacherFiles, _teacherMarks);
+		renderPanel("student", _studentFiles, _studentMarks);
+		_restoreState("teacher", savedT);
+		_restoreState("student", savedS);
+		if (typeof _curatedEditMode !== "undefined" && _curatedEditMode) {
+			requestAnimationFrame(() => {
+				_curatedRefreshOverlays();
+			});
+		}
+	}
+}
+
 function _isPreviewMode() {
+	if (_previewOverride !== null) return _previewOverride;
 	return localStorage.getItem("diff-preview-mode") === "preview";
 }
 
@@ -680,25 +1086,142 @@ function _applyPreviewMode(isPreview) {
 			if (iframe) iframe.style.display = "none";
 			codeWrap.style.display = "";
 		}
+		_updateHScrollProxy(side);
 	}
+}
+
+function _hscrollProxyFor(side) {
+	const codeWrap = document.getElementById(`code-${side}`);
+	const proxy = document.getElementById(`hscroll-${side}`);
+	if (!codeWrap || !proxy) return null;
+	if (!proxy.dataset.wired) {
+		proxy.dataset.wired = "1";
+		let syncing = false;
+		proxy.addEventListener(
+			"scroll",
+			() => {
+				if (syncing) return;
+				syncing = true;
+				codeWrap.scrollLeft = proxy.scrollLeft;
+				syncing = false;
+			},
+			{ passive: true },
+		);
+		codeWrap.addEventListener(
+			"scroll",
+			() => {
+				if (syncing) return;
+				syncing = true;
+				proxy.scrollLeft = codeWrap.scrollLeft;
+				syncing = false;
+			},
+			{ passive: true },
+		);
+	}
+	return { codeWrap, proxy };
+}
+
+function _updateHScrollProxy(side) {
+	const refs = _hscrollProxyFor(side);
+	if (!refs) return;
+	const { codeWrap, proxy } = refs;
+	const hidden =
+		codeWrap.style.display === "none" || codeWrap.clientWidth === 0;
+	const overflow = codeWrap.scrollWidth - codeWrap.clientWidth;
+	if (!hidden && overflow > 1) {
+		proxy.firstElementChild.style.width = `${codeWrap.scrollWidth}px`;
+		proxy.classList.add("is-active");
+		proxy.scrollLeft = codeWrap.scrollLeft;
+	} else {
+		proxy.classList.remove("is-active");
+	}
+}
+
+function _updateHScrollProxies() {
+	_updateHScrollProxy("teacher");
+	_updateHScrollProxy("student");
+}
+
+function _updateTabHScroll(side) {
+	const tabs = document.getElementById(`tabs-${side}`);
+	const proxy = document.getElementById(`tab-hscroll-${side}`);
+	if (!tabs || !proxy) return;
+	const inner = proxy.firstElementChild;
+	const overflow = tabs.scrollWidth - tabs.clientWidth;
+	if (overflow > 1) {
+		inner.style.width = `${tabs.scrollWidth}px`;
+		proxy.classList.add("is-active");
+		proxy.scrollLeft = tabs.scrollLeft;
+		if (!proxy.dataset.wired) {
+			proxy.dataset.wired = "1";
+			let syncing = false;
+			proxy.addEventListener(
+				"scroll",
+				() => {
+					if (syncing) return;
+					syncing = true;
+					tabs.scrollLeft = proxy.scrollLeft;
+					syncing = false;
+				},
+				{ passive: true },
+			);
+			tabs.addEventListener(
+				"scroll",
+				() => {
+					if (syncing) return;
+					syncing = true;
+					proxy.scrollLeft = tabs.scrollLeft;
+					syncing = false;
+				},
+				{ passive: true },
+			);
+		}
+	} else {
+		proxy.classList.remove("is-active");
+	}
+}
+
+function _updateTabHScrolls() {
+	_updateTabHScroll("teacher");
+	_updateTabHScroll("student");
 }
 
 function togglePreview() {
 	const next = !_isPreviewMode();
+	_previewOverride = null;
 	localStorage.setItem("diff-preview-mode", next ? "preview" : "code");
 	_applyPreviewMode(next);
 	_refreshPreviewButton();
 }
 
+function _refreshPreviewIfActive(side) {
+	if (!_isPreviewMode()) return;
+	const iframe = document.getElementById(`preview-${side}`);
+	if (!iframe || iframe.style.display === "none") return;
+	const files = side === "teacher" ? _teacherFiles : _studentFiles;
+	if (!files || !Object.keys(files).length) return;
+	updatePreview(side, files, iframe);
+}
+
+function _activeHtmlFileFor(side, files) {
+	const activeBtn = document.querySelector(`#tabs-${side} .file-tab-active`);
+	const activeName = activeBtn?.dataset.fileName;
+	if (activeName && /\.html$/i.test(activeName) && files[activeName] != null) {
+		return activeName;
+	}
+	for (const name of Object.keys(files)) {
+		if (/\.html$/i.test(name)) return name;
+	}
+	return null;
+}
+
 function updatePreview(side, files, iframe) {
-	const htmlEntry = Object.entries(files).find(([name]) =>
-		/\.html$/i.test(name),
-	);
-	if (!htmlEntry) {
+	const activeHtml = _activeHtmlFileFor(side, files);
+	if (!activeHtml) {
 		iframe.srcdoc = `<p style='font-family:sans-serif;padding:20px;color:${THEME.muted}'>No HTML file found.</p>`;
 		return;
 	}
-	let html = htmlEntry[1];
+	let html = files[activeHtml];
 	const baseUrl = side === "teacher" ? _teacherBaseUrl : _studentBaseUrl;
 	const headInjects = [];
 	if (baseUrl) headInjects.push(`<base href="${baseUrl}">`);
@@ -738,4 +1261,80 @@ function _buildMediaShimScript(mediaMap) {
 		"window.Audio.prototype=_OA.prototype;" +
 		"})();</script>"
 	);
+}
+
+function _refreshDocxButton() {
+	const btn = document.getElementById("btn-docx");
+	if (!btn) return;
+	const names = Object.keys(_docUris);
+	btn.style.display = names.length ? "" : "none";
+	btn.textContent = names.length === 1 ? `📄 ${names[0]}` : "📄 Answer";
+}
+
+function _ensureDocxViewer() {
+	let win = document.getElementById("docx-viewer");
+	if (win) return win;
+	win = document.createElement("div");
+	win.id = "docx-viewer";
+	win.innerHTML = `
+		<div id="docx-viewer-head">
+			<span id="docx-viewer-title">Answer</span>
+			<button id="docx-viewer-close" title="Close">✕</button>
+		</div>
+		<div id="docx-viewer-body"></div>`;
+	document.body.appendChild(win);
+	makeDraggable(win.querySelector("#docx-viewer-head"), win);
+	win.querySelector("#docx-viewer-close").onclick = _closeDocxViewer;
+	return win;
+}
+
+function _closeDocxViewer() {
+	const win = document.getElementById("docx-viewer");
+	if (win) win.classList.remove("is-open");
+}
+
+async function _docxHtml(url) {
+	if (_docHtmlCache[url] != null) return _docHtmlCache[url];
+	const resp = await fetch(url);
+	const buf = await resp.arrayBuffer();
+	const result = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+	_docHtmlCache[url] = result.value || "";
+	return _docHtmlCache[url];
+}
+
+async function toggleDocxViewer() {
+	const win = _ensureDocxViewer();
+	if (win.classList.contains("is-open")) {
+		win.classList.remove("is-open");
+		return;
+	}
+	const names = Object.keys(_docUris);
+	if (!names.length) return;
+	if (typeof window.mammoth === "undefined") {
+		alert("Word viewer library (mammoth.js) failed to load.");
+		return;
+	}
+	if (!win.style.left) {
+		win.style.left = `${Math.round(window.innerWidth * 0.18)}px`;
+		win.style.top = `${Math.round(window.innerHeight * 0.1)}px`;
+	}
+	win.querySelector("#docx-viewer-title").textContent =
+		names.length === 1 ? names[0] : "Answer";
+	const body = win.querySelector("#docx-viewer-body");
+	body.textContent = "Converting…";
+	win.classList.add("is-open");
+	try {
+		const sections = [];
+		for (const name of names) {
+			const html = await _docxHtml(_docUris[name]);
+			const heading =
+				names.length > 1
+					? `<div class="docx-file-name">${escHtml(name)}</div>`
+					: "";
+			sections.push(heading + html);
+		}
+		body.innerHTML = sections.join("");
+	} catch (e) {
+		body.textContent = `Failed to render document: ${(e && e.message) || e}`;
+	}
 }

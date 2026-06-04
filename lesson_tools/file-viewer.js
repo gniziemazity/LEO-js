@@ -37,7 +37,13 @@ class FileViewer {
 		}
 
 		if (this._dividerEl && this._targetEl && this._containerEl) {
-			this._installResize();
+			installDragDivider({
+				dividerEl: this._dividerEl,
+				targetEl: this._targetEl,
+				containerEl: this._containerEl,
+				axis: "x",
+				persistKey: this._persistKey,
+			});
 		}
 	}
 
@@ -58,45 +64,6 @@ class FileViewer {
 		this.previewEl = rootEl.querySelector(".fv-preview");
 		this._containerEl = rootEl;
 		this._targetEl = this.previewEl;
-	}
-
-	_installResize() {
-		if (this._persistKey) {
-			const stored = parseFloat(localStorage.getItem(this._persistKey));
-			if (Number.isFinite(stored) && stored > 5 && stored < 95) {
-				this._targetEl.style.flex = `0 0 ${stored}%`;
-			}
-		}
-		let dragging = false;
-		this._dividerEl.addEventListener("pointerdown", (e) => {
-			dragging = true;
-			this._dividerEl.setPointerCapture(e.pointerId);
-			document.body.style.cursor = "col-resize";
-			document.body.style.userSelect = "none";
-			e.preventDefault();
-		});
-		this._dividerEl.addEventListener("pointermove", (e) => {
-			if (!dragging) return;
-			const r = this._containerEl.getBoundingClientRect();
-			const pct = ((r.right - e.clientX) / r.width) * 100;
-			const clamped = Math.max(10, Math.min(80, pct));
-			this._targetEl.style.flex = `0 0 ${clamped}%`;
-		});
-		const stop = (e) => {
-			if (!dragging) return;
-			dragging = false;
-			try {
-				this._dividerEl.releasePointerCapture(e.pointerId);
-			} catch {}
-			document.body.style.cursor = "";
-			document.body.style.userSelect = "";
-			const m = this._targetEl.style.flex.match(/0 0 ([\d.]+)%/);
-			if (m && this._persistKey) {
-				localStorage.setItem(this._persistKey, m[1]);
-			}
-		};
-		this._dividerEl.addEventListener("pointerup", stop);
-		this._dividerEl.addEventListener("pointercancel", stop);
 	}
 
 	setTabs(names, activeName = null) {

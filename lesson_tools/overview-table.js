@@ -92,7 +92,10 @@ function renderTable() {
 	const cdiffMax = Math.max(0, ..._students.map((s) => s.total_cdiff ?? 0));
 
 	const tbody = document.createElement("tbody");
-	_students.forEach((s) => {
+	const rows = _hideExcluded
+		? _students.filter((s) => !s.excluded || s.ai_flagged)
+		: _students;
+	rows.forEach((s) => {
 		const tr = document.createElement("tr");
 		tr.classList.add(s.passed_course ? "row-pass" : "row-fail");
 		if (s.excluded) tr.classList.add("row-excluded");
@@ -107,11 +110,11 @@ function renderTable() {
 		const obsCell = (entry, cls = "") => {
 			const td = document.createElement("td");
 			if (cls) td.className = cls;
-			const schema = _trapSchema[(entry.name || "").toLowerCase()];
-			const badges = renderTrapBadges(entry.obs, schema);
+			const schema = _artefactSchema[(entry.name || "").toLowerCase()];
+			const badges = renderArtefactBadges(entry.obs, schema);
 			if (badges) {
 				td.innerHTML = badges;
-				const tipHtml = buildTrapSummaryHtml(entry.obs, schema);
+				const tipHtml = buildArtefactSummaryHtml(entry.obs, schema);
 				if (tipHtml) attachHtmlTip(td, tipHtml);
 			} else {
 				td.textContent = obsText(entry.obs);
@@ -148,7 +151,6 @@ function renderTable() {
 
 				const lobs = cell(obsText(entry.lesson_obs));
 				makeLessonClickable(lobs, entry);
-				if (!lobs.title) lobs.title = `Open ${entry.name} lesson`;
 				tr.appendChild(lobs);
 
 				const gc = document.createElement("td");
@@ -172,7 +174,6 @@ function renderTable() {
 
 				const aobs = obsCell(entry, "asn-col");
 				makeAssignClickable(aobs, entry);
-				if (!aobs.title) aobs.title = `Open ${entry.name} assignment`;
 				tr.appendChild(aobs);
 			} else {
 				const gc = document.createElement("td");
@@ -196,7 +197,6 @@ function renderTable() {
 
 				const aobs = obsCell(entry, "asn-col");
 				makeAssignClickable(aobs, entry);
-				if (!aobs.title) aobs.title = `Open ${entry.name} assignment`;
 				tr.appendChild(aobs);
 			}
 		}
@@ -229,7 +229,135 @@ function renderTable() {
 		});
 		tbody.appendChild(tr);
 	});
+
+	if (rows.length > 0) {
+		_appendOverviewTotalsRow(tbody, rows);
+	}
+
 	table.appendChild(tbody);
+}
+
+function _appendOverviewTotalsRow(tbody, rows) {
+	const tr = document.createElement("tr");
+	tr.className = "totals-row";
+
+	const cohort = rows.filter((s) => !s.ai_flagged);
+	const nonAiCount = cohort.length;
+
+	const mean = (xs) => {
+		const vs = xs.filter((x) => x != null && !isNaN(x));
+		return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+	};
+	const sum = (xs) => {
+		const vs = xs.filter((x) => x != null && !isNaN(x));
+		return vs.length ? vs.reduce((a, b) => a + Number(b), 0) : null;
+	};
+
+	const obsCounts = (entries, kind) => {
+		const counts = [];
+		for (const s of cohort) {
+			const entry = (s.lessons || []).find((l) => l.name === entries.name);
+			if (!entry) continue;
+			const raw = kind === "lesson" ? entry.lesson_obs : entry.obs;
+			const code = (raw || "").trim();
+			if (!/^[01]+$/.test(code)) continue;
+			for (let i = 0; i < code.length; i++) {
+				counts[i] = (counts[i] || 0) + (code[i] === "1" ? 1 : 0);
+			}
+		}
+		return counts;
+	};
+
+	const addCell = (content, cls = "") => {
+		const td = document.createElement("td");
+		if (cls) td.className = cls;
+		if (content != null) td.textContent = content;
+		return td;
+	};
+	const addHtmlCell = (html, cls = "") => {
+		const td = document.createElement("td");
+		if (cls) td.className = cls;
+		if (html) td.innerHTML = html;
+		return td;
+	};
+	const fmtPct = (v) => (v == null ? null : v.toFixed(0) + "%");
+	const fmtAvg = (v, dec = 1) => (v == null ? null : v.toFixed(dec));
+
+	tr.appendChild(addCell(null, "col-id sticky-l"));
+	tr.appendChild(
+		addCell(`${nonAiCount} students`, "name-cell col-name sticky-l"),
+	);
+	tr.appendChild(addCell(null, "col-num sticky-l"));
+	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.pre_typing)), 0), "num"),
+	);
+	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.self_eval)), 0), "num"),
+	);
+
+	for (const a of ASSIGNMENTS) {
+		const hasFollow = a.follow != null;
+		const entries = cohort
+			.map((s) => (s.lessons || []).find((l) => l.name === a.name))
+			.filter(Boolean);
+
+		if (hasFollow) {
+			const followAvg = mean(entries.map((e) => e.follow));
+			const fc = addCell(fmtPct(followAvg), "follow asn-sep");
+			if (followAvg != null) {
+				fc.style.color = followFg(followAvg);
+				fc.style.fontWeight = "700";
+			}
+			tr.appendChild(fc);
+			tr.appendChild(addCell(null));
+		}
+
+		const gradeAvg = mean(entries.map((e) => e.grade));
+		const gc = addCell(
+			fmtAvg(gradeAvg, 1),
+			"follow asn-col" + (hasFollow ? "" : " asn-sep"),
+		);
+		if (gradeAvg != null) {
+			gc.style.color = followFg((gradeAvg / 5) * 100);
+			gc.style.fontWeight = "700";
+		}
+		tr.appendChild(gc);
+
+		tr.appendChild(addCell(null, "asn-col"));
+
+		const asnObsCounts = obsCounts(a, "asn");
+		const asnSchema = _artefactSchema[(a.name || "").toLowerCase()];
+		tr.appendChild(
+			addHtmlCell(renderArtefactTotals(asnObsCounts, asnSchema), "asn-col"),
+		);
+	}
+
+	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.quiz_stii)), 0), "num asn-sep"),
+	);
+	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.post_typing)), 0), "num"),
+	);
+	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.avg_assignments)), 1), "num"),
+	);
+
+	const partAvg = mean(cohort.map((s) => s.participation));
+	const pc = addCell(fmtPct(partAvg), "num");
+	if (partAvg != null) {
+		pc.style.color = followFg(partAvg);
+		pc.style.fontWeight = "700";
+	}
+	tr.appendChild(pc);
+
+	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_a)), 0), "num"));
+	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_q)), 0), "num"));
+	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_h)), 0), "num"));
+	tr.appendChild(
+		addCell(fmtAvg(sum(cohort.map((s) => s.total_cdiff)), 0), "num"),
+	);
+
+	tbody.appendChild(tr);
 }
 
 function numCellBold(v) {
@@ -342,9 +470,9 @@ function obsText(raw) {
 	return !raw || !raw.trim() ? "" : raw.trim();
 }
 
-function trapBadges(raw, assignmentName) {
-	const schema = _trapSchema[(assignmentName || "").toLowerCase()];
-	return renderTrapBadges(raw, schema);
+function artefactBadges(raw, assignmentName) {
+	const schema = _artefactSchema[(assignmentName || "").toLowerCase()];
+	return renderArtefactBadges(raw, schema);
 }
 
 async function openLessonDiff(student, entry) {

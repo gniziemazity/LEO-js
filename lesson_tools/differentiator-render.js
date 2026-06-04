@@ -300,9 +300,12 @@ function renderPanel(side, files, marks) {
 	codeWrap.style.display = "";
 
 	const modeData = _currentMarksEntry;
-	const allAlignments = _linePaddingEnabled
-		? (modeData?.alignments ?? _borrowedAlignments())
-		: null;
+	let allAlignments = null;
+	if (_smartPaddingEnabled) {
+		allAlignments = _computeSmartAlignments();
+	} else if (_linePaddingEnabled) {
+		allAlignments = modeData?.alignments ?? _borrowedAlignments();
+	}
 	const sideIdx = side === "teacher" ? 0 : 1;
 	const allLineMks = modeData?.line_marks ?? null;
 	const sideLineMks =
@@ -339,6 +342,7 @@ function renderPanel(side, files, marks) {
 				.forEach((p) => p.classList.remove("active"));
 			btn.classList.add("file-tab-active");
 			codeWrap.children[i].classList.add("active");
+			_updateHScrollProxy(side);
 			const otherSide = side === "teacher" ? "student" : "teacher";
 			const otherName = _pairedFileName(side, name);
 			if (otherName) _activateFileTab(otherSide, otherName);
@@ -346,6 +350,15 @@ function renderPanel(side, files, marks) {
 				_curatedRefreshOverlays();
 			} else if (typeof _curatedRefreshGhostPairs === "function") {
 				_curatedRefreshGhostPairs();
+			}
+			if (
+				typeof _refreshPreviewIfActive === "function" &&
+				/\.html$/i.test(name)
+			) {
+				_refreshPreviewIfActive(side);
+				if (otherName && /\.html$/i.test(otherName)) {
+					_refreshPreviewIfActive(otherSide);
+				}
 			}
 		};
 		if (side === "student" && inCuratedMode) {
@@ -396,6 +409,8 @@ function renderPanel(side, files, marks) {
 		if (typeof _curatedRefreshGhostPairs === "function") {
 			_curatedRefreshGhostPairs();
 		}
+		_updateHScrollProxy(side);
+		if (typeof _updateTabHScroll === "function") _updateTabHScroll(side);
 	});
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {

@@ -5,16 +5,10 @@ from openpyxl import load_workbook
 from .similarity_measures import save_xlsx
 
 
-def merge_existing_grades(current_dir: Path, folder_name: str, grades_path: Path) -> None:
-    existing = sorted(
-        (p for p in current_dir.glob(f'grades_{folder_name}_*.xlsx') if p != grades_path),
-        key=lambda p: p.stat().st_mtime, reverse=True,
-    )
-    if not existing:
-        return
+def merge_manual_columns(src_path: Path, dst_path: Path) -> None:
     try:
-        src_wb = load_workbook(existing[0])
-        dst_wb = load_workbook(grades_path)
+        src_wb = load_workbook(src_path)
+        dst_wb = load_workbook(dst_path)
         sheet = 'Remarks'
         if sheet not in src_wb.sheetnames or sheet not in dst_wb.sheetnames:
             return
@@ -52,9 +46,9 @@ def merge_existing_grades(current_dir: Path, folder_name: str, grades_path: Path
                     dc.alignment = copy.copy(sc.alignment)
                     dc.number_format = sc.number_format
 
-        save_xlsx(dst_wb, str(grades_path), vml_source=str(grades_path))
-        print(f'  Merged grades from: {existing[0].name}')
-        existing[0].unlink()
-        print(f'  Deleted: {existing[0].name}')
+        save_xlsx(dst_wb, str(dst_path), vml_source=str(dst_path))
+        print(f'  Merged Obs/Grade/Comments from: {src_path.name}')
+    except PermissionError:
+        raise
     except Exception as e:
-        print(f'  Warning: could not merge existing grades: {e}')
+        print(f'  Warning: could not merge manual columns: {e}')

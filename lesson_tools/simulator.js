@@ -38,7 +38,13 @@ async function _simReadStudentNameMap(pathMap) {
 	}
 }
 
-async function _simLoadFromFileMap(pathMap, lessonName, loadFromData) {
+async function _simLoadFromFileMap(
+	pathMap,
+	lessonName,
+	loadFromData,
+	seekStep,
+	seekTs,
+) {
 	const rootJsonFiles = [...pathMap.entries()]
 		.filter(([p, f]) => {
 			if (p.includes("/")) return false;
@@ -72,6 +78,8 @@ async function _simLoadFromFileMap(pathMap, lessonName, loadFromData) {
 				lessonName,
 				interactions: events.filter((e) => e.interaction),
 				studentNameMap,
+				seekStep,
+				seekTs,
 			});
 			return true;
 		} catch {}
@@ -79,13 +87,19 @@ async function _simLoadFromFileMap(pathMap, lessonName, loadFromData) {
 	return false;
 }
 
-async function _trySimAutoloadFromUrlParams(loadFromData) {
+async function _trySimAutoloadFromUrlParams(loadFromData, seekStep, seekTs) {
 	const { lesson, group } = parseToolParams();
 	if (!lesson) return false;
 	const ds = await loadLessonDataSource({ lesson, group });
 	if (!ds) return false;
 	await ds.load();
-	return _simLoadFromFileMap(ds.files, ds.rootName || lesson, loadFromData);
+	return _simLoadFromFileMap(
+		ds.files,
+		ds.rootName || lesson,
+		loadFromData,
+		seekStep,
+		seekTs,
+	);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -108,16 +122,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 		vis.loadFile(data);
 	}
 
+	const params = parseToolParams();
 	const isReload =
 		performance.getEntriesByType("navigation")[0]?.type === "reload";
 
 	let urlAutoloaded = false;
-	if (!isReload) {
+	if (!isReload && params.lesson) {
+		showLoading(true);
 		try {
-			urlAutoloaded = await _trySimAutoloadFromUrlParams(loadFromData);
+			urlAutoloaded = await _trySimAutoloadFromUrlParams(
+				loadFromData,
+				params.step,
+				params.ts,
+			);
 		} catch (e) {
 			console.warn("[Simulator] URL-param autoload failed:", e);
 		}
+		showLoading(false);
+		if (!urlAutoloaded) landing.style.display = "";
 	}
 
 	if (!isReload && !urlAutoloaded) {
@@ -157,6 +179,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 				loadFromData(logData);
 			}
 		} catch {}
+	}
+
+	try {
+		if (!urlAutoloaded && vis.micro.length) {
+			if (params.ts != null) vis.seekToTimestamp(params.ts);
+			else if (params.step != null) vis.seekToStep(params.step);
+		}
+		if (params.autoplay && vis.micro.length && !vis.playing) vis.togglePlay();
+	} catch (e) {
+		console.warn("[Simulator] seek/autoplay failed:", e);
 	}
 
 	btnFolder.addEventListener("click", async () => {

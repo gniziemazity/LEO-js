@@ -4,6 +4,7 @@ __pycache__/
 /.venv/
 /venv/
 /CLAUDE.md
+/src/shared/charts/CLAUDE.md
 /lesson_tools/CLAUDE.md
 /lesson_tools/test
 /lesson_tools/assignments

@@ -4,6 +4,7 @@ let _current = null;
 let _viewMode = "instructions";
 let _startFiles = [];
 let _fileViewer = null;
+let _overlay = null;
 
 async function _init() {
 	try {
@@ -18,14 +19,30 @@ async function _init() {
 		onActiveFileChange: (name) =>
 			AssignmentLoader.showFile(_fileViewer, _startFiles, name),
 	});
+	_overlay = new StateOverlay({
+		emptyEl: document.getElementById("no-assignment"),
+		contentEls: {
+			viewer: document.getElementById("viewer-root"),
+		},
+	});
 
 	let names;
 	try {
-		const entries = await listServerDir("/assignments/");
-		names = entries.filter((e) => e.kind === "directory").map((e) => e.name);
+		const served = await detectServedDataSource();
+		const asgnGroup =
+			served && served.manifest && served.manifest.groups
+				? served.manifest.groups.assignments
+				: null;
+		if (asgnGroup) {
+			names = Object.keys(asgnGroup);
+		} else {
+			const entries = await listServerDir("/assignments/");
+			names = entries
+				.filter((e) => e.kind === "directory")
+				.map((e) => e.name);
+		}
 	} catch (e) {
-		document.getElementById("no-assignment").textContent =
-			"Failed to load assignments: " + e.message;
+		_overlay.showError("Failed to load assignments: " + e.message);
 		return;
 	}
 
@@ -56,7 +73,7 @@ async function _select(name) {
 	document.getElementById("submissions-btn").disabled = false;
 	document.getElementById("lesson-btn").disabled = false;
 
-	_showLoading();
+	_overlay.showLoading();
 	await _renderForCurrentView();
 }
 
@@ -73,32 +90,14 @@ async function _renderForCurrentView() {
 				_fileViewer,
 			);
 			if (!_startFiles.length) {
-				_showError("No code files found in start folder.");
+				_overlay.showError("No code files found in start folder.");
 				return;
 			}
 		}
-		_showContent();
+		_overlay.showContent("viewer");
 	} catch (e) {
-		_showError(`Could not load: ${e.message}`);
+		_overlay.showError(`Could not load: ${e.message}`);
 	}
-}
-
-function _showLoading() {
-	document.getElementById("viewer-root").style.display = "none";
-	const noMsg = document.getElementById("no-assignment");
-	noMsg.style.display = "flex";
-	noMsg.textContent = "Loading…";
-}
-
-function _showContent() {
-	document.getElementById("viewer-root").style.display = "flex";
-	document.getElementById("no-assignment").style.display = "none";
-}
-
-function _showError(msg) {
-	document.getElementById("no-assignment").textContent = msg;
-	document.getElementById("no-assignment").style.display = "flex";
-	document.getElementById("viewer-root").style.display = "none";
 }
 
 function _setViewMode(mode) {
@@ -110,7 +109,7 @@ function _setViewMode(mode) {
 		.getElementById("btn-start")
 		.classList.toggle("active", mode === "start");
 	if (_current) {
-		_showLoading();
+		_overlay.showLoading();
 		_renderForCurrentView();
 	}
 }

@@ -295,6 +295,10 @@ async function _saveActiveBasis() {
 		document.querySelectorAll("#tbody td.dirty").forEach((el) => {
 			el.classList.remove("dirty");
 		});
+		_snapshotOrigObs(_students);
+		document.querySelectorAll("#tbody td.artefact-changed").forEach((el) => {
+			el.classList.remove("artefact-changed");
+		});
 		alert(`Saved ${edits.length} edit(s) to ${newName}.`);
 	} catch (ex) {
 		console.error("[Students] save failed", ex);

@@ -58,17 +58,26 @@ function handleFiles(files) {
 		return;
 	}
 	_pendingXlsx = xlsxFiles;
-	_realToAlterMap = {};
-	if (nameMapFile) loadStudentsCsv(nameMapFile);
-	else if (studentsCsvFile) loadStudentsCsv(studentsCsvFile);
+	loadStudentMaps(studentsCsvFile, nameMapFile);
 	loadBestJsonFile(jsonFiles);
 }
 
-async function loadStudentsCsv(file) {
+async function loadStudentMaps(studentsCsvFile, nameMapFile) {
+	_realToAlterMap = {};
+	_studentNameMap = {};
 	try {
-		const text = await file.text();
-		_realToAlterMap = parseAlterEgoMap(text);
-		_studentNameMap = parseStudentIdNameMap(text);
+		if (nameMapFile) {
+			const text = await nameMapFile.text();
+			_studentNameMap = parseStudentIdNameMap(text);
+			_realToAlterMap = parseAlterEgoMap(text);
+		}
+		if (studentsCsvFile) {
+			const text = await studentsCsvFile.text();
+			const nameMap = parseStudentIdNameMap(text);
+			if (Object.keys(nameMap).length) _studentNameMap = nameMap;
+			const realToAlter = parseAlterEgoMap(text);
+			if (Object.keys(realToAlter).length) _realToAlterMap = realToAlter;
+		}
 		if (_p) scheduleRender();
 	} catch {
 		_realToAlterMap = {};

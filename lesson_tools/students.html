@@ -47,6 +47,31 @@
 				text-decoration: underline;
 			}
 
+			#highlight-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 2px 8px;
+				border: 1px solid var(--clr-accent);
+				border-radius: 10px;
+				font-size: 11px;
+				color: var(--clr-accent);
+				background: var(--clr-bg);
+			}
+
+			#highlight-chip .filter-clear {
+				border: none;
+				background: none;
+				color: var(--clr-accent);
+				cursor: pointer;
+				font-size: 11px;
+				padding: 0;
+			}
+
+			#highlight-chip .filter-clear:hover {
+				text-decoration: underline;
+			}
+
 			#toolbar label {
 				display: flex;
 				align-items: center;
@@ -106,6 +131,8 @@
 				text-transform: uppercase;
 				letter-spacing: 0.5px;
 				white-space: nowrap;
+				position: sticky;
+				top: 0;
 				z-index: 2;
 				user-select: none;
 			}
@@ -130,8 +157,20 @@
 				transition: background 0.08s;
 			}
 
-			tbody tr.row-ai td {
-				color: var(--clr-pale-red) !important;
+			tbody tr.row-ai {
+				opacity: 0.55;
+			}
+			tbody tr.row-ai td.col-name {
+				color: var(--clr-red) !important;
+			}
+			tbody tr.row-dim {
+				opacity: 0.4;
+			}
+			tbody tr.row-emphasis {
+				opacity: 1;
+			}
+			tbody tr.row-emphasis td:first-child {
+				box-shadow: inset 3px 0 0 var(--clr-accent);
 			}
 
 			tbody tr:hover {
@@ -167,6 +206,10 @@
 			.col-name {
 				width: 160px;
 			}
+			.name-star {
+				color: var(--clr-text);
+				margin-right: 4px;
+			}
 			.col-num {
 				width: 50px;
 				color: var(--clr-muted);
@@ -182,6 +225,25 @@
 			}
 			.col-obs {
 				width: 48px;
+			}
+			.col-artefact {
+				width: 34px;
+				text-align: center;
+				white-space: nowrap;
+				position: relative;
+			}
+			.col-artefact sub {
+				text-transform: none;
+			}
+			.col-artefact.artefact-changed::after {
+				content: "";
+				position: absolute;
+				top: 0;
+				right: 0;
+				width: 0;
+				height: 0;
+				border-top: 7px solid #d4a300;
+				border-left: 7px solid transparent;
 			}
 			.col-grade {
 				width: 56px;
@@ -319,6 +381,18 @@
 				vertical-align: middle;
 				overflow: visible;
 				text-overflow: clip;
+			}
+			.col-diverge,
+			.col-change {
+				width: 56px;
+				padding: 4px 8px;
+				text-align: right;
+				font-family: Consolas, monospace;
+				vertical-align: middle;
+				color: var(--clr-text);
+			}
+			.col-change {
+				color: var(--clr-muted);
 			}
 			.col-lang {
 				width: 70px;
@@ -459,6 +533,9 @@
 				border-top: 2px solid var(--clr-muted);
 				background: var(--clr-bar-track);
 				font-weight: bold;
+				position: sticky;
+				bottom: 0;
+				z-index: 2;
 			}
 			tbody tr.totals-row:hover td:not(.col-mismatch) {
 				background: var(--clr-bar-track) !important;
@@ -468,6 +545,309 @@
 				font-family: Consolas, monospace;
 				font-size: 11px;
 				font-weight: bold;
+			}
+
+			#content-row {
+				display: flex;
+				flex: 1;
+				min-height: 0;
+			}
+			#left-col {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 0;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+			}
+			#table-wrap {
+				min-width: 0;
+			}
+			#assignment-divider {
+				flex: 0 0 6px;
+				cursor: col-resize;
+				background: var(--clr-border);
+			}
+			#assignment-divider:hover {
+				background: var(--clr-accent);
+			}
+			#side-col {
+				flex: 0 0 40%;
+				min-width: 0;
+				display: flex;
+				flex-direction: column;
+				background: var(--clr-bg);
+				border-left: 1px solid var(--clr-border);
+				overflow: hidden;
+			}
+			#side-col[hidden] {
+				display: none;
+			}
+			#asgn-pane {
+				flex: 1 1 0;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+				overflow: hidden;
+			}
+			#student-pane {
+				flex: 0 0 45%;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+				overflow: hidden;
+			}
+			#panes-divider {
+				flex: 0 0 4px;
+				background: var(--clr-border);
+				cursor: row-resize;
+				user-select: none;
+				touch-action: none;
+				transition: background 0.15s;
+			}
+			#panes-divider:hover {
+				background: var(--clr-accent);
+			}
+			.sp-head {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex-wrap: wrap;
+				padding: 4px 6px;
+				background: var(--clr-surface);
+				border-bottom: 1px solid var(--clr-border);
+				flex-shrink: 0;
+			}
+			.sp-label {
+				font-size: 11px;
+				font-weight: bold;
+				color: var(--clr-text);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				max-width: 40%;
+			}
+			.sp-toggle {
+				display: inline-flex;
+				gap: 2px;
+			}
+			.sp-toggle button {
+				padding: 2px 8px;
+				font-size: 11px;
+				border: 1px solid var(--clr-diff-btn-border);
+				background: var(--clr-bg);
+				color: var(--clr-text);
+				cursor: pointer;
+				border-radius: 3px;
+			}
+			.sp-toggle button:hover {
+				background: var(--clr-row-hover);
+			}
+			.sp-toggle button.active {
+				background: var(--clr-accent);
+				color: #fff;
+			}
+			.sp-collapse-btn {
+				border: none;
+				background: none;
+				color: var(--clr-muted);
+				cursor: pointer;
+				font-size: 12px;
+				line-height: 1;
+				padding: 0 2px;
+			}
+			.sp-collapse-btn:hover {
+				color: var(--clr-accent);
+			}
+			.sp-diff-btn {
+				margin-left: auto;
+				padding: 2px 8px;
+				font-size: 11px;
+				border: 1px solid var(--clr-diff-btn-border);
+				background: var(--clr-bg);
+				color: var(--clr-text);
+				cursor: pointer;
+				border-radius: 3px;
+			}
+			.sp-diff-btn:hover {
+				background: var(--clr-row-hover);
+			}
+			.sp-body {
+				flex: 1 1 0;
+				min-height: 0;
+				position: relative;
+				display: flex;
+			}
+			.sp-body > pre.sp-editor {
+				flex: 1 1 0;
+				margin: 0;
+				overflow: auto;
+				background: var(--clr-bg);
+				color: var(--clr-text);
+				font-family: Consolas, "Courier New", monospace;
+				font-size: 12px;
+				line-height: 1.5;
+				padding: 6px 8px;
+				white-space: pre-wrap;
+				word-break: break-all;
+				min-height: 0;
+			}
+			.sp-body > iframe.sp-preview {
+				flex: 1 1 0;
+				border: 0;
+				background: #fff;
+				min-height: 0;
+			}
+			.sp-body[data-view="code"] > iframe.sp-preview {
+				display: none;
+			}
+			.sp-body[data-view="preview"] > pre.sp-editor {
+				display: none;
+			}
+			.sp-empty {
+				position: absolute;
+				inset: 0;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				padding: 0 16px;
+				text-align: center;
+				color: var(--clr-muted);
+				font-size: 13px;
+				background: var(--clr-bg);
+				z-index: 1;
+			}
+			.sp-body > iframe.sp-diff-frame {
+				flex: 1 1 0;
+				width: 100%;
+				border: 0;
+				background: var(--clr-bg);
+				min-height: 0;
+			}
+			#asgn-pane .sp-head {
+				background: var(--clr-pos);
+			}
+			#asgn-pane .sp-label {
+				color: var(--clr-white);
+				max-width: none;
+			}
+			#asgn-pane .sp-collapse-btn {
+				color: var(--clr-white);
+			}
+			#asgn-body,
+			#asgn-body > pre.sp-editor,
+			#asgn-body > iframe.sp-preview {
+				background: var(--clr-tip-bg-green);
+			}
+			#side-col.asgn-collapsed #asgn-pane {
+				flex: 0 0 auto;
+			}
+			#side-col.asgn-collapsed #asgn-pane .sp-body {
+				display: none;
+			}
+			#side-col.asgn-collapsed #panes-divider {
+				display: none;
+			}
+			#side-col.asgn-collapsed #student-pane {
+				flex: 1 1 0 !important;
+			}
+			body.paper-mode #left-col {
+				flex: 0 0 auto;
+				max-width: 40vw;
+			}
+			body.paper-mode #table-wrap {
+				overflow: auto;
+			}
+			body.paper-mode #side-col {
+				flex: 1 1 0 !important;
+			}
+			body.paper-mode #assignment-divider {
+				display: none;
+			}
+			#assignment-toggle {
+				padding: 3px 10px;
+				font-size: 12px;
+				border: 1px solid var(--clr-diff-btn-border);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				cursor: pointer;
+			}
+			#assignment-toggle:hover {
+				background: var(--clr-row-hover);
+			}
+			#assignment-toggle.active {
+				background: var(--clr-accent);
+				color: #fff;
+			}
+			.doc-link {
+				cursor: pointer;
+				margin-left: 5px;
+				font-size: 13px;
+				text-decoration: none;
+			}
+			.doc-link:hover {
+				filter: brightness(1.25);
+			}
+			#doc-viewer {
+				position: fixed;
+				display: none;
+				flex-direction: column;
+				left: 18vw;
+				top: 8vh;
+				width: 540px;
+				height: 78vh;
+				z-index: 1100;
+				background: var(--clr-bg);
+				border: 1px solid var(--clr-border);
+				border-radius: 6px;
+				box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
+				overflow: hidden;
+			}
+			#doc-viewer.is-open {
+				display: flex;
+			}
+			#doc-viewer-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+				padding: 6px 10px;
+				cursor: move;
+				background: var(--clr-surface);
+				border-bottom: 1px solid var(--clr-border);
+				font-weight: bold;
+				font-size: 12px;
+				color: var(--clr-text);
+			}
+			#doc-viewer-close {
+				border: none;
+				background: none;
+				cursor: pointer;
+				font-size: 14px;
+				color: var(--clr-text);
+				padding: 0 2px;
+			}
+			#doc-viewer-close:hover {
+				color: var(--clr-red);
+			}
+			#doc-viewer-body {
+				flex: 1;
+				overflow: auto;
+				padding: 16px 20px;
+				background: #fff;
+				color: #222;
+				font-family: sans-serif;
+				font-size: 14px;
+				line-height: 1.6;
+			}
+			#doc-viewer-body img {
+				max-width: 100%;
+				height: auto;
+			}
+			#doc-viewer-body iframe {
+				width: 100%;
+				height: 100%;
+				border: 0;
 			}
 
 			#tip {
@@ -498,51 +878,127 @@
 				</button>
 			</div>
 		</div>
+		<script>
+			(function () {
+				const qs = new URLSearchParams(location.search);
+				if (qs.get("lesson") || qs.get("autoload") === "1") {
+					const l = document.getElementById("landing");
+					const o = document.getElementById("loading");
+					if (l) l.style.display = "none";
+					if (o) o.style.display = "flex";
+				}
+			})();
+		</script>
 
 		<div id="main">
-			<div id="toolbar" class="app-toolbar">
-				<span id="lesson-name"></span>
-				<label>
-					Anonymize:
-					<select id="anon-select" onchange="onAnonChange(this.value)">
-						<option value="">Show All</option>
-						<option value="name">Name Only</option>
-						<option value="id">ID Only</option>
-					</select>
-				</label>
-				<span id="basis-picker"></span>
-				<span id="columns-picker">
-					<button id="cols-btn" type="button" onclick="_toggleColsPanel()">
-						Columns ▾
-					</button>
-					<div id="cols-panel" hidden></div>
-				</span>
-				<button
-					id="save-btn"
-					type="button"
-					disabled
-					onclick="_saveActiveBasis()"
-				>
-					💾 Save
-				</button>
-			</div>
-			<div id="table-wrap">
-				<table id="student-table">
-					<thead id="thead">
-						<tr></tr>
-					</thead>
-					<tbody id="tbody"></tbody>
-				</table>
+			<div id="content-row">
+				<div id="left-col">
+					<div id="toolbar" class="app-toolbar">
+						<span id="lesson-name"></span>
+						<span id="basis-picker"></span>
+						<span id="columns-picker">
+							<button
+								id="cols-btn"
+								type="button"
+								onclick="_toggleColsPanel()"
+							>
+								Columns ▾
+							</button>
+							<div id="cols-panel" hidden></div>
+						</span>
+						<button
+							id="assignment-toggle"
+							type="button"
+							onclick="_toggleSidePanel()"
+						>
+							📋 Panel
+						</button>
+						<button
+							id="save-btn"
+							type="button"
+							disabled
+							onclick="_saveActiveBasis()"
+						>
+							💾 Save
+						</button>
+					</div>
+					<div id="table-wrap">
+						<table id="student-table">
+							<thead id="thead">
+								<tr></tr>
+							</thead>
+							<tbody id="tbody"></tbody>
+						</table>
+					</div>
+				</div>
+				<div id="assignment-divider" hidden></div>
+				<div id="side-col" hidden>
+					<div id="asgn-pane">
+						<div class="sp-head">
+							<button
+								class="sp-collapse-btn"
+								id="asgn-collapse"
+								type="button"
+								title="Collapse assignment"
+							>
+								▾
+							</button>
+							<span class="sp-label">Instructions</span>
+							<div class="sp-toggle">
+								<button id="asgn-view-preview" type="button">
+									Preview
+								</button>
+								<button id="asgn-view-code" type="button">Code</button>
+							</div>
+						</div>
+						<div class="sp-body" id="asgn-body" data-view="preview">
+							<pre class="sp-editor" id="asgn-editor"></pre>
+							<iframe
+								class="sp-preview"
+								id="asgn-preview"
+								title="Assignment"
+								sandbox="allow-scripts allow-same-origin"
+							></iframe>
+						</div>
+					</div>
+					<div id="panes-divider" title="Drag to resize"></div>
+					<div id="student-pane">
+						<div class="sp-body" id="student-body">
+							<iframe
+								class="sp-diff-frame"
+								id="student-diff-frame"
+								title="Differentiator"
+							></iframe>
+							<div class="sp-empty" id="student-empty">
+								Select a student row to load the differentiator
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 
 		<div id="tip"></div>
 
+		<div id="doc-viewer">
+			<div id="doc-viewer-head">
+				<span id="doc-viewer-title">Document</span>
+				<button id="doc-viewer-close" type="button" title="Close">✕</button>
+			</div>
+			<div id="doc-viewer-body"></div>
+		</div>
+
 		<script src="diff-utils.js"></script>
+		<script src="drag-divider.js"></script>
+		<script src="languages/profiles.js"></script>
+		<script src="simulator-highlight.js"></script>
+		<script src="file-viewer.js"></script>
+		<script src="mammoth.browser.min.js"></script>
 		<script src="students-state.js"></script>
 		<script src="students-load.js"></script>
 		<script src="students-parse.js"></script>
 		<script src="students-table.js"></script>
+		<script src="students-viewers.js"></script>
 		<script src="mini-zip.js"></script>
 		<script src="students-save.js"></script>
 		<script src="students.js"></script>

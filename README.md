@@ -144,13 +144,13 @@ The remote client supports two interaction modes:
 
 LEO ships five standalone browser-based analysis tools in the `lesson_tools/` directory. Open them with the npm scripts below — no server required, they run directly in your browser.
 
-| Tool              | Script             | Description                                                      |
-| ----------------- | ------------------ | ---------------------------------------------------------------- |
-| 📊 Timeline       | `npm run time`     | Key log charts and session analysis                              |
-| 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview                  |
-| 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison                     |
-| 📈 Overview       | `npm run grades`   | Multi-student grade browser (reads `grades_*.xlsx`)              |
-| 👥 Students       | `npm run students` | Per-student submission viewer (anonymisable via `students-anon`) |
+| Tool              | Script             | Description                                                                          |
+| ----------------- | ------------------ | ------------------------------------------------------------------------------------ |
+| 📊 Timeline       | `npm run time`     | Key log charts and session analysis                                                  |
+| 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview                                      |
+| 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison                                         |
+| 📈 Overview       | `npm run overview` | One-shot: builds `Overview_<ts>.xlsx`, writes `grades_stats.json`, opens the browser |
+| 👥 Students       | `npm run students` | Per-student submission viewer (anonymisation mode picker in-page)                    |
 
 ## 📺 Demo
 

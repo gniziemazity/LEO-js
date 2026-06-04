@@ -1,3 +1,4 @@
+import argparse
 import json
 import math
 import os
@@ -82,7 +83,31 @@ LESSON_DIFFICULTY = {
 }
 
 _course_root: str = ""
-_trap_flags_cache: dict = {}
+_artefact_flags_cache: dict = {}
+_curated_moments_cache: dict = {}
+_diff_marks_cache: dict = {}
+
+_DIFF_BASIS_FILES = [
+    ("ideal",    "diff_marks_ideal.json"),
+    ("required", "diff_marks_required.json"),
+    ("leo_star", "diff_marks_leo_star.json"),
+    ("leo",      "diff_marks_leo.json"),
+    ("lcs_star", "diff_marks_lcs_star.json"),
+    ("lcs",      "diff_marks_lcs.json"),
+    ("lev_star", "diff_marks_lev_star.json"),
+    ("lev",      "diff_marks_lev.json"),
+    ("ro_star",  "diff_marks_ro_star.json"),
+    ("ro",       "diff_marks_ro.json"),
+    ("git_star", "diff_marks_git_star.json"),
+    ("git",      "diff_marks_git.json"),
+]
+
+_LANG_FROM_EXT = {
+    ".html": "html", ".htm": "html",
+    ".css":  "css",
+    ".js":   "js",
+    ".py":   "py",
+}
 
 
 def _find_assignment_dir(name_lower: str):
@@ -109,26 +134,163 @@ def _read_csv_rows(path):
         return []
 
 
-def _load_trap_flags(name_lower: str):
-    if name_lower in _trap_flags_cache:
-        return _trap_flags_cache[name_lower]
+def _load_artefact_flags(name_lower: str):
+    if name_lower in _artefact_flags_cache:
+        return _artefact_flags_cache[name_lower]
     folder = _find_assignment_dir(name_lower)
     out = []
     if folder:
-        for row in _read_csv_rows(os.path.join(folder, "trap_labels.csv")):
+        for row in _read_csv_rows(os.path.join(folder, "artefact_labels.csv")):
             k = (row.get("key") or "").strip()
             lbl = (row.get("label") or "").strip()
             if k and lbl:
                 out.append((k, lbl))
-    _trap_flags_cache[name_lower] = out
+    _artefact_flags_cache[name_lower] = out
+    return out
+
+
+def _load_artefact_severity(name_lower: str):
+    folder = _find_assignment_dir(name_lower)
+    out: dict = {}
+    if folder:
+        for row in _read_csv_rows(os.path.join(folder, "artefact_labels.csv")):
+            k = (row.get("key") or "").strip()
+            sev = (row.get("severity") or "").strip().lower()
+            if k and sev in ("high", "medium", "low"):
+                out[k] = sev
     return out
 
 
 def _raw_flags(a):
-    return _load_trap_flags(a.get("lower", ""))
+    return _load_artefact_flags(a.get("lower", ""))
 
 
-def _parse_trap_digits(obs_series, n):
+def _load_curated_moments(name_lower: str):
+    if name_lower in _curated_moments_cache:
+        return _curated_moments_cache[name_lower]
+    folder = _find_assignment_dir(name_lower)
+    out = []
+    if folder:
+        for row in _read_csv_rows(os.path.join(folder, "curated_moments.csv")):
+            k = (row.get("key") or "").strip()
+            lbl = (row.get("label") or "").strip()
+            pol = (row.get("polarity") or "not_fired").strip().lower()
+            if pol not in ("not_fired", "fired"):
+                pol = "not_fired"
+            if k and lbl:
+                out.append({"key": k, "label": lbl, "polarity": pol})
+    _curated_moments_cache[name_lower] = out
+    return out
+
+
+def _diff_marks_for_student(name_lower: str, sid: str):
+    if not _course_root or not sid:
+        return None, None
+    cache_key = (name_lower, str(sid))
+    if cache_key in _diff_marks_cache:
+        return _diff_marks_cache[cache_key]
+    folder = _find_assignment_dir(name_lower)
+    if not folder:
+        _diff_marks_cache[cache_key] = (None, None)
+        return None, None
+    candidates = []
+    sid_dir = os.path.join(folder, "anon_ids", str(sid))
+    if os.path.isdir(sid_dir):
+        candidates.append(sid_dir)
+
+    for d in candidates:
+        for basis, fname in _DIFF_BASIS_FILES:
+            p = os.path.join(d, fname)
+            if not os.path.exists(p):
+                continue
+            try:
+                with open(p, encoding="utf-8") as fh:
+                    data = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            _diff_marks_cache[cache_key] = (basis, data)
+            return basis, data
+    _diff_marks_cache[cache_key] = (None, None)
+    return None, None
+
+
+def _count_teacher_tokens_for(name_lower: str):
+    folder = _find_assignment_dir(name_lower)
+    if not folder:
+        return {}, 0
+    sub_priority = ("reconstructed", "start", "correct")
+    root = None
+    for sub in sub_priority:
+        p = os.path.join(folder, sub)
+        if os.path.isdir(p) and any(
+            fn.lower().endswith(tuple(_LANG_FROM_EXT.keys()))
+            for fn in os.listdir(p)
+        ):
+            root = p
+            break
+    if root is None:
+        return {}, 0
+    from utils.similarity_measures import iter_code_tokens
+    by_lang: dict = {}
+    total = 0
+    for root_dir, _dirs, files in os.walk(root):
+        for fn in files:
+            ext = os.path.splitext(fn)[1].lower()
+            if ext == '.htm':
+                ext = '.html'
+            lang = _LANG_FROM_EXT.get(ext)
+            if not lang:
+                continue
+            path = os.path.join(root_dir, fn)
+            try:
+                with open(path, encoding='utf-8', errors='ignore') as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            n = sum(1 for _pos, _tok, is_c in iter_code_tokens(text, ext) if not is_c)
+            by_lang[lang] = by_lang.get(lang, 0) + n
+            total += n
+    return by_lang, total
+
+
+def _count_diff_marks_by_lang(data: dict):
+    totals = {"missing": 0, "extra": 0, "ghost_extra": 0}
+    by_lang: dict = {}
+
+    def _bump(lang, label, n=1):
+        if label not in totals:
+            return
+        totals[label] += n
+        if lang not in by_lang:
+            by_lang[lang] = {"missing": 0, "extra": 0, "ghost_extra": 0}
+        by_lang[lang][label] += n
+
+    for fname, marks in (data.get("teacher_files") or {}).items():
+        ext = os.path.splitext(fname)[1].lower()
+        lang = _LANG_FROM_EXT.get(ext)
+        for m in marks or []:
+            if m.get("label") == "missing":
+                _bump(lang, "missing")
+    for fname, marks in (data.get("student_files") or {}).items():
+        ext = os.path.splitext(fname)[1].lower()
+        lang = _LANG_FROM_EXT.get(ext)
+        for m in marks or []:
+            lbl = m.get("label")
+            if lbl in ("extra", "ghost_extra"):
+                _bump(lang, lbl)
+
+    def _finish(d):
+        d["divergence"] = d["missing"] + d["extra"] + d["ghost_extra"]
+        d["change"] = d["missing"]
+        return d
+
+    _finish(totals)
+    for lang, d in by_lang.items():
+        _finish(d)
+    return totals, by_lang
+
+
+def _parse_artefact_digits(obs_series, n):
     obs = (obs_series.fillna("").astype(str).str.strip()
            .str.replace(r"^([01])\.0$", r"\1", regex=True))
     is_code = obs.str.fullmatch(r"[01]+", na=False)
@@ -153,6 +315,7 @@ _HEADER_ALIASES = {
     "exam":            ["Exam"],
     "weeklies":        ["Weeklies"],
     "notes":           ["Notes"],
+    "excluded":        ["Category", "Excluded", "Excluded?"],
     "pre_typing":      ["Pre Typing", "Pre KPM", "Pre-typing", "Pre K/min"],
     "post_typing":     ["Post Typing", "Post KPM", "Post-typing", "Post K/min"],
     "self_eval":       ["Self Eval", "Self Evaluation", "Self"],
@@ -284,7 +447,7 @@ def _col_series(st, col_idx, *, numeric=True):
 def load_data(path):
     global _course_root
     _course_root = os.path.dirname(os.path.abspath(path))
-    _trap_flags_cache.clear()
+    _artefact_flags_cache.clear()
     ext = os.path.splitext(path)[1].lower()
     engine = "openpyxl" if ext == ".xlsx" else "xlrd"
     df = pd.read_excel(path, engine=engine, header=None)
@@ -294,7 +457,33 @@ def load_data(path):
     return df.iloc[1:].copy().reset_index(drop=True)
 
 
+_LLM_NAME_TOKENS = (
+    "chatgpt", "gpt-", "gpt ", "sonnet", "opus", "claude",
+    "gemini", "deepseek", "ollama", "llama", "mistral",
+)
+
+
+def _row_is_llm(name: str, excluded: str) -> bool:
+    s_excl = (excluded or "").strip().upper()
+    if s_excl == "AI" or s_excl == "LLM":
+        return True
+    nm = (name or "").strip().lower()
+    return any(tok in nm for tok in _LLM_NAME_TOKENS)
+
+
 def enrich(st):
+    if COL.get("name") is not None and COL.get("id") is not None:
+        names = _col_series(st, COL["name"], numeric=False)
+        excludeds = (_col_series(st, COL["excluded"], numeric=False)
+                     if COL.get("excluded") is not None
+                     else pd.Series([""] * len(st), index=st.index))
+        st["is_llm"] = pd.Series(
+            [_row_is_llm(n, e) for n, e in zip(names, excludeds)],
+            index=st.index,
+        )
+    else:
+        st["is_llm"] = pd.Series([False] * len(st), index=st.index)
+
     st["final_grade"]      = _col_series(st, COL.get("final_grade"))
     st["avg_assignments"]  = _col_series(st, COL.get("avg_assignments"))
     st["pre_typing"]       = _col_series(st, COL.get("pre_typing"))
@@ -327,25 +516,35 @@ def enrich(st):
         st[f"a{a_num}_grade"]      = grade
 
         raw = _raw_flags(a)
-        fired_pos, trap_valid, trap_mismatch, ans_pos = _parse_trap_digits(
+        severity_map = _load_artefact_severity(a.get("lower", ""))
+        fired_pos, artefact_valid, artefact_mismatch, ans_pos = _parse_artefact_digits(
             obs, len(raw),
         )
-        st[f"a{a_num}_trap_valid"] = trap_valid
+        st[f"a{a_num}_artefact_valid"] = artefact_valid
         fired_total = pd.Series(0, index=st.index, dtype=int)
+        fired_high  = pd.Series(False, index=st.index)
         for i, (key, _label) in enumerate(raw):
             fired = ans_pos[i] & fired_pos[i]
-            st[f"a{a_num}_trap_{key}"] = fired
-            st[f"a{a_num}_trap_{key}_ans"] = ans_pos[i]
+            st[f"a{a_num}_artefact_{key}"] = fired
+            st[f"a{a_num}_artefact_{key}_ans"] = ans_pos[i]
             fired_total = fired_total + fired.astype(int)
-        st[f"a{a_num}_traps_fired"] = fired_total.where(trap_valid, np.nan)
-        st[f"a{a_num}_any_trap"]    = trap_valid & (fired_total > 0)
-        n_mismatch = int(trap_mismatch.sum())
+            if severity_map.get(key) == "high":
+                fired_high = fired_high | fired
+        st[f"a{a_num}_artefacts_fired"] = fired_total.where(artefact_valid, np.nan)
+        st[f"a{a_num}_any_artefact"]    = artefact_valid & (fired_total > 0)
+        # AI flag derived from high-severity artefact firings only — used
+        # by the overview's "AI vs Trouble" cards. The previous
+        # ``a{N}_ai`` keeps mixing in the OBS-text-contains-AI marker
+        # for backwards compatibility; ``a{N}_ai_high`` is the
+        # severity-aware variant requested in 2026-05.
+        st[f"a{a_num}_ai_high"] = artefact_valid & fired_high
+        n_mismatch = int(artefact_mismatch.sum())
         if n_mismatch:
             print(f"  warning: {a['name']} has {n_mismatch} OBS code(s) longer "
-                  f"than {len(raw)} traps; left undecoded")
+                  f"than {len(raw)} artefacts; left undecoded")
 
         st[f"a{a_num}_ai"]         = (
-            st[f"a{a_num}_any_trap"]
+            st[f"a{a_num}_any_artefact"]
             | obs.str.upper().str.contains("AI", na=False)
             | lesson_obs.str.upper().str.contains("AI", na=False)
         )
@@ -369,21 +568,58 @@ def enrich(st):
             r"C\d+[<>]", na=False, regex=True
         )
 
+        diverge_total = []
+        change_total = []
+        lang_totals = {lang: {"diverge": [], "change": []}
+                       for lang in ("html", "css", "js", "py")}
+        bases_used = []
+        for sid_val in _col_series(st, COL.get("id"), numeric=False):
+            sid = str(sid_val).strip()
+            if sid.endswith(".0"):
+                sid = sid[:-2]
+            basis, data = _diff_marks_for_student(a["lower"], sid)
+            if not data:
+                diverge_total.append(np.nan)
+                change_total.append(np.nan)
+                bases_used.append("")
+                for lang in lang_totals:
+                    lang_totals[lang]["diverge"].append(np.nan)
+                    lang_totals[lang]["change"].append(np.nan)
+                continue
+            totals, by_lang = _count_diff_marks_by_lang(data)
+            diverge_total.append(totals["divergence"])
+            change_total.append(totals["change"])
+            bases_used.append(basis or "")
+            for lang in lang_totals:
+                d = by_lang.get(lang)
+                lang_totals[lang]["diverge"].append(
+                    d["divergence"] if d else np.nan
+                )
+                lang_totals[lang]["change"].append(
+                    d["change"] if d else np.nan
+                )
+        st[f"a{a_num}_diverge"] = pd.Series(diverge_total, index=st.index)
+        st[f"a{a_num}_change"]  = pd.Series(change_total,  index=st.index)
+        st[f"a{a_num}_diff_basis"] = pd.Series(bases_used, index=st.index)
+        for lang, d in lang_totals.items():
+            st[f"a{a_num}_diverge_{lang}"] = pd.Series(d["diverge"], index=st.index)
+            st[f"a{a_num}_change_{lang}"]  = pd.Series(d["change"],  index=st.index)
+
     ai_cols = [f"a{i}_ai" for i in POOLED_ASSIGNMENTS]
     st["total_ai_flags"] = st[ai_cols].sum(axis=1) if ai_cols else 0
 
-    valid_cols = [f"a{i}_trap_valid" for i in ASSIGNMENTS
-                  if f"a{i}_trap_valid" in st.columns]
-    st["n_trap_assignments"] = (
+    valid_cols = [f"a{i}_artefact_valid" for i in ASSIGNMENTS
+                  if f"a{i}_artefact_valid" in st.columns]
+    st["n_artefact_assignments"] = (
         st[valid_cols].sum(axis=1) if valid_cols else 0
     )
-    fired_cols = [f"a{i}_traps_fired" for i in ASSIGNMENTS
-                  if f"a{i}_traps_fired" in st.columns]
+    fired_cols = [f"a{i}_artefacts_fired" for i in ASSIGNMENTS
+                  if f"a{i}_artefacts_fired" in st.columns]
     if fired_cols:
         raw = st[fired_cols].sum(axis=1, skipna=True)
-        st["total_traps_fired"] = raw.where(st["n_trap_assignments"] > 0, np.nan)
+        st["total_artefacts_fired"] = raw.where(st["n_artefact_assignments"] > 0, np.nan)
     else:
-        st["total_traps_fired"] = np.nan
+        st["total_artefacts_fired"] = np.nan
 
     trouble_cols   = [f"a{i}_trouble"   for i in POOLED_ASSIGNMENTS]
     submitted_cols = [f"a{i}_submitted" for i in POOLED_ASSIGNMENTS]
@@ -1090,54 +1326,54 @@ def analyze_correlations_summary(st):
         print(f"  {label:<40} {fmt_r(r_p):>7} {fmt_r(r_s):>7} {fmt_p(p_s):>12} {n_s:>5}")
 
 
-def _trap_schema_for(a):
+def _artefact_schema_for(a):
     return _raw_flags(a)
 
 
-def analyze_traps(st):
+def analyze_artefacts(st):
     have = [a_num for a_num, a in ASSIGNMENTS.items()
-            if _trap_schema_for(a) and st.get(f"a{a_num}_trap_valid") is not None
-            and st[f"a{a_num}_trap_valid"].any()]
+            if _artefact_schema_for(a) and st.get(f"a{a_num}_artefact_valid") is not None
+            and st[f"a{a_num}_artefact_valid"].any()]
     if not have:
         return
 
-    section("ASSIGNMENT TRAPS (OBS flags)")
+    section("ASSIGNMENT ARTEFACTS (OBS flags)")
     print("""
-  Each assignment hides 'traps' that fire when a student likely leaned on AI
+  Each assignment hides 'artefacts' that fire when a student likely leaned on AI
   (pasted the task, accepted the answer, never ran or read it). In the OBS
-  column, digit 1 = the trap FIRED; digit 0 = the student did the human thing.
-  A 'hit' is a fired trap. 'Any' = at least one trap fired in that submission.""")
+  column, digit 1 = the artefact FIRED; digit 0 = the student did the human thing.
+  A 'hit' is a fired artefact. 'Any' = at least one artefact fired in that submission.""")
 
-    subsection("Per-trap hit rate per assignment (of valid OBS codes)")
-    print(f"\n  {'Assign':<10} {'Trap':<26} {'Fired':>6} {'Valid':>6} {'Hit rate':>9}")
+    subsection("Per-artefact hit rate per assignment (of valid OBS codes)")
+    print(f"\n  {'Assign':<10} {'Artefact':<26} {'Fired':>6} {'Valid':>6} {'Hit rate':>9}")
     print(f"  {'-'*10} {'-'*26} {'-'*6} {'-'*6} {'-'*9}")
     for a_num in have:
         a = ASSIGNMENTS[a_num]
-        valid = st[f"a{a_num}_trap_valid"]
+        valid = st[f"a{a_num}_artefact_valid"]
         n_valid = int(valid.sum())
-        for key, label in _trap_schema_for(a):
-            fired = int(st[f"a{a_num}_trap_{key}"].sum())
-            ans_col = f"a{a_num}_trap_{key}_ans"
+        for key, label in _artefact_schema_for(a):
+            fired = int(st[f"a{a_num}_artefact_{key}"].sum())
+            ans_col = f"a{a_num}_artefact_{key}_ans"
             n_ans = int(st[ans_col].sum()) if ans_col in st.columns else n_valid
             rate = fired / n_ans if n_ans else float("nan")
             print(f"  {a['name']:<10} {label[:26]:<26} {fired:>6} {n_ans:>6} {rate:>8.0%}")
-        any_fired = int(st[f"a{a_num}_any_trap"].sum())
+        any_fired = int(st[f"a{a_num}_any_artefact"].sum())
         any_rate = any_fired / n_valid if n_valid else float("nan")
         tag = " ← easy" if a["difficulty"] == "easy" else ""
-        print(f"  {a['name']:<10} {'ANY trap fired':<26} {any_fired:>6} {n_valid:>6} "
+        print(f"  {a['name']:<10} {'ANY artefact fired':<26} {any_fired:>6} {n_valid:>6} "
               f"{any_rate:>8.0%}{tag}")
 
-    subsection("Trap fired vs. trouble (per trap) — Fisher exact + odds ratio")
-    print(f"\n  {'Assign':<10} {'Trap':<24} {'Fire+Trbl':>9} {'Fire+OK':>8} "
+    subsection("Artefact fired vs. trouble (per artefact) — Fisher exact + odds ratio")
+    print(f"\n  {'Assign':<10} {'Artefact':<24} {'Fire+Trbl':>9} {'Fire+OK':>8} "
           f"{'Ok+Trbl':>8} {'Ok+OK':>6} {'OR':>7} {'p':>10}")
     print(f"  {'-'*10} {'-'*24} {'-'*9} {'-'*8} {'-'*8} {'-'*6} {'-'*7} {'-'*10}")
     for a_num in have:
         a = ASSIGNMENTS[a_num]
         trouble = st[f"a{a_num}_trouble"]
-        valid = st[f"a{a_num}_trap_valid"]
-        for key, label in _trap_schema_for(a):
-            fired = st[f"a{a_num}_trap_{key}"]
-            ans_col = f"a{a_num}_trap_{key}_ans"
+        valid = st[f"a{a_num}_artefact_valid"]
+        for key, label in _artefact_schema_for(a):
+            fired = st[f"a{a_num}_artefact_{key}"]
+            ans_col = f"a{a_num}_artefact_{key}_ans"
             ans = st[ans_col] if ans_col in st.columns else valid
             ok = ans & ~fired
             ft = int((fired & trouble).sum())
@@ -1159,17 +1395,17 @@ def analyze_traps(st):
             print(f"  {a['name']:<10} {label[:24]:<24} {ft:>9} {fo:>8} {ot:>8} "
                   f"{oo:>6} {or_s:>7} {fmt_p(p_f):>10}")
 
-    subsection("Trap fired vs. grade (per trap) — mean assignment grade")
-    print(f"\n  {'Assign':<10} {'Trap':<26} {'Fired avg':>10} {'n':>4} "
+    subsection("Artefact fired vs. grade (per artefact) — mean assignment grade")
+    print(f"\n  {'Assign':<10} {'Artefact':<26} {'Fired avg':>10} {'n':>4} "
           f"{'Ok avg':>8} {'n':>4} {'Diff':>7}")
     print(f"  {'-'*10} {'-'*26} {'-'*10} {'-'*4} {'-'*8} {'-'*4} {'-'*7}")
     for a_num in have:
         a = ASSIGNMENTS[a_num]
         grade = st[f"a{a_num}_grade"]
-        valid = st[f"a{a_num}_trap_valid"]
-        for key, label in _trap_schema_for(a):
-            fired = st[f"a{a_num}_trap_{key}"]
-            ans_col = f"a{a_num}_trap_{key}_ans"
+        valid = st[f"a{a_num}_artefact_valid"]
+        for key, label in _artefact_schema_for(a):
+            fired = st[f"a{a_num}_artefact_{key}"]
+            ans_col = f"a{a_num}_artefact_{key}_ans"
             ans = st[ans_col] if ans_col in st.columns else valid
             fg = grade[fired].dropna()
             og = grade[ans & ~fired].dropna()
@@ -1179,26 +1415,209 @@ def analyze_traps(st):
             print(f"  {a['name']:<10} {label[:26]:<26} {fm:>10.2f} {len(fg):>4} "
                   f"{om:>8.2f} {len(og):>4} {diff:>+7.2f}")
 
-    subsection("Per-student total traps fired")
-    tot = st["total_traps_fired"]
+    subsection("Per-student total artefacts fired")
+    tot = st["total_artefacts_fired"]
     has_tot = tot.notna()
     if has_tot.any():
         print(f"\n  Students with any decoded OBS: {int(has_tot.sum())}")
-        print(f"  Total traps fired — mean = {tot[has_tot].mean():.2f}, "
+        print(f"  Total artefacts fired — mean = {tot[has_tot].mean():.2f}, "
               f"max = {int(tot[has_tot].max())}")
         r, p, n = safe_corr(tot, st["final_grade"], method="spearman")
-        print(f"  Total traps fired vs final grade:  ρ = {fmt_r(r)}, "
+        print(f"  Total artefacts fired vs final grade:  ρ = {fmt_r(r)}, "
               f"p = {fmt_p(p)}, n = {n}")
         r, p, n = safe_corr(tot, st["participation"], method="spearman")
-        print(f"  Total traps fired vs participation: ρ = {fmt_r(r)}, "
+        print(f"  Total artefacts fired vs participation: ρ = {fmt_r(r)}, "
               f"p = {fmt_p(p)}, n = {n}")
         pass_t = tot[st["passed_course"] & has_tot].dropna()
         fail_t = tot[~st["passed_course"] & has_tot].dropna()
         if len(pass_t) >= 2 and len(fail_t) >= 2:
             _, p_mw = mannwhitneyu(pass_t, fail_t, alternative="two-sided")
-            print(f"\n  Passed course: mean traps fired = {pass_t.mean():.2f} (n={len(pass_t)})")
-            print(f"  Failed course: mean traps fired = {fail_t.mean():.2f} (n={len(fail_t)})")
+            print(f"\n  Passed course: mean artefacts fired = {pass_t.mean():.2f} (n={len(pass_t)})")
+            print(f"  Failed course: mean artefacts fired = {fail_t.mean():.2f} (n={len(fail_t)})")
             print(f"  Mann-Whitney p = {fmt_p(p_mw)}")
+
+
+def _basic_quartiles(vals):
+    s = pd.Series(vals).dropna()
+    if s.empty:
+        return None
+    return {
+        "count":  int(s.shape[0]),
+        "mean":   float(s.mean()),
+        "min":    float(s.min()),
+        "q1":     float(s.quantile(0.25)),
+        "median": float(s.quantile(0.50)),
+        "q3":     float(s.quantile(0.75)),
+        "max":    float(s.max()),
+    }
+
+
+def _ids_of(st_subset, COL_ID):
+    if COL_ID is None or st_subset is None or len(st_subset) == 0:
+        return []
+    out = []
+    for v in _col_series(st_subset, COL_ID, numeric=False):
+        s = str(v).strip()
+        if s.endswith(".0"):
+            s = s[:-2]
+        if s:
+            out.append(s)
+    return out
+
+
+def _divergence_stats_for(st_subset, a_num, COL_ID=None, name_lower=None):
+    div_col = f"a{a_num}_diverge"
+    chg_col = f"a{a_num}_change"
+    if div_col not in st_subset.columns or st_subset[div_col].notna().sum() == 0:
+        return None
+    teacher_by_lang, teacher_total = (
+        _count_teacher_tokens_for(name_lower) if name_lower else ({}, 0)
+    )
+    payload = {
+        "teacher_total": teacher_total,
+        "teacher_total_by_lang": teacher_by_lang,
+        "divergence": _basic_quartiles(st_subset[div_col]),
+        "change":     _basic_quartiles(st_subset[chg_col]),
+        "by_lang":    {},
+        "basis":      "",
+        "per_student": [],
+    }
+    bases = st_subset.get(f"a{a_num}_diff_basis")
+    if bases is not None:
+        counts = bases[bases.astype(str).str.len() > 0].value_counts()
+        if not counts.empty:
+            payload["basis"] = counts.idxmax()
+    for lang in ("html", "css", "js", "py"):
+        dcol = f"a{a_num}_diverge_{lang}"
+        ccol = f"a{a_num}_change_{lang}"
+        if dcol not in st_subset.columns: continue
+        d_summary = _basic_quartiles(st_subset[dcol])
+        c_summary = _basic_quartiles(st_subset[ccol])
+        if d_summary is None and c_summary is None: continue
+        payload["by_lang"][lang] = {
+            "divergence": d_summary, "change": c_summary,
+        }
+    if COL_ID is not None:
+        ids = _col_series(st_subset, COL_ID, numeric=False)
+        for sid_val, d, c in zip(ids, st_subset[div_col], st_subset[chg_col]):
+            if pd.isna(d) and pd.isna(c): continue
+            sid = str(sid_val).strip()
+            if sid.endswith(".0"): sid = sid[:-2]
+            if not sid: continue
+            entry = {
+                "id": sid,
+                "divergence": int(d) if not pd.isna(d) else None,
+                "change":     int(c) if not pd.isna(c) else None,
+            }
+            if teacher_total > 0:
+                if entry["divergence"] is not None:
+                    entry["divergence_pct"] = round(
+                        100.0 * entry["divergence"] / teacher_total, 2
+                    )
+                if entry["change"] is not None:
+                    entry["change_pct"] = round(
+                        100.0 * entry["change"] / teacher_total, 2
+                    )
+            payload["per_student"].append(entry)
+    return payload
+
+
+def _build_cofiring(st_subset, COL_ID):
+    if len(st_subset) == 0:
+        return []
+    out = []
+    for a_num, a in ASSIGNMENTS.items():
+        valid_col = f"a{a_num}_artefact_valid"
+        if valid_col not in st_subset.columns:
+            continue
+        valid = st_subset[valid_col].astype(bool)
+        schema = _artefact_schema_for(a)
+        if not schema:
+            continue
+        severity_map = _load_artefact_severity(a.get("lower", ""))
+        marks = []
+        for key, label in schema:
+            col = f"a{a_num}_artefact_{key}"
+            if col not in st_subset.columns: continue
+            marks.append({
+                "key":      key,
+                "label":    label,
+                "severity": severity_map.get(key, ""),
+                "fired":    st_subset[col].astype(bool),
+            })
+        for mx in marks:
+            n_x = int(mx["fired"].sum())
+            if n_x == 0:
+                continue
+            for my in marks:
+                if my["key"] == mx["key"]:
+                    continue
+                joint = mx["fired"] & my["fired"] & valid
+                n_xy = int(joint.sum())
+                if n_xy < 3:
+                    continue
+                base_n = int(my["fired"].sum())
+                base_total = int(valid.sum())
+                p_y = base_n / base_total if base_total else None
+                xy_universe = int((mx["fired"] & valid).sum())
+                p_y_given_x = (n_xy / xy_universe) if xy_universe else None
+                lift = (p_y_given_x / p_y) if (p_y and p_y > 0) else None
+                out.append({
+                    "assignment": a["lower"],
+                    "assn_name":  a["name"],
+                    "x_key":      mx["key"],
+                    "x_label":    mx["label"],
+                    "x_severity": mx["severity"],
+                    "y_key":      my["key"],
+                    "y_label":    my["label"],
+                    "y_severity": my["severity"],
+                    "n_x":        n_x,
+                    "n_xy":       n_xy,
+                    "p_y":          round(p_y, 6) if p_y is not None else None,
+                    "p_y_given_x":  round(p_y_given_x, 6) if p_y_given_x is not None else None,
+                    "lift":         round(lift, 4) if lift is not None else None,
+                    "joint_ids":    _ids_of(st_subset[joint], COL_ID),
+                })
+    return out
+
+
+def _build_curated_moments(st_subset, COL_ID):
+    moments_out = []
+    for a_num, a in ASSIGNMENTS.items():
+        moments = _load_curated_moments(a["lower"])
+        if not moments: continue
+        valid_col = f"a{a_num}_artefact_valid"
+        if valid_col not in st_subset.columns: continue
+        valid = st_subset[valid_col].astype(bool)
+        n_valid = int(valid.sum())
+        if n_valid == 0: continue
+        per_moment = []
+        for m in moments:
+            col = f"a{a_num}_artefact_{m['key']}"
+            if col not in st_subset.columns: continue
+            fired = st_subset[col].astype(bool) & valid
+            if m["polarity"] == "fired":
+                reached_mask = fired
+            else:  # not_fired
+                reached_mask = valid & ~fired
+            missed_mask = valid & ~reached_mask
+            per_moment.append({
+                "key":          m["key"],
+                "label":        m["label"],
+                "polarity":     m["polarity"],
+                "n_valid":      n_valid,
+                "n_reached":    int(reached_mask.sum()),
+                "n_missed":     int(missed_mask.sum()),
+                "missed_ids":   _ids_of(st_subset[missed_mask], COL_ID),
+                "reached_ids":  _ids_of(st_subset[reached_mask], COL_ID),
+            })
+        if per_moment:
+            moments_out.append({
+                "assignment": a["lower"],
+                "name":       a["name"],
+                "moments":    per_moment,
+            })
+    return moments_out
 
 
 def save_stats_json(st, grades_path):
@@ -1211,32 +1630,59 @@ def save_stats_json(st, grades_path):
         except (TypeError, ValueError):
             return None
 
+    is_llm = (st["is_llm"] if "is_llm" in st.columns
+              else pd.Series([False] * len(st), index=st.index))
+    st_students = st[~is_llm].reset_index(drop=True)
+    st_llm      = st[is_llm].reset_index(drop=True)
+
     result = {
         "generated": datetime.now().isoformat(),
-        "n_students": int(len(st)),
-        "n_passed":   int(st["passed_course"].sum()),
-        "n_failed":   int((~st["passed_course"]).sum()),
+        "n_students": int(len(st_students)),
+        "n_llm":      int(len(st_llm)),
+        "n_passed":   int(st_students["passed_course"].sum()),
+        "n_failed":   int((~st_students["passed_course"]).sum()),
         "assignments": [],
+        "llm_assignments": [],
         "correlations": [],
         "typing": {},
         "ai_overall": {},
-        "trap_schema": {a["lower"]: [{"key": k, "label": lbl}
-                                     for k, lbl in _raw_flags(a)]
-                        for a in ASSIGNMENTS.values() if _raw_flags(a)},
+        "artefact_schema": {
+            a["lower"]: [
+                {
+                    "key":      k,
+                    "label":    lbl,
+                    "severity": _load_artefact_severity(a["lower"]).get(k, ""),
+                }
+                for k, lbl in _raw_flags(a)
+            ]
+            for a in ASSIGNMENTS.values() if _raw_flags(a)
+        },
+        "llm_rows": [
+            {
+                "id": str(_id).strip(),
+                "name": str(_name).strip(),
+            }
+            for _id, _name in zip(
+                _col_series(st_llm, COL.get("id"), numeric=False)
+                if COL.get("id") is not None else pd.Series([], dtype=object),
+                _col_series(st_llm, COL.get("name"), numeric=False)
+                if COL.get("name") is not None else pd.Series([], dtype=object),
+            )
+        ],
     }
 
     for a_num, a in ASSIGNMENTS.items():
-        sub_mask   = st[f"a{a_num}_submitted"]
+        sub_mask   = st_students[f"a{a_num}_submitted"]
         n_sub      = int(sub_mask.sum())
-        n_total    = len(st)
-        grades     = st.loc[sub_mask, f"a{a_num}_grade"].dropna()
-        n_pass     = int(st[f"a{a_num}_passed"].sum())  if f"a{a_num}_passed"  in st.columns else 0
-        n_trouble  = int(st[f"a{a_num}_trouble"].sum()) if f"a{a_num}_trouble" in st.columns else 0
-        n_ai       = int(st[f"a{a_num}_ai"].sum())      if f"a{a_num}_ai"      in st.columns else 0
+        n_total    = len(st_students)
+        grades     = st_students.loc[sub_mask, f"a{a_num}_grade"].dropna()
+        n_pass     = int(st_students[f"a{a_num}_passed"].sum())  if f"a{a_num}_passed"  in st_students.columns else 0
+        n_trouble  = int(st_students[f"a{a_num}_trouble"].sum()) if f"a{a_num}_trouble" in st_students.columns else 0
+        n_ai       = int(st_students[f"a{a_num}_ai"].sum())      if f"a{a_num}_ai"      in st_students.columns else 0
 
         n_lesson_trouble = (
-            int(st[f"a{a_num}_lesson_trouble"].sum())
-            if f"a{a_num}_lesson_trouble" in st.columns else 0
+            int(st_students[f"a{a_num}_lesson_trouble"].sum())
+            if f"a{a_num}_lesson_trouble" in st_students.columns else 0
         )
         entry = {
             "name":            a["name"],
@@ -1256,12 +1702,12 @@ def save_stats_json(st, grades_path):
         }
 
         if a["follow"] is not None:
-            fv = st[f"a{a_num}_follow"].dropna()
+            fv = st_students[f"a{a_num}_follow"].dropna()
             entry["follow_avg"] = sf(fv.mean()) if len(fv) > 0 else None
             entry["n_followed"] = int((fv > 0).sum())
 
-            gv     = st[f"a{a_num}_grade"]
-            ai_col = st[f"a{a_num}_ai"]
+            gv     = st_students[f"a{a_num}_grade"]
+            ai_col = st_students[f"a{a_num}_ai"]
             mask   = fv.notna() & gv.notna()
             entry["scatter"] = [
                 {"x": round(float(fx), 1), "y": round(float(gx), 2), "ai": bool(ax)}
@@ -1269,10 +1715,10 @@ def save_stats_json(st, grades_path):
             ]
 
         if a_num in POOLED_ASSIGNMENTS:
-            ai       = st[f"a{a_num}_ai"]
-            trouble  = st[f"a{a_num}_trouble"]
-            passed   = st[f"a{a_num}_passed"]
-            has_obs  = st[f"a{a_num}_obs"] != ""
+            ai       = st_students[f"a{a_num}_ai"]
+            trouble  = st_students[f"a{a_num}_trouble"]
+            passed   = st_students[f"a{a_num}_passed"]
+            has_obs  = st_students[f"a{a_num}_obs"] != ""
 
             ai_t  = int((ai & trouble).sum())
             ai_p  = int((ai & passed).sum())
@@ -1290,27 +1736,46 @@ def save_stats_json(st, grades_path):
                 _, p_f = fisher_exact(np.array([[ai_t, ai_p], [nai_t, nai_p]]))
                 entry["fisher_p"] = sf(p_f)
 
-            ai_grades   = st.loc[ai, f"a{a_num}_grade"].dropna()
+            ai_grades   = st_students.loc[ai, f"a{a_num}_grade"].dropna()
             noai_mask   = (~ai) & sub_mask & has_obs
-            noai_grades = st.loc[noai_mask, f"a{a_num}_grade"].dropna()
+            noai_grades = st_students.loc[noai_mask, f"a{a_num}_grade"].dropna()
             entry["ai_avg_grade"]   = sf(ai_grades.mean())   if len(ai_grades)   > 0 else None
             entry["no_ai_avg_grade"]= sf(noai_grades.mean()) if len(noai_grades) > 0 else None
 
-        schema = _trap_schema_for(a)
-        if schema and f"a{a_num}_trap_valid" in st.columns:
-            valid   = st[f"a{a_num}_trap_valid"]
+        schema = _artefact_schema_for(a)
+        severity_map = _load_artefact_severity(a.get("lower", ""))
+        if schema and f"a{a_num}_artefact_valid" in st_students.columns:
+            valid   = st_students[f"a{a_num}_artefact_valid"]
             n_valid = int(valid.sum())
-            trouble = st[f"a{a_num}_trouble"]
-            grade   = st[f"a{a_num}_grade"]
+            trouble = st_students[f"a{a_num}_trouble"]
+            grade   = st_students[f"a{a_num}_grade"]
             entry["lower"]        = a["lower"]
-            entry["n_trap_valid"] = n_valid
-            entry["any_trap_fired"] = int(st[f"a{a_num}_any_trap"].sum())
-            entry["any_trap_rate"]  = sf(entry["any_trap_fired"] / n_valid) if n_valid else None
-            traps = []
+            entry["n_artefact_valid"] = n_valid
+            entry["any_artefact_fired"] = int(st_students[f"a{a_num}_any_artefact"].sum())
+            entry["any_artefact_rate"]  = sf(entry["any_artefact_fired"] / n_valid) if n_valid else None
+            if f"a{a_num}_ai_high" in st_students.columns:
+                entry["n_ai_high"]    = int(st_students[f"a{a_num}_ai_high"].sum())
+                entry["ai_high_rate"] = sf(entry["n_ai_high"] / n_valid) if n_valid else None
+            llm_hit_by_key: dict = {}
+            if len(st_llm) > 0 and f"a{a_num}_artefact_valid" in st_llm.columns:
+                llm_valid = st_llm[f"a{a_num}_artefact_valid"]
+                for key, _lbl in schema:
+                    fcol = f"a{a_num}_artefact_{key}"
+                    acol = f"a{a_num}_artefact_{key}_ans"
+                    if fcol not in st_llm.columns: continue
+                    f_llm = st_llm[fcol]
+                    a_llm = st_llm[acol] if acol in st_llm.columns else llm_valid
+                    n_a = int(a_llm.sum()); n_f = int(f_llm.sum())
+                    llm_hit_by_key[key] = {
+                        "n_answered": n_a,
+                        "n_fired":    n_f,
+                        "hit_rate":   sf(n_f / n_a) if n_a else None,
+                    }
+            artefacts = []
             for key, label in schema:
-                fired = st[f"a{a_num}_trap_{key}"]
-                ans_col = f"a{a_num}_trap_{key}_ans"
-                ans = st[ans_col] if ans_col in st.columns else valid
+                fired = st_students[f"a{a_num}_artefact_{key}"]
+                ans_col = f"a{a_num}_artefact_{key}_ans"
+                ans = st_students[ans_col] if ans_col in st_students.columns else valid
                 ok    = ans & ~fired
                 n_ans = int(ans.sum())
                 n_f   = int(fired.sum())
@@ -1322,9 +1787,11 @@ def save_stats_json(st, grades_path):
                     _, p_f = fisher_exact(np.array([[ft, fo], [ot, oo]]))
                 fg = grade[fired].dropna()
                 og = grade[ok].dropna()
-                traps.append({
+                fired_ids = _ids_of(st_students[fired], COL.get("id"))
+                artefacts.append({
                     "key":           key,
                     "label":         label,
+                    "severity":      severity_map.get(key, ""),
                     "n_answered":    n_ans,
                     "n_fired":       n_f,
                     "hit_rate":      sf(n_f / n_ans) if n_ans else None,
@@ -1334,10 +1801,63 @@ def save_stats_json(st, grades_path):
                     "fisher_p":      sf(p_f),
                     "fired_avg_grade": sf(fg.mean()) if len(fg) else None,
                     "ok_avg_grade":    sf(og.mean()) if len(og) else None,
+                    "fired_ids":     fired_ids,
+                    "llm_hit_rate":  llm_hit_by_key.get(key, {}).get("hit_rate"),
+                    "llm_n_fired":   llm_hit_by_key.get(key, {}).get("n_fired"),
+                    "llm_n_answered":llm_hit_by_key.get(key, {}).get("n_answered"),
                 })
-            entry["traps"] = traps
+            entry["artefacts"] = artefacts
+
+        div_payload = _divergence_stats_for(
+            st_students, a_num, COL.get("id"), name_lower=a["lower"],
+        )
+        if div_payload is not None:
+            entry["divergence"] = div_payload
 
         result["assignments"].append(entry)
+
+    for a_num, a in ASSIGNMENTS.items():
+        if len(st_llm) == 0:
+            break
+        entry = {
+            "name":    a["name"],
+            "lower":   a["lower"],
+            "n_total": len(st_llm),
+            "artefacts":   [],
+        }
+        schema = _artefact_schema_for(a)
+        valid_col = f"a{a_num}_artefact_valid"
+        if schema and valid_col in st_llm.columns:
+            valid = st_llm[valid_col]
+            n_valid = int(valid.sum())
+            entry["n_artefact_valid"]   = n_valid
+            entry["any_artefact_fired"] = int(st_llm[f"a{a_num}_any_artefact"].sum())
+            if n_valid:
+                entry["any_artefact_rate"] = sf(entry["any_artefact_fired"] / n_valid)
+            for key, label in schema:
+                fired = st_llm[f"a{a_num}_artefact_{key}"]
+                ans_col = f"a{a_num}_artefact_{key}_ans"
+                ans = st_llm[ans_col] if ans_col in st_llm.columns else valid
+                n_ans = int(ans.sum()); n_f = int(fired.sum())
+                entry["artefacts"].append({
+                    "key":       key,
+                    "label":     label,
+                    "n_answered":n_ans,
+                    "n_fired":   n_f,
+                    "hit_rate":  sf(n_f / n_ans) if n_ans else None,
+                    "fired_ids": _ids_of(st_llm[fired], COL.get("id")),
+                })
+        div_payload = _divergence_stats_for(
+            st_llm, a_num, COL.get("id"), name_lower=a["lower"],
+        )
+        if div_payload is not None:
+            entry["divergence"] = div_payload
+        result["llm_assignments"].append(entry)
+
+    result["cofiring"] = _build_cofiring(st_students, COL.get("id"))
+    result["curated_moments"] = _build_curated_moments(st_students, COL.get("id"))
+
+    st = st_students
 
     corr_pairs = [
         ("pre_typing",      "final_grade",        "Pre-typing KPM → Final grade"),
@@ -1620,8 +2140,8 @@ def save_stats_json(st, grades_path):
         pass
     result["ai_overall"] = ao
 
-    if "total_traps_fired" in st.columns and st["total_traps_fired"].notna().any():
-        tot     = st["total_traps_fired"]
+    if "total_artefacts_fired" in st.columns and st["total_artefacts_fired"].notna().any():
+        tot     = st["total_artefacts_fired"]
         has_tot = tot.notna()
         pass_t  = tot[st["passed_course"] & has_tot].dropna()
         fail_t  = tot[~st["passed_course"] & has_tot].dropna()
@@ -1638,10 +2158,67 @@ def save_stats_json(st, grades_path):
         r_p, _, _   = safe_corr(tot, st["participation"])
         r_s, p_s, n = safe_corr(tot, st["participation"], method="spearman")
         ts["participation_corr"] = {"r": sf(r_p), "rho": sf(r_s), "p_rho": sf(p_s), "n": n}
+
+        for ext_key, ext_col in (
+            ("self_eval", "self_eval"),
+            ("answers",   "answers"),
+            ("questions", "questions"),
+            ("help",      "help"),
+            ("kahoot",    "kahoot"),
+            ("quiz_stii", "quiz_stii"),
+        ):
+            if ext_col not in st.columns or st[ext_col].notna().sum() < 3:
+                continue
+            r_p, _, _   = safe_corr(tot, st[ext_col])
+            r_s, p_s, n = safe_corr(tot, st[ext_col], method="spearman")
+            ts[f"{ext_key}_corr"] = {
+                "r":    sf(r_p),
+                "rho":  sf(r_s),
+                "p_rho":sf(p_s),
+                "n":    n,
+            }
         if len(pass_t) >= 2 and len(fail_t) >= 2:
             _, p_mw = mannwhitneyu(pass_t, fail_t, alternative="two-sided")
             ts["pass_fail_mannwhitney_p"] = sf(p_mw)
-        result["trap_summary"] = ts
+
+        per_artefact = []
+        for a_num, a in ASSIGNMENTS.items():
+            schema = _artefact_schema_for(a)
+            if not schema: continue
+            for key, label in schema:
+                fcol = f"a{a_num}_artefact_{key}"
+                if fcol not in st.columns: continue
+                fired = st[fcol].astype(int)
+                if fired.sum() < 3: continue
+                row = {
+                    "assignment": a["lower"],
+                    "assn_name":  a["name"],
+                    "key":        key,
+                    "label":      label,
+                    "severity":   _load_artefact_severity(a["lower"]).get(key, ""),
+                    "n_fired":    int(fired.sum()),
+                }
+                for ext_key, ext_col in (
+                    ("participation", "participation"),
+                    ("self_eval",     "self_eval"),
+                    ("answers",       "answers"),
+                    ("questions",     "questions"),
+                    ("help",          "help"),
+                ):
+                    if ext_col not in st.columns: continue
+                    r_p, _, _   = safe_corr(fired, st[ext_col])
+                    r_s, p_s, n = safe_corr(fired, st[ext_col], method="spearman")
+                    row[f"{ext_key}_corr"] = {
+                        "r":    sf(r_p),
+                        "rho":  sf(r_s),
+                        "p_rho":sf(p_s),
+                        "n":    n,
+                    }
+                per_artefact.append(row)
+        if per_artefact:
+            ts["per_artefact_engagement"] = per_artefact
+
+        result["artefact_summary"] = ts
 
     folder   = os.path.dirname(os.path.abspath(grades_path))
     out_path = os.path.join(folder, "grades_stats.json")
@@ -1721,7 +2298,17 @@ def plot_follow_vs_grade(st):
 
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else None
+    parser = argparse.ArgumentParser(
+        description="Analyse a grades_*.xlsx / Overview*.xlsx file and write "
+                    "grades_stats.json next to it."
+    )
+    parser.add_argument("path", nargs="?",
+                        help="Path to the xlsx (skips the file picker).")
+    parser.add_argument("--no-plot", action="store_true",
+                        help="Skip the interactive matplotlib plot at the end "
+                             "(used when chained from build_overview.py).")
+    args = parser.parse_args()
+    path = args.path
 
     if not path:
         session_path = os.path.join(os.path.dirname(__file__),
@@ -1769,10 +2356,16 @@ def main():
             if n_excluded:
                 print(
                     f"Excluded {n_excluded} student row(s) per "
-                    f"students.csv (Include != OK)"
+                    f"students.csv (Category=Excluded)"
                 )
 
     st = enrich(st)
+    st_full = st
+
+    if "is_llm" in st.columns and st["is_llm"].any():
+        n_llm = int(st["is_llm"].sum())
+        st = st[~st["is_llm"]].reset_index(drop=True)
+        print(f"  ({n_llm} LLM probe row(s) kept aside for save_stats_json)")
 
     print(f"Students loaded: {len(st)}")
     print(f"Passed course:   {st['passed_course'].sum()}")
@@ -1787,12 +2380,12 @@ def main():
     analyze_engagement(st)
     analyze_ai_persistence(st)
     analyze_assignment_difficulty(st)
-    analyze_traps(st)
+    analyze_artefacts(st)
     analyze_per_language_follow(st)
     analyze_lesson_interactions(st)
     analyze_comment_diff(st)
     analyze_correlations_summary(st)
-    save_stats_json(st, path)
+    save_stats_json(st_full, path)
 
     section("INTERPRETATION GUIDE")
     print("""
@@ -1814,7 +2407,8 @@ def main():
     < 1.0      AI group less likely to have trouble
 """)
 
-    plot_follow_vs_grade(st)
+    if not args.no_plot:
+        plot_follow_vs_grade(st)
 
 
 

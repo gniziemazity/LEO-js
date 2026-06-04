@@ -9,7 +9,11 @@ let _dirHandle = null;
 let _isReadOnly = false;
 let _lessonName = null;
 let _lessonGroup = null;
-let _anonMode = "";
+let _mode = "assignment";
+let _modeParam = null;
+let _paperMode = false;
+let _highlightIds = null;
+let _starIds = null;
 let _sortCol = "id";
 let _sortDir = "asc";
 let _shownUnicodeCorruptionWarning = false;
@@ -28,9 +32,10 @@ let _activeSheetName = "";
 let _activeHeaderRow = null;
 let _activeRemarkColIdx = {};
 const _dirtyEdits = new Map();
+const _origObs = new Map();
 const EDITABLE_COL_RE = /^(obs\.?|grade|comments?)$/i;
 
-let _trapSchema = [];
+let _artefactSchema = [];
 
 const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
@@ -47,11 +52,16 @@ const LANG_COL_DEFS = [
 ];
 
 const COL_HIDE_KEYS = [
+	{ key: "name", label: "Name" },
+	{ key: "num", label: "Number" },
 	{ key: "remarks", label: "Remarks" },
 	{ key: "expected", label: "Expected" },
 	{ key: "grade", label: "Grade" },
 	{ key: "comments", label: "Comments" },
+	{ key: "follow", label: "Follow / SIM" },
 	{ key: "languages", label: "Languages (HTML/CSS/JS/Py)" },
+	{ key: "diverge", label: "Divergence" },
+	{ key: "change", label: "Change" },
 	{ key: "fingerprint1", label: "Fingerprint · timeline" },
 	{ key: "fingerprint2", label: "Fingerprint · extras" },
 	{ key: "fingerprint3", label: "Fingerprint · comments" },
@@ -100,4 +110,3 @@ function _mismatchColor(ev) {
 const landingEl = document.getElementById("landing");
 const mainEl = document.getElementById("main");
 const lessonNameEl = document.getElementById("lesson-name");
-const anonSelectEl = document.getElementById("anon-select");

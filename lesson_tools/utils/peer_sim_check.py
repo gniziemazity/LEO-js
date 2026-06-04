@@ -47,7 +47,7 @@ def _folder_fingerprint(folder: Path) -> Optional[str]:
 
 
 def _read_name_id_map(name_map_csv: Path) -> Dict[str, str]:
-    """Map folder names (real name OR alter ego, whichever is used) to id."""
+    """Map alter-ego folder names to student id."""
     out: Dict[str, str] = {}
     if not name_map_csv.is_file():
         return out
@@ -56,10 +56,7 @@ def _read_name_id_map(name_map_csv: Path) -> Dict[str, str]:
         sid = (row.get('Student ID') or '').strip()
         if not sid:
             return
-        name = (row.get('Student Name') or '').strip()
         alter = (row.get('Alter Ego') or '').strip()
-        if name:
-            out[name] = sid
         if alter:
             out[alter] = sid
 

@@ -12,10 +12,11 @@ let _scatterCharts = [];
 let _barCharts = [];
 let _progressCharts = [];
 let _pyStats = null;
-let _trapSchema = {};
+let _artefactSchema = {};
 let _lessonStats = null;
 let _curSort = "name";
 let _anonMode = "name";
+let _hideExcluded = false;
 
 let _clusterCharts = [];
 let _clusterSeed = 42;

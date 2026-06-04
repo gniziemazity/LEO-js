@@ -41,6 +41,16 @@
 					<option value="id">ID Only</option>
 				</select>
 			</label>
+			<label
+				style="font-size: 11px; color: var(--clr-label); margin-left: 8px"
+			>
+				<input
+					type="checkbox"
+					id="hide-excluded"
+					onchange="onHideExcludedChange(this.checked)"
+				/>
+				Hide excluded
+			</label>
 		</div>
 
 		<div id="page-students" class="page">
@@ -49,8 +59,7 @@
 
 		<div id="page-stats" class="page">
 			<div id="stats-no-data" style="display: none">
-				Run <code>npm run grades-analyze</code> first to generate
-				statistics.
+				Run <code>npm run overview</code> first to generate statistics.
 			</div>
 			<div class="stats-body" id="stats-body"></div>
 		</div>
@@ -64,21 +73,27 @@
 				<button data-sort="avg-grade">Avg Grade ↓</button>
 				<button data-sort="total-grade">Total Grade ↓</button>
 				<button data-sort="ai-count">AI ↑</button>
+				<button data-sort="signals">Signals ↓</button>
+				<button data-sort="signals-high">High Signals ↓</button>
 				<span class="sep" style="margin: 0 8px; color: var(--clr-label)"
 					>|</span
 				>
-				<span>Hide:</span>
+				<span>Show:</span>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="prog-hide-grade" />
+					<input type="checkbox" id="prog-show-grade" checked />
 					Assignment grade
 				</label>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="prog-hide-total-follow" />
+					<input type="checkbox" id="prog-show-total-follow" checked />
 					Total follow
 				</label>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="prog-hide-lang-follow" />
+					<input type="checkbox" id="prog-show-lang-follow" checked />
 					Per-language follow
+				</label>
+				<label style="font-size: 11px; color: var(--clr-label)">
+					<input type="checkbox" id="prog-show-signals" checked />
+					Signals
 				</label>
 			</div>
 			<div class="prog-grid" id="prog-grid"></div>
@@ -155,17 +170,17 @@
 					style="margin: 0 8px; color: var(--clr-label)"
 					>|</span
 				>
-				<span>Hide:</span>
+				<span>Show:</span>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="cluster-hide-grade" />
+					<input type="checkbox" id="cluster-show-grade" checked />
 					Assignment grade
 				</label>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="cluster-hide-total-follow" />
+					<input type="checkbox" id="cluster-show-total-follow" checked />
 					Total follow
 				</label>
 				<label style="font-size: 11px; color: var(--clr-label)">
-					<input type="checkbox" id="cluster-hide-lang-follow" />
+					<input type="checkbox" id="cluster-show-lang-follow" checked />
 					Per-language follow
 				</label>
 				<span class="sep" style="margin: 0 8px; color: var(--clr-label)"
@@ -251,11 +266,11 @@
 
 		<script src="timeline-utils.js"></script>
 		<script src="xlsx.full.min.js"></script>
-		<script src="/src/shared/charts/utils.js"></script>
-		<script src="/src/shared/charts/scatter/scatter-chart.js"></script>
-		<script src="/src/shared/charts/bar/bar-chart.js"></script>
-		<script src="/src/shared/charts/line/line-chart.js"></script>
-		<script src="/src/shared/charts/boxplot/boxplot-chart.js"></script>
+		<script src="../src/shared/charts/utils.js"></script>
+		<script src="../src/shared/charts/scatter/scatter-chart.js"></script>
+		<script src="../src/shared/charts/bar/bar-chart.js"></script>
+		<script src="../src/shared/charts/line/line-chart.js"></script>
+		<script src="../src/shared/charts/boxplot/boxplot-chart.js"></script>
 		<script src="diff-utils.js"></script>
 		<script src="overview-state.js"></script>
 		<script src="overview-data.js"></script>

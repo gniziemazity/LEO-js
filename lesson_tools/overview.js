@@ -10,13 +10,45 @@ function _sortStudents(list, key) {
 	else if (key === "total-grade")
 		sl.sort((a, b) => gradeTotal(b) - gradeTotal(a));
 	else if (key === "ai-count") sl.sort((a, b) => aiCount(a) - aiCount(b));
+	else if (key === "signals")
+		sl.sort((a, b) => signalsTotal(b) - signalsTotal(a));
+	else if (key === "signals-high")
+		sl.sort((a, b) => signalsHigh(b) - signalsHigh(a));
 	else sl.sort((a, b) => a.name.localeCompare(b.name));
 	return sl;
 }
 
-function sortedStudents() {
-	return _sortStudents(_students, _curSort);
+function visibleStudents() {
+	return _hideExcluded ? _students.filter((s) => !s.excluded) : _students;
 }
+
+function sortedStudents() {
+	return _sortStudents(visibleStudents(), _curSort);
+}
+
+function onHideExcludedChange(checked) {
+	_hideExcluded = !!checked;
+	try {
+		localStorage.setItem("hide_excluded", _hideExcluded ? "1" : "0");
+	} catch {}
+	if (_students.length) {
+		renderTable();
+		renderStats();
+		renderProgress();
+		renderClusters();
+	}
+}
+
+(function _initHideExcluded() {
+	try {
+		const saved = localStorage.getItem("hide_excluded");
+		if (saved === "1") {
+			_hideExcluded = true;
+			const cb = document.getElementById("hide-excluded");
+			if (cb) cb.checked = true;
+		}
+	} catch {}
+})();
 const followAvg = (s) => {
 	const vs = s.lessons
 		.filter((l) => l.hasFollowCol && l.follow != null)
@@ -34,6 +66,29 @@ const aiCount = (s) =>
 		(n, l) => n + ((l.obs || "").match(/\bAI\b/gi)?.length || 0),
 		0,
 	);
+const signalsTotal = (s) => {
+	let n = 0;
+	for (const a of ASSIGNMENTS) {
+		const code = (s.lessons[a.n - 1]?.obs || "").trim();
+		if (!isArtefactPattern(code)) continue;
+		for (const ch of code) if (ch === "1") n++;
+	}
+	return n;
+};
+const signalsHigh = (s) => {
+	let n = 0;
+	for (const a of ASSIGNMENTS) {
+		const code = (s.lessons[a.n - 1]?.obs || "").trim();
+		if (!isArtefactPattern(code)) continue;
+		const schema = _artefactSchema[(a.name || "").toLowerCase()] || [];
+		for (let j = 0; j < code.length; j++) {
+			if (code[j] !== "1") continue;
+			const sev = (schema[j] && schema[j].severity) || "high";
+			if (sev === "high") n++;
+		}
+	}
+	return n;
+};
 
 document.querySelectorAll(".sort-bar button[data-sort]").forEach((btn) => {
 	btn.addEventListener("click", () => {
@@ -82,19 +137,19 @@ document
 
 (async function tryAutoLoad() {
 	showLoading(true);
-	let httpDs = null;
+	let served = null;
 	try {
-		httpDs = await detectDataSource();
+		served = await detectServedDataSource();
 	} catch (e) {
-		console.warn("[overview] manifest detection failed:", e);
+		console.warn("[overview] served-source detection failed:", e);
 	}
-	if (httpDs) {
+	if (served) {
 		try {
-			await httpDs.open();
-			await loadCourse(httpDs);
+			await served.load();
+			await loadCourse(served);
 		} catch (e) {
 			console.error("[overview] web-mode load failed:", e);
-			alert("Error loading from manifest: " + e.message);
+			alert("Error loading served dataset: " + e.message);
 		}
 		showLoading(false);
 		return;

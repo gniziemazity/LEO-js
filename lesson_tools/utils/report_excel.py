@@ -1,3 +1,4 @@
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -129,14 +130,18 @@ class ExcelReportMixin:
                 header.append(lang_label_by_ext[ext])
                 header.append(f'{lang_label_by_ext[ext]} Desc')
         if has_sim:
-            header.extend(['Sim (C)', 'Sim (C) Desc',
-                           'Similarity', 'Similarity Desc'])
+            header.extend(['Similarity', 'Similarity Desc'])
             for ext in present_lang_exts:
                 header.append(lang_label_by_ext[ext])
                 header.append(f'{lang_label_by_ext[ext]} Desc')
+        header.extend(['Diverge', 'Change'])
+        for ext in present_lang_exts:
+            label = lang_label_by_ext[ext]
+            header.append(f'{label} Div')
+            header.append(f'{label} Chg')
         if self.required_items or self.not_expected_items:
             header.extend(['Expected', 'Expected Desc'])
-        header.extend(['Obs', 'Grade', 'Comments', 'Excluded'])
+        header.extend(['Obs', 'Grade', 'Comments', 'Category'])
 
         COL_EXTRA   = 5
         COL_EXTRA_T = 6
@@ -156,15 +161,20 @@ class ExcelReportMixin:
         else:
             COL_FOLLOWC = COL_FOLLOWC_T = COL_FOLLOWE = COL_FOLLOWE_T = COL_INTERACT = None
         if has_sim:
-            COL_SIMC   = _next; _next += 1
-            COL_SIMC_T = _next; _next += 1
             COL_SIM    = _next; _next += 1
             COL_SIM_T  = _next; _next += 1
             for ext in present_lang_exts:
                 COL_LANG_BY_EXT[ext] = _next; _next += 1
                 COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
         else:
-            COL_SIM = COL_SIM_T = COL_SIMC = COL_SIMC_T = None
+            COL_SIM = COL_SIM_T = None
+        COL_DIVERGE = _next; _next += 1
+        COL_CHANGE  = _next; _next += 1
+        COL_LANG_DIV_BY_EXT: Dict[str, int] = {}
+        COL_LANG_CHG_BY_EXT: Dict[str, int] = {}
+        for ext in present_lang_exts:
+            COL_LANG_DIV_BY_EXT[ext] = _next; _next += 1
+            COL_LANG_CHG_BY_EXT[ext] = _next; _next += 1
         if self.required_items or self.not_expected_items:
             COL_EXPECTED   = _next; _next += 1
             COL_EXPECTED_T = _next; _next += 1
@@ -177,13 +187,16 @@ class ExcelReportMixin:
 
         excluded = getattr(self, 'excluded_ids', set()) or set()
         ai_ids   = getattr(self, 'ai_ids', set()) or set()
+        anon_mode = (
+            os.environ.get('STUDENT_ANALYTICS_USE_ALTER_EGO') == '1'
+            or anonymize
+        )
         sids               = sorted(self.student_info.keys(), key=int)
         active_sids        = [s for s in sids if s not in excluded]
         all_extra_counters = {
             sid: sum(self.student_simple_extra_by_ext.get(sid, {}).values(), Counter())
             for sid in active_sids
         }
-        peer_ranking, max_sim = self._compute_peer_ranking(active_sids, all_extra_counters)
 
         _extra_denom = max(
             1, sum(sum(c.values()) for c in self.teacher_outside_by_ext.values())
@@ -194,8 +207,13 @@ class ExcelReportMixin:
         for sid in sids:
             info          = self.student_info[sid]
             display_name  = sid if anonymize else info['name']
+            display_number = (
+                '123456'
+                if anon_mode and sid not in ai_ids
+                else info['number']
+            )
             if sid in excluded:
-                row = [int(sid), display_name, info['number']]
+                row = [int(sid), display_name, display_number]
                 row.extend([''] * (len(header) - len(row) - 1))
                 row.append('EXCLUDED')
                 sheet.append(row)
@@ -233,14 +251,13 @@ class ExcelReportMixin:
                 sid, has_submission, code_not_found
             )
             sim_items = []
-            simc_items = []
             sim_by_lang: Dict[str, Dict] = {}
 
             if code_not_found:
-                row = [int(sid), display_name, info['number'], '⛔']
+                row = [int(sid), display_name, display_number, '⛔']
                 row.extend([''] * (len(header) - 4))
             else:
-                row = [int(sid), display_name, info['number'],
+                row = [int(sid), display_name, display_number,
                        remarks_emoji, extra_pct,
                        ', '.join(extra_all) if extra_all else '',
                        inc_pct]
@@ -259,16 +276,6 @@ class ExcelReportMixin:
                             row.append(v.get('text', ''))
                 if has_sim:
                     basis_marks = (getattr(self, '_basis_marks_by_sid', None) or {}).get(sid)
-                    pb_c = (
-                        self._per_basis_comment_info(sid, basis_marks)
-                        if basis_marks else None
-                    )
-                    if pb_c is not None:
-                        simc_pct, simc_desc, simc_items = pb_c
-                    else:
-                        simc_pct, simc_desc, simc_items = self._comment_info(
-                            sid, has_submission, code_not_found)
-                    row.extend([simc_pct, simc_desc])
                     pb_info = (
                         self._per_basis_sim_info(sid, basis_marks)
                         if basis_marks else None
@@ -294,6 +301,48 @@ class ExcelReportMixin:
                         else:
                             row.append(v['score'])
                             row.append(v['desc'])
+                div_by_lang = (_ts or {}).get('divergence_by_lang') or None
+                div_total = (_ts or {}).get('divergence')
+                chg_total = (_ts or {}).get('change')
+                if div_by_lang is None:
+                    basis_marks = (
+                        getattr(self, '_basis_marks_by_sid', None) or {}
+                    ).get(sid)
+                    if basis_marks:
+                        from .token_log_mixin import _count_divergence_by_lang
+                        teacher_files_for_div = self.get_all_code_files(
+                            self._effective_reference_dir()
+                        )
+                        student_dir = getattr(self, 'student_dir_by_sid', {}).get(sid)
+                        student_files_for_div = (
+                            self.get_all_code_files(student_dir) if student_dir else {}
+                        )
+                        div_by_lang = _count_divergence_by_lang(
+                            basis_marks,
+                            teacher_files_for_div,
+                            student_files_for_div,
+                        )
+                        if div_total is None:
+                            div_total = sum(
+                                v['divergence'] for v in div_by_lang.values()
+                            )
+                        if chg_total is None:
+                            chg_total = sum(
+                                v['change'] for v in div_by_lang.values()
+                            )
+                div_by_lang = div_by_lang or {}
+                row.extend([
+                    div_total if div_total is not None else '',
+                    chg_total if chg_total is not None else '',
+                ])
+                for ext in present_lang_exts:
+                    v = div_by_lang.get(ext)
+                    if v is None:
+                        row.append('')
+                        row.append('')
+                    else:
+                        row.append(v.get('divergence', 0))
+                        row.append(v.get('change', 0))
                 if self.required_items or self.not_expected_items:
                     row.extend([req_count, req_details])
                 row.extend(['_' if has_submission else '', ''])
@@ -302,31 +351,11 @@ class ExcelReportMixin:
             cur = sheet.max_row
 
             if sid in ai_ids:
-                sheet.cell(row=cur, column=len(header)).value = 'AI'
+                sheet.cell(row=cur, column=len(header)).value = 'LLM'
 
             if req_fill and COL_EXPECTED:
                 sheet.cell(row=cur, column=COL_EXPECTED).fill = req_fill
 
-            ms = max_sim.get(sid, 0)
-            if ms > 50:
-                t = min(1.0, (ms - 50) / 50)
-                g = b = int(255 * (1 - t))
-                fill = PatternFill(start_color=f'FF{g:02X}{b:02X}',
-                                   end_color=f'FF{g:02X}{b:02X}', fill_type='solid')
-                sheet.cell(row=cur, column=1).fill = fill
-                sheet.cell(row=cur, column=2).fill = fill
-
-            peers = peer_ranking.get(sid, [])
-            if peers:
-                lines  = [(f"{o} ({int(s)}%)" if anonymize
-                           else f"{self.student_info[o]['name']} ({int(s)}%)")
-                          for o, s in peers]
-                lines2 = [f"{o} ({int(s)}%)" for o, s in peers]
-                for lines_, col_, w_ in [(lines, 2, 400), (lines2, 1, 300)]:
-                    c = Comment(', '.join(lines_), 'sim_check')
-                    c.width  = w_
-                    c.height = min(100 + 30 * len(lines_), 1200)
-                    sheet.cell(row=cur, column=col_).comment = c
 
             if code_not_found:
                 c = Comment('No code files found in submission', 'sim_check')
@@ -369,10 +398,11 @@ class ExcelReportMixin:
                     lang_v = _lang_scores.get(ext)
                     if not lang_v:
                         continue
-                    items = lang_v.get('items') or []
-                    if not items:
+                    text = lang_v.get('text') or ''
+                    if not text:
                         continue
-                    c = Comment(', '.join(items), 'sim_check')
+                    items = lang_v.get('items') or [text]
+                    c = Comment(text, 'sim_check')
                     c.width  = 400
                     c.height = min(200 + 80 * len(items), 6000)
                     sheet.cell(row=cur, column=col_n).comment = c
@@ -380,24 +410,21 @@ class ExcelReportMixin:
             if has_sim and not code_not_found and sim_by_lang:
                 for ext, col_n in COL_LANG_BY_EXT.items():
                     v = sim_by_lang.get(ext)
-                    if not v or not v.get('items'):
+                    if not v:
                         continue
-                    items = v['items']
-                    c = Comment(', '.join(items), 'sim_check')
+                    desc = v.get('desc') or ''
+                    if not desc:
+                        continue
+                    items = v.get('items') or [desc]
+                    c = Comment(desc, 'sim_check')
                     c.width  = 400
                     c.height = min(200 + 80 * len(items), 6000)
                     sheet.cell(row=cur, column=col_n).comment = c
 
-            if has_sim and simc_items and COL_SIMC:
-                c = Comment(', '.join(simc_items), 'sim_check')
+            if has_sim and sim_desc and COL_SIM:
+                c = Comment(sim_desc, 'sim_check')
                 c.width  = 400
-                c.height = min(200 + 80 * len(simc_items), 6000)
-                sheet.cell(row=cur, column=COL_SIMC).comment = c
-
-            if has_sim and sim_items and COL_SIM:
-                c = Comment(', '.join(sim_items), 'sim_check')
-                c.width  = 400
-                c.height = min(200 + 80 * len(sim_items), 6000)
+                c.height = 200
                 sheet.cell(row=cur, column=COL_SIM).comment = c
 
             if (self.required_items or self.not_expected_items) and req_missing and COL_EXPECTED:
@@ -410,8 +437,6 @@ class ExcelReportMixin:
             _hidden += [get_column_letter(COL_FOLLOWC_T), get_column_letter(COL_FOLLOWE_T)]
         if has_sim and COL_SIM_T:
             _hidden.append(get_column_letter(COL_SIM_T))
-        if has_sim and COL_SIMC_T:
-            _hidden.append(get_column_letter(COL_SIMC_T))
         for col_n in COL_LANG_DESC_BY_EXT.values():
             _hidden.append(get_column_letter(col_n))
         if self.required_items and COL_EXPECTED_T:
@@ -454,8 +479,8 @@ class ExcelReportMixin:
                     f'{ltr}2:{ltr}{max_row}',
                     ColorScaleRule(start_type='min', start_color='F8696B',
                                    end_type='max', end_color='FFFFFF'))
-            if has_sim and COL_SIMC:
-                ltr = get_column_letter(COL_SIMC)
+            if has_sim and COL_SIM_T:
+                ltr = get_column_letter(COL_SIM_T)
                 sheet.conditional_formatting.add(
                     f'{ltr}2:{ltr}{max_row}',
                     ColorScaleRule(start_type='min', start_color='F8696B',
@@ -466,6 +491,17 @@ class ExcelReportMixin:
                     f'{ltr}2:{ltr}{max_row}',
                     ColorScaleRule(start_type='min', start_color='F8696B',
                                    end_type='max', end_color='FFFFFF'))
+            for col_n in (
+                [COL_DIVERGE, COL_CHANGE]
+                + list(COL_LANG_DIV_BY_EXT.values())
+                + list(COL_LANG_CHG_BY_EXT.values())
+            ):
+                ltr = get_column_letter(col_n)
+                sheet.conditional_formatting.add(
+                    f'{ltr}2:{ltr}{max_row}',
+                    ColorScaleRule(start_type='num', start_value=0,
+                                   start_color='FFFFFF',
+                                   end_type='max', end_color='F8696B'))
 
         self._auto_column_widths(sheet)
         sheet.column_dimensions['B'].width = 18
@@ -654,76 +690,6 @@ class ExcelReportMixin:
                 'items': items,
             }
         return out
-
-    def _comment_info(self, sid: str, has_submission: bool, code_not_found: bool):
-        if not has_submission or code_not_found:
-            return ('', '', [])
-        data = self.results.get(sid, {})
-        if not data or not data.get('files_compared'):
-            return ('', '', [])
-        teacher_agg: Counter = sum(self.teacher_inside_by_ext.values(), Counter())
-        student_agg: Counter = Counter()
-        for ext in LANG_EXTS:
-            fd = data['files_compared'].get(ext)
-            if not fd or fd.get('status') != 'success':
-                continue
-            student_agg += fd.get('student_inside', Counter())
-        if not teacher_agg and not student_agg:
-            return ('', '', [])
-        desc, items = _fmt_diff(teacher_agg - student_agg, student_agg - teacher_agg)
-        simc_pct = calculate_containment(teacher_agg, student_agg) if teacher_agg else 0.0
-        return (simc_pct, desc, items)
-
-    def _per_basis_comment_info(self, sid: str, basis_marks: dict):
-        if not basis_marks:
-            return None
-        teacher_ctr: Counter = Counter()
-        for fname, marks in (basis_marks.get('teacher_files') or {}).items():
-            for m in marks or []:
-                if m.get('label') == 'comment':
-                    teacher_ctr[m.get('token', '')] += 1
-        student_in_order: List[Tuple[str, int, str]] = []
-        for fname, marks in (basis_marks.get('student_files') or {}).items():
-            for m in marks or []:
-                if m.get('label') == 'comment':
-                    student_in_order.append(
-                        (fname, m.get('start', 0), m.get('token', ''))
-                    )
-        student_in_order.sort(key=lambda t: (t[0], t[1]))
-
-        if not teacher_ctr and not student_in_order:
-            return None
-
-        teacher_remaining: Counter = Counter(teacher_ctr)
-        extras_in_order: List[Tuple[str, int, str]] = []
-        for fname, pos, tok in student_in_order:
-            if teacher_remaining[tok] > 0:
-                teacher_remaining[tok] -= 1
-            else:
-                extras_in_order.append((fname, pos, tok))
-
-        teacher_total = sum(teacher_ctr.values())
-        n_missing = sum(v for v in teacher_remaining.values() if v > 0)
-        n_extra = len(extras_in_order)
-        deduction = n_missing + n_extra
-        simc_pct = (
-            round(max(0.0, (teacher_total - deduction) / teacher_total * 100), 1)
-            if teacher_total else 0.0
-        )
-
-        parts: List[str] = []
-        items: List[str] = []
-        for tok, n in sorted(teacher_remaining.items()):
-            if n <= 0:
-                continue
-            suf = f' (x{n})' if n > 1 else ''
-            parts.append(f'-{tok}{suf}')
-            items.append(f'Missing: {tok}{suf}')
-        for _fname, _pos, tok in extras_in_order:
-            parts.append(f'+{tok} (00:00:00)')
-            items.append(f'Extra: {tok}')
-        desc = ', '.join(parts)
-        return (simc_pct, desc, items)
 
     def _tokens_by_effective_lang(self, files: Dict[str, Path]) -> Dict[str, Counter]:
         by_lang: Dict[str, Counter] = {}

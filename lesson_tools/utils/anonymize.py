@@ -11,6 +11,7 @@ from .similarity_measures import open_csv_encoded
 
 try:
     from docx import Document
+    from docx.oxml.ns import qn
     HAS_DOCX = True
 except ImportError:
     HAS_DOCX = False
@@ -29,31 +30,59 @@ def _safe_folder_name(name):
     return cleaned
 
 
+def classify_student_row(row):
+    """Classify a students.csv row into ``(excluded, is_llm)``.
+
+    Handles both the new ``Category`` column (empty = student,
+    ``Excluded`` = excluded, ``LLM`` = LLM probe) and the legacy
+    ``Include`` column (``OK`` = student, ``AI`` / ``LLM`` = LLM
+    probe, anything else / empty = excluded). When neither column
+    exists in the row, defaults to ``(False, False)`` so an old
+    ``students.csv`` without either header still loads the cohort
+    as fully-included.
+    """
+    if 'Category' in row:
+        val = (row.get('Category') or '').strip().upper()
+        return (val == 'EXCLUDED', val in ('LLM', 'AI'))
+    if 'Include' in row:
+        val = (row.get('Include') or '').strip().upper()
+        return (val not in ('OK', 'AI', 'LLM'), val in ('AI', 'LLM'))
+    return (False, False)
+
+
+def _has_category_column(fieldnames):
+    return bool(fieldnames) and (
+        'Category' in fieldnames or 'Include' in fieldnames
+    )
+
+
 def load_excluded_student_ids(csv_path):
     if not os.path.isfile(csv_path):
         return set()
     excluded = set()
-    has_include = False
+    has_column = False
     for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
         excluded.clear()
-        has_include = False
+        has_column = False
         try:
             with open(csv_path, encoding=enc, newline='') as fh:
                 reader = csv.DictReader(fh, delimiter=';')
-                if not reader.fieldnames or 'Include' not in reader.fieldnames:
+                if not _has_category_column(reader.fieldnames):
                     return set()
-                has_include = True
+                has_column = True
                 for row in reader:
                     sid = (row.get('Student ID') or '').strip()
-                    inc = (row.get('Include') or '').strip()
-                    if sid and inc.upper() != 'OK':
+                    if not sid:
+                        continue
+                    is_excluded, _is_llm = classify_student_row(row)
+                    if is_excluded:
                         excluded.add(sid)
             break
         except (UnicodeDecodeError, UnicodeError):
             continue
         except Exception:
             return set()
-    return excluded if has_include else set()
+    return excluded if has_column else set()
 
 
 def load_students(csv_path):
@@ -64,11 +93,11 @@ def load_students(csv_path):
         name = row["Student Name"].strip()
         number = row["Student Number"].strip()
         alter = (row.get("Alter Ego") or "").strip()
-        include_raw = row.get("Include")
-        if include_raw is None:
-            included = True
-        else:
-            included = include_raw.strip().upper() in ("OK", "AI")
+        is_excluded, _is_llm = classify_student_row(row)
+        # ``include_raw`` semantics: if neither Category nor Include
+        # was present, treat the row as included (the helper returns
+        # (False, False) in that case).
+        included = not is_excluded
         students[name] = {
             "id": sid,
             "name": name,
@@ -228,6 +257,37 @@ def _open_word_document(src_path):
     return Document(tmp_path), tmp_path
 
 
+def _run_has_image(run):
+    el = run._element
+    for tag in ("w:drawing", "w:pict", "w:object"):
+        if el.find(qn(tag)) is not None:
+            return True
+    return False
+
+
+def _anonymize_runs(runs, student_data, all_student_numbers, remarks):
+    for run in runs:
+        if _run_has_image(run):
+            for t in run._element.findall(qn("w:t")):
+                if not t.text:
+                    continue
+                new_text, run_remarks = anonymize_text(
+                    t.text, student_data, all_student_numbers
+                )
+                remarks.extend(run_remarks)
+                if new_text != t.text:
+                    t.text = new_text
+            continue
+        if not run.text:
+            continue
+        new_text, run_remarks = anonymize_text(
+            run.text, student_data, all_student_numbers
+        )
+        remarks.extend(run_remarks)
+        if new_text != run.text:
+            run.text = new_text
+
+
 def process_docx_file(src_path, dst_path, student_data, all_student_numbers):
     remarks = []
     if not HAS_DOCX:
@@ -241,34 +301,23 @@ def process_docx_file(src_path, dst_path, student_data, all_student_numbers):
     try:
         doc, tmp_path = _open_word_document(src_path)
         for para in doc.paragraphs:
-            for run in para.runs:
-                new_text, run_remarks = anonymize_text(
-                    run.text, student_data, all_student_numbers
-                )
-                run.text = new_text
-                remarks.extend(run_remarks)
+            _anonymize_runs(para.runs, student_data, all_student_numbers, remarks)
 
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for para in cell.paragraphs:
-                        for run in para.runs:
-                            new_text, run_remarks = anonymize_text(
-                                run.text, student_data, all_student_numbers
-                            )
-                            run.text = new_text
-                            remarks.extend(run_remarks)
+                        _anonymize_runs(
+                            para.runs, student_data, all_student_numbers, remarks
+                        )
 
         for section in doc.sections:
             for hf in [section.header, section.footer]:
                 if hf is not None:
                     for para in hf.paragraphs:
-                        for run in para.runs:
-                            new_text, run_remarks = anonymize_text(
-                                run.text, student_data, all_student_numbers
-                            )
-                            run.text = new_text
-                            remarks.extend(run_remarks)
+                        _anonymize_runs(
+                            para.runs, student_data, all_student_numbers, remarks
+                        )
 
         cp = doc.core_properties
         had_author = bool((cp.author or "").strip() or (cp.last_modified_by or "").strip())
@@ -470,7 +519,7 @@ def main():
             continue
 
         if not student.get("included", True):
-            print(f"  Skipping '{folder_name}' (Include != OK in students.csv)")
+            print(f"  Skipping '{folder_name}' (Category=Excluded in students.csv)")
             skipped_excluded += 1
             continue
 
@@ -586,7 +635,7 @@ def main():
     print(f"  Matched:   {matched} student folders")
     print(f"  Unmatched: {unmatched} student folders")
     if skipped_excluded:
-        print(f"  Skipped:   {skipped_excluded} student folder(s) (Include != OK)")
+        print(f"  Skipped:   {skipped_excluded} student folder(s) (Category=Excluded)")
     print(f"  anon_names/ -- folders named by student name, content anonymized")
     print(f"  anon_ids/   -- folders named by student ID, content anonymized")
     print(f"  remarks.csv -- {len(processed_remarks)} entries written")

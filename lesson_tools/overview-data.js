@@ -4,8 +4,20 @@ const _COL_ALIASES = {
 	id: ["ID"],
 	name: ["Name"],
 	number: ["Number"],
-	pre_typing: ["Pre Typing", "Pre KPM", "Pre-typing", "Pre K/min"],
-	post_typing: ["Post Typing", "Post KPM", "Post-typing", "Post K/min"],
+	pre_typing: [
+		"Pre Typing",
+		"Pre KPM",
+		"Pre-typing",
+		"Pre K/min",
+		"Pre K/Min",
+	],
+	post_typing: [
+		"Post Typing",
+		"Post KPM",
+		"Post-typing",
+		"Post K/min",
+		"Post K/Min",
+	],
 	self_eval: ["Self Eval", "Self Evaluation", "Self"],
 	kahoot: ["Kahoot"],
 	quiz_stii: ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
@@ -15,8 +27,10 @@ const _COL_ALIASES = {
 	answers: ["Total Answers", "Answers"],
 	questions: ["Total Questions", "Questions"],
 	help: ["Total Help", "Help"],
-	excluded: ["Excluded"],
+	excluded: ["Category", "Excluded"],
 };
+
+const _KPM_FALLBACK_NAMES = ["k/min", "kpm", "kpm avg", "k/min avg"];
 
 function _buildHeaderMap(headerRow) {
 	const m = {};
@@ -105,7 +119,11 @@ function _populateColumnsFromHeader(headerRow) {
 			}
 			return out;
 		};
-		const km = findAllByName("k/min");
+		let km = [];
+		for (const lower of _KPM_FALLBACK_NAMES) {
+			km = km.concat(findAllByName(lower));
+		}
+		km = [...new Set(km)].sort((a, b) => a - b);
 		if (COL.pre_typing == null) {
 			const before = km.find((i) => i < firstGrade);
 			if (before != null) COL.pre_typing = before;
@@ -114,6 +132,16 @@ function _populateColumnsFromHeader(headerRow) {
 			const after = km.find((i) => i > lastGrade);
 			if (after != null) COL.post_typing = after;
 		}
+		console.log(
+			"[overview] KPM columns detected: pre =",
+			COL.pre_typing,
+			"post =",
+			COL.post_typing,
+			"  candidate KPM-like columns:",
+			km,
+			"  headers at those indices:",
+			km.map((i) => headerRow[i]),
+		);
 	}
 }
 
@@ -271,7 +299,7 @@ async function loadCourse(ds) {
 		try {
 			_pyStats = JSON.parse(await pyStatsFile.text());
 		} catch {}
-	_trapSchema = _pyStats?.trap_schema || {};
+	_artefactSchema = _pyStats?.artefact_schema || {};
 
 	_globalStudentMap = {};
 	_realToAlterMap = {};
@@ -287,7 +315,8 @@ async function loadCourse(ds) {
 	if (nameMapCsvFile) {
 		try {
 			const text = await readCsvText(nameMapCsvFile);
-			_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
+			const m = parseAlterEgoMap(text, { keyTransform: _nfc });
+			if (Object.keys(m).length) _realToAlterMap = m;
 		} catch {}
 	}
 
@@ -300,20 +329,20 @@ async function loadCourse(ds) {
 		bucket[m[2].toLowerCase()] = true;
 	}
 	for (const name of Object.keys(_assignHandles)) {
-		const f = ds.files.get(`assignments/${name}/trap_labels.csv`);
+		const f = ds.files.get(`assignments/${name}/artefact_labels.csv`);
 		if (!f) continue;
 		try {
-			const labels = parseTrapLabelsCsv(await readCsvText(f));
-			if (labels.length) _trapSchema[name] = labels;
+			const labels = parseArtefactLabelsCsv(await readCsvText(f));
+			if (labels.length) _artefactSchema[name] = labels;
 		} catch {}
 	}
 	for (const name of Object.keys(_lessonHandles)) {
-		if (_trapSchema[name]) continue;
-		const f = ds.files.get(`lessons/${name}/trap_labels.csv`);
+		if (_artefactSchema[name]) continue;
+		const f = ds.files.get(`lessons/${name}/artefact_labels.csv`);
 		if (!f) continue;
 		try {
-			const labels = parseTrapLabelsCsv(await readCsvText(f));
-			if (labels.length) _trapSchema[name] = labels;
+			const labels = parseArtefactLabelsCsv(await readCsvText(f));
+			if (labels.length) _artefactSchema[name] = labels;
 		} catch {}
 	}
 	console.log(
@@ -381,6 +410,25 @@ function parseStudentCsv(text) {
 	return map;
 }
 
+const _LLM_NAME_TOKENS = [
+	"chatgpt",
+	"gpt-",
+	"gpt ",
+	"sonnet",
+	"opus",
+	"claude",
+	"gemini",
+	"deepseek",
+	"ollama",
+	"llama",
+	"mistral",
+];
+function _looksLikeLlmName(name) {
+	const n = (name || "").trim().toLowerCase();
+	if (!n) return false;
+	return _LLM_NAME_TOKENS.some((t) => n.includes(t));
+}
+
 function parseStudent(r) {
 	const str = (c) => (c != null && r[c] != null ? String(r[c]).trim() : "");
 	const num = (c) => {
@@ -391,14 +439,16 @@ function parseStudent(r) {
 		return isNaN(n) ? null : n;
 	};
 
+	const _excVal = str(COL.excluded).toUpperCase();
+	const _nameStr = str(COL.name);
+	const _isLlm =
+		_excVal === "LLM" || _excVal === "AI" || _looksLikeLlmName(_nameStr);
 	const s = {
 		id: str(COL.id),
-		name: str(COL.name),
+		name: _nameStr,
 		number: str(COL.number),
-		excluded:
-			str(COL.excluded).toUpperCase() === "EXCLUDED" ||
-			str(COL.excluded).toUpperCase() === "AI",
-		ai_flagged: str(COL.excluded).toUpperCase() === "AI",
+		excluded: _excVal === "EXCLUDED" || _isLlm,
+		ai_flagged: _isLlm,
 		pre_typing: num(COL.pre_typing),
 		self_eval: num(COL.self_eval),
 		quiz_stii: num(COL.quiz_stii),

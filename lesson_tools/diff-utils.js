@@ -41,7 +41,7 @@ const THEME = {
 	red: _cssVar("--clr-red"),
 	gray: _cssVar("--clr-gray"),
 	muted: _cssVar("--clr-muted"),
-	trapOk: _cssVar("--clr-trap-ok"),
+	artefactOk: _cssVar("--clr-artefact-ok"),
 	label: _cssVar("--clr-label"),
 	bg: _cssVar("--clr-bg"),
 	barTrack: _cssVar("--clr-bar-track"),
@@ -145,25 +145,26 @@ function parseCsv(text) {
 	return { header: cells(lines[0]), rows: lines.slice(1).map(cells), delim };
 }
 
-const TRAP_SEVERITY_COLORS = {
+const ARTEFACT_SEVERITY_COLORS = {
 	high: () => THEME.red,
 	medium: () => THEME.orange,
 	med: () => THEME.orange,
 	low: () => THEME.yellow,
 };
 
-function trapFiredColorFor(severity) {
+function artefactFiredColorFor(severity) {
 	const key = String(severity || "")
 		.trim()
 		.toLowerCase();
-	const fn = TRAP_SEVERITY_COLORS[key] || TRAP_SEVERITY_COLORS.high;
+	const fn = ARTEFACT_SEVERITY_COLORS[key] || ARTEFACT_SEVERITY_COLORS.high;
 	return fn();
 }
 
-function parseTrapLabelsCsv(text) {
+function parseArtefactLabelsCsv(text) {
 	const { header, rows } = parseCsv(text);
 	const keyIdx = header.findIndex((h) => /^key$/i.test(h));
 	const labelIdx = header.findIndex((h) => /^label$/i.test(h));
+	const codeIdx = header.findIndex((h) => /^code$/i.test(h));
 	const sevIdx = header.findIndex((h) => /^severity$/i.test(h));
 	if (keyIdx === -1 || labelIdx === -1) return [];
 	const out = [];
@@ -173,26 +174,27 @@ function parseTrapLabelsCsv(text) {
 		if (!key || !label) continue;
 		const severity =
 			sevIdx !== -1 ? (parts[sevIdx] || "").trim().toLowerCase() : "high";
-		out.push({ key, label, severity: severity || "high" });
+		const code = codeIdx !== -1 ? (parts[codeIdx] || "").trim() : "";
+		out.push({ key, label, code, severity: severity || "high" });
 	}
 	return out;
 }
 
-async function loadTrapLabelsFromHandle(dirHandle) {
+async function loadArtefactLabelsFromHandle(dirHandle) {
 	if (!dirHandle) return [];
 	try {
-		const fh = await dirHandle.getFileHandle("trap_labels.csv");
+		const fh = await dirHandle.getFileHandle("artefact_labels.csv");
 		const file = await fh.getFile();
-		return parseTrapLabelsCsv(await readFileText(file));
+		return parseArtefactLabelsCsv(await readFileText(file));
 	} catch {
 		return [];
 	}
 }
 
-function loadTrapLabelsFromFileMap(fileMap) {
+function loadArtefactLabelsFromFileMap(fileMap) {
 	if (!fileMap) return null;
 	for (const [k, file] of fileMap) {
-		if (k.endsWith("/trap_labels.csv") || k === "trap_labels.csv") {
+		if (k.endsWith("/artefact_labels.csv") || k === "artefact_labels.csv") {
 			return file;
 		}
 	}
@@ -204,10 +206,12 @@ function parseStudentIdNameMap(text) {
 	const { header, rows } = parseCsv(text);
 	const idIdx = header.findIndex((h) => /student.?id|^id$/i.test(h));
 	const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
-	if (idIdx === -1 || nameIdx === -1) return map;
+	const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
+	const valIdx = nameIdx !== -1 ? nameIdx : alterIdx;
+	if (idIdx === -1 || valIdx === -1) return map;
 	for (const parts of rows) {
 		const id = parts[idIdx];
-		const name = parts[nameIdx];
+		const name = parts[valIdx];
 		if (id && name) map[id] = name;
 	}
 	return map;
@@ -241,6 +245,7 @@ const VIDEO_EXT = /\.(mp4|webm|ogv|mov)$/i;
 const MEDIA_EXT =
 	/\.(png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$/i;
 const CODE_EXT = /\.(html|css|js|py)$/i;
+const DOC_EXT = /\.docx$/i;
 
 async function pickFolderWithMemory(idbKey = "lastDir", dbName = undefined) {
 	const lastDir = await _idbGet(idbKey, dbName);
@@ -382,10 +387,14 @@ class HttpDataSource extends DataSource {
 		this.manifest = manifest;
 		this.rootName = manifest.rootName || "dataset";
 		this.files.clear();
+		const mtimes = manifest.mtimes || {};
 		const addFile = (path) => {
 			const url = new URL(path, abs).href;
 			const name = path.split("/").pop();
-			this.files.set(path.toLowerCase(), new HttpFileLike(url, name));
+			const file = new HttpFileLike(url, name);
+			const mt = mtimes[path.toLowerCase()];
+			if (mt) file.lastModified = mt;
+			this.files.set(path.toLowerCase(), file);
 		};
 		for (const p of manifest.rootFiles || []) addFile(p);
 		const groups = manifest.groups || {};
@@ -429,6 +438,113 @@ class HttpDataSource extends DataSource {
 	}
 }
 
+const _GRADES_SKIP_DIRS = new Set(["students", "curated"]);
+
+class GradesDataSource extends DataSource {
+	constructor() {
+		super();
+		this.isReadOnly = true;
+	}
+	async open() {
+		const r = await fetch("/grades-session");
+		if (!r.ok) throw new Error("GradesDataSource: no /grades-session");
+		let folder = "";
+		try {
+			folder = (await r.json()).folder || "";
+		} catch {}
+		this.rootName = folder
+			? String(folder).split(/[\\/]/).filter(Boolean).pop()
+			: "grades";
+		return this;
+	}
+	async _addDirFiles(rel) {
+		let entries;
+		try {
+			entries = await listServerDir(`/grades-data/${rel}`);
+		} catch {
+			return;
+		}
+		for (const e of entries || []) {
+			if (!e || !e.name || e.kind === "directory") continue;
+			const childRel = `${rel}${e.name}`;
+			const url = new URL(`/grades-data/${childRel}`, location.href).href;
+			this.files.set(childRel.toLowerCase(), new HttpFileLike(url, e.name));
+		}
+	}
+	async load() {
+		this.files.clear();
+		await this._addDirFiles("");
+		for (const g of ["lessons", "assignments"]) {
+			let lessons;
+			try {
+				lessons = await listServerDir(`/grades-data/${g}/`);
+			} catch {
+				continue;
+			}
+			for (const e of lessons || []) {
+				if (e && e.kind === "directory") {
+					await this._addDirFiles(`${g}/${e.name}/`);
+				}
+			}
+		}
+		return [...this.files.values()];
+	}
+	async _crawl(base, rel, fileMap) {
+		let entries;
+		try {
+			entries = await listServerDir(`/grades-data/${base}${rel}`);
+		} catch {
+			return;
+		}
+		for (const e of entries || []) {
+			if (!e || !e.name) continue;
+			if (
+				e.kind === "directory" &&
+				rel === "" &&
+				_GRADES_SKIP_DIRS.has(e.name.toLowerCase())
+			) {
+				continue;
+			}
+			const childRel = `${rel}${e.name}`;
+			if (e.kind === "directory") {
+				await this._crawl(base, `${childRel}/`, fileMap);
+			} else {
+				const url = new URL(
+					`/grades-data/${base}${childRel}`,
+					location.href,
+				).href;
+				fileMap.set(childRel.toLowerCase(), new HttpFileLike(url, e.name));
+			}
+		}
+	}
+	async lessonFiles({ lesson, group }) {
+		const tryGroups = group ? [group] : ["lessons", "assignments"];
+		const lessonLc = String(lesson).toLowerCase();
+		for (const g of tryGroups) {
+			let groupEntries;
+			try {
+				groupEntries = await listServerDir(`/grades-data/${g}/`);
+			} catch {
+				continue;
+			}
+			const match = (groupEntries || []).find(
+				(e) => e.kind === "directory" && e.name.toLowerCase() === lessonLc,
+			);
+			if (!match) continue;
+			const fileMap = new Map();
+			await this._crawl(`${g}/${match.name}/`, "", fileMap);
+			if (fileMap.size) {
+				return new ScopedDataSource({
+					files: fileMap,
+					name: match.name,
+					isReadOnly: true,
+				});
+			}
+		}
+		return null;
+	}
+}
+
 async function detectDataSource({ manifestUrl } = {}) {
 	let candidates;
 	if (manifestUrl) {
@@ -449,13 +565,25 @@ async function detectDataSource({ manifestUrl } = {}) {
 	return null;
 }
 
-async function loadLessonDataSource({ lesson, group }) {
+async function detectServedDataSource() {
 	const httpDs = await detectDataSource();
 	if (httpDs) {
 		await httpDs.open();
-		return httpDs.lessonFiles({ lesson, group });
+		return httpDs;
 	}
-	return new FsDataSource().lessonFiles({ lesson, group });
+	try {
+		const gradesDs = new GradesDataSource();
+		await gradesDs.open();
+		return gradesDs;
+	} catch {
+		return null;
+	}
+}
+
+async function loadLessonDataSource({ lesson, group }) {
+	const served = await detectServedDataSource();
+	const scoped = served ? await served.lessonFiles({ lesson, group }) : null;
+	return scoped || new FsDataSource().lessonFiles({ lesson, group });
 }
 
 async function _resolveSubHandle(rootHandle, subPath) {
@@ -477,7 +605,24 @@ function parseToolParams(search = location.search) {
 	const id = p.get("id") || null;
 	const mode = p.get("mode") || null;
 	const title = p.get("title") || null;
-	return { lesson, group, id, mode, title };
+	const parseIdList = (raw) =>
+		raw
+			? raw
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean)
+			: null;
+	const ids = parseIdList(p.get("ids"));
+	const star = parseIdList(p.get("star"));
+	const stepRaw = p.get("step");
+	const step =
+		stepRaw != null && stepRaw !== "" && Number.isFinite(Number(stepRaw))
+			? Number(stepRaw)
+			: null;
+	const autoplayRaw = p.get("autoplay");
+	const autoplay = autoplayRaw === "1" || autoplayRaw === "true";
+	const ts = p.get("ts");
+	return { lesson, group, id, mode, title, ids, star, step, autoplay, ts };
 }
 
 async function resolveLessonHandle({ lesson, group } = {}) {
@@ -534,13 +679,23 @@ async function resolveLessonHandle({ lesson, group } = {}) {
 	return null;
 }
 
-function buildToolUrl(target, { lesson, group, id, mode, title } = {}) {
+function buildToolUrl(
+	target,
+	{ lesson, group, id, mode, title, ids, star, step, autoplay, ts } = {},
+) {
 	const params = new URLSearchParams();
 	if (lesson) params.set("lesson", lesson);
 	if (group) params.set("group", group);
 	if (id) params.set("id", id);
 	if (mode) params.set("mode", mode);
 	if (title) params.set("title", title);
+	if (ids && ids.length)
+		params.set("ids", Array.isArray(ids) ? ids.join(",") : ids);
+	if (star && star.length)
+		params.set("star", Array.isArray(star) ? star.join(",") : star);
+	if (step != null && step !== "") params.set("step", step);
+	if (autoplay) params.set("autoplay", "1");
+	if (ts != null && ts !== "") params.set("ts", ts);
 	const qs = params.toString();
 	return qs ? `${target}?${qs}` : target;
 }
@@ -643,21 +798,21 @@ function escAttr(s) {
 	return escHtml(s).replace(/"/g, "&quot;");
 }
 
-function isTrapPattern(raw) {
+function isArtefactPattern(raw) {
 	const s = (raw ?? "").trim();
 	return s.length > 0 && /^[01]+$/.test(s);
 }
 
-function renderTrapBadges(raw, schema) {
+function renderArtefactBadges(raw, schema) {
 	const code = (raw ?? "").trim();
-	if (!isTrapPattern(code)) return null;
+	if (!isArtefactPattern(code)) return null;
 	const schemaArr = Array.isArray(schema) ? schema : [];
 	return code
 		.split("")
 		.map((ch, i) => {
 			const fired = ch === "1";
 			const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
-			const clr = fired ? trapFiredColorFor(sev) : THEME.trapOk;
+			const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
 			return (
 				`<span style="display:inline-block;` +
 				`width:14px;height:14px;border-radius:2px;margin:0 1px;` +
@@ -667,9 +822,9 @@ function renderTrapBadges(raw, schema) {
 		.join("");
 }
 
-function buildTrapSummaryTitle(raw, schema) {
+function buildArtefactSummaryTitle(raw, schema) {
 	const code = (raw ?? "").trim();
-	if (!isTrapPattern(code)) return "";
+	if (!isArtefactPattern(code)) return "";
 	const schemaArr = Array.isArray(schema) ? schema : [];
 	const lines = [];
 	for (let i = 0; i < code.length; i++) {
@@ -686,7 +841,7 @@ function buildTrapSummaryTitle(raw, schema) {
 	return lines.join("\n");
 }
 
-function renderTrapTotals(counts, schema) {
+function renderArtefactTotals(counts, schema) {
 	const schemaArr = Array.isArray(schema) ? schema : [];
 	const n = Math.max((counts || []).length, schemaArr.length);
 	if (!n) return "";
@@ -694,7 +849,7 @@ function renderTrapTotals(counts, schema) {
 	for (let i = 0; i < n; i++) {
 		const count = (counts && counts[i]) || 0;
 		const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
-		const clr = count > 0 ? trapFiredColorFor(sev) : THEME.trapOk;
+		const clr = count > 0 ? artefactFiredColorFor(sev) : THEME.artefactOk;
 		parts.push(
 			`<span style="display:inline-block;` +
 				`min-width:14px;height:14px;border-radius:2px;margin:0 1px;` +
@@ -706,9 +861,29 @@ function renderTrapTotals(counts, schema) {
 	return parts.join("");
 }
 
-function buildTrapSummaryHtml(raw, schema) {
+function renderArtefactCellSquare(fired, entry) {
+	const sev = (entry && entry.severity) || "high";
+	const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
+	return (
+		`<span style="display:inline-block;width:14px;height:14px;` +
+		`border-radius:2px;vertical-align:middle;background:${clr}"></span>`
+	);
+}
+
+function renderArtefactTotalOne(count, entry) {
+	const sev = (entry && entry.severity) || "high";
+	const clr = count > 0 ? artefactFiredColorFor(sev) : THEME.artefactOk;
+	return (
+		`<span style="display:inline-block;min-width:14px;height:14px;` +
+		`border-radius:2px;vertical-align:middle;background:${clr};color:white;` +
+		`font-size:10px;font-weight:bold;text-align:center;line-height:14px;` +
+		`padding:0 2px">${count}</span>`
+	);
+}
+
+function buildArtefactSummaryHtml(raw, schema) {
 	const code = (raw ?? "").trim();
-	if (!isTrapPattern(code)) return "";
+	if (!isArtefactPattern(code)) return "";
 	const schemaArr = Array.isArray(schema) ? schema : [];
 	const lines = [];
 	const renderLine = (mark, label, fired) => {
@@ -941,12 +1116,24 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 	for (const [, f] of studentEntries)
 		studentFiles[f.name] = await readFileText(f);
 
+	const studentBase = _studentDirBaseUrl(fileMap, studentDir);
 	const allMarks = {};
 	for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
 		const entry = fileMap.get(studentDir + fname);
+		let text = null;
 		if (entry) {
 			try {
-				allMarks[mode] = JSON.parse(await readFileText(entry));
+				text = await readFileText(entry);
+			} catch {}
+		} else if (studentBase) {
+			try {
+				const r = await fetch(studentBase + fname);
+				if (r.ok) text = await r.text();
+			} catch {}
+		}
+		if (text != null) {
+			try {
+				allMarks[mode] = JSON.parse(text);
 			} catch {}
 		}
 	}
@@ -963,6 +1150,21 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		}
 	}
 
+	const docUris = {};
+	for (const [p, f] of entries) {
+		if (
+			DOC_EXT.test(p) &&
+			!/(^|\/)~\$/.test(p) &&
+			(!p.includes("/") ||
+				p.startsWith(studentDir) ||
+				/^correct\//i.test(p) ||
+				/^start\//i.test(p) ||
+				/^reconstructed\//i.test(p))
+		) {
+			if (!docUris[f.name]) docUris[f.name] = fileToUrl(f);
+		}
+	}
+
 	const teacherBaseUrl = _deriveHttpBaseUrl(teacherEntries);
 	const studentBaseUrl = _deriveHttpBaseUrl(studentEntries);
 
@@ -971,6 +1173,7 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		studentFiles,
 		allMarks,
 		imageUris,
+		docUris,
 		teacherBaseUrl,
 		studentBaseUrl,
 	};
@@ -978,6 +1181,17 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 
 function _deriveHttpBaseUrl(entries) {
 	for (const [, f] of entries) {
+		if (f && typeof f.url === "string" && /^https?:/i.test(f.url)) {
+			return f.url.replace(/[^/]*$/, "");
+		}
+	}
+	return null;
+}
+
+function _studentDirBaseUrl(fileMap, studentDir) {
+	for (const [p, f] of fileMap) {
+		if (!p.startsWith(studentDir)) continue;
+		if (p.slice(studentDir.length).includes("/")) continue;
 		if (f && typeof f.url === "string" && /^https?:/i.test(f.url)) {
 			return f.url.replace(/[^/]*$/, "");
 		}
@@ -998,6 +1212,7 @@ function _buildDiffPayload(data) {
 		teacherFiles: data.teacherFiles ?? {},
 		studentFiles: data.studentFiles ?? {},
 		imageUris: data.imageUris ?? {},
+		docUris: data.docUris ?? {},
 		allMarks,
 		mode: defaultMode,
 		teacherMarks: defaultMarks?.teacher_files ?? null,
