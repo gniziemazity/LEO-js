@@ -45,6 +45,29 @@ const HL_PRIORITY = [
 	"hl_attr",
 ];
 
+function _collapseSpans(content, spans) {
+	const result = [];
+	const used = new Uint8Array(content.length);
+	for (const cls of HL_PRIORITY) {
+		for (const { start, end } of spans[cls]) {
+			if (end <= start) continue;
+			let ok = true;
+			for (let i = start; i < end; i++) {
+				if (used[i]) {
+					ok = false;
+					break;
+				}
+			}
+			if (ok) {
+				for (let i = start; i < end; i++) used[i] = 1;
+				result.push({ start, end, cls });
+			}
+		}
+	}
+	result.sort((a, b) => a.start - b.start);
+	return result;
+}
+
 function buildHighlightSpans(content, fileType = "html") {
 	if (fileType === "none") return [];
 
@@ -53,26 +76,7 @@ function buildHighlightSpans(content, fileType = "html") {
 
 	if (fileType === "css") {
 		_hlCss(content, 0, spans);
-		const result = [];
-		const used = new Uint8Array(content.length);
-		for (const cls of HL_PRIORITY) {
-			for (const { start, end } of spans[cls]) {
-				if (end <= start) continue;
-				let ok = true;
-				for (let i = start; i < end; i++) {
-					if (used[i]) {
-						ok = false;
-						break;
-					}
-				}
-				if (ok) {
-					for (let i = start; i < end; i++) used[i] = 1;
-					result.push({ start, end, cls });
-				}
-			}
-		}
-		result.sort((a, b) => a.start - b.start);
-		return result;
+		return _collapseSpans(content, spans);
 	}
 
 	if (fileType === "js" || fileType === "py" || fileType === "python") {
@@ -80,26 +84,7 @@ function buildHighlightSpans(content, fileType = "html") {
 		const LP = typeof window !== "undefined" ? window.LanguageProfiles : null;
 		const prof = LP ? LP.getProfile(profId) : null;
 		if (prof) LP.highlight(prof, content, 0, spans);
-		const result = [];
-		const used = new Uint8Array(content.length);
-		for (const cls of HL_PRIORITY) {
-			for (const { start, end } of spans[cls]) {
-				if (end <= start) continue;
-				let ok = true;
-				for (let i = start; i < end; i++) {
-					if (used[i]) {
-						ok = false;
-						break;
-					}
-				}
-				if (ok) {
-					for (let i = start; i < end; i++) used[i] = 1;
-					result.push({ start, end, cls });
-				}
-			}
-		}
-		result.sort((a, b) => a.start - b.start);
-		return result;
+		return _collapseSpans(content, spans);
 	}
 
 	const styleRegions = [];
@@ -156,26 +141,7 @@ function buildHighlightSpans(content, fileType = "html") {
 		_hlJs(js, off, spans);
 	}
 
-	const result = [];
-	const used = new Uint8Array(content.length);
-	for (const cls of HL_PRIORITY) {
-		for (const { start, end } of spans[cls]) {
-			if (end <= start) continue;
-			let ok = true;
-			for (let i = start; i < end; i++) {
-				if (used[i]) {
-					ok = false;
-					break;
-				}
-			}
-			if (ok) {
-				for (let i = start; i < end; i++) used[i] = 1;
-				result.push({ start, end, cls });
-			}
-		}
-	}
-	result.sort((a, b) => a.start - b.start);
-	return result;
+	return _collapseSpans(content, spans);
 }
 
 function _protect(protected_, s, e) {

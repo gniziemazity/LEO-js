@@ -391,12 +391,6 @@ function renderStats() {
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
-	// New cards added by the trap-assignments-paper proposals:
-	// - Per-assignment divergence/change from in-class starter
-	// - Side-by-side student vs LLM per-trap rate
-	// - Co-firing matrix (lift, clickable cells)
-	// - Curated-moment counters
-	renderDivergenceCards(body);
 	renderStudentVsLlmCards(body);
 	renderCofiringMatrix(body);
 	renderCuratedMoments(body);
@@ -427,68 +421,6 @@ function _idChips(ids, max, assignmentLower) {
 	});
 	if (more > 0) parts.push(`<span class="id-chip-more">+${more}</span>`);
 	return parts.join(" ");
-}
-
-function renderDivergenceCards(body) {
-	if (!_pyStats?.assignments?.some((a) => a.divergence)) return;
-	const card = mkCard(
-		body,
-		"Divergence from In-Class Starter (Students)",
-		"wide",
-	);
-	let html =
-		'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
-		"divergence = missing + extra + ghost_extra marks vs. starter; " +
-		"change = missing only (how much of the starter was rewritten). " +
-		"Mark counts come from the highest-priority diff_marks_*.json " +
-		"file per student.</div>";
-	html +=
-		'<table class="st-tbl"><tr><th>Assignment</th><th>Basis</th><th>n</th>' +
-		"<th>Divergence (min/Q1/med/Q3/max)</th>" +
-		"<th>Change (min/Q1/med/Q3/max)</th></tr>";
-	_pyStats.assignments.forEach((a) => {
-		const d = a.divergence;
-		if (!d) return;
-		const dv = d.divergence,
-			ch = d.change;
-		const fmt = (q) =>
-			q == null
-				? "—"
-				: `${Math.round(q.min)}/${Math.round(q.q1)}/${Math.round(q.median)}/${Math.round(q.q3)}/${Math.round(q.max)}`;
-		html +=
-			`<tr><td>${escHtml(a.name)}</td>` +
-			`<td><code>${escHtml(d.basis || "?")}</code></td>` +
-			`<td>${dv?.count ?? "—"}</td>` +
-			`<td>${fmt(dv)}</td><td>${fmt(ch)}</td></tr>`;
-	});
-	card.insertAdjacentHTML("beforeend", html + "</table>");
-
-	// Per-language divergence (compact)
-	const anyByLang = _pyStats.assignments.some(
-		(a) => a.divergence && Object.keys(a.divergence.by_lang || {}).length,
-	);
-	if (anyByLang) {
-		const langs = ["html", "css", "js", "py"];
-		let html2 =
-			'<table class="st-tbl"><tr><th>Assignment</th>' +
-			langs.map((l) => `<th>${l.toUpperCase()} div (med)</th>`).join("") +
-			"</tr>";
-		_pyStats.assignments.forEach((a) => {
-			if (!a.divergence?.by_lang) return;
-			const cells = langs.map((l) => {
-				const x = a.divergence.by_lang[l]?.divergence;
-				return `<td>${x ? Math.round(x.median) : "—"}</td>`;
-			});
-			html2 += `<tr><td>${escHtml(a.name)}</td>${cells.join("")}</tr>`;
-		});
-		card.insertAdjacentHTML(
-			"beforeend",
-			'<div style="font-size:11px;color:var(--clr-muted);margin:8px 0 4px">' +
-				"Per-language divergence median (tokens):</div>" +
-				html2 +
-				"</table>",
-		);
-	}
 }
 
 function renderStudentVsLlmCards(body) {

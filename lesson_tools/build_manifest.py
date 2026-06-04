@@ -6,7 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-from utils.folder_utils import pick_folder
+from utils.folder_utils import resolve_course
 
 _GROUPS = ("lessons", "assignments")
 _PII_FILES = {"students.csv", "name_map.csv"}
@@ -142,24 +142,6 @@ def _build_manifest(course: Path, *, exclude_pii: bool) -> dict:
     return manifest
 
 
-def _resolve_course(course_arg) -> Path:
-    if course_arg:
-        course = Path(course_arg)
-        if not course.is_dir():
-            print(f"Course folder not found: {course_arg}")
-            sys.exit(1)
-        return course.resolve()
-    picked = pick_folder(
-        "Select course root folder (containing lessons/ and/or assignments/)"
-    )
-    if not picked:
-        print("No course folder selected. Aborting.")
-        sys.exit(1)
-    course = Path(picked).resolve()
-    if not course.is_dir():
-        print(f"Course folder not found: {picked}")
-        sys.exit(1)
-    return course
 
 
 def main(argv=None) -> int:
@@ -179,7 +161,7 @@ def main(argv=None) -> int:
         help="Path to write manifest.json (defaults to <course>/manifest.json)",
     )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    course = _resolve_course(args.course)
+    course = resolve_course(args.course)
     manifest = _build_manifest(course, exclude_pii=args.exclude_pii)
     out_path = Path(args.output) if args.output else (course / "manifest.json")
     out_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

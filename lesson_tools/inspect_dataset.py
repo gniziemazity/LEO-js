@@ -15,8 +15,8 @@ import webbrowser
 import zipfile
 from pathlib import Path
 
-from utils.folder_utils import pick_folder
-from build_manifest import _build_manifest, _resolve_course
+from utils.folder_utils import resolve_course
+from build_manifest import _build_manifest
 import json
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -205,7 +205,7 @@ def main(argv=None) -> int:
     )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    course = _resolve_course(args.course)
+    course = resolve_course(args.course)
     print(f"Course folder: {course}")
 
     manifest_path = _write_manifest(course, exclude_pii=args.exclude_pii)

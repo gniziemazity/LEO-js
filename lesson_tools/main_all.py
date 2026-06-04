@@ -4,20 +4,13 @@ import sys
 from pathlib import Path
 
 from utils.cli_common import add_grading_flags, forward_grading_flags
-from utils.folder_utils import pick_folder
+from utils.folder_utils import resolve_course
 
 ROOT_DIR = Path(__file__).resolve().parent
 MAIN_PY = ROOT_DIR / "main.py"
 
 
 _PROJECT_GROUPS = ("lessons", "assignments")
-
-
-def _pick_course_folder() -> Path | None:
-    chosen = pick_folder(
-        "Select course root folder (containing lessons/ and/or assignments/)"
-    )
-    return Path(chosen).resolve() if chosen else None
 
 
 def _parse_args(argv):
@@ -31,20 +24,6 @@ def _parse_args(argv):
     )
     add_grading_flags(parser)
     return parser.parse_args(argv)
-
-
-def _resolve_course(course_arg) -> Path:
-    if course_arg:
-        course = Path(course_arg)
-        if not course.is_dir():
-            print(f"Course folder not found: {course_arg}")
-            sys.exit(1)
-        return course.resolve()
-    picked = _pick_course_folder()
-    if picked is None or not picked.is_dir():
-        print("No course folder selected. Aborting.")
-        sys.exit(1)
-    return picked
 
 
 def _project_dirs(course: Path) -> list[Path]:
@@ -66,7 +45,7 @@ def _build_cmd(project_dir: Path, args) -> list[str]:
 
 def main(argv=None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    course = _resolve_course(args.course)
+    course = resolve_course(args.course)
     projects = _project_dirs(course)
 
     by_group: dict[str, list[str]] = {}

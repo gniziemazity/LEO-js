@@ -16,7 +16,12 @@ from .similarity_measures import (
     save_xlsx,
 )
 from .token_log import _split_tokens_by_comment
-from .token_log_mixin import _effective_ext_at, _embedded_lang_ranges_for, _ext_of
+from .token_log_mixin import (
+    _LANG_EXT_LABEL,
+    _effective_ext_at,
+    _embedded_lang_ranges_for,
+    _ext_of,
+)
 
 
 def _fmt_diff(miss_ctr: Counter, extra_ctr: Counter) -> Tuple[str, List[str]]:
@@ -105,8 +110,9 @@ class ExcelReportMixin:
         has_log = bool(self._lesson_keypresses)
         has_sim = not has_log
 
-        _LANG_COLS = (('.html', 'HTML (E)'), ('.css', 'CSS (E)'),
-                       ('.js', 'JS (E)'), ('.py', 'Py (E)'))
+        _LANG_COLS = tuple(
+            (ext, f'{label} (E)') for ext, label in _LANG_EXT_LABEL
+        )
         if has_log:
             present_lang_exts = []
             for ext, _label in _LANG_COLS:
@@ -163,13 +169,6 @@ class ExcelReportMixin:
                 COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
         else:
             COL_SIM = COL_SIM_T = None
-        COL_DIVERGE = _next; _next += 1
-        COL_CHANGE  = _next; _next += 1
-        COL_LANG_DIV_BY_EXT: Dict[str, int] = {}
-        COL_LANG_CHG_BY_EXT: Dict[str, int] = {}
-        for ext in present_lang_exts:
-            COL_LANG_DIV_BY_EXT[ext] = _next; _next += 1
-            COL_LANG_CHG_BY_EXT[ext] = _next; _next += 1
         if self.required_items or self.not_expected_items:
             COL_EXPECTED   = _next; _next += 1
             COL_EXPECTED_T = _next; _next += 1
@@ -309,7 +308,6 @@ class ExcelReportMixin:
             if req_fill and COL_EXPECTED:
                 sheet.cell(row=cur, column=COL_EXPECTED).fill = req_fill
 
-
             if code_not_found:
                 c = Comment('No code files found in submission', 'sim_check')
                 c.width = 400; c.height = 80
@@ -444,17 +442,6 @@ class ExcelReportMixin:
                     f'{ltr}2:{ltr}{max_row}',
                     ColorScaleRule(start_type='min', start_color='F8696B',
                                    end_type='max', end_color='FFFFFF'))
-            for col_n in (
-                [COL_DIVERGE, COL_CHANGE]
-                + list(COL_LANG_DIV_BY_EXT.values())
-                + list(COL_LANG_CHG_BY_EXT.values())
-            ):
-                ltr = get_column_letter(col_n)
-                sheet.conditional_formatting.add(
-                    f'{ltr}2:{ltr}{max_row}',
-                    ColorScaleRule(start_type='num', start_value=0,
-                                   start_color='FFFFFF',
-                                   end_type='max', end_color='F8696B'))
 
         self._auto_column_widths(sheet)
         sheet.column_dimensions['B'].width = 18
@@ -566,19 +553,13 @@ class ExcelReportMixin:
                 continue
             student_ranges[fpath.name] = _embedded_lang_ranges_for(text, ext)
 
-        def _ext_of_name(fname: str) -> str:
-            f = (fname or '').lower()
-            for e in LANG_EXTS:
-                if f.endswith(e):
-                    return e
-            return ''
 
         miss_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
         extra_by_lang: Dict[str, List[Tuple[str, int, str]]] = {}
         n_extra_unpaired_by_lang: Dict[str, int] = {}
         n_ghost_extra_by_lang: Dict[str, int] = {}
         for fname, marks in (basis_marks.get('teacher_files') or {}).items():
-            file_ext = _ext_of_name(fname)
+            file_ext = _ext_of(fname)
             if not file_ext:
                 continue
             ranges = teacher_ranges.get(fname, {})
@@ -589,7 +570,7 @@ class ExcelReportMixin:
                 eff = _effective_ext_at(pos, file_ext, ranges) if ranges else file_ext
                 miss_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', '')))
         for fname, marks in (basis_marks.get('student_files') or {}).items():
-            file_ext = _ext_of_name(fname)
+            file_ext = _ext_of(fname)
             if not file_ext:
                 continue
             ranges = student_ranges.get(fname, {})

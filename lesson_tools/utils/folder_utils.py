@@ -77,3 +77,26 @@ def select_project_folder(title: str = "Select project folder") -> Path:
     return path
 
 
+_COURSE_PICK_TITLE = (
+    "Select course root folder (containing lessons/ and/or assignments/)"
+)
+
+
+def resolve_course(course_arg, *, title: str = _COURSE_PICK_TITLE) -> Path:
+    if course_arg:
+        course = Path(course_arg)
+        if not course.is_dir():
+            print(f"Course folder not found: {course_arg}")
+            sys.exit(1)
+        return course.resolve()
+    picked = pick_folder(title)
+    if not picked:
+        print("No course folder selected. Aborting.")
+        sys.exit(1)
+    course = Path(picked).resolve()
+    if not course.is_dir():
+        print(f"Course folder not found: {picked}")
+        sys.exit(1)
+    return course
+
+
