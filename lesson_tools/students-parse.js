@@ -382,9 +382,9 @@ function _sortKeyOf(s, sortCol) {
 	}
 	if (sortCol.startsWith("artefact:")) {
 		const idx = parseInt(sortCol.slice("artefact:".length), 10);
-		const r = (s.remarks || []).find((x) => /^obs\.?$/i.test(x.col));
+		const r = (s.remarks || []).find((x) => OBS_COL_RE.test(x.col));
 		const code = r && r.val ? String(r.val).trim() : "";
-		const fired = /^[01]+$/.test(code) && code[idx] === "1" ? 1 : 0;
+		const fired = ARTEFACT_CODE_RE.test(code) && code[idx] === "1" ? 1 : 0;
 		return { type: "num", v: fired };
 	}
 	if (sortCol.startsWith("remark:")) {

@@ -13,6 +13,19 @@ CODE_EXTS = ('.html', '.htm', '.css', '.js', '.py')
 LANG_EXTS = ('.html', '.css', '.js', '.py')
 
 
+def code_files(directory: Path, *, first_only: bool = False) -> dict:
+    files: dict = {}
+    for ext in LANG_EXTS:
+        if first_only:
+            matching = list(directory.glob(f'*{ext}'))
+            if matching:
+                files[ext] = matching[0]
+        else:
+            for path in sorted(directory.glob(f'*{ext}')):
+                files[path.name] = path
+    return files
+
+
 def load_last_folder() -> str:
     if _LAST_FOLDER_FILE.exists():
         saved = _LAST_FOLDER_FILE.read_text(encoding='utf-8').strip()

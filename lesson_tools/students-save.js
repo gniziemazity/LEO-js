@@ -266,7 +266,7 @@ async function _saveActiveBasis() {
 			edits.push({
 				ref: XLSX.utils.encode_cell({ r: s._rowIndex, c }),
 				value: value,
-				forceString: /^obs\.?$/i.test(colName),
+				forceString: OBS_COL_RE.test(colName),
 			});
 		}
 

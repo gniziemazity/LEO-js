@@ -622,7 +622,24 @@ function parseToolParams(search = location.search) {
 	const autoplayRaw = p.get("autoplay");
 	const autoplay = autoplayRaw === "1" || autoplayRaw === "true";
 	const ts = p.get("ts");
-	return { lesson, group, id, mode, title, ids, star, step, autoplay, ts };
+	const speedRaw = p.get("speed");
+	const speed =
+		speedRaw != null && speedRaw !== "" && Number(speedRaw) > 0
+			? Number(speedRaw)
+			: null;
+	return {
+		lesson,
+		group,
+		id,
+		mode,
+		title,
+		ids,
+		star,
+		step,
+		autoplay,
+		ts,
+		speed,
+	};
 }
 
 async function resolveLessonHandle({ lesson, group } = {}) {
@@ -681,7 +698,19 @@ async function resolveLessonHandle({ lesson, group } = {}) {
 
 function buildToolUrl(
 	target,
-	{ lesson, group, id, mode, title, ids, star, step, autoplay, ts } = {},
+	{
+		lesson,
+		group,
+		id,
+		mode,
+		title,
+		ids,
+		star,
+		step,
+		autoplay,
+		ts,
+		speed,
+	} = {},
 ) {
 	const params = new URLSearchParams();
 	if (lesson) params.set("lesson", lesson);
@@ -696,6 +725,7 @@ function buildToolUrl(
 	if (step != null && step !== "") params.set("step", step);
 	if (autoplay) params.set("autoplay", "1");
 	if (ts != null && ts !== "") params.set("ts", ts);
+	if (speed != null && speed !== "") params.set("speed", speed);
 	const qs = params.toString();
 	return qs ? `${target}?${qs}` : target;
 }
@@ -766,6 +796,8 @@ const DIFF_MARKS_FILES = {
 	ideal: "diff_marks_ideal.json",
 	required: "diff_marks_required.json",
 };
+
+const DIFF_MARKS_PRIORITY = ["ideal", "required", "", "leo"];
 
 const CURATED_MODES = new Set(["ideal", "required"]);
 
@@ -1020,6 +1052,40 @@ function newTokenRegex() {
 	return new RegExp(TOKEN_RE_SRC, "gu");
 }
 
+const OBS_COL_RE = /^obs\.?$/i;
+const ARTEFACT_CODE_RE = /^[01]+$/;
+
+function round1(x) {
+	return Math.round(x * 10) / 10;
+}
+
+function lsGet(key, fallback = null) {
+	try {
+		const v = localStorage.getItem(key);
+		return v === null ? fallback : v;
+	} catch (e) {
+		return fallback;
+	}
+}
+function lsSet(key, value) {
+	try {
+		localStorage.setItem(key, value);
+	} catch (e) {}
+}
+function lsGetJson(key, fallback = null) {
+	try {
+		const v = localStorage.getItem(key);
+		return v === null ? fallback : JSON.parse(v);
+	} catch (e) {
+		return fallback;
+	}
+}
+function lsSetJson(key, value) {
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch (e) {}
+}
+
 function _hmsToSeconds(hms, sessionDate) {
 	const m = String(hms || "").match(
 		/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/,
@@ -1117,8 +1183,8 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		studentFiles[f.name] = await readFileText(f);
 
 	const studentBase = _studentDirBaseUrl(fileMap, studentDir);
-	const allMarks = {};
-	for (const [mode, fname] of Object.entries(DIFF_MARKS_FILES)) {
+	const fetchMark = async (mode) => {
+		const fname = DIFF_MARKS_FILES[mode];
 		const entry = fileMap.get(studentDir + fname);
 		let text = null;
 		if (entry) {
@@ -1131,12 +1197,34 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 				if (r.ok) text = await r.text();
 			} catch {}
 		}
-		if (text != null) {
-			try {
-				allMarks[mode] = JSON.parse(text);
-			} catch {}
+		if (text == null) return null;
+		try {
+			return JSON.parse(text);
+		} catch {
+			return null;
 		}
-	}
+	};
+
+	const priorityModes = DIFF_MARKS_PRIORITY.filter(
+		(m) => m in DIFF_MARKS_FILES,
+	);
+	const restModes = Object.keys(DIFF_MARKS_FILES).filter(
+		(m) => !priorityModes.includes(m),
+	);
+	const allMarks = {};
+	await Promise.all(
+		priorityModes.map(async (mode) => {
+			const json = await fetchMark(mode);
+			if (json) allMarks[mode] = json;
+		}),
+	);
+	const pendingMarks = Promise.all(
+		restModes.map(async (mode) => [mode, await fetchMark(mode)]),
+	).then((pairs) => {
+		const out = {};
+		for (const [mode, json] of pairs) if (json) out[mode] = json;
+		return out;
+	});
 
 	const imageUris = {};
 	for (const [p, f] of entries) {
@@ -1172,6 +1260,7 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		teacherFiles,
 		studentFiles,
 		allMarks,
+		pendingMarks,
 		imageUris,
 		docUris,
 		teacherBaseUrl,
@@ -1214,6 +1303,7 @@ function _buildDiffPayload(data) {
 		imageUris: data.imageUris ?? {},
 		docUris: data.docUris ?? {},
 		allMarks,
+		pendingMarks: data.pendingMarks ?? null,
 		mode: defaultMode,
 		teacherMarks: defaultMarks?.teacher_files ?? null,
 		studentMarks: defaultMarks?.student_files ?? null,

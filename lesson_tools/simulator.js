@@ -45,18 +45,18 @@ async function _simLoadFromFileMap(
 	seekStep,
 	seekTs,
 ) {
-	const rootJsonFiles = [...pathMap.entries()]
+	const isLogCandidate = (f) =>
+		f.name.toLowerCase().endsWith(".json") &&
+		!_SIM_LOG_SKIP.has(f.name.toLowerCase());
+	const candidates = [...pathMap.entries()]
 		.filter(([p, f]) => {
-			if (p.includes("/")) return false;
-			if (!f.name.toLowerCase().endsWith(".json")) return false;
-			if (_SIM_LOG_SKIP.has(f.name.toLowerCase())) return false;
-			return true;
+			if (!isLogCandidate(f)) return false;
+			if (!p.includes("/")) return true;
+			return /^anon_(ids|names)\/log\.json$/i.test(p);
 		})
-		.map(([, f]) => f);
-	if (!rootJsonFiles.length) return false;
-	const candidates = rootJsonFiles.sort(
-		(a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name),
-	);
+		.map(([, f]) => f)
+		.sort((a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name));
+	if (!candidates.length) return false;
 	for (const file of candidates) {
 		try {
 			const text =
@@ -142,7 +142,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		if (!urlAutoloaded) landing.style.display = "";
 	}
 
-	if (!isReload && !urlAutoloaded) {
+	if (!isReload && !urlAutoloaded && !params.lesson) {
 		try {
 			const logData = window.__LOG_DATA__;
 			const logTs = logData?.loadedAt || 0;
@@ -182,6 +182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	}
 
 	try {
+		if (params.speed != null) vis.setSpeed(params.speed);
 		if (!urlAutoloaded && vis.micro.length) {
 			if (params.ts != null) vis.seekToTimestamp(params.ts);
 			else if (params.step != null) vis.seekToStep(params.step);

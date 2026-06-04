@@ -61,6 +61,7 @@ class LogVisualizer {
             <div class="sep"></div>
             <label><input id="chk-autoscroll" type="checkbox" checked> Auto-scroll</label>
             <span id="ts-label" style="margin-left:auto;color:${CLR.accent};font-family:Consolas,monospace;font-size:11px;line-height:1"></span>
+            <button id="btn-copy-ts" title="Copy link to this moment" style="margin-left:6px" disabled>🔗</button>
             <span id="prog-label" style="margin-left:12px;color:${CLR.muted};font-family:Consolas,monospace;font-size:11px;line-height:1">No file loaded</span>
           </div>
           <div id="vis-seekbar"><div id="vis-seekfill"></div></div>
@@ -93,6 +94,7 @@ class LogVisualizer {
 		this.elSpeedLbl = document.getElementById("speed-label");
 		this.elAutoScroll = document.getElementById("chk-autoscroll");
 		this.elTsLbl = document.getElementById("ts-label");
+		this.elCopyTs = document.getElementById("btn-copy-ts");
 		this.elProgLbl = document.getElementById("prog-label");
 		this.elSeekbar = document.getElementById("vis-seekbar");
 		this.elSeekFill = document.getElementById("vis-seekfill");
@@ -122,6 +124,7 @@ class LogVisualizer {
 		this._setDevPanelVisible(devOn);
 
 		this.elPlay.onclick = () => this.togglePlay();
+		this.elCopyTs.onclick = () => this._copyTimestampLink();
 		this.elBtnLog.onclick = () => {
 			const next = this.elEventLogWrap.style.display === "none";
 			this._setEventLogVisible(next);
@@ -334,6 +337,7 @@ class LogVisualizer {
 		}
 		this._seekToMs(targetMs);
 		this.elPlay.disabled = false;
+		if (this.elCopyTs) this.elCopyTs.disabled = !this._tsOrigin;
 	}
 
 	seekToStep(n) {
@@ -353,26 +357,85 @@ class LogVisualizer {
 	_playMsForTimestamp(value) {
 		if (value == null || !this.micro.length) return null;
 		const raw = String(value).trim();
+		let want = null;
 		if (/^\d+$/.test(raw)) {
 			let epochMs = Number(raw);
 			if (epochMs >= 1_000_000_000 && epochMs < 1_000_000_000_000)
 				epochMs *= 1000;
 			if (epochMs >= 1_000_000_000_000)
 				return epochMs - this._tsOrigin + (this._tsOriginCum || 0);
+			if (this._tsOrigin)
+				want = fmtTs(this._tsOrigin + epochMs * 1000).slice(-12);
+		} else {
+			const m = raw.match(
+				/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?$/,
+			);
+			if (m)
+				want = `${m[1].padStart(2, "0")}:${m[2]}:${
+					m[3] || "00"
+				}.${((m[4] || "") + "000").slice(0, 3)}`;
 		}
-		const m = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?$/);
-		if (m) {
-			const want = `${m[1].padStart(2, "0")}:${m[2]}:${
-				m[3] || "00"
-			}.${((m[4] || "") + "000").slice(0, 3)}`;
-			for (let i = 0; i < this.micro.length; i++) {
-				const ts = this.micro[i][2];
-				if (!ts || ts < 1_000_000_000_000) continue;
-				if (fmtTs(ts).slice(-12) >= want) return this._microCumDelay[i];
-			}
-			return this._totalDelay;
+		if (want == null) return null;
+		for (let i = 0; i < this.micro.length; i++) {
+			const ts = this.micro[i][2];
+			if (!ts || ts < 1_000_000_000_000) continue;
+			if (fmtTs(ts).slice(-12) >= want) return this._microCumDelay[i];
 		}
-		return null;
+		return this._totalDelay;
+	}
+
+	_copyTimestampLink() {
+		const tsStr = (this.elTsLbl.textContent || "").trim();
+		if (!tsStr) return;
+		const { lesson, group } = parseToolParams();
+		const speed = this.speed !== 8 ? this.speed : null;
+		const text = lesson
+			? new URL(
+					buildToolUrl("simulator.html", {
+						lesson,
+						group,
+						ts: tsStr,
+						speed,
+					}),
+					location.href,
+				).href
+			: tsStr;
+		const flash = (msg) => {
+			this.elCopyTs.textContent = msg;
+			clearTimeout(this._copyTsTimer);
+			this._copyTsTimer = setTimeout(() => {
+				this.elCopyTs.textContent = "🔗";
+			}, 1200);
+		};
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard
+				.writeText(text)
+				.then(() => flash("✓"))
+				.catch(() => flash("✖"));
+			return;
+		}
+		const ta = document.createElement("textarea");
+		ta.value = text;
+		ta.style.position = "fixed";
+		ta.style.left = "-9999px";
+		document.body.appendChild(ta);
+		ta.focus();
+		ta.select();
+		let ok = false;
+		try {
+			ok = document.execCommand("copy");
+		} catch {}
+		ta.remove();
+		flash(ok ? "✓" : "✖");
+	}
+
+	setSpeed(value) {
+		const v = Number(value);
+		if (!Number.isFinite(v) || v <= 0) return;
+		this.speed = v;
+		if (this.elSpeed)
+			this.elSpeed.value = String(Math.max(1, Math.min(60, v)));
+		if (this.elSpeedLbl) this.elSpeedLbl.textContent = `${v.toFixed(0)}×`;
 	}
 
 	togglePlay() {
@@ -921,23 +984,44 @@ class LogVisualizer {
 			this.elDevEditor.classList.remove("vis-int-mode");
 			this.elDevEditor.innerHTML = renderEditorHtml(this.dev, true, "none");
 		}
+		this._syncCursorBlink();
 		if (this.elAutoScroll.checked) this._followCursor();
+	}
+
+	_syncCursorBlink() {
+		const delay = `${-(performance.now() % 1000)}ms`;
+		const mc = this.elEditor.querySelector(".vis-cursor");
+		if (mc) mc.style.animationDelay = delay;
+		const dc = this.elDevEditor.querySelector(".vis-cursor");
+		if (dc) dc.style.animationDelay = delay;
 	}
 
 	_followCursor() {
 		const cur = this.elEditor.querySelector(".vis-cursor");
 		if (!cur) return;
 		const c = this.elEditor;
+		const h = c.clientHeight;
+		if (!h) return;
 		const cRect = c.getBoundingClientRect();
 		const curRect = cur.getBoundingClientRect();
-		const curCenter =
-			curRect.top - cRect.top + c.scrollTop + curRect.height / 2;
-		const maxTop = Math.max(0, c.scrollHeight - c.clientHeight);
+		const curTop = curRect.top - cRect.top;
+		const topZone = h * 0.18;
+		const bottomZone = h * 0.75;
+		const restPos = h * 0.45;
+		if (curTop >= topZone && curTop <= bottomZone) {
+			this._scrollTarget = null;
+			return;
+		}
+		const maxTop = Math.max(0, c.scrollHeight - h);
 		const target = Math.max(
 			0,
-			Math.min(maxTop, curCenter - c.clientHeight / 2),
+			Math.min(maxTop, c.scrollTop + curTop - restPos),
 		);
-		if (Math.abs(target - c.scrollTop) > c.clientHeight * 1.5) {
+		if (Math.abs(target - c.scrollTop) < 1) {
+			this._scrollTarget = null;
+			return;
+		}
+		if (Math.abs(target - c.scrollTop) > h * 2) {
 			if (this._scrollRafId) {
 				cancelAnimationFrame(this._scrollRafId);
 				this._scrollRafId = null;
@@ -961,7 +1045,7 @@ class LogVisualizer {
 			this._scrollTarget = null;
 			return;
 		}
-		c.scrollTop = c.scrollTop + diff * 0.25;
+		c.scrollTop = c.scrollTop + diff * 0.12;
 		this._scrollRafId = requestAnimationFrame(() => this._scrollStep());
 	}
 

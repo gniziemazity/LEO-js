@@ -21,6 +21,7 @@ _MEDIA_RE = re.compile(
 )
 _PROJECT_KEEP_DIRS = ("anon_ids", "anon_names", "start", "reconstructed", "correct")
 _PROJECT_DROP_DIRS = ("students", "curated")
+_MEDIA_KEEP_DIRS = ("start", "reconstructed", "correct")
 _PROJECT_KEEP_FILES = {"instructions.html", "name_map.csv", "artefact_labels.csv"}
 
 
@@ -45,7 +46,7 @@ def _keep_project_file(rel: str) -> bool:
     if _DIFF_MARKS_RE.match(lower):
         return False
     if _MEDIA_RE.search(lower):
-        return False
+        return top in _MEDIA_KEEP_DIRS
     if top in _PROJECT_KEEP_DIRS:
         return True
     if len(parts) == 1 and parts[0] in _PROJECT_KEEP_FILES:

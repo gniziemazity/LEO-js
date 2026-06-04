@@ -219,7 +219,7 @@ function renderTable() {
 		: [];
 
 	const _remarkVisible = (col) => {
-		if (/^obs\.?$/i.test(col)) return true;
+		if (OBS_COL_RE.test(col)) return true;
 		if (_paperMode) return false;
 		if (/^grade$/i.test(col)) return !_hiddenCols.has("grade");
 		if (/^comments?$/i.test(col)) return !_hiddenCols.has("comments");
@@ -237,7 +237,7 @@ function renderTable() {
 	if (showNum) specs.push({ cls: "col-num", label: "#", sortKey: "num" });
 	const _hasArtefactSchema = _artefactSchema && _artefactSchema.length > 0;
 	for (const col of visibleRemarkCols) {
-		if (/^obs\.?$/i.test(col) && _hasArtefactSchema) {
+		if (OBS_COL_RE.test(col) && _hasArtefactSchema) {
 			_artefactSchema.forEach((a, i) => {
 				specs.push({
 					cls: "col-remark col-obs col-artefact",
@@ -253,7 +253,7 @@ function renderTable() {
 		let cls = "col-remark";
 		if (/^grade$/i.test(col)) cls += " col-grade";
 		else if (/^comments?$/i.test(col)) cls += " col-comments";
-		else if (/^obs\.?$/i.test(col)) cls += " col-obs";
+		else if (OBS_COL_RE.test(col)) cls += " col-obs";
 		specs.push({
 			cls,
 			label: col,
@@ -469,7 +469,7 @@ function renderTable() {
 		for (const rk of s.remarks) {
 			if (!_remarkVisible(rk.col)) continue;
 			if (
-				/^obs\.?$/i.test(rk.col) &&
+				OBS_COL_RE.test(rk.col) &&
 				_artefactSchema &&
 				_artefactSchema.length
 			) {
@@ -484,7 +484,7 @@ function renderTable() {
 			}
 			const el = document.createElement("td");
 			let cls = "col-remark";
-			const isObs = /^obs\.?$/i.test(rk.col);
+			const isObs = OBS_COL_RE.test(rk.col);
 			const isGrade = /^grade$/i.test(rk.col);
 			const isComments = /^comments?$/i.test(rk.col);
 			const isExpected = /^expected$/i.test(rk.col);
@@ -661,7 +661,7 @@ function _appendTotalsRow(
 	const totalsRow = document.createElement("tr");
 	totalsRow.className = "totals-row";
 
-	const obsCol = visibleRemarkCols.find((c) => /^obs\.?$/i.test(c));
+	const obsCol = visibleRemarkCols.find((c) => OBS_COL_RE.test(c));
 	let obsCounts = null;
 	if (obsCol) {
 		obsCounts = [];
@@ -670,7 +670,7 @@ function _appendTotalsRow(
 			const r = (s.remarks || []).find((x) => x.col === obsCol);
 			if (!r || !r.val) continue;
 			const code = String(r.val).trim();
-			if (!/^[01]+$/.test(code)) continue;
+			if (!ARTEFACT_CODE_RE.test(code)) continue;
 			for (let i = 0; i < code.length; i++) {
 				obsCounts[i] = (obsCounts[i] || 0) + (code[i] === "1" ? 1 : 0);
 			}
@@ -885,19 +885,19 @@ function _snapshotOrigObs(students) {
 	_origObs.clear();
 	for (const s of students || []) {
 		if (s.id == null) continue;
-		const r = (s.remarks || []).find((x) => /^obs\.?$/i.test(x.col));
+		const r = (s.remarks || []).find((x) => OBS_COL_RE.test(x.col));
 		_origObs.set(String(s.id), r && r.val ? String(r.val) : "");
 	}
 }
 
 function _artefactChangedSince(studentId, idx, fired) {
 	const orig = _origObs.get(String(studentId)) || "";
-	const origFired = /^[01]+$/.test(orig) && orig[idx] === "1";
+	const origFired = ARTEFACT_CODE_RE.test(orig) && orig[idx] === "1";
 	return fired !== origFired;
 }
 
 function _renderArtefactCell(el, student, colName, idx, code) {
-	const fired = /^[01]+$/.test(code) && code[idx] === "1";
+	const fired = ARTEFACT_CODE_RE.test(code) && code[idx] === "1";
 	const entry = _artefactSchema[idx];
 	el.innerHTML = renderArtefactCellSquare(fired, entry);
 	let tip = entry && entry.label ? entry.label : "";
@@ -920,7 +920,7 @@ function _toggleArtefact(student, colName, idx, el) {
 	const len = _artefactSchema.length;
 	const r = (student.remarks || []).find((x) => x.col === colName);
 	const cur =
-		r && r.val && /^[01]+$/.test(String(r.val).trim())
+		r && r.val && ARTEFACT_CODE_RE.test(String(r.val).trim())
 			? String(r.val).trim()
 			: "";
 	const arr = [];
@@ -957,7 +957,7 @@ function _toggleArtefact(student, colName, idx, el) {
 			if (s.ai_flagged) continue;
 			const rr = (s.remarks || []).find((x) => x.col === colName);
 			const c = rr && rr.val ? String(rr.val).trim() : "";
-			if (/^[01]+$/.test(c) && c[idx] === "1") count++;
+			if (ARTEFACT_CODE_RE.test(c) && c[idx] === "1") count++;
 		}
 		totalTd.innerHTML = renderArtefactTotalOne(count, _artefactSchema[idx]);
 	}
@@ -996,7 +996,7 @@ function _makeCellEditable(el, student, colName) {
 		if (newText === _origText) return;
 		_setDirty(student.id, colName, newText);
 		el.classList.add("dirty");
-		const isObs = /^obs\.?$/i.test(colName);
+		const isObs = OBS_COL_RE.test(colName);
 		if (isObs) el.style.fontWeight = newText ? "bold" : "";
 		const r = (student.remarks || []).find((x) => x.col === colName);
 		if (r) r.val = newText;

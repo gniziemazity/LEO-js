@@ -36,6 +36,7 @@ function renderStats() {
 	renderLessonStats(body);
 
 	if (py.assignments) {
+		const names6 = py.assignments.map((a) => a.name);
 		const names5 = py.assignments
 			.filter((a) => a.follow_avg != null)
 			.map((a) => a.name);
@@ -64,6 +65,47 @@ function renderStats() {
 			participMax,
 		);
 
+		addBarCard(
+			body,
+			"Average Grades (Assignments)",
+			names6,
+			py.assignments.map((a) => a.avg_grade ?? 0),
+			ACCENT,
+			5,
+			"dec1",
+		);
+		const submittedAssn = py.assignments.map((a) => a.n_submitted ?? 0);
+
+		const lessonTroubleEntries = py.assignments.filter(
+			(a) => a.follow_avg != null,
+		);
+		if (lessonTroubleEntries.length) {
+			const lessonTroubleVals = lessonTroubleEntries.map(
+				(a) => a.n_lesson_trouble ?? 0,
+			);
+			const lessonTotals = lessonTroubleEntries.map(
+				(a) => a.n_followed ?? a.n_total ?? 0,
+			);
+			const lessonNames = lessonTroubleEntries.map((a) => a.name);
+			addStackedShareCard(
+				body,
+				"Trouble (Lessons)",
+				lessonNames,
+				lessonTroubleVals,
+				lessonTotals,
+				Math.max(...lessonTotals, 1) + 1,
+			);
+		}
+
+		const aiAssn = py.assignments.map((a) => a.n_ai ?? 0);
+		addStackedShareCard(
+			body,
+			"AI Use (Assignments)",
+			names6,
+			aiAssn,
+			submittedAssn,
+			Math.max(...submittedAssn, 1) + 1,
+		);
 		if (names5.length)
 			addBarCard(
 				body,
@@ -76,101 +118,145 @@ function renderStats() {
 				100,
 				"pct",
 			);
-
-		const submittedAssn = py.assignments.map((a) => a.n_submitted ?? 0);
-		const names6 = py.assignments.map((a) => a.name);
-		const aiAssn = py.assignments.map((a) => a.n_ai_high ?? a.n_ai ?? 0);
-		addStackedShareCard(
-			body,
-			"AI Use (Assignments)",
-			names6,
-			aiAssn,
-			submittedAssn,
-			Math.max(...submittedAssn, 1) + 1,
-		);
 	}
 
-	if (py.assignments?.some((a) => a.artefacts?.length)) {
-		const card = mkCard(body, "Artefact Hit Rate per Assignment", "wide");
-		const sideBySide = el("div", "artefact-rate-grid");
-		sideBySide.style.cssText =
-			"display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start";
-		card.appendChild(sideBySide);
-		const leftBox = el("div");
-		const rightBox = el("div");
-		sideBySide.appendChild(leftBox);
-		sideBySide.appendChild(rightBox);
-		let hL =
-			'<table class="st-tbl artefact-rate-tbl"><tr><th>Assignment</th>' +
-			"<th>Artefact</th><th>Sev</th><th>Stu fired</th><th>Stu rate</th>" +
-			"<th>LLM rate</th></tr>";
-		let hR =
-			'<table class="st-tbl artefact-rate-tbl"><tr><th>Assignment</th>' +
-			"<th>Artefact</th><th>Fire+Trbl</th><th>Fire+OK</th>" +
-			"<th>OR</th><th>p(Fisher)</th><th>Grade f→o</th></tr>";
-		const sevHtml = (sev) => {
-			if (!sev) return "";
-			const cls =
-				sev === "high" ? "sev-high" : sev === "low" ? "sev-low" : "sev-med";
-			return `<span class="sev-pill ${cls}">${sev[0].toUpperCase()}</span>`;
-		};
-		py.assignments.forEach((a, ai) => {
-			if (!a.artefacts?.length) return;
-			let maxRate = 0;
-			a.artefacts.forEach((t) => {
-				if ((t.hit_rate ?? 0) > maxRate) maxRate = t.hit_rate ?? 0;
+	{
+		const scatterAssns = ASSIGNMENTS.filter((a) => a.follow != null);
+		const nonEmpty = scatterAssns.filter((a) =>
+			_students.some(
+				(s) =>
+					s.lessons[a.n - 1].follow != null &&
+					s.lessons[a.n - 1].grade != null,
+			),
+		);
+		nonEmpty.forEach((a, idx) => {
+			const points = _students
+				.filter(
+					(s) =>
+						s.lessons[a.n - 1].follow != null &&
+						s.lessons[a.n - 1].grade != null,
+				)
+				.map((s) => ({
+					x: s.lessons[a.n - 1].follow,
+					y: s.lessons[a.n - 1].grade,
+					name: studentLabel(s),
+					ai: /\bAI\b/i.test(s.lessons[a.n - 1].obs),
+					student: s,
+					assignment: a,
+				}));
+			addScatterCard(body, a, points, idx === 0);
+		});
+	}
+
+	if (py.assignments?.some((a) => a.ai_trouble != null)) {
+		const card = mkCard(body, "AI vs Trouble per Assignment", "wide");
+		let html =
+			'<table class="st-tbl"><tr><th>Assignment</th><th>AI+Trbl</th><th>AI+Pass</th><th>NoAI+Trbl</th><th>NoAI+Pass</th><th>Rate AI</th><th>Rate NoAI</th><th>OR</th><th>p(Fisher)</th></tr>';
+		py.assignments.forEach((a) => {
+			if (a.ai_trouble == null) return;
+			const rAI =
+				a.ai_trouble + a.ai_pass > 0
+					? a.ai_trouble / (a.ai_trouble + a.ai_pass)
+					: null;
+			const rNoAI =
+				a.no_ai_trouble + a.no_ai_pass > 0
+					? a.no_ai_trouble / (a.no_ai_trouble + a.no_ai_pass)
+					: null;
+			html +=
+				`<tr><td>${escHtml(a.name)}</td><td>${a.ai_trouble}</td><td>${a.ai_pass}</td>` +
+				`<td>${a.no_ai_trouble}</td><td>${a.no_ai_pass}</td>` +
+				`<td>${fmtPct(rAI)}</td><td>${fmtPct(rNoAI)}</td>` +
+				`<td>${a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
+				`<td>${a.fisher_p != null ? fmtP(a.fisher_p) : "—"}</td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.ai_overall) {
+		const a = py.ai_overall;
+		const card = mkCard(body, "AI vs Trouble — Overall (A1–A5 pooled)", "sm");
+		let html = '<table class="st-tbl">';
+		[
+			["", "Trouble", "Pass"],
+			["AI flagged", a.ai_trouble, a.ai_pass],
+			["No AI flag", a.no_ai_trouble, a.no_ai_pass],
+		].forEach((row, i) => {
+			html += `<tr>${row.map((v, j) => (i === 0 || j === 0 ? `<th>${escHtml(String(v))}</th>` : `<td>${fmtN(v)}</td>`)).join("")}</tr>`;
+		});
+		html += "</table><br>";
+		[
+			["Trouble rate (AI)", fmtPct(a.trouble_rate_ai)],
+			["Trouble rate (no AI)", fmtPct(a.trouble_rate_no_ai)],
+			[
+				"Odds ratio",
+				a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—",
+			],
+			["Fisher p", a.fisher_p != null ? fmtP(a.fisher_p) : "—"],
+			["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
+			["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
+		].forEach(([k, v]) => {
+			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
+		});
+		card.insertAdjacentHTML("beforeend", html);
+	}
+
+	if (py.assignments?.some((a) => a.traps?.length)) {
+		const card = mkCard(body, "Trap Hit Rate per Assignment", "wide");
+		let html =
+			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fired</th><th>Valid</th><th>Hit rate</th></tr>';
+		py.assignments.forEach((a) => {
+			if (!a.traps?.length) return;
+			a.traps.forEach((t, i) => {
+				html +=
+					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
+					`<td>${escHtml(t.label)}</td><td>${t.n_fired}</td>` +
+					`<td>${a.n_trap_valid ?? "—"}</td><td>${fmtPct(t.hit_rate)}</td></tr>`;
 			});
-			const sepClass = ai > 0 ? " assn-sep" : "";
-			a.artefacts.forEach((t, i) => {
-				const isMax = (t.hit_rate ?? 0) === maxRate && maxRate > 0;
-				const trClass = (i === 0 ? sepClass : "").trim();
-				const trAttr = trClass ? ` class="${trClass}"` : "";
-				const bo = isMax ? "<b>" : "";
-				const bc = isMax ? "</b>" : "";
-				const assnCell = i === 0 ? escHtml(a.name) : "";
-				const stuRate = fmtPct(t.hit_rate);
-				const llmRate =
-					t.llm_hit_rate != null
-						? `${fmtPct(t.llm_hit_rate)} <span style="color:var(--clr-muted);font-size:10px">(${t.llm_n_fired ?? "?"}/${t.llm_n_answered ?? "?"})</span>`
-						: '<span style="color:var(--clr-muted)">—</span>';
-				hL +=
-					`<tr${trAttr}><td>${assnCell}</td>` +
-					`<td>${bo}${escHtml(t.label)}${bc}</td>` +
-					`<td>${sevHtml(t.severity)}</td>` +
-					`<td>${bo}${t.n_fired}${bc}</td>` +
-					`<td>${bo}${stuRate}${bc}</td>` +
-					`<td>${llmRate}</td></tr>`;
+			html +=
+				`<tr><td></td><td><b>Any trap fired</b></td>` +
+				`<td>${a.any_trap_fired ?? "—"}</td><td>${a.n_trap_valid ?? "—"}</td>` +
+				`<td><b>${fmtPct(a.any_trap_rate)}</b></td></tr>`;
+		});
+		card.insertAdjacentHTML("beforeend", html + "</table>");
+	}
+
+	if (py.assignments?.some((a) => a.traps?.length)) {
+		const card = mkCard(body, "Trap Fired vs Trouble (per trap)", "wide");
+		let html =
+			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fire+Trbl</th><th>Fire+OK</th><th>Ok+Trbl</th><th>Ok+OK</th><th>OR</th><th>p(Fisher)</th><th>Grade fired→ok</th></tr>';
+		py.assignments.forEach((a) => {
+			if (!a.traps?.length) return;
+			a.traps.forEach((t, i) => {
 				const gradeCell =
 					t.fired_avg_grade != null && t.ok_avg_grade != null
 						? `${t.fired_avg_grade.toFixed(2)} → ${t.ok_avg_grade.toFixed(2)}`
 						: "—";
-				hR +=
-					`<tr${trAttr}><td>${assnCell}</td>` +
-					`<td>${bo}${escHtml(t.label)}${bc}</td>` +
-					`<td>${t.fired_trouble}</td>` +
-					`<td>${t.fired_ok}</td>` +
+				html +=
+					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
+					`<td>${escHtml(t.label)}</td>` +
+					`<td>${t.fired_trouble}</td><td>${t.fired_ok}</td>` +
+					`<td>${t.ok_trouble}</td><td>${t.safe_ok}</td>` +
 					`<td>${t.odds_ratio != null ? t.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
 					`<td>${t.fisher_p != null ? fmtP(t.fisher_p) : "—"}</td>` +
 					`<td>${gradeCell}</td></tr>`;
 			});
 		});
-		leftBox.insertAdjacentHTML("beforeend", hL + "</table>");
-		rightBox.insertAdjacentHTML("beforeend", hR + "</table>");
+		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
-	if (py.artefact_summary) {
-		const t = py.artefact_summary;
-		const card = mkCard(body, "Total Artefacts Fired (per student)", "sm");
+	if (py.trap_summary) {
+		const t = py.trap_summary;
+		const card = mkCard(body, "Total Traps Fired (per student)", "sm");
 		const gc = t.grade_corr || {};
 		const pc = t.participation_corr || {};
 		let html = "";
 		[
 			["Students with decoded OBS", t.n_students ?? "—"],
 			[
-				"Mean artefacts fired",
+				"Mean traps fired",
 				t.mean_fired != null ? t.mean_fired.toFixed(2) : "—",
 			],
-			["Max artefacts fired", t.max_fired ?? "—"],
+			["Max traps fired", t.max_fired ?? "—"],
 			[
 				"Passed-course mean",
 				t.passed_mean != null ? t.passed_mean.toFixed(2) : "—",
@@ -193,76 +279,10 @@ function renderStats() {
 				`→ Participation (ρ, n=${pc.n ?? "—"})`,
 				`${fmtR(pc.rho)} ${pc.p_rho != null ? "p=" + fmtP(pc.p_rho) : ""}`,
 			],
-			// Extra engagement correlations added 2026-05.
-			...[
-				["Self-evaluation", t.self_eval_corr],
-				["Questions asked", t.questions_corr],
-				["Answers given", t.answers_corr],
-				["Help received", t.help_corr],
-				["Kahoot", t.kahoot_corr],
-				["Final quiz (Știi)", t.quiz_stii_corr],
-			]
-				.filter(([, corr]) => corr)
-				.map(([lbl, corr]) => [
-					`→ ${lbl} (ρ, n=${corr.n ?? "—"})`,
-					`${fmtR(corr.rho)} ${corr.p_rho != null ? "p=" + fmtP(corr.p_rho) : ""}`,
-				]),
 		].forEach(([k, v]) => {
 			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
 		});
 		card.insertAdjacentHTML("beforeend", html);
-	}
-
-	if (py.artefact_summary?.per_artefact_engagement?.length) {
-		const card = mkCard(
-			body,
-			"Artefact firing × Engagement (per artefact)",
-			"wide",
-		);
-		card.insertAdjacentHTML(
-			"beforeend",
-			'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
-				"Spearman ρ between firing the artefact (0/1) and the engagement " +
-				"metric. Negative ρ on participation/self-eval = artefact fires " +
-				"more often on less-engaged students. <i>*</i> = p &lt; 0.05.</div>",
-		);
-		const sevHtml = (sev) => {
-			if (!sev) return "";
-			const cls =
-				sev === "high" ? "sev-high" : sev === "low" ? "sev-low" : "sev-med";
-			return ` <span class="sev-pill ${cls}">${sev[0].toUpperCase()}</span>`;
-		};
-		let html2 =
-			'<table class="st-tbl"><tr><th>Assignment</th><th>Artefact</th>' +
-			"<th>n fired</th><th>Participation</th><th>Self-eval</th>" +
-			"<th>Questions</th><th>Answers</th><th>Help</th></tr>";
-		let lastAssn = "";
-		py.artefact_summary.per_artefact_engagement.forEach((p) => {
-			const assnCell =
-				p.assignment !== lastAssn
-					? escHtml(p.assn_name || p.assignment)
-					: "";
-			const trAttr =
-				p.assignment !== lastAssn && lastAssn !== ""
-					? ' class="assn-sep"'
-					: "";
-			lastAssn = p.assignment;
-			const c = (k) => {
-				const v = p[`${k}_corr`];
-				if (!v) return "—";
-				return `${fmtR(v.rho)}${v.p_rho != null && v.p_rho < 0.05 ? " *" : ""}`;
-			};
-			html2 +=
-				`<tr${trAttr}><td>${assnCell}</td>` +
-				`<td>${escHtml(p.label)}${sevHtml(p.severity)}</td>` +
-				`<td>${p.n_fired}</td>` +
-				`<td>${c("participation")}</td>` +
-				`<td>${c("self_eval")}</td>` +
-				`<td>${c("questions")}</td>` +
-				`<td>${c("answers")}</td>` +
-				`<td>${c("help")}</td></tr>`;
-		});
-		card.insertAdjacentHTML("beforeend", html2 + "</table>");
 	}
 
 	if (py.follow_vs_grade?.length) {
@@ -371,131 +391,25 @@ function renderStats() {
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
+	// New cards added by the trap-assignments-paper proposals:
+	// - Per-assignment divergence/change from in-class starter
+	// - Side-by-side student vs LLM per-trap rate
+	// - Co-firing matrix (lift, clickable cells)
+	// - Curated-moment counters
+	renderDivergenceCards(body);
+	renderStudentVsLlmCards(body);
 	renderCofiringMatrix(body);
 	renderCuratedMoments(body);
-
-	_renderEndOfPageCards(body, py, fmtP, fmtPct, fmtR, ACCENT);
 }
 
-function _renderEndOfPageCards(body, py, fmtP, fmtPct, fmtR, ACCENT) {
-	if (py.assignments) {
-		const names6 = py.assignments.map((a) => a.name);
-		addBarCard(
-			body,
-			"Average Grades (Assignments)",
-			names6,
-			py.assignments.map((a) => a.avg_grade ?? 0),
-			ACCENT,
-			5,
-			"dec1",
-		);
-
-		const lessonTroubleEntries = py.assignments.filter(
-			(a) => a.follow_avg != null,
-		);
-		if (lessonTroubleEntries.length) {
-			const lessonTroubleVals = lessonTroubleEntries.map(
-				(a) => a.n_lesson_trouble ?? 0,
-			);
-			const lessonTotals = lessonTroubleEntries.map(
-				(a) => a.n_followed ?? a.n_total ?? 0,
-			);
-			const lessonTroubleNames = lessonTroubleEntries.map((a) => a.name);
-			addStackedShareCard(
-				body,
-				"Trouble (Lessons)",
-				lessonTroubleNames,
-				lessonTroubleVals,
-				lessonTotals,
-				Math.max(...lessonTotals, 1) + 1,
-			);
-		}
-	}
-
-	if (py.assignments?.some((a) => a.ai_trouble != null)) {
-		const card = mkCard(body, "AI vs Trouble per Assignment", "wide");
-		let html =
-			'<table class="st-tbl"><tr><th>Assignment</th><th>AI+Trbl</th><th>AI+Pass</th><th>NoAI+Trbl</th><th>NoAI+Pass</th><th>Rate AI</th><th>Rate NoAI</th><th>OR</th><th>p(Fisher)</th></tr>';
-		py.assignments.forEach((a) => {
-			if (a.ai_trouble == null) return;
-			const rAI =
-				a.ai_trouble + a.ai_pass > 0
-					? a.ai_trouble / (a.ai_trouble + a.ai_pass)
-					: null;
-			const rNoAI =
-				a.no_ai_trouble + a.no_ai_pass > 0
-					? a.no_ai_trouble / (a.no_ai_trouble + a.no_ai_pass)
-					: null;
-			html +=
-				`<tr><td>${escHtml(a.name)}</td><td>${a.ai_trouble}</td><td>${a.ai_pass}</td>` +
-				`<td>${a.no_ai_trouble}</td><td>${a.no_ai_pass}</td>` +
-				`<td>${fmtPct(rAI)}</td><td>${fmtPct(rNoAI)}</td>` +
-				`<td>${a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
-				`<td>${a.fisher_p != null ? fmtP(a.fisher_p) : "—"}</td></tr>`;
-		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
-	}
-
-	if (py.ai_overall) {
-		const a = py.ai_overall;
-		const card = mkCard(body, "AI vs Trouble — Overall (A1–A5 pooled)", "sm");
-		let html = '<table class="st-tbl">';
-		[
-			["", "Trouble", "Pass"],
-			["AI flagged", a.ai_trouble, a.ai_pass],
-			["No AI flag", a.no_ai_trouble, a.no_ai_pass],
-		].forEach((row, i) => {
-			html += `<tr>${row.map((v, j) => (i === 0 || j === 0 ? `<th>${escHtml(String(v))}</th>` : `<td>${fmtN(v)}</td>`)).join("")}</tr>`;
-		});
-		html += "</table><br>";
-		[
-			["Trouble rate (AI)", fmtPct(a.trouble_rate_ai)],
-			["Trouble rate (no AI)", fmtPct(a.trouble_rate_no_ai)],
-			[
-				"Odds ratio",
-				a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—",
-			],
-			["Fisher p", a.fisher_p != null ? fmtP(a.fisher_p) : "—"],
-			["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
-			["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
-		].forEach(([k, v]) => {
-			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
-		});
-		card.insertAdjacentHTML("beforeend", html);
-	}
-
-	const cohort = _students.filter((s) => !s.excluded);
-	const scatterAssns = ASSIGNMENTS.filter((a) => a.follow != null);
-	const nonEmpty = scatterAssns.filter((a) =>
-		cohort.some(
-			(s) =>
-				s.lessons[a.n - 1].follow != null &&
-				s.lessons[a.n - 1].grade != null,
-		),
-	);
-	if (nonEmpty.length) {
-		const divider = el("div", "stats-section-divider");
-		divider.style.cssText =
-			"grid-column:1/-1;border-top:1px solid var(--clr-border-mid);margin:18px 0 4px;";
-		body.appendChild(divider);
-		nonEmpty.forEach((a, idx) => {
-			const points = cohort
-				.filter(
-					(s) =>
-						s.lessons[a.n - 1].follow != null &&
-						s.lessons[a.n - 1].grade != null,
-				)
-				.map((s) => ({
-					x: s.lessons[a.n - 1].follow,
-					y: s.lessons[a.n - 1].grade,
-					name: studentLabel(s),
-					ai: /\bAI\b/i.test(s.lessons[a.n - 1].obs),
-					student: s,
-					assignment: a,
-				}));
-			addScatterCard(body, a, points, idx === 0);
-		});
-	}
+function _diffOpenForIds(assignmentLower, ids) {
+	if (!ids?.length) return;
+	const id = ids[0];
+	navigateToDifferentiator({
+		lesson: assignmentLower,
+		group: "assignments",
+		id,
+	});
 }
 
 function _idChips(ids, max, assignmentLower) {
@@ -515,95 +429,153 @@ function _idChips(ids, max, assignmentLower) {
 	return parts.join(" ");
 }
 
+function renderDivergenceCards(body) {
+	if (!_pyStats?.assignments?.some((a) => a.divergence)) return;
+	const card = mkCard(
+		body,
+		"Divergence from In-Class Starter (Students)",
+		"wide",
+	);
+	let html =
+		'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
+		"divergence = missing + extra + ghost_extra marks vs. starter; " +
+		"change = missing only (how much of the starter was rewritten). " +
+		"Mark counts come from the highest-priority diff_marks_*.json " +
+		"file per student.</div>";
+	html +=
+		'<table class="st-tbl"><tr><th>Assignment</th><th>Basis</th><th>n</th>' +
+		"<th>Divergence (min/Q1/med/Q3/max)</th>" +
+		"<th>Change (min/Q1/med/Q3/max)</th></tr>";
+	_pyStats.assignments.forEach((a) => {
+		const d = a.divergence;
+		if (!d) return;
+		const dv = d.divergence,
+			ch = d.change;
+		const fmt = (q) =>
+			q == null
+				? "—"
+				: `${Math.round(q.min)}/${Math.round(q.q1)}/${Math.round(q.median)}/${Math.round(q.q3)}/${Math.round(q.max)}`;
+		html +=
+			`<tr><td>${escHtml(a.name)}</td>` +
+			`<td><code>${escHtml(d.basis || "?")}</code></td>` +
+			`<td>${dv?.count ?? "—"}</td>` +
+			`<td>${fmt(dv)}</td><td>${fmt(ch)}</td></tr>`;
+	});
+	card.insertAdjacentHTML("beforeend", html + "</table>");
+
+	// Per-language divergence (compact)
+	const anyByLang = _pyStats.assignments.some(
+		(a) => a.divergence && Object.keys(a.divergence.by_lang || {}).length,
+	);
+	if (anyByLang) {
+		const langs = ["html", "css", "js", "py"];
+		let html2 =
+			'<table class="st-tbl"><tr><th>Assignment</th>' +
+			langs.map((l) => `<th>${l.toUpperCase()} div (med)</th>`).join("") +
+			"</tr>";
+		_pyStats.assignments.forEach((a) => {
+			if (!a.divergence?.by_lang) return;
+			const cells = langs.map((l) => {
+				const x = a.divergence.by_lang[l]?.divergence;
+				return `<td>${x ? Math.round(x.median) : "—"}</td>`;
+			});
+			html2 += `<tr><td>${escHtml(a.name)}</td>${cells.join("")}</tr>`;
+		});
+		card.insertAdjacentHTML(
+			"beforeend",
+			'<div style="font-size:11px;color:var(--clr-muted);margin:8px 0 4px">' +
+				"Per-language divergence median (tokens):</div>" +
+				html2 +
+				"</table>",
+		);
+	}
+}
+
+function renderStudentVsLlmCards(body) {
+	if (!_pyStats?.assignments?.length) return;
+	if (!_pyStats.llm_assignments?.length) return;
+	const card = mkCard(body, "Per-Trap Rate: Students vs LLM Probes", "wide");
+	const llmRows = _pyStats.llm_rows ?? [];
+	const llmHeader = llmRows.length
+		? `<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">` +
+			`LLM panel = ${llmRows.length} probe row(s): ` +
+			llmRows.map((r) => escHtml(r.name)).join(", ") +
+			"</div>"
+		: "";
+	let html = llmHeader;
+	html +=
+		'<table class="st-tbl"><tr><th>Assignment</th><th>Mark</th>' +
+		"<th>Student-side</th><th>LLM-side</th></tr>";
+	_pyStats.assignments.forEach((a) => {
+		const llm = _pyStats.llm_assignments.find((x) => x.lower === a.lower);
+		if (!a.traps?.length && !llm?.traps?.length) return;
+		const studentTraps = a.traps || [];
+		const llmTraps = llm?.traps || [];
+		const keys = new Set([
+			...studentTraps.map((t) => t.key),
+			...llmTraps.map((t) => t.key),
+		]);
+		let first = true;
+		keys.forEach((key) => {
+			const st = studentTraps.find((t) => t.key === key);
+			const lt = llmTraps.find((t) => t.key === key);
+			const label = st?.label || lt?.label || key;
+			const sCell = st
+				? `${(st.hit_rate * 100).toFixed(0)}% (${st.n_fired}/${st.n_answered})`
+				: "—";
+			const lCell = lt
+				? `${(lt.hit_rate * 100).toFixed(0)}% (${lt.n_fired}/${lt.n_answered})`
+				: "—";
+			html +=
+				`<tr><td>${first ? escHtml(a.name) : ""}</td>` +
+				`<td>${escHtml(label)}</td>` +
+				`<td>${sCell}</td><td>${lCell}</td></tr>`;
+			first = false;
+		});
+	});
+	card.insertAdjacentHTML("beforeend", html + "</table>");
+}
+
 function renderCofiringMatrix(body) {
 	const pairs = _pyStats?.cofiring;
 	if (!pairs?.length) return;
+	const minLift = 1.5;
 	const minN = 3;
-	const filtered = pairs.filter((p) => p.n_xy >= minN);
+	const filtered = pairs.filter(
+		(p) => (p.lift ?? 0) >= minLift && p.n_xy >= minN,
+	);
 	if (!filtered.length) return;
 	const card = mkCard(
 		body,
-		`Co-firing within an Assignment (n ≥ ${minN})`,
+		`Co-firing (lift ≥ ${minLift}×, n ≥ ${minN})`,
 		"wide",
 	);
 	card.insertAdjacentHTML(
 		"beforeend",
 		'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
-			"For every mark (X) on each assignment we list every other " +
-			"mark (Y) on the same assignment that co-fires with it. " +
-			"<i>Lift = P(Y | X) / P(Y)</i>; a lift far from 1 means the " +
-			"two marks are not independent. Lift is asymmetric, so " +
-			"(X→Y) and (Y→X) both appear. Click a student-ID chip to " +
-			"open that submission in the differentiator. Computed on " +
-			"the student subset only.</div>",
+			"Read row → column: <i>lift = P(Y | X) / P(Y)</i>. " +
+			"Click the joint-firers count to open the differentiator on " +
+			"the first co-firing student; the chip list under it links " +
+			"to each individually. Computed on the student subset only.</div>",
 	);
-	filtered.sort((a, b) => {
-		if (a.assignment !== b.assignment)
-			return a.assignment.localeCompare(b.assignment);
-		if (a.x_key !== b.x_key) return a.x_key.localeCompare(b.x_key);
-		return (b.lift ?? 0) - (a.lift ?? 0);
-	});
-	// Group rows by assignment (with separators) and by X within each.
-	// Render bold for the maximum-lift row in each X-group.
-	const byAssn = new Map();
-	filtered.forEach((p) => {
-		if (!byAssn.has(p.assignment))
-			byAssn.set(p.assignment, {
-				name: p.assn_name || p.assignment,
-				groups: new Map(),
-			});
-		const a = byAssn.get(p.assignment);
-		if (!a.groups.has(p.x_key)) a.groups.set(p.x_key, []);
-		a.groups.get(p.x_key).push(p);
-	});
-	const sevHtml = (sev) => {
-		if (!sev) return "";
-		const cls =
-			sev === "high" ? "sev-high" : sev === "low" ? "sev-low" : "sev-med";
-		return ` <span class="sev-pill ${cls}">${sev[0].toUpperCase()}</span>`;
-	};
+	filtered.sort((a, b) => (b.lift ?? 0) - (a.lift ?? 0));
 	let html =
-		'<table class="st-tbl"><tr><th>Assignment</th><th>X (mark)</th>' +
-		"<th>Y (co-mark)</th><th>P(Y|X)</th><th>P(Y)</th><th>Lift</th>" +
-		"<th>n_xy / n_x</th><th>Joint firers</th></tr>";
-	let firstAssnSeen = false;
-	byAssn.forEach((aGroup, assnLower) => {
-		const assnSep = firstAssnSeen ? ' class="assn-sep"' : "";
-		firstAssnSeen = true;
-		let firstRowOfAssn = true;
-		aGroup.groups.forEach((rows, xKey) => {
-			let maxLift = 0;
-			rows.forEach((r) => {
-				if ((r.lift ?? 0) > maxLift) maxLift = r.lift ?? 0;
-			});
-			let firstRowOfX = true;
-			rows.forEach((p) => {
-				const isMax = (p.lift ?? 0) === maxLift && maxLift > 0;
-				const bo = isMax ? "<b>" : "";
-				const bc = isMax ? "</b>" : "";
-				const pyx =
-					p.p_y_given_x != null
-						? (p.p_y_given_x * 100).toFixed(0) + "%"
-						: "—";
-				const py = p.p_y != null ? (p.p_y * 100).toFixed(0) + "%" : "—";
-				const liftStr = p.lift != null ? p.lift.toFixed(2) + "×" : "—";
-				const chips = _idChips(p.joint_ids, 8, p.assignment);
-				const trAttr = firstRowOfAssn ? assnSep : "";
-				const xLabelCell = firstRowOfX
-					? escHtml(p.x_label) + sevHtml(p.x_severity)
-					: "";
-				html +=
-					`<tr${trAttr}><td>${firstRowOfAssn ? escHtml(aGroup.name) : ""}</td>` +
-					`<td>${xLabelCell}</td>` +
-					`<td>${bo}${escHtml(p.y_label)}${bc}${sevHtml(p.y_severity)}</td>` +
-					`<td>${pyx}</td><td>${py}</td>` +
-					`<td>${bo}${liftStr}${bc}</td>` +
-					`<td>${p.n_xy} / ${p.n_x}</td>` +
-					`<td>${chips}</td></tr>`;
-				firstRowOfAssn = false;
-				firstRowOfX = false;
-			});
-		});
+		'<table class="st-tbl"><tr><th>X (given)</th><th>Y (also)</th>' +
+		"<th>P(Y|X)</th><th>P(Y)</th><th>Lift</th><th>n_xy / n_x</th>" +
+		"<th>Joint firers</th></tr>";
+	filtered.slice(0, 60).forEach((p) => {
+		const liftStr = p.lift ? p.lift.toFixed(2) + "×" : "—";
+		const pyx =
+			p.p_y_given_x != null ? (p.p_y_given_x * 100).toFixed(0) + "%" : "—";
+		const py = p.p_y != null ? (p.p_y * 100).toFixed(0) + "%" : "—";
+		const chips = _idChips(p.joint_ids, 8, p.y_assn);
+		html +=
+			`<tr><td><b>${escHtml(p.x_assn)}</b> / ${escHtml(p.x_label)}</td>` +
+			`<td><b>${escHtml(p.y_assn)}</b> / ${escHtml(p.y_label)}</td>` +
+			`<td>${pyx}</td><td>${py}</td>` +
+			`<td><b>${liftStr}</b></td>` +
+			`<td>${p.n_xy} / ${p.n_x}</td>` +
+			`<td>${chips}</td></tr>`;
 	});
 	card.insertAdjacentHTML("beforeend", html + "</table>");
 }
@@ -621,7 +593,7 @@ function renderCuratedMoments(body) {
 		'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
 			"Per-assignment teacher-defined moments " +
 			"(<code>assignments/&lt;a&gt;/curated_moments.csv</code>). " +
-			"<i>Reached</i> = a student whose underlying artefact " +
+			"<i>Reached</i> = a student whose underlying trap " +
 			"<i>did not</i> fire (polarity <code>not_fired</code>) or " +
 			"<i>did</i> fire (polarity <code>fired</code>). Click a " +
 			"missed-id chip to inspect that student's submission.</div>",
@@ -715,14 +687,30 @@ function renderLessonStats(body) {
 	const tHtml = numFor("tokens_html");
 	const tCss = numFor("tokens_css");
 	const tJs = numFor("tokens_js");
-	if (anyPos(tHtml) || anyPos(tCss) || anyPos(tJs)) {
+	const tPy = numFor("tokens_py");
+	const tComment = numFor("tokens_comment");
+	const tDev = numFor("tokens_dev");
+	if (
+		anyPos(tHtml) ||
+		anyPos(tCss) ||
+		anyPos(tJs) ||
+		anyPos(tPy) ||
+		anyPos(tComment) ||
+		anyPos(tDev)
+	) {
 		const card = mkCard(body, "Tokens per Lesson");
 		const box = el("div", "chart-box");
 		card.appendChild(box);
 		const totals = lessonNames.map(
-			(_, i) => (tHtml[i] ?? 0) + (tCss[i] ?? 0) + (tJs[i] ?? 0),
+			(_, i) =>
+				(tHtml[i] ?? 0) +
+				(tCss[i] ?? 0) +
+				(tJs[i] ?? 0) +
+				(tPy[i] ?? 0) +
+				(tComment[i] ?? 0) +
+				(tDev[i] ?? 0),
 		);
-		const stackNames = ["HTML", "CSS", "JS"];
+		const stackNames = ["HTML", "CSS", "JS", "Py", "Comment", "Dev"];
 		const chart = new BarChart(box, {
 			yMin: 0,
 			yMax: Math.max(...totals, 1) * 1.1,
@@ -735,8 +723,11 @@ function renderLessonStats(body) {
 			_cssVar("--clr-red"),
 			_cssVar("--clr-accent"),
 			_cssVar("--clr-orange"),
+			_cssVar("--clr-black"),
+			_cssVar("--clr-green"),
+			_cssVar("--clr-purple"),
 		];
-		const stackData = [tHtml, tCss, tJs];
+		const stackData = [tHtml, tCss, tJs, tPy, tComment, tDev];
 		chart.setData(
 			lessonNames,
 			stackData.map((arr, i) => ({
@@ -756,7 +747,7 @@ function renderLessonStats(body) {
 		);
 		addStackedShareCard(
 			body,
-			"Typing Time (min)",
+			"Typing Duration (min)",
 			lessonNames,
 			durData,
 			durData.map(() => LESSON_MIN),
@@ -773,7 +764,7 @@ function renderLessonStats(body) {
 		);
 		_addDurationBoxCard(
 			body,
-			"Typing Pause Duration (min)",
+			"Pause Duration (min)",
 			lessonNames,
 			segmentsByLesson.map((segs) =>
 				segs.filter((s) => s.kind === "p").map((s) => s.dur / 60),
@@ -782,15 +773,28 @@ function renderLessonStats(body) {
 	}
 
 	const pauseCnt = numFor("pause_count");
+	const pauseAvg = numFor("pause_avg_s");
 	if (anyPos(pauseCnt)) {
 		addBarCard(
 			body,
-			"Typing Pause Count",
+			"Pause Count",
 			lessonNames,
 			pauseCnt.map((v) => v ?? 0),
 			THEME.label,
 			Math.max(...pauseCnt.filter((v) => v != null), 1) + 1,
 			"int",
+		);
+	}
+	if (anyPos(pauseAvg)) {
+		const pauseAvgMin = pauseAvg.map((v) => (v != null ? v / 60 : null));
+		addBarCard(
+			body,
+			"Avg Pause Duration (min)",
+			lessonNames,
+			pauseAvgMin.map((v) => v ?? 0),
+			THEME.label,
+			Math.max(...pauseAvgMin.filter((v) => v != null), 1) * 1.1,
+			"dec1",
 		);
 	}
 

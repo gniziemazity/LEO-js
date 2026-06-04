@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Set
 
 from .anonymize import classify_student_row
-from .folder_utils import LANG_EXTS
+from .folder_utils import LANG_EXTS, code_files
 from .similarity_measures import (
     calculate_containment,
     open_csv_encoded,
@@ -160,19 +160,10 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
 
     def get_code_files(self, directory: Path) -> Dict[str, Path]:
-        files = {}
-        for ext in LANG_EXTS:
-            matching = list(directory.glob(f'*{ext}'))
-            if matching:
-                files[ext] = matching[0]
-        return files
+        return code_files(directory, first_only=True)
 
     def get_all_code_files(self, directory: Path) -> Dict[str, Path]:
-        files = {}
-        for ext in LANG_EXTS:
-            for path in sorted(directory.glob(f'*{ext}')):
-                files[path.name] = path
-        return files
+        return code_files(directory)
 
     def _effective_reference_dir(self) -> Path:
         if self.start_dir and self.start_dir.is_dir():

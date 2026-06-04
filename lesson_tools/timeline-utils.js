@@ -31,7 +31,7 @@ function fmtTime(ts) {
 		.join(":");
 }
 
-function niceStep(max, steps) {
+function _tlNiceStep(max, steps) {
 	const rough = max / steps,
 		mag = Math.pow(10, Math.floor(Math.log10(rough))),
 		n = rough / mag;

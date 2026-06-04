@@ -137,7 +137,7 @@ function drawTopChart(ctx, p, L) {
 	const { M, W, Htop: H, plotW, plotHtop } = L;
 	const cum = p.cumulative;
 	const maxN = p.totalChars || 1;
-	const gs = niceStep(maxN, 5);
+	const gs = _tlNiceStep(maxN, 5);
 
 	ctx.fillStyle = THEME.chartBg;
 	ctx.fillRect(0, 0, W, H);

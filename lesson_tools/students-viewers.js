@@ -12,18 +12,11 @@ function _vEl(id) {
 }
 
 function _vPersist(key, val) {
-	try {
-		localStorage.setItem(key, val);
-	} catch (_e) {}
+	lsSet(key, val);
 }
 
 function _vRestore(key, def) {
-	try {
-		const v = localStorage.getItem(key);
-		return v == null ? def : v;
-	} catch (_e) {
-		return def;
-	}
+	return lsGet(key, def);
 }
 
 function _msgEditorHtml(text) {

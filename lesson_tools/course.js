@@ -9,17 +9,13 @@ let _topics = [];
 let _overlay = null;
 
 async function _loadTopics() {
-	try {
-		const resp = await fetch("/manifest.json");
-		if (resp.ok) {
-			const m = await resp.json();
-			const lessons = Object.keys((m.groups && m.groups.lessons) || {});
-			const assignments = Object.keys(
-				(m.groups && m.groups.assignments) || {},
-			);
-			return _mergeTopics(lessons, assignments);
-		}
-	} catch {}
+	const served = await detectServedDataSource();
+	const groups = served && served.manifest && served.manifest.groups;
+	if (groups) {
+		const lessons = Object.keys(groups.lessons || {});
+		const assignments = Object.keys(groups.assignments || {});
+		return _mergeTopics(lessons, assignments);
+	}
 	const [lessonEntries, assignmentEntries] = await Promise.all([
 		_safeListDir("/lessons/"),
 		_safeListDir("/assignments/"),
@@ -115,7 +111,12 @@ async function _init() {
 	selectEl.value = startTopic.name;
 	_updateModeButtons();
 	_renderModePanels();
-	_select(startTopic.name);
+	const { ts, step, autoplay, speed } = parseToolParams();
+	const seek =
+		startTopic.name.toLowerCase() === preselect
+			? { ts, step, autoplay, speed }
+			: null;
+	_select(startTopic.name, seek);
 }
 
 function _currentTopic() {
@@ -139,7 +140,7 @@ function _renderModePanels() {
 		_mode === "assignments" ? "flex" : "none";
 }
 
-async function _select(name) {
+async function _select(name, seek) {
 	_topic = name;
 	_startFiles = [];
 	const t = _currentTopic();
@@ -155,17 +156,18 @@ async function _select(name) {
 	_updateModeButtons();
 
 	if (_mode === "lessons") {
-		await _showLesson(name);
+		await _showLesson(name, seek);
 	} else {
 		await _showAssignment(name);
 	}
 }
 
-async function _showLesson(name) {
+async function _showLesson(name, seek) {
 	const frame = document.getElementById("lesson-frame");
 	frame.src = buildToolUrl("simulator.html", {
 		lesson: name,
 		group: "lessons",
+		...(seek || {}),
 	});
 	_overlay.showContent("lesson");
 	document.getElementById("timeline-btn").disabled = false;

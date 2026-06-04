@@ -16,6 +16,7 @@ lessonNameEl.addEventListener("click", () => {
 	const qs = new URLSearchParams(location.search);
 	const params = parseToolParams();
 	_paperMode =
+		qs.get("paper") === "1" ||
 		(params.ids && params.ids.length > 0) ||
 		(params.star && params.star.length > 0);
 	const m = qs.get("mode") || "";

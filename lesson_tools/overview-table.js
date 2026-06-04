@@ -260,7 +260,7 @@ function _appendOverviewTotalsRow(tbody, rows) {
 			if (!entry) continue;
 			const raw = kind === "lesson" ? entry.lesson_obs : entry.obs;
 			const code = (raw || "").trim();
-			if (!/^[01]+$/.test(code)) continue;
+			if (!ARTEFACT_CODE_RE.test(code)) continue;
 			for (let i = 0; i < code.length; i++) {
 				counts[i] = (counts[i] || 0) + (code[i] === "1" ? 1 : 0);
 			}
@@ -450,7 +450,7 @@ function fmtN(v, dec = 0) {
 }
 function followFg(pct) {
 	if (pct < 40) return THEME.red;
-	if (pct < 60) return _cssVar("--clr-orange");
+	if (pct < 60) return THEME.orange;
 	if (pct < 75) return THEME.label;
 	return THEME.textStrong;
 }
