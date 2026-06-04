@@ -7,6 +7,7 @@ function _curatedOnKeyDown(ev) {
 		_curatedHideControls();
 		return;
 	}
+	if (typeof _embedMode !== "undefined" && _embedMode) return;
 
 	const target = ev.target;
 	const inField =

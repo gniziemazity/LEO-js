@@ -75,6 +75,7 @@ function _curatedTokenCountSuffix(n) {
 }
 
 function _curatedShowControls(sel, x, y, opts) {
+	if (typeof _embedMode !== "undefined" && _embedMode) return;
 	if (typeof _hideLeoTooltip === "function") _hideLeoTooltip();
 	const el = _curatedEnsureControls();
 

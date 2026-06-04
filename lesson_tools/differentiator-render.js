@@ -361,7 +361,11 @@ function renderPanel(side, files, marks) {
 				}
 			}
 		};
-		if (side === "student" && inCuratedMode) {
+		if (
+			side === "student" &&
+			inCuratedMode &&
+			!(typeof _embedMode !== "undefined" && _embedMode)
+		) {
 			const caret = document.createElement("span");
 			caret.className = "file-pair-caret";
 			caret.textContent = "▾";

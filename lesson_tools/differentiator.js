@@ -471,7 +471,7 @@ function _applyIncomingData(data) {
 	renderPanel("teacher", _teacherFiles, _teacherMarks);
 	renderPanel("student", _studentFiles, _studentMarks);
 	_updateTitleScore();
-	if (!_embedMode && typeof _curatedEnable === "function") _curatedEnable();
+	if (typeof _curatedEnable === "function") _curatedEnable();
 	if (_embedMode) _applyPreviewMode(_isPreviewMode());
 }
 
@@ -727,7 +727,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 				CURATED_MODES.has(_diffMode),
 			);
 			_applyCurrentMarks();
-			if (!_embedMode && typeof _curatedEnable === "function") {
+			if (typeof _curatedEnable === "function") {
 				_curatedEnable();
 			} else {
 				const savedTeacher = _saveState("teacher");
@@ -840,8 +840,7 @@ function loadFilesFromInput(files, side) {
 					side === "teacher" ? _teacherMarks : _studentMarks,
 				);
 				_updateTitleScore();
-				if (!_embedMode && typeof _curatedEnable === "function")
-					_curatedEnable();
+				if (typeof _curatedEnable === "function") _curatedEnable();
 				_refreshDocxButton();
 			}
 		});
