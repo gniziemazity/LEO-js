@@ -18,7 +18,11 @@
 			<button id="pinBtn" data-tip="Pin">📌</button>
 			<button class="popup-close-btn" id="closeBtn">✕</button>
 			<div class="web-drag-overlay" id="dragOverlay"></div>
-			<webview id="webview" src="about:blank"></webview>
+			<webview
+				id="webview"
+				src="about:blank"
+				webpreferences="contextIsolation=yes,sandbox=yes,nodeIntegration=no"
+			></webview>
 		</div>
 
 		<script>
@@ -62,7 +66,13 @@
 			ipcRenderer.on("set-url", (event, { url, bgColor, shouldPin }) => {
 				if (bgColor)
 					document.documentElement.style.setProperty("--bg", bgColor);
-				webview.src = url;
+				let safe = "about:blank";
+				try {
+					const u = new URL(url);
+					if (u.protocol === "http:" || u.protocol === "https:")
+						safe = u.href;
+				} catch (e) {}
+				webview.src = safe;
 				if (shouldPin && !pinned) applyPin();
 			});
 
@@ -101,21 +111,33 @@
 					const rect = webview.getBoundingClientRect();
 					const x = Math.round(e.clientX - rect.left);
 					const y = Math.round(e.clientY - rect.top);
-					webview.executeJavaScript(`
+					webview
+						.executeJavaScript(
+							`
 						(function() {
 							const el = document.elementFromPoint(${x}, ${y});
 							if (el) el.click();
 						})();
-					`).catch(() => {});
+					`,
+						)
+						.catch(() => {});
 				}
 			});
 
-			dragOverlay.addEventListener("wheel", (e) => {
-				e.preventDefault();
-				webview.executeJavaScript(`
+			dragOverlay.addEventListener(
+				"wheel",
+				(e) => {
+					e.preventDefault();
+					webview
+						.executeJavaScript(
+							`
 					window.scrollBy(${e.deltaX}, ${e.deltaY});
-				`).catch(() => {});
-			}, { passive: false });
+				`,
+						)
+						.catch(() => {});
+				},
+				{ passive: false },
+			);
 		</script>
 	</body>
 </html>

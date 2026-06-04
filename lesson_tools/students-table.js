@@ -271,31 +271,6 @@ function renderTable() {
 			label: def.label,
 			sortKey: "lang:" + def.key,
 		});
-	// Divergence / Change relative to the in-class starter, surfaced
-	// per-student from the new Diverge / Change columns of the remarks
-	// xlsx. Hidden if no row carries them (older basis files).
-	const showDiv =
-		!_paperMode &&
-		!_hiddenCols.has("diverge") &&
-		_students.some((s) => s.divergence != null);
-	const showChg =
-		!_paperMode &&
-		!_hiddenCols.has("change") &&
-		_students.some((s) => s.change != null);
-	if (showDiv)
-		specs.push({
-			cls: "col-diverge",
-			label: "Div",
-			title: "Divergence from in-class starter (missing+extra+ghost_extra)",
-			sortKey: "diverge",
-		});
-	if (showChg)
-		specs.push({
-			cls: "col-change",
-			label: "Chg",
-			title: "Change from in-class starter (missing only)",
-			sortKey: "change",
-		});
 
 	const _hasFpTs = (ev) =>
 		ev.kind && ev.kind !== "normal" && ev.ts != null && ev.ts > 0;
@@ -594,34 +569,6 @@ function renderTable() {
 			tr.appendChild(cell);
 		}
 
-		const _fmtMarkCount = (n) => {
-			if (n == null) return "";
-			if (n >= 1000) return Math.round(n / 100) / 10 + "k";
-			return String(n);
-		};
-		const _setMarkCell = (cell, total, byLang) => {
-			cell.textContent = _fmtMarkCount(total);
-			if (byLang && Object.keys(byLang).length) {
-				const parts = Object.entries(byLang)
-					.filter(([, v]) => v != null && v > 0)
-					.sort(([, a], [, b]) => b - a)
-					.map(([k, v]) => `${k.toUpperCase()}: ${v}`);
-				if (parts.length) cell.title = parts.join("  ·  ");
-			}
-		};
-		if (showDiv) {
-			const cell = document.createElement("td");
-			cell.className = "col-diverge";
-			_setMarkCell(cell, s.divergence, s.langDiv);
-			tr.appendChild(cell);
-		}
-		if (showChg) {
-			const cell = document.createElement("td");
-			cell.className = "col-change";
-			_setMarkCell(cell, s.change, s.langChg);
-			tr.appendChild(cell);
-		}
-
 		if (showFp1) {
 			const fpEl = document.createElement("td");
 			fpEl.className = "col-fingerprint col-fp1";
@@ -829,7 +776,7 @@ function renderMismatches(cell, events) {
 			comma.style.color = THEME.codeMuted;
 			wrap.appendChild(comma);
 		}
-		const esc = ev.token.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+		const esc = escHtml(ev.token);
 		tipParts.push(
 			`<span style="color:${color};font-family:Consolas,monospace;font-weight:bold">${esc}${n > 1 ? "&times;" + n : ""}</span>`,
 		);

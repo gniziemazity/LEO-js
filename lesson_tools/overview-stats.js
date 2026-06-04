@@ -371,7 +371,6 @@ function renderStats() {
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
-	renderDivergenceCards(body);
 	renderCofiringMatrix(body);
 	renderCuratedMoments(body);
 
@@ -499,16 +498,6 @@ function _renderEndOfPageCards(body, py, fmtP, fmtPct, fmtR, ACCENT) {
 	}
 }
 
-function _diffOpenForIds(assignmentLower, ids) {
-	if (!ids?.length) return;
-	const id = ids[0];
-	navigateToDifferentiator({
-		lesson: assignmentLower,
-		group: "assignments",
-		id,
-	});
-}
-
 function _idChips(ids, max, assignmentLower) {
 	const total = ids?.length ?? 0;
 	if (!total) return "<span style='color:var(--clr-muted)'>—</span>";
@@ -524,108 +513,6 @@ function _idChips(ids, max, assignmentLower) {
 	});
 	if (more > 0) parts.push(`<span class="id-chip-more">+${more}</span>`);
 	return parts.join(" ");
-}
-
-function renderDivergenceCards(body) {
-	if (!_pyStats?.assignments?.some((a) => a.divergence)) return;
-	const card = mkCard(
-		body,
-		"Divergence from In-Class Starter (Students)",
-		"wide",
-	);
-	card.insertAdjacentHTML(
-		"beforeend",
-		'<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">' +
-			"Average divergence and change per assignment, expressed as " +
-			"a percent of the in-class starter's total token count. " +
-			"<i>Diverge</i> = missing + extra + ghost_extra marks; " +
-			"<i>Change</i> = missing alone (how much of the starter was " +
-			"rewritten). Higher values = wholesale rewrite (the " +
-			"<code>no_start</code> fingerprint). LLM probe rows are " +
-			"summarised on the right for side-by-side comparison.</div>",
-	);
-	const assignments = _pyStats.assignments.filter(
-		(a) => a.divergence?.teacher_total > 0,
-	);
-	if (!assignments.length) {
-		card.insertAdjacentHTML(
-			"beforeend",
-			'<div style="font-size:11px;color:var(--clr-muted)">' +
-				"No teacher-token counts available — run the grading " +
-				"pipeline first so the assignment's starter token count " +
-				"is known.</div>",
-		);
-		return;
-	}
-	const llmByLower = new Map();
-	for (const a of _pyStats.llm_assignments || []) {
-		if (a?.lower && a?.divergence?.teacher_total > 0) {
-			llmByLower.set(a.lower, a.divergence);
-		}
-	}
-	const hasLlm = llmByLower.size > 0;
-	const llmN = _pyStats.llm_rows?.length ?? null;
-
-	let html =
-		'<table class="st-tbl" style="margin-top:6px"><tr>' +
-		"<th rowspan='2'>Assignment</th>" +
-		"<th rowspan='2'>Basis</th>" +
-		"<th rowspan='2'>Teacher tokens</th>" +
-		'<th colspan="3" style="border-left:1px solid var(--clr-border-mid)">' +
-		"Students</th>";
-	if (hasLlm) {
-		html +=
-			'<th colspan="3" style="border-left:1px solid var(--clr-border-mid)">' +
-			`LLMs${llmN != null ? ` <span style='color:var(--clr-muted);font-weight:normal'>(n=${llmN})</span>` : ""}</th>`;
-	}
-	html +=
-		"</tr><tr>" +
-		'<th style="border-left:1px solid var(--clr-border-mid)">n</th>' +
-		"<th>Avg Diverge %</th>" +
-		"<th>Avg Change %</th>";
-	if (hasLlm) {
-		html +=
-			'<th style="border-left:1px solid var(--clr-border-mid)">n</th>' +
-			"<th>Avg Diverge %</th>" +
-			"<th>Avg Change %</th>";
-	}
-	html += "</tr>";
-
-	const pctOf = (mean, tt) =>
-		mean == null || !tt ? "—" : ((100 * mean) / tt).toFixed(1) + "%";
-
-	assignments.forEach((a) => {
-		const d = a.divergence;
-		const tt = d.teacher_total;
-		const dv = d.divergence;
-		const ch = d.change;
-		html +=
-			`<tr><td>${escHtml(a.name)}</td>` +
-			`<td><code>${escHtml(d.basis || "?")}</code></td>` +
-			`<td>${tt}</td>` +
-			`<td style="border-left:1px solid var(--clr-border-mid)">${dv?.count ?? d.per_student?.length ?? 0}</td>` +
-			`<td>${pctOf(dv?.mean, tt)}</td>` +
-			`<td>${pctOf(ch?.mean, tt)}</td>`;
-		if (hasLlm) {
-			const ld = llmByLower.get((a.lower || a.name || "").toLowerCase());
-			if (ld) {
-				const ldv = ld.divergence;
-				const lch = ld.change;
-				const lttRef = ld.teacher_total || tt;
-				html +=
-					`<td style="border-left:1px solid var(--clr-border-mid)">${ldv?.count ?? ld.per_student?.length ?? 0}</td>` +
-					`<td>${pctOf(ldv?.mean, lttRef)}</td>` +
-					`<td>${pctOf(lch?.mean, lttRef)}</td>`;
-			} else {
-				html +=
-					'<td style="border-left:1px solid var(--clr-border-mid);color:var(--clr-muted)">—</td>' +
-					'<td style="color:var(--clr-muted)">—</td>' +
-					'<td style="color:var(--clr-muted)">—</td>';
-			}
-		}
-		html += "</tr>";
-	});
-	card.insertAdjacentHTML("beforeend", html + "</table>");
 }
 
 function renderCofiringMatrix(body) {

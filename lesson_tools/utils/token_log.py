@@ -1,13 +1,8 @@
 ﻿import difflib
-import math
-from collections import Counter
-from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import bisect
-import numpy as np
-from scipy.optimize import linear_sum_assignment
 from . import similarity_measures as _sm
 
 from .similarity_measures import (

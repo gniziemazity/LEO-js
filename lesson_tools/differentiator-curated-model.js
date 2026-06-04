@@ -97,7 +97,7 @@ function _curatedTokensForFile(side, file) {
 	if (_curatedTokenCache.has(key)) return _curatedTokenCache.get(key);
 	const text = _curatedSrcText(side, file);
 	const out = [];
-	const re = /[a-zA-Z0-9]+|[^\s]/gu;
+	const re = newTokenRegex();
 	let m;
 	while ((m = re.exec(text)) !== null) {
 		out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });

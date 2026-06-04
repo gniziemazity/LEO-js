@@ -85,29 +85,6 @@ LESSON_DIFFICULTY = {
 _course_root: str = ""
 _artefact_flags_cache: dict = {}
 _curated_moments_cache: dict = {}
-_diff_marks_cache: dict = {}
-
-_DIFF_BASIS_FILES = [
-    ("ideal",    "diff_marks_ideal.json"),
-    ("required", "diff_marks_required.json"),
-    ("leo_star", "diff_marks_leo_star.json"),
-    ("leo",      "diff_marks_leo.json"),
-    ("lcs_star", "diff_marks_lcs_star.json"),
-    ("lcs",      "diff_marks_lcs.json"),
-    ("lev_star", "diff_marks_lev_star.json"),
-    ("lev",      "diff_marks_lev.json"),
-    ("ro_star",  "diff_marks_ro_star.json"),
-    ("ro",       "diff_marks_ro.json"),
-    ("git_star", "diff_marks_git_star.json"),
-    ("git",      "diff_marks_git.json"),
-]
-
-_LANG_FROM_EXT = {
-    ".html": "html", ".htm": "html",
-    ".css":  "css",
-    ".js":   "js",
-    ".py":   "py",
-}
 
 
 def _find_assignment_dir(name_lower: str):
@@ -181,113 +158,6 @@ def _load_curated_moments(name_lower: str):
                 out.append({"key": k, "label": lbl, "polarity": pol})
     _curated_moments_cache[name_lower] = out
     return out
-
-
-def _diff_marks_for_student(name_lower: str, sid: str):
-    if not _course_root or not sid:
-        return None, None
-    cache_key = (name_lower, str(sid))
-    if cache_key in _diff_marks_cache:
-        return _diff_marks_cache[cache_key]
-    folder = _find_assignment_dir(name_lower)
-    if not folder:
-        _diff_marks_cache[cache_key] = (None, None)
-        return None, None
-    candidates = []
-    sid_dir = os.path.join(folder, "anon_ids", str(sid))
-    if os.path.isdir(sid_dir):
-        candidates.append(sid_dir)
-
-    for d in candidates:
-        for basis, fname in _DIFF_BASIS_FILES:
-            p = os.path.join(d, fname)
-            if not os.path.exists(p):
-                continue
-            try:
-                with open(p, encoding="utf-8") as fh:
-                    data = json.load(fh)
-            except (OSError, ValueError):
-                continue
-            _diff_marks_cache[cache_key] = (basis, data)
-            return basis, data
-    _diff_marks_cache[cache_key] = (None, None)
-    return None, None
-
-
-def _count_teacher_tokens_for(name_lower: str):
-    folder = _find_assignment_dir(name_lower)
-    if not folder:
-        return {}, 0
-    sub_priority = ("reconstructed", "start", "correct")
-    root = None
-    for sub in sub_priority:
-        p = os.path.join(folder, sub)
-        if os.path.isdir(p) and any(
-            fn.lower().endswith(tuple(_LANG_FROM_EXT.keys()))
-            for fn in os.listdir(p)
-        ):
-            root = p
-            break
-    if root is None:
-        return {}, 0
-    from utils.similarity_measures import iter_code_tokens
-    by_lang: dict = {}
-    total = 0
-    for root_dir, _dirs, files in os.walk(root):
-        for fn in files:
-            ext = os.path.splitext(fn)[1].lower()
-            if ext == '.htm':
-                ext = '.html'
-            lang = _LANG_FROM_EXT.get(ext)
-            if not lang:
-                continue
-            path = os.path.join(root_dir, fn)
-            try:
-                with open(path, encoding='utf-8', errors='ignore') as fh:
-                    text = fh.read()
-            except OSError:
-                continue
-            n = sum(1 for _pos, _tok, is_c in iter_code_tokens(text, ext) if not is_c)
-            by_lang[lang] = by_lang.get(lang, 0) + n
-            total += n
-    return by_lang, total
-
-
-def _count_diff_marks_by_lang(data: dict):
-    totals = {"missing": 0, "extra": 0, "ghost_extra": 0}
-    by_lang: dict = {}
-
-    def _bump(lang, label, n=1):
-        if label not in totals:
-            return
-        totals[label] += n
-        if lang not in by_lang:
-            by_lang[lang] = {"missing": 0, "extra": 0, "ghost_extra": 0}
-        by_lang[lang][label] += n
-
-    for fname, marks in (data.get("teacher_files") or {}).items():
-        ext = os.path.splitext(fname)[1].lower()
-        lang = _LANG_FROM_EXT.get(ext)
-        for m in marks or []:
-            if m.get("label") == "missing":
-                _bump(lang, "missing")
-    for fname, marks in (data.get("student_files") or {}).items():
-        ext = os.path.splitext(fname)[1].lower()
-        lang = _LANG_FROM_EXT.get(ext)
-        for m in marks or []:
-            lbl = m.get("label")
-            if lbl in ("extra", "ghost_extra"):
-                _bump(lang, lbl)
-
-    def _finish(d):
-        d["divergence"] = d["missing"] + d["extra"] + d["ghost_extra"]
-        d["change"] = d["missing"]
-        return d
-
-    _finish(totals)
-    for lang, d in by_lang.items():
-        _finish(d)
-    return totals, by_lang
 
 
 def _parse_artefact_digits(obs_series, n):
@@ -457,28 +327,17 @@ def load_data(path):
     return df.iloc[1:].copy().reset_index(drop=True)
 
 
-_LLM_NAME_TOKENS = (
-    "chatgpt", "gpt-", "gpt ", "sonnet", "opus", "claude",
-    "gemini", "deepseek", "ollama", "llama", "mistral",
-)
-
-
-def _row_is_llm(name: str, excluded: str) -> bool:
-    s_excl = (excluded or "").strip().upper()
-    if s_excl == "AI" or s_excl == "LLM":
-        return True
-    nm = (name or "").strip().lower()
-    return any(tok in nm for tok in _LLM_NAME_TOKENS)
+def _row_is_llm(excluded: str) -> bool:
+    return (excluded or "").strip().upper() in ("AI", "LLM")
 
 
 def enrich(st):
     if COL.get("name") is not None and COL.get("id") is not None:
-        names = _col_series(st, COL["name"], numeric=False)
         excludeds = (_col_series(st, COL["excluded"], numeric=False)
                      if COL.get("excluded") is not None
                      else pd.Series([""] * len(st), index=st.index))
         st["is_llm"] = pd.Series(
-            [_row_is_llm(n, e) for n, e in zip(names, excludeds)],
+            [_row_is_llm(e) for e in excludeds],
             index=st.index,
         )
     else:
@@ -567,43 +426,6 @@ def enrich(st):
         st[f"a{a_num}_lesson_trouble"] = lesson_obs.str.contains(
             r"C\d+[<>]", na=False, regex=True
         )
-
-        diverge_total = []
-        change_total = []
-        lang_totals = {lang: {"diverge": [], "change": []}
-                       for lang in ("html", "css", "js", "py")}
-        bases_used = []
-        for sid_val in _col_series(st, COL.get("id"), numeric=False):
-            sid = str(sid_val).strip()
-            if sid.endswith(".0"):
-                sid = sid[:-2]
-            basis, data = _diff_marks_for_student(a["lower"], sid)
-            if not data:
-                diverge_total.append(np.nan)
-                change_total.append(np.nan)
-                bases_used.append("")
-                for lang in lang_totals:
-                    lang_totals[lang]["diverge"].append(np.nan)
-                    lang_totals[lang]["change"].append(np.nan)
-                continue
-            totals, by_lang = _count_diff_marks_by_lang(data)
-            diverge_total.append(totals["divergence"])
-            change_total.append(totals["change"])
-            bases_used.append(basis or "")
-            for lang in lang_totals:
-                d = by_lang.get(lang)
-                lang_totals[lang]["diverge"].append(
-                    d["divergence"] if d else np.nan
-                )
-                lang_totals[lang]["change"].append(
-                    d["change"] if d else np.nan
-                )
-        st[f"a{a_num}_diverge"] = pd.Series(diverge_total, index=st.index)
-        st[f"a{a_num}_change"]  = pd.Series(change_total,  index=st.index)
-        st[f"a{a_num}_diff_basis"] = pd.Series(bases_used, index=st.index)
-        for lang, d in lang_totals.items():
-            st[f"a{a_num}_diverge_{lang}"] = pd.Series(d["diverge"], index=st.index)
-            st[f"a{a_num}_change_{lang}"]  = pd.Series(d["change"],  index=st.index)
 
     ai_cols = [f"a{i}_ai" for i in POOLED_ASSIGNMENTS]
     st["total_ai_flags"] = st[ai_cols].sum(axis=1) if ai_cols else 0
@@ -1437,21 +1259,6 @@ def analyze_artefacts(st):
             print(f"  Mann-Whitney p = {fmt_p(p_mw)}")
 
 
-def _basic_quartiles(vals):
-    s = pd.Series(vals).dropna()
-    if s.empty:
-        return None
-    return {
-        "count":  int(s.shape[0]),
-        "mean":   float(s.mean()),
-        "min":    float(s.min()),
-        "q1":     float(s.quantile(0.25)),
-        "median": float(s.quantile(0.50)),
-        "q3":     float(s.quantile(0.75)),
-        "max":    float(s.max()),
-    }
-
-
 def _ids_of(st_subset, COL_ID):
     if COL_ID is None or st_subset is None or len(st_subset) == 0:
         return []
@@ -1463,63 +1270,6 @@ def _ids_of(st_subset, COL_ID):
         if s:
             out.append(s)
     return out
-
-
-def _divergence_stats_for(st_subset, a_num, COL_ID=None, name_lower=None):
-    div_col = f"a{a_num}_diverge"
-    chg_col = f"a{a_num}_change"
-    if div_col not in st_subset.columns or st_subset[div_col].notna().sum() == 0:
-        return None
-    teacher_by_lang, teacher_total = (
-        _count_teacher_tokens_for(name_lower) if name_lower else ({}, 0)
-    )
-    payload = {
-        "teacher_total": teacher_total,
-        "teacher_total_by_lang": teacher_by_lang,
-        "divergence": _basic_quartiles(st_subset[div_col]),
-        "change":     _basic_quartiles(st_subset[chg_col]),
-        "by_lang":    {},
-        "basis":      "",
-        "per_student": [],
-    }
-    bases = st_subset.get(f"a{a_num}_diff_basis")
-    if bases is not None:
-        counts = bases[bases.astype(str).str.len() > 0].value_counts()
-        if not counts.empty:
-            payload["basis"] = counts.idxmax()
-    for lang in ("html", "css", "js", "py"):
-        dcol = f"a{a_num}_diverge_{lang}"
-        ccol = f"a{a_num}_change_{lang}"
-        if dcol not in st_subset.columns: continue
-        d_summary = _basic_quartiles(st_subset[dcol])
-        c_summary = _basic_quartiles(st_subset[ccol])
-        if d_summary is None and c_summary is None: continue
-        payload["by_lang"][lang] = {
-            "divergence": d_summary, "change": c_summary,
-        }
-    if COL_ID is not None:
-        ids = _col_series(st_subset, COL_ID, numeric=False)
-        for sid_val, d, c in zip(ids, st_subset[div_col], st_subset[chg_col]):
-            if pd.isna(d) and pd.isna(c): continue
-            sid = str(sid_val).strip()
-            if sid.endswith(".0"): sid = sid[:-2]
-            if not sid: continue
-            entry = {
-                "id": sid,
-                "divergence": int(d) if not pd.isna(d) else None,
-                "change":     int(c) if not pd.isna(c) else None,
-            }
-            if teacher_total > 0:
-                if entry["divergence"] is not None:
-                    entry["divergence_pct"] = round(
-                        100.0 * entry["divergence"] / teacher_total, 2
-                    )
-                if entry["change"] is not None:
-                    entry["change_pct"] = round(
-                        100.0 * entry["change"] / teacher_total, 2
-                    )
-            payload["per_student"].append(entry)
-    return payload
 
 
 def _build_cofiring(st_subset, COL_ID):
@@ -1808,12 +1558,6 @@ def save_stats_json(st, grades_path):
                 })
             entry["artefacts"] = artefacts
 
-        div_payload = _divergence_stats_for(
-            st_students, a_num, COL.get("id"), name_lower=a["lower"],
-        )
-        if div_payload is not None:
-            entry["divergence"] = div_payload
-
         result["assignments"].append(entry)
 
     for a_num, a in ASSIGNMENTS.items():
@@ -1847,11 +1591,6 @@ def save_stats_json(st, grades_path):
                     "hit_rate":  sf(n_f / n_ans) if n_ans else None,
                     "fired_ids": _ids_of(st_llm[fired], COL.get("id")),
                 })
-        div_payload = _divergence_stats_for(
-            st_llm, a_num, COL.get("id"), name_lower=a["lower"],
-        )
-        if div_payload is not None:
-            entry["divergence"] = div_payload
         result["llm_assignments"].append(entry)
 
     result["cofiring"] = _build_cofiring(st_students, COL.get("id"))

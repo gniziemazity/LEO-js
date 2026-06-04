@@ -34,6 +34,54 @@ const MIME = {
 	".woff2": "font/woff2",
 };
 
+function _sendDir(res, dirPath) {
+	const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+	res.writeHead(200, {
+		"Content-Type": "application/json",
+		"Cache-Control": "no-cache",
+	});
+	res.end(
+		JSON.stringify(
+			entries.map((e) => ({
+				name: e.name,
+				kind: e.isDirectory() ? "directory" : "file",
+			})),
+		),
+	);
+}
+
+function _sendFile(res, filePath) {
+	fs.readFile(filePath, (err, data) => {
+		if (err) {
+			res.writeHead(404);
+			res.end();
+			return;
+		}
+		const mime =
+			MIME[path.extname(filePath).toLowerCase()] ||
+			"application/octet-stream";
+		res.writeHead(200, { "Content-Type": mime, "Cache-Control": "no-cache" });
+		res.end(data);
+	});
+}
+
+function serveUnder(res, baseDir, fullPath, { allowDirListing }) {
+	if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+		res.writeHead(403);
+		res.end();
+		return;
+	}
+	let stat = null;
+	try {
+		stat = fs.statSync(fullPath);
+	} catch {}
+	if (allowDirListing && stat?.isDirectory()) {
+		_sendDir(res, fullPath);
+		return;
+	}
+	_sendFile(res, fullPath);
+}
+
 http
 	.createServer((req, res) => {
 		let urlPath = req.url.split("?")[0];
@@ -60,51 +108,7 @@ http
 
 			const rel = urlPath.slice("/grades-data/".length);
 			const fullPath = path.resolve(folder, ...rel.split("/"));
-
-			if (!fullPath.startsWith(folder + path.sep) && fullPath !== folder) {
-				res.writeHead(403);
-				res.end();
-				return;
-			}
-
-			let stat;
-			try {
-				stat = fs.statSync(fullPath);
-			} catch {
-				res.writeHead(404);
-				res.end();
-				return;
-			}
-
-			if (stat.isDirectory()) {
-				const entries = fs.readdirSync(fullPath, { withFileTypes: true });
-				res.writeHead(200, { "Content-Type": "application/json" });
-				res.end(
-					JSON.stringify(
-						entries.map((e) => ({
-							name: e.name,
-							kind: e.isDirectory() ? "directory" : "file",
-						})),
-					),
-				);
-				return;
-			}
-
-			fs.readFile(fullPath, (err, data) => {
-				if (err) {
-					res.writeHead(404);
-					res.end();
-					return;
-				}
-				const mime =
-					MIME[path.extname(fullPath).toLowerCase()] ||
-					"application/octet-stream";
-				res.writeHead(200, {
-					"Content-Type": mime,
-					"Cache-Control": "no-cache",
-				});
-				res.end(data);
-			});
+			serveUnder(res, folder, fullPath, { allowDirListing: true });
 			return;
 		}
 
@@ -114,26 +118,7 @@ http
 				srcRoot,
 				...urlPath.slice("/src/".length).split("/"),
 			);
-			if (!srcFile.startsWith(srcRoot + path.sep) && srcFile !== srcRoot) {
-				res.writeHead(403);
-				res.end();
-				return;
-			}
-			fs.readFile(srcFile, (err, data) => {
-				if (err) {
-					res.writeHead(404);
-					res.end();
-					return;
-				}
-				const mime =
-					MIME[path.extname(srcFile).toLowerCase()] ||
-					"application/octet-stream";
-				res.writeHead(200, {
-					"Content-Type": mime,
-					"Cache-Control": "no-cache",
-				});
-				res.end(data);
-			});
+			serveUnder(res, srcRoot, srcFile, { allowDirListing: false });
 			return;
 		}
 
@@ -141,48 +126,7 @@ http
 			ROOT,
 			urlPath === "/" ? "index.html" : urlPath,
 		);
-		if (!filePath.startsWith(ROOT + path.sep) && filePath !== ROOT) {
-			res.writeHead(403);
-			res.end();
-			return;
-		}
-
-		let fstat;
-		try {
-			fstat = fs.statSync(filePath);
-		} catch {}
-		if (fstat?.isDirectory()) {
-			const entries = fs.readdirSync(filePath, { withFileTypes: true });
-			res.writeHead(200, {
-				"Content-Type": "application/json",
-				"Cache-Control": "no-cache",
-			});
-			res.end(
-				JSON.stringify(
-					entries.map((e) => ({
-						name: e.name,
-						kind: e.isDirectory() ? "directory" : "file",
-					})),
-				),
-			);
-			return;
-		}
-
-		fs.readFile(filePath, (err, data) => {
-			if (err) {
-				res.writeHead(404);
-				res.end();
-				return;
-			}
-			const mime =
-				MIME[path.extname(filePath).toLowerCase()] ||
-				"application/octet-stream";
-			res.writeHead(200, {
-				"Content-Type": mime,
-				"Cache-Control": "no-cache",
-			});
-			res.end(data);
-		});
+		serveUnder(res, ROOT, filePath, { allowDirListing: true });
 	})
 	.listen(PORT, "127.0.0.1", () => {
 		console.log(`lesson_tools server: http://127.0.0.1:${PORT}`);

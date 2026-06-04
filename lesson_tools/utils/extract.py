@@ -4,8 +4,14 @@ import zipfile
 import shutil
 
 def unzip_file(zip_path, extract_to):
+    dest_root = os.path.realpath(extract_to)
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
+        for member in zip_ref.namelist():
+            target = os.path.realpath(os.path.join(dest_root, member))
+            if target != dest_root and not target.startswith(
+                    dest_root + os.sep):
+                raise ValueError(f"Unsafe path in archive: {member}")
+        zip_ref.extractall(dest_root)
 
 def rename_folder(folder_path):
     folder_name = os.path.basename(folder_path)

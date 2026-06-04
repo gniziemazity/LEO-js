@@ -106,9 +106,25 @@ def _build_plans_zip(course: Path) -> Path | None:
     return out_path
 
 
+_ALWAYS_BLOCK_DIRS = {"students", "curated"}
+_PII_FILES = {"students.csv", "name_map.csv"}
+
+
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    exclude_pii = False
+
     def log_message(self, fmt, *args):
         pass
+
+    def _is_blocked_name(self, name):
+        if name in _ALWAYS_BLOCK_DIRS:
+            return True
+        return self.exclude_pii and name in _PII_FILES
+
+    def _request_is_blocked(self):
+        url_path = urllib.parse.urlsplit(self.path).path
+        segs = [urllib.parse.unquote(p) for p in url_path.split("/") if p]
+        return any(self._is_blocked_name(s) for s in segs)
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -117,6 +133,9 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def send_head(self):
+        if self._request_is_blocked():
+            self.send_error(http.HTTPStatus.FORBIDDEN, "Blocked path")
+            return None
         path = self.translate_path(self.path)
         if os.path.isdir(path):
             parts = urllib.parse.urlsplit(self.path)
@@ -146,6 +165,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 "kind": "directory" if os.path.isdir(os.path.join(path, n)) else "file",
             }
             for n in names
+            if not self._is_blocked_name(n)
         ]
         body = json.dumps(entries).encode("utf-8")
         self.send_response(http.HTTPStatus.OK)
@@ -155,12 +175,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         return io.BytesIO(body)
 
 
-def _serve(course: Path, port: int) -> socketserver.TCPServer:
+def _serve(course: Path, port: int, exclude_pii: bool = False) -> socketserver.TCPServer:
     handler_cls = _QuietHandler
 
     class _Handler(handler_cls):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(course), **kwargs)
+
+    _Handler.exclude_pii = exclude_pii
 
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", port), _Handler)
@@ -197,7 +219,7 @@ def main(argv=None) -> int:
     print(f"Tools: {copied} copied/updated, {skipped} already up-to-date in {course / 'tools'}")
 
     try:
-        httpd = _serve(course, args.port)
+        httpd = _serve(course, args.port, exclude_pii=args.exclude_pii)
     except OSError as e:
         print(f"Could not start server on port {args.port}: {e}")
         print("Try a different port with --port=<n>")

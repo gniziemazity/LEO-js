@@ -72,7 +72,7 @@ function _curatedGhostTokensInFile(file) {
 			: []);
 	if (!blobs || !blobs.length) return [];
 	const out = [];
-	const re = /[a-zA-Z0-9]+|[^\s]/gu;
+	const re = newTokenRegex();
 	for (const blob of blobs) {
 		const text = blob.text || "";
 		re.lastIndex = 0;

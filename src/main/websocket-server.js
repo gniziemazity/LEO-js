@@ -3,14 +3,28 @@ const http = require("http");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const QRCode = require("qrcode");
 const qrcode = require("qrcode-terminal");
 const EventEmitter = require("events");
+
+function clampNum(v, max) {
+	const n = Number(v);
+	if (!Number.isFinite(n)) return 0;
+	return Math.max(-max, Math.min(max, n));
+}
+
+function clampScale(v) {
+	const n = Number(v);
+	if (!Number.isFinite(n) || n <= 0) return 1;
+	return Math.max(0.1, Math.min(10, n));
+}
 
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
 		super();
 		this.port = port;
+		this.token = crypto.randomBytes(16).toString("hex");
 		this.app = express();
 		this.server = null;
 		this.wss = null;
@@ -38,7 +52,10 @@ class LEOBroadcastServer extends EventEmitter {
 		this.server = http.createServer(this.app);
 		this.protocol = "http";
 
-		this.wss = new WebSocket.Server({ server: this.server });
+		this.wss = new WebSocket.Server({
+			server: this.server,
+			verifyClient: (info) => this._verifyClient(info),
+		});
 		this.wss.on("connection", (ws) => {
 			console.log("Client connected: " + ws._socket.remoteAddress);
 			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
@@ -58,12 +75,30 @@ class LEOBroadcastServer extends EventEmitter {
 		});
 	}
 
+	_verifyClient(info) {
+		try {
+			const reqUrl = new URL(info.req.url, "http://localhost");
+			if (reqUrl.searchParams.get("t") !== this.token) return false;
+			const origin = info.origin || info.req.headers.origin;
+			if (origin && new URL(origin).host !== info.req.headers.host) {
+				return false;
+			}
+			return true;
+		} catch (e) {
+			return false;
+		}
+	}
+
+	remoteUrl(address) {
+		return `http://${address}:${this.port}/?t=${this.token}`;
+	}
+
 	printLocalIPs() {
 		const interfaces = os.networkInterfaces();
 		Object.keys(interfaces).forEach((ifname) => {
 			interfaces[ifname].forEach((iface) => {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `http://${iface.address}:${this.port}`;
+					const url = this.remoteUrl(iface.address);
 					console.log(`Client Viewer URL: ${url}`);
 					qrcode.generate(url);
 				}
@@ -228,26 +263,37 @@ class LEOBroadcastServer extends EventEmitter {
 				data.closedAt || null,
 			);
 		} else if (type === "mouse-move") {
-			this.emit("client-mouse-move", data.dx, data.dy);
+			this.emit(
+				"client-mouse-move",
+				clampNum(data.dx, 5000),
+				clampNum(data.dy, 5000),
+			);
 		} else if (type === "window-drag") {
-			this.emit("client-window-drag", data.dx, data.dy);
+			this.emit(
+				"client-window-drag",
+				clampNum(data.dx, 10000),
+				clampNum(data.dy, 10000),
+			);
 		} else if (type === "window-resize") {
 			this.emit(
 				"client-window-resize",
-				data.scaleX ?? data.scale ?? 1,
-				data.scaleY ?? data.scale ?? 1,
+				clampScale(data.scaleX ?? data.scale),
+				clampScale(data.scaleY ?? data.scale),
 			);
 		} else if (type === "window-pinch") {
 			this.emit(
 				"client-window-pinch",
-				data.scale ?? 1,
-				data.dx ?? 0,
-				data.dy ?? 0,
+				clampScale(data.scale),
+				clampNum(data.dx, 10000),
+				clampNum(data.dy, 10000),
 			);
 		} else if (type === "mouse-click") {
-			this.emit("client-mouse-click", data.button);
+			this.emit(
+				"client-mouse-click",
+				data.button === "right" ? "right" : "left",
+			);
 		} else if (type === "mouse-scroll") {
-			this.emit("client-mouse-scroll", data.dy);
+			this.emit("client-mouse-scroll", clampNum(data.dy, 5000));
 		} else if (type === "mouse-drag-start") {
 			this.emit("client-mouse-drag-start");
 		} else if (type === "mouse-drag-end") {
@@ -271,7 +317,7 @@ class LEOBroadcastServer extends EventEmitter {
 		for (const ifname of Object.keys(interfaces)) {
 			for (const iface of interfaces[ifname]) {
 				if (iface.family === "IPv4" && !iface.internal) {
-					const url = `http://${iface.address}:${this.port}`;
+					const url = this.remoteUrl(iface.address);
 					try {
 						const qrCodeDataUrl = await QRCode.toDataURL(url, {
 							width: 300,

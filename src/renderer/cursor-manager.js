@@ -26,6 +26,48 @@ class CursorManager {
 		this._activeWebIndex = null;
 		this._activeCodeInsertIndex = null;
 		this._activeMoveToIndex = null;
+
+		this._onAutoStepComplete = (event, stepIndex) => {
+			if (!this.autoTypingActive) return;
+			if (stepIndex < this.executionSteps.length) {
+				const step = this.executionSteps[stepIndex];
+				if (step.type === "char") {
+					step.element.classList.add("consumed");
+					this.logManager.addEntry({ char: step.char });
+				}
+				this.currentStepIndex = stepIndex + 1;
+				this.updateLastStepIndex();
+				this.updateCursor();
+			}
+		};
+		this._onAutoFinish = () => {
+			if (!this.autoTypingActive) return;
+			this.autoTypingActive = false;
+			while (this.currentStepIndex < this.executionSteps.length) {
+				const current = this.executionSteps[this.currentStepIndex];
+				if (current.type === "anchor") {
+					current.element.classList.add("consumed");
+					if (!current._logged) {
+						current._logged = true;
+						this.logManager.addEntry({ anchor: current.value });
+					}
+					this.currentStepIndex++;
+				} else if (current.type === "block") {
+					current.element.classList.add("consumed");
+					this.currentStepIndex++;
+					this.updateLastStepIndex();
+					this.updateCursor();
+					ipcRenderer.send("input-complete");
+					return;
+				} else {
+					break;
+				}
+			}
+			this.updateLastStepIndex();
+			this.updateCursor();
+		};
+		ipcRenderer.on("auto-type-step-complete", this._onAutoStepComplete);
+		ipcRenderer.on("auto-typing-finished", this._onAutoFinish);
 	}
 
 	setExecutionSteps(steps) {
@@ -339,55 +381,6 @@ class CursorManager {
 			}
 		}
 
-		const stepCompleteHandler = (event, stepIndex) => {
-			if (stepIndex < this.executionSteps.length) {
-				const step = this.executionSteps[stepIndex];
-				if (step.type === "char") {
-					step.element.classList.add("consumed");
-					this.logManager.addEntry({ char: step.char });
-				}
-				this.currentStepIndex = stepIndex + 1;
-				this.updateLastStepIndex();
-				this.updateCursor();
-			}
-		};
-
-		const finishHandler = () => {
-			ipcRenderer.removeListener(
-				"auto-type-step-complete",
-				stepCompleteHandler,
-			);
-			ipcRenderer.removeListener("auto-typing-finished", finishHandler);
-			this.autoTypingActive = false;
-
-			let advanced = false;
-			while (this.currentStepIndex < this.executionSteps.length) {
-				const current = this.executionSteps[this.currentStepIndex];
-				if (current.type === "anchor") {
-					current.element.classList.add("consumed");
-					if (!current._logged) {
-						current._logged = true;
-						this.logManager.addEntry({ anchor: current.value });
-					}
-					this.currentStepIndex++;
-					advanced = true;
-				} else if (current.type === "block") {
-					current.element.classList.add("consumed");
-					this.currentStepIndex++;
-					this.updateLastStepIndex();
-					this.updateCursor();
-					ipcRenderer.send("input-complete");
-					return;
-				} else {
-					break;
-				}
-			}
-			this.updateLastStepIndex();
-			this.updateCursor();
-		};
-
-		ipcRenderer.on("auto-type-step-complete", stepCompleteHandler);
-		ipcRenderer.on("auto-typing-finished", finishHandler);
 		ipcRenderer.send("start-auto-type-block", {
 			steps: stepsToType,
 			startIndex: 0,

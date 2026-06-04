@@ -214,7 +214,7 @@ const _TOKEN_LANG_EXT = {
 	".js": "js",
 	".py": "py",
 };
-const _TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/gu;
+const _TOKEN_RE = newTokenRegex();
 
 function _findHtmlEmbeddedRanges(text) {
 	const result = { script: [], style: [] };

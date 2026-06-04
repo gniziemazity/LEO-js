@@ -554,7 +554,8 @@ def _colors_to_position_marks(
         u16map = file_u16maps.get(oc['file'])
         if u16map:
             start = u16map[oc['pos']]
-            end   = start + len(tok)
+            end_cp = oc['pos'] + len(tok)
+            end   = u16map[end_cp] if end_cp < len(u16map) else start + len(tok)
         else:
             start = oc['pos']
             end   = oc['pos'] + len(tok)

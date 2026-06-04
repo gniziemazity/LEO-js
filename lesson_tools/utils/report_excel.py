@@ -134,11 +134,6 @@ class ExcelReportMixin:
             for ext in present_lang_exts:
                 header.append(lang_label_by_ext[ext])
                 header.append(f'{lang_label_by_ext[ext]} Desc')
-        header.extend(['Diverge', 'Change'])
-        for ext in present_lang_exts:
-            label = lang_label_by_ext[ext]
-            header.append(f'{label} Div')
-            header.append(f'{label} Chg')
         if self.required_items or self.not_expected_items:
             header.extend(['Expected', 'Expected Desc'])
         header.extend(['Obs', 'Grade', 'Comments', 'Category'])
@@ -301,48 +296,6 @@ class ExcelReportMixin:
                         else:
                             row.append(v['score'])
                             row.append(v['desc'])
-                div_by_lang = (_ts or {}).get('divergence_by_lang') or None
-                div_total = (_ts or {}).get('divergence')
-                chg_total = (_ts or {}).get('change')
-                if div_by_lang is None:
-                    basis_marks = (
-                        getattr(self, '_basis_marks_by_sid', None) or {}
-                    ).get(sid)
-                    if basis_marks:
-                        from .token_log_mixin import _count_divergence_by_lang
-                        teacher_files_for_div = self.get_all_code_files(
-                            self._effective_reference_dir()
-                        )
-                        student_dir = getattr(self, 'student_dir_by_sid', {}).get(sid)
-                        student_files_for_div = (
-                            self.get_all_code_files(student_dir) if student_dir else {}
-                        )
-                        div_by_lang = _count_divergence_by_lang(
-                            basis_marks,
-                            teacher_files_for_div,
-                            student_files_for_div,
-                        )
-                        if div_total is None:
-                            div_total = sum(
-                                v['divergence'] for v in div_by_lang.values()
-                            )
-                        if chg_total is None:
-                            chg_total = sum(
-                                v['change'] for v in div_by_lang.values()
-                            )
-                div_by_lang = div_by_lang or {}
-                row.extend([
-                    div_total if div_total is not None else '',
-                    chg_total if chg_total is not None else '',
-                ])
-                for ext in present_lang_exts:
-                    v = div_by_lang.get(ext)
-                    if v is None:
-                        row.append('')
-                        row.append('')
-                    else:
-                        row.append(v.get('divergence', 0))
-                        row.append(v.get('change', 0))
                 if self.required_items or self.not_expected_items:
                     row.extend([req_count, req_details])
                 row.extend(['_' if has_submission else '', ''])

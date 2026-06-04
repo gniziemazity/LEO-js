@@ -12,8 +12,19 @@ async function _init() {
 	});
 	let names;
 	try {
-		const entries = await listServerDir("/lessons/");
-		names = entries.filter((e) => e.kind === "directory").map((e) => e.name);
+		const served = await detectServedDataSource();
+		const lessonGroup =
+			served && served.manifest && served.manifest.groups
+				? served.manifest.groups.lessons
+				: null;
+		if (lessonGroup) {
+			names = Object.keys(lessonGroup);
+		} else {
+			const entries = await listServerDir("/lessons/");
+			names = entries
+				.filter((e) => e.kind === "directory")
+				.map((e) => e.name);
+		}
 	} catch (e) {
 		_overlay.showError("Failed to load lessons: " + e.message);
 		return;

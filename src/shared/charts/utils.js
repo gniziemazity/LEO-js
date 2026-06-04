@@ -1,6 +1,7 @@
 "use strict";
 
 function niceStep(range, targetSteps) {
+	if (!(range > 0)) return 1;
 	const raw = range / targetSteps;
 	const mag = Math.pow(10, Math.floor(Math.log10(raw)));
 	const norm = raw / mag;
@@ -9,9 +10,9 @@ function niceStep(range, targetSteps) {
 }
 
 function _boxStats(values, coef = 1.5) {
-	if (!values.length) return null;
-	const sorted = [...values].sort((a, b) => a - b);
+	const sorted = (values || []).filter(Number.isFinite).sort((a, b) => a - b);
 	const n = sorted.length;
+	if (!n) return null;
 	const q = (p) => {
 		const pos = p * (n - 1);
 		const lo = Math.floor(pos);

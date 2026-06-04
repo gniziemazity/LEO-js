@@ -411,25 +411,6 @@ function parseStudentCsv(text) {
 	return map;
 }
 
-const _LLM_NAME_TOKENS = [
-	"chatgpt",
-	"gpt-",
-	"gpt ",
-	"sonnet",
-	"opus",
-	"claude",
-	"gemini",
-	"deepseek",
-	"ollama",
-	"llama",
-	"mistral",
-];
-function _looksLikeLlmName(name) {
-	const n = (name || "").trim().toLowerCase();
-	if (!n) return false;
-	return _LLM_NAME_TOKENS.some((t) => n.includes(t));
-}
-
 function parseStudent(r) {
 	const str = (c) => (c != null && r[c] != null ? String(r[c]).trim() : "");
 	const num = (c) => {
@@ -442,8 +423,7 @@ function parseStudent(r) {
 
 	const _excVal = str(COL.excluded).toUpperCase();
 	const _nameStr = str(COL.name);
-	const _isLlm =
-		_excVal === "LLM" || _excVal === "AI" || _looksLikeLlmName(_nameStr);
+	const _isLlm = _excVal === "LLM" || _excVal === "AI";
 	const s = {
 		id: str(COL.id),
 		name: _nameStr,

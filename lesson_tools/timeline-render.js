@@ -215,6 +215,7 @@ function _burstEffectiveSpan(b) {
 }
 
 function _buildBottomChartBlocks(p) {
+	if (p._bottomBlocks) return p._bottomBlocks;
 	const blocks = [];
 	const seen = new Set();
 	for (const b of p.bursts || []) {
@@ -249,6 +250,7 @@ function _buildBottomChartBlocks(p) {
 			colorKey: _singletonColorKey(kp),
 		});
 	}
+	p._bottomBlocks = blocks;
 	return blocks;
 }
 

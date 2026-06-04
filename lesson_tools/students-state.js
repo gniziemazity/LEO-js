@@ -60,8 +60,6 @@ const COL_HIDE_KEYS = [
 	{ key: "comments", label: "Comments" },
 	{ key: "follow", label: "Follow / SIM" },
 	{ key: "languages", label: "Languages (HTML/CSS/JS/Py)" },
-	{ key: "diverge", label: "Divergence" },
-	{ key: "change", label: "Change" },
 	{ key: "fingerprint1", label: "Fingerprint · timeline" },
 	{ key: "fingerprint2", label: "Fingerprint · extras" },
 	{ key: "fingerprint3", label: "Fingerprint · comments" },

@@ -1009,6 +1009,22 @@ ipcMain.on("update-window-title", (event, titleData) => {
 const { shell } = require("electron");
 const { spawnSync } = require("child_process");
 
+let _pythonCmd = null;
+function resolvePython() {
+	if (_pythonCmd) return _pythonCmd;
+	for (const cmd of ["python", "python3", "py"]) {
+		try {
+			const r = spawnSync(cmd, ["--version"], { encoding: "utf8" });
+			if (!r.error && r.status === 0) {
+				_pythonCmd = cmd;
+				return cmd;
+			}
+		} catch (e) {}
+	}
+	_pythonCmd = "python";
+	return _pythonCmd;
+}
+
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
 const _VIS_DATA = path.join(__dirname, "../../lesson_tools/.last_vis_data.js");
 const _VIS_PRELOAD = path.join(__dirname, "vis-preload.js");
@@ -1020,11 +1036,17 @@ function openLogVisualizer(logFilePath) {
 			__dirname,
 			"../../lesson_tools/lv_expand.py",
 		);
-		const result = spawnSync("python", [scriptPath, logFilePath], {
+		const result = spawnSync(resolvePython(), [scriptPath, logFilePath], {
 			encoding: "utf8",
 		});
 		let payload;
-		if (result.status === 0) {
+		if (result.error) {
+			payload = {
+				filePath: logFilePath,
+				micro: null,
+				error: `Could not run Python (${resolvePython()}): ${result.error.message}`,
+			};
+		} else if (result.status === 0) {
 			try {
 				const micro = JSON.parse(result.stdout);
 				payload = { filePath: logFilePath, micro, error: null };

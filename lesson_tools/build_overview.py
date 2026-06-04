@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from utils.anonymize import load_excluded_student_ids
 
@@ -320,29 +320,48 @@ _BLOCK_OFFSETS = {
     'obs': 14,
 }
 
-_LESSON_ORDER = ('wall', 'chess', 'sorting', 'gallery', 'qr')
+_LESSON_ORDER_FILE = 'lesson_order.txt'
 
 LESSON_TO_COLS: Dict[str, Dict[str, int]] = {}
 
 
+def _read_lesson_order(root: Optional[Path]) -> list:
+    if root is None:
+        return []
+    try:
+        lines = (root / _LESSON_ORDER_FILE).read_text(
+            encoding='utf-8-sig', errors='replace').splitlines()
+    except (OSError, ValueError):
+        return []
+    order: list = []
+    for line in lines:
+        name = line.split('#', 1)[0].strip().lower()
+        if name and name not in order:
+            order.append(name)
+    return order
+
+
 def _discover_topics(lessons_root: Optional[Path],
-                     assignments_root: Optional[Path]) -> list:
+                     assignments_root: Optional[Path],
+                     order: Sequence[str]) -> list:
     names: set = set()
     for group_root in (lessons_root, assignments_root):
         if group_root is not None and group_root.is_dir():
             for d in group_root.iterdir():
                 if d.is_dir():
                     names.add(d.name.lower())
-    known = [k for k in _LESSON_ORDER if k in names]
-    extras = sorted(k for k in names if k not in _LESSON_ORDER)
+    known = [k for k in order if k in names]
+    extras = sorted(k for k in names if k not in order)
     return known + extras
 
 
 def _build_lesson_columns(lessons_root: Optional[Path],
-                          assignments_root: Optional[Path]
+                          assignments_root: Optional[Path],
+                          order: Sequence[str]
                           ) -> Dict[str, Dict[str, int]]:
     cols: Dict[str, Dict[str, int]] = {}
-    for i, key in enumerate(_discover_topics(lessons_root, assignments_root)):
+    for i, key in enumerate(
+            _discover_topics(lessons_root, assignments_root, order)):
         base = _PREFIX_COLS + i * _BLOCK_WIDTH
         cols[key] = {name: base + off for name, off in _BLOCK_OFFSETS.items()}
     return cols
@@ -782,6 +801,9 @@ def _update_existing_workbook(wb: 'Workbook',
                 elif header_name.endswith((' Grade', ' Status')):
                     if cell.value not in (None, ''):
                         continue
+                elif header_name in ('Category', 'Excluded'):
+                    if value is None:
+                        continue
             cell.value = value
 
     if 'Lesson Stats' in wb.sheetnames:
@@ -1004,7 +1026,8 @@ def main(argv) -> int:
     lessons_root = _find_subdir(root, 'lessons')
     assignments_root = _find_subdir(root, 'assignments')
     global LESSON_TO_COLS
-    LESSON_TO_COLS = _build_lesson_columns(lessons_root, assignments_root)
+    LESSON_TO_COLS = _build_lesson_columns(
+        lessons_root, assignments_root, _read_lesson_order(root))
     if lessons_root is None and assignments_root is None:
         print(f'error: no lessons/ or assignments/ folder in {root}',
               file=sys.stderr)

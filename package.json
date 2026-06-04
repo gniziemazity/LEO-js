@@ -32,7 +32,19 @@
 		"icon": "src/shared/icon.ico",
 		"files": [
 			"**/*",
-			"!node_modules/.cache"
+			"!node_modules/.cache",
+			"!ideas",
+			"!plans/logs",
+			"!tasks",
+			"!tests",
+			"!.venv",
+			"!**/__pycache__",
+			"!lesson_tools/test",
+			"!lesson_tools/test_lesson_tools.py",
+			"!lesson_tools/regen_test_fixtures.py"
+		],
+		"asarUnpack": [
+			"lesson_tools/**"
 		],
 		"directories": {
 			"output": "dist"

@@ -48,7 +48,10 @@ class BlockEditor {
 
 		this.lessonManager.removeBlock(selectedBlockIndex);
 		this.uiManager.deselectBlock();
-		this.uiManager.selectBlock(selectedBlockIndex - 1);
+		const remaining = this.lessonManager.getAllBlocks().length;
+		if (remaining > 0) {
+			this.uiManager.selectBlock(Math.max(0, selectedBlockIndex - 1));
+		}
 		this.lessonRenderer.render();
 	}
 

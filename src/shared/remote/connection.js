@@ -14,7 +14,7 @@ function connect() {
 			ws.close();
 		} catch (e) {}
 	}
-	ws = new WebSocket(`${protocol}//${host}`);
+	ws = new WebSocket(`${protocol}//${host}${window.location.search || ""}`);
 	ws.onopen = () => requestWakeLock();
 	ws.onmessage = (event) => {
 		if (messageHandler) messageHandler(JSON.parse(event.data));
