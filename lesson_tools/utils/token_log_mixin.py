@@ -74,6 +74,70 @@ def _effective_ext_at(pos: int, file_ext: str, ranges_by_ext: Dict[str, List[Tup
     return file_ext
 
 
+def _count_divergence_by_lang(
+    diff_marks: dict,
+    teacher_files: Optional[Dict[str, Path]] = None,
+    student_files: Optional[Dict[str, Path]] = None,
+) -> Dict[str, dict]:
+    buckets: Dict[str, dict] = {
+        ext: {"missing": 0, "extra": 0, "ghost_extra": 0}
+        for ext, _ in _LANG_EXT_LABEL
+    }
+    buckets["other"] = {"missing": 0, "extra": 0, "ghost_extra": 0}
+
+    def _file_ext(fname: str) -> str:
+        ext = ('.' + fname.rsplit('.', 1)[-1].lower()) if '.' in fname else ''
+        if ext == '.htm':
+            ext = '.html'
+        return ext
+
+    def _load_ranges(files: Optional[Dict[str, Path]]):
+        out: Dict[str, Tuple[str, Dict[str, List[Tuple[int, int]]]]] = {}
+        if not files:
+            return out
+        for fname, p in files.items():
+            ext = _file_ext(fname)
+            if ext not in ('.html',):
+                continue
+            try:
+                text = _read_text_normalized(p)
+            except Exception:
+                continue
+            out[fname] = (ext, _embedded_lang_ranges_for(text, ext))
+        return out
+
+    teacher_ranges = _load_ranges(teacher_files)
+    student_ranges = _load_ranges(student_files)
+
+    def _bucket_for(fname: str, pos: int, ranges_by_file) -> dict:
+        ext = _file_ext(fname)
+        info = ranges_by_file.get(fname)
+        if info:
+            file_ext, embedded = info
+            eff = _effective_ext_at(pos, file_ext, embedded)
+            return buckets.get(eff, buckets["other"])
+        return buckets.get(ext, buckets["other"])
+
+    for fname, marks in (diff_marks.get('teacher_files') or {}).items():
+        for m in marks or []:
+            if m.get('label') != 'missing':
+                continue
+            b = _bucket_for(fname, m.get('start', 0), teacher_ranges)
+            b['missing'] += 1
+    for fname, marks in (diff_marks.get('student_files') or {}).items():
+        for m in marks or []:
+            lbl = m.get('label')
+            if lbl not in ('extra', 'ghost_extra'):
+                continue
+            b = _bucket_for(fname, m.get('start', 0), student_ranges)
+            b[lbl] += 1
+
+    for b in buckets.values():
+        b['divergence'] = b['missing'] + b['extra'] + b['ghost_extra']
+        b['change'] = b['missing']
+    return buckets
+
+
 def _per_language_follow_stats(
     diff_marks: dict,
     teacher_files: Dict[str, Path],
@@ -523,6 +587,16 @@ class TokenLogMixin:
             self._student_token_stats[sid] = _stats_from_occurrences(
                 all_occ, score_e, score_c, n_found, n_missing, n_extra,
             )
+            _div_by_lang = _count_divergence_by_lang(
+                diff_marks, teacher_code_files, stu_files,
+            )
+            self._student_token_stats[sid]['divergence_by_lang'] = _div_by_lang
+            self._student_token_stats[sid]['divergence'] = sum(
+                v['divergence'] for v in _div_by_lang.values()
+            )
+            self._student_token_stats[sid]['change'] = sum(
+                v['change'] for v in _div_by_lang.values()
+            )
 
             out_path = student_dir / 'tokens.txt'
             with open(out_path, 'w', encoding='utf-8') as fh:
@@ -921,6 +995,15 @@ class TokenLogMixin:
                 removal_ts_by_token=fresh_removal or removal_ts_by_token,
                 teacher_entries=teacher_entries,
                 teacher_token_timestamps=teacher_token_timestamps,
+            )
+            stats['divergence_by_lang'] = _count_divergence_by_lang(
+                diff_marks, teacher_code_files, student_code_files,
+            )
+            stats['divergence'] = sum(
+                v['divergence'] for v in stats['divergence_by_lang'].values()
+            )
+            stats['change'] = sum(
+                v['change'] for v in stats['divergence_by_lang'].values()
             )
             out[sid] = stats
         return out

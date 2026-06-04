@@ -535,7 +535,9 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		const winW = 900;
 		const winH = 480;
 		const offX = Math.floor(workArea.x + (workArea.width - winW) / 2);
-		const offY = workArea.y + workArea.height + 40;
+		const offY = questionWindowIsLesson
+			? workArea.y + workArea.height + 40
+			: Math.floor(workArea.y + (workArea.height - winH) / 2);
 		questionWindow = new BrowserWindow({
 			width: winW,
 			height: winH,

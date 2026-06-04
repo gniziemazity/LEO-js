@@ -186,7 +186,9 @@ async function pickFolder() {
 	}
 }
 
-function _pickLatestOverviewFile(files) {
+function _pickOverviewFile(files) {
+	const canon = files.get("overview.xlsx") || files.get("overviewplus.xlsx");
+	if (canon) return canon;
 	let latest = null;
 	let latestStamp = "";
 	for (const path of files.keys()) {
@@ -197,8 +199,7 @@ function _pickLatestOverviewFile(files) {
 			latestStamp = m[1];
 		}
 	}
-	if (latest) return latest;
-	return files.get("overviewplus.xlsx") || files.get("overview.xlsx") || null;
+	return latest;
 }
 
 async function loadCourse(ds) {
@@ -209,7 +210,7 @@ async function loadCourse(ds) {
 
 	console.log("[overview] loadCourse rootName =", ds.rootName);
 
-	const gradesFile = _pickLatestOverviewFile(ds.files);
+	const gradesFile = _pickOverviewFile(ds.files);
 	const pyStatsFile = ds.files.get("grades_stats.json") || null;
 	if (!gradesFile) {
 		alert("No Overview.xlsx or OverviewPlus.xlsx found.");
