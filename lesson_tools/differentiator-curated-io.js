@@ -192,6 +192,21 @@ function _curatedAlignWhitespace(
 	return { text, start: aStart, end: aEnd };
 }
 
+function _curatedAbsorbWhitespaceGaps(text, items, get) {
+	const ordered = items
+		.slice()
+		.sort((a, b) => get.start(a) - get.start(b) || get.end(a) - get.end(b));
+	for (let i = 0; i + 1 < ordered.length; i++) {
+		const a = ordered[i];
+		const b = ordered[i + 1];
+		if (get.end(a) > get.start(b)) continue;
+		const gap = text.slice(get.end(a), get.start(b));
+		if (!gap || !/^[ \t]+$/.test(gap)) continue;
+		if (get.isDel(a)) get.setEnd(a, get.start(b));
+		else if (get.isDel(b)) get.setStart(b, get.end(a));
+	}
+}
+
 function _curatedCleanupCorrectedText(text) {
 	const lines = text.split("\n").map((line) => {
 		const indent = (line.match(/^[ \t]*/) || [""])[0];
@@ -373,18 +388,13 @@ function _curatedApplyToStudent() {
 			}
 		}
 
-		const _orderedRawOps = rawOps
-			.slice()
-			.sort((a, b) => a.origStart - b.origStart || a.origEnd - b.origEnd);
-		for (let i = 0; i + 1 < _orderedRawOps.length; i++) {
-			const a = _orderedRawOps[i];
-			const b = _orderedRawOps[i + 1];
-			if (a.origEnd > b.origStart) continue;
-			const gap = origText.slice(a.origEnd, b.origStart);
-			if (!gap || !/^[ \t]+$/.test(gap)) continue;
-			if (a.kind === "del") a.origEnd = b.origStart;
-			else if (b.kind === "del") b.origStart = a.origEnd;
-		}
+		_curatedAbsorbWhitespaceGaps(origText, rawOps, {
+			start: (o) => o.origStart,
+			end: (o) => o.origEnd,
+			isDel: (o) => o.kind === "del",
+			setStart: (o, v) => (o.origStart = v),
+			setEnd: (o, v) => (o.origEnd = v),
+		});
 		const siblings = rawOps.map((op) => [op.origStart, op.origEnd]);
 		for (let i = 0; i < rawOps.length; i++) {
 			const op = rawOps[i];
@@ -744,6 +754,7 @@ function _curatedSummarize() {
 			});
 		} else if (g.kind === "missing-insert") {
 			const teacherText = _curatedSrcText("teacher", g.file);
+			const studentText = _curatedSrcText("student", g.insertFile);
 			let body = teacherText.slice(g.lo, g.hi).replace(/[ \t\r\n]+$/, "");
 			let lineStart = g.lo;
 			while (
@@ -753,7 +764,18 @@ function _curatedSummarize() {
 			) {
 				lineStart--;
 			}
+			let sIns = g.insertPos;
+			while (
+				sIns > 0 &&
+				studentText[sIns - 1] !== "\n" &&
+				/[ \t]/.test(studentText[sIns - 1])
+			) {
+				sIns--;
+			}
+			const studentAtLineStart =
+				sIns === 0 || studentText[sIns - 1] === "\n";
 			if (
+				studentAtLineStart &&
 				lineStart < g.lo &&
 				(lineStart === 0 || teacherText[lineStart - 1] === "\n")
 			) {
@@ -802,6 +824,17 @@ function _curatedSummarize() {
 		}
 		for (const b of mergedOrder) {
 			b.edits.sort((a, b) => a.start - b.start || a.end - b.end);
+			_curatedAbsorbWhitespaceGaps(
+				_curatedSrcText("student", b.file),
+				b.edits,
+				{
+					start: (e) => e.start,
+					end: (e) => e.end,
+					isDel: (e) => e.insertText === "" && e.end > e.start,
+					setStart: (e, v) => (e.start = v),
+					setEnd: (e, v) => (e.end = v),
+				},
+			);
 		}
 	}
 
