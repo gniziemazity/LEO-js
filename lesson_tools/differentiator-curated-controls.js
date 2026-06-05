@@ -128,7 +128,6 @@ function _curatedShowControls(sel, x, y, opts) {
 		nonCommentExisting.length > 0 &&
 		nonCommentExisting.every((m) => m.label === "ghost_extra");
 	const single = nonCommentExisting.length === 1;
-	const singleHasPair = single && !!nonCommentExisting[0].paired_with;
 	const allUnpaired =
 		(allMissing || allExtra || allGhostExtra) &&
 		nonCommentExisting.every((m) => !m.paired_with);

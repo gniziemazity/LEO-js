@@ -207,13 +207,6 @@ async function loadJsonData(file, data) {
 	saveLessonStatsCsv();
 }
 
-const _TOKEN_LANG_EXT = {
-	".html": "html",
-	".htm": "html",
-	".css": "css",
-	".js": "js",
-	".py": "py",
-};
 const _TOKEN_RE = newTokenRegex();
 
 function _findHtmlEmbeddedRanges(text) {
@@ -260,13 +253,7 @@ async function loadTeacherCodeTokens() {
 		for (const [path, file] of _allFiles) {
 			const pl = path.toLowerCase();
 			if (!pl.startsWith(dir)) continue;
-			let bucket = null;
-			for (const ext of Object.keys(_TOKEN_LANG_EXT)) {
-				if (pl.endsWith(ext)) {
-					bucket = _TOKEN_LANG_EXT[ext];
-					break;
-				}
-			}
+			const bucket = langShortId(path, null);
 			if (bucket) codeFiles.push({ path, file, bucket });
 		}
 		if (codeFiles.length) break;

@@ -252,9 +252,7 @@ async function _loadRemarksFile(file) {
 	_snapshotOrigObs(_students);
 	_activeBasisFile = file;
 	_activeBasisFileName = file.name;
-	_activeWorkbook = result.workbook;
 	_activeSheetName = result.sheetName;
-	_activeHeaderRow = result.headerRow;
 	_activeRemarkColIdx = result.remarkColIdx || {};
 	_dirtyEdits.clear();
 	_updateSaveButton();

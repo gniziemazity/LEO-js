@@ -31,7 +31,7 @@ from utils.lv_constants import (
 )
 from utils.lv_vscode import VSCodeSettings
 from utils.lv_highlighter import Highlighter
-from utils.lv_editor import HeadlessEditor, reconstruct_html_headless, find_ignored_backspace_timestamps
+from utils.lv_editor import HeadlessEditor
 from utils.lv_expand import expand_events
 
 

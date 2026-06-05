@@ -4,11 +4,9 @@ function headlessReplay(events, lessonFile = null) {
 	const files = new Map();
 	files.set("MAIN", new TextState());
 	const dev = new TextState();
-	const vscode = new VSCodeSettings();
 
 	let activeFilename = "MAIN";
 	let selAnchorMain = null;
-	let ciBaseIndent = "";
 
 	const mainState = () => files.get(activeFilename);
 
@@ -46,38 +44,6 @@ function headlessReplay(events, lessonFile = null) {
 			closes: LP.shouldDecreaseOnLine(profile, afterTrimmed),
 			dedentAfter: LP.shouldDecreaseAfter(profile, prevLine),
 		};
-	};
-
-	const applyVscodeAuto = (state, ch, ts) => {
-		const textBefore = state.text.slice(0, state.cursor);
-		const textAfter = state.text.slice(state.cursor);
-		const lineEnd = textAfter.indexOf("\n");
-		const afterLine =
-			lineEnd === -1 ? textAfter : textAfter.slice(0, lineEnd);
-
-		let auto = vscode.autoCreateQuotes(ch, textBefore.slice(0, -1));
-		if (auto) {
-			for (const c of auto) state.insert(c, ts);
-			state.cursor -= auto.length;
-			return;
-		}
-		auto = vscode.autoCloseHtmlTag(ch, textBefore.slice(0, -1));
-		if (auto) {
-			for (const c of auto) state.insert(c, ts);
-			state.cursor -= auto.length;
-			return;
-		}
-		auto = vscode.autoCloseBracket(ch, afterLine);
-		if (auto) {
-			for (const c of auto) state.insert(c, ts);
-			state.cursor -= auto.length;
-			return;
-		}
-		auto = vscode.autoCloseQuote(ch, textBefore, afterLine);
-		if (auto) {
-			for (const c of auto) state.insert(c, ts);
-			state.cursor -= auto.length;
-		}
 	};
 
 	const indentSelection = (state, ts) => {
@@ -170,11 +136,9 @@ function headlessReplay(events, lessonFile = null) {
 
 		if (editor === "main") autoDedent(mainState(), ch, ts);
 		st.insert(ch, ts);
-		if (editor === "main") applyVscodeAuto(mainState(), ch, ts);
 	};
 
 	const handleCodeInsertAtomic = (code, ts, editor) => {
-		ciBaseIndent = currentLineIndent(mainState().text, mainState().cursor);
 		const segments = _splitCodeWithAnchors(code);
 		for (const [segKind, segVal] of segments) {
 			if (segKind !== "text") {
@@ -187,20 +151,10 @@ function headlessReplay(events, lessonFile = null) {
 					st.deleteLine();
 				} else if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
 					st.moveCursor(CURSOR_MOVES[ch]);
-					if (editor === "main") {
-						ciBaseIndent = currentLineIndent(
-							mainState().text,
-							mainState().cursor,
-						);
-					}
 				} else if (ch === "↩" || ch === "\n") {
 					st.insert("\n", ts);
 					if (editor === "main") {
 						autoIndent(mainState(), ts, opensClosesForActive());
-						ciBaseIndent = currentLineIndent(
-							mainState().text,
-							mainState().cursor,
-						);
 					}
 				} else if (ch === "―" || ch === "\t") {
 					st.insert("\t", ts);
@@ -214,7 +168,6 @@ function headlessReplay(events, lessonFile = null) {
 				}
 			}
 		}
-		ciBaseIndent = "";
 	};
 
 	const actions = expandEvents(events);

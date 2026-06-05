@@ -17,7 +17,6 @@ class LogVisualizer {
 		this._activeFilename = "MAIN";
 		this._activeEditor = "main";
 		this._lessonFile = null;
-		this._ciBaseIndent = "";
 		this._anchorFlashTimer = null;
 		this._scrollTarget = null;
 		this._scrollRafId = null;
@@ -37,7 +36,6 @@ class LogVisualizer {
 		this._currentInt = null;
 		this._nextIntIdx = 0;
 
-		this.vscode = new VSCodeSettings();
 		this._selAnchorMain = null;
 
 		this._previewDirty = false;
@@ -284,7 +282,6 @@ class LogVisualizer {
 			return;
 		}
 
-		this.vscode = new VSCodeSettings();
 		this._imageUris = imageUris || {};
 		this._lessonFile = lessonFile || null;
 		this._studentNameMap = studentNameMap || {};
@@ -673,7 +670,6 @@ class LogVisualizer {
 
 		if (editor === "main") this._autoDedent(ch, ts);
 		st.insert(ch, ts);
-		if (editor === "main") this._applyVscodeAuto(ch, ts);
 
 		this._log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
 		return delay;
@@ -682,8 +678,6 @@ class LogVisualizer {
 	_handleCodeInsertAtomic(act) {
 		const [, code, ts, delay, editor] = act;
 		this._log(ts, "⬇  Code Insert", CLR.orange);
-
-		this._ciBaseIndent = currentLineIndent(this.main.text, this.main.cursor);
 
 		const segments = _splitCodeWithAnchors(code);
 		for (const [segKind, segVal] of segments) {
@@ -696,20 +690,10 @@ class LogVisualizer {
 						Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
 					) {
 						st.moveCursor(CURSOR_MOVES[ch]);
-						if (editor === "main") {
-							this._ciBaseIndent = currentLineIndent(
-								this.main.text,
-								this.main.cursor,
-							);
-						}
 					} else if (ch === "↩" || ch === "\n") {
 						st.insert("\n", ts);
 						if (editor === "main") {
 							this._autoIndent(ts);
-							this._ciBaseIndent = currentLineIndent(
-								this.main.text,
-								this.main.cursor,
-							);
 						}
 					} else if (ch === "―" || ch === "\t") {
 						st.insert("\t", ts);
@@ -727,48 +711,7 @@ class LogVisualizer {
 			}
 		}
 
-		this._ciBaseIndent = "";
 		return delay;
-	}
-
-	_applyVscodeAuto(ch, ts) {
-		const textBefore = this.main.text.slice(0, this.main.cursor);
-		const textAfter = this.main.text.slice(this.main.cursor);
-		const lineEnd = textAfter.indexOf("\n");
-		const afterLine =
-			lineEnd === -1 ? textAfter : textAfter.slice(0, lineEnd);
-
-		let auto = this.vscode.autoCreateQuotes(ch, textBefore.slice(0, -1));
-		if (auto) {
-			for (const c of auto) this.main.insert(c, ts);
-			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ Auto-Quotes: ${JSON.stringify(auto)}`, CLR.green);
-			return;
-		}
-
-		auto = this.vscode.autoCloseHtmlTag(ch, textBefore.slice(0, -1));
-		if (auto) {
-			for (const c of auto) this.main.insert(c, ts);
-			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ Auto-Tag: ${JSON.stringify(auto)}`, CLR.green);
-			return;
-		}
-
-		auto = this.vscode.autoCloseBracket(ch, afterLine);
-		if (auto) {
-			for (const c of auto) this.main.insert(c, ts);
-			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ Auto-Bracket: ${JSON.stringify(auto)}`, CLR.green);
-			return;
-		}
-
-		auto = this.vscode.autoCloseQuote(ch, textBefore, afterLine);
-		if (auto) {
-			for (const c of auto) this.main.insert(c, ts);
-			this.main.cursor -= auto.length;
-			this._log(ts, `  ↳ Auto-Quote: ${JSON.stringify(auto)}`, CLR.green);
-			return;
-		}
 	}
 
 	_activeProfile() {
@@ -780,10 +723,6 @@ class LogVisualizer {
 		const lessonExt = LP.lessonFileExtension(this._lessonFile);
 		if (lessonExt) return LP.getProfile(lessonExt);
 		return LP.getProfile(".html");
-	}
-
-	_dedentOne(indent) {
-		return dedentOneStep(indent);
 	}
 
 	_autoIndent(ts) {
@@ -943,10 +882,6 @@ class LogVisualizer {
 			this.elEditor.classList.remove("anchor-flash");
 			this._anchorFlashTimer = null;
 		}, 500);
-	}
-
-	_prevLineOpensTag(st, ls) {
-		return prevLineOpensTag(st, ls);
 	}
 
 	_backspaceIsIgnored(st) {
@@ -1163,7 +1098,6 @@ class LogVisualizer {
 		this.microIdx = 0;
 		this._resetAllFiles();
 		this.dev.reset();
-		this._ciBaseIndent = "";
 		this._activeEditor = "main";
 		this._selAnchorMain = null;
 		this._logBuf = [];

@@ -68,7 +68,6 @@
 	--clr-danger: var(--c-red-1);
 	--clr-danger-dark: var(--c-red-1);
 	--clr-danger-darker: var(--c-red-2);
-	--clr-danger-strong: var(--c-red-1);
 	--clr-danger-soft-bg: rgba(204, 34, 34, 0.06);
 	--clr-danger-soft-border: rgba(204, 34, 34, 0.4);
 	--clr-danger-hover-bg: rgba(204, 34, 34, 0.12);
@@ -83,18 +82,13 @@
 	--clr-highlight-warm-border: var(--c-yellow-2);
 	--clr-highlight-active: var(--c-yellow-2);
 	--clr-highlight-active-bg: rgba(255, 220, 0, 0.45);
-	--clr-highlight-soft-bg: rgba(255, 220, 0, 0.18);
 
-	--clr-info-pill-bg: rgba(0, 122, 204, 0.13);
-	--clr-info-pill-border: rgba(0, 122, 204, 0.35);
 	--clr-info-pill-text: var(--c-blue-2);
-	--clr-info-pill-hover: rgba(0, 122, 204, 0.2);
 
 	--clr-mark-missing: var(--c-red-1);
 	--clr-mark-extra: var(--c-black);
 	--clr-mark-ghost: rgba(0, 0, 0, 0.5);
 	--clr-mark-comment: var(--c-green-1);
-	--clr-mark-extra-comment: var(--c-green-2);
 	--clr-mark-missing-bg: rgba(204, 34, 34, 0.13);
 	--clr-mark-extra-bg: rgba(0, 0, 0, 0.08);
 	--clr-mark-missing-pair-bg: rgba(204, 34, 34, 0.22);
@@ -470,53 +464,11 @@ body.tool-shell .tool-empty-state {
 .tt-bar-fixed {
 	flex: 0 0 auto;
 }
-.tt-bar-row {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-.tt-bar-row > .tt-bar-spacer {
-	flex: 1 1 auto;
-}
-.tt-lang-legend {
-	font:
-		bold 10px Consolas,
-		monospace;
-	white-space: nowrap;
-}
-.tt-lang-legend > span {
-	margin-left: 8px;
-}
-.tt-lang-legend > span:first-child {
-	margin-left: 0;
-}
 .tt-bar-scroll {
 	overflow-y: auto;
 	min-height: 0;
 	flex: 1 1 auto;
 }
-.diff-btns {
-	display: inline-flex;
-	gap: 4px;
-	margin-top: 6px;
-}
-.diff-btn {
-	font:
-		10px/1 Consolas,
-		monospace;
-	padding: 2px 7px;
-	border: 1px solid var(--clr-diff-btn-border);
-	border-radius: 3px;
-	background: var(--clr-surface);
-	cursor: pointer;
-	color: var(--clr-gray);
-}
-.diff-btn:hover {
-	background: var(--clr-accent);
-	color: var(--clr-bg);
-	border-color: var(--clr-accent);
-}
-
 .float-win {
 	position: fixed;
 	display: none;

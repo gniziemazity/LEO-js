@@ -470,11 +470,6 @@ function obsText(raw) {
 	return !raw || !raw.trim() ? "" : raw.trim();
 }
 
-function artefactBadges(raw, assignmentName) {
-	const schema = _artefactSchema[(assignmentName || "").toLowerCase()];
-	return renderArtefactBadges(raw, schema);
-}
-
 async function openLessonDiff(student, entry) {
 	const key = findHandle(_lessonHandles, entry.name);
 	if (!key) {

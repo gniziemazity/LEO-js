@@ -25,7 +25,7 @@ Comment blocks can be given special roles by starting their text with a specific
 | ❓     | Question    | Displayed in a floating question window                        |
 | 🖼️     | Image       | Opens a floating image window showing the specified image file |
 | 🌐     | Web         | Opens a floating web viewer window for the specified URL       |
-| 📋     | Code Insert | Logs a pre-written code into the editor                        |
+| 📋     | Code Insert | Inserts pre-written code into the editor                       |
 | ➡️     | Move To     | Moves the editor cursor to a specific location                 |
 
 ### 🪟 Floating Windows
@@ -61,7 +61,7 @@ When a special comment block is reached, LEO opens a dedicated floating window:
 
 ## 📋 Prerequisites
 
-- **Node.js** (v14 or higher)
+- **Node.js** (v20 or higher)
 - **npm** or **yarn**
 
 ## 🚀 Installation
@@ -97,7 +97,7 @@ npm start
    - `Ctrl+Left`: Step backward
    - `Ctrl+Right`: Step forward
    - Click on any character to jump to that position
-4. **Track interactions**:
+4. **Track interactions** (buttons on the mobile remote):
    - ❓ button: Log a student question
    - 🤝 button: Log when you provide help
 5. **Use the timer** (optional): Press ⏱️ to start a 90-minute timer, use +/- to adjust
@@ -142,15 +142,18 @@ The remote client supports two interaction modes:
 
 ### Lesson Tools (standalone browser tools)
 
-LEO ships five standalone browser-based analysis tools in the `lesson_tools/` directory. Open them with the npm scripts below — no server required, they run directly in your browser.
+LEO ships eight standalone browser-based analysis tools in the `lesson_tools/` directory. Open them with the npm scripts below; each opens in your browser, served by a small local helper that the script starts for you.
 
 | Tool              | Script             | Description                                                                          |
 | ----------------- | ------------------ | ------------------------------------------------------------------------------------ |
 | 📊 Timeline       | `npm run time`     | Key log charts and session analysis                                                  |
 | 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview                                      |
 | 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison                                         |
-| 📈 Overview       | `npm run overview` | One-shot: builds `Overview_<ts>.xlsx`, writes `grades_stats.json`, opens the browser |
+| 📈 Overview       | `npm run overview` | One-shot: builds `Overview.xlsx`, writes `grades_stats.json`, opens the browser      |
 | 👥 Students       | `npm run students` | Per-student submission viewer (anonymisation mode picker in-page)                    |
+| 📚 Lessons        | `npm run lessons`     | Per-lesson simulator preview + Open Timeline / Show Students / Download Plans      |
+| 📝 Assignments    | `npm run assignments` | Per-assignment instructions + starting-code browser                               |
+| 🎓 Course         | `npm run course`      | Unified browser: topic dropdown + Lessons / Assignments toggle                    |
 
 ## 📺 Demo
 
@@ -255,8 +258,8 @@ LEO automatically logs all keystrokes and interactions during sessions for analy
 - **Keystrokes**: All characters typed during the lesson
 - **Teacher Questions**: When you reach a question block (❓)
 - **Student Answers**: Which student answered and when
-- **Student Questions**: When you press the ❓ button
-- **Help Sessions**: When you press the 🤝 button
+- **Student Questions**: When you tap the ❓ button on the mobile remote
+- **Help Sessions**: When you tap the 🤝 button on the mobile remote
 - **Timestamps**: Exact timing for all events
 
 ### Log Details

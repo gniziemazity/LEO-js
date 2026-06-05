@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const QRCode = require("qrcode");
 const qrcode = require("qrcode-terminal");
 const EventEmitter = require("events");
+const plugin = require("./plugin");
 
 function clampNum(v, max) {
 	const n = Number(v);
@@ -49,8 +50,16 @@ class LEOBroadcastServer extends EventEmitter {
 		});
 		this.app.use(express.static(__dirname + "/../shared/"));
 
-		this.server = http.createServer(this.app);
-		this.protocol = "http";
+		const custom = plugin.createServer
+			? await plugin.createServer(this.app)
+			: null;
+		if (custom) {
+			this.server = custom.server;
+			this.protocol = custom.protocol || "https";
+		} else {
+			this.server = http.createServer(this.app);
+			this.protocol = "http";
+		}
 
 		this.wss = new WebSocket.Server({
 			server: this.server,
@@ -90,7 +99,8 @@ class LEOBroadcastServer extends EventEmitter {
 	}
 
 	remoteUrl(address) {
-		return `http://${address}:${this.port}/?t=${this.token}`;
+		const proto = this.protocol || "http";
+		return `${proto}://${address}:${this.port}/?t=${this.token}`;
 	}
 
 	printLocalIPs() {
@@ -308,6 +318,8 @@ class LEOBroadcastServer extends EventEmitter {
 			this.emit("client-remote-key-press");
 		} else if (type === "dismiss-question") {
 			this.emit("client-dismiss-question");
+		} else if (plugin.onClientMessage) {
+			plugin.onClientMessage(type, data, this);
 		}
 	}
 

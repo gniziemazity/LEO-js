@@ -366,7 +366,6 @@ def _build_lesson_columns(lessons_root: Optional[Path],
         cols[key] = {name: base + off for name, off in _BLOCK_OFFSETS.items()}
     return cols
 
-LESSON_LANG_OFFSETS = {'follow_html': 0, 'follow_css': 1, 'follow_js': 2}
 LESSON_FOLLOW_OFFSET = 3
 LESSON_INC_OFFSET = 4
 INTERACT_A_OFFSET = 0

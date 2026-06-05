@@ -438,11 +438,6 @@ class CursorManager {
 		}, 0);
 	}
 
-	loadSavedProgress() {
-		const lastIndex = localStorage.getItem("lastStepIndex");
-		if (lastIndex) this.currentStepIndex = parseInt(lastIndex);
-	}
-
 	buildArtificialLogEvents() {
 		const KEYS_PER_MINUTE = 70;
 		const intervalMs = Math.round(60000 / KEYS_PER_MINUTE);

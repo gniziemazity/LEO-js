@@ -18,6 +18,13 @@ let touchpadSide = "right";
 let scrollAnchorId = null;
 let scrollAccum = 0;
 
+const touchpadModeHandlers = {};
+let activeModeHandler = null;
+
+function registerTouchpadMode(name, handler) {
+	touchpadModeHandlers[name] = handler;
+}
+
 let scrollVelocity = 0;
 let momentumAnimId = null;
 const MOMENTUM_FRICTION = 0.9;
@@ -74,6 +81,9 @@ function updateModeBtns(activeMode) {
 		mouse: "modeBtnMouse",
 		keyboard: "modeBtnKeyboard",
 	};
+	for (const [name, handler] of Object.entries(touchpadModeHandlers)) {
+		if (handler.modeBtnId) ids[name] = handler.modeBtnId;
+	}
 	for (const [m, id] of Object.entries(ids)) {
 		const btn = document.getElementById(id);
 		if (btn) btn.classList.toggle("mode-active", m === activeMode);
@@ -98,6 +108,11 @@ function deactivateTouchpad() {
 	overlay.classList.remove("active", "keyboard-mode");
 	header.classList.remove("hidden");
 	stopDragIfActive();
+	if (activeModeHandler) {
+		if (activeModeHandler.deactivate)
+			activeModeHandler.deactivate({ overlay, header });
+		activeModeHandler = null;
+	}
 }
 
 function closeTouchpad() {
@@ -105,10 +120,13 @@ function closeTouchpad() {
 	updateModeBtns(null);
 }
 
-function setTouchpadMode(mode) {
-	if (mode === "keyboard" && !autoTypingActive) return;
+async function setTouchpadMode(mode) {
+	const handler = touchpadModeHandlers[mode];
+	if (!handler && mode === "keyboard" && !autoTypingActive) return;
 
-	const alreadyActive = touchpadActive && touchpadMode === mode;
+	const alreadyActive = handler
+		? activeModeHandler === handler
+		: touchpadActive && !activeModeHandler && touchpadMode === mode;
 
 	deactivateTouchpad();
 
@@ -120,11 +138,19 @@ function setTouchpadMode(mode) {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
 
-	touchpadActive = true;
-	touchpadMode = mode;
-	overlay.classList.add("active");
-	overlay.classList.toggle("keyboard-mode", mode === "keyboard");
-	header.classList.add("hidden");
+	if (handler) {
+		activeModeHandler = handler;
+		touchpadActive = true;
+		overlay.classList.add("active");
+		header.classList.add("hidden");
+		if (handler.activate) await handler.activate({ overlay, header });
+	} else {
+		touchpadActive = true;
+		touchpadMode = mode;
+		overlay.classList.add("active");
+		overlay.classList.toggle("keyboard-mode", mode === "keyboard");
+		header.classList.add("hidden");
+	}
 
 	updateModeBtns(mode);
 }
@@ -151,11 +177,21 @@ function initTouchpad() {
 	let touchDownX = 0;
 	let touchDownY = 0;
 
+	for (const handler of Object.values(touchpadModeHandlers)) {
+		if (handler.init) handler.init();
+	}
+
 	overlay.addEventListener(
 		"touchstart",
 		(e) => {
 			if (e.target.closest(".touchpad-toolbar")) return;
 			e.preventDefault();
+
+			if (activeModeHandler) {
+				if (activeModeHandler.onTouchStart)
+					activeModeHandler.onTouchStart(e);
+				return;
+			}
 
 			if (touchpadMode === "keyboard") {
 				sendMessage("remote-key-press", {});
@@ -200,6 +236,12 @@ function initTouchpad() {
 		"touchmove",
 		(e) => {
 			e.preventDefault();
+
+			if (activeModeHandler) {
+				if (activeModeHandler.onTouchMove) activeModeHandler.onTouchMove(e);
+				return;
+			}
+
 			if (touchpadMode === "keyboard") return;
 
 			const now = Date.now();
@@ -258,6 +300,11 @@ function initTouchpad() {
 		(e) => {
 			if (e.target.closest(".touchpad-toolbar")) return;
 			e.preventDefault();
+
+			if (activeModeHandler) {
+				if (activeModeHandler.onTouchEnd) activeModeHandler.onTouchEnd(e);
+				return;
+			}
 
 			if (touchpadMode === "keyboard") return;
 

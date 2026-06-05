@@ -206,7 +206,6 @@ td.name-cell {
 }
 
 td.follow,
-td.grade-cell,
 td.clickable {
 	transition: opacity 0.12s;
 }
@@ -351,30 +350,6 @@ td.asn-sep {
 .st-tbl th:first-child {
 	text-align: left;
 }
-.sev-pill {
-	display: inline-block;
-	min-width: 14px;
-	padding: 0 4px;
-	border-radius: 3px;
-	font-size: 9px;
-	font-weight: 700;
-	color: var(--clr-bg);
-	text-align: center;
-}
-.sev-pill.sev-high {
-	background: var(--clr-red);
-}
-.sev-pill.sev-med {
-	background: var(--clr-orange);
-}
-.sev-pill.sev-low {
-	background: var(--clr-muted);
-}
-
-.artefact-rate-tbl tr.assn-sep td {
-	border-top: 1.5px solid var(--clr-border-mid);
-}
-
 .id-chip {
 	display: inline-block;
 	padding: 1px 6px;

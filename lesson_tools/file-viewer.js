@@ -1,18 +1,5 @@
 "use strict";
 
-const _FV_LANG_BY_EXT = {
-	".html": "html",
-	".htm": "html",
-	".css": "css",
-	".js": "js",
-	".py": "py",
-};
-
-function _fvLangFor(filename) {
-	const m = (filename || "").toLowerCase().match(/\.[^./\\]+$/);
-	return (m && _FV_LANG_BY_EXT[m[0]]) || "html";
-}
-
 function _fvTabLabel(name) {
 	if (name === "MAIN") return "MAIN";
 	return name.split("/").pop().split("\\").pop();
@@ -146,7 +133,7 @@ class FileViewer {
 }
 
 function fvRenderStaticEditor(content, language = null, filename = null) {
-	const lang = language || _fvLangFor(filename || "");
+	const lang = language || langShortId(filename || "");
 	const text = String(content || "").replace(/\r\n?/g, "\n");
 	return renderEditorHtml({ text, cursor: -1, charTs: [] }, false, lang);
 }

@@ -1,27 +1,13 @@
 let currentStudents = [];
-let pendingInteraction = null;
 let autoCloseTimer = null;
 let interactionOpenedAt = null;
 let interactionWaiting = false;
 let pendingWaitingData = null;
 
-const AUTO_CLOSE_MS = 3000;
-
 function setInteractionBtnsVisible(visible) {
 	document
 		.querySelectorAll(".mode-side-btn-question, .mode-side-btn-help")
 		.forEach((btn) => (btn.style.display = visible ? "" : "none"));
-}
-
-function formatAnsweredText(name) {
-	return name ? `Answered by ${name}` : "Answered";
-}
-
-function hexToRgba(hex, alpha) {
-	const r = parseInt(hex.slice(1, 3), 16);
-	const g = parseInt(hex.slice(3, 5), 16);
-	const b = parseInt(hex.slice(5, 7), 16);
-	return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function setStudents(students) {
@@ -104,7 +90,6 @@ function clearAutoCloseTimer() {
 
 function handleInteractionBtn(interactionType) {
 	if (currentStudents.length > 0) {
-		pendingInteraction = interactionType;
 		interactionOpenedAt = Date.now();
 		const isQuestion = interactionType === "student-question";
 		const title = isQuestion
@@ -335,6 +320,5 @@ function closeInteractionOverlay() {
 	document.getElementById("interactionOverlay").classList.remove("active");
 	setInteractionBtnsVisible(true);
 	document.getElementById("iQuestionInput").style.display = "none";
-	pendingInteraction = null;
 	sendMessage("interaction-overlay-closed", {});
 }

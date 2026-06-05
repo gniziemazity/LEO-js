@@ -136,6 +136,7 @@ async function _idbSet(key, value, dbName = "lesson_tools") {
 
 function parseCsv(text) {
 	const lines = String(text || "")
+		.replace(/^\uFEFF/, "")
 		.split(/\r?\n/)
 		.filter(Boolean);
 	if (lines.length < 2) return { header: [], rows: [], delim: "," };
@@ -143,6 +144,19 @@ function parseCsv(text) {
 	const cells = (line) =>
 		line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
 	return { header: cells(lines[0]), rows: lines.slice(1).map(cells), delim };
+}
+
+async function readCsvText(file) {
+	const buf = await file.arrayBuffer();
+	const bytes = new Uint8Array(buf);
+	const stripBom = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
+	try {
+		return stripBom(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+	} catch (e) {}
+	try {
+		return stripBom(new TextDecoder("windows-1252").decode(bytes));
+	} catch (e) {}
+	return stripBom(new TextDecoder("latin1").decode(bytes));
 }
 
 const ARTEFACT_SEVERITY_COLORS = {
@@ -237,6 +251,18 @@ function getFileExt(name) {
 	if (!name) return "";
 	const m = String(name).match(/\.[^./\\]+$/);
 	return m ? m[0].slice(1).toLowerCase() : "";
+}
+
+const _SHORT_ID_BY_EXT = {
+	html: "html",
+	htm: "html",
+	css: "css",
+	js: "js",
+	py: "py",
+};
+
+function langShortId(name, fallback = "html") {
+	return _SHORT_ID_BY_EXT[getFileExt(name)] || fallback;
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;

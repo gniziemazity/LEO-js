@@ -298,11 +298,6 @@ class TextState {
 		}
 		return false;
 	}
-
-	tsAtCursor() {
-		const i = Math.min(this.cursor, this.charTs.length - 1);
-		return i >= 0 ? this.charTs[i] : null;
-	}
 }
 
 function _moveByLines(text, pos, delta) {
@@ -315,79 +310,6 @@ function _moveByLines(text, pos, delta) {
 	let offset = 0;
 	for (let i = 0; i < target; i++) offset += lines[i].length + 1;
 	return offset + Math.min(col, lines[target].length);
-}
-
-const VSCODE_DEFAULTS = {
-	"editor.autoClosingBrackets": "never",
-	"editor.autoClosingQuotes": "never",
-	"html.autoClosingTags": false,
-	"html.autoCreateQuotes": false,
-};
-const BRACKET_PAIRS = { "(": ")", "[": "]", "{": "}" };
-const QUOTE_PAIRS = { '"': '"', "'": "'", "`": "`" };
-
-class VSCodeSettings {
-	constructor(raw = {}, source = "defaults") {
-		this.raw = { ...VSCODE_DEFAULTS, ...raw };
-		this.source = source;
-	}
-
-	static load() {
-		return new VSCodeSettings({}, "defaults");
-	}
-
-	_closingMode(key) {
-		const v = this.raw[key];
-		if (typeof v === "boolean") return v ? "always" : "never";
-		return String(v).toLowerCase();
-	}
-
-	_shouldClose(mode, textAfter) {
-		if (mode === "never") return false;
-		if (mode === "always") return true;
-		if (mode === "languagedefined" || mode === "beforewhitespace")
-			return !textAfter || " \t\n\r)]}>\"'".includes(textAfter[0]);
-		return false;
-	}
-
-	autoCloseBracket(ch, textAfter) {
-		const closing = BRACKET_PAIRS[ch];
-		if (!closing) return null;
-		const mode = this._closingMode("editor.autoClosingBrackets");
-		if (textAfter && textAfter[0] === closing) return null;
-		return this._shouldClose(mode, textAfter) ? closing : null;
-	}
-
-	autoCloseQuote(ch, textBefore, textAfter) {
-		if (!(ch in QUOTE_PAIRS)) return null;
-		const closing = QUOTE_PAIRS[ch];
-		const mode = this._closingMode("editor.autoClosingQuotes");
-		if (textAfter && textAfter[0] === closing) return null;
-		if ((textBefore.split(ch).length - 1) % 2 === 1) return null;
-		return this._shouldClose(mode, textAfter) ? closing : null;
-	}
-
-	autoCloseHtmlTag(ch, textBefore) {
-		if (ch !== ">") return null;
-		if (!this.raw["html.autoClosingTags"]) return null;
-		const m = textBefore.match(/<([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*)?$/);
-		if (!m) return null;
-		if (HTML_VOID_TAGS.has(m[1].toLowerCase())) return null;
-		if (textBefore.lastIndexOf("</") > textBefore.lastIndexOf("<" + m[1]))
-			return null;
-		return `</${m[1]}>`;
-	}
-
-	autoCreateQuotes(ch, textBefore) {
-		if (ch !== "=") return null;
-		if (!this.raw["html.autoCreateQuotes"]) return null;
-		const lt = textBefore.lastIndexOf("<"),
-			gt = textBefore.lastIndexOf(">");
-		if (lt <= gt) return null;
-		const tag = textBefore.slice(lt);
-		if (tag.startsWith("<!") || tag.startsWith("</")) return null;
-		return '""';
-	}
 }
 
 const CLOSING_TAG_PREFIXES = ["</style", "</script", "</html"];
@@ -594,7 +516,6 @@ function applyAtomicText(state, text, ts = 0, opts = {}) {
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = {
 		TextState,
-		VSCodeSettings,
 		CURSOR_MOVES,
 		SHIFT_CURSOR_MOVES,
 		CURSOR_MOVE_LABELS,

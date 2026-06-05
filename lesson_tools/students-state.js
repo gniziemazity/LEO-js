@@ -27,13 +27,10 @@ let _baseStudents = null;
 
 let _activeBasisFile = null;
 let _activeBasisFileName = "";
-let _activeWorkbook = null;
 let _activeSheetName = "";
-let _activeHeaderRow = null;
 let _activeRemarkColIdx = {};
 const _dirtyEdits = new Map();
 const _origObs = new Map();
-const EDITABLE_COL_RE = /^(obs\.?|grade|comments?)$/i;
 
 let _artefactSchema = [];
 

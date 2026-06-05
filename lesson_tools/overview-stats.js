@@ -788,59 +788,6 @@ function renderLessonStats(body) {
 	}
 }
 
-function renderLessonStatsTable(body) {
-	if (!_lessonStats) return;
-	const ls = _lessonStats;
-	const displayByLower = new Map();
-	ASSIGNMENTS.forEach((a) => {
-		displayByLower.set(a.name.toLowerCase(), a.name);
-	});
-	const _lower = (r) =>
-		String(r["Lesson"] ?? "")
-			.trim()
-			.toLowerCase();
-	const orderedRows = [];
-	const seenRows = new Set();
-	ASSIGNMENTS.forEach((a) => {
-		const key = a.name.toLowerCase();
-		const row = ls.rows.find((r) => _lower(r) === key);
-		if (row) {
-			orderedRows.push(row);
-			seenRows.add(row);
-		}
-	});
-	ls.rows.forEach((row) => {
-		if (!seenRows.has(row)) orderedRows.push(row);
-	});
-	const lessonNames = orderedRows.map(
-		(r) => displayByLower.get(_lower(r)) || r["Lesson"],
-	);
-	const cols = ls.header.filter(
-		(h) => h && h !== "Lesson" && h !== "Source" && h !== "segments",
-	);
-	const tableCard = mkCard(body, "Lesson Stats (Teacher Keylog)", "wide");
-	const fmtVal = (v) => {
-		if (v == null || v === "") return "—";
-		if (typeof v === "number") {
-			return Number.isInteger(v) ? String(v) : v.toFixed(2);
-		}
-		const n = +v;
-		if (!isNaN(n) && String(n) === String(v).trim()) return String(n);
-		return escHtml(String(v));
-	};
-	let tableHtml =
-		'<div style="overflow-x:auto"><table class="st-tbl"><tr><th>Stat</th>' +
-		lessonNames.map((n) => `<th>${escHtml(String(n))}</th>`).join("") +
-		"</tr>";
-	cols.forEach((stat) => {
-		tableHtml +=
-			`<tr><td>${escHtml(stat)}</td>` +
-			orderedRows.map((r) => `<td>${fmtVal(r[stat])}</td>`).join("") +
-			"</tr>";
-	});
-	tableCard.insertAdjacentHTML("beforeend", tableHtml + "</table></div>");
-}
-
 function addStackedShareCard(
 	parent,
 	title,

@@ -357,9 +357,6 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		return out.join("");
 	};
 
-	const nTeacherSurv = teachers.filter((t) => !t.ghost).length;
-	const nTeacherGhost = teachers.length - nTeacherSurv;
-	const ghostNote = nTeacherGhost ? ` (+${nTeacherGhost} ghost)` : "";
 	let html = "";
 	const ordered =
 		side === "student" ? ["student", "teacher"] : ["teacher", "student"];

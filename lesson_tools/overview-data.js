@@ -386,19 +386,6 @@ function finishLoad(filename) {
 	showPage("students");
 }
 
-async function readCsvText(file) {
-	const buf = await file.arrayBuffer();
-	const bytes = new Uint8Array(buf);
-	const stripBom = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
-	try {
-		return stripBom(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-	} catch {}
-	try {
-		return stripBom(new TextDecoder("windows-1252").decode(bytes));
-	} catch {}
-	return stripBom(new TextDecoder("latin1").decode(bytes));
-}
-
 function _nfc(s) {
 	return typeof s === "string" && s.normalize ? s.normalize("NFC") : s;
 }

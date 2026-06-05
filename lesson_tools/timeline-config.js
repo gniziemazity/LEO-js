@@ -9,7 +9,6 @@ const CFG = {
 	M: { top: 22, right: 24, bottom: 44, left: 68 },
 	DOT_R: 3.5,
 	DIA_R: 8,
-	STUDENT_SUBDIR: "anon_ids",
 };
 
 const DELETE_CHARS = new Set([

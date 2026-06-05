@@ -59,27 +59,6 @@ def _build_synth_ts(files: Dict[str, Path]) -> Dict[Tuple[str, int], str]:
     return out
 
 
-def _fmt_diff_timed(
-    miss_marks: List[Tuple[str, int, str]],
-    extra_marks: List[Tuple[str, int, str]],
-    ts_teacher: Dict[Tuple[str, int], str],
-) -> Tuple[str, List[str]]:
-    miss_sorted = sorted(
-        ((ts_teacher.get((fn, s), '99:99:99'), tok) for fn, s, tok in miss_marks),
-    )
-    extra_ctr: Counter = Counter(tok for _, _, tok in extra_marks)
-    parts: List[str] = []
-    items: List[str] = []
-    for ts, tok in miss_sorted:
-        parts.append(f'-{tok} ({ts})')
-        items.append(f'Missing: {tok} ({ts})')
-    for kw, n in sorted(extra_ctr.items()):
-        suf = f' (x{n})' if n > 1 else ''
-        parts.append(f'+{kw}{suf}')
-        items.append(f'Extra: {kw}{suf}')
-    return (', '.join(parts), items)
-
-
 class ExcelReportMixin:
     def generate_remarks_report(
         self,
@@ -706,29 +685,6 @@ class ExcelReportMixin:
             if e not in seen:
                 seen.add(e); deduped.append(e)
         return ''.join(deduped), raw
-
-    def _compute_peer_ranking(self, sids, all_extra_counters):
-        pair_sims: Dict[tuple, float] = {}
-        for sid_a in sids:
-            ea      = all_extra_counters.get(sid_a, Counter())
-            a_total = sum(ea.values())
-            for sid_b in sids:
-                if sid_a == sid_b:
-                    continue
-                eb    = all_extra_counters.get(sid_b, Counter())
-                inter = sum((ea & eb).values())
-                pair_sims[(sid_a, sid_b)] = round(inter / a_total * 100, 2) if a_total else 0
-
-        peer_ranking: Dict[str, list] = {}
-        max_sim:      Dict[str, float] = {}
-        for sid in sids:
-            others = sorted(
-                [(o, pair_sims.get((sid, o), 0)) for o in sids if o != sid and pair_sims.get((sid, o), 0) > 0],
-                key=lambda x: -x[1],
-            )
-            peer_ranking[sid] = others
-            max_sim[sid]      = others[0][1] if others else 0
-        return peer_ranking, max_sim
 
     def _extract_interactions(self) -> Dict[str, str]:
         def _names_from(raw) -> List[str]:

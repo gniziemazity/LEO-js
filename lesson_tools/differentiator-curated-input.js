@@ -81,13 +81,9 @@ function _curatedOnKeyDown(ev) {
 	const allGhostExtra =
 		nonCommentExisting.length > 0 &&
 		nonCommentExisting.every((m) => m.label === "ghost_extra");
-	const single = nonCommentExisting.length === 1;
 	const allUnpaired =
 		(allMissing || allExtra || allGhostExtra) &&
 		nonCommentExisting.every((m) => !m.paired_with);
-	const canPair =
-		((allMissing || allGhostExtra) && allUnpaired) ||
-		(allExtra && allUnpaired);
 	const hasAnyPaired = nonCommentExisting.some((m) => m.paired_with);
 
 	const fullyLabeled = (label) =>
@@ -287,28 +283,6 @@ function _curatedOnMouseUp(ev) {
 	}
 
 	_curatedSelectAndShow(side, file, rawLo, rawHi, ev.clientX, ev.clientY);
-}
-
-function _curatedMarkSelColor(mark) {
-	if (!mark) return null;
-	if (mark.label === "missing") {
-		return mark.paired_with ? "blue" : "red";
-	}
-	if (mark.label === "extra") return mark.paired_with ? "red" : "blue";
-	if (mark.label === "ghost_extra") return "blue";
-	return null;
-}
-
-function _curatedSelectionColor(marks) {
-	if (!marks || !marks.length) return null;
-	let color = null;
-	for (const m of marks) {
-		const c = _curatedMarkSelColor(m);
-		if (!c) return "yellow";
-		if (color == null) color = c;
-		else if (color !== c) return "yellow";
-	}
-	return color;
 }
 
 function _curatedSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {

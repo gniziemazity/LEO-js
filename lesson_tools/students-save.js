@@ -76,9 +76,6 @@ function _updateSaveButton() {
 	}
 }
 
-const _XML_NS =
-	"http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-
 function _xmlEscape(s) {
 	return String(s).replace(/[&<>"]/g, (c) =>
 		c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
