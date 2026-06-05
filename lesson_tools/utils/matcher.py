@@ -37,7 +37,7 @@ teacher typed and later deleted; star variants require a keylog):
 'git_star' / 'git'   ``git diff --no-index --unified=0 -w`` + per-line
                      token-level diff. Treats comments as regular tokens.
 
-See ``ideas/differentiator-algorithm.md`` for the full algorithm description.
+See ``lesson_tools/differentiator-algorithm.md`` for the full algorithm description.
 
 SUPPORTED_METHODS — single authoritative list used by all callers.
 """

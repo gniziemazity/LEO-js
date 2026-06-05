@@ -1,5 +1,4 @@
 import csv
-import hashlib
 import math
 import re
 import sys
@@ -25,84 +24,6 @@ from .folder_utils import CODE_EXTS, LANG_EXTS
 
 _NGRAM_SIZE = 3
 
-
-def _folder_fingerprint(folder: Path) -> Optional[str]:
-    h = hashlib.sha1()
-    files = sorted(
-        (p for p in folder.iterdir()
-         if p.is_file() and p.suffix.lower() in CODE_EXTS),
-        key=lambda p: p.name.lower(),
-    )
-    if not files:
-        return None
-    for p in files:
-        h.update(p.name.lower().encode('utf-8'))
-        h.update(b'\0')
-        try:
-            h.update(p.read_bytes())
-        except Exception:
-            return None
-        h.update(b'\0')
-    return h.hexdigest()
-
-
-def _read_name_id_map(name_map_csv: Path) -> Dict[str, str]:
-    """Map alter-ego folder names to student id."""
-    out: Dict[str, str] = {}
-    if not name_map_csv.is_file():
-        return out
-
-    def _row(row):
-        sid = (row.get('Student ID') or '').strip()
-        if not sid:
-            return
-        alter = (row.get('Alter Ego') or '').strip()
-        if alter:
-            out[alter] = sid
-
-    try:
-        open_csv_encoded(name_map_csv, _row, delimiter=';', reset_fn=out.clear)
-    except Exception:
-        pass
-    return out
-
-
-def _build_anon_to_id_map(anon_names_dir: Path,
-                          anon_ids_dir: Path,
-                          name_map_csv: Optional[Path] = None) -> Dict[str, str]:
-    """Build a mapping from anon_names folder name to student id.
-
-    Prefers the deterministic CSV mapping (name_map.csv written by sim_check);
-    falls back to content fingerprinting against anon_ids/ if needed.
-    """
-    name_to_id: Dict[str, str] = {}
-    if name_map_csv is not None:
-        name_to_id = _read_name_id_map(name_map_csv)
-
-    out: Dict[str, str] = {}
-    folder_names = [d.name for d in anon_names_dir.iterdir() if d.is_dir()]
-    for folder in folder_names:
-        sid = name_to_id.get(folder)
-        if sid:
-            out[folder] = sid
-
-    if len(out) == len(folder_names) or not anon_ids_dir.is_dir():
-        return out
-
-    id_by_fp: Dict[str, str] = {}
-    for d in anon_ids_dir.iterdir():
-        if not d.is_dir():
-            continue
-        fp = _folder_fingerprint(d)
-        if fp and fp not in id_by_fp:
-            id_by_fp[fp] = d.name
-    for d in anon_names_dir.iterdir():
-        if not d.is_dir() or d.name in out:
-            continue
-        fp = _folder_fingerprint(d)
-        if fp and fp in id_by_fp:
-            out[d.name] = id_by_fp[fp]
-    return out
 
 _HEADER_ROW_HEIGHT = 50
 _BLACK_BORDER = Border(
@@ -604,29 +525,25 @@ class PeerSimilarityChecker:
 def main():
     if len(sys.argv) < 2:
         print('Usage: peer_sim_check.py <project_dir>'); sys.exit(1)
-    current_dir    = Path(sys.argv[1]).resolve()
-    anon_names_dir = current_dir / 'anon_names'
-    correct_dir    = current_dir / 'correct'
-    start_dir      = current_dir / 'start'
+    current_dir  = Path(sys.argv[1]).resolve()
+    anon_ids_dir = current_dir / 'anon_ids'
+    correct_dir  = current_dir / 'correct'
+    start_dir    = current_dir / 'start'
 
     if not correct_dir.exists():
         print(f"Missing: {correct_dir}"); sys.exit(1)
 
-    if anon_names_dir.exists():
-        anon_ids_dir = current_dir / 'anon_ids'
-        name_map_csv = current_dir / 'name_map.csv'
-        id_map = _build_anon_to_id_map(
-            anon_names_dir, anon_ids_dir, name_map_csv,
-        )
+    if anon_ids_dir.exists():
+        id_map = {d.name: d.name for d in anon_ids_dir.iterdir() if d.is_dir()}
         if id_map:
-            print(f"Resolved {len(id_map)} anon name -> id mapping(s).")
+            print(f"Found {len(id_map)} student folder(s).")
         log_data, log_msg = load_lesson_log(current_dir)
         if log_msg:
             print(log_msg)
         events = log_data.all_events if log_data else None
         lesson_file = log_data.lesson_file if log_data else None
         checker = PeerSimilarityChecker(
-            str(anon_names_dir), str(correct_dir),
+            str(anon_ids_dir), str(correct_dir),
             start_dir=str(start_dir) if start_dir.exists() else None,
             id_map=id_map,
             events=events,
@@ -637,7 +554,7 @@ def main():
             str(current_dir / f'student_similarity_{folder_name}.xlsx')
         )
     else:
-        print(f"Missing: {anon_names_dir}")
+        print(f"Missing: {anon_ids_dir}")
 
 
 if __name__ == "__main__":

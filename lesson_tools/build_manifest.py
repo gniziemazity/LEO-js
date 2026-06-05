@@ -19,8 +19,8 @@ _MEDIA_RE = re.compile(
     r"\.(?:png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$",
     re.IGNORECASE,
 )
-_PROJECT_KEEP_DIRS = ("anon_ids", "anon_names", "start", "reconstructed", "correct")
-_PROJECT_DROP_DIRS = ("students", "curated")
+_PROJECT_KEEP_DIRS = ("anon_ids", "start", "reconstructed", "correct")
+_PROJECT_DROP_DIRS = ("students", "curated", "anon_names")
 _MEDIA_KEEP_DIRS = ("start", "reconstructed", "correct")
 _PROJECT_KEEP_FILES = {"instructions.html", "name_map.csv", "artefact_labels.csv"}
 

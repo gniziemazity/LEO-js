@@ -214,7 +214,8 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         bl_outside = self._build_baselines(ref_files, t_outside)
 
         for student_dir in sorted(d for d in self.participation_dir.iterdir() if d.is_dir()):
-            sid = self.name_to_id.get(student_dir.name)
+            name = student_dir.name
+            sid = name if name in self.student_info else self.name_to_id.get(name)
             if sid is None:
                 continue
             self.student_dir_by_sid[sid] = student_dir
@@ -365,19 +366,18 @@ def main() -> None:
 
     current_dir    = Path(positional[0]).resolve()
     correct_dir    = current_dir / 'correct'
-    anon_names_dir = current_dir / 'anon_names'
     anon_ids_dir   = current_dir / 'anon_ids'
     names_dir      = current_dir / 'students'
     students_csv   = current_dir.parent.parent / 'students.csv'
     start_dir      = current_dir / 'start'
 
-    missing = [p for p in (correct_dir, anon_names_dir, students_csv) if not p.exists()]
+    missing = [p for p in (correct_dir, anon_ids_dir, students_csv) if not p.exists()]
     if missing:
         print(f'Missing: {", ".join(str(p) for p in missing)}')
         return
 
     checker = CodeSimilarityChecker(
-        str(correct_dir), str(anon_names_dir), str(students_csv),
+        str(correct_dir), str(anon_ids_dir), str(students_csv),
         start_dir=str(start_dir) if start_dir.exists() else None,
     )
     checker.run_check()
@@ -403,25 +403,24 @@ def main() -> None:
         )
         if stats_path:
             print(f'  Written: {stats_path.name}')
-        checker.write_student_token_files(names_dir, anon_names_dir,
+        checker.write_student_token_files(names_dir, anon_ids_dir,
                                            curated_dir=current_dir / 'curated')
     else:
-        checker.write_leo_diff_marks(names_dir, anon_names_dir)
-    checker.write_lcs_diff_marks(names_dir, anon_names_dir)
-    checker.write_lev_diff_marks(names_dir, anon_names_dir)
-    checker.write_ro_diff_marks(names_dir, anon_names_dir)
-    checker.write_git_diff_marks(names_dir, anon_names_dir)
+        checker.write_leo_diff_marks(names_dir, anon_ids_dir)
+    checker.write_lcs_diff_marks(names_dir, anon_ids_dir)
+    checker.write_lev_diff_marks(names_dir, anon_ids_dir)
+    checker.write_ro_diff_marks(names_dir, anon_ids_dir)
+    checker.write_git_diff_marks(names_dir, anon_ids_dir)
     checker.copy_curated_diff_marks(
-        current_dir / 'curated', names_dir, anon_names_dir, anon_ids_dir,
+        current_dir / 'curated', names_dir, anon_ids_dir,
     )
-    checker.mirror_diff_marks_to_anon_ids(anon_names_dir, anon_ids_dir)
     checker.write_name_map(current_dir)
 
     print('\nGenerating per-basis remarks reports...')
     generated_bases: List[str] = []
     for basis in _REMARKS_BASES:
         stats = checker.compute_basis_token_stats(
-            f'diff_marks_{basis}.json', names_dir, anon_names_dir,
+            f'diff_marks_{basis}.json', names_dir, anon_ids_dir,
         )
         if not stats:
             continue

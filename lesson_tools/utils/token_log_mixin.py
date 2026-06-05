@@ -356,15 +356,10 @@ def _stats_from_occurrences(all_occ, score_e, score_c, n_found, n_missing, n_ext
 
 
 class TokenLogMixin:
-    def _resolve_anon_dir(self, student_dir: Path, anon_names_dir: Optional[Path], sid: str) -> Path:
-        if anon_names_dir is None or not anon_names_dir.is_dir():
+    def _resolve_anon_dir(self, student_dir: Path, anon_dir: Optional[Path], sid: str) -> Path:
+        if anon_dir is None or not anon_dir.is_dir():
             return student_dir
-        display = (self.student_info.get(sid) or {}).get('name')
-        if display and display != student_dir.name:
-            candidate = anon_names_dir / display
-            if candidate.is_dir():
-                return candidate
-        candidate = anon_names_dir / student_dir.name
+        candidate = anon_dir / sid
         if candidate.is_dir():
             return candidate
         return student_dir
@@ -425,7 +420,7 @@ class TokenLogMixin:
                     fh.write(reco_text)
                 print(f'  Written: reconstructed/{reco_path.name}  ({len(reco_text)} chars)')
 
-    def write_student_token_files(self, names_dir: Path, anon_names_dir: Path = None,
+    def write_student_token_files(self, names_dir: Path, anon_ids_dir: Path = None,
                                    curated_dir: Optional[Path] = None) -> None:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         if not teacher_tokens_path.exists():
@@ -455,7 +450,7 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
+            anon_dir = self._resolve_anon_dir(student_dir, anon_ids_dir, sid)
 
             stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
@@ -553,7 +548,7 @@ class TokenLogMixin:
     def _write_alt_diff_marks(
         self,
         names_dir: Path,
-        anon_names_dir: Optional[Path],
+        anon_ids_dir: Optional[Path],
         build_fn,
         token_matching: str,
         label: str,
@@ -584,7 +579,7 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
+            anon_dir = self._resolve_anon_dir(student_dir, anon_ids_dir, sid)
 
             stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
             if not stu_files:
@@ -672,18 +667,18 @@ class TokenLogMixin:
         if write_star and star_label:
             print(f'Written {star_label} for {written_star} student(s) in {names_dir.name}/')
 
-    def write_leo_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_leo_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
+            names_dir, anon_ids_dir,
             _build_leo_diff_marks,
             'leo', 'LEO diff marks', 'diff_marks_leo.json',
             include_line_marks=False,
         )
 
-    def write_lcs_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_lcs_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
+            names_dir, anon_ids_dir,
             _build_lcs_token_diff_marks,
             'lcs', 'LCS diff marks', 'diff_marks_lcs.json',
             star_token_matching='lcs_star' if all_events else None,
@@ -693,10 +688,10 @@ class TokenLogMixin:
             needs_utf16_remap=True,
         )
 
-    def write_lev_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_lev_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
+            names_dir, anon_ids_dir,
             _build_lev_token_diff_marks,
             'lev', 'Lev diff marks', 'diff_marks_lev.json',
             star_token_matching='lev_star' if all_events else None,
@@ -706,10 +701,10 @@ class TokenLogMixin:
             needs_utf16_remap=True,
         )
 
-    def write_ro_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_ro_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
+            names_dir, anon_ids_dir,
             _build_ro_diff_marks,
             'ro', 'R/O diff marks', 'diff_marks_ro.json',
             star_token_matching='ro_star' if all_events else None,
@@ -718,10 +713,10 @@ class TokenLogMixin:
             needs_utf16_remap=True,
         )
 
-    def write_git_diff_marks(self, names_dir: Path, anon_names_dir: Path = None) -> None:
+    def write_git_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)
         self._write_alt_diff_marks(
-            names_dir, anon_names_dir,
+            names_dir, anon_ids_dir,
             _build_git_diff_marks,
             'git', 'Git diff marks', 'diff_marks_git.json',
             star_token_matching='git_star' if all_events else None,
@@ -734,12 +729,11 @@ class TokenLogMixin:
         self,
         curated_dir: Path,
         names_dir: Path,
-        anon_names_dir: Optional[Path],
-        anon_ids_dir: Optional[Path] = None,
+        anon_dir: Optional[Path],
     ) -> None:
         if not curated_dir.is_dir() or not names_dir.is_dir():
             return
-        if anon_names_dir is None or not anon_names_dir.is_dir():
+        if anon_dir is None or not anon_dir.is_dir():
             return
 
         per_basis_copied: Dict[str, int] = {}
@@ -749,17 +743,17 @@ class TokenLogMixin:
             sid = self.name_to_id.get(student_dir.name)
             if sid is None:
                 continue
-            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
+            student_anon_dir = self._resolve_anon_dir(student_dir, anon_dir, sid)
             for basis_name in ('ideal', 'required'):
                 src = curated_dir / sid / f'diff_marks_{basis_name}.json'
                 if not src.is_file():
                     continue
-                shutil.copy2(src, anon_dir / f'diff_marks_{basis_name}.json')
+                shutil.copy2(src, student_anon_dir / f'diff_marks_{basis_name}.json')
                 per_basis_copied[basis_name] = per_basis_copied.get(basis_name, 0) + 1
 
         for basis_name, count in per_basis_copied.items():
             print(f'Copied {basis_name} diff marks for {count} student(s) into '
-                  f'{anon_names_dir.name}/')
+                  f'{anon_dir.name}/')
 
         root_exts = {'.json', '.txt', *CODE_EXTS}
         root_files = [
@@ -768,55 +762,16 @@ class TokenLogMixin:
         ]
         if not root_files:
             return
-        targets = [anon_names_dir]
-        if anon_ids_dir is not None and anon_ids_dir.is_dir():
-            targets.append(anon_ids_dir)
-        root_copied = 0
-        for target in targets:
-            for src in root_files:
-                shutil.copy2(src, target / src.name)
-                root_copied += 1
-        if root_copied:
-            target_names = ', '.join(t.name for t in targets)
-            print(f'Copied {len(root_files)} curated root file(s) into '
-                  f'{target_names}/')
-
-    def mirror_diff_marks_to_anon_ids(
-        self,
-        anon_names_dir: Optional[Path],
-        anon_ids_dir: Optional[Path],
-    ) -> None:
-        if anon_names_dir is None or not anon_names_dir.is_dir():
-            return
-        if anon_ids_dir is None or not anon_ids_dir.is_dir():
-            return
-
-        copied = 0
-        for name_dir in sorted(anon_names_dir.iterdir()):
-            if not name_dir.is_dir():
-                continue
-            sid = self.name_to_id.get(name_dir.name)
-            if sid is None:
-                continue
-            ids_dir = anon_ids_dir / sid
-            if not ids_dir.is_dir():
-                continue
-            for src in name_dir.iterdir():
-                if not src.is_file():
-                    continue
-                if src.name.startswith('diff_marks_') and src.name.endswith('.json'):
-                    shutil.copy2(src, ids_dir / src.name)
-                    copied += 1
-
-        if copied:
-            print(f'Mirrored {copied} diff_marks file(s) from '
-                  f'{anon_names_dir.name}/ to {anon_ids_dir.name}/')
+        for src in root_files:
+            shutil.copy2(src, anon_dir / src.name)
+        print(f'Copied {len(root_files)} curated root file(s) into '
+              f'{anon_dir.name}/')
 
     def compute_basis_token_stats(
         self,
         basis_filename: str,
         names_dir: Path,
-        anon_names_dir: Optional[Path],
+        anon_ids_dir: Optional[Path],
     ) -> Dict[str, dict]:
         teacher_tokens_path = self.reference_dir / 'tokens.txt'
         if not teacher_tokens_path.exists():
@@ -841,7 +796,7 @@ class TokenLogMixin:
             if sid is None or sid not in self.results:
                 continue
 
-            anon_dir = self._resolve_anon_dir(student_dir, anon_names_dir, sid)
+            anon_dir = self._resolve_anon_dir(student_dir, anon_ids_dir, sid)
             marks_path = anon_dir / basis_filename
             if not marks_path.is_file():
                 continue

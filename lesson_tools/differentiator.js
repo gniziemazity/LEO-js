@@ -536,14 +536,6 @@ async function _buildIdFolderMaps(ds) {
 	return { idToFolder, folderToId, lowerToOriginal };
 }
 
-function _resolveStudentFolder(token, idToFolder, allFolders) {
-	if (!token) return null;
-	const lower = String(token).toLowerCase();
-	if (idToFolder[lower]) return idToFolder[lower];
-	const direct = allFolders.find((f) => f.toLowerCase() === lower);
-	return direct || null;
-}
-
 function _updateStudentNavButtons() {
 	const prev = document.getElementById("nav-prev-student");
 	const next = document.getElementById("nav-next-student");
@@ -567,22 +559,12 @@ async function _loadFromUrlParams({ lesson, group, id, title }) {
 	if (!ds) return null;
 	await ds.load();
 
-	const { idToFolder, folderToId, lowerToOriginal } =
-		await _buildIdFolderMaps(ds);
-	const namesFoldersLc = _extractStudentFolders(ds.files, "anon_names/");
-	const useNames = namesFoldersLc.length > 0;
-	const prefix = useNames ? "anon_names/" : "anon_ids/";
-	const rawFolders = useNames
-		? namesFoldersLc
-		: _extractStudentFolders(ds.files, "anon_ids/");
-	const folders = useNames
-		? rawFolders.map((lc) => lowerToOriginal[lc] || lc)
-		: rawFolders;
-	const folder = useNames
-		? _resolveStudentFolder(id, idToFolder, folders) ||
-			folders.find((f) => f.toLowerCase() === String(id).toLowerCase()) ||
-			null
-		: String(id);
+	const { idToFolder } = await _buildIdFolderMaps(ds);
+	const prefix = "anon_ids/";
+	const folders = _extractStudentFolders(ds.files, "anon_ids/");
+	const folder =
+		folders.find((f) => f.toLowerCase() === String(id).toLowerCase()) ||
+		String(id);
 
 	if (!folder) {
 		console.warn(
@@ -617,18 +599,16 @@ async function _loadFromUrlParams({ lesson, group, id, title }) {
 			(f) => f.toLowerCase() === folder.toLowerCase(),
 		),
 		idToFolder,
-		folderToId,
-		lowerToOriginal,
 		prefix,
 	};
 	_updateStudentNavButtons();
-	data.title = title || _formatStudentTitle(folder, folderToId);
+	data.title = title || _formatStudentTitle(folder, idToFolder);
 	return _buildDiffPayload(data);
 }
 
-function _formatStudentTitle(folder, folderToId) {
-	const id = folderToId && folderToId[folder.toLowerCase()];
-	return id ? `${id}. ${folder}` : folder;
+function _formatStudentTitle(folder, idToFolder) {
+	const name = idToFolder && idToFolder[folder.toLowerCase()];
+	return name ? `${folder}. ${name}` : folder;
 }
 
 async function _navToStudent(idx, title) {
@@ -651,7 +631,7 @@ async function _navToStudent(idx, title) {
 			);
 			return;
 		}
-		data.title = title || _formatStudentTitle(folder, _navState.folderToId);
+		data.title = title || _formatStudentTitle(folder, _navState.idToFolder);
 		if (typeof _curatedResetForNewStudent === "function") {
 			_curatedResetForNewStudent();
 		}
@@ -660,10 +640,7 @@ async function _navToStudent(idx, title) {
 		_updateStudentNavButtons();
 		_updateTitleScore();
 		const url = new URL(location.href);
-		const idForUrl =
-			(_navState.folderToId && _navState.folderToId[folder.toLowerCase()]) ||
-			folder;
-		url.searchParams.set("id", idForUrl);
+		url.searchParams.set("id", folder);
 		url.searchParams.delete("title");
 		history.replaceState(null, "", url);
 	} catch (e) {
