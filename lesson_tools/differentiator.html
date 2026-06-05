@@ -392,10 +392,17 @@
 
 			.preview-frame {
 				flex: 1;
-				min-height: 600px;
+				min-height: 0;
 				border: none;
 				background: var(--clr-bg);
 				display: none;
+			}
+
+			body.diff-preview-on #diff-scroll {
+				overflow: hidden;
+			}
+			body.diff-preview-on .preview-frame {
+				height: 100%;
 			}
 
 			#docx-viewer {

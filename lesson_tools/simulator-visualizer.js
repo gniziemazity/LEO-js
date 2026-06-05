@@ -1,5 +1,19 @@
 "use strict";
 
+const PAUSE_CAP_MS = 3000;
+
+function computeSkipRegions(cumDelay, cap) {
+	const regions = [];
+	if (!cumDelay) return regions;
+	for (let i = 1; i < cumDelay.length; i++) {
+		const gap = cumDelay[i] - cumDelay[i - 1];
+		if (gap > cap) {
+			regions.push({ start: cumDelay[i - 1] + cap, end: cumDelay[i] });
+		}
+	}
+	return regions;
+}
+
 class LogVisualizer {
 	constructor() {
 		this.micro = [];
@@ -24,6 +38,7 @@ class LogVisualizer {
 		this._logBuf = [];
 		this._microCumDelay = null;
 		this._totalDelay = 0;
+		this._skipRegions = [];
 
 		this._seeking = false;
 		this._seekWasPlaying = false;
@@ -58,6 +73,7 @@ class LogVisualizer {
             <span id="speed-label">8×</span>
             <div class="sep"></div>
             <label><input id="chk-autoscroll" type="checkbox" checked> Auto-scroll</label>
+            <label><input id="chk-skip-pauses" type="checkbox" checked> Skip pauses</label>
             <span id="ts-label" style="margin-left:auto;color:${CLR.accent};font-family:Consolas,monospace;font-size:11px;line-height:1"></span>
             <button id="btn-copy-ts" title="Copy link to this moment" style="margin-left:6px" disabled>🔗</button>
             <span id="prog-label" style="margin-left:12px;color:${CLR.muted};font-family:Consolas,monospace;font-size:11px;line-height:1">No file loaded</span>
@@ -91,6 +107,7 @@ class LogVisualizer {
 		this.elSpeed = document.getElementById("speed-slider");
 		this.elSpeedLbl = document.getElementById("speed-label");
 		this.elAutoScroll = document.getElementById("chk-autoscroll");
+		this.elSkipPauses = document.getElementById("chk-skip-pauses");
 		this.elTsLbl = document.getElementById("ts-label");
 		this.elCopyTs = document.getElementById("btn-copy-ts");
 		this.elProgLbl = document.getElementById("prog-label");
@@ -138,6 +155,11 @@ class LogVisualizer {
 			this.speed = parseFloat(this.elSpeed.value);
 			this.elSpeedLbl.textContent = `${this.speed.toFixed(0)}×`;
 		});
+
+		if (this.elSkipPauses)
+			this.elSkipPauses.addEventListener("change", () =>
+				this._renderSkipSegments(),
+			);
 
 		this.elSeekbar.addEventListener("pointerdown", (e) => {
 			this.elSeekbar.setPointerCapture(e.pointerId);
@@ -318,6 +340,8 @@ class LogVisualizer {
 		}
 		this._totalDelay = this._microCumDelay[micro.length];
 		this._tsOriginCum = this._microCumDelay[tsOriginIdx] || 0;
+		this._skipRegions = computeSkipRegions(this._microCumDelay, PAUSE_CAP_MS);
+		this._renderSkipSegments();
 
 		let targetMs = this._totalDelay;
 		if (seekTs != null && seekTs !== "") {
@@ -468,10 +492,11 @@ class LogVisualizer {
 		const now = performance.now();
 		const dtSec = (now - this._lastWall) / 1000;
 		this._lastWall = now;
-		const newPlayMs = Math.min(
+		let newPlayMs = Math.min(
 			this._totalDelay,
 			this._playMs + dtSec * 1000 * Math.max(0.1, this.speed),
 		);
+		newPlayMs = this._snapPastSkips(newPlayMs);
 		let eventsFired = false;
 		while (
 			this.microIdx < this.micro.length &&
@@ -486,6 +511,8 @@ class LogVisualizer {
 		if (eventsFired) {
 			this._renderEditors();
 			this._schedulePreview();
+		} else if (this.elAutoScroll.checked) {
+			this._followCursor();
 		}
 		if (
 			this.microIdx >= this.micro.length &&
@@ -1038,6 +1065,32 @@ class LogVisualizer {
 		this.elEventLog.innerHTML = "";
 	}
 
+	_snapPastSkips(playMs) {
+		if (!this.elSkipPauses || !this.elSkipPauses.checked) return playMs;
+		for (const r of this._skipRegions) {
+			if (playMs > r.start && playMs < r.end)
+				return Math.min(r.end + 0.5, this._totalDelay);
+		}
+		return playMs;
+	}
+
+	_renderSkipSegments() {
+		if (!this.elSeekbar) return;
+		for (const el of this.elSeekbar.querySelectorAll(".seek-skip"))
+			el.remove();
+		if (!this.elSkipPauses || !this.elSkipPauses.checked || !this._totalDelay)
+			return;
+		const frag = document.createDocumentFragment();
+		for (const r of this._skipRegions) {
+			const seg = document.createElement("div");
+			seg.className = "seek-skip";
+			seg.style.left = `${(r.start / this._totalDelay) * 100}%`;
+			seg.style.width = `${((r.end - r.start) / this._totalDelay) * 100}%`;
+			frag.appendChild(seg);
+		}
+		this.elSeekbar.appendChild(frag);
+	}
+
 	_drawSeekbar(frac) {
 		this.elSeekFill.style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
 	}
@@ -1092,7 +1145,9 @@ class LogVisualizer {
 
 	_seekToMs(playMs) {
 		if (!this.micro.length) return;
-		this._playMs = Math.max(0, Math.min(this._totalDelay, playMs));
+		this._playMs = this._snapPastSkips(
+			Math.max(0, Math.min(this._totalDelay, playMs)),
+		);
 
 		this._silent = true;
 		this.microIdx = 0;
@@ -1149,4 +1204,8 @@ class LogVisualizer {
 		this._updatePreview(true);
 		this._paintHud();
 	}
+}
+
+if (typeof module !== "undefined" && module.exports) {
+	module.exports = { computeSkipRegions, PAUSE_CAP_MS };
 }

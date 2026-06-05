@@ -192,6 +192,19 @@ function _curatedAlignWhitespace(
 	return { text, start: aStart, end: aEnd };
 }
 
+function _curatedCleanupCorrectedText(text) {
+	const lines = text.split("\n").map((line) => {
+		const indent = (line.match(/^[ \t]*/) || [""])[0];
+		return indent + line.slice(indent.length).replace(/ {2,}/g, " ");
+	});
+	const isBlank = (l) => /^[ \t]*$/.test(l);
+	let s = 0;
+	let e = lines.length - 1;
+	while (s <= e && isBlank(lines[s])) s++;
+	while (e >= s && isBlank(lines[e])) e--;
+	return lines.slice(s, e + 1).join("\n");
+}
+
 function _curatedApplyToStudent() {
 	const out = {};
 	const curatedData = _curatedMarks();
@@ -360,6 +373,18 @@ function _curatedApplyToStudent() {
 			}
 		}
 
+		const _orderedRawOps = rawOps
+			.slice()
+			.sort((a, b) => a.origStart - b.origStart || a.origEnd - b.origEnd);
+		for (let i = 0; i + 1 < _orderedRawOps.length; i++) {
+			const a = _orderedRawOps[i];
+			const b = _orderedRawOps[i + 1];
+			if (a.origEnd > b.origStart) continue;
+			const gap = origText.slice(a.origEnd, b.origStart);
+			if (!gap || !/^[ \t]+$/.test(gap)) continue;
+			if (a.kind === "del") a.origEnd = b.origStart;
+			else if (b.kind === "del") b.origStart = a.origEnd;
+		}
 		const siblings = rawOps.map((op) => [op.origStart, op.origEnd]);
 		for (let i = 0; i < rawOps.length; i++) {
 			const op = rawOps[i];
@@ -439,7 +464,7 @@ function _curatedApplyToStudent() {
 			text = text.slice(0, op.start) + body + text.slice(op.end);
 		}
 		const outName = filePairs[studentName] || studentName;
-		out[outName] = text;
+		out[outName] = _curatedCleanupCorrectedText(text);
 	}
 
 	const teacherNames = Object.keys(_teacherFiles || {});

@@ -420,6 +420,7 @@ function renderTable() {
 			tr.classList.add(_isHi ? "row-emphasis" : "row-dim");
 		}
 		const hasFiles = _studentHasFiles(s);
+		if (!hasFiles) tr.classList.add("row-nofiles");
 
 		const openOnClick = (el) => {
 			if (!hasFiles) {

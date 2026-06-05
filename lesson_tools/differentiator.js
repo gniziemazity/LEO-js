@@ -1063,7 +1063,11 @@ function _refreshPreviewButton() {
 	btn.textContent = on ? "\u2b1b Preview" : "\u2b1c Preview";
 }
 
+let _savedCodeScrollTop = 0;
 function _applyPreviewMode(isPreview) {
+	const scroll = document.getElementById("diff-scroll");
+	if (isPreview && scroll) _savedCodeScrollTop = scroll.scrollTop;
+	document.body.classList.toggle("diff-preview-on", isPreview);
 	for (const side of ["teacher", "student"]) {
 		const codeWrap = document.getElementById(`code-${side}`);
 		const iframe = document.getElementById(`preview-${side}`);
@@ -1084,6 +1088,7 @@ function _applyPreviewMode(isPreview) {
 		}
 		_updateHScrollProxy(side);
 	}
+	if (scroll) scroll.scrollTop = isPreview ? 0 : _savedCodeScrollTop || 0;
 }
 
 function _hscrollProxyFor(side) {
@@ -1197,6 +1202,8 @@ function _refreshPreviewIfActive(side) {
 	const files = side === "teacher" ? _teacherFiles : _studentFiles;
 	if (!files || !Object.keys(files).length) return;
 	updatePreview(side, files, iframe);
+	const scroll = document.getElementById("diff-scroll");
+	if (scroll) scroll.scrollTop = 0;
 }
 
 function _activeHtmlFileFor(side, files) {

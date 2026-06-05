@@ -172,6 +172,11 @@
 			tbody tr.row-emphasis td:first-child {
 				box-shadow: inset 3px 0 0 var(--clr-accent);
 			}
+			tbody tr.row-nofiles td.col-id,
+			tbody tr.row-nofiles td.col-name,
+			tbody tr.row-nofiles td.col-num {
+				color: var(--clr-fail-fade);
+			}
 
 			tbody tr:hover {
 				background: var(--clr-row-hover);
@@ -230,6 +235,8 @@
 				width: 34px;
 				text-align: center;
 				white-space: nowrap;
+			}
+			td.col-artefact {
 				position: relative;
 			}
 			.col-artefact sub {

@@ -307,7 +307,9 @@ function renderPanel(side, files, marks) {
 		allAlignments = modeData?.alignments ?? _borrowedAlignments();
 	}
 	const sideIdx = side === "teacher" ? 0 : 1;
-	const allLineMks = modeData?.line_marks ?? null;
+	const _lineBasedMode =
+		typeof _diffMode === "string" && _diffMode.startsWith("line-");
+	const allLineMks = _lineBasedMode ? null : (modeData?.line_marks ?? null);
 	const sideLineMks =
 		side === "teacher"
 			? (allLineMks?.teacher_files ?? null)
