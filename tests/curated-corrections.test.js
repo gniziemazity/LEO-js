@@ -51,17 +51,32 @@ function __getRows() { return __rows; }
 
 function loadAPI() {
 	const model = fs.readFileSync(
-		path.join(dir, "differentiator-curated-model.js"),
+		path.join(dir, "differentiator/curated-model.js"),
 		"utf-8",
 	);
 	const io = fs.readFileSync(
-		path.join(dir, "differentiator-curated-io.js"),
+		path.join(dir, "differentiator/curated-io.js"),
+		"utf-8",
+	);
+	const apply = fs.readFileSync(
+		path.join(dir, "differentiator/curated-apply.js"),
+		"utf-8",
+	);
+	const summary = fs.readFileSync(
+		path.join(dir, "differentiator/curated-summary.js"),
+		"utf-8",
+	);
+	const floatwin = fs.readFileSync(
+		path.join(dir, "differentiator/curated-floatwin.js"),
 		"utf-8",
 	);
 	return new Function(`
 		${stub}
 		${model}
 		${io}
+		${apply}
+		${summary}
+		${floatwin}
 		return {
 			_curatedApplyToStudent,
 			_curatedSummarize,

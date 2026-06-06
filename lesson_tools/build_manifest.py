@@ -37,7 +37,7 @@ def _keep_root_file(name: str) -> bool:
     return lower in _ROOT_KEEP_FILES or bool(_OVERVIEW_RE.match(lower))
 
 
-def _keep_project_file(rel: str) -> bool:
+def _keep_project_file(rel: str, lesson_name: str) -> bool:
     parts = rel.split("/")
     top = parts[0]
     if top in _PROJECT_DROP_DIRS:
@@ -49,7 +49,10 @@ def _keep_project_file(rel: str) -> bool:
         return top in _MEDIA_KEEP_DIRS
     if top in _PROJECT_KEEP_DIRS:
         return True
-    if len(parts) == 1 and parts[0] in _PROJECT_KEEP_FILES:
+    if len(parts) == 1 and (
+        parts[0] in _PROJECT_KEEP_FILES
+        or lower in {f"{lesson_name.lower()}.json", "log.json"}
+    ):
         return True
     return lower.endswith(".xlsx") and "remarks" in lower
 
@@ -87,7 +90,7 @@ def _list_root_files(course: Path, *, exclude_pii: bool) -> list[str]:
 
 
 def _build_lesson_entry(lesson_dir: Path) -> dict:
-    files = [f for f in _list_files_relative(lesson_dir) if _keep_project_file(f)]
+    files = [f for f in _list_files_relative(lesson_dir) if _keep_project_file(f, lesson_dir.name)]
     students: list[str] = []
     anon = lesson_dir / "anon_ids"
     if anon.is_dir():

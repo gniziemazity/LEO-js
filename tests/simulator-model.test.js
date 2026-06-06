@@ -3,7 +3,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const model = require("../lesson_tools/simulator-model.js");
+const model = require("../lesson_tools/shared/simulator-model.js");
 const { TextState } = model;
 
 function typed(str) {

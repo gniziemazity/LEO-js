@@ -11,11 +11,12 @@ if (!logPath) {
 
 const here = __dirname;
 const modelSrc = fs.readFileSync(
-	path.join(here, "simulator-model.js"),
+	path.join(here, "shared/simulator-model.js"),
 	"utf-8",
 );
-const cfgSrc = fs.readFileSync(path.join(here, "timeline-config.js"), "utf-8");
-const dataSrc = fs.readFileSync(path.join(here, "timeline-data.js"), "utf-8");
+const cfgSrc = fs.readFileSync(path.join(here, "timeline/config.js"), "utf-8");
+const dataSrc = fs.readFileSync(path.join(here, "timeline/data.js"), "utf-8");
+const statsSrc = fs.readFileSync(path.join(here, "timeline/stats.js"), "utf-8");
 
 const stub = `
 var THEME = { blue: "#000", orange: "#000", green: "#000" };
@@ -35,7 +36,7 @@ function _singletonToTextPart(e) { return e.char || ""; }
 function alert(msg) { console.error(msg); }
 `;
 
-const bundle = stub + "\n" + modelSrc + "\n" + cfgSrc + "\n" + dataSrc;
+const bundle = stub + "\n" + modelSrc + "\n" + cfgSrc + "\n" + dataSrc + "\n" + statsSrc;
 
 const api = new Function(`
 	${bundle}

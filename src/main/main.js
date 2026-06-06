@@ -328,7 +328,6 @@ async function createWindow() {
 	createApplicationMenu();
 	state.mainWindow.loadFile(path.join(__dirname, "../index.html"));
 	await broadcastServer.start();
-	state.broadcastServer = broadcastServer;
 	hotkeyManager.registerSystemShortcuts();
 	state.mainWindow.webContents.on("did-finish-load", () => {
 		state.mainWindow.webContents.send(
@@ -1034,7 +1033,7 @@ function openLogVisualizer(logFilePath) {
 	if (logFilePath) {
 		const scriptPath = path.join(
 			__dirname,
-			"../../lesson_tools/lv_expand.py",
+			"../../lesson_tools/lv_expand_cli.py",
 		);
 		const result = spawnSync(resolvePython(), [scriptPath, logFilePath], {
 			encoding: "utf8",

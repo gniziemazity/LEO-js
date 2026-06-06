@@ -36,6 +36,12 @@ def _list_tool_files() -> list[tuple[Path, Path]]:
             if p.name in _TOOL_SKIP_FILES:
                 continue
             out.append((p, Path(p.name)))
+    for sub in ("shared", "differentiator", "overview", "students", "timeline", "simulator"):
+        sub_dir = ROOT_DIR / sub
+        if sub_dir.is_dir():
+            for p in sorted(sub_dir.iterdir()):
+                if p.is_file() and p.suffix.lower() in _TOOL_FILE_EXTS:
+                    out.append((p, Path(sub) / p.name))
     languages_dir = ROOT_DIR / "languages"
     if languages_dir.is_dir():
         for p in sorted(languages_dir.iterdir()):
@@ -124,6 +130,8 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     def _request_is_blocked(self):
         url_path = urllib.parse.urlsplit(self.path).path
         segs = [urllib.parse.unquote(p) for p in url_path.split("/") if p]
+        if segs and segs[0] == "tools":
+            return False
         return any(self._is_blocked_name(s) for s in segs)
 
     def end_headers(self):

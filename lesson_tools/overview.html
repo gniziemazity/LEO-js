@@ -3,8 +3,8 @@
 	<head>
 		<meta charset="UTF-8" />
 		<title>Grades Overview</title>
-		<link rel="stylesheet" href="shared.css" />
-		<link rel="stylesheet" href="overview.css" />
+		<link rel="stylesheet" href="shared/shared.css" />
+		<link rel="stylesheet" href="overview/overview.css" />
 	</head>
 	<body>
 		<div id="landing">
@@ -264,20 +264,25 @@
 
 		<div id="loading">Loading…</div>
 
-		<script src="timeline-utils.js"></script>
-		<script src="xlsx.full.min.js"></script>
+		<script src="shared/timeline-utils.js"></script>
+		<script src="shared/xlsx.full.min.js"></script>
 		<script src="../src/shared/charts/utils.js"></script>
 		<script src="../src/shared/charts/scatter/scatter-chart.js"></script>
 		<script src="../src/shared/charts/bar/bar-chart.js"></script>
 		<script src="../src/shared/charts/line/line-chart.js"></script>
 		<script src="../src/shared/charts/boxplot/boxplot-chart.js"></script>
-		<script src="diff-utils.js"></script>
-		<script src="overview-state.js"></script>
-		<script src="overview-data.js"></script>
-		<script src="overview-table.js"></script>
-		<script src="overview-stats.js"></script>
-		<script src="overview-clusters.js"></script>
-		<script src="overview-progress.js"></script>
-		<script src="overview.js"></script>
+		<script src="shared/diff-utils.js"></script>
+		<script src="shared/data-source.js"></script>
+		<script src="overview/state.js"></script>
+		<script src="overview/data.js"></script>
+		<script src="overview/table.js"></script>
+		<script src="overview/charts.js"></script>
+		<script src="overview/stats.js"></script>
+		<script src="overview/clusters.js"></script>
+		<script src="overview/progress.js"></script>
+		<script src="overview/index.js"></script>
 	</body>
 </html>
+
+<script src="overview/llm-stats.js"></script>
+<script src="overview/lesson-stats.js"></script>

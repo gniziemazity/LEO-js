@@ -260,7 +260,7 @@ overview views follow the same precedence on the rendering side (they infer
 | Token timeline                   | `_parse_teacher_tokens()` — `utils/token_log.py`; `reconstruct_tokens_from_keylog_full()` — `utils/similarity_measures.py`                                                                  |
 | Ghost stream                     | `_collect_teacher_ghosts()` — `utils/token_log_leo.py`                                                                                                                                      |
 | Per-token matching (LEO core)    | `_compute_per_token_matching()` — `utils/token_log_leo.py`                                                                                                                                  |
-| Mark factories + curated schema  | `_missing_mark`, `_extra_mark`, `_comment_pos_mark`, `_validate_curated_schema` — `utils/token_log_marks.py`                                                                                |
+| Mark factories + curated schema  | `_missing_mark`, `_extra_mark`, `_comment_pos_mark`, `_validate_curated_schema` — `utils/token_log_curated.py`                                                                              |
 | Star post-processing             | `_add_log_metadata`, `_apply_ghost_extra_promotion`, `_apply_swap_pairing_to_marks`, `_apply_insert_at_to_unpaired_missings`, `_refresh_missing_timestamps` — `utils/token_log_starpass.py` |
 
 `utils/token_log.py` is the public entry point and re-exports every symbol
@@ -588,6 +588,13 @@ def _build_<line>_diff_marks(teacher_files, student_files):
 
     return _finalize_per_file_diff(per_file_results, n_total)
 ```
+
+Both methods share this skeleton through a single
+`_build_line_diff_marks(teacher_files, student_files, align_fn)` driver: the
+`for (tag, …) in line_ops` step above is the only per-method part, supplied as
+an `align_fn` callback (`_ro_align` for R/O, `_git_align` for Git) that fills the
+alignment + line/token marks in place — the same pattern
+`_build_token_seq_diff_marks` uses to share LCS and Lev.
 
 ### 6.1 R/O — Difflib SequenceMatcher on Lines
 
@@ -1119,7 +1126,7 @@ when the student named a file differently from the teacher (e.g. the
 student's `654321.js` should pair with the teacher's `123456.js`). The
 field is omitted from the JSON when empty.
 
-`_validate_curated_schema()` in `token_log_marks.py` (re-exported by
+`_validate_curated_schema()` in `token_log_curated.py` (re-exported by
 `token_log.py`) enforces the structural
 invariants:
 

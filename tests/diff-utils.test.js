@@ -24,7 +24,7 @@ const navigator = { userAgent: "" };
 
 function loadAPI() {
 	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "lesson_tools", "diff-utils.js"),
+		path.resolve(__dirname, "..", "lesson_tools", "shared/diff-utils.js"),
 		"utf-8",
 	);
 	return new Function(`

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<title>Simulator</title>
-		<link rel="stylesheet" href="shared.css" />
+		<link rel="stylesheet" href="shared/shared.css" />
 		<style>
 			html,
 			body {
@@ -121,14 +121,17 @@
 				background: var(--clr-accent);
 				width: 0%;
 				pointer-events: none;
+				position: relative;
+				z-index: 2;
 			}
 			.seek-skip {
 				position: absolute;
 				top: 0;
 				height: 100%;
 				background: var(--clr-muted);
-				opacity: 0.55;
+				opacity: 0.3;
 				pointer-events: none;
+				z-index: 1;
 			}
 
 			#vis-main {
@@ -361,13 +364,14 @@
 			}
 		</script>
 		<script src="preview.js"></script>
-		<script src="diff-utils.js"></script>
+		<script src="shared/diff-utils.js"></script>
+		<script src="shared/data-source.js"></script>
 		<script src="languages/profiles.js"></script>
-		<script src="simulator-model.js"></script>
-		<script src="simulator-highlight.js"></script>
-		<script src="drag-divider.js"></script>
-		<script src="file-viewer.js"></script>
-		<script src="simulator-visualizer.js"></script>
-		<script src="simulator.js"></script>
+		<script src="shared/simulator-model.js"></script>
+		<script src="shared/simulator-highlight.js"></script>
+		<script src="shared/drag-divider.js"></script>
+		<script src="shared/file-viewer.js"></script>
+		<script src="simulator/visualizer.js"></script>
+		<script src="simulator/index.js"></script>
 	</body>
 </html>

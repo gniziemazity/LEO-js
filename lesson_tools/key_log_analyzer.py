@@ -8,9 +8,9 @@ from tkinter import filedialog
 
 import matplotlib.pyplot as plt
 
-from utils.kla_config import Config
-from utils.kla_data import load_keypress_data, load_student_data_from_xlsx
-from utils.kla_vis import create_visualizations
+from utils.lv_timeline_config import Config
+from utils.lv_timeline_data import load_keypress_data, load_student_data_from_xlsx
+from utils.lv_timeline_chart import create_visualizations
 
 
 def find_files_in_directory():
@@ -66,11 +66,12 @@ def main():
     remarks_path = find_xlsx_files(json_dir)
 
     s_data = None
+    id_to_name = {}
     if remarks_path:
         print(f'Found remarks.xlsx in: {json_dir}')
         session_start = data['events'][0]['timestamp'] / 1000
         session_end  = data['events'][-1]['timestamp'] / 1000
-        s_data = load_student_data_from_xlsx(remarks_path, session_start, session_end)
+        s_data, id_to_name = load_student_data_from_xlsx(remarks_path, session_start, session_end)
         if s_data:
             print(f'  Loaded {len(s_data)} students with follow data')
         else:
@@ -78,7 +79,7 @@ def main():
     else:
         print(f'Student chart disabled (remarks.xlsx not found in {json_dir})')
 
-    create_visualizations(data, s_data)
+    create_visualizations(data, s_data, id_to_name)
 
     plt.draw()
     plt.pause(0.1)
@@ -92,8 +93,9 @@ def main():
         elif hasattr(manager, 'full_screen_toggle'):
             manager.full_screen_toggle()
     except Exception:
+        pass
 
-        plt.show()
+    plt.show()
 
 
 if __name__ == "__main__":

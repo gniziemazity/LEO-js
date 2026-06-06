@@ -1272,65 +1272,6 @@ def _ids_of(st_subset, COL_ID):
     return out
 
 
-def _build_cofiring(st_subset, COL_ID):
-    if len(st_subset) == 0:
-        return []
-    out = []
-    for a_num, a in ASSIGNMENTS.items():
-        valid_col = f"a{a_num}_artefact_valid"
-        if valid_col not in st_subset.columns:
-            continue
-        valid = st_subset[valid_col].astype(bool)
-        schema = _artefact_schema_for(a)
-        if not schema:
-            continue
-        severity_map = _load_artefact_severity(a.get("lower", ""))
-        marks = []
-        for key, label in schema:
-            col = f"a{a_num}_artefact_{key}"
-            if col not in st_subset.columns: continue
-            marks.append({
-                "key":      key,
-                "label":    label,
-                "severity": severity_map.get(key, ""),
-                "fired":    st_subset[col].astype(bool),
-            })
-        for mx in marks:
-            n_x = int(mx["fired"].sum())
-            if n_x == 0:
-                continue
-            for my in marks:
-                if my["key"] == mx["key"]:
-                    continue
-                joint = mx["fired"] & my["fired"] & valid
-                n_xy = int(joint.sum())
-                if n_xy < 3:
-                    continue
-                base_n = int(my["fired"].sum())
-                base_total = int(valid.sum())
-                p_y = base_n / base_total if base_total else None
-                xy_universe = int((mx["fired"] & valid).sum())
-                p_y_given_x = (n_xy / xy_universe) if xy_universe else None
-                lift = (p_y_given_x / p_y) if (p_y and p_y > 0) else None
-                out.append({
-                    "assignment": a["lower"],
-                    "assn_name":  a["name"],
-                    "x_key":      mx["key"],
-                    "x_label":    mx["label"],
-                    "x_severity": mx["severity"],
-                    "y_key":      my["key"],
-                    "y_label":    my["label"],
-                    "y_severity": my["severity"],
-                    "n_x":        n_x,
-                    "n_xy":       n_xy,
-                    "p_y":          round(p_y, 6) if p_y is not None else None,
-                    "p_y_given_x":  round(p_y_given_x, 6) if p_y_given_x is not None else None,
-                    "lift":         round(lift, 4) if lift is not None else None,
-                    "joint_ids":    _ids_of(st_subset[joint], COL_ID),
-                })
-    return out
-
-
 def _build_curated_moments(st_subset, COL_ID):
     moments_out = []
     for a_num, a in ASSIGNMENTS.items():
@@ -1593,7 +1534,6 @@ def save_stats_json(st, grades_path):
                 })
         result["llm_assignments"].append(entry)
 
-    result["cofiring"] = _build_cofiring(st_students, COL.get("id"))
     result["curated_moments"] = _build_curated_moments(st_students, COL.get("id"))
 
     st = st_students

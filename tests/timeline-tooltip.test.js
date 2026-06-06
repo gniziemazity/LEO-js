@@ -105,19 +105,23 @@ function studentY() { return 0; }
 
 function loadAPI() {
 	const cfgSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "timeline-config.js"),
+		path.join(lessonToolsDir, "timeline/config.js"),
 		"utf-8",
 	);
 	const modelSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "simulator-model.js"),
+		path.join(lessonToolsDir, "shared/simulator-model.js"),
 		"utf-8",
 	);
 	const utilsSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "timeline-utils.js"),
+		path.join(lessonToolsDir, "shared/timeline-utils.js"),
 		"utf-8",
 	);
 	const tooltipSrc = fs.readFileSync(
-		path.join(lessonToolsDir, "timeline-tooltip.js"),
+		path.join(lessonToolsDir, "timeline/tooltip.js"),
+		"utf-8",
+	);
+	const burstSrc = fs.readFileSync(
+		path.join(lessonToolsDir, "timeline/burst-deco.js"),
 		"utf-8",
 	);
 	const bundle =
@@ -129,7 +133,9 @@ function loadAPI() {
 		"\n" +
 		utilsSrc +
 		"\n" +
-		tooltipSrc;
+		tooltipSrc +
+		"\n" +
+		burstSrc;
 	return new Function(`
 		${bundle}
 		return { _computeBurstDecorations, _isInsertableChar, _displayCodeInsert };

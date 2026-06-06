@@ -3,6 +3,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import bisect
+import os as _os
+import re as _re
+import subprocess as _subprocess
+import tempfile as _tempfile
 from . import similarity_measures as _sm
 
 from .similarity_measures import (
@@ -50,9 +54,12 @@ from .token_log_marks import (
     _read_text_normalized,
     _split_tokens_by_comment,
     _strip_internal_fields,
+    _summarize_occurrence_flags,
+)
+
+from .token_log_curated import (
     _structural_diff_summary,
     _structural_form,
-    _summarize_occurrence_flags,
     _validate_curated_schema,
 )
 
@@ -653,9 +660,10 @@ def _build_lev_token_diff_marks(
 
 
 
-def _build_ro_diff_marks(
+def _build_line_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
+    align_fn,
 ) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
     n_total = 0
     per_file_results: List[tuple] = []
@@ -688,32 +696,11 @@ def _build_ro_diff_marks(
         student_line_marks: List[dict] = []
         alignment:          list       = []
 
-        for tag, t_lo, t_hi, s_lo, s_hi in difflib.SequenceMatcher(
-            None,
-            [line.strip() for line in teacher_lines],
-            [line.strip() for line in student_lines],
-            autojunk=False,
-        ).get_opcodes():
-            if tag == 'equal':
-                for k in range(t_hi - t_lo):
-                    alignment.append([t_lo + k, s_lo + k])
-            elif tag == 'delete':
-                for line_i in range(t_lo, t_hi):
-                    _add_unpaired_teacher_line(alignment, teacher_marks, teacher_line_marks,
-                                                teacher_lines, teacher_line_offsets,
-                                                line_i, all_token_positions)
-            elif tag == 'insert':
-                for line_j in range(s_lo, s_hi):
-                    _add_unpaired_student_line(alignment, student_marks, student_line_marks,
-                                                student_lines, student_line_offsets, line_j)
-            elif tag == 'replace':
-                _add_replace_block(alignment, teacher_marks, student_marks,
-                                    teacher_line_marks, student_line_marks,
-                                    teacher_lines, student_lines,
-                                    teacher_line_offsets, student_line_offsets,
-                                    t_lo, t_hi - t_lo, s_lo, s_hi - s_lo,
-                                    all_token_positions,
-                                    s_fname=student_fname_for_native)
+        align_fn(teacher_lines, student_lines, teacher_line_offsets, student_line_offsets,
+                 teacher_blanked, student_blanked, student_path, ext,
+                 all_token_positions, student_fname_for_native,
+                 alignment, teacher_marks, student_marks,
+                 teacher_line_marks, student_line_marks)
 
         student_comment_ranges: List[Tuple[int, int]] = []
         if student_orig:
@@ -750,10 +737,45 @@ def _build_ro_diff_marks(
     return _finalize_per_file_diff(per_file_results, n_total)
 
 
-import subprocess as _subprocess
-import re as _re
-import tempfile as _tempfile
-import os as _os
+def _ro_align(teacher_lines, student_lines, teacher_line_offsets, student_line_offsets,
+              teacher_blanked, student_blanked, student_path, ext,
+              all_token_positions, student_fname_for_native,
+              alignment, teacher_marks, student_marks,
+              teacher_line_marks, student_line_marks):
+    for tag, t_lo, t_hi, s_lo, s_hi in difflib.SequenceMatcher(
+        None,
+        [line.strip() for line in teacher_lines],
+        [line.strip() for line in student_lines],
+        autojunk=False,
+    ).get_opcodes():
+        if tag == 'equal':
+            for k in range(t_hi - t_lo):
+                alignment.append([t_lo + k, s_lo + k])
+        elif tag == 'delete':
+            for line_i in range(t_lo, t_hi):
+                _add_unpaired_teacher_line(alignment, teacher_marks, teacher_line_marks,
+                                            teacher_lines, teacher_line_offsets,
+                                            line_i, all_token_positions)
+        elif tag == 'insert':
+            for line_j in range(s_lo, s_hi):
+                _add_unpaired_student_line(alignment, student_marks, student_line_marks,
+                                            student_lines, student_line_offsets, line_j)
+        elif tag == 'replace':
+            _add_replace_block(alignment, teacher_marks, student_marks,
+                                teacher_line_marks, student_line_marks,
+                                teacher_lines, student_lines,
+                                teacher_line_offsets, student_line_offsets,
+                                t_lo, t_hi - t_lo, s_lo, s_hi - s_lo,
+                                all_token_positions,
+                                s_fname=student_fname_for_native)
+
+
+def _build_ro_diff_marks(
+    teacher_files: Dict[str, Path],
+    student_files: Dict[str, Path],
+) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
+    return _build_line_diff_marks(teacher_files, student_files, _ro_align)
+
 
 _GIT_HUNK_RE = _re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
 
@@ -795,127 +817,70 @@ def _git_diff_hunks_text(t_text: str, s_text: str,
                 pass
 
 
+def _git_align(teacher_lines, student_lines, teacher_line_offsets, student_line_offsets,
+               teacher_blanked, student_blanked, student_path, ext,
+               all_token_positions, student_fname_for_native,
+               alignment, teacher_marks, student_marks,
+               teacher_line_marks, student_line_marks):
+    hunks = (
+        _git_diff_hunks_text(teacher_blanked, student_blanked, ext)
+        if student_path else []
+    )
+    teacher_cursor = student_cursor = 0
+
+    for hunk_t_first_raw, n_changed_t, hunk_s_first_raw, n_changed_s in hunks:
+        teacher_replace_start = (
+            hunk_t_first_raw - 1 if n_changed_t > 0 else hunk_t_first_raw
+        )
+        student_replace_start = (
+            hunk_s_first_raw - 1 if n_changed_s > 0 else hunk_s_first_raw
+        )
+        n_equal_lines = teacher_replace_start - teacher_cursor
+        _add_paired_line_block(alignment, teacher_marks, student_marks,
+                                teacher_lines, student_lines,
+                                teacher_line_offsets, student_line_offsets,
+                                teacher_cursor, student_cursor, n_equal_lines,
+                                all_token_positions,
+                                s_fname=student_fname_for_native)
+        teacher_cursor += n_equal_lines
+        student_cursor += n_equal_lines
+
+        _add_replace_block(alignment, teacher_marks, student_marks,
+                            teacher_line_marks, student_line_marks,
+                            teacher_lines, student_lines,
+                            teacher_line_offsets, student_line_offsets,
+                            teacher_replace_start, n_changed_t,
+                            student_replace_start, n_changed_s,
+                            all_token_positions,
+                            s_fname=student_fname_for_native)
+        teacher_cursor = teacher_replace_start + n_changed_t
+        student_cursor = student_replace_start + n_changed_s
+
+    n_tail_paired = min(len(teacher_lines) - teacher_cursor,
+                        len(student_lines) - student_cursor)
+    _add_paired_line_block(alignment, teacher_marks, student_marks,
+                            teacher_lines, student_lines,
+                            teacher_line_offsets, student_line_offsets,
+                            teacher_cursor, student_cursor, n_tail_paired,
+                            all_token_positions,
+                            s_fname=student_fname_for_native)
+    teacher_cursor += n_tail_paired
+    student_cursor += n_tail_paired
+    while teacher_cursor < len(teacher_lines):
+        _add_unpaired_teacher_line(alignment, teacher_marks, teacher_line_marks,
+                                    teacher_lines, teacher_line_offsets,
+                                    teacher_cursor, all_token_positions)
+        teacher_cursor += 1
+    while student_cursor < len(student_lines):
+        _add_unpaired_student_line(alignment, student_marks, student_line_marks,
+                                    student_lines, student_line_offsets,
+                                    student_cursor)
+        student_cursor += 1
+
+
 def _build_git_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
 ) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
-    n_total = 0
-    per_file_results: List[tuple] = []
-
-    for teacher_filepath, teacher_path, student_path in _match_files_by_name_then_ext(teacher_files, student_files):
-        teacher_orig = _read_text_normalized(teacher_path)
-        student_orig = _read_text_normalized(student_path) if student_path else ''
-        if not teacher_orig:
-            continue
-
-        ext = Path(teacher_filepath).suffix.lower()
-        teacher_blanked = _sm.blank_comments(teacher_orig, ext)
-        student_blanked = _sm.blank_comments(student_orig, ext) if student_orig else ''
-
-        teacher_lines = teacher_blanked.splitlines()
-        student_lines = student_blanked.splitlines()
-        teacher_line_offsets = _line_start_offsets(teacher_blanked)
-        student_line_offsets = _line_start_offsets(student_blanked) if student_blanked else []
-
-        all_token_positions, file_token_count = _build_token_position_index(teacher_blanked, ext)
-        n_total += file_token_count
-
-        teacher_fname  = Path(teacher_filepath).name
-        student_fname  = student_path.name if student_path else teacher_fname
-        student_fname_for_native = student_fname if student_path is not None else None
-
-        teacher_marks:      List[dict] = []
-        student_marks:      List[dict] = []
-        teacher_line_marks: List[dict] = []
-        student_line_marks: List[dict] = []
-        alignment:          list       = []
-
-        hunks = (
-            _git_diff_hunks_text(teacher_blanked, student_blanked, ext)
-            if student_path else []
-        )
-        teacher_cursor = student_cursor = 0
-
-        for hunk_t_first_raw, n_changed_t, hunk_s_first_raw, n_changed_s in hunks:
-            teacher_replace_start = (
-                hunk_t_first_raw - 1 if n_changed_t > 0 else hunk_t_first_raw
-            )
-            student_replace_start = (
-                hunk_s_first_raw - 1 if n_changed_s > 0 else hunk_s_first_raw
-            )
-            n_equal_lines = teacher_replace_start - teacher_cursor
-            _add_paired_line_block(alignment, teacher_marks, student_marks,
-                                    teacher_lines, student_lines,
-                                    teacher_line_offsets, student_line_offsets,
-                                    teacher_cursor, student_cursor, n_equal_lines,
-                                    all_token_positions,
-                                    s_fname=student_fname_for_native)
-            teacher_cursor += n_equal_lines
-            student_cursor += n_equal_lines
-
-            _add_replace_block(alignment, teacher_marks, student_marks,
-                                teacher_line_marks, student_line_marks,
-                                teacher_lines, student_lines,
-                                teacher_line_offsets, student_line_offsets,
-                                teacher_replace_start, n_changed_t,
-                                student_replace_start, n_changed_s,
-                                all_token_positions,
-                                s_fname=student_fname_for_native)
-            teacher_cursor = teacher_replace_start + n_changed_t
-            student_cursor = student_replace_start + n_changed_s
-
-        n_tail_paired = min(len(teacher_lines) - teacher_cursor,
-                            len(student_lines) - student_cursor)
-        _add_paired_line_block(alignment, teacher_marks, student_marks,
-                                teacher_lines, student_lines,
-                                teacher_line_offsets, student_line_offsets,
-                                teacher_cursor, student_cursor, n_tail_paired,
-                                all_token_positions,
-                                s_fname=student_fname_for_native)
-        teacher_cursor += n_tail_paired
-        student_cursor += n_tail_paired
-        while teacher_cursor < len(teacher_lines):
-            _add_unpaired_teacher_line(alignment, teacher_marks, teacher_line_marks,
-                                        teacher_lines, teacher_line_offsets,
-                                        teacher_cursor, all_token_positions)
-            teacher_cursor += 1
-        while student_cursor < len(student_lines):
-            _add_unpaired_student_line(alignment, student_marks, student_line_marks,
-                                        student_lines, student_line_offsets,
-                                        student_cursor)
-            student_cursor += 1
-
-        student_comment_ranges: List[Tuple[int, int]] = []
-        if student_orig:
-            cm_starts, cm_ends = _sm._comment_ranges(student_orig, ext)
-            student_comment_ranges = list(zip(cm_starts, cm_ends))
-
-        if student_fname_for_native is not None:
-            anchors = _line_anchors_from_alignment(
-                alignment, student_line_offsets, len(student_blanked),
-            )
-            _stamp_native_line_insert_at(
-                teacher_marks, teacher_line_offsets, anchors, student_fname_for_native,
-            )
-            _shift_inserts_past_comments(
-                teacher_marks, student_fname_for_native, student_orig, student_comment_ranges,
-            )
-
-        _, teacher_comment_toks = _split_tokens_by_comment(teacher_orig, ext)
-        _, student_comment_toks = (
-            _split_tokens_by_comment(student_orig, ext) if student_orig else ([], [])
-        )
-        for pos, tok in teacher_comment_toks:
-            teacher_marks.append(_comment_pos_mark(pos, tok))
-        for pos, tok in student_comment_toks:
-            student_marks.append(_comment_pos_mark(pos, tok))
-        teacher_marks.sort(key=lambda m: m['start'])
-        student_marks.sort(key=lambda m: m['start'])
-
-        per_file_results.append((
-            teacher_fname, student_fname, teacher_marks, student_marks,
-            teacher_line_marks, student_line_marks, alignment,
-        ))
-
-    return _finalize_per_file_diff(per_file_results, n_total)
+    return _build_line_diff_marks(teacher_files, student_files, _git_align)
 

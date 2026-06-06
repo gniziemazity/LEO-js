@@ -16,11 +16,11 @@
 	global.window = { LanguageProfiles: LP };
 
 	const modelSrc = fs.readFileSync(
-		path.join(here, "simulator-model.js"),
+		path.join(here, "shared/simulator-model.js"),
 		"utf-8",
 	);
 	const replaySrc = fs.readFileSync(
-		path.join(here, "simulator-replay.js"),
+		path.join(here, "shared/simulator-replay.js"),
 		"utf-8",
 	);
 	const make = new Function(

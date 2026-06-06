@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const {
 	computeSkipRegions,
 	PAUSE_CAP_MS,
-} = require("../lesson_tools/simulator-visualizer.js");
+} = require("../lesson_tools/simulator/visualizer.js");
 
 test("PAUSE_CAP_MS is 3000ms", () => {
 	assert.equal(PAUSE_CAP_MS, 3000);

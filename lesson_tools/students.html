@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<title>Students</title>
-		<link rel="stylesheet" href="shared.css" />
+		<link rel="stylesheet" href="shared/shared.css" />
 		<style>
 			body {
 				display: flex;
@@ -33,6 +33,7 @@
 			}
 
 			#lesson-name {
+				display: none;
 				font-weight: bold;
 				color: var(--clr-text);
 				margin-right: 8px;
@@ -613,6 +614,12 @@
 				border-bottom: 1px solid var(--clr-border);
 				flex-shrink: 0;
 			}
+			#asgn-timeline {
+				margin-left: auto;
+			}
+			body.paper-mode #toolbar {
+				display: none;
+			}
 			.sp-label {
 				font-size: 11px;
 				font-weight: bold;
@@ -945,6 +952,24 @@
 								</button>
 								<button id="asgn-view-code" type="button">Code</button>
 							</div>
+							<button
+								id="asgn-timeline"
+								class="sp-diff-btn"
+								type="button"
+								hidden
+								title="Open timeline for this lesson"
+							>
+								Timeline
+							</button>
+							<button
+								id="asgn-simulator"
+								class="sp-diff-btn"
+								type="button"
+								hidden
+								title="Open simulator for this lesson"
+							>
+								Simulator
+							</button>
 						</div>
 						<div class="sp-body" id="asgn-body" data-view="preview">
 							<pre class="sp-editor" id="asgn-editor"></pre>
@@ -983,20 +1008,26 @@
 			<div id="doc-viewer-body"></div>
 		</div>
 
-		<script src="diff-utils.js"></script>
-		<script src="drag-divider.js"></script>
+		<script src="shared/diff-utils.js"></script>
+		<script src="shared/data-source.js"></script>
+		<script src="shared/drag-divider.js"></script>
 		<script src="languages/profiles.js"></script>
-		<script src="simulator-highlight.js"></script>
-		<script src="file-viewer.js"></script>
-		<script src="mammoth.browser.min.js"></script>
-		<script src="students-state.js"></script>
-		<script src="students-load.js"></script>
-		<script src="students-parse.js"></script>
-		<script src="students-table.js"></script>
-		<script src="students-viewers.js"></script>
-		<script src="mini-zip.js"></script>
-		<script src="students-save.js"></script>
-		<script src="students.js"></script>
-		<script src="xlsx.full.min.js"></script>
+		<script src="shared/simulator-highlight.js"></script>
+		<script src="shared/file-viewer.js"></script>
+		<script src="shared/mammoth.browser.min.js"></script>
+		<script src="students/state.js"></script>
+		<script src="students/load.js"></script>
+		<script src="students/parse.js"></script>
+		<script src="students/unicode.js"></script>
+		<script src="students/sort.js"></script>
+		<script src="students/fingerprint.js"></script>
+		<script src="students/docs.js"></script>
+		<script src="students/tooltip.js"></script>
+		<script src="students/table.js"></script>
+		<script src="students/viewers.js"></script>
+		<script src="shared/mini-zip.js"></script>
+		<script src="students/save.js"></script>
+		<script src="students/index.js"></script>
+		<script src="shared/xlsx.full.min.js"></script>
 	</body>
 </html>

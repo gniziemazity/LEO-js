@@ -1,5 +1,5 @@
 const { ipcRenderer } = require("electron");
-const LogManager = require("./main/log-manager");
+const LogManager = require("./renderer/log-manager");
 const LessonManager = require("./renderer/lesson-manager");
 const UIManager = require("./renderer/ui-manager");
 const CursorManager = require("./renderer/cursor-manager");
@@ -11,6 +11,7 @@ const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
+const { buildArtificialLogEvents } = require("./renderer/log-event-builder");
 const path = require("path");
 const fs = require("fs");
 
@@ -177,7 +178,7 @@ function setupEventListeners() {
 				lessonRenderer.render();
 			}
 
-			const events = cursorManager.buildArtificialLogEvents();
+			const events = buildArtificialLogEvents(cursorManager.getExecutionSteps());
 			const logPath = logManager.saveArtificialLog(events);
 
 			if (savedSelection !== null) {
