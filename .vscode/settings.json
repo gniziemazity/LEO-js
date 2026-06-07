@@ -1,4 +1,11 @@
 {
 	"editor.formatOnSave": true,
-	"workbench.colorTheme": "Ice Contrast"
+	"workbench.colorTheme": "Ice Contrast",
+	"files.associations": {
+		"*.leo": "json",
+		"**/lessons/**/*.log": "json",
+		"**/logs/**/*.log": "json",
+		"**/test/**/*.log": "json",
+		"**/plans/**/*.log": "json"
+	}
 }

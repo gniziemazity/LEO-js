@@ -1,15 +1,5 @@
 "use strict";
 
-function _diffOpenForIds(assignmentLower, ids) {
-	if (!ids?.length) return;
-	const id = ids[0];
-	navigateToDifferentiator({
-		lesson: assignmentLower,
-		group: "assignments",
-		id,
-	});
-}
-
 function _idChips(ids, max, assignmentLower) {
 	const total = ids?.length ?? 0;
 	if (!total) return "<span style='color:var(--clr-muted)'>—</span>";

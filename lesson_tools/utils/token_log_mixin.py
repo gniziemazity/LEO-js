@@ -24,16 +24,13 @@ from .token_log import (
     _build_ro_diff_marks,
     _build_teacher_token_timestamps,
     _parse_teacher_tokens,
-    _read_text_normalized,
     _refresh_missing_timestamps,
     _remap_marks_to_utf16,
-    _split_tokens_by_comment,
     _strip_internal_fields,
     _write_teacher_tokens_file,
 )
 from .folder_utils import CODE_EXTS
 from .token_log_lang_stats import (
-    _EMBEDDED_LANG_TO_EXT,
     _LANG_EXT_LABEL,
     _effective_ext_at,
     _embedded_lang_ranges_for,

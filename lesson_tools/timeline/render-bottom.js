@@ -283,13 +283,15 @@ function _drawBottomChartBars(ctx, p, students, L) {
 		ctx.font = "bold 10px Consolas,monospace";
 		ctx.textAlign = "left";
 		ctx.textBaseline = "middle";
-		const gapBetween = 12;
-		let lx = M.left + 6;
-		const ly = M.top + 8;
+		const sq = 9;
+		const lx = M.left + 6;
+		let ly = M.top + 8;
 		for (const l of legendItems) {
 			ctx.fillStyle = _langBarColorOf(l);
-			ctx.fillText(l, lx, ly);
-			lx += ctx.measureText(l).width + gapBetween;
+			ctx.fillRect(lx, ly - sq / 2, sq, sq);
+			ctx.fillStyle = THEME.chartAxisText;
+			ctx.fillText(l, lx + sq + 5, ly);
+			ly += 14;
 		}
 	}
 

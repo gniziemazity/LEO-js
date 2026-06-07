@@ -178,7 +178,9 @@ function setupEventListeners() {
 				lessonRenderer.render();
 			}
 
-			const events = buildArtificialLogEvents(cursorManager.getExecutionSteps());
+			const events = buildArtificialLogEvents(
+				cursorManager.getExecutionSteps(),
+			);
 			const logPath = logManager.saveArtificialLog(events);
 
 			if (savedSelection !== null) {
@@ -212,6 +214,9 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
 	ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
 	ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
+	ipcRenderer.on("open-plan-file", (e, filePath) =>
+		fileOperations.loadFilePath(filePath),
+	);
 	ipcRenderer.on("open-settings", () => settingsUI.open());
 	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
 	ipcRenderer.on("log-interaction", (e, type) =>

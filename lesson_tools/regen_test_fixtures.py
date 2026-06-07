@@ -19,7 +19,7 @@ from utils.token_log import (
     _write_teacher_tokens_file,
 )
 
-_TEST = _ROOT / "test"
+_TEST = _ROOT / "test" / "lessons"
 
 _CASES = [
     ("wall",    True),
@@ -77,10 +77,15 @@ def _collect_student_files(student_dir: Path) -> dict:
     }
 
 
+def _keylog_path(case_dir: Path) -> Path:
+    p = case_dir / "log.log"
+    return p if p.is_file() else case_dir / "log.json"
+
+
 def regen_teacher_tokens(case_dir: Path) -> None:
-    log_path = case_dir / "log.json"
+    log_path = _keylog_path(case_dir)
     if not log_path.exists():
-        print(f"  SKIP (no log.json): {case_dir.name}")
+        print(f"  SKIP (no keylog): {case_dir.name}")
         return
 
     events = _load_events(log_path)
@@ -92,7 +97,7 @@ def regen_teacher_tokens(case_dir: Path) -> None:
 
 
 def regen_reconstructed(case_dir: Path) -> None:
-    log_path = case_dir / "log.json"
+    log_path = _keylog_path(case_dir)
     if not log_path.exists():
         return
     events = _load_events(log_path)
@@ -136,7 +141,7 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         if is_rem and removal_ts:
             removal_ts_by_token.setdefault(tok, []).append(removal_ts)
 
-    log_path = case_dir / "log.json"
+    log_path = _keylog_path(case_dir)
     events = _load_events(log_path) if log_path.exists() else None
 
     t_marks, s_marks, _, alignments, _, _, leo_assignments = _build_leo_diff_marks(

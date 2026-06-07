@@ -27,6 +27,15 @@
 		"appId": "com.leo-js.app",
 		"productName": "LEO-js",
 		"icon": "src/shared/icon.ico",
+		"fileAssociations": [
+			{
+				"ext": "leo",
+				"name": "LEO Lesson",
+				"description": "LEO Lesson Plan",
+				"icon": "src/shared/icon.ico",
+				"role": "Editor"
+			}
+		],
 		"files": [
 			"**/*",
 			"!node_modules/.cache",

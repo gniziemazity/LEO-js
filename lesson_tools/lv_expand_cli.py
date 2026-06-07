@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from utils.lv_expand import expand_events
 
 if len(sys.argv) < 2:
-    print("Usage: lv_expand_cli.py <log.json>", file=sys.stderr)
+    print("Usage: lv_expand_cli.py <keylog.log>", file=sys.stderr)
     sys.exit(1)
 
 path = sys.argv[1]

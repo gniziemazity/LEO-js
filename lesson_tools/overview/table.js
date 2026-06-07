@@ -54,23 +54,21 @@ function renderTable() {
 				"lessons",
 			);
 			_attachStudentsLink(
-				grp(`${a.name} Assignment`, 3, false),
+				grp(`${a.name} Assignment`, 2, false),
 				a.name,
 				"assignments",
 			);
 			_attachTimelineLink(col("Follow%", "lhd", true), a.name);
 			col("Obs", "lhd");
-			col("Grade", "ahd");
 			col("Status", "ahd");
 			col("Obs", "ahd");
 		} else {
 			_attachStudentsLink(
-				grp(`${a.name} Assignment`, 3, true),
+				grp(`${a.name} Assignment`, 2, true),
 				a.name,
 				"assignments",
 			);
-			col("Grade", "ahd", true);
-			col("Status", "ahd");
+			col("Status", "ahd", true);
 			col("Obs", "ahd");
 		}
 	}
@@ -153,17 +151,6 @@ function renderTable() {
 				makeLessonClickable(lobs, entry);
 				tr.appendChild(lobs);
 
-				const gc = document.createElement("td");
-				gc.className = "follow asn-col";
-				if (entry.grade != null) {
-					gc.textContent = entry.grade;
-					gc.style.color = followFg((entry.grade / 5) * 100);
-					gc.style.fontWeight = "700";
-				}
-				makeAssignClickable(gc, entry);
-				gc.title = `Open ${entry.name} assignment`;
-				tr.appendChild(gc);
-
 				const stc1 = document.createElement("td");
 				stc1.textContent = entry.status || "";
 				const sc1 = statusCellCls(entry.status);
@@ -176,21 +163,10 @@ function renderTable() {
 				makeAssignClickable(aobs, entry);
 				tr.appendChild(aobs);
 			} else {
-				const gc = document.createElement("td");
-				gc.className = "follow asn-sep asn-col";
-				if (entry.grade != null) {
-					gc.textContent = entry.grade;
-					gc.style.color = followFg((entry.grade / 5) * 100);
-					gc.style.fontWeight = "700";
-				}
-				makeAssignClickable(gc, entry);
-				gc.title = `Open ${entry.name} assignment`;
-				tr.appendChild(gc);
-
 				const stc2 = document.createElement("td");
 				stc2.textContent = entry.status || "";
 				const sc2 = statusCellCls(entry.status);
-				stc2.className = sc2 || "asn-col";
+				stc2.className = "asn-sep " + (sc2 || "asn-col");
 				makeAssignClickable(stc2, entry);
 				if (!stc2.title) stc2.title = `Open ${entry.name} assignment`;
 				tr.appendChild(stc2);
@@ -312,18 +288,9 @@ function _appendOverviewTotalsRow(tbody, rows) {
 			tr.appendChild(addCell(null));
 		}
 
-		const gradeAvg = mean(entries.map((e) => e.grade));
-		const gc = addCell(
-			fmtAvg(gradeAvg, 1),
-			"follow asn-col" + (hasFollow ? "" : " asn-sep"),
+		tr.appendChild(
+			addCell(null, "asn-col" + (hasFollow ? "" : " asn-sep")),
 		);
-		if (gradeAvg != null) {
-			gc.style.color = followFg((gradeAvg / 5) * 100);
-			gc.style.fontWeight = "700";
-		}
-		tr.appendChild(gc);
-
-		tr.appendChild(addCell(null, "asn-col"));
 
 		const asnObsCounts = obsCounts(a, "asn");
 		const asnSchema = _artefactSchema[(a.name || "").toLowerCase()];
@@ -419,7 +386,6 @@ function onAnonChange(val) {
 	if (_students.length) {
 		renderTable();
 		renderStats();
-		renderProgress();
 		renderClusters();
 	} else {
 		const table = document.getElementById("grades-table");

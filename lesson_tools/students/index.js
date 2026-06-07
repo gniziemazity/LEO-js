@@ -23,6 +23,7 @@ lessonNameEl.addEventListener("click", () => {
 	_modeParam = m === "lesson" || m === "assignment" ? m : null;
 	if (_paperMode) {
 		document.body.classList.add("paper-mode");
+		if (qs.get("preview") !== "diff") _bottomView = "code";
 		for (const id of [
 			"basis-picker",
 			"columns-picker",
@@ -64,12 +65,17 @@ lessonNameEl.addEventListener("click", () => {
 		}
 	}
 	if (!ok) ok = await _tryAutoLoad();
-	const _autoSid =
+	let _autoSid =
 		params.star && params.star.length === 1
 			? String(params.star[0])
 			: params.ids && params.ids.length === 1
 				? String(params.ids[0])
 				: null;
+	if (ok && _paperMode && !_autoSid) {
+		const firstRow = document.querySelector("#tbody tr");
+		if (firstRow && firstRow._student)
+			_autoSid = String(firstRow._student.id);
+	}
 	if (ok && _autoSid) {
 		const sid = _autoSid;
 		const stu = (_students || []).find((s) => String(s.id) === sid);

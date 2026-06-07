@@ -39,12 +39,14 @@ function handleFiles(files) {
 		const p = _filePathFor(f);
 		return !p || !p.includes("/");
 	};
-	const jsonFiles = files.filter(
-		(f) =>
-			f.name.toLowerCase().endsWith(".json") &&
-			!f.name.toLowerCase().startsWith("diff_marks") &&
-			isRootLevel(f),
-	);
+	const jsonFiles = files.filter((f) => {
+		const n = f.name.toLowerCase();
+		return (
+			(n.endsWith(".log") ||
+				(n.endsWith(".json") && !n.startsWith("diff_marks"))) &&
+			isRootLevel(f)
+		);
+	});
 	const xlsxFiles = files.filter((f) =>
 		f.name.toLowerCase().endsWith(".xlsx"),
 	);
@@ -97,10 +99,10 @@ async function loadBestJsonFile(jsonFiles) {
 			.map((f) => _filePathFor(f) || f.name)
 			.join("\n  ");
 		console.warn(
-			`[Timeline] Expected exactly one .json log file, found ${jsonFiles.length}:\n  ${paths}`,
+			`[Timeline] Expected exactly one log file, found ${jsonFiles.length}:\n  ${paths}`,
 		);
 		alert(
-			`Expected exactly one .json log file in the folder, found ${jsonFiles.length}:\n${paths}`,
+			`Expected exactly one log file in the folder, found ${jsonFiles.length}:\n${paths}`,
 		);
 		showLoading(false);
 		return;

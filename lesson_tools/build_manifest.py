@@ -51,6 +51,7 @@ def _keep_project_file(rel: str, lesson_name: str) -> bool:
         return True
     if len(parts) == 1 and (
         parts[0] in _PROJECT_KEEP_FILES
+        or lower.endswith(".log")
         or lower in {f"{lesson_name.lower()}.json", "log.json"}
     ):
         return True

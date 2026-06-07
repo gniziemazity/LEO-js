@@ -3,6 +3,8 @@
 let _viewersInit = false;
 let _asgnView = "preview";
 let _selectedStudent = null;
+let _bottomView = "diff";
+let _codeFV = null;
 
 let _sideDividerWired = false;
 let _panesDividerWired = false;
@@ -86,6 +88,39 @@ async function _instructionsSrcdoc(file) {
 	);
 }
 
+async function _downloadPlan() {
+	const fname = "lesson_plan.zip";
+	let blob = null;
+	if (_allFiles && _allFiles.size) {
+		for (const [rel, f] of _allFiles) {
+			const lc = rel.toLowerCase();
+			if (lc === fname || lc.endsWith("/" + fname)) {
+				blob = new Blob([await readFileArray(f)]);
+				break;
+			}
+		}
+	}
+	if (!blob) {
+		try {
+			const resp = await fetch(
+				`/${_groupFolder()}/${encodeURIComponent(_lessonName)}/${fname}`,
+			);
+			if (resp.ok) blob = await resp.blob();
+		} catch {}
+	}
+	if (!blob) {
+		alert("No lesson_plan.zip found for this lesson.");
+		return;
+	}
+	const a = document.createElement("a");
+	a.href = URL.createObjectURL(blob);
+	a.download = fname;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 async function _renderAssignment() {
 	const editor = _vEl("asgn-editor");
 	const preview = _vEl("asgn-preview");
@@ -105,6 +140,8 @@ async function _renderAssignment() {
 	if (tlBtn) tlBtn.hidden = _mode !== "lesson";
 	const simBtn = _vEl("asgn-simulator");
 	if (simBtn) simBtn.hidden = _mode !== "lesson";
+	const dlBtn = _vEl("asgn-download-plan");
+	if (dlBtn) dlBtn.hidden = _mode !== "lesson";
 	const file = _findInstructionsFile();
 	try {
 		const text = file
@@ -120,7 +157,7 @@ async function _renderAssignment() {
 	}
 	try {
 		preview.removeAttribute("src");
-		preview.srcdoc = await _instructionsSrcdoc(file);
+		preview.srcdoc = previewBaseTarget(await _instructionsSrcdoc(file));
 	} catch {
 		preview.removeAttribute("src");
 		preview.srcdoc = _msgDocSrcdoc("No instructions found.");
@@ -224,6 +261,13 @@ function _ensureViewers() {
 	_vEl("asgn-simulator").addEventListener("click", () =>
 		navigateToSimulator({ lesson: _lessonName, group: _groupFolder() }),
 	);
+	_vEl("asgn-download-plan").addEventListener("click", _downloadPlan);
+	_vEl("asgn-view-diff").addEventListener("click", () =>
+		_setBottomView("diff"),
+	);
+	_vEl("asgn-view-stu-code").addEventListener("click", () =>
+		_setBottomView("code"),
+	);
 	_vEl("asgn-collapse").addEventListener("click", () => {
 		const col = _vEl("side-col");
 		_setAsgnCollapsed(!(col && col.classList.contains("asgn-collapsed")));
@@ -234,15 +278,100 @@ function _ensureViewers() {
 	_setAsgnCollapsed(_vRestore("students.asgnCollapsed", "0") === "1");
 }
 
+function _ensureCodeFV() {
+	if (_codeFV) return _codeFV;
+	const root = _vEl("student-code-fv");
+	if (!root || typeof FileViewer === "undefined") return null;
+	_codeFV = new FileViewer({
+		rootEl: root,
+		persistKey: "students.codeView",
+		previewLabel: "Preview",
+		onActiveFileChange: (name) => _renderCodeFile(name),
+	});
+	return _codeFV;
+}
+
+function _studentHtmlUrl(name) {
+	return `/${_groupFolder()}/${encodeURIComponent(_lessonName)}/anon_ids/${encodeURIComponent(_selectedStudent.id)}/${encodeURIComponent(name)}`;
+}
+
+function _studentCodeFiles() {
+	if (!_selectedStudent || !_allFiles) return [];
+	const dir = `anon_ids/${_selectedStudent.id}/`;
+	const out = [];
+	for (const [p, f] of _allFiles) {
+		if (p.startsWith(dir) && CODE_EXT.test(f.name)) out.push([f.name, f]);
+	}
+	out.sort((a, b) => a[0].localeCompare(b[0]));
+	return out;
+}
+
+async function _renderCodeFile(name) {
+	if (!_codeFV) return;
+	const entry = _studentCodeFiles().find(([n]) => n === name);
+	if (!entry) {
+		_codeFV.setEditorHtml("");
+		return;
+	}
+	try {
+		const text = await readFileText(entry[1]);
+		_codeFV.setEditorHtml(fvRenderStaticEditor(text, null, name));
+	} catch {
+		_codeFV.setEditorHtml("");
+	}
+	if (/\.html?$/i.test(name) && _selectedStudent) {
+		_codeFV.showPreview();
+		_codeFV.setPreviewSrc(_studentHtmlUrl(name));
+	}
+}
+
+async function _populateCodeView() {
+	const fv = _ensureCodeFV();
+	if (!fv || !_selectedStudent) return;
+	const s = _selectedStudent;
+	fv.setLeftLabel(`${s.id ? s.id + ". " : ""}${s.name || ""}`);
+	const names = _studentCodeFiles().map(([n]) => n);
+	fv.setTabs(names, names[0] || null);
+	if (names[0]) await _renderCodeFile(names[0]);
+	const htmlName = names.find((n) => /\.html?$/i.test(n));
+	if (htmlName) {
+		fv.showPreview();
+		fv.setPreviewSrc(_studentHtmlUrl(htmlName));
+	} else {
+		fv.hidePreview();
+	}
+}
+
+function _setBottomView(view) {
+	_bottomView = view;
+	const diff = _vEl("student-diff-frame");
+	const code = _vEl("student-code-view");
+	const segDiff = _vEl("asgn-view-diff");
+	const segCode = _vEl("asgn-view-stu-code");
+	if (segDiff) segDiff.classList.toggle("active", view !== "code");
+	if (segCode) segCode.classList.toggle("active", view === "code");
+	if (view === "code") {
+		if (diff) diff.style.display = "none";
+		if (code) code.hidden = false;
+		_populateCodeView();
+	} else {
+		if (code) code.hidden = true;
+		if (diff) diff.style.display = "";
+	}
+}
+
 function selectStudentInline(student) {
 	_ensureViewers();
 	_selectedStudent = student;
+	const tb = _vEl("asgn-view-toggle");
+	if (tb) tb.hidden = false;
 	const col = _vEl("side-col");
 	if (col && col.hidden) {
 		_setSideCol(true);
 	} else {
 		_loadStudentDiff(student);
 	}
+	_setBottomView(_bottomView);
 }
 
 function _installSideDivider() {

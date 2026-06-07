@@ -100,7 +100,9 @@ def _build_plans_zip(course: Path) -> Path | None:
     for lesson_dir in sorted(lessons_dir.iterdir()):
         if not lesson_dir.is_dir():
             continue
-        plan_file = lesson_dir / f"{lesson_dir.name}.json"
+        plan_file = lesson_dir / f"{lesson_dir.name}.log"
+        if not plan_file.is_file():
+            plan_file = lesson_dir / f"{lesson_dir.name}.json"
         if plan_file.is_file():
             plans.append(plan_file)
     if not plans:

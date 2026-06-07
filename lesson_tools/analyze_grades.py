@@ -382,6 +382,7 @@ def enrich(st):
         st[f"a{a_num}_artefact_valid"] = artefact_valid
         fired_total = pd.Series(0, index=st.index, dtype=int)
         fired_high  = pd.Series(False, index=st.index)
+        fired_med   = pd.Series(False, index=st.index)
         for i, (key, _label) in enumerate(raw):
             fired = ans_pos[i] & fired_pos[i]
             st[f"a{a_num}_artefact_{key}"] = fired
@@ -389,14 +390,12 @@ def enrich(st):
             fired_total = fired_total + fired.astype(int)
             if severity_map.get(key) == "high":
                 fired_high = fired_high | fired
+            elif severity_map.get(key) == "medium":
+                fired_med = fired_med | fired
         st[f"a{a_num}_artefacts_fired"] = fired_total.where(artefact_valid, np.nan)
         st[f"a{a_num}_any_artefact"]    = artefact_valid & (fired_total > 0)
-        # AI flag derived from high-severity artefact firings only — used
-        # by the overview's "AI vs Trouble" cards. The previous
-        # ``a{N}_ai`` keeps mixing in the OBS-text-contains-AI marker
-        # for backwards compatibility; ``a{N}_ai_high`` is the
-        # severity-aware variant requested in 2026-05.
         st[f"a{a_num}_ai_high"] = artefact_valid & fired_high
+        st[f"a{a_num}_ai_high_med"] = artefact_valid & (fired_high | fired_med)
         n_mismatch = int(artefact_mismatch.sum())
         if n_mismatch:
             print(f"  warning: {a['name']} has {n_mismatch} OBS code(s) longer "
@@ -1370,6 +1369,9 @@ def save_stats_json(st, grades_path):
         n_pass     = int(st_students[f"a{a_num}_passed"].sum())  if f"a{a_num}_passed"  in st_students.columns else 0
         n_trouble  = int(st_students[f"a{a_num}_trouble"].sum()) if f"a{a_num}_trouble" in st_students.columns else 0
         n_ai       = int(st_students[f"a{a_num}_ai"].sum())      if f"a{a_num}_ai"      in st_students.columns else 0
+        n_ai_strong = int(st_students[f"a{a_num}_ai_high"].sum())     if f"a{a_num}_ai_high"     in st_students.columns else 0
+        n_ai_upper  = int(st_students[f"a{a_num}_ai_high_med"].sum()) if f"a{a_num}_ai_high_med" in st_students.columns else 0
+        n_artefact  = int(st_students[f"a{a_num}_artefact_valid"].sum()) if f"a{a_num}_artefact_valid" in st_students.columns else 0
 
         n_lesson_trouble = (
             int(st_students[f"a{a_num}_lesson_trouble"].sum())
@@ -1383,6 +1385,9 @@ def save_stats_json(st, grades_path):
             "n_trouble":       n_trouble,
             "n_lesson_trouble":n_lesson_trouble,
             "n_ai":            n_ai,
+            "n_ai_strong":     n_ai_strong,
+            "n_ai_upper":      n_ai_upper,
+            "n_artefact":      n_artefact,
             "avg_grade":       sf(grades.mean()) if len(grades) > 0 else None,
             "pass_rate":       sf(n_pass / n_total) if n_total > 0 else None,
             "trouble_rate":    sf(n_trouble / n_sub) if n_sub > 0 else None,

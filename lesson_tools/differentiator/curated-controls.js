@@ -178,7 +178,7 @@ function _curatedShowControls(sel, x, y, opts) {
 			);
 		} else if (allMissing) {
 			buttons.push(
-				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a student-side position (I)">${_curatedBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
+				`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens, or pair with an extra group (I or P)">${_curatedBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
 			);
 		} else if (allExtra) {
 			if (single) {
@@ -187,7 +187,7 @@ function _curatedShowControls(sel, x, y, opts) {
 				);
 			} else {
 				buttons.push(
-					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens at a different student-side position (I)">${_curatedBtnLabel("⇄", "Insert", "i", suffix)}</button>`,
+					`<button type="button" class="tc-btn-pair${activeAttr}" data-action="set-pair" title="Insert these tokens, or pair with a missing group (I or P)">${_curatedBtnLabel("⇄", "Insert/Pair", ["i", "p"], suffix)}</button>`,
 				);
 			}
 		} else if (allGhostExtra) {

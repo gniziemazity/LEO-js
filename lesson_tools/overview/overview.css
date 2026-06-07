@@ -393,10 +393,6 @@ td.asn-sep {
 	font-size: 14px;
 }
 
-#page-progress {
-	flex-direction: column;
-	overflow: hidden;
-}
 .sort-bar {
 	flex-shrink: 0;
 	padding: 6px 10px;
@@ -421,15 +417,6 @@ td.asn-sep {
 	font-size: 11px;
 	font-family: inherit;
 }
-.prog-grid {
-	flex: 1;
-	overflow: auto;
-	display: flex;
-	flex-wrap: wrap;
-	align-content: flex-start;
-	gap: 10px;
-	padding: 12px;
-}
 .prog-card {
 	background: var(--clr-bg);
 	border: 1px solid var(--clr-border);
@@ -442,7 +429,7 @@ td.asn-sep {
 	background: var(--clr-toolbar);
 }
 .prog-card.row-ai {
-	background: var(--clr-st-fail-bg);
+	background: var(--clr-mark-missing-soft-bg);
 	border-color: var(--clr-red);
 }
 .prog-card.row-ai h4 {
@@ -459,18 +446,6 @@ td.asn-sep {
 .prog-chart-box {
 	position: relative;
 	height: 205px;
-}
-.prog-totals {
-	flex: 0 0 100%;
-	background: var(--clr-bg);
-	border: 1px solid var(--clr-border);
-	border-radius: 4px;
-	padding: 9px 10px;
-}
-.prog-totals h4 {
-	font-size: 11px;
-	margin-bottom: 4px;
-	color: var(--clr-label);
 }
 .prog-signals-row {
 	display: grid;

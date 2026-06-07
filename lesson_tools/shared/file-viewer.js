@@ -11,6 +11,8 @@ class FileViewer {
 		this._activeFile = null;
 		this._onChange = opts.onActiveFileChange || null;
 		this._persistKey = opts.persistKey || null;
+		this._leftLabel = opts.leftLabel || "";
+		this._previewLabel = opts.previewLabel || "";
 
 		if (opts.rootEl) {
 			this._buildStandaloneDom(opts.rootEl);
@@ -42,15 +44,23 @@ class FileViewer {
 				<pre class="fv-editor"></pre>
 			</div>
 			<div class="fv-divider" title="Drag to resize"></div>
-			<iframe class="fv-preview" sandbox="allow-scripts allow-same-origin"></iframe>
+			<div class="fv-right">
+				<div class="fv-preview-head"></div>
+				<iframe class="fv-preview" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+			</div>
 		`;
 		this._rootEl = rootEl;
 		this._tabsEl = rootEl.querySelector(".fv-tabs");
 		this.editorEl = rootEl.querySelector(".fv-editor");
 		this._dividerEl = rootEl.querySelector(".fv-divider");
 		this.previewEl = rootEl.querySelector(".fv-preview");
+		this._rightEl = rootEl.querySelector(".fv-right");
+		this._previewHeadEl = rootEl.querySelector(".fv-preview-head");
+		if (this._previewLabel)
+			this._previewHeadEl.textContent = this._previewLabel;
 		this._containerEl = rootEl;
-		this._targetEl = this.previewEl;
+		this._targetEl = this._rightEl;
+		this._renderTabs();
 	}
 
 	setTabs(names, activeName = null) {
@@ -69,6 +79,11 @@ class FileViewer {
 		this._renderTabs();
 	}
 
+	setLeftLabel(text) {
+		this._leftLabel = text || "";
+		this._renderTabs();
+	}
+
 	setEditorHtml(html) {
 		if (!this.editorEl) return;
 		this.editorEl.innerHTML = html;
@@ -77,7 +92,10 @@ class FileViewer {
 	setPreviewSrcdoc(html) {
 		if (!this.previewEl) return;
 		this.previewEl.removeAttribute("src");
-		this.previewEl.srcdoc = html || "";
+		this.previewEl.srcdoc =
+			typeof previewBaseTarget === "function"
+				? previewBaseTarget(html || "")
+				: html || "";
 	}
 
 	setPreviewSrc(url) {
@@ -113,6 +131,12 @@ class FileViewer {
 	_renderTabs() {
 		if (!this._tabsEl) return;
 		this._tabsEl.innerHTML = "";
+		if (this._leftLabel) {
+			const lbl = document.createElement("span");
+			lbl.className = "fv-left-label";
+			lbl.textContent = this._leftLabel;
+			this._tabsEl.appendChild(lbl);
+		}
 		if (this._tabNames.length <= 1) return;
 		for (const name of this._tabNames) {
 			const btn = document.createElement("button");

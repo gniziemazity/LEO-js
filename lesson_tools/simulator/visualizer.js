@@ -64,7 +64,7 @@ class LogVisualizer {
 		root.innerHTML = `
         <div id="vis-left">
           <div id="vis-toolbar" class="app-toolbar">
-            <button id="btn-play" disabled>▶  Play</button>
+            <button id="btn-play" disabled>▶  Replay</button>
             <div class="sep"></div>
             <button id="btn-toggle-log" title="Toggle event log">📋</button>
             <button id="btn-toggle-devtools" title="Toggle dev tools">🔧</button>
@@ -85,7 +85,7 @@ class LogVisualizer {
               <pre id="vis-editor"></pre>
             </div>
             <div id="vis-event-log-wrap">
-              <div class="pane-title">Event Log</div>
+              <div class="pane-title">Event Log <button id="vis-download-log" title="Download keylog (.log)" style="margin-left:6px;cursor:pointer;border:none;background:transparent;font-size:12px;line-height:1;padding:0 4px">Download Log</button></div>
               <div id="vis-event-log"></div>
             </div>
           </div>
@@ -140,6 +140,8 @@ class LogVisualizer {
 
 		this.elPlay.onclick = () => this.togglePlay();
 		this.elCopyTs.onclick = () => this._copyTimestampLink();
+		const _dlLog = document.getElementById("vis-download-log");
+		if (_dlLog) _dlLog.onclick = () => this._downloadLog();
 		this.elBtnLog.onclick = () => {
 			const next = this.elEventLogWrap.style.display === "none";
 			this._setEventLogVisible(next);
@@ -298,6 +300,7 @@ class LogVisualizer {
 		studentNameMap,
 		seekStep,
 		seekTs,
+		events,
 	}) {
 		if (error) {
 			console.error("expand error:\n" + error);
@@ -306,6 +309,8 @@ class LogVisualizer {
 
 		this._imageUris = imageUris || {};
 		this._lessonFile = lessonFile || null;
+		this._logEvents = events || null;
+		this._filePath = filePath || null;
 		this._studentNameMap = studentNameMap || {};
 		this.micro = micro;
 		this._interactions = this._prepareInteractions(interactions || []);
@@ -405,6 +410,30 @@ class LogVisualizer {
 		return this._totalDelay;
 	}
 
+	_downloadLog() {
+		const events = this._logEvents;
+		if (!events || !events.length) {
+			alert("No keylog loaded to download.");
+			return;
+		}
+		const data = {
+			lessonFile: this._lessonFile || null,
+			sessionStart: events[0]?.timestamp ?? Date.now(),
+			events,
+		};
+		const blob = new Blob([JSON.stringify(data, null, 2)], {
+			type: "application/json",
+		});
+		const a = document.createElement("a");
+		a.href = URL.createObjectURL(blob);
+		const base = (this._filePath || "keylog").replace(/\.[^.]+$/, "");
+		a.download = base + ".log";
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+	}
+
 	_copyTimestampLink() {
 		const tsStr = (this.elTsLbl.textContent || "").trim();
 		if (!tsStr) return;
@@ -482,7 +511,7 @@ class LogVisualizer {
 			cancelAnimationFrame(this._rafId);
 			this._rafId = null;
 		}
-		this.elPlay.textContent = "▶  Play";
+		this.elPlay.textContent = "▶  Replay";
 		this.elPlay.style.background = "";
 	}
 
@@ -519,7 +548,7 @@ class LogVisualizer {
 			this._playMs >= this._totalDelay
 		) {
 			this.playing = false;
-			this.elPlay.textContent = "▶  Play";
+			this.elPlay.textContent = "▶  Replay";
 			this.elPlay.style.background = "";
 			this._renderEditors();
 			this._schedulePreview();

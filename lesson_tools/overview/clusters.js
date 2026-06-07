@@ -7,40 +7,31 @@ const _DEFAULT_MANUAL_A_PARTITIONS = [
 	"rest",
 ].join("\n");
 
-const _DEFAULT_MANUAL_B_PARTITIONS = [
-	"80, 81, 78, 23, 20, 30, 61, 29, 44, 70, 50, 4",
-	"24, 3, 72, 18, 11, 63, 45, 38, 10, 53, 59, 47, 74, 60, 34",
-	"rest",
-].join("\n");
-
 const _MANUAL_LS_KEYS = {
 	A: "cluster_manual_text_a_v1",
-	B: "cluster_manual_text_b_v1",
 };
 const _MANUAL_DEFAULTS = {
 	A: _DEFAULT_MANUAL_A_PARTITIONS,
-	B: _DEFAULT_MANUAL_B_PARTITIONS,
 };
 
 function _clusterMode() {
 	const v = document.getElementById("cluster-mode")?.value;
-	return v === "manualA" || v === "manualB" ? v : "kmeans";
+	return v === "manualA" ? "manualA" : "kmeans";
 }
 
 function _manualSlot() {
-	return _clusterMode() === "manualB" ? "B" : "A";
+	return "A";
 }
 
 function _clusterOpts() {
 	return {
 		k: Math.max(
-			2,
-			Math.min(25, +document.getElementById("cluster-k")?.value || 4),
+			1,
+			Math.min(25, +document.getElementById("cluster-k")?.value || 1),
 		),
-		useFollow:
-			document.getElementById("cluster-feat-follow")?.checked ?? true,
-		useGrade: document.getElementById("cluster-feat-grade")?.checked ?? true,
-		useLang: document.getElementById("cluster-feat-lang")?.checked ?? true,
+		useFollow: true,
+		useGrade: false,
+		useLang: true,
 	};
 }
 
@@ -79,18 +70,11 @@ function _parseManualPartitions(text, students) {
 
 function _applyClusterModeUI() {
 	const mode = _clusterMode();
-	const isManual = mode === "manualA" || mode === "manualB";
 	document
 		.querySelectorAll(".cluster-kmeans-only")
 		.forEach((el) => (el.style.display = mode === "kmeans" ? "" : "none"));
 	const panel = document.getElementById("cluster-manual-panel");
-	if (panel) panel.style.display = isManual ? "" : "none";
-	const slot = _manualSlot();
-	document
-		.querySelectorAll("[data-manual]")
-		.forEach(
-			(el) => (el.style.display = el.dataset.manual === slot ? "" : "none"),
-		);
+	if (panel) panel.style.display = mode === "manualA" ? "" : "none";
 }
 
 function _buildClusterFeatures(students, opts) {
@@ -245,25 +229,26 @@ function renderClusters() {
 	const body = document.getElementById("clusters-body");
 	if (!body) return;
 	body.innerHTML = "";
-	if (!_students.length) return;
+	const students = visibleStudents();
+	if (!students.length) return;
 
 	const mode = _clusterMode();
 	const labelsX = ASSIGNMENTS.map((a) => a.name);
 	let labels, centroids, k;
 
-	if (mode === "manualA" || mode === "manualB") {
+	if (mode === "manualA") {
 		const slot = _manualSlot();
 		const ta = document.querySelector(`[data-manual-text="${slot}"]`);
 		const text = (ta && ta.value) || _MANUAL_DEFAULTS[slot];
-		const parsed = _parseManualPartitions(text, _students);
+		const parsed = _parseManualPartitions(text, students);
 		labels = parsed.labels;
 		k = parsed.numClusters;
 		const opts = { useFollow: true, useGrade: true, useLang: true };
-		const features = _buildClusterFeatures(_students, opts);
+		const features = _buildClusterFeatures(students, opts);
 		const nCols = features[0]?.length || 0;
 		centroids = Array.from({ length: k }, () => new Array(nCols).fill(0));
 		const counts = new Array(k).fill(0);
-		for (let i = 0; i < _students.length; i++) {
+		for (let i = 0; i < students.length; i++) {
 			const c = labels[i];
 			counts[c]++;
 			for (let j = 0; j < nCols; j++) centroids[c][j] += features[i][j];
@@ -279,16 +264,15 @@ function renderClusters() {
 				'<div class="cluster-empty">Pick at least one feature to cluster on.</div>';
 			return;
 		}
-		const features = _buildClusterFeatures(_students, opts);
-		k = Math.min(opts.k, _students.length);
+		const features = _buildClusterFeatures(students, opts);
+		k = Math.min(opts.k, students.length);
 		const res = _kmeans(features, k, 10000, _clusterSeed);
 		labels = res.labels;
 		centroids = res.centroids;
 	}
 
 	const buckets = Array.from({ length: k }, () => []);
-	_students.forEach((s, i) => {
-		if (_hideExcluded && s.excluded) return;
+	students.forEach((s, i) => {
 		buckets[labels[i]].push(s);
 	});
 
@@ -324,7 +308,7 @@ function renderClusters() {
 		};
 		meta.textContent = `${bucket.length} student${bucket.length === 1 ? "" : "s"} · follow ${summarize(followVals, 1, "%")} · grade ${summarize(gradeVals, 2, "")}`;
 		header.appendChild(meta);
-		section.appendChild(header);
+		if (ordered.length > 1) section.appendChild(header);
 		const grid = el("div", "cluster-grid");
 		const sortedBucket = _sortStudents(bucket, _clusterSort);
 		for (const s of sortedBucket) {
@@ -340,38 +324,15 @@ function renderClusters() {
 document.getElementById("cluster-k")?.addEventListener("change", () => {
 	if (_students.length) renderClusters();
 });
-document.getElementById("cluster-recluster")?.addEventListener("click", () => {
-	_clusterSeed = (_clusterSeed * 1103515245 + 12345) >>> 0;
-	if (_students.length) renderClusters();
-});
-["cluster-feat-follow", "cluster-feat-grade", "cluster-feat-lang"].forEach(
-	(id) => {
-		document.getElementById(id)?.addEventListener("change", () => {
-			if (_students.length) renderClusters();
-		});
-	},
-);
 
 (function _initClusterModeUI() {
-	let legacy = null;
-	try {
-		legacy = localStorage.getItem("cluster_manual_text_v2");
-	} catch {}
-	for (const slot of ["A", "B"]) {
-		const ta = document.querySelector(`[data-manual-text="${slot}"]`);
-		if (!ta || ta.value) continue;
+	const ta = document.querySelector('[data-manual-text="A"]');
+	if (ta && !ta.value) {
 		let saved = null;
 		try {
-			saved = localStorage.getItem(_MANUAL_LS_KEYS[slot]);
+			saved = localStorage.getItem(_MANUAL_LS_KEYS.A);
 		} catch {}
-		if (!saved && slot === "A" && legacy) {
-			saved = legacy;
-			try {
-				localStorage.setItem(_MANUAL_LS_KEYS.A, legacy);
-				localStorage.removeItem("cluster_manual_text_v2");
-			} catch {}
-		}
-		ta.value = saved || _MANUAL_DEFAULTS[slot];
+		ta.value = saved || _MANUAL_DEFAULTS.A;
 	}
 	_applyClusterModeUI();
 })();

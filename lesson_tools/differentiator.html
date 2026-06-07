@@ -36,6 +36,10 @@
 				pointer-events: none;
 				z-index: 5;
 			}
+			body.assignment #title-student {
+				color: var(--clr-text);
+				font-weight: 700;
+			}
 
 			#header-teacher,
 			#header-student {
@@ -297,12 +301,6 @@
 				text-decoration-thickness: 2px;
 				text-underline-offset: 2px;
 			}
-			.diff-ghost-nl {
-				display: inline-block;
-				margin: 0 4px;
-				font-weight: 600;
-				color: var(--clr-text-faint);
-			}
 			.diff-spacer {
 				display: block;
 				min-height: 1.5em;
@@ -360,7 +358,7 @@
 			body.embed #nav-counter-student {
 				display: none;
 			}
-			body.embed #bottom-bar > *:not(#btn-preview) {
+			body.embed #bottom-bar > *:not(#btn-preview):not(#btn-missing-color) {
 				display: none !important;
 			}
 			body.diff-loading #diff-root,
@@ -600,6 +598,22 @@
 				color: var(--clr-mark-extra);
 				text-shadow: 0 0 2px var(--clr-mark-extra);
 			}
+			.insert-anchor--token {
+				font-size: inherit;
+				vertical-align: baseline;
+				transform: none;
+				margin: 0;
+			}
+			.insert-anchor--token.insert-active {
+				font-size: inherit;
+				text-shadow: none;
+				border-radius: 2px;
+				background: color-mix(
+					in srgb,
+					var(--insert-anchor-color, var(--clr-mark-missing)) 16%,
+					transparent
+				);
+			}
 
 			#leo-tooltip {
 				z-index: 9999;
@@ -755,15 +769,6 @@
 				background-color: var(--clr-highlight-active-bg);
 				border-radius: 2px;
 				box-sizing: border-box;
-			}
-			.curated-active-rect.is-red {
-				background-color: var(--clr-mark-missing-pair-bg);
-			}
-			.curated-active-rect.is-blue {
-				background-color: var(--clr-mark-extra-pair-bg);
-			}
-			.curated-active-rect.is-gray {
-				background-color: rgba(0, 0, 0, 0.1);
 			}
 			.curated-active-rect.is-dark-gray {
 				background-color: rgba(0, 0, 0, 0.42);
@@ -988,28 +993,12 @@
 				border-color: var(--clr-orange);
 				font-weight: 700;
 			}
-			#curated-controls .tc-tokens {
-				font-size: 11px;
-				color: var(--clr-label);
-				margin-bottom: 6px;
-				padding: 4px 6px;
-				background: var(--clr-surface);
-				border-radius: 3px;
-			}
-			#curated-controls .tc-tokens code {
-				color: var(--clr-gray);
-			}
 
 			.curated-float-win#curated-float-win {
 				z-index: 10000;
 				max-width: 90vw;
 				max-height: 90vh;
 				min-width: 360px;
-			}
-			.curated-float-win .tw-section-title {
-				font-weight: 700;
-				color: var(--clr-label);
-				margin: 6px 0 2px;
 			}
 			.curated-float-win .tw-pre {
 				background: var(--clr-surface-soft);
@@ -1034,12 +1023,6 @@
 				font-size: 11px;
 				tab-size: 4;
 				-moz-tab-size: 4;
-			}
-			.curated-float-win .tw-summary-chars {
-				color: var(--clr-text-dim);
-				font-weight: normal;
-				margin-left: 4px;
-				opacity: 0.7;
 			}
 			.curated-float-win .tw-summary-grid {
 				display: grid;
@@ -1106,7 +1089,8 @@
 				outline-offset: -1px;
 				border-radius: 2px;
 			}
-			.curated-float-win .tw-summary-pre .tw-ins {
+			.curated-float-win .tw-summary-pre .tw-ins,
+			.curated-float-win .tw-preview-panes .tw-pre .tw-ins {
 				color: #0066cc;
 				font-weight: bold;
 			}
@@ -1162,6 +1146,54 @@
 			.curated-float-win .tw-preview-panes .tw-pre.active {
 				display: block;
 			}
+			.curated-float-win .tw-preview-panes .tw-pre .tw-del {
+				color: var(--clr-mark-extra);
+				font-weight: bold;
+				text-decoration: line-through;
+			}
+			.curated-float-win .tw-corr-list {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				overflow: auto;
+				max-height: 70vh;
+				padding: 2px;
+			}
+			.curated-float-win .tw-corr-toolbar {
+				position: sticky;
+				top: 0;
+				z-index: 1;
+				background: var(--clr-bg);
+				padding: 2px 0 4px;
+				border-bottom: 1px solid var(--clr-border);
+			}
+			.curated-float-win .tw-corr-file {
+				font-weight: 700;
+				color: var(--clr-label);
+				margin-top: 6px;
+			}
+			.curated-float-win .tw-corr-snippet {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.curated-float-win .tw-corr-label {
+				font-size: 10px;
+				color: var(--clr-muted);
+			}
+			.curated-float-win .tw-corr-pre {
+				margin: 0;
+				background: transparent;
+			}
+			.curated-float-win .tw-corr-pre .tw-ins {
+				color: var(--clr-mark-missing);
+				font-weight: bold;
+			}
+			.curated-float-win .tw-corr-pre .tw-del {
+				color: var(--clr-mark-extra);
+				font-weight: bold;
+				text-decoration: line-through;
+			}
 			.curated-float-win .tw-preview-iframe {
 				flex: 1;
 				width: 100%;
@@ -1188,19 +1220,18 @@
 				⇲ Padding
 			</button>
 			<button
-				id="btn-smart-padding"
-				class="btn-edit"
-				onclick="toggleSmartPadding()"
-				title="Pair-based padding: aligns missing/extra/ghost across panels for any method"
-			>
-				🪜 Smart
-			</button>
-			<button
 				id="btn-line-numbers"
 				class="btn-edit"
 				onclick="toggleLineNumbers()"
 			>
 				Line №
+			</button>
+			<button
+				id="btn-missing-color"
+				class="btn-edit"
+				onclick="toggleMissingLangColor()"
+			>
+				🎨 Lang color
 			</button>
 			<button id="btn-preview" class="btn-edit" onclick="togglePreview()">
 				⬜ Preview
@@ -1301,7 +1332,7 @@
 						<iframe
 							class="preview-frame"
 							id="preview-teacher"
-							sandbox="allow-scripts allow-same-origin allow-modals"
+							sandbox="allow-scripts allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox"
 						></iframe>
 						<div class="hscroll-proxy" id="hscroll-teacher">
 							<div class="hscroll-proxy-inner"></div>
@@ -1333,7 +1364,7 @@
 						<iframe
 							class="preview-frame"
 							id="preview-student"
-							sandbox="allow-scripts allow-same-origin allow-modals"
+							sandbox="allow-scripts allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox"
 						></iframe>
 						<div class="hscroll-proxy" id="hscroll-student">
 							<div class="hscroll-proxy-inner"></div>

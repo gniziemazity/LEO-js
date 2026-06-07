@@ -324,7 +324,9 @@ function _curatedRefreshPairConnectors() {
 
 	for (const item of _curatedPairConnectorItems) {
 		if (item.kind === "ghost-pair" || item.kind === "ghost-pair-group") {
-			const teacherEl = _curatedFindGhostEl(item.ghost, { activeOnly: true });
+			const teacherEl = _curatedFindGhostEl(item.ghost, {
+				activeOnly: true,
+			});
 			const studentEl = _curatedFindLeoMarkEl(
 				"student",
 				item.studentMark.start,
@@ -392,7 +394,7 @@ function _curatedRefreshPairConnectors() {
 				if (anchorEl) {
 					const aRect = anchorEl.getBoundingClientRect();
 					const aY = _curatedElBelowLineY(anchorEl);
-					const aX = aRect.left + aRect.width / 2;
+					const aX = aRect.left;
 					_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
 					_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
 					_curatedSvgLine(svg, midX, aY, aX, aY, langColor);
@@ -421,7 +423,7 @@ function _curatedRefreshPairConnectors() {
 			if (anchorEl) {
 				const aRect = anchorEl.getBoundingClientRect();
 				const aY = _curatedElBelowLineY(anchorEl);
-				const aX = aRect.left + aRect.width / 2;
+				const aX = aRect.left;
 				const startY = Math.max(boxTop, Math.min(boxBottom, aY));
 				_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
 				_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
@@ -462,7 +464,7 @@ function _curatedRefreshPairConnectors() {
 			let targetX, targetY;
 			if (anchorEl) {
 				const aRect = anchorEl.getBoundingClientRect();
-				targetX = aRect.left + aRect.width / 2;
+				targetX = aRect.left;
 				targetY = _curatedElBelowLineY(anchorEl);
 			} else {
 				const target = _curatedSrcPosToClient(

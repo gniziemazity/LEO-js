@@ -190,7 +190,7 @@ function updatePreview(side, files, iframe) {
 	for (const [name, content] of Object.entries(files)) {
 		if (!/\.html$/i.test(name)) filesMap[name] = content;
 	}
-	iframe.srcdoc = inlineFilesInHtml(html, filesMap) || "";
+	iframe.srcdoc = previewBaseTarget(inlineFilesInHtml(html, filesMap) || "");
 }
 
 function _injectIntoHead(html, snippet) {

@@ -220,13 +220,13 @@ function renderTable() {
 
 		const openOnClick = (el) => {
 			if (!hasFiles) {
-				el.title = "No submitted files for this student";
+				el.title = "Forgot to send the code";
 				return;
 			}
 			el.classList.add("clickable-open");
 			el.addEventListener("click", (e) => {
 				e.stopPropagation();
-				if (e.shiftKey) {
+				if (e.ctrlKey || e.metaKey) {
 					openDiffForStudent(s);
 					return;
 				}
@@ -275,6 +275,7 @@ function renderTable() {
 					const cell = document.createElement("td");
 					cell.className = "col-remark col-obs col-artefact";
 					_renderArtefactCell(cell, s, rk.col, i, code);
+					if (_isReadOnly) openOnClick(cell);
 					tr.appendChild(cell);
 				});
 				continue;
@@ -697,12 +698,17 @@ function _renderArtefactCell(el, student, colName, idx, code) {
 	const fired = ARTEFACT_CODE_RE.test(code) && code[idx] === "1";
 	const entry = _artefactSchema[idx];
 	el.innerHTML = renderArtefactCellSquare(fired, entry);
-	let tip = entry && entry.label ? entry.label : "";
+	el.title = "";
+	const getCode = () => {
+		const r = (student.remarks || []).find((x) => x.col === colName);
+		return r && r.val ? String(r.val).trim() : "";
+	};
+	attachHtmlTip(el, () =>
+		buildArtefactSummaryHtml(getCode(), _artefactSchema),
+	);
 	if (_artefactChangedSince(student.id, idx, fired)) {
 		el.classList.add("artefact-changed");
-		tip = tip ? `${tip} · changed (unsaved)` : "changed (unsaved)";
 	}
-	if (tip) el.title = tip;
 	if (!_isReadOnly && student.id) {
 		el.classList.add("artefact-toggle");
 		el.addEventListener("mousedown", (e) => e.stopPropagation());

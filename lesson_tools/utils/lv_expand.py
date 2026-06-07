@@ -1,7 +1,6 @@
 from .lv_constants import (
     CURSOR_MOVES, DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS,
     MAX_REAL_DELAY, DELAY_OPS,
-    split_code_with_anchors,
 )
 from .folder_utils import CODE_EXTS
 

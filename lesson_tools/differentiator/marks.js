@@ -214,11 +214,14 @@ function diffColorizePositions(
 				const c = _diffMissingColorAt(tFile, tText, a.teacher_pos);
 				anchorStyle = ` style="--insert-anchor-color:${c}"`;
 			}
+			const anchorContent = isMove ? "▾" : escHtml(a.token);
+			const anchorCls = isMove ? cls : cls + " insert-anchor--token";
+			if (!isMove && a.lead) out += escHtml(a.lead);
 			out +=
-				`<span class="${cls}"${anchorStyle}` +
+				`<span class="${anchorCls}"${anchorStyle}` +
 				` data-insert-anchor-pos="${absPos}"` +
 				` data-insert-anchor-token="${escAttr(a.token)}"` +
-				`${sourceAttrs}>▾</span>`;
+				`${sourceAttrs}>${anchorContent}</span>`;
 		}
 	}
 	if (pos < normText.length) {

@@ -62,6 +62,12 @@ function _curatedEnsureButtons() {
 		_curatedSummarize,
 		"curated-only-btn",
 	);
+	make(
+		"btn-corrlist-curated",
+		"✨ Corrections+",
+		_curatedCorrectionsList,
+		"curated-only-btn",
+	);
 	make("btn-preview-curated", "👁 Test", _curatedPreview, "curated-only-btn");
 }
 

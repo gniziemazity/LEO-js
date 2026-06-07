@@ -174,20 +174,36 @@ function _curatedSummarize() {
 			}
 		} else if (g.kind === "extra-move") {
 			const studentText = _curatedSrcText("student", g.file);
+			const dstText = _curatedSrcText("student", g.moveFile);
 			_addEdit(g.file, {
 				start: g.lo,
 				end: g.hi,
 				insertText: "",
 			});
+			let moveBody = _curatedDedentBlock(studentText.slice(g.lo, g.hi));
+			const srcLead = _curatedBackwardWhitespace(studentText, g.lo);
+			if (
+				srcLead &&
+				g.movePos > 0 &&
+				!_curatedBackwardWhitespace(dstText, g.movePos)
+			) {
+				const nl = srcLead.lastIndexOf("\n");
+				moveBody =
+					(nl >= 0
+						? srcLead.slice(0, nl + 1) +
+							_curatedLineIndentAt(dstText, g.movePos)
+						: srcLead) + moveBody;
+			}
 			_addEdit(g.moveFile, {
 				start: g.movePos,
 				end: g.movePos,
-				insertText: _curatedDedentBlock(studentText.slice(g.lo, g.hi)),
+				insertText: moveBody,
 			});
 		} else if (g.kind === "missing-insert") {
 			const teacherText = _curatedSrcText("teacher", g.file);
 			const studentText = _curatedSrcText("student", g.insertFile);
 			let body = teacherText.slice(g.lo, g.hi).replace(/[ \t\r\n]+$/, "");
+			let edgeLead = "";
 			let lineStart = g.lo;
 			while (
 				lineStart > 0 &&
@@ -196,6 +212,7 @@ function _curatedSummarize() {
 			) {
 				lineStart--;
 			}
+			body = _curatedDedentBlock(body);
 			let sIns = g.insertPos;
 			while (
 				sIns > 0 &&
@@ -211,13 +228,15 @@ function _curatedSummarize() {
 				lineStart < g.lo &&
 				(lineStart === 0 || teacherText[lineStart - 1] === "\n")
 			) {
-				body = "\n" + teacherText.slice(lineStart, g.lo) + body;
+				body = "\n" + body;
+			} else {
+				edgeLead = _curatedBackwardWhitespace(teacherText, g.lo);
 			}
-			body = _curatedDedentBlock(body);
 			_addEdit(g.insertFile, {
 				start: g.insertPos,
 				end: g.insertPos,
 				insertText: body,
+				_edgeLead: edgeLead,
 			});
 		} else {
 			_orphans.push(g);
@@ -267,6 +286,25 @@ function _curatedSummarize() {
 					setEnd: (e, v) => (e.end = v),
 				},
 			);
+			const stext = _curatedSrcText("student", b.file);
+			const dels = b.edits.filter(
+				(e) => e.end > e.start && e.insertText === "",
+			);
+			for (const e of b.edits) {
+				if (e.start !== e.end || !e._edgeLead) continue;
+				if (e.start <= 0 || _curatedBackwardWhitespace(stext, e.start))
+					continue;
+				const removed = dels.some(
+					(d) => d.start <= e.start - 1 && e.start - 1 < d.end,
+				);
+				if (removed) continue;
+				let lead = e._edgeLead;
+				const nlIdx = lead.lastIndexOf("\n");
+				if (nlIdx >= 0) {
+					lead = lead.slice(0, nlIdx + 1).replace(/[ \t]/g, "");
+				}
+				e.insertText = lead + e.insertText;
+			}
 		}
 	}
 
@@ -310,7 +348,7 @@ function _curatedSummarize() {
 			);
 		}
 
-		for (const b of bucketsByFile.get(file) || []) {
+		for (const b of (bucketsByFile.get(file) || []).slice().reverse()) {
 			const text = _curatedSrcText("student", b.file);
 			const beforeHtml = _renderBefore(text, b.fullLo, b.fullHi, b.edits);
 			const afterHtml = _renderAfter(text, b.fullLo, b.fullHi, b.edits);

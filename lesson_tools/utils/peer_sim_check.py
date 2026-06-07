@@ -1,6 +1,4 @@
-import csv
 import math
-import re
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
@@ -12,14 +10,13 @@ from openpyxl.formatting.rule import ColorScaleRule
 from .similarity_measures import (
     _CHAR_TOKEN_RE,
     normalize_code,
-    open_csv_encoded,
     calculate_ide_diff_sim, calculate_char_histogram_similarity,
     split_code_tokens, calculate_containment,
     save_xlsx,
 )
 from .lesson_log import load_lesson_log
 from .lv_editor import reconstruct_all_with_ghosts
-from .folder_utils import CODE_EXTS, LANG_EXTS
+from .folder_utils import LANG_EXTS
 
 
 _NGRAM_SIZE = 3
@@ -549,9 +546,10 @@ def main():
             events=events,
             lesson_file=lesson_file,
         )
-        folder_name = current_dir.name
+        excels_dir = current_dir / 'excels'
+        excels_dir.mkdir(exist_ok=True)
         checker.generate_matrix_report(
-            str(current_dir / f'student_similarity_{folder_name}.xlsx')
+            str(excels_dir / 'student_similarity.xlsx')
         )
     else:
         print(f"Missing: {anon_ids_dir}")

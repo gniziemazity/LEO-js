@@ -14,10 +14,21 @@ function _curatedForwardWhitespace(text, pos) {
 	return text.slice(pos, i);
 }
 
+function _curatedLineIndentAt(text, pos) {
+	let end = pos;
+	while (end > 0) {
+		const ls = text.lastIndexOf("\n", end - 1) + 1;
+		const line = text.slice(ls, end);
+		if (line.trim()) return (line.match(/^[ \t]*/) || [""])[0];
+		end = ls - 1;
+	}
+	return "";
+}
+
 function _curatedDedentBlock(body) {
 	const lines = body.split("\n");
 	if (lines.length < 2) return body;
-	const startIdx = body.startsWith("\n") ? 0 : 1;
+	const startIdx = /^[ \t\n]/.test(body) ? 0 : 1;
 	let minIndent = Infinity;
 	for (let i = startIdx; i < lines.length; i++) {
 		const line = lines[i];
@@ -101,7 +112,15 @@ function _curatedCleanupCorrectedText(text) {
 	return lines.slice(s, e + 1).join("\n");
 }
 
-function _curatedApplyToStudent() {
+const CURATED_INS_OPEN = String.fromCharCode(0xe000);
+const CURATED_INS_CLOSE = String.fromCharCode(0xe001);
+const CURATED_DEL_OPEN = String.fromCharCode(0xe002);
+const CURATED_DEL_CLOSE = String.fromCharCode(0xe003);
+const CURATED_DEL_NL = String.fromCharCode(0xe004);
+const CURATED_REINDENT = true;
+
+function _curatedApplyToStudent(opts) {
+	const _mark = !!(opts && opts.mark);
 	const out = {};
 	const curatedData = _curatedMarks();
 	if (!curatedData) return out;
@@ -352,6 +371,18 @@ function _curatedApplyToStudent() {
 					if (!isAllWhitespace && _nonAlnum.test(deleted)) body = " ";
 				}
 			}
+			if (_mark) {
+				const removed = text.slice(op.start, op.end);
+				const del = removed
+					? CURATED_DEL_OPEN +
+						removed.replace(/\n/g, CURATED_DEL_NL) +
+						CURATED_DEL_CLOSE
+					: "";
+				const ins = op.text
+					? CURATED_INS_OPEN + body + CURATED_INS_CLOSE
+					: "";
+				if (del || ins) body = del + ins;
+			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);
 		}
 		const outName = filePairs[studentName] || studentName;
@@ -371,8 +402,381 @@ function _curatedApplyToStudent() {
 	return out;
 }
 
+function _curatedReindent(text, ext, lp) {
+	const LP = lp || (typeof window !== "undefined" && window.LanguageProfiles);
+	if (!LP || !LP.shouldIncreaseAfter || !LP.getProfile) return text;
+	const e = (ext || "").toLowerCase().replace(/^\./, "");
+	let mode =
+		e === "html" || e === "htm"
+			? "html"
+			: e === "css"
+				? "css"
+				: e === "js" || e === "javascript"
+					? "js"
+					: null;
+	if (!mode) return text;
+	const profs = {
+		html: LP.getProfile("html"),
+		css: LP.getProfile("css"),
+		js: LP.getProfile("javascript"),
+	};
+	if (!profs[mode]) return text;
+	const isHtml = mode === "html";
+	const _delRe = new RegExp(
+		CURATED_DEL_OPEN + "[^" + CURATED_DEL_CLOSE + "]*" + CURATED_DEL_CLOSE,
+		"g",
+	);
+	const strip = (s) =>
+		s.replace(_delRe, "").replace(new RegExp("[\uE000-\uE003]", "g"), "");
+	const out = [];
+	let depth = 0;
+	for (const raw of text.split("\n")) {
+		const lead = (raw.match(/^[ \t]*/) || [""])[0];
+		const rest = raw.slice(lead.length);
+		const clean = strip(rest).replace(/\s+$/, "");
+		if (clean === "") {
+			const marksOnly = rest.replace(/[ \t]/g, "");
+			if (marksOnly) out.push("\t".repeat(depth) + marksOnly);
+			else if (out.length && out[out.length - 1] !== "") out.push("");
+			continue;
+		}
+		let prof = profs[mode] || profs.html;
+		if (isHtml && mode !== "html" && /<\/\s*(style|script)\b/i.test(clean)) {
+			mode = "html";
+			prof = profs.html;
+		}
+		let d = depth;
+		if (LP.shouldDecreaseOnLine(prof, clean)) d = Math.max(0, d - 1);
+		out.push("\t".repeat(d) + rest);
+		let nd = d;
+		if (LP.shouldIncreaseAfter(prof, clean)) nd = d + 1;
+		else if (LP.shouldDecreaseAfter(prof, clean)) nd = Math.max(0, d - 1);
+		depth = nd;
+		if (isHtml && mode === "html") {
+			const m = clean.match(/<\s*(style|script)\b[^>]*>/i);
+			if (m && !/<\/\s*(style|script)\b/i.test(clean)) {
+				mode = m[1].toLowerCase() === "style" ? "css" : "js";
+			}
+		}
+	}
+	return out.join("\n");
+}
+
+function _curatedMarkedToHtml(text) {
+	const delRe = new RegExp(
+		CURATED_DEL_OPEN + "([^" + CURATED_DEL_CLOSE + "]*)" + CURATED_DEL_CLOSE,
+		"g",
+	);
+	return escHtml(text)
+		.replace(delRe, (_m, content) => {
+			const code = content.split(CURATED_DEL_NL).join("\n");
+			return `<span class="tw-del">${code}</span>`;
+		})
+		.split(CURATED_INS_OPEN)
+		.join('<span class="tw-ins">')
+		.split(CURATED_INS_CLOSE)
+		.join("</span>");
+}
+
+function _curatedChangedGroups(lines) {
+	const markRe = new RegExp(
+		"[" +
+			CURATED_INS_OPEN +
+			CURATED_INS_CLOSE +
+			CURATED_DEL_OPEN +
+			CURATED_DEL_CLOSE +
+			"]",
+	);
+	const groups = [];
+	let insideIns = 0;
+	for (let i = 0; i < lines.length; i++) {
+		const changed = insideIns > 0 || markRe.test(lines[i]);
+		for (const ch of lines[i]) {
+			if (ch === CURATED_INS_OPEN) insideIns++;
+			else if (ch === CURATED_INS_CLOSE) insideIns--;
+		}
+		if (insideIns < 0) insideIns = 0;
+		if (!changed) continue;
+		const last = groups[groups.length - 1];
+		if (last && i - last[1] <= 2) last[1] = i;
+		else groups.push([i, i]);
+	}
+	return groups;
+}
+
+function _curatedDedentSnippet(text) {
+	const lines = text.split("\n");
+	let min = Infinity;
+	for (const l of lines) {
+		if (!l.trim()) continue;
+		const n = (l.match(/^[ \t]*/) || [""])[0].length;
+		if (n < min) min = n;
+	}
+	if (!isFinite(min) || min === 0) return text;
+	return lines.map((l) => l.slice(min)).join("\n");
+}
+
+function _curatedStudentLineMap(marked) {
+	const lines = marked.split("\n");
+	const map = [];
+	let line = 1;
+	let inIns = 0;
+	for (let li = 0; li < lines.length; li++) {
+		map.push(line);
+		for (const ch of lines[li]) {
+			if (ch === CURATED_INS_OPEN) inIns++;
+			else if (ch === CURATED_INS_CLOSE) {
+				inIns--;
+				if (inIns < 0) inIns = 0;
+			} else if (inIns === 0 && ch === CURATED_DEL_NL) line++;
+		}
+		if (inIns === 0) line++;
+	}
+	return map;
+}
+
+function _curatedCorrectionsData() {
+	const out = _curatedApplyToStudent({ mark: true });
+	const rank = (n) => {
+		const r = { html: 0, htm: 0, js: 1, css: 2 };
+		const e = getFileExt(n);
+		return r[e] != null ? r[e] : 3;
+	};
+	const names = Object.keys(out).sort(
+		(a, b) => rank(a) - rank(b) || a.localeCompare(b),
+	);
+	const showHeaders = names.length > 1;
+	const blocks = [];
+	for (const name of names) {
+		const marked = out[name];
+		const lines = marked.split("\n");
+		const stuMap = _curatedStudentLineMap(marked);
+		const groups = _curatedChangedGroups(lines);
+		if (!groups.length) continue;
+		if (showHeaders) blocks.push({ type: "file", text: name });
+		for (const [s, e] of groups.slice().reverse()) {
+			const snippetLines = [];
+			for (const l of lines.slice(s, e + 1)) {
+				const blank = l.trim() === "";
+				if (
+					blank &&
+					snippetLines.length &&
+					snippetLines[snippetLines.length - 1].trim() === ""
+				)
+					continue;
+				snippetLines.push(l);
+			}
+			const snippetText = snippetLines.join("\n");
+			const formatted = CURATED_REINDENT
+				? _curatedReindent(snippetText, getFileExt(name))
+				: _curatedDedentSnippet(snippetText);
+			blocks.push({
+				type: "snippet",
+				label: "line " + stuMap[s],
+				marked: formatted,
+			});
+		}
+	}
+	return blocks;
+}
+
+function _curatedMarkedToSegLines(marked) {
+	const out = [[]];
+	let style = "normal";
+	let cur = "";
+	const flush = () => {
+		if (cur) out[out.length - 1].push({ text: cur, style });
+		cur = "";
+	};
+	for (const ch of String(marked)) {
+		if (ch === CURATED_INS_OPEN) {
+			flush();
+			style = "ins";
+		} else if (ch === CURATED_INS_CLOSE) {
+			flush();
+			style = "normal";
+		} else if (ch === CURATED_DEL_OPEN) {
+			flush();
+			style = "del";
+		} else if (ch === CURATED_DEL_CLOSE) {
+			flush();
+			style = "normal";
+		} else if (ch === CURATED_DEL_NL || ch === "\n") {
+			flush();
+			out.push([]);
+		} else {
+			cur += ch;
+		}
+	}
+	flush();
+	return out;
+}
+
+function _curatedDownloadCorrectionsImage() {
+	const blocks = _curatedCorrectionsData();
+	if (!blocks.length) return;
+	const fontSize = 12;
+	const lineH = Math.round(fontSize * 1.5);
+	const pad = 14;
+	const boxPad = 6;
+	const gap = Math.round(lineH * 0.5);
+	const font = fontSize + "px Consolas, 'Courier New', monospace";
+	const cv = (n, fb) => _cssVar(n) || fb;
+	const textCol = cv("--clr-text", "#1a1a1a");
+	const colors = {
+		bg: cv("--clr-bg", "#ffffff"),
+		text: textCol,
+		ins: cv("--clr-mark-missing", "#cc2222"),
+		del: cv("--clr-mark-extra", "#000000"),
+		label: cv("--clr-muted", "#888888"),
+		file: cv("--clr-label", "#555555"),
+		border: cv("--clr-border-mid", "#cccccc"),
+	};
+	const meas = document.createElement("canvas").getContext("2d");
+	meas.font = font;
+	const segW = (seg) => {
+		meas.font = seg.style === "del" ? "bold " + font : font;
+		return meas.measureText(seg.text).width;
+	};
+	let height = pad * 2;
+	let width = 0;
+	const items = [];
+	for (const b of blocks) {
+		if (b.type === "file") {
+			items.push({ kind: "file", text: b.text });
+			width = Math.max(width, meas.measureText(b.text).width);
+			height += lineH;
+			continue;
+		}
+		items.push({ kind: "label", text: b.label });
+		width = Math.max(width, meas.measureText(b.label).width);
+		height += lineH;
+		const segLines = _curatedMarkedToSegLines(b.marked);
+		let boxW = 0;
+		for (const sl of segLines) {
+			const w = sl.reduce((a, s) => a + segW(s), 0);
+			boxW = Math.max(boxW, w);
+		}
+		boxW += boxPad * 2;
+		width = Math.max(width, boxW);
+		items.push({ kind: "code", segLines, boxW });
+		height += segLines.length * lineH + boxPad * 2 + gap;
+	}
+	const dpr = 2;
+	const W = Math.ceil(width + pad * 2);
+	const H = Math.ceil(height);
+	const canvas = document.createElement("canvas");
+	canvas.width = W * dpr;
+	canvas.height = H * dpr;
+	const ctx = canvas.getContext("2d");
+	ctx.scale(dpr, dpr);
+	ctx.fillStyle = colors.bg;
+	ctx.fillRect(0, 0, W, H);
+	ctx.textBaseline = "top";
+	let y = pad;
+	for (const it of items) {
+		if (it.kind === "file") {
+			ctx.font = "bold " + font;
+			ctx.fillStyle = colors.file;
+			ctx.fillText(it.text, pad, y);
+			y += lineH;
+			continue;
+		}
+		if (it.kind === "label") {
+			ctx.font = font;
+			ctx.fillStyle = colors.label;
+			ctx.fillText(it.text, pad, y);
+			y += lineH;
+			continue;
+		}
+		const boxH = it.segLines.length * lineH + boxPad * 2;
+		ctx.strokeStyle = colors.border;
+		ctx.lineWidth = 1;
+		ctx.strokeRect(pad + 0.5, y + 0.5, it.boxW - 1, boxH - 1);
+		ctx.font = font;
+		let ly = y + boxPad;
+		for (const sl of it.segLines) {
+			let x = pad + boxPad;
+			for (const seg of sl) {
+				const w = segW(seg);
+				ctx.font = seg.style === "del" ? "bold " + font : font;
+				ctx.fillStyle =
+					seg.style === "ins"
+						? colors.ins
+						: seg.style === "del"
+							? colors.del
+							: colors.text;
+				ctx.fillText(seg.text, x, ly);
+				if (seg.style === "del") {
+					ctx.strokeStyle = colors.del;
+					ctx.lineWidth = 1;
+					ctx.beginPath();
+					ctx.moveTo(x, ly + lineH / 2);
+					ctx.lineTo(x + w, ly + lineH / 2);
+					ctx.stroke();
+				}
+				x += w;
+			}
+			ly += lineH;
+		}
+		y += boxH + gap;
+	}
+	canvas.toBlob((blob) => {
+		if (!blob) return;
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = "corrections.png";
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(url);
+	}, "image/png");
+}
+
+function _curatedCorrectionsList() {
+	const blocks = _curatedCorrectionsData();
+	const body = document.createElement("div");
+	body.className = "tw-corr-list";
+	if (!blocks.length) {
+		body.textContent = "No corrections.";
+		_curatedShowFloatWin("Corrections+", body);
+		return;
+	}
+	const toolbar = document.createElement("div");
+	toolbar.className = "tw-corr-toolbar";
+	const dlBtn = document.createElement("button");
+	dlBtn.className = "btn-edit";
+	dlBtn.textContent = "🖼 Download image";
+	dlBtn.addEventListener("click", _curatedDownloadCorrectionsImage);
+	toolbar.appendChild(dlBtn);
+	body.appendChild(toolbar);
+	for (const b of blocks) {
+		if (b.type === "file") {
+			const h = document.createElement("div");
+			h.className = "tw-corr-file";
+			h.textContent = b.text;
+			body.appendChild(h);
+			continue;
+		}
+		const row = document.createElement("div");
+		row.className = "tw-corr-snippet";
+		const label = document.createElement("div");
+		label.className = "tw-corr-label";
+		label.textContent = b.label;
+		const pre = document.createElement("pre");
+		pre.className = "tw-pre tw-corr-pre";
+		pre.innerHTML = _curatedMarkedToHtml(b.marked);
+		row.appendChild(label);
+		row.appendChild(pre);
+		body.appendChild(row);
+	}
+	_curatedShowFloatWin("Corrections+", body);
+}
+
 function _curatedPreview() {
 	const out = _curatedApplyToStudent();
+	const marked = _curatedApplyToStudent({ mark: true });
 	const body = document.createElement("div");
 	body.className = "tw-preview-split";
 
@@ -423,7 +827,11 @@ function _curatedPreview() {
 
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre" + (i === 0 ? " active" : "");
-		pre.textContent = text;
+		const base = marked[name] != null ? marked[name] : text;
+		const mtext = CURATED_REINDENT
+			? _curatedReindent(base, getFileExt(name))
+			: base;
+		pre.innerHTML = _curatedMarkedToHtml(mtext);
 		panes.appendChild(pre);
 	});
 
@@ -436,7 +844,7 @@ function _curatedPreview() {
 	iframe.className = "tw-preview-iframe";
 	iframe.setAttribute(
 		"sandbox",
-		"allow-scripts allow-same-origin allow-modals",
+		"allow-scripts allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox",
 	);
 	right.appendChild(iframe);
 

@@ -5,7 +5,6 @@ import re
 import shutil
 import zipfile
 import tempfile
-from pathlib import Path
 
 from .similarity_measures import open_csv_encoded
 
@@ -31,16 +30,6 @@ def _safe_folder_name(name):
 
 
 def classify_student_row(row):
-    """Classify a students.csv row into ``(excluded, is_llm)``.
-
-    Handles both the new ``Category`` column (empty = student,
-    ``Excluded`` = excluded, ``LLM`` = LLM probe) and the legacy
-    ``Include`` column (``OK`` = student, ``AI`` / ``LLM`` = LLM
-    probe, anything else / empty = excluded). When neither column
-    exists in the row, defaults to ``(False, False)`` so an old
-    ``students.csv`` without either header still loads the cohort
-    as fully-included.
-    """
     if 'Category' in row:
         val = (row.get('Category') or '').strip().upper()
         return (val == 'EXCLUDED', val in ('LLM', 'AI'))
@@ -94,9 +83,6 @@ def load_students(csv_path):
         number = row["Student Number"].strip()
         alter = (row.get("Alter Ego") or "").strip()
         is_excluded, _is_llm = classify_student_row(row)
-        # ``include_raw`` semantics: if neither Category nor Include
-        # was present, treat the row as included (the helper returns
-        # (False, False) in that case).
         included = not is_excluded
         students[name] = {
             "id": sid,

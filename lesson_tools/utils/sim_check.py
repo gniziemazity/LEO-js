@@ -417,6 +417,8 @@ def main() -> None:
     checker.write_name_map(current_dir)
 
     print('\nGenerating per-basis remarks reports...')
+    excels_dir = current_dir / 'excels'
+    excels_dir.mkdir(exist_ok=True)
     generated_bases: List[str] = []
     for basis in _REMARKS_BASES:
         stats = checker.compute_basis_token_stats(
@@ -424,7 +426,7 @@ def main() -> None:
         )
         if not stats:
             continue
-        out_path = current_dir / f'remarks_{basis}.xlsx'
+        out_path = excels_dir / f'remarks_{basis}.xlsx'
         checker.generate_remarks_report(str(out_path), token_stats=stats)
         generated_bases.append(basis)
         print(f'  {out_path.name}  ({len(stats)} student(s))')
@@ -451,7 +453,7 @@ def main() -> None:
                     continue
             if not basis_marks_by_sid:
                 continue
-            out_path = current_dir / f'remarks_{basis}.xlsx'
+            out_path = excels_dir / f'remarks_{basis}.xlsx'
             checker.generate_remarks_report(
                 str(out_path), basis_marks_by_sid=basis_marks_by_sid,
             )
@@ -459,20 +461,20 @@ def main() -> None:
             print(f'  {out_path.name}  ({len(basis_marks_by_sid)} student(s))')
 
     chosen_basis = _resolve_follow_basis(follow_basis, generated_bases)
-    remarks_path = current_dir / 'remarks.xlsx'
+    remarks_path = excels_dir / 'remarks.xlsx'
     print()
 
     backup_path = None
     if remarks_path.exists():
         backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_path = current_dir / f'bck_{backup_ts}.xlsx'
+        backup_path = excels_dir / f'bck_{backup_ts}.xlsx'
         shutil.copy2(str(remarks_path), str(backup_path))
         print(f'Backed up previous remarks -> {backup_path.name}')
 
     while True:
         try:
             if chosen_basis:
-                src_path = current_dir / f'remarks_{chosen_basis}.xlsx'
+                src_path = excels_dir / f'remarks_{chosen_basis}.xlsx'
                 shutil.copy2(str(src_path), str(remarks_path))
             else:
                 checker.generate_remarks_report(str(remarks_path))

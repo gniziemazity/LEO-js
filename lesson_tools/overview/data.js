@@ -357,31 +357,25 @@ async function loadCourse(ds) {
 }
 
 function finishLoad(filename) {
-	[..._scatterCharts, ..._barCharts, ..._progressCharts].forEach((c) => {
+	[..._scatterCharts, ..._barCharts].forEach((c) => {
 		try {
 			c.destroy();
 		} catch {}
 	});
 	_scatterCharts = [];
 	_barCharts = [];
-	_progressCharts = [];
 	document.getElementById("landing").style.display = "none";
 	document.getElementById("toolbar").classList.add("show");
 	document.getElementById("nav-info").textContent =
 		`${_students.length} students · ${filename}`;
-	_curSort = "name";
-	document
-		.querySelectorAll(".sort-bar button[data-sort]")
-		.forEach((b) => b.classList.toggle("active", b.dataset.sort === "name"));
-	_clusterSort = "total-follow";
+	_clusterSort = "id";
 	document
 		.querySelectorAll(".cluster-sort[data-cluster-sort]")
 		.forEach((b) =>
-			b.classList.toggle("active", b.dataset.clusterSort === "total-follow"),
+			b.classList.toggle("active", b.dataset.clusterSort === "id"),
 		);
 	renderTable();
 	renderStats();
-	renderProgress();
 	renderClusters();
 	showPage("students");
 }
@@ -433,6 +427,8 @@ function parseStudent(r) {
 	};
 
 	for (const a of ASSIGNMENTS) {
+		const hasAssignment =
+			str(a.status) !== "" || str(a.obs) !== "" || num(a.grade) != null;
 		const entry = {
 			name: a.name,
 			n: a.n,
@@ -450,7 +446,7 @@ function parseStudent(r) {
 			c_diff: num(a.c_diff),
 			lesson_obs: str(a.lesson_obs),
 			grade: num(a.grade),
-			status: str(a.status),
+			status: hasAssignment ? "Pass" : "",
 			obs: str(a.obs),
 		};
 		if (!PASSING.has(entry.status)) s.passed_course = false;

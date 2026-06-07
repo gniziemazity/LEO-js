@@ -97,27 +97,57 @@ function renderStats() {
 			);
 		}
 
-		const aiAssn = py.assignments.map((a) => a.n_ai ?? 0);
-		addStackedShareCard(
+		const aiStrong = py.assignments.map((a) => a.n_ai_strong ?? 0);
+		const aiUpper = py.assignments.map(
+			(a) => a.n_ai_upper ?? a.n_ai_strong ?? 0,
+		);
+		const aiTotal = py.assignments.map(
+			(a) => a.n_artefact ?? a.n_submitted ?? 0,
+		);
+		const aiMedium = aiUpper.map((u, i) => Math.max(0, u - aiStrong[i]));
+		const aiNone = aiTotal.map((t, i) => Math.max(0, t - aiUpper[i]));
+		addAiUseCard(
 			body,
 			"AI Use (Assignments)",
 			names6,
-			aiAssn,
-			submittedAssn,
-			Math.max(...submittedAssn, 1) + 1,
+			aiStrong,
+			aiMedium,
+			aiNone,
+			aiTotal,
 		);
-		if (names5.length)
+		if (names5.length) {
+			const followAssns = py.assignments.filter((a) => a.follow_avg != null);
 			addBarCard(
 				body,
 				"Follow Scores (Lessons)",
 				names5,
-				py.assignments
-					.filter((a) => a.follow_avg != null)
-					.map((a) => a.follow_avg),
+				followAssns.map((a) => a.follow_avg),
 				ACCENT,
 				100,
 				"pct",
+				null,
+				{
+					barLabel: (gi) => {
+						const n =
+							followAssns[gi]?.n_followed ?? followAssns[gi]?.n_total;
+						return n != null ? `n=${n}` : "";
+					},
+				},
 			);
+			const followBox = ASSIGNMENTS.filter((a) => a.follow != null);
+			const followDists = followBox.map((a) =>
+				_students
+					.filter((s) => !s.excluded)
+					.map((s) => s.lessons[a.n - 1].follow)
+					.filter((v) => v != null),
+			);
+			_addDurationBoxCard(
+				body,
+				"Follow Distribution (Lessons)",
+				followBox.map((a) => a.name),
+				followDists,
+			);
+		}
 	}
 
 	{
@@ -125,6 +155,7 @@ function renderStats() {
 		const nonEmpty = scatterAssns.filter((a) =>
 			_students.some(
 				(s) =>
+					!s.excluded &&
 					s.lessons[a.n - 1].follow != null &&
 					s.lessons[a.n - 1].grade != null,
 			),
@@ -133,6 +164,7 @@ function renderStats() {
 			const points = _students
 				.filter(
 					(s) =>
+						!s.excluded &&
 						s.lessons[a.n - 1].follow != null &&
 						s.lessons[a.n - 1].grade != null,
 				)
@@ -320,36 +352,8 @@ function renderStats() {
 						" KPM"
 					: "—",
 			],
-			[
-				"Passed pre avg",
-				t.passed_pre_avg != null
-					? t.passed_pre_avg.toFixed(1) + " KPM"
-					: "—",
-			],
-			[
-				"Failed pre avg",
-				t.failed_pre_avg != null
-					? t.failed_pre_avg.toFixed(1) + " KPM"
-					: "—",
-			],
-			[
-				"Pass/fail MW p",
-				t.pass_fail_mannwhitney_p != null
-					? fmtP(t.pass_fail_mannwhitney_p)
-					: "—",
-			],
 		].forEach(([k, v]) => {
 			html += `<tr><td>${escHtml(k)}</td><td>${v}</td></tr>`;
-		});
-		html +=
-			'</table><br><table class="st-tbl"><tr><th>Correlation</th><th>r</th><th>ρ</th><th>p(ρ)</th></tr>';
-		[
-			["Pre KPM → Final", t.corr_pre_grade],
-			["Post KPM → Final", t.corr_post_grade],
-			["Improvement → Final", t.corr_improvement_grade],
-		].forEach(([label, c]) => {
-			if (!c) return;
-			html += `<tr><td>${escHtml(label)}</td><td>${fmtR(c.r)}</td><td>${fmtR(c.rho)}</td><td>${fmtP(c.p_rho)}</td></tr>`;
 		});
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
@@ -393,4 +397,16 @@ function renderStats() {
 
 	renderStudentVsLlmCards(body);
 	renderCuratedMoments(body);
+
+	const _hideCard = (t) =>
+		t === "Students Passing (Assignments)" ||
+		t === "Average Grades (Assignments)" ||
+		t.startsWith("AI vs Trouble") ||
+		t.startsWith("Follow Score vs Assignment Grade") ||
+		t === "Self-Evaluation" ||
+		t === "Correlation Summary";
+	body.querySelectorAll(".stat-card").forEach((card) => {
+		const h = card.querySelector("h3");
+		if (h && _hideCard(h.textContent)) card.remove();
+	});
 }

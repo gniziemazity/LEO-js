@@ -266,8 +266,6 @@ function langShortId(name, fallback = "html") {
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
-const AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
-const VIDEO_EXT = /\.(mp4|webm|ogv|mov)$/i;
 const MEDIA_EXT =
 	/\.(png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$/i;
 const CODE_EXT = /\.(html|css|js|py)$/i;
@@ -444,15 +442,37 @@ function buildToolUrl(
 function navigateToStudents(args = {}) {
 	window.open(buildToolUrl("students.html", args), "_blank");
 }
+function openInNewTab(url) {
+	const a = document.createElement("a");
+	a.href = url;
+	a.target = "_blank";
+	a.rel = "noopener";
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+}
+
+function previewBaseTarget(html) {
+	const s = String(html || "");
+	if (/<base\b[^>]*\btarget\s*=/i.test(s)) return s;
+	if (/<base\b/i.test(s))
+		return s.replace(/<base\b/i, '<base target="_blank" ');
+	const tag = '<base target="_blank">';
+	if (/<head\b[^>]*>/i.test(s))
+		return s.replace(/(<head\b[^>]*>)/i, "$1" + tag);
+	if (/<html\b[^>]*>/i.test(s))
+		return s.replace(/(<html\b[^>]*>)/i, "$1" + tag);
+	return tag + s;
+}
 function navigateToDifferentiator(args = {}) {
-	window.open(buildToolUrl("differentiator.html", args), "_blank");
+	openInNewTab(buildToolUrl("differentiator.html", args));
 }
 function navigateToTimeline(args = {}) {
-	window.open(buildToolUrl("timeline.html", args), "_blank");
+	openInNewTab(buildToolUrl("timeline.html", args));
 }
 
 function navigateToSimulator(args = {}) {
-	window.open(buildToolUrl("simulator.html", args), "_blank");
+	openInNewTab(buildToolUrl("simulator.html", args));
 }
 
 async function listServerDir(path) {
@@ -560,25 +580,6 @@ function renderArtefactBadges(raw, schema) {
 		.join("");
 }
 
-function buildArtefactSummaryTitle(raw, schema) {
-	const code = (raw ?? "").trim();
-	if (!isArtefactPattern(code)) return "";
-	const schemaArr = Array.isArray(schema) ? schema : [];
-	const lines = [];
-	for (let i = 0; i < code.length; i++) {
-		const ch = code[i];
-		const entry = schemaArr[i];
-		const label = entry && entry.label ? entry.label : `bit ${i + 1}`;
-		const sev = (entry && entry.severity) || "high";
-		lines.push(`${ch === "1" ? "✗" : " "} ${label} (${sev})`);
-	}
-	for (let i = code.length; i < schemaArr.length; i++) {
-		const sev = schemaArr[i].severity || "high";
-		lines.push(`? ${schemaArr[i].label} (${sev})`);
-	}
-	return lines.join("\n");
-}
-
 function renderArtefactTotals(counts, schema) {
 	const schemaArr = Array.isArray(schema) ? schema : [];
 	const n = Math.max((counts || []).length, schemaArr.length);
@@ -623,20 +624,20 @@ function buildArtefactSummaryHtml(raw, schema) {
 	const code = (raw ?? "").trim();
 	if (!isArtefactPattern(code)) return "";
 	const schemaArr = Array.isArray(schema) ? schema : [];
+	const sq = (clr) =>
+		`<span style="display:inline-block;width:11px;height:11px;border-radius:2px;` +
+		`vertical-align:middle;margin-right:6px;background:${clr}"></span>`;
 	const lines = [];
-	const renderLine = (mark, label, fired) => {
-		const style = fired ? "font-weight:bold" : `color:${THEME.muted}`;
-		return `<div style="${style}">${mark} ${escHtml(label)}</div>`;
-	};
-	for (let i = 0; i < code.length; i++) {
-		const ch = code[i];
+	const n = Math.max(code.length, schemaArr.length);
+	for (let i = 0; i < n; i++) {
 		const entry = schemaArr[i];
+		const fired = code[i] === "1";
 		const label = entry && entry.label ? entry.label : `bit ${i + 1}`;
-		const fired = ch === "1";
-		lines.push(renderLine(fired ? "✗" : "&nbsp;", label, fired));
-	}
-	for (let i = code.length; i < schemaArr.length; i++) {
-		lines.push(renderLine("?", schemaArr[i].label, false));
+		const clr = fired
+			? artefactFiredColorFor((entry && entry.severity) || "high")
+			: THEME.artefactOk;
+		const style = fired ? "font-weight:bold" : `color:${THEME.muted}`;
+		lines.push(`<div style="${style}">${sq(clr)}${escHtml(label)}</div>`);
 	}
 	return lines.join("");
 }
@@ -776,19 +777,6 @@ function lsGet(key, fallback = null) {
 function lsSet(key, value) {
 	try {
 		localStorage.setItem(key, value);
-	} catch (e) {}
-}
-function lsGetJson(key, fallback = null) {
-	try {
-		const v = localStorage.getItem(key);
-		return v === null ? fallback : JSON.parse(v);
-	} catch (e) {
-		return fallback;
-	}
-}
-function lsSetJson(key, value) {
-	try {
-		localStorage.setItem(key, JSON.stringify(value));
 	} catch (e) {}
 }
 

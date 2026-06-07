@@ -83,7 +83,7 @@ class FileOperations {
 			this.lessonRenderer.render();
 			this.setInitialStateToInactive();
 
-			const lessonName = path.basename(filePath, ".json");
+			const lessonName = path.basename(filePath, path.extname(filePath));
 			ipcRenderer.send("broadcast-lesson", lessonName);
 		});
 	}

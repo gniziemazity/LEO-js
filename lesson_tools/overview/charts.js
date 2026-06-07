@@ -7,6 +7,7 @@ function addStackedShareCard(
 	subsetCounts,
 	totalCounts,
 	yMax,
+	opts = {},
 ) {
 	const card = mkCard(parent, title);
 	const box = el("div", "chart-box");
@@ -16,15 +17,19 @@ function addStackedShareCard(
 		yMin: 0,
 		yMax: yMax ?? Math.max(...totalCounts, 1) + 1,
 		stacked: true,
-		tooltipCallback: (_label, _val, _si, gi) => [
-			`${subsetCounts[gi]} / ${totalCounts[gi]}`,
-		],
-		barLabel: (gi, si) => {
-			if (si !== 0) return null;
-			const tot = totalCounts[gi];
-			if (!tot) return null;
-			return Math.round((subsetCounts[gi] / tot) * 100) + "%";
-		},
+		tooltipCallback:
+			opts.tooltipCallback ??
+			((_label, _val, _si, gi) => [
+				`${subsetCounts[gi]} / ${totalCounts[gi]}`,
+			]),
+		barLabel:
+			opts.barLabel ??
+			((gi, si) => {
+				if (si !== 0) return null;
+				const tot = totalCounts[gi];
+				if (!tot) return null;
+				return Math.round((subsetCounts[gi] / tot) * 100) + "%";
+			}),
 	});
 	chart.setData(labels, [
 		{
@@ -37,6 +42,43 @@ function addStackedShareCard(
 			backgroundColor: _hexToRgba(THEME.label, 0.22),
 			borderColor: _hexToRgba(THEME.label, 0.45),
 		},
+	]);
+	_barCharts.push(chart);
+}
+
+function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
+	const card = mkCard(parent, title);
+	const box = el("div", "chart-box");
+	card.appendChild(box);
+	const redC = artefactFiredColorFor("high");
+	const orangeC = artefactFiredColorFor("medium");
+	const grayC = THEME.artefactOk;
+	const pct = (n, gi) => (totals[gi] ? Math.round((n / totals[gi]) * 100) : 0);
+	const chart = new BarChart(box, {
+		yMin: 0,
+		yMax: Math.max(...totals, 1) + 1,
+		stacked: true,
+		tooltipCallback: (_l, _v, si, gi) => {
+			if (si === 0)
+				return [`strong AI: ${strong[gi]} (${pct(strong[gi], gi)}%)`];
+			if (si === 1)
+				return [
+					`+ medium: ${medium[gi]} → up to ${pct(strong[gi] + medium[gi], gi)}%`,
+				];
+			return [`no AI: ${none[gi]} of ${totals[gi] || 0}`];
+		},
+		barLabel: (gi, si) => {
+			if (!totals[gi]) return null;
+			if (si === 0) return strong[gi] ? pct(strong[gi], gi) + "%" : null;
+			if (si === 1)
+				return medium[gi] ? pct(strong[gi] + medium[gi], gi) + "%" : null;
+			return null;
+		},
+	});
+	chart.setData(labels, [
+		{ data: strong, backgroundColor: redC, borderColor: redC },
+		{ data: medium, backgroundColor: orangeC, borderColor: orangeC },
+		{ data: none, backgroundColor: grayC, borderColor: grayC },
 	]);
 	_barCharts.push(chart);
 }
@@ -164,16 +206,6 @@ function linReg(pts) {
 
 function addScatterCard(parent, assignment, points, isFirst) {
 	const card = mkCard(parent, assignment.name, "sm");
-	if (isFirst) {
-		const h = card.querySelector("h3");
-		h.insertAdjacentHTML(
-			"beforeend",
-			`<span style="margin-left:6px;font-size:11px;color:${THEME.textStrong}">●</span>` +
-				`<span style="font-size:9px;color:${THEME.muted};font-weight:400;text-transform:none;letter-spacing:0"> No AI &nbsp;</span>` +
-				`<span style="font-size:11px;color:${THEME.red}">●</span>` +
-				`<span style="font-size:9px;color:${THEME.muted};font-weight:400;text-transform:none;letter-spacing:0"> AI</span>`,
-		);
-	}
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 

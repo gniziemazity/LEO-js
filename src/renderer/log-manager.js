@@ -23,7 +23,7 @@ class LogManager {
 		const timestamp = this.getTimestamp();
 		this.logFilePath = path.join(
 			logsDir,
-			`${basename}_key_presses_${timestamp}.json`,
+			`${basename}_key_presses_${timestamp}.log`,
 		);
 
 		this.save();
@@ -34,7 +34,10 @@ class LogManager {
 			const dir = path.dirname(lessonFilePath);
 			return {
 				logsDir: path.join(dir, "logs"),
-				basename: path.basename(lessonFilePath, ".json"),
+				basename: path.basename(
+					lessonFilePath,
+					path.extname(lessonFilePath),
+				),
 			};
 		} else {
 			return {
@@ -91,7 +94,7 @@ class LogManager {
 		const timestamp = this.getTimestamp();
 		const artificialPath = path.join(
 			logsDir,
-			`artificial_${basename}_${timestamp}.json`,
+			`artificial_${basename}_${timestamp}.log`,
 		);
 
 		const logData = {

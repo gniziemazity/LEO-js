@@ -334,6 +334,10 @@ async function createWindow() {
 			"settings-loaded",
 			settingsManager.getAll(),
 		);
+		if (pendingOpenFile) {
+			state.mainWindow.webContents.send("open-plan-file", pendingOpenFile);
+			pendingOpenFile = null;
+		}
 	});
 	state.mainWindow.on("close", () => {
 		if (tray) {
@@ -975,14 +979,14 @@ ipcMain.on(
 );
 ipcMain.handle("show-save-dialog", async () => {
 	const result = await dialog.showSaveDialog(state.mainWindow, {
-		filters: [{ name: "JSON", extensions: ["json"] }],
-		defaultPath: "lesson.json",
+		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
+		defaultPath: "lesson.leo",
 	});
 	return result.filePath;
 });
 ipcMain.handle("show-open-dialog", async () => {
 	const result = await dialog.showOpenDialog(state.mainWindow, {
-		filters: [{ name: "JSON", extensions: ["json"] }],
+		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
 		properties: ["openFile"],
 	});
 	return result.filePaths[0];
@@ -1146,10 +1150,47 @@ ipcMain.on("reset-settings", (event) => {
 	event.reply("settings-loaded", settingsManager.getAll());
 });
 
-app.whenReady().then(() => {
-	createWindow();
-	createTray();
-});
+let pendingOpenFile = _extractLeoPath(process.argv);
+
+function _extractLeoPath(argv) {
+	for (const arg of argv.slice(1)) {
+		if (typeof arg !== "string") continue;
+		if (/\.(leo|json)$/i.test(arg) && fs.existsSync(arg)) return arg;
+	}
+	return null;
+}
+
+function _openPlanInWindow(filePath) {
+	if (!filePath || !state.mainWindow) return;
+	if (state.mainWindow.isMinimized()) state.mainWindow.restore();
+	state.mainWindow.show();
+	state.mainWindow.focus();
+	state.mainWindow.webContents.send("open-plan-file", filePath);
+}
+
+if (!app.requestSingleInstanceLock()) {
+	app.quit();
+} else {
+	app.on("second-instance", (_event, argv) => {
+		const filePath = _extractLeoPath(argv);
+		if (filePath) {
+			_openPlanInWindow(filePath);
+		} else if (state.mainWindow) {
+			if (state.mainWindow.isMinimized()) state.mainWindow.restore();
+			state.mainWindow.show();
+			state.mainWindow.focus();
+		}
+	});
+	app.on("open-file", (event, filePath) => {
+		event.preventDefault();
+		if (state.mainWindow) _openPlanInWindow(filePath);
+		else pendingOpenFile = filePath;
+	});
+	app.whenReady().then(() => {
+		createWindow();
+		createTray();
+	});
+}
 app.on("window-all-closed", () => {
 	app.quit();
 });

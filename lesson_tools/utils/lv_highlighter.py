@@ -1,5 +1,4 @@
 import re
-from .lv_constants import CLR
 
 
 class Highlighter:

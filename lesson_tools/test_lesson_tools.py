@@ -1,6 +1,5 @@
 import json
 import random
-import sys
 import tempfile
 import unittest
 from collections import Counter
@@ -8,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 _ROOT = Path(__file__).resolve().parent
-_TEST = _ROOT / 'test'
+_TEST = _ROOT / 'test' / 'lessons'
 
 from utils import similarity_measures as _sm
 from utils.folder_utils import LANG_EXTS

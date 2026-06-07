@@ -267,6 +267,17 @@ function _curatedPairHitTest(info, ev, roles) {
 		? new Set()
 		: roles.wantedTargetLabels;
 
+	if (multiAnchor && effectiveTargetLabels.size) {
+		const existingHere = _curatedExistingMarkAtPos(
+			info.side,
+			info.file,
+			info.pos,
+		);
+		if (existingHere && effectiveTargetLabels.has(existingHere.label)) {
+			return { kind: "mark", mark: existingHere };
+		}
+	}
+
 	if (!multiAnchor) {
 		const winSel = window.getSelection();
 		if (winSel && winSel.rangeCount && !winSel.isCollapsed) {
@@ -776,11 +787,24 @@ function _curatedApplyPendingPair(info, ev) {
 			arr.push(target);
 			arr.sort((a, b) => a.start - b.start);
 		}
-		const a = roles.anchorMarks[0];
+		const targetGroup =
+			roles.anchorMarks.length > 1 && intent.kind === "mark"
+				? _curatedContiguousGroup(info.side, info.file, target)
+				: [target];
 		if (roles.allMissing) {
-			_curatedSetSwapPair(a, target, _curatedPending.anchorFile, info.file);
+			_curatedSetSwapPairGroups(
+				roles.anchorMarks,
+				targetGroup,
+				_curatedPending.anchorFile,
+				info.file,
+			);
 		} else {
-			_curatedSetSwapPair(target, a, info.file, _curatedPending.anchorFile);
+			_curatedSetSwapPairGroups(
+				targetGroup,
+				roles.anchorMarks,
+				info.file,
+				_curatedPending.anchorFile,
+			);
 		}
 	} else if (intent.kind === "insert" && roles.allMissing) {
 		for (const m of roles.anchorMarks) {

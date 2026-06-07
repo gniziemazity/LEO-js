@@ -68,7 +68,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from utils.folder_utils import CODE_EXTS, pick_file
+from utils.folder_utils import pick_file
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from utils.token_log_mixin import (
     _LANG_EXT_LABEL,

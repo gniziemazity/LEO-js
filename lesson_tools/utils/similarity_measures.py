@@ -7,9 +7,9 @@ import zipfile
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
-from .lv_editor import reconstruct_all_headless, replay_with_timestamps_all
+from .lv_editor import replay_with_timestamps_all
 from languages import get_profile, comment_ranges as _profile_comment_ranges
 
 _CHAR_TOKEN_RE = re.compile(r'[a-zA-Z0-9]+|[^\s]')

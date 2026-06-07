@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import subprocess
 import sys
 import tkinter as tk
-import zipfile
-import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -163,14 +160,15 @@ def _find_subdir(parent: Path, name: str) -> Optional[Path]:
 
 
 def _latest_remarks_xlsx(folder: Path) -> Optional[Path]:
-    if not folder.is_dir():
-        return None
-    canon = folder / 'remarks.xlsx'
-    if canon.is_file():
-        return canon
-    fallback = list(folder.glob('remarks_*.xlsx'))
-    if fallback:
-        return max(fallback, key=lambda p: p.stat().st_mtime)
+    for base in (folder / 'excels', folder):
+        if not base.is_dir():
+            continue
+        canon = base / 'remarks.xlsx'
+        if canon.is_file():
+            return canon
+        fallback = list(base.glob('remarks_*.xlsx'))
+        if fallback:
+            return max(fallback, key=lambda p: p.stat().st_mtime)
     return None
 
 

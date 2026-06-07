@@ -5,10 +5,11 @@ let vis;
 const _SIM_LOG_SKIP = new Set(["diff_marks.json"]);
 const _SIM_LOG_RANK = (name) => {
 	const n = name.toLowerCase();
-	if (n === "log.json") return 0;
-	if (n.endsWith("_log.json")) return 1;
-	if (n.includes("log")) return 2;
-	return 3;
+	if (n.endsWith(".log")) return 0;
+	if (n === "log.json") return 1;
+	if (n.endsWith("_log.json")) return 2;
+	if (n.includes("log")) return 3;
+	return 4;
 };
 
 async function _simReadImageUris(pathMap) {
@@ -45,14 +46,17 @@ async function _simLoadFromFileMap(
 	seekStep,
 	seekTs,
 ) {
-	const isLogCandidate = (f) =>
-		f.name.toLowerCase().endsWith(".json") &&
-		!_SIM_LOG_SKIP.has(f.name.toLowerCase());
+	const isLogCandidate = (f) => {
+		const n = f.name.toLowerCase();
+		return (
+			n.endsWith(".log") || (n.endsWith(".json") && !_SIM_LOG_SKIP.has(n))
+		);
+	};
 	const candidates = [...pathMap.entries()]
 		.filter(([p, f]) => {
 			if (!isLogCandidate(f)) return false;
 			if (!p.includes("/")) return true;
-			return /^anon_(ids|names)\/log\.json$/i.test(p);
+			return /^anon_(ids|names)\/log\.(json|log)$/i.test(p);
 		})
 		.map(([, f]) => f)
 		.sort((a, b) => _SIM_LOG_RANK(a.name) - _SIM_LOG_RANK(b.name));
@@ -72,6 +76,7 @@ async function _simLoadFromFileMap(
 			loadFromData({
 				filePath: file.name,
 				micro,
+				events,
 				error: null,
 				imageUris,
 				lessonFile: data?.lessonFile || null,
@@ -168,6 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				loadFromData({
 					filePath,
 					micro,
+					events,
 					error: null,
 					imageUris,
 					lessonFile,
@@ -216,7 +222,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				types: [
 					{
 						description: "Log files",
-						accept: { "application/json": [".json"] },
+						accept: { "application/json": [".json", ".log"] },
 					},
 				],
 			});
@@ -228,6 +234,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			loadFromData({
 				filePath: file.name,
 				micro,
+				events,
 				error: null,
 				lessonFile: json?.lessonFile || null,
 				interactions: events.filter((e) => e.interaction),

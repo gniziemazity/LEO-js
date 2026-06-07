@@ -211,17 +211,6 @@ body {
 	pointer-events: all;
 	z-index: 5;
 }
-.leg-lesson-row {
-	font:
-		bold 12px Consolas,
-		monospace;
-	color: var(--clr-text);
-	margin-bottom: 2px;
-	user-select: none;
-}
-.leg-lesson-row:empty {
-	display: none;
-}
 .leg-total-row {
 	font:
 		bold 10px Consolas,

@@ -233,9 +233,14 @@
 				width: 48px;
 			}
 			.col-artefact {
-				width: 34px;
+				width: 24px;
 				text-align: center;
 				white-space: nowrap;
+				padding-left: 4px;
+				padding-right: 4px;
+			}
+			.col-artefact:has(+ .col-artefact) {
+				border-right: none;
 			}
 			td.col-artefact {
 				position: relative;
@@ -469,9 +474,6 @@
 			.col-fingerprint .fp-mark.lang-py {
 				background: var(--clr-purple);
 			}
-			.col-fingerprint .fp-mark.lang-comment {
-				background: var(--clr-green);
-			}
 			.col-fingerprint .fp-mark.lang-unk {
 				background: var(--clr-gray);
 			}
@@ -649,6 +651,9 @@
 				background: var(--clr-accent);
 				color: #fff;
 			}
+			#asgn-view-toggle {
+				margin-left: 12px;
+			}
 			.sp-collapse-btn {
 				border: none;
 				background: none;
@@ -662,7 +667,6 @@
 				color: var(--clr-accent);
 			}
 			.sp-diff-btn {
-				margin-left: auto;
 				padding: 2px 8px;
 				font-size: 11px;
 				border: 1px solid var(--clr-diff-btn-border);
@@ -724,6 +728,21 @@
 				width: 100%;
 				border: 0;
 				background: var(--clr-bg);
+				min-height: 0;
+			}
+			#student-code-view {
+				flex: 1 1 0;
+				min-width: 0;
+				min-height: 0;
+				display: flex;
+				flex-direction: column;
+			}
+			#student-code-view[hidden] {
+				display: none;
+			}
+			#student-code-fv {
+				flex: 1 1 0;
+				min-width: 0;
 				min-height: 0;
 			}
 			#asgn-pane .sp-head {
@@ -952,6 +971,23 @@
 								</button>
 								<button id="asgn-view-code" type="button">Code</button>
 							</div>
+							<div
+								class="sp-toggle"
+								id="asgn-view-toggle"
+								hidden
+								title="Toggle the panel between the differentiator and the student's code + preview"
+							>
+								<button
+									id="asgn-view-diff"
+									type="button"
+									class="active"
+								>
+									Diff
+								</button>
+								<button id="asgn-view-stu-code" type="button">
+									Code
+								</button>
+							</div>
 							<button
 								id="asgn-timeline"
 								class="sp-diff-btn"
@@ -970,6 +1006,15 @@
 							>
 								Simulator
 							</button>
+							<button
+								id="asgn-download-plan"
+								class="sp-diff-btn"
+								type="button"
+								hidden
+								title="Download lesson plan (zip)"
+							>
+								Download Plan
+							</button>
 						</div>
 						<div class="sp-body" id="asgn-body" data-view="preview">
 							<pre class="sp-editor" id="asgn-editor"></pre>
@@ -977,7 +1022,7 @@
 								class="sp-preview"
 								id="asgn-preview"
 								title="Assignment"
-								sandbox="allow-scripts allow-same-origin"
+								sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
 							></iframe>
 						</div>
 					</div>
@@ -991,6 +1036,9 @@
 							></iframe>
 							<div class="sp-empty" id="student-empty">
 								Select a student row to load the differentiator
+							</div>
+							<div id="student-code-view" hidden>
+								<div id="student-code-fv"></div>
 							</div>
 						</div>
 					</div>

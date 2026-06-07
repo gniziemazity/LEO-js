@@ -14,7 +14,7 @@ class LessonLogData:
 
 
 def load_lesson_log(project_dir: Path) -> tuple[LessonLogData | None, str | None]:
-    json_files = list(project_dir.glob('*.json'))
+    json_files = list(project_dir.glob('*.log')) or list(project_dir.glob('*.json'))
     if len(json_files) != 1:
         if json_files:
             return None, (

@@ -5,25 +5,17 @@ function _sortStudents(list, key) {
 	if (key === "avg-follow") sl.sort((a, b) => followAvg(b) - followAvg(a));
 	else if (key === "total-follow")
 		sl.sort((a, b) => followTotal(b) - followTotal(a));
-	else if (key === "avg-grade")
-		sl.sort((a, b) => (b.avg_assignments ?? -1) - (a.avg_assignments ?? -1));
-	else if (key === "total-grade")
-		sl.sort((a, b) => gradeTotal(b) - gradeTotal(a));
-	else if (key === "ai-count") sl.sort((a, b) => aiCount(a) - aiCount(b));
 	else if (key === "signals")
 		sl.sort((a, b) => signalsTotal(b) - signalsTotal(a));
-	else if (key === "signals-high")
-		sl.sort((a, b) => signalsHigh(b) - signalsHigh(a));
-	else sl.sort((a, b) => a.name.localeCompare(b.name));
+	else
+		sl.sort((a, b) => (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0));
 	return sl;
 }
 
 function visibleStudents() {
-	return _hideExcluded ? _students.filter((s) => !s.excluded) : _students;
-}
-
-function sortedStudents() {
-	return _sortStudents(visibleStudents(), _curSort);
+	return _students.filter(
+		(s) => !s.ai_flagged && (!_hideExcluded || !s.excluded),
+	);
 }
 
 function onHideExcludedChange(checked) {
@@ -34,7 +26,6 @@ function onHideExcludedChange(checked) {
 	if (_students.length) {
 		renderTable();
 		renderStats();
-		renderProgress();
 		renderClusters();
 	}
 }
@@ -59,13 +50,6 @@ const followTotal = (s) =>
 	s.lessons
 		.filter((l) => l.hasFollowCol && l.follow != null)
 		.reduce((a, l) => a + l.follow, 0);
-const gradeTotal = (s) =>
-	s.lessons.filter((l) => l.grade != null).reduce((a, l) => a + l.grade, 0);
-const aiCount = (s) =>
-	s.lessons.reduce(
-		(n, l) => n + ((l.obs || "").match(/\bAI\b/gi)?.length || 0),
-		0,
-	);
 const signalsTotal = (s) => {
 	let n = 0;
 	for (const a of ASSIGNMENTS) {
@@ -75,31 +59,6 @@ const signalsTotal = (s) => {
 	}
 	return n;
 };
-const signalsHigh = (s) => {
-	let n = 0;
-	for (const a of ASSIGNMENTS) {
-		const code = (s.lessons[a.n - 1]?.obs || "").trim();
-		if (!isArtefactPattern(code)) continue;
-		const schema = _artefactSchema[(a.name || "").toLowerCase()] || [];
-		for (let j = 0; j < code.length; j++) {
-			if (code[j] !== "1") continue;
-			const sev = (schema[j] && schema[j].severity) || "high";
-			if (sev === "high") n++;
-		}
-	}
-	return n;
-};
-
-document.querySelectorAll(".sort-bar button[data-sort]").forEach((btn) => {
-	btn.addEventListener("click", () => {
-		_curSort = btn.dataset.sort;
-		document
-			.querySelectorAll(".sort-bar button[data-sort]")
-			.forEach((b) => b.classList.toggle("active", b === btn));
-		renderProgress();
-	});
-});
-
 function mkCard(page, title, size = "sm") {
 	const card = el("div", `stat-card ${size}`);
 	const h = el("h3");
