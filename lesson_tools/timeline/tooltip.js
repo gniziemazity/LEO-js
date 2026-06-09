@@ -225,11 +225,11 @@ function bgForHit(hit) {
 		case "anchor":
 			return _overlayOnWhite("var(--clr-tip-bg-blue)");
 		case "code_insert":
-			return "#F5F5F5";
+			return "var(--clr-tip-bg-gray)";
 		case "dev_char":
 			return _overlayOnWhite("var(--clr-tip-bg-purple)");
 		case "delete":
-			return "#FFEBEE";
+			return "var(--clr-tip-bg-delete)";
 		case "char":
 			return "var(--clr-bg)";
 		case "burst":

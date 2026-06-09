@@ -4,6 +4,7 @@
 	--c-gray-1: #eee;
 	--c-gray-2: #888;
 	--c-gray-3: #222;
+	--c-gray-4: #595959;
 
 	--c-blue-1: #007acc;
 	--c-blue-2: #005a9e;
@@ -37,7 +38,7 @@
 	--clr-gray: var(--c-gray-3);
 	--clr-text-dim: var(--c-gray-2);
 	--clr-text-faint: var(--c-gray-2);
-	--clr-label: #595959;
+	--clr-label: var(--c-gray-4);
 	--clr-muted: var(--c-gray-2);
 
 	--clr-border: var(--c-gray-2);
@@ -91,6 +92,7 @@
 	--clr-mark-comment: var(--c-green-1);
 	--clr-mark-missing-bg: rgba(204, 34, 34, 0.13);
 	--clr-mark-extra-bg: rgba(0, 0, 0, 0.08);
+	--clr-mark-active-bg: rgba(0, 0, 0, 0.1);
 	--clr-mark-missing-pair-bg: rgba(204, 34, 34, 0.22);
 	--clr-mark-extra-pair-bg: rgba(0, 0, 0, 0.18);
 	--clr-mark-missing-soft-bg: rgba(204, 34, 34, 0.08);
@@ -114,6 +116,8 @@
 	--clr-tip-bg-orange: rgba(224, 112, 32, 0.1);
 	--clr-tip-bg-green: rgba(102, 187, 106, 0.15);
 	--clr-tip-bg-purple: rgba(142, 68, 173, 0.12);
+	--clr-tip-bg-gray: #f5f5f5;
+	--clr-tip-bg-delete: #ffebee;
 
 	--clr-chart-bg: var(--c-white);
 	--clr-chart-grid: #e8e8e8;

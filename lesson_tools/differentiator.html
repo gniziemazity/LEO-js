@@ -997,84 +997,6 @@
 				-moz-tab-size: 4;
 				color: var(--clr-code-muted);
 			}
-			.curated-float-win .tw-summary-pre {
-				background: var(--clr-surface-soft);
-				border: 1px solid var(--clr-border-mid);
-				padding: 2px 6px;
-				margin: 0;
-				white-space: pre;
-				word-wrap: normal;
-				overflow-x: auto;
-				font-size: 11px;
-				tab-size: 4;
-				-moz-tab-size: 4;
-			}
-			.curated-float-win .tw-summary-grid {
-				display: grid;
-				grid-template-columns:
-					max-content minmax(0, 1fr)
-					max-content minmax(0, 1fr);
-				gap: 11px 12px;
-				align-items: start;
-			}
-			.curated-float-win .tw-summary-grid > * {
-				min-width: 0;
-			}
-			.curated-float-win .tw-summary-file-header {
-				grid-column: 1 / -1;
-				font-weight: bold;
-				color: var(--clr-text);
-				font-size: 11px;
-				padding: 6px 0 2px;
-				border-bottom: 1px solid var(--clr-border);
-			}
-			.curated-float-win .tw-summary-file-header:first-child {
-				padding-top: 0;
-			}
-			.curated-float-win .tw-line {
-				display: flex;
-				align-items: flex-start;
-				line-height: 1;
-				margin-top: 5px;
-			}
-			.curated-float-win .tw-mid {
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				line-height: 1;
-				margin-top: 5px;
-			}
-			.curated-float-win .tw-loc {
-				font-size: 9px;
-				color: var(--clr-label);
-				white-space: nowrap;
-				line-height: 1;
-				margin-top: -3px;
-				margin-bottom: -4px;
-			}
-			.curated-float-win .tw-arrow {
-				font-size: 14px;
-				font-weight: bold;
-				color: var(--clr-text);
-				opacity: 0.7;
-				text-align: center;
-				padding: 0 4px;
-				line-height: 1;
-				margin-top: -2px;
-			}
-			.curated-float-win .tw-summary-pre .tw-del {
-				color: #c00000;
-				font-weight: bold;
-			}
-			.curated-float-win .tw-summary-pre .tw-del-ws {
-				display: inline-block;
-				min-width: 0.5em;
-				background-color: var(--clr-mark-extra-bg);
-				outline: 1px dashed var(--clr-mark-extra);
-				outline-offset: -1px;
-				border-radius: 2px;
-			}
-			.curated-float-win .tw-summary-pre .tw-ins,
 			.curated-float-win .tw-preview-panes .tw-pre .tw-ins {
 				color: var(--tw-ins-color, var(--clr-mark-missing));
 				font-weight: bold;
@@ -1380,7 +1302,6 @@
 </html>
 
 <script src="differentiator/curated-apply.js"></script>
-<script src="differentiator/curated-summary.js"></script>
 <script src="differentiator/curated-floatwin.js"></script>
 <script src="differentiator/curated-ghosts.js"></script>
 <script src="differentiator/nav.js"></script>

@@ -40,8 +40,8 @@ function addStackedShareCard(
 		},
 		{
 			data: restCounts,
-			backgroundColor: _hexToRgba(baseColor, 0.22),
-			borderColor: _hexToRgba(baseColor, 0.45),
+			backgroundColor: _hexToRgba(THEME.label, 0.22),
+			borderColor: _hexToRgba(THEME.label, 0.45),
 		},
 	]);
 	_barCharts.push(chart);

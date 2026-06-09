@@ -62,10 +62,6 @@ function loadAPI() {
 		path.join(dir, "differentiator/curated-apply.js"),
 		"utf-8",
 	);
-	const summary = fs.readFileSync(
-		path.join(dir, "differentiator/curated-summary.js"),
-		"utf-8",
-	);
 	const floatwin = fs.readFileSync(
 		path.join(dir, "differentiator/curated-floatwin.js"),
 		"utf-8",
@@ -75,11 +71,9 @@ function loadAPI() {
 		${model}
 		${io}
 		${apply}
-		${summary}
 		${floatwin}
 		return {
 			_curatedApplyToStudent,
-			_curatedSummarize,
 			_curatedCleanupCorrectedText,
 			_curatedReindent,
 			_curatedChangedGroups,
@@ -96,31 +90,9 @@ function loadAPI() {
 
 const api = loadAPI();
 
-function stripTags(html) {
-	return html
-		.replace(/<[^>]*>/g, "")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&amp;/g, "&");
-}
-
-function summaryAfterText(rows) {
-	const out = [];
-	for (const r of rows) {
-		const m = r.match(/<div class="tw-mid">[\s\S]*?<\/div>([\s\S]*)$/);
-		if (!m) continue;
-		out.push(stripTags(m[1]));
-	}
-	return out.join("\n");
-}
-
-function bothPaths({ teacher, student, marks, file, mode = "ideal" }) {
+function applyPath({ teacher, student, marks, file, mode = "ideal" }) {
 	api.__setState(teacher, student, { [mode]: marks }, mode);
-	const applyOut = api._curatedApplyToStudent();
-	api.__setState(teacher, student, { [mode]: marks }, mode);
-	api._curatedSummarize();
-	const summary = summaryAfterText(api.__getRows());
-	return { apply: applyOut[file], summary };
+	return api._curatedApplyToStudent()[file];
 }
 
 const norm = (s) => api._curatedCleanupCorrectedText(s);
@@ -284,56 +256,6 @@ test("reindent leaves non-brace languages (python) untouched", () => {
 	assert.equal(api._curatedReindent(src, "py", reindentLP), src);
 });
 
-test("corrections: block after teacher blank line drops the teacher indent", () => {
-	// teacher has `.a{}` then a tab-indented blank line then `.b{}`; the student
-	// is missing `.b{}` and the insert lands right after `}` (edgeLead path).
-	// The corrections view must not carry the teacher's blank-line indentation.
-	const student = { "f.css": ".a{}" };
-	const teacher = { "f.css": ".a{}\n\t\t\t\n\t\t\t.b{}" };
-	const marks = {
-		token_matching: "ideal",
-		teacher_files: {
-			"f.css": [
-				{
-					token: ".",
-					label: "missing",
-					start: 12,
-					end: 13,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "b",
-					label: "missing",
-					start: 13,
-					end: 14,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "{",
-					label: "missing",
-					start: 14,
-					end: 15,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "}",
-					label: "missing",
-					start: 15,
-					end: 16,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-			],
-		},
-		student_files: { "f.css": [] },
-	};
-	const { summary } = bothPaths({ teacher, student, marks, file: "f.css" });
-	assert.ok(
-		!summary.includes("\t"),
-		"corrections strip teacher blank-line indent: " + JSON.stringify(summary),
-	);
-	assert.match(summary, /\.b\{\}/, "corrections still insert the block");
-});
-
 test("apply mark option wraps insertions for the colored preview", () => {
 	const OPEN = String.fromCharCode(0xe000);
 	const CLOSE = String.fromCharCode(0xe001);
@@ -413,9 +335,6 @@ test("apply mark option wraps deletions with the removed text", () => {
 });
 
 test("adjacent extras + inline insert: no stray space survives the gap", () => {
-	// student wrote `a.replace Children(x);` (split identifier + space);
-	// teacher has `a.replaceChildren(x);`. insert_at lands on `Children` start
-	// (10) so the two extras stay separate groups — exercising gap-absorption.
 	const student = { "f.js": "a.replace Children(x);" };
 	const teacher = { "f.js": "a.replaceChildren(x);" };
 	const sChildren = student["f.js"].indexOf("Children"); // 10
@@ -439,7 +358,7 @@ test("adjacent extras + inline insert: no stray space survives the gap", () => {
 			],
 		},
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
@@ -447,7 +366,6 @@ test("adjacent extras + inline insert: no stray space survives the gap", () => {
 	});
 	const expected = "a.replaceChildren(x);";
 	assert.equal(norm(apply), expected, "apply path");
-	assert.equal(norm(summary), expected, "summary path");
 });
 
 test("inline missing-insert does not add a spurious blank line", () => {
@@ -498,7 +416,7 @@ test("inline missing-insert does not add a spurious blank line", () => {
 			],
 		},
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
@@ -506,8 +424,6 @@ test("inline missing-insert does not add a spurious blank line", () => {
 	});
 	const expected = "let selectedPiece = null;";
 	assert.equal(norm(apply), expected, "apply path");
-	assert.equal(norm(summary), expected, "summary path");
-	assert.ok(!/\n/.test(summary.trim()), "summary must be a single line");
 });
 
 test("group<->group swap removes all extras and inserts the missing block", () => {
@@ -628,7 +544,7 @@ test("missing word-token insert keeps a space before a surviving word-char", () 
 		},
 		student_files: { "f.html": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
@@ -636,7 +552,6 @@ test("missing word-token insert keeps a space before a surviving word-char", () 
 	});
 	const expected = '<div class="cell dark left-offset"></div>';
 	assert.equal(norm(apply), expected, "apply path");
-	assert.equal(norm(summary), expected, "summary path");
 });
 
 test("missing tokens on their own line keep the line break", () => {
@@ -671,7 +586,7 @@ test("missing tokens on their own line keep the line break", () => {
 		},
 		student_files: { "f.css": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
@@ -679,10 +594,9 @@ test("missing tokens on their own line keep the line break", () => {
 	});
 	const expected = "a{}\nb{}";
 	assert.equal(norm(apply), expected, "apply path");
-	assert.equal(norm(summary), expected, "summary path");
 });
 
-test("missing indented block: summary dedents, apply keeps teacher indent", () => {
+test("missing indented block: apply keeps teacher indent", () => {
 	const student = { "f.css": ".a{}" };
 	const teacher = { "f.css": ".a{}\n\t\t\t.b{\n\t\t\t\tx:1;\n\t\t\t}" };
 	const marks = {
@@ -749,103 +663,16 @@ test("missing indented block: summary dedents, apply keeps teacher indent", () =
 		},
 		student_files: { "f.css": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
 		file: "f.css",
 	});
-	assert.equal(
-		norm(summary),
-		".a{}\n.b{\n\tx:1;\n}",
-		"summary dedents to student context",
-	);
 	assert.match(apply, /\t\t\t\.b\{/, "apply keeps teacher indent (preview)");
 });
 
-test("missing block with curator-marked leading whitespace: summary still dedents", () => {
-	const student = { "f.css": ".a{}" };
-	const teacher = { "f.css": ".a{}\n\t\t\t.b{\n\t\t\t\tx:1;\n\t\t\t}" };
-	const marks = {
-		token_matching: "ideal",
-		teacher_files: {
-			"f.css": [
-				{
-					token: "\t\t\t",
-					label: "missing",
-					start: 5,
-					end: 8,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: ".",
-					label: "missing",
-					start: 8,
-					end: 9,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "b",
-					label: "missing",
-					start: 9,
-					end: 10,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "{",
-					label: "missing",
-					start: 10,
-					end: 11,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "x",
-					label: "missing",
-					start: 16,
-					end: 17,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: ":",
-					label: "missing",
-					start: 17,
-					end: 18,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "1",
-					label: "missing",
-					start: 18,
-					end: 19,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: ";",
-					label: "missing",
-					start: 19,
-					end: 20,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "}",
-					label: "missing",
-					start: 24,
-					end: 25,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-			],
-		},
-		student_files: { "f.css": [] },
-	};
-	const { summary } = bothPaths({ teacher, student, marks, file: "f.css" });
-	assert.equal(
-		norm(summary),
-		".a{}\n.b{\n\tx:1;\n}",
-		"dedents despite marked leading whitespace",
-	);
-});
-
-test("missing block insert: summary uses student indent, apply keeps teacher's", () => {
+test("missing block insert: apply keeps teacher indent", () => {
 	const student = { "f.css": ".a{}" };
 	const teacher = { "f.css": ".a{}\n\t\t\t.b{}" };
 	const marks = {
@@ -884,17 +711,12 @@ test("missing block insert: summary uses student indent, apply keeps teacher's",
 		},
 		student_files: { "f.css": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
 		file: "f.css",
 	});
-	assert.equal(
-		norm(summary),
-		".a{}\n.b{}",
-		"summary dedents to student context",
-	);
 	assert.match(apply, /\t\t\t\.b\{\}/, "apply keeps teacher indent (preview)");
 });
 
@@ -930,7 +752,7 @@ test("missing multi-line block at line-start uses student indent, not teacher's"
 		},
 		student_files: { "f.css": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
@@ -940,13 +762,9 @@ test("missing multi-line block at line-start uses student indent, not teacher's"
 		!apply.includes("\t\t\t"),
 		"apply has teacher indent: " + JSON.stringify(apply),
 	);
-	assert.ok(
-		!summary.includes("\t\t\t"),
-		"summary has teacher indent: " + JSON.stringify(summary),
-	);
 });
 
-test("stray whitespace: summary dedents, apply keeps it (preview)", () => {
+test("stray whitespace: apply keeps it (preview)", () => {
 	const student = { "f.css": ".a{}\n        " };
 	const teacher = { "f.css": ".a{}\n        b{\n}" };
 	const marks = {
@@ -978,49 +796,14 @@ test("stray whitespace: summary dedents, apply keeps it (preview)", () => {
 		},
 		student_files: { "f.css": [] },
 	};
-	const { apply, summary } = bothPaths({
+	const apply = applyPath({
 		teacher,
 		student,
 		marks,
 		file: "f.css",
 	});
-	assert.ok(
-		!/ {8}b/.test(summary),
-		"summary dedents: " + JSON.stringify(summary),
-	);
 	assert.ok(
 		/ {8}b/.test(apply),
 		"apply keeps stray indent (preview): " + JSON.stringify(apply),
-	);
-});
-
-test("extra move_to relocates with leading whitespace in both paths", () => {
-	const student = { "f.css": "a x.y" };
-	const teacher = { "f.css": "a x.y" };
-	const marks = {
-		token_matching: "ideal",
-		teacher_files: { "f.css": [] },
-		student_files: {
-			"f.css": [
-				{
-					token: "x",
-					label: "extra",
-					start: 2,
-					end: 3,
-					move_to: { file: "f.css", pos: 5 },
-				},
-			],
-		},
-	};
-	const { apply, summary } = bothPaths({
-		teacher,
-		student,
-		marks,
-		file: "f.css",
-	});
-	assert.equal(
-		norm(summary),
-		norm(apply),
-		`summary=${JSON.stringify(summary)} apply=${JSON.stringify(apply)}`,
 	);
 });

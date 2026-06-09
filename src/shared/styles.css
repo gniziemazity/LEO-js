@@ -10,6 +10,7 @@
 	--c-gray-1: #eee;
 	--c-gray-2: #888;
 	--c-gray-3: #222;
+	--c-gray-4: #595959;
 
 	--c-blue-1: #007acc;
 	--c-blue-2: #005a9e;
@@ -36,7 +37,7 @@
 	--clr-text-strong: var(--c-gray-3);
 	--clr-gray: var(--c-gray-3);
 	--clr-text-dim: var(--c-gray-2);
-	--clr-label: var(--c-gray-2);
+	--clr-label: var(--c-gray-4);
 	--clr-muted: var(--c-gray-2);
 
 	--clr-border: var(--c-gray-2);
@@ -53,7 +54,8 @@
 	--clr-purple: var(--c-purple-1);
 
 	--clr-danger: var(--c-red-1);
-	--clr-danger-dark: var(--c-red-2);
+	--clr-danger-dark: var(--c-red-1);
+	--clr-danger-darker: var(--c-red-2);
 	--clr-pos: var(--c-green-2);
 
 	--shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.18);
@@ -121,7 +123,7 @@ button:hover {
 	background: var(--clr-red);
 }
 .interaction-btn.btn-stop:hover {
-	background: var(--clr-danger-dark);
+	background: var(--clr-danger-darker);
 }
 
 .qr-icon {
@@ -515,7 +517,7 @@ body.mode-record .key-btn[data-char="⚓"] {
 }
 
 .remove-btn:hover {
-	background: var(--clr-danger-dark);
+	background: var(--clr-danger-darker);
 }
 
 .format-btn {
@@ -1367,7 +1369,7 @@ body.image-view #pinBtn.pinned:hover {
 
 #errorMsg {
 	font-family: "Segoe UI", system-ui, sans-serif;
-	color: var(--clr-danger-dark);
+	color: var(--clr-danger-darker);
 	font-size: 1.1rem;
 	display: none;
 }

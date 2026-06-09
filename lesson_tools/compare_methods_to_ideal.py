@@ -878,13 +878,6 @@ def _evaluate_lesson_languages(lesson_dir: Path) -> dict[str, dict]:
 
 _SUMMARY_LABEL_FOR_STAR = ("missing", "extra", "ghost_extra")
 _SUMMARY_LABEL_FOR_PLAIN = ("missing", "extra (incl. ghost)")
-_SUMMARY_LABEL_ORDER = {
-    "missing": 0,
-    "extra": 1,
-    "extra (incl. ghost)": 1,
-    "ghost_extra": 2,
-    "Total": 3,
-}
 
 
 def _summary_metrics_from_stats(a: dict) -> tuple[float, float, float | str]:

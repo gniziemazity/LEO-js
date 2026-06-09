@@ -328,15 +328,15 @@ let _curatedActiveGhost = null;
 let _curatedSelectionRange = null;
 
 function _curatedActiveRectBg(marks) {
-	if (!marks || !marks.length) return "rgba(0, 0, 0, 0.1)";
+	if (!marks || !marks.length) return "var(--clr-mark-active-bg)";
 	const allMissing = marks.every((m) => m.label === "missing");
 	const allExtra = marks.every((m) => m.label === "extra");
 	const allGhost = marks.every((m) => m.label === "ghost_extra");
-	if (allMissing) return "rgba(0, 0, 0, 0.1)";
-	if (allGhost) return "rgba(0, 0, 0, 0.1)";
+	if (allMissing) return "var(--clr-mark-active-bg)";
+	if (allGhost) return "var(--clr-mark-active-bg)";
 	if (allExtra) {
 		const pairedAll = marks.every((m) => m.paired_with);
-		if (!pairedAll) return "rgba(0, 0, 0, 0.1)";
+		if (!pairedAll) return "var(--clr-mark-active-bg)";
 		const pw = marks[0].paired_with;
 		const tFile = pw && pw.file;
 		const tPos = pw && typeof pw.start === "number" ? pw.start : 0;
@@ -351,7 +351,7 @@ function _curatedActiveRectBg(marks) {
 					? _diffMissingColorFor(tFile)
 					: null;
 		if (c && typeof _hexToRgba === "function") return _hexToRgba(c, 0.22);
-		return c || "rgba(0, 0, 0, 0.1)";
+		return c || "var(--clr-mark-active-bg)";
 	}
 	return null;
 }

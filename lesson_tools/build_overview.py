@@ -432,14 +432,6 @@ def _collect_student_data(root: Path,
     return student_data, lesson_meta
 
 
-_MANAGED_LESSON_SUFFIXES = (
-    'HTML Follow', 'CSS Follow', 'JS Follow',
-    'Follow', 'Inc',
-    'A', 'Q', 'H', 'C+', 'C-', 'C Diff',
-    'LessonObs', 'Grade', 'Obs',
-)
-
-
 def _build_row_values(sid: str,
                       info: dict,
                       lesson_meta: Dict[str, dict],

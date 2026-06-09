@@ -257,15 +257,6 @@ function _curatedClearPair(mark, side) {
 	delete mark.paired_with;
 }
 
-function _curatedSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
-	_curatedSetSwapPairGroups(
-		[missingMark],
-		[extraMark],
-		missingFile,
-		extraFile,
-	);
-}
-
 function _curatedSetSwapPairGroups(missings, extras, missingFile, extraFile) {
 	for (const m of missings) _curatedClearPair(m, "teacher");
 	for (const e of extras) _curatedClearPair(e, "student");

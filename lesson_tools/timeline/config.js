@@ -49,17 +49,17 @@ const INTERACTION_COLORS = {
 	"teacher-question": {
 		hex: THEME.blue,
 		spanRgba: _hexToRgba(THEME.blue, 0.6),
-		tipBg: _cssVar("--clr-tip-bg-blue"),
+		tipBg: THEME.tipBgBlue,
 	},
 	"student-question": {
 		hex: THEME.orange,
 		spanRgba: _hexToRgba(THEME.orange, 0.6),
-		tipBg: _cssVar("--clr-tip-bg-orange"),
+		tipBg: THEME.tipBgOrange,
 	},
 	"providing-help": {
 		hex: THEME.green,
 		spanRgba: _hexToRgba(THEME.green, 0.6),
-		tipBg: _cssVar("--clr-tip-bg-green"),
+		tipBg: THEME.tipBgGreen,
 	},
 };
 

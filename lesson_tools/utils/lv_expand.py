@@ -4,12 +4,6 @@ from .lv_constants import (
 )
 from .folder_utils import CODE_EXTS
 
-_CI_SPECIAL = frozenset(
-    list(CURSOR_MOVES.keys()) + [
-        DELETE_LINE_CHAR, "↩", "\n", "―", "\t",
-    ] + list(BACKSPACE_CHARS) + list(DELETE_FWRD_CHARS)
-)
-
 
 def expand_events(events: list) -> list:
     micro = []

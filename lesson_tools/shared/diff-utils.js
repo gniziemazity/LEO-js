@@ -64,6 +64,9 @@ const THEME = {
 	chartInsertMarker: _cssVar("--clr-chart-insert-marker"),
 	chartDotMutedFill: _cssVar("--clr-chart-dot-muted-fill"),
 	chartDotMutedStroke: _cssVar("--clr-chart-dot-muted-stroke"),
+	tipBgBlue: _cssVar("--clr-tip-bg-blue"),
+	tipBgOrange: _cssVar("--clr-tip-bg-orange"),
+	tipBgGreen: _cssVar("--clr-tip-bg-green"),
 };
 
 const LANG_COLORS = {

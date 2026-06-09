@@ -74,8 +74,6 @@ function renderStats() {
 			5,
 			"dec1",
 		);
-		const submittedAssn = py.assignments.map((a) => a.n_submitted ?? 0);
-
 		const lessonTroubleEntries = py.assignments.filter(
 			(a) => a.follow_avg != null,
 		);
