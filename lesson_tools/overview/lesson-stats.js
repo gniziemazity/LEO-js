@@ -55,7 +55,7 @@ function renderLessonStats(body) {
 		chart.setData(lessonNames, [
 			{
 				data: kpmActive.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(THEME.label, 0.5),
+				backgroundColor: THEME.label,
 				borderColor: THEME.label,
 			},
 			{
@@ -65,120 +65,6 @@ function renderLessonStats(body) {
 			},
 		]);
 		_barCharts.push(chart);
-	}
-
-	const tHtml = numFor("tokens_html");
-	const tCss = numFor("tokens_css");
-	const tJs = numFor("tokens_js");
-	const tPy = numFor("tokens_py");
-	const tComment = numFor("tokens_comment");
-	const tDev = numFor("tokens_dev");
-	if (
-		anyPos(tHtml) ||
-		anyPos(tCss) ||
-		anyPos(tJs) ||
-		anyPos(tPy) ||
-		anyPos(tComment) ||
-		anyPos(tDev)
-	) {
-		const card = mkCard(body, "Tokens per Lesson");
-		const box = el("div", "chart-box");
-		card.appendChild(box);
-		const totals = lessonNames.map(
-			(_, i) =>
-				(tHtml[i] ?? 0) +
-				(tCss[i] ?? 0) +
-				(tJs[i] ?? 0) +
-				(tPy[i] ?? 0) +
-				(tComment[i] ?? 0) +
-				(tDev[i] ?? 0),
-		);
-		const stackNames = ["HTML", "CSS", "JS", "Py", "Comment", "Dev"];
-		const chart = new BarChart(box, {
-			yMin: 0,
-			yMax: Math.max(...totals, 1) * 1.1,
-			stacked: true,
-			tooltipCallback: (_l, val, si) => [
-				stackNames[si] + ": " + Math.round(val),
-			],
-		});
-		const langColor = [
-			_cssVar("--clr-red"),
-			_cssVar("--clr-accent"),
-			_cssVar("--clr-orange"),
-			_cssVar("--clr-black"),
-			_cssVar("--clr-green"),
-			_cssVar("--clr-purple"),
-		];
-		const stackData = [tHtml, tCss, tJs, tPy, tComment, tDev];
-		chart.setData(
-			lessonNames,
-			stackData.map((arr, i) => ({
-				data: arr.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(langColor[i], 0.5),
-				borderColor: langColor[i],
-			})),
-		);
-		_barCharts.push(chart);
-	}
-
-	const LESSON_MIN = 90;
-	const duration = numFor("coding_min");
-	if (anyPos(duration)) {
-		const durData = duration.map((v) =>
-			v == null ? 0 : Math.round(v * 10) / 10,
-		);
-		addStackedShareCard(
-			body,
-			"Typing Duration (min)",
-			lessonNames,
-			durData,
-			durData.map(() => LESSON_MIN),
-			Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05,
-		);
-	}
-
-	const segmentsByLesson = orderedRows.map((r) =>
-		_parseSegments(r["segments"]),
-	);
-	if (segmentsByLesson.some((s) => s.length)) {
-		const codeCounts = segmentsByLesson.map(
-			(segs) => segs.filter((s) => s.kind !== "p").length,
-		);
-		_addDurationBoxCard(
-			body,
-			"Pause Duration (min)",
-			lessonNames,
-			segmentsByLesson.map((segs) =>
-				segs.filter((s) => s.kind === "p").map((s) => s.dur / 60),
-			),
-		);
-	}
-
-	const pauseCnt = numFor("pause_count");
-	const pauseAvg = numFor("pause_avg_s");
-	if (anyPos(pauseCnt)) {
-		addBarCard(
-			body,
-			"Pause Count",
-			lessonNames,
-			pauseCnt.map((v) => v ?? 0),
-			THEME.label,
-			Math.max(...pauseCnt.filter((v) => v != null), 1) + 1,
-			"int",
-		);
-	}
-	if (anyPos(pauseAvg)) {
-		const pauseAvgMin = pauseAvg.map((v) => (v != null ? v / 60 : null));
-		addBarCard(
-			body,
-			"Avg Pause Duration (min)",
-			lessonNames,
-			pauseAvgMin.map((v) => v ?? 0),
-			THEME.label,
-			Math.max(...pauseAvgMin.filter((v) => v != null), 1) * 1.1,
-			"dec1",
-		);
 	}
 
 	const tQ = numFor("teacher_q");
@@ -205,7 +91,12 @@ function renderLessonStats(body) {
 			yMin: 0,
 			yMax: Math.max(...all, 1) + 1,
 			tooltipCallback: (_l, val, si) => [
-				["Answered", "Unanswered", "Question", "Help"][si] +
+				[
+					"Teacher Questions (Answered)",
+					"Teacher Questions (Unanswered)",
+					"Student Questions",
+					"Providing Help",
+				][si] +
 					": " +
 					Math.round(val),
 			],
@@ -214,7 +105,7 @@ function renderLessonStats(body) {
 			{
 				data: tQAns,
 				stack: "answer",
-				backgroundColor: _hexToRgba(colors[0], 0.5),
+				backgroundColor: colors[0],
 				borderColor: colors[0],
 			},
 			{
@@ -226,15 +117,80 @@ function renderLessonStats(body) {
 			},
 			{
 				data: sQ.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(colors[1], 0.5),
+				backgroundColor: colors[1],
 				borderColor: colors[1],
 			},
 			{
 				data: hG.map((v) => v ?? 0),
-				backgroundColor: _hexToRgba(colors[2], 0.5),
+				backgroundColor: colors[2],
 				borderColor: colors[2],
 			},
 		]);
 		_barCharts.push(chart);
+	}
+
+	const tHtml = numFor("tokens_html");
+	const tCss = numFor("tokens_css");
+	const tJs = numFor("tokens_js");
+	const tPy = numFor("tokens_py");
+	if (anyPos(tHtml) || anyPos(tCss) || anyPos(tJs) || anyPos(tPy)) {
+		addStackedBarCard(
+			body,
+			"Code Tokens",
+			lessonNames,
+			[
+				{ data: tHtml, color: _cssVar("--clr-red"), label: "HTML" },
+				{ data: tCss, color: _cssVar("--clr-accent"), label: "CSS" },
+				{ data: tJs, color: _cssVar("--clr-orange"), label: "JS" },
+				{ data: tPy, color: _cssVar("--clr-black"), label: "Py" },
+			],
+			{ yScale: 1.1 },
+		);
+	}
+
+	const LESSON_MIN = 90;
+	const duration = numFor("coding_min");
+	if (anyPos(duration)) {
+		const durData = duration.map((v) =>
+			v == null ? 0 : Math.round(v * 10) / 10,
+		);
+		addStackedShareCard(
+			body,
+			"Typing Duration (min)",
+			lessonNames,
+			durData,
+			durData.map(() => LESSON_MIN),
+			Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05,
+		);
+	}
+
+	const segmentsByLesson = orderedRows.map((r) =>
+		_parseSegments(r["segments"]),
+	);
+	if (segmentsByLesson.some((s) => s.length)) {
+		const pauseData = segmentsByLesson.map((segs) =>
+			segs.filter((s) => s.kind === "p").map((s) => s.dur / 60),
+		);
+		_addDurationBoxCard(
+			body,
+			"Pause Duration (min)",
+			lessonNames,
+			pauseData,
+			{ subLabels: pauseData.map((d) => `n=${d.length}`) },
+		);
+	}
+
+	const pauseAvg = numFor("pause_avg_s");
+	if (anyPos(pauseAvg)) {
+		const pauseAvgMin = pauseAvg.map((v) => (v != null ? v / 60 : null));
+		addBarCard(
+			body,
+			"Avg Pause Duration (min)",
+			lessonNames,
+			pauseAvgMin.map((v) => v ?? 0),
+			THEME.label,
+			Math.max(...pauseAvgMin.filter((v) => v != null), 1) * 1.1,
+			"dec1",
+		);
 	}
 }

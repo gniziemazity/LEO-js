@@ -10,7 +10,7 @@ class LineChart {
 		this._datasets = [];
 		this._hitAreas = [];
 		this._hovered = null;
-		this._margin = { top: 18, right: 28, bottom: 20, left: 22 };
+		this._margin = { top: 18, right: 28, bottom: 20, left: 34 };
 		this._dpr = 1;
 		this._ro = new ResizeObserver(() => this._resize());
 		this._ro.observe(container);
@@ -83,12 +83,13 @@ class LineChart {
 				ctx.lineTo(W - right, py);
 				ctx.stroke();
 			}
-			ctx.fillStyle = leftAxis.color ?? "#999";
+			ctx.fillStyle = leftAxis.color ?? "#595959";
 			ctx.font = "9px sans-serif";
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
+			const _ysfx = leftAxis.suffix || "";
 			for (const v of leftAxis.ticks) {
-				ctx.fillText(v, left - 2, this._axisY(v, "left"));
+				ctx.fillText(v + _ysfx, left - 5, this._axisY(v, "left"));
 			}
 		}
 
@@ -102,12 +103,12 @@ class LineChart {
 			}
 		}
 
-		ctx.fillStyle = "#999";
+		ctx.fillStyle = "#595959";
 		ctx.font = "9px sans-serif";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
 		for (let i = 0; i < xLabels.length; i++) {
-			ctx.fillText(xLabels[i], this._axisX(i), H - bottom + 2);
+			ctx.fillText(xLabels[i], this._axisX(i), H - bottom + 5);
 		}
 
 		for (let di = 0; di < this._datasets.length; di++) {
@@ -168,6 +169,45 @@ class LineChart {
 				ctx.strokeText(lbl, px, ty);
 				ctx.fillStyle = ds.labelColor ?? ds.color ?? "#333";
 				ctx.fillText(lbl, px, ty);
+			}
+		}
+
+		const obsMarks = this._options.obsMarks;
+		if (obsMarks) {
+			const plotTop = top;
+			const plotBottom = H - bottom;
+			ctx.font = 'bold 10px "Segoe UI", sans-serif';
+			ctx.textBaseline = "middle";
+			ctx.textAlign = "center";
+			const padX = 5;
+			const boxH = 16;
+			const gap = 7;
+			for (let i = 0; i < obsMarks.length; i++) {
+				const m = obsMarks[i];
+				if (!m || !m.text) continue;
+				const ax = m.axis ?? "left";
+				const px = this._axisX(i);
+				const pyLow = this._axisY(m.belowVal, ax);
+				const pyHigh = this._axisY(m.aboveVal, ax);
+				let cy = pyLow + gap + boxH / 2;
+				if (cy + boxH / 2 > plotBottom) {
+					const above = pyHigh - gap - boxH / 2;
+					if (above - boxH / 2 >= plotTop) cy = above;
+				}
+				const textW = ctx.measureText(m.text).width;
+				const boxW = textW + padX * 2;
+				const bx = px - boxW / 2;
+				const by = cy - boxH / 2;
+				ctx.beginPath();
+				if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 3);
+				else ctx.rect(bx, by, boxW, boxH);
+				ctx.fillStyle = "#fff";
+				ctx.fill();
+				ctx.strokeStyle = m.color ?? "#888";
+				ctx.lineWidth = 1;
+				ctx.stroke();
+				ctx.fillStyle = m.color ?? "#333";
+				ctx.fillText(m.text, px, cy + 0.5);
 			}
 		}
 

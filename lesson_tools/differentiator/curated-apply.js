@@ -100,9 +100,24 @@ function _curatedAbsorbWhitespaceGaps(text, items, get) {
 }
 
 function _curatedCleanupCorrectedText(text) {
+	const delRe = new RegExp(
+		CURATED_DEL_OPEN + "[^" + CURATED_DEL_CLOSE + "]*" + CURATED_DEL_CLOSE,
+		"g",
+	);
+	const collapse = (s) => {
+		let out = "";
+		let last = 0;
+		let m;
+		delRe.lastIndex = 0;
+		while ((m = delRe.exec(s)) !== null) {
+			out += s.slice(last, m.index).replace(/ {2,}/g, " ") + m[0];
+			last = m.index + m[0].length;
+		}
+		return out + s.slice(last).replace(/ {2,}/g, " ");
+	};
 	const lines = text.split("\n").map((line) => {
 		const indent = (line.match(/^[ \t]*/) || [""])[0];
-		return indent + line.slice(indent.length).replace(/ {2,}/g, " ");
+		return indent + collapse(line.slice(indent.length));
 	});
 	const isBlank = (l) => /^[ \t]*$/.test(l);
 	let s = 0;
@@ -574,6 +589,7 @@ function _curatedCorrectionsData() {
 				type: "snippet",
 				label: "line " + stuMap[s],
 				marked: formatted,
+				file: name,
 			});
 		}
 	}
@@ -766,6 +782,8 @@ function _curatedCorrectionsList() {
 		label.textContent = b.label;
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre tw-corr-pre";
+		if (typeof _diffMissingColorFor === "function")
+			pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(b.file));
 		pre.innerHTML = _curatedMarkedToHtml(b.marked);
 		row.appendChild(label);
 		row.appendChild(pre);
@@ -827,6 +845,8 @@ function _curatedPreview() {
 
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre" + (i === 0 ? " active" : "");
+		if (typeof _diffMissingColorFor === "function")
+			pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(name));
 		const base = marked[name] != null ? marked[name] : text;
 		const mtext = CURATED_REINDENT
 			? _curatedReindent(base, getFileExt(name))

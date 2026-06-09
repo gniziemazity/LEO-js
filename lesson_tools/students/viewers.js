@@ -5,6 +5,7 @@ let _asgnView = "preview";
 let _selectedStudent = null;
 let _bottomView = "diff";
 let _codeFV = null;
+let _pendingCodeDoc = null;
 
 let _sideDividerWired = false;
 let _panesDividerWired = false;
@@ -147,6 +148,9 @@ async function _renderAssignment() {
 		const text = file
 			? await readFileText(file)
 			: await _fetchInstructionsText();
+		try {
+			await window.LanguageProfiles?.initProfiles();
+		} catch (_e) {}
 		editor.innerHTML = fvRenderStaticEditor(
 			text,
 			"html",
@@ -291,8 +295,43 @@ function _ensureCodeFV() {
 	return _codeFV;
 }
 
-function _studentHtmlUrl(name) {
-	return `/${_groupFolder()}/${encodeURIComponent(_lessonName)}/anon_ids/${encodeURIComponent(_selectedStudent.id)}/${encodeURIComponent(name)}`;
+async function _studentPreviewSrcdoc(htmlName) {
+	if (!_selectedStudent || !_allFiles) return "";
+	const dir = `anon_ids/${_selectedStudent.id}/`;
+	let html = "";
+	let baseUrl = "";
+	const filesMap = {};
+	const mediaUris = {};
+	for (const [p, f] of _allFiles) {
+		const base = f.name;
+		const inStudent = p.startsWith(dir);
+		try {
+			if (inStudent && base === htmlName) {
+				html = await readFileText(f);
+				if (typeof f.url === "string") {
+					baseUrl = f.url.replace(/[^/]*$/, "");
+				}
+			} else if (inStudent && /\.(css|js)$/i.test(base)) {
+				filesMap[base] = await readFileText(f);
+			} else if (
+				typeof MEDIA_EXT !== "undefined" &&
+				MEDIA_EXT.test(p) &&
+				!(base in mediaUris) &&
+				(inStudent || /^correct\//i.test(p) || /^start\//i.test(p))
+			) {
+				mediaUris[base] = fileToUrl(f);
+			}
+		} catch {}
+	}
+	return typeof buildPreviewSrcdoc === "function"
+		? buildPreviewSrcdoc(html, filesMap, mediaUris, baseUrl)
+		: html;
+}
+
+function _fileLangRank(name) {
+	const ext = (String(name).match(/\.([^.]+)$/) || ["", ""])[1].toLowerCase();
+	const order = { html: 0, htm: 0, css: 1, js: 2, py: 3 };
+	return ext in order ? order[ext] : 4;
 }
 
 function _studentCodeFiles() {
@@ -302,12 +341,22 @@ function _studentCodeFiles() {
 	for (const [p, f] of _allFiles) {
 		if (p.startsWith(dir) && CODE_EXT.test(f.name)) out.push([f.name, f]);
 	}
-	out.sort((a, b) => a[0].localeCompare(b[0]));
+	out.sort(
+		(a, b) =>
+			_fileLangRank(a[0]) - _fileLangRank(b[0]) || a[0].localeCompare(b[0]),
+	);
 	return out;
 }
 
 async function _renderCodeFile(name) {
 	if (!_codeFV) return;
+	_codeFV.showEditorLoading();
+	const doc = _studentDocFiles(_selectedStudent).find((d) => d.name === name);
+	if (doc) {
+		await _renderDocInFv(doc);
+		return;
+	}
+	_codeFV.editorEl.classList.remove("fv-doc-mode");
 	const entry = _studentCodeFiles().find(([n]) => n === name);
 	if (!entry) {
 		_codeFV.setEditorHtml("");
@@ -315,31 +364,93 @@ async function _renderCodeFile(name) {
 	}
 	try {
 		const text = await readFileText(entry[1]);
+		try {
+			await window.LanguageProfiles?.initProfiles();
+		} catch (_e) {}
 		_codeFV.setEditorHtml(fvRenderStaticEditor(text, null, name));
 	} catch {
 		_codeFV.setEditorHtml("");
 	}
 	if (/\.html?$/i.test(name) && _selectedStudent) {
 		_codeFV.showPreview();
-		_codeFV.setPreviewSrc(_studentHtmlUrl(name));
+		_codeFV.showPreviewLoading();
+		_codeFV.setPreviewSrcdoc(await _studentPreviewSrcdoc(name));
+	} else if (_studentCodeFiles().some(([n]) => /\.html?$/i.test(n))) {
+		_codeFV.showPreview();
+	}
+}
+
+async function _renderDocInFv(doc) {
+	const ed = _codeFV.editorEl;
+	_codeFV.hidePreview();
+	ed.classList.add("fv-doc-mode");
+	if (doc.ext === "pdf") {
+		let url = doc.file.url;
+		if (!url) {
+			const buf = await readFileArray(doc.file);
+			url = URL.createObjectURL(
+				new Blob([buf], { type: "application/pdf" }),
+			);
+		}
+		_codeFV.setEditorHtml(
+			`<iframe class="fv-doc-frame" src="${escAttr(url)}"></iframe>`,
+		);
+		return;
+	}
+	if (typeof window.mammoth === "undefined") {
+		_codeFV.setEditorHtml(
+			`<div class="fv-doc">Word viewer (mammoth.js) failed to load.</div>`,
+		);
+		return;
+	}
+	try {
+		const buf = await readFileArray(doc.file);
+		const res = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+		_codeFV.setEditorHtml(
+			`<div class="fv-doc">${res.value || "(empty document)"}</div>`,
+		);
+	} catch (e) {
+		_codeFV.setEditorHtml(
+			`<div class="fv-doc">Failed to open document: ${escHtml(
+				(e && e.message) || String(e),
+			)}</div>`,
+		);
 	}
 }
 
 async function _populateCodeView() {
 	const fv = _ensureCodeFV();
 	if (!fv || !_selectedStudent) return;
+	fv.showPreviewLoading();
 	const s = _selectedStudent;
-	fv.setLeftLabel(`${s.id ? s.id + ". " : ""}${s.name || ""}`);
-	const names = _studentCodeFiles().map(([n]) => n);
-	fv.setTabs(names, names[0] || null);
+	fv.setLeftLabel(s.name || "");
+	const codeNames = _studentCodeFiles().map(([n]) => n);
+	const docNames = _studentDocFiles(s).map((d) => d.name);
+	const names = [...codeNames, ...docNames];
+	const want =
+		_pendingCodeDoc && names.includes(_pendingCodeDoc)
+			? _pendingCodeDoc
+			: null;
+	_pendingCodeDoc = null;
+	fv.setTabs(names, want || names[0] || null);
+	if (want) {
+		await _renderCodeFile(want);
+		return;
+	}
 	if (names[0]) await _renderCodeFile(names[0]);
-	const htmlName = names.find((n) => /\.html?$/i.test(n));
+	const htmlName = codeNames.find((n) => /\.html?$/i.test(n));
 	if (htmlName) {
 		fv.showPreview();
-		fv.setPreviewSrc(_studentHtmlUrl(htmlName));
+		fv.setPreviewSrcdoc(await _studentPreviewSrcdoc(htmlName));
 	} else {
 		fv.hidePreview();
 	}
+}
+
+function _openStudentDocInCode(student, docName) {
+	_pendingCodeDoc = docName;
+	_bottomView = "code";
+	selectStudentInline(student);
 }
 
 function _setBottomView(view) {
@@ -364,7 +475,7 @@ function selectStudentInline(student) {
 	_ensureViewers();
 	_selectedStudent = student;
 	const tb = _vEl("asgn-view-toggle");
-	if (tb) tb.hidden = false;
+	if (tb) tb.hidden = _paperMode;
 	const col = _vEl("side-col");
 	if (col && col.hidden) {
 		_setSideCol(true);

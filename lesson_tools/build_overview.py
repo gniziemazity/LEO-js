@@ -11,7 +11,7 @@ from pathlib import Path
 from tkinter import filedialog
 from typing import Any, Dict, Optional, Sequence, Tuple
 
-from utils.anonymize import load_excluded_student_ids
+from utils.anonymize import load_student_category_ids
 
 try:
     from openpyxl import Workbook, load_workbook
@@ -346,7 +346,8 @@ def _collect_student_data(root: Path,
             if xlsx is None:
                 print(f'  [lesson/{lesson_dir.name}] skipped: no remarks.xlsx or remarks_*.xlsx')
                 continue
-            wanted = ('ID', 'Student', 'Number', 'Inc', 'Interactions',
+            wanted = ('ID', 'Student', 'Number', 'Category', 'Inc',
+                      'Interactions',
                       'Follow (C) Desc', 'Follow (E)',
                       'HTML (E)', 'CSS (E)', 'JS (E)', 'Obs')
             col_idx, rows = _read_grades_rows(xlsx, wanted)
@@ -370,6 +371,9 @@ def _collect_student_data(root: Path,
                     student_data[sid]['name'] = name
                 if number and 'number' not in student_data[sid]:
                     student_data[sid]['number'] = number
+                cat = _to_str(r.get('Category'))
+                if cat and 'category' not in student_data[sid]:
+                    student_data[sid]['category'] = cat
                 if sid in excluded_ids:
                     continue
                 student_data[sid][f'lesson_{lesson_key}'] = {
@@ -395,7 +399,7 @@ def _collect_student_data(root: Path,
             if xlsx is None:
                 print(f'  [assign/{assign_dir.name}] skipped: no remarks.xlsx or remarks_*.xlsx')
                 continue
-            wanted = ('ID', 'Student', 'Number', 'Grade', 'Obs')
+            wanted = ('ID', 'Student', 'Number', 'Category', 'Grade', 'Obs')
             col_idx, rows = _read_grades_rows(xlsx, wanted)
             missing = [h for h in wanted if col_idx.get(h) is None]
             for h in ('Grade', 'Obs'):
@@ -413,6 +417,9 @@ def _collect_student_data(root: Path,
                     student_data[sid]['name'] = name
                 if number and 'number' not in student_data[sid]:
                     student_data[sid]['number'] = number
+                cat = _to_str(r.get('Category'))
+                if cat and 'category' not in student_data[sid]:
+                    student_data[sid]['category'] = cat
                 if sid in excluded_ids:
                     continue
                 student_data[sid][f'assign_{assign_key}'] = {
@@ -436,16 +443,15 @@ _MANAGED_LESSON_SUFFIXES = (
 def _build_row_values(sid: str,
                       info: dict,
                       lesson_meta: Dict[str, dict],
-                      excluded: bool) -> Dict[str, Any]:
-    # Emit both ``Category`` (new column name) and ``Excluded`` (legacy)
-    # so updating an older basis workbook still routes the value to
-    # whichever column header it actually has.
+                      excluded: bool,
+                      is_llm: bool = False) -> Dict[str, Any]:
+    category = 'EXCLUDED' if excluded else ('LLM' if is_llm else None)
     out: Dict[str, Any] = {
         'ID': sid,
         'Name': info.get('name', ''),
         'Number': info.get('number', ''),
-        'Category': 'EXCLUDED' if excluded else None,
-        'Excluded': 'EXCLUDED' if excluded else None,
+        'Category': category,
+        'Excluded': category,
     }
     if excluded:
         return out
@@ -505,6 +511,7 @@ def _update_existing_workbook(wb: 'Workbook',
                               student_data: Dict[str, dict],
                               lesson_meta: Dict[str, dict],
                               excluded_ids,
+                              llm_ids,
                               lessons_root: Optional[Path]) -> int:
     if 'Grades' in wb.sheetnames:
         ws = wb['Grades']
@@ -512,16 +519,16 @@ def _update_existing_workbook(wb: 'Workbook',
         ws = wb.active
 
     header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
-    col_for_header: Dict[str, int] = {}  # header → 1-based col index
+    cols_for_header: Dict[str, list] = {}  # header → 1-based col indices
     for i, h in enumerate(header_row, start=1):
         if h is None:
             continue
-        col_for_header[str(h).strip()] = i
+        cols_for_header.setdefault(str(h).strip(), []).append(i)
 
-    if 'ID' not in col_for_header:
+    if 'ID' not in cols_for_header:
         raise ValueError("Existing Overview sheet has no 'ID' column header")
 
-    id_col = col_for_header['ID']
+    id_col = cols_for_header['ID'][0]
 
     existing_rows: Dict[str, int] = {}
     for row in range(2, ws.max_row + 1):
@@ -534,7 +541,9 @@ def _update_existing_workbook(wb: 'Workbook',
     for sid in sorted(student_data.keys(), key=_sid_sort_key):
         info = student_data[sid]
         is_excluded = sid in excluded_ids
-        values = _build_row_values(sid, info, lesson_meta, is_excluded)
+        values = _build_row_values(
+            sid, info, lesson_meta, is_excluded, sid in llm_ids,
+        )
 
         if sid in existing_rows:
             row = existing_rows[sid]
@@ -548,24 +557,29 @@ def _update_existing_workbook(wb: 'Workbook',
             is_new_row = True
 
         for header_name, value in values.items():
-            col = col_for_header.get(header_name)
-            if col is None:
-                col = max(col_for_header.values(), default=0) + 1
-                hcell = ws.cell(row=1, column=col, value=header_name)
+            cols = cols_for_header.get(header_name)
+            if not cols:
+                new_col = max(
+                    (c for cs in cols_for_header.values() for c in cs),
+                    default=0,
+                ) + 1
+                hcell = ws.cell(row=1, column=new_col, value=header_name)
                 hcell.font = _FONT_BOLD
-                col_for_header[header_name] = col
-            cell = ws.cell(row=row, column=col)
-            if not is_new_row:
-                if header_name in ('Name', 'Number'):
-                    if cell.value not in (None, '', 0):
-                        continue
-                elif header_name.endswith((' Grade', ' Status')):
-                    if cell.value not in (None, ''):
-                        continue
-                elif header_name in ('Category', 'Excluded'):
-                    if value is None:
-                        continue
-            cell.value = value
+                cols_for_header[header_name] = [new_col]
+                cols = [new_col]
+            for col in cols:
+                cell = ws.cell(row=row, column=col)
+                if not is_new_row:
+                    if header_name in ('Name', 'Number'):
+                        if cell.value not in (None, '', 0):
+                            continue
+                    elif header_name.endswith((' Grade', ' Status')):
+                        if cell.value not in (None, ''):
+                            continue
+                    elif header_name in ('Category', 'Excluded'):
+                        if value is None:
+                            continue
+                cell.value = value
 
     if 'Lesson Stats' in wb.sheetnames:
         del wb['Lesson Stats']
@@ -577,6 +591,7 @@ def _update_existing_workbook(wb: 'Workbook',
 def _build_workbook_from_scratch(student_data: Dict[str, dict],
                                  lesson_meta: Dict[str, dict],
                                  excluded_ids,
+                                 llm_ids,
                                  lessons_root: Optional[Path]) -> 'Workbook':
     n_cols = max(c for cols in LESSON_TO_COLS.values() for c in cols.values()) + 1
 
@@ -662,6 +677,8 @@ def _build_workbook_from_scratch(student_data: Dict[str, dict],
         row[3] = info.get('number', '')
         if sid in excluded_ids:
             row[4] = 'EXCLUDED'
+        elif sid in llm_ids:
+            row[4] = 'LLM'
         for lk, cols in LESSON_TO_COLS.items():
             first = cols['follow_first']
             interact_first = cols['interact_first']
@@ -799,10 +816,14 @@ def main(argv) -> int:
     print(f'Assignments: {assignments_root or "(missing)"}')
     print()
 
-    excluded_ids = load_excluded_student_ids(str(root / 'students.csv'))
+    excluded_ids, llm_ids = load_student_category_ids(str(root / 'students.csv'))
     if excluded_ids:
         print(f'Excluded:    {len(excluded_ids)} student(s) per '
               f'students.csv (Category=Excluded)')
+    if llm_ids:
+        print(f'LLM/AI:      {len(llm_ids)} row(s) per '
+              f'students.csv (Category=LLM)')
+    if excluded_ids or llm_ids:
         print()
 
     student_data, lesson_meta = _collect_student_data(
@@ -812,6 +833,13 @@ def main(argv) -> int:
     if not student_data:
         print('\nNo student rows collected.', file=sys.stderr)
         return 1
+
+    for sid, info in student_data.items():
+        if (info.get('category') or '').strip().upper() in ('LLM', 'AI'):
+            llm_ids.add(sid)
+    if llm_ids:
+        print(f'LLM/AI total: {len(llm_ids)} row(s) '
+              f'(students.csv + remarks sheets)')
 
     basis_path: Optional[Path] = None
     if not args.from_scratch:
@@ -831,17 +859,19 @@ def main(argv) -> int:
         wb = load_workbook(basis_path)
         try:
             appended = _update_existing_workbook(
-                wb, student_data, lesson_meta, excluded_ids, lessons_root,
+                wb, student_data, lesson_meta, excluded_ids, llm_ids,
+                lessons_root,
             )
         except ValueError as e:
             print(f'  WARNING: {e}; falling back to from-scratch build')
             wb = _build_workbook_from_scratch(
-                student_data, lesson_meta, excluded_ids, lessons_root,
+                student_data, lesson_meta, excluded_ids, llm_ids,
+                lessons_root,
             )
     else:
         print('\nBuilding from scratch.')
         wb = _build_workbook_from_scratch(
-            student_data, lesson_meta, excluded_ids, lessons_root,
+            student_data, lesson_meta, excluded_ids, llm_ids, lessons_root,
         )
 
     if args.output:
@@ -849,8 +879,6 @@ def main(argv) -> int:
     else:
         out_path = root / 'Overview.xlsx'
 
-    # Snapshot cached formula values BEFORE save (openpyxl strips them).
-    # Source = basis workbook if we updated one, else nothing to preserve.
     cached_snapshot = _snapshot_cached_values(basis_path) if basis_path else {}
 
     if out_path.exists():

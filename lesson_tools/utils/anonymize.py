@@ -45,33 +45,36 @@ def _has_category_column(fieldnames):
     )
 
 
-def load_excluded_student_ids(csv_path):
+def load_student_category_ids(csv_path):
     if not os.path.isfile(csv_path):
-        return set()
-    excluded = set()
-    has_column = False
+        return set(), set()
     for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
-        excluded.clear()
-        has_column = False
+        excluded = set()
+        llm = set()
         try:
             with open(csv_path, encoding=enc, newline='') as fh:
                 reader = csv.DictReader(fh, delimiter=';')
                 if not _has_category_column(reader.fieldnames):
-                    return set()
-                has_column = True
+                    return set(), set()
                 for row in reader:
                     sid = (row.get('Student ID') or '').strip()
                     if not sid:
                         continue
-                    is_excluded, _is_llm = classify_student_row(row)
+                    is_excluded, is_llm = classify_student_row(row)
                     if is_excluded:
                         excluded.add(sid)
-            break
+                    if is_llm:
+                        llm.add(sid)
+            return excluded, llm
         except (UnicodeDecodeError, UnicodeError):
             continue
         except Exception:
-            return set()
-    return excluded if has_column else set()
+            return set(), set()
+    return set(), set()
+
+
+def load_excluded_student_ids(csv_path):
+    return load_student_category_ids(csv_path)[0]
 
 
 def load_students(csv_path):
@@ -164,10 +167,7 @@ def anonymize_text(text, student_data, all_student_numbers):
     for pattern in patterns:
         text = pattern.sub("XXX", text)
     if skipped_short:
-        remarks.append(
-            "Short name part(s) not auto-redacted (verify manually): "
-            + ", ".join(skipped_short)
-        )
+        remarks.append("Short name part(s) not auto-redacted")
 
     found_numbers = re.findall(r"\b(\d{7})\b", text)
     for found in found_numbers:
@@ -358,10 +358,7 @@ def process_pdf_file(src_path, dst_path, student_data, all_student_numbers):
 
         skipped_short = [p for p in parts if len(p) < 4]
         if skipped_short:
-            remarks.append(
-                "Short name part(s) not auto-redacted in PDF (verify manually): "
-                + ", ".join(skipped_short)
-            )
+            remarks.append("Short name part(s) not auto-redacted in PDF")
 
         for page_num, page in enumerate(doc, 1):
             num_instances = page.search_for(number)

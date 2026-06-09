@@ -48,3 +48,40 @@ function inlineFilesInHtml(html, filesMap) {
 	);
 	return result;
 }
+
+function buildPreviewSrcdoc(html, filesMap, mediaUris, baseUrl) {
+	let out = String(html || "");
+	const inject = [];
+	if (baseUrl) inject.push(`<base href="${baseUrl}">`);
+	const mediaMap = {};
+	for (const [name, url] of Object.entries(mediaUris || {})) {
+		if (/^(?:blob|https?):/i.test(url)) mediaMap[name] = url;
+	}
+	if (Object.keys(mediaMap).length) {
+		const json = JSON.stringify(mediaMap).replace(
+			/<\/script/gi,
+			"<\\/script",
+		);
+		inject.push(
+			"<script>(function(){const __M=" +
+				json +
+				";function _b(s){return String(s).split(/[/\\\\]/).pop();}" +
+				"const _OA=window.Audio;" +
+				"window.Audio=function(src){const m=typeof src==='string'?__M[_b(src)]:null;return new _OA(m||src);};" +
+				"window.Audio.prototype=_OA.prototype;" +
+				"})();</script>",
+		);
+	}
+	if (inject.length) {
+		const snippet = inject.join("\n");
+		if (/<head\b[^>]*>/i.test(out)) {
+			out = out.replace(/(<head\b[^>]*>)/i, `$1\n${snippet}`);
+		} else if (/<html\b[^>]*>/i.test(out)) {
+			out = out.replace(/(<html\b[^>]*>)/i, `$1\n<head>${snippet}</head>`);
+		} else {
+			out = `<head>${snippet}</head>${out}`;
+		}
+	}
+	const map = { ...(mediaUris || {}), ...(filesMap || {}) };
+	return inlineFilesInHtml(out, map) || out;
+}

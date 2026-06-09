@@ -8,7 +8,7 @@ class BoxPlotChart {
 		this._ctx = this._canvas.getContext("2d");
 		this._options = options;
 		this._datasets = [];
-		this._margin = { top: 6, right: 28, bottom: 20, left: 22 };
+		this._margin = { top: 6, right: 28, bottom: 28, left: 34 };
 		this._dpr = 1;
 		this._ro = new ResizeObserver(() => this._resize());
 		this._ro.observe(container);
@@ -73,12 +73,13 @@ class BoxPlotChart {
 				ctx.lineTo(W - right, py);
 				ctx.stroke();
 			}
-			ctx.fillStyle = leftAxis.color ?? "#999";
+			ctx.fillStyle = leftAxis.color ?? "#595959";
 			ctx.font = "9px sans-serif";
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
+			const _ysfx = leftAxis.suffix || "";
 			for (const v of leftAxis.ticks) {
-				ctx.fillText(v, left - 2, this._axisY(v, "left"));
+				ctx.fillText(v + _ysfx, left - 5, this._axisY(v, "left"));
 			}
 		}
 
@@ -104,13 +105,18 @@ class BoxPlotChart {
 			}
 		}
 
-		ctx.fillStyle = "#888";
-		ctx.font = "10px sans-serif";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
 		for (let gi = 0; gi < n; gi++) {
 			const gx = left + (gi + 0.5) * (plotW / n);
-			ctx.fillText(xLabels[gi], gx, H - bottom + 2);
+			const parts = String(xLabels[gi] ?? "").split("\n");
+			ctx.fillStyle = "#595959";
+			ctx.font = "10px sans-serif";
+			ctx.fillText(parts[0], gx, H - bottom + 5);
+			if (parts[1]) {
+				ctx.font = "bold 9px sans-serif";
+				ctx.fillText(parts[1], gx, H - bottom + 17);
+			}
 		}
 
 		const groupW = plotW / n;

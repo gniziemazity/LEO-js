@@ -221,7 +221,7 @@ function _refreshDocxButton() {
 	if (!btn) return;
 	const names = Object.keys(_docUris);
 	btn.style.display = names.length ? "" : "none";
-	btn.textContent = names.length === 1 ? `📄 ${names[0]}` : "📄 Answer";
+	btn.textContent = names.length === 1 ? `📒 ${names[0]}` : "📒 Answer";
 }
 
 function _ensureDocxViewer() {

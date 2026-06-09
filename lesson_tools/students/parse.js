@@ -126,15 +126,17 @@ function parseStudentRows(remarksBuf) {
 		});
 		const obsEmpty = (r) => /^obs$/i.test(r.col) && (r.val === "_" || !r.val);
 		if (remarks.every((r) => !r.val || obsEmpty(r))) continue;
-		const interactions =
-			iInteractions !== -1
-				? String(row[iInteractions] ?? "")
-						.trim()
-						.split(/[\s,;]+/)
-						.filter(Boolean)
-						.map((t) => INTERACTION_MAP[t.toUpperCase()] || t)
-						.join("")
-				: "";
+		let _ia = 0,
+			_iq = 0,
+			_ih = 0;
+		if (iInteractions !== -1) {
+			for (const ch of String(row[iInteractions] ?? "").toUpperCase()) {
+				if (ch === "A") _ia++;
+				else if (ch === "Q") _iq++;
+				else if (ch === "H") _ih++;
+			}
+		}
+		const interactions = formatInteractionCounts(_ia, _iq, _ih);
 		const langPcts = {};
 		const langEvents = [];
 		const langParser =

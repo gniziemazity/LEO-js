@@ -2,8 +2,22 @@
 
 function _fvTabLabel(name) {
 	if (name === "MAIN") return "MAIN";
-	return name.split("/").pop().split("\\").pop();
+	const base = name.split("/").pop().split("\\").pop();
+	if (/\.docx$/i.test(base)) return "📒 " + base;
+	if (/\.pdf$/i.test(base)) return "📕 " + base;
+	return base;
 }
+
+const FV_LOADING_HTML =
+	'<!doctype html><meta charset="utf-8">' +
+	"<style>html,body{margin:0;height:100%}" +
+	"body{display:flex;align-items:center;justify-content:center;" +
+	"background:#fff;color:#999;font-family:'Segoe UI',sans-serif;font-size:13px}" +
+	"</style><body>Loading…</body>";
+
+const FV_LOADING_EDITOR_HTML =
+	'<div style="display:flex;align-items:center;justify-content:center;' +
+	"height:100%;color:#999;font-family:'Segoe UI',sans-serif;font-size:13px\">Loading…</div>";
 
 class FileViewer {
 	constructor(opts = {}) {
@@ -46,7 +60,7 @@ class FileViewer {
 			<div class="fv-divider" title="Drag to resize"></div>
 			<div class="fv-right">
 				<div class="fv-preview-head"></div>
-				<iframe class="fv-preview" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+				<iframe class="fv-preview" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
 			</div>
 		`;
 		this._rootEl = rootEl;
@@ -89,6 +103,11 @@ class FileViewer {
 		this.editorEl.innerHTML = html;
 	}
 
+	showEditorLoading() {
+		if (!this.editorEl) return;
+		this.editorEl.innerHTML = FV_LOADING_EDITOR_HTML;
+	}
+
 	setPreviewSrcdoc(html) {
 		if (!this.previewEl) return;
 		this.previewEl.removeAttribute("src");
@@ -110,12 +129,20 @@ class FileViewer {
 		this.previewEl.srcdoc = "";
 	}
 
+	showPreviewLoading() {
+		if (!this.previewEl) return;
+		this.previewEl.removeAttribute("src");
+		this.previewEl.srcdoc = FV_LOADING_HTML;
+	}
+
 	hidePreview() {
-		if (this.previewEl) this.previewEl.style.display = "none";
+		if (this._rightEl) this._rightEl.style.display = "none";
+		else if (this.previewEl) this.previewEl.style.display = "none";
 		if (this._dividerEl) this._dividerEl.style.display = "none";
 	}
 
 	showPreview() {
+		if (this._rightEl) this._rightEl.style.display = "";
 		if (this.previewEl) this.previewEl.style.display = "";
 		if (this._dividerEl) this._dividerEl.style.display = "";
 	}

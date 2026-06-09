@@ -293,12 +293,12 @@
 			.diff-ghost .leo-mark[data-leo-ghost-offset].curated-ghost-paired {
 				font-weight: bold !important;
 				text-decoration: underline dotted var(--clr-ghost-pair);
-				text-decoration-thickness: 2px;
+				text-decoration-thickness: 1.5px;
 				text-underline-offset: 2px;
 			}
 			.leo-mark.curated-paired-ghost-extra {
 				text-decoration: underline dotted var(--clr-ghost-pair);
-				text-decoration-thickness: 2px;
+				text-decoration-thickness: 1.5px;
 				text-underline-offset: 2px;
 			}
 			.diff-spacer {
@@ -541,15 +541,15 @@
 			.swap-paired {
 				cursor: pointer;
 				text-underline-offset: 2px;
-				text-decoration-thickness: 2px;
+				text-decoration-thickness: 1.5px;
 			}
 			.swap-paired[data-swap-side="student"] {
 				text-decoration: underline dotted var(--clr-mark-extra);
-				text-decoration-thickness: 2px;
+				text-decoration-thickness: 1.5px;
 			}
 			.swap-paired[data-swap-side="teacher"] {
 				text-decoration: underline dotted var(--clr-mark-missing);
-				text-decoration-thickness: 2px;
+				text-decoration-thickness: 1.5px;
 			}
 			.swap-paired[data-swap-side="teacher"][data-swap-file$=".html"],
 			.swap-paired[data-swap-side="teacher"][data-swap-file$=".htm"] {
@@ -571,13 +571,13 @@
 				display: inline-block;
 				cursor: pointer;
 				color: var(--insert-anchor-color, var(--clr-mark-missing));
-				font-size: 9px;
+				font-size: 13px;
 				line-height: 1;
 				vertical-align: text-top;
 				margin: 0 -1px;
 				padding: 0;
 				user-select: none;
-				opacity: 0.5;
+				opacity: 1;
 				transform: translateY(-1px);
 			}
 			.insert-anchor:hover {
@@ -587,7 +587,7 @@
 				color: var(--insert-anchor-color, var(--clr-mark-missing));
 				opacity: 1;
 				font-weight: bold;
-				font-size: 13px;
+				font-size: 15px;
 				text-shadow: 0 0 2px
 					var(--insert-anchor-color, var(--clr-mark-missing));
 			}
@@ -597,22 +597,6 @@
 			.insert-anchor--move.insert-active {
 				color: var(--clr-mark-extra);
 				text-shadow: 0 0 2px var(--clr-mark-extra);
-			}
-			.insert-anchor--token {
-				font-size: inherit;
-				vertical-align: baseline;
-				transform: none;
-				margin: 0;
-			}
-			.insert-anchor--token.insert-active {
-				font-size: inherit;
-				text-shadow: none;
-				border-radius: 2px;
-				background: color-mix(
-					in srgb,
-					var(--insert-anchor-color, var(--clr-mark-missing)) 16%,
-					transparent
-				);
 			}
 
 			#leo-tooltip {
@@ -816,7 +800,7 @@
 				z-index: 9998;
 				box-sizing: border-box;
 				background-color: rgba(0, 0, 0, 0.07);
-				border-bottom: 2px dotted var(--clr-mark-missing);
+				border-bottom: 1.5px dotted var(--clr-mark-missing);
 			}
 			body.curated-pair-anchor-extra #curated-pair-token-hover {
 				border-bottom-color: var(--clr-mark-extra);
@@ -1011,6 +995,7 @@
 				font-size: 11px;
 				tab-size: 4;
 				-moz-tab-size: 4;
+				color: var(--clr-code-muted);
 			}
 			.curated-float-win .tw-summary-pre {
 				background: var(--clr-surface-soft);
@@ -1091,7 +1076,7 @@
 			}
 			.curated-float-win .tw-summary-pre .tw-ins,
 			.curated-float-win .tw-preview-panes .tw-pre .tw-ins {
-				color: #0066cc;
+				color: var(--tw-ins-color, var(--clr-mark-missing));
 				font-weight: bold;
 			}
 
@@ -1186,7 +1171,7 @@
 				background: transparent;
 			}
 			.curated-float-win .tw-corr-pre .tw-ins {
-				color: var(--clr-mark-missing);
+				color: var(--tw-ins-color, var(--clr-mark-missing));
 				font-weight: bold;
 			}
 			.curated-float-win .tw-corr-pre .tw-del {
@@ -1242,7 +1227,7 @@
 				onclick="toggleDocxViewer()"
 				style="display: none"
 			>
-				📄 Answer
+				📒 Answer
 			</button>
 		</div>
 		<div id="diff-root">

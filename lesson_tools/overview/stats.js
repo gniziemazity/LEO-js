@@ -80,72 +80,72 @@ function renderStats() {
 			(a) => a.follow_avg != null,
 		);
 		if (lessonTroubleEntries.length) {
-			const lessonTroubleVals = lessonTroubleEntries.map(
-				(a) => a.n_lesson_trouble ?? 0,
-			);
-			const lessonTotals = lessonTroubleEntries.map(
-				(a) => a.n_followed ?? a.n_total ?? 0,
-			);
 			const lessonNames = lessonTroubleEntries.map((a) => a.name);
+			const copyVals = lessonTroubleEntries.map((a) => {
+				const asgn = ASSIGNMENTS.find((x) => x.name === a.name);
+				if (!asgn) return 0;
+				return _students.filter(
+					(s) =>
+						!s.excluded &&
+						s.lessons[asgn.n - 1]?.follow != null &&
+						_tookCode(s.lessons[asgn.n - 1]),
+				).length;
+			});
+			const lessonTotals = lessonTroubleEntries.map((a) => {
+				const asgn = ASSIGNMENTS.find((x) => x.name === a.name);
+				if (!asgn) return a.n_followed ?? a.n_total ?? 0;
+				return _students.filter(
+					(s) => !s.excluded && s.lessons[asgn.n - 1]?.follow != null,
+				).length;
+			});
 			addStackedShareCard(
 				body,
-				"Trouble (Lessons)",
+				"Copying Follow-Along",
 				lessonNames,
-				lessonTroubleVals,
+				copyVals,
 				lessonTotals,
 				Math.max(...lessonTotals, 1) + 1,
+				{ color: THEME.red },
 			);
 		}
 
-		const aiStrong = py.assignments.map((a) => a.n_ai_strong ?? 0);
-		const aiUpper = py.assignments.map(
-			(a) => a.n_ai_upper ?? a.n_ai_strong ?? 0,
-		);
-		const aiTotal = py.assignments.map(
-			(a) => a.n_artefact ?? a.n_submitted ?? 0,
-		);
-		const aiMedium = aiUpper.map((u, i) => Math.max(0, u - aiStrong[i]));
-		const aiNone = aiTotal.map((t, i) => Math.max(0, t - aiUpper[i]));
-		addAiUseCard(
-			body,
-			"AI Use (Assignments)",
-			names6,
-			aiStrong,
-			aiMedium,
-			aiNone,
-			aiTotal,
-		);
 		if (names5.length) {
-			const followAssns = py.assignments.filter((a) => a.follow_avg != null);
+			const followBox = ASSIGNMENTS.filter((a) => a.follow != null);
+			const followNames = followBox.map((a) => a.name);
+			const followDists = followBox.map((a) =>
+				_students
+					.filter((s) => !s.excluded)
+					.map((s) => s.lessons[a.n - 1])
+					.filter((e) => e.follow != null && !_tookCode(e))
+					.map((e) => e.follow),
+			);
 			addBarCard(
 				body,
-				"Follow Scores (Lessons)",
-				names5,
-				followAssns.map((a) => a.follow_avg),
+				"Follow Scores",
+				followNames,
+				followDists.map((d) =>
+					d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0,
+				),
 				ACCENT,
 				100,
 				"pct",
 				null,
 				{
-					barLabel: (gi) => {
-						const n =
-							followAssns[gi]?.n_followed ?? followAssns[gi]?.n_total;
-						return n != null ? `n=${n}` : "";
-					},
+					barLabel: (gi) =>
+						followDists[gi].length ? `n=${followDists[gi].length}` : "",
 				},
-			);
-			const followBox = ASSIGNMENTS.filter((a) => a.follow != null);
-			const followDists = followBox.map((a) =>
-				_students
-					.filter((s) => !s.excluded)
-					.map((s) => s.lessons[a.n - 1].follow)
-					.filter((v) => v != null),
 			);
 			_addDurationBoxCard(
 				body,
-				"Follow Distribution (Lessons)",
+				"Follow Distribution",
 				followBox.map((a) => a.name),
 				followDists,
+				{
+					yMax: 100,
+					ticks: [0, 20, 40, 60, 80, 100],
+					tickSuffix: "%",
+					subLabels: followDists.map((d) => `n=${d.length}`),
+				},
 			);
 		}
 	}
@@ -382,21 +382,41 @@ function renderStats() {
 	}
 
 	if (py.engagement?.length) {
-		const card = mkCard(
-			body,
-			"Engagement (Answers / Questions / Help)",
-			"sm",
-		);
-		let html =
-			'<table class="st-tbl"><tr><th>Type</th><th>n</th><th>Pass rate</th></tr>';
+		const card = mkCard(body, "Engagement", "sm");
+		let html = '<table class="st-tbl">';
+		const _engLabel = {
+			Answers: "Students answering questions",
+			Questions: "Students asking questions",
+			Help: "Students accepting help",
+		};
 		py.engagement.forEach((e) => {
-			html += `<tr><td>${escHtml(e.label)}</td><td>${e.n}</td><td>${fmtPct(e.pass_rate)}</td></tr>`;
+			html += `<tr><td>${escHtml(_engLabel[e.label] ?? e.label)}</td><td>${e.n}</td></tr>`;
 		});
 		card.insertAdjacentHTML("beforeend", html + "</table>");
 	}
 
-	renderStudentVsLlmCards(body);
 	renderCuratedMoments(body);
+
+	if (py.assignments) {
+		const aiStrong = py.assignments.map((a) => a.n_ai_strong ?? 0);
+		const aiUpper = py.assignments.map(
+			(a) => a.n_ai_upper ?? a.n_ai_strong ?? 0,
+		);
+		const aiTotal = py.assignments.map(
+			(a) => a.n_artefact_valid ?? a.n_submitted ?? 0,
+		);
+		const aiMedium = aiUpper.map((u, i) => Math.max(0, u - aiStrong[i]));
+		const aiNone = aiTotal.map((t, i) => Math.max(0, t - aiUpper[i]));
+		addAiUseCard(
+			body,
+			"AI Use (Assignments)",
+			py.assignments.map((a) => a.name),
+			aiStrong,
+			aiMedium,
+			aiNone,
+			aiTotal,
+		);
+	}
 
 	const _hideCard = (t) =>
 		t === "Students Passing (Assignments)" ||

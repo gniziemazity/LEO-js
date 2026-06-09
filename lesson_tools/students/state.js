@@ -14,6 +14,7 @@ let _modeParam = null;
 let _paperMode = false;
 let _highlightIds = null;
 let _starIds = null;
+let _artefactHighlights = null;
 let _sortCol = "id";
 let _sortDir = "asc";
 let _shownUnicodeCorruptionWarning = false;
@@ -33,8 +34,6 @@ const _dirtyEdits = new Map();
 const _origObs = new Map();
 
 let _artefactSchema = [];
-
-const INTERACTION_MAP = { Q: "❓", A: "🙋", H: "🤝" };
 
 const LANG_COL_DEFS = [
 	{

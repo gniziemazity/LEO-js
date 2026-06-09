@@ -110,6 +110,39 @@
 				overflow-x: hidden;
 				overflow-y: auto;
 				background: var(--clr-bg);
+				position: relative;
+			}
+			#artefact-highlight-layer {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 0;
+				height: 0;
+				pointer-events: none;
+			}
+			.artefact-highlight-box {
+				position: absolute;
+				pointer-events: none;
+				box-sizing: border-box;
+				border: 3.5px solid var(--clr-text);
+				border-radius: 3px;
+				z-index: 1;
+			}
+			.artefact-highlight-count {
+				position: absolute;
+				transform: translateX(-50%);
+				white-space: nowrap;
+				pointer-events: none;
+				font-size: 11px;
+				font-weight: 700;
+				color: #000;
+				text-shadow:
+					-1px -1px 0 #fff,
+					1px -1px 0 #fff,
+					-1px 1px 0 #fff,
+					1px 1px 0 #fff,
+					0 0 3px #fff;
+				z-index: 1;
 			}
 
 			table {
@@ -785,6 +818,9 @@
 			body.paper-mode #assignment-divider {
 				display: none;
 			}
+			body.paper-mode #asgn-view-toggle {
+				display: none;
+			}
 			#assignment-toggle {
 				padding: 3px 10px;
 				font-size: 12px;
@@ -809,66 +845,26 @@
 			.doc-link:hover {
 				filter: brightness(1.25);
 			}
-			#doc-viewer {
-				position: fixed;
-				display: none;
-				flex-direction: column;
-				left: 18vw;
-				top: 8vh;
-				width: 540px;
-				height: 78vh;
-				z-index: 1100;
-				background: var(--clr-bg);
-				border: 1px solid var(--clr-border);
-				border-radius: 6px;
-				box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
-				overflow: hidden;
-			}
-			#doc-viewer.is-open {
-				display: flex;
-			}
-			#doc-viewer-head {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				gap: 8px;
-				padding: 6px 10px;
-				cursor: move;
-				background: var(--clr-surface);
-				border-bottom: 1px solid var(--clr-border);
-				font-weight: bold;
-				font-size: 12px;
-				color: var(--clr-text);
-			}
-			#doc-viewer-close {
-				border: none;
-				background: none;
-				cursor: pointer;
-				font-size: 14px;
-				color: var(--clr-text);
-				padding: 0 2px;
-			}
-			#doc-viewer-close:hover {
-				color: var(--clr-red);
-			}
-			#doc-viewer-body {
-				flex: 1;
-				overflow: auto;
-				padding: 16px 20px;
-				background: #fff;
-				color: #222;
+			.fv-editor.fv-doc-mode {
+				white-space: normal;
 				font-family: sans-serif;
+				padding: 0;
+			}
+			.fv-editor.fv-doc-mode .fv-doc {
+				padding: 12px 16px;
+				color: #222;
 				font-size: 14px;
 				line-height: 1.6;
 			}
-			#doc-viewer-body img {
+			.fv-editor.fv-doc-mode .fv-doc img {
 				max-width: 100%;
 				height: auto;
 			}
-			#doc-viewer-body iframe {
+			.fv-editor.fv-doc-mode .fv-doc-frame {
 				width: 100%;
 				height: 100%;
 				border: 0;
+				display: block;
 			}
 
 			#tip {
@@ -890,7 +886,7 @@
 		</style>
 	</head>
 	<body>
-		<div id="loading">Processing…</div>
+		<div id="loading">Loading…</div>
 
 		<div id="landing">
 			<div id="landing-buttons">
@@ -969,7 +965,7 @@
 								<button id="asgn-view-preview" type="button">
 									Preview
 								</button>
-								<button id="asgn-view-code" type="button">Code</button>
+								<button id="asgn-view-code" type="button">HTML</button>
 							</div>
 							<div
 								class="sp-toggle"
@@ -1022,7 +1018,7 @@
 								class="sp-preview"
 								id="asgn-preview"
 								title="Assignment"
-								sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+								sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads"
 							></iframe>
 						</div>
 					</div>
@@ -1048,15 +1044,8 @@
 
 		<div id="tip"></div>
 
-		<div id="doc-viewer">
-			<div id="doc-viewer-head">
-				<span id="doc-viewer-title">Document</span>
-				<button id="doc-viewer-close" type="button" title="Close">✕</button>
-			</div>
-			<div id="doc-viewer-body"></div>
-		</div>
-
 		<script src="shared/diff-utils.js"></script>
+		<script src="preview.js"></script>
 		<script src="shared/data-source.js"></script>
 		<script src="shared/drag-divider.js"></script>
 		<script src="languages/profiles.js"></script>

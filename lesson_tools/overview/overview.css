@@ -125,7 +125,7 @@ th.ahd {
 	);
 }
 td.asn-col {
-	background: var(--clr-asn-col-bg);
+	background: transparent;
 }
 tbody tr {
 	transition: background 0.08s;
@@ -225,13 +225,16 @@ tr.row-fail > td {
 tr.row-fail > td.st-bg-fail {
 	color: var(--clr-st-fail) !important;
 }
-tr.row-excluded > td.sticky-l {
-	color: var(--clr-pale-red) !important;
+tr.row-excluded:not(.row-ai) {
+	opacity: 0.55;
+}
+tr.row-excluded:not(.row-ai) > td.col-name {
+	text-decoration: line-through;
 }
 tr.row-ai {
 	opacity: 0.55;
 }
-tr.row-ai > td.col-name {
+tr.row-ai > td {
 	color: var(--clr-red) !important;
 }
 td.st-bg-pass {
@@ -273,14 +276,54 @@ thead th.sticky-l.grp {
 	background: var(--clr-toolbar);
 }
 
-table.anon-name .col-num {
+table.hide-id .col-id {
 	display: none;
 }
-table.anon-id .col-name {
+table.hide-name .col-name {
 	display: none;
 }
-table.anon-id .col-num {
+table.hide-num .col-num {
 	display: none;
+}
+
+#columns-picker {
+	position: relative;
+}
+#cols-btn {
+	padding: 2px 10px;
+	font-size: 11px;
+	border: 1px solid var(--clr-border-strong);
+	border-radius: 3px;
+	background: var(--clr-bg);
+	color: var(--clr-label);
+	cursor: pointer;
+}
+#cols-btn:hover {
+	background: var(--clr-accent-light);
+	border-color: var(--clr-accent);
+	color: var(--clr-accent);
+}
+#cols-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	margin-top: 4px;
+	z-index: 100;
+	background: var(--clr-bg);
+	border: 1px solid var(--clr-border);
+	border-radius: 3px;
+	padding: 6px 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+	white-space: nowrap;
+	font-size: 12px;
+}
+#cols-panel label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 0;
+	cursor: pointer;
+	color: var(--clr-text);
 }
 
 th.asn-sep,
@@ -311,7 +354,7 @@ td.asn-sep {
 .stat-card h3 {
 	font-size: 11px;
 	font-weight: 700;
-	color: var(--clr-muted);
+	color: var(--clr-label);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: 10px;
@@ -447,20 +490,20 @@ td.asn-sep {
 	position: relative;
 	height: 205px;
 }
-.prog-signals-row {
+.prog-artefacts-row {
 	display: grid;
 	gap: 4px;
 	margin-top: 6px;
 	padding: 0 4px;
 }
-.prog-signal-col {
+.prog-artefact-col {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 	align-items: center;
 	min-height: 12px;
 }
-.prog-signal-badge {
+.prog-artefact-badge {
 	width: 12px;
 	height: 12px;
 	border-radius: 2px;

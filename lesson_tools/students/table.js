@@ -63,6 +63,15 @@ function _setHeaderLabel(el, spec) {
 	}
 }
 
+function _artefactHeaderTipHtml() {
+	return (_artefactSchema || [])
+		.map(
+			(e) =>
+				`${escHtml(String(e.code || e.key || "?"))}: ${escHtml(e.label || "")}`,
+		)
+		.join("<br>");
+}
+
 function renderTable() {
 	const thead = document.getElementById("thead");
 	const tbody = document.getElementById("tbody");
@@ -166,7 +175,12 @@ function renderTable() {
 	for (const spec of specs) {
 		const el = document.createElement("th");
 		el.className = spec.cls;
-		if (spec.title) el.title = spec.title;
+		if (spec.artefactIdx != null) {
+			el.dataset.artefactIdx = String(spec.artefactIdx);
+			attachHtmlTip(el, _artefactHeaderTipHtml());
+		} else if (spec.title) {
+			el.title = spec.title;
+		}
 		if (spec.sortKey) {
 			el.classList.add("sortable");
 			_setHeaderLabel(el, spec);
@@ -445,6 +459,106 @@ function renderTable() {
 			showMismatches,
 		);
 	}
+	_renderArtefactHighlights();
+}
+
+let _artefactHighlightRaf = 0;
+let _artefactHighlightObserver = null;
+
+function _scheduleArtefactHighlights() {
+	if (_artefactHighlightRaf) return;
+	_artefactHighlightRaf = requestAnimationFrame(() => {
+		_artefactHighlightRaf = 0;
+		_renderArtefactHighlights();
+	});
+}
+
+function _ensureArtefactHighlightObserver() {
+	if (_artefactHighlightObserver || typeof ResizeObserver === "undefined")
+		return;
+	const table = document.getElementById("student-table");
+	if (!table) return;
+	_artefactHighlightObserver = new ResizeObserver(_scheduleArtefactHighlights);
+	_artefactHighlightObserver.observe(table);
+	window.addEventListener("resize", _scheduleArtefactHighlights);
+}
+
+function _renderArtefactHighlights() {
+	const wrap = document.getElementById("table-wrap");
+	if (!wrap) return;
+	let layer = document.getElementById("artefact-highlight-layer");
+	if (!_artefactHighlights || !_artefactHighlights.length) {
+		if (layer) layer.remove();
+		return;
+	}
+	_ensureArtefactHighlightObserver();
+	if (!layer) {
+		layer = document.createElement("div");
+		layer.id = "artefact-highlight-layer";
+		wrap.appendChild(layer);
+	}
+	layer.innerHTML = "";
+
+	const thead = document.getElementById("thead");
+	const tbody = document.getElementById("tbody");
+	if (!thead || !tbody) return;
+
+	let rows = [...tbody.querySelectorAll("tr.row-emphasis")];
+	if (!rows.length) rows = [...tbody.querySelectorAll("tr:not(.totals-row)")];
+	if (!rows.length) return;
+
+	const wrapRect = wrap.getBoundingClientRect();
+	const idxs = [...new Set(_artefactHighlights)].sort((a, b) => a - b);
+	const runs = [];
+	for (const idx of idxs) {
+		const th = thead.querySelector(
+			`th.col-artefact[data-artefact-idx="${idx}"]`,
+		);
+		if (!th) continue;
+		const cells = rows
+			.map((r) =>
+				r.querySelector(`td.col-artefact[data-artefact-idx="${idx}"]`),
+			)
+			.filter(Boolean);
+		if (!cells.length) continue;
+		const last = runs[runs.length - 1];
+		if (last && idx === last.endIdx + 1) {
+			last.endIdx = idx;
+			last.endTh = th;
+		} else {
+			runs.push({ endIdx: idx, startTh: th, endTh: th, cells });
+		}
+	}
+	const hiCount = rows.filter(
+		(r) => !(r._student && r._student.ai_flagged),
+	).length;
+	const denom = _students.filter((s) => !s.ai_flagged).length;
+	const hiPct = denom ? Math.round((hiCount / denom) * 100) : 0;
+	const countText = `${hiCount}/${denom} (${hiPct}%)`;
+	for (const run of runs) {
+		const lRect = run.startTh.getBoundingClientRect();
+		const rRect = run.endTh.getBoundingClientRect();
+		const firstRect = run.cells[0].getBoundingClientRect();
+		const lastRect = run.cells[run.cells.length - 1].getBoundingClientRect();
+		const left = lRect.left - wrapRect.left + wrap.scrollLeft;
+		const right = rRect.right - wrapRect.left + wrap.scrollLeft;
+		const top = firstRect.top - wrapRect.top + wrap.scrollTop;
+		const height = lastRect.bottom - firstRect.top;
+		const box = document.createElement("div");
+		box.className = "artefact-highlight-box";
+		box.style.left = left + "px";
+		box.style.width = Math.max(0, right - left) + "px";
+		box.style.top = top + "px";
+		box.style.height = height + "px";
+		layer.appendChild(box);
+
+		const count = document.createElement("div");
+		count.className = "artefact-highlight-count";
+		count.textContent = countText;
+		count.style.left = (left + right) / 2 + "px";
+		count.style.top = top + height + 3 + "px";
+		layer.appendChild(count);
+	}
 }
 
 function _appendTotalsRow(
@@ -675,6 +789,7 @@ function _renderObsCell(el, val) {
 		delete el.dataset.rawValue;
 		delete el.dataset.artefactTipHtml;
 		el.style.fontWeight = v ? "bold" : "";
+		el.style.color = v.includes("<") ? THEME.red : "";
 		el.title = "";
 	}
 }
@@ -695,6 +810,7 @@ function _artefactChangedSince(studentId, idx, fired) {
 }
 
 function _renderArtefactCell(el, student, colName, idx, code) {
+	el.dataset.artefactIdx = String(idx);
 	const fired = ARTEFACT_CODE_RE.test(code) && code[idx] === "1";
 	const entry = _artefactSchema[idx];
 	el.innerHTML = renderArtefactCellSquare(fired, entry);

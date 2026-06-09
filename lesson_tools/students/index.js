@@ -53,6 +53,13 @@ lessonNameEl.addEventListener("click", () => {
 	const params = parseToolParams();
 	if (params.ids && params.ids.length) _highlightIds = new Set(params.ids);
 	if (params.star && params.star.length) _starIds = new Set(params.star);
+	const _artParam = qs.get("artefacts");
+	if (_artParam != null && _artParam !== "") {
+		_artefactHighlights = _artParam
+			.split(",")
+			.map((s) => parseInt(s.trim(), 10))
+			.filter((n) => Number.isInteger(n) && n >= 0);
+	}
 	const wantsAutoload = qs.get("autoload") === "1" || params.lesson != null;
 	if (!wantsAutoload) return;
 	await waitForXlsxBundle();

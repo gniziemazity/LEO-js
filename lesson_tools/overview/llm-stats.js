@@ -17,51 +17,6 @@ function _idChips(ids, max, assignmentLower) {
 	return parts.join(" ");
 }
 
-function renderStudentVsLlmCards(body) {
-	if (!_pyStats?.assignments?.length) return;
-	if (!_pyStats.llm_assignments?.length) return;
-	const card = mkCard(body, "Per-Trap Rate: Students vs LLM Probes", "wide");
-	const llmRows = _pyStats.llm_rows ?? [];
-	const llmHeader = llmRows.length
-		? `<div style="font-size:11px;color:var(--clr-muted);margin-bottom:6px">` +
-			`LLM panel = ${llmRows.length} probe row(s): ` +
-			llmRows.map((r) => escHtml(r.name)).join(", ") +
-			"</div>"
-		: "";
-	let html = llmHeader;
-	html +=
-		'<table class="st-tbl"><tr><th>Assignment</th><th>Mark</th>' +
-		"<th>Student-side</th><th>LLM-side</th></tr>";
-	_pyStats.assignments.forEach((a) => {
-		const llm = _pyStats.llm_assignments.find((x) => x.lower === a.lower);
-		if (!a.traps?.length && !llm?.traps?.length) return;
-		const studentTraps = a.traps || [];
-		const llmTraps = llm?.traps || [];
-		const keys = new Set([
-			...studentTraps.map((t) => t.key),
-			...llmTraps.map((t) => t.key),
-		]);
-		let first = true;
-		keys.forEach((key) => {
-			const st = studentTraps.find((t) => t.key === key);
-			const lt = llmTraps.find((t) => t.key === key);
-			const label = st?.label || lt?.label || key;
-			const sCell = st
-				? `${(st.hit_rate * 100).toFixed(0)}% (${st.n_fired}/${st.n_answered})`
-				: "—";
-			const lCell = lt
-				? `${(lt.hit_rate * 100).toFixed(0)}% (${lt.n_fired}/${lt.n_answered})`
-				: "—";
-			html +=
-				`<tr><td>${first ? escHtml(a.name) : ""}</td>` +
-				`<td>${escHtml(label)}</td>` +
-				`<td>${sCell}</td><td>${lCell}</td></tr>`;
-			first = false;
-		});
-	});
-	card.insertAdjacentHTML("beforeend", html + "</table>");
-}
-
 function renderCuratedMoments(body) {
 	const groups = _pyStats?.curated_moments;
 	if (!groups?.length) return;

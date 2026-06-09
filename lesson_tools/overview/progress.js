@@ -6,13 +6,12 @@ function _followMode() {
 }
 
 function _progressShow() {
-	const sig = document.getElementById("cluster-show-signals");
 	const mode = _followMode();
 	return {
 		grade: false,
 		totalFollow: mode === "total",
 		langFollow: mode === "lang",
-		signals: sig ? sig.checked === true : true,
+		artefacts: true,
 	};
 }
 
@@ -20,9 +19,6 @@ function _onProgressControlChange() {
 	if (typeof _students !== "undefined" && _students.length) renderClusters();
 }
 
-document
-	.getElementById("cluster-show-signals")
-	?.addEventListener("change", _onProgressControlChange);
 for (const id of ["follow-mode-total", "follow-mode-lang"]) {
 	document.getElementById(id)?.addEventListener("click", () => {
 		document
@@ -33,6 +29,90 @@ for (const id of ["follow-mode-total", "follow-mode-lang"]) {
 			?.classList.toggle("active", id === "follow-mode-lang");
 		_onProgressControlChange();
 	});
+}
+
+function _addProgressFollowBoxplot(body, students) {
+	if (typeof BoxPlotChart === "undefined") return;
+	const followAsgns = ASSIGNMENTS.filter((a) => a.follow != null);
+	if (!followAsgns.length || !students.length) return;
+	const labels = followAsgns.map((a) => a.name);
+	const collect = (key) =>
+		followAsgns.map((a) =>
+			students
+				.map((s) => s.lessons[a.n - 1])
+				.filter((e) => e && !_tookCode(e))
+				.map((e) => e[key])
+				.filter((v) => v != null),
+		);
+
+	let datasets;
+	if (_followMode() === "lang") {
+		datasets = LANG_FOLLOW_KEYS.map(({ entryKey, colorVar }) => {
+			const c = _cssVar(colorVar) || THEME.label;
+			return {
+				data: collect(entryKey),
+				color: _hexToRgba(c, 0.44),
+				borderColor: c,
+				yAxis: "left",
+				coef: Infinity,
+				outlierRadius: 3,
+			};
+		});
+	} else {
+		datasets = [
+			{
+				data: collect("follow"),
+				color: _hexToRgba(THEME.label, 0.44),
+				borderColor: THEME.label,
+				yAxis: "left",
+				coef: Infinity,
+				outlierRadius: 3,
+			},
+		];
+	}
+	if (!datasets.some((d) => d.data.some((arr) => arr.length))) return;
+
+	const section = el("div", "cluster-section");
+	const header = el("div", "cluster-header");
+	const h3 = el("h3");
+	h3.textContent =
+		_followMode() === "lang"
+			? "Follow Distribution by Language"
+			: "Follow Distribution";
+	header.appendChild(h3);
+	if (_followMode() === "lang") {
+		const legend = el("div");
+		legend.style.cssText =
+			"display:flex;gap:12px;align-items:center;font-size:11px;color:var(--clr-label);";
+		for (const { label, colorVar } of LANG_FOLLOW_KEYS) {
+			const c = _cssVar(colorVar) || THEME.label;
+			const item = el("span");
+			item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+			const sq = el("span");
+			sq.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};`;
+			item.appendChild(sq);
+			item.appendChild(document.createTextNode(label));
+			legend.appendChild(item);
+		}
+		header.appendChild(legend);
+	}
+	section.appendChild(header);
+	const box = el("div");
+	box.style.cssText = "position:relative;height:220px;";
+	section.appendChild(box);
+	const chart = new BoxPlotChart(box, {
+		xLabels: labels,
+		leftAxis: {
+			min: 0,
+			max: 100,
+			ticks: [0, 20, 40, 60, 80, 100],
+			color: THEME.label,
+			suffix: "%",
+		},
+	});
+	chart.setData(datasets);
+	_clusterCharts.push(chart);
+	body.appendChild(section);
 }
 
 function _buildStudentProgressCard(s, labels) {
@@ -64,7 +144,8 @@ function _buildStudentProgressCard(s, labels) {
 		min: -4,
 		max: 104,
 		ticks: [0, 20, 40, 60, 80, 100],
-		color: THEME.textFaint,
+		color: THEME.label,
+		suffix: "%",
 	};
 	const gradeAxis = {
 		min: -0.25,
@@ -84,10 +165,37 @@ function _buildStudentProgressCard(s, labels) {
 		lcLeftAxis = gradeAxis;
 		gradeYAxis = "left";
 	}
+	const obsMarks = s.lessons.map((l) => {
+		const text = l.lesson_obs?.trim();
+		if (!text || text === "_") return null;
+		if (show.langFollow) {
+			const vals = LANG_FOLLOW_KEYS.map(({ entryKey }) =>
+				l.hasFollowCol ? l[entryKey] : null,
+			).filter((v) => v != null);
+			if (!vals.length) return null;
+			return {
+				text,
+				belowVal: Math.min(...vals),
+				aboveVal: Math.max(...vals),
+				axis: "left",
+				color: text.includes("<") ? THEME.red : THEME.label,
+			};
+		}
+		const v = l.hasFollowCol ? l.follow : null;
+		if (v == null) return null;
+		return {
+			text,
+			belowVal: v,
+			aboveVal: v,
+			axis: "left",
+			color: text.includes("<") ? THEME.red : THEME.label,
+		};
+	});
 	const chart = new LineChart(box, {
 		xLabels: labels,
 		leftAxis: lcLeftAxis,
 		rightAxis: lcRightAxis,
+		obsMarks,
 		onClick: (di, pi) => {
 			const asgn = ASSIGNMENTS[pi];
 			if (!asgn) return;
@@ -108,8 +216,8 @@ function _buildStudentProgressCard(s, labels) {
 				data: s.lessons.map((l) =>
 					l.hasFollowCol ? (l[entryKey] ?? null) : null,
 				),
-				color: _hexToRgba(c, 0.45),
-				pointFillColor: _hexToRgba(c, 0.25),
+				color: c,
+				pointFillColor: c,
 				lineWidth: 1.0,
 				pointRadius: 2.5,
 				yAxis: "left",
@@ -120,22 +228,17 @@ function _buildStudentProgressCard(s, labels) {
 		datasets.push({
 			data: follows,
 			color: THEME.label,
-			pointFillColor: _hexToRgba(THEME.label, 0.44),
+			pointFillColor: THEME.label,
 			lineWidth: 1.5,
 			pointRadius: 4,
 			yAxis: "left",
-			pointLabels: s.lessons.map((l) => {
-				const v = l.lesson_obs?.trim();
-				return v && v !== "_" ? v : null;
-			}),
-			labelColor: THEME.label,
 		});
 	}
 	if (show.grade) {
 		datasets.push({
 			data: grades,
 			color: THEME.blue,
-			pointFillColor: _hexToRgba(THEME.blue, 0.44),
+			pointFillColor: THEME.blue,
 			lineWidth: 1.5,
 			lineDash: [4, 3],
 			pointRadius: 4,
@@ -148,14 +251,14 @@ function _buildStudentProgressCard(s, labels) {
 		});
 	}
 	chart.setDatasets(datasets);
-	if (show.signals) {
-		const signals = _buildSignalsRow(s);
-		if (signals) card.appendChild(signals);
+	if (show.artefacts) {
+		const artefacts = _buildArtefactsRow(s);
+		if (artefacts) card.appendChild(artefacts);
 	}
 	return { card, chart };
 }
 
-function _buildSignalsRow(s) {
+function _buildArtefactsRow(s) {
 	const cols = [];
 	let maxRows = 0;
 	let anyPattern = false;
@@ -171,17 +274,17 @@ function _buildSignalsRow(s) {
 		cols.push({ entry, obs, schema, schemaArr, has, rows });
 	}
 	if (!anyPattern || maxRows === 0) return null;
-	const row = el("div", "prog-signals-row");
+	const row = el("div", "prog-artefacts-row");
 	row.style.gridTemplateColumns = `repeat(${ASSIGNMENTS.length}, 1fr)`;
 	for (const { entry, obs, schema, schemaArr, has, rows } of cols) {
-		const col = el("div", "prog-signal-col");
+		const col = el("div", "prog-artefact-col");
 		if (has) {
 			for (let i = 0; i < rows; i++) {
 				const ch = obs[i] || "0";
 				const fired = ch === "1";
 				const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
 				const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
-				const badge = el("div", "prog-signal-badge");
+				const badge = el("div", "prog-artefact-badge");
 				badge.style.background = clr;
 				col.appendChild(badge);
 			}

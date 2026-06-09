@@ -74,7 +74,7 @@ function _applyClusterModeUI() {
 		.querySelectorAll(".cluster-kmeans-only")
 		.forEach((el) => (el.style.display = mode === "kmeans" ? "" : "none"));
 	const panel = document.getElementById("cluster-manual-panel");
-	if (panel) panel.style.display = mode === "manualA" ? "" : "none";
+	if (panel) panel.style.display = "none";
 }
 
 function _buildClusterFeatures(students, opts) {
@@ -271,6 +271,8 @@ function renderClusters() {
 		centroids = res.centroids;
 	}
 
+	_addProgressFollowBoxplot(body, students);
+
 	const buckets = Array.from({ length: k }, () => []);
 	students.forEach((s, i) => {
 		buckets[labels[i]].push(s);
@@ -296,17 +298,11 @@ function renderClusters() {
 		header.appendChild(h3);
 		const meta = el("span", "cluster-meta");
 		const followVals = bucket.map(followAvg).filter((v) => v >= 0);
-		const gradeVals = bucket
-			.map((s) => s.avg_assignments)
-			.filter((v) => v != null);
-		const summarize = (vals, digits, suffix) => {
-			if (!vals.length) return "—";
-			const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-			const mn = Math.min(...vals);
-			const mx = Math.max(...vals);
-			return `${avg.toFixed(digits)}${suffix} (${mn.toFixed(digits)}–${mx.toFixed(digits)})`;
-		};
-		meta.textContent = `${bucket.length} student${bucket.length === 1 ? "" : "s"} · follow ${summarize(followVals, 1, "%")} · grade ${summarize(gradeVals, 2, "")}`;
+		meta.textContent =
+			`${bucket.length} student${bucket.length === 1 ? "" : "s"}` +
+			(followVals.length
+				? ` (follow ${Math.min(...followVals).toFixed(1)}–${Math.max(...followVals).toFixed(1)}%)`
+				: "");
 		header.appendChild(meta);
 		if (ordered.length > 1) section.appendChild(header);
 		const grid = el("div", "cluster-grid");
@@ -319,6 +315,29 @@ function renderClusters() {
 		section.appendChild(grid);
 		body.appendChild(section);
 	});
+
+	const llmStudents = _students.filter((s) => s.ai_flagged);
+	if (llmStudents.length) {
+		const section = el("div", "cluster-section");
+		const header = el("div", "cluster-header");
+		const h3 = el("h3");
+		h3.textContent = "LLM Probes";
+		header.appendChild(h3);
+		const meta = el("span", "cluster-meta");
+		meta.textContent = `${llmStudents.length} probe${
+			llmStudents.length === 1 ? "" : "s"
+		}`;
+		header.appendChild(meta);
+		section.appendChild(header);
+		const grid = el("div", "cluster-grid");
+		for (const s of _sortStudents(llmStudents, _clusterSort)) {
+			const { card, chart } = _buildStudentProgressCard(s, labelsX);
+			grid.appendChild(card);
+			_clusterCharts.push(chart);
+		}
+		section.appendChild(grid);
+		body.appendChild(section);
+	}
 }
 
 document.getElementById("cluster-k")?.addEventListener("change", () => {

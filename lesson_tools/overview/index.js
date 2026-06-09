@@ -5,8 +5,8 @@ function _sortStudents(list, key) {
 	if (key === "avg-follow") sl.sort((a, b) => followAvg(b) - followAvg(a));
 	else if (key === "total-follow")
 		sl.sort((a, b) => followTotal(b) - followTotal(a));
-	else if (key === "signals")
-		sl.sort((a, b) => signalsTotal(b) - signalsTotal(a));
+	else if (key === "artefacts")
+		sl.sort((a, b) => artefactsTotal(b) - artefactsTotal(a));
 	else
 		sl.sort((a, b) => (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0));
 	return sl;
@@ -40,6 +40,7 @@ function onHideExcludedChange(checked) {
 		}
 	} catch {}
 })();
+const _tookCode = (entry) => (entry?.lesson_obs || "").includes("<");
 const followAvg = (s) => {
 	const vs = s.lessons
 		.filter((l) => l.hasFollowCol && l.follow != null)
@@ -50,7 +51,7 @@ const followTotal = (s) =>
 	s.lessons
 		.filter((l) => l.hasFollowCol && l.follow != null)
 		.reduce((a, l) => a + l.follow, 0);
-const signalsTotal = (s) => {
+const artefactsTotal = (s) => {
 	let n = 0;
 	for (const a of ASSIGNMENTS) {
 		const code = (s.lessons[a.n - 1]?.obs || "").trim();

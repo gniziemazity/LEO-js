@@ -981,6 +981,9 @@ class LogVisualizer {
 
 	_syncCursorBlink() {
 		const delay = `${-(performance.now() % 1000)}ms`;
+		const devActive = this._activeEditor === "dev";
+		this.elEditor.classList.toggle("vis-no-blink", devActive);
+		this.elDevEditor.classList.toggle("vis-no-blink", !devActive);
 		const mc = this.elEditor.querySelector(".vis-cursor");
 		if (mc) mc.style.animationDelay = delay;
 		const dc = this.elDevEditor.querySelector(".vis-cursor");

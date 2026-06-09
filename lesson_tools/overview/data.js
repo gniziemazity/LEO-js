@@ -353,7 +353,61 @@ async function loadCourse(ds) {
 		Object.keys(_assignHandles),
 	);
 
+	_submittedIds = await _gatherSubmittedIds(ds);
+
 	finishLoad(gradesFile.name);
+}
+
+async function _gatherSubmittedIds(ds) {
+	const out = {};
+	let deep = false;
+	for (const path of ds.files.keys()) {
+		const m = path.match(/^assignments\/([^/]+)\/anon_ids\/([^/]+)\//);
+		if (!m) continue;
+		deep = true;
+		const key = `assignments/${m[1].toLowerCase()}`;
+		(out[key] || (out[key] = new Set())).add(String(m[2]).toLowerCase());
+	}
+	if (deep || typeof listServerDir !== "function") return out;
+	let dirs;
+	try {
+		dirs = await listServerDir(`/grades-data/assignments/`);
+	} catch {
+		return out;
+	}
+	for (const d of dirs || []) {
+		if (!d || d.kind !== "directory" || !d.name) continue;
+		let sidDirs;
+		try {
+			sidDirs = await listServerDir(
+				`/grades-data/assignments/${d.name}/anon_ids/`,
+			);
+		} catch {
+			continue;
+		}
+		const set = new Set();
+		await Promise.all(
+			(sidDirs || []).map(async (e) => {
+				if (!e || e.kind !== "directory" || !e.name) return;
+				try {
+					const inner = await listServerDir(
+						`/grades-data/assignments/${d.name}/anon_ids/${e.name}/`,
+					);
+					if ((inner || []).some((x) => x && x.name)) {
+						set.add(String(e.name).toLowerCase());
+					}
+				} catch {}
+			}),
+		);
+		if (set.size) out[`assignments/${d.name.toLowerCase()}`] = set;
+	}
+	return out;
+}
+
+function _hasSubmission(group, name, sid) {
+	const set = _submittedIds[`${group}/${String(name).toLowerCase()}`];
+	if (!set) return true;
+	return set.has(String(sid).toLowerCase());
 }
 
 function finishLoad(filename) {
@@ -366,8 +420,6 @@ function finishLoad(filename) {
 	_barCharts = [];
 	document.getElementById("landing").style.display = "none";
 	document.getElementById("toolbar").classList.add("show");
-	document.getElementById("nav-info").textContent =
-		`${_students.length} students · ${filename}`;
 	_clusterSort = "id";
 	document
 		.querySelectorAll(".cluster-sort[data-cluster-sort]")
@@ -427,8 +479,9 @@ function parseStudent(r) {
 	};
 
 	for (const a of ASSIGNMENTS) {
+		const _rawStatus = str(a.status);
 		const hasAssignment =
-			str(a.status) !== "" || str(a.obs) !== "" || num(a.grade) != null;
+			_rawStatus !== "" || str(a.obs) !== "" || num(a.grade) != null;
 		const entry = {
 			name: a.name,
 			n: a.n,
@@ -446,7 +499,14 @@ function parseStudent(r) {
 			c_diff: num(a.c_diff),
 			lesson_obs: str(a.lesson_obs),
 			grade: num(a.grade),
-			status: hasAssignment ? "Pass" : "",
+			hasAssignment,
+			status: _isLlm
+				? PASSING.has(_rawStatus)
+					? ""
+					: _rawStatus
+				: hasAssignment
+					? "Pass"
+					: "",
 			obs: str(a.obs),
 		};
 		if (!PASSING.has(entry.status)) s.passed_course = false;

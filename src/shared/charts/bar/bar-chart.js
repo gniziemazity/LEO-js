@@ -9,7 +9,7 @@ class BarChart {
 		this._options = options;
 		this._datasets = [];
 		this._labels = [];
-		this._margin = { top: 6, right: 4, bottom: 28, left: 22 };
+		this._margin = { top: 6, right: 4, bottom: 28, left: 34 };
 
 		this._hitAreas = [];
 		this._hovered = null;
@@ -131,11 +131,16 @@ class BarChart {
 			ctx.moveTo(left, py);
 			ctx.lineTo(W - right, py);
 			ctx.stroke();
-			ctx.fillStyle = "#bbb";
+			ctx.fillStyle = "#595959";
 			ctx.font = "9px sans-serif";
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
-			ctx.fillText(v % 1 === 0 ? v : v.toFixed(1), left - 3, py);
+			ctx.fillText(
+				(v % 1 === 0 ? v : v.toFixed(1)) +
+					(this._options.yTickSuffix || ""),
+				left - 5,
+				py,
+			);
 		}
 
 		const stackTops = [];
@@ -205,7 +210,16 @@ class BarChart {
 							if (useBarW >= textW + 4) {
 								if (bh >= 14) {
 									ctx.fillStyle = ds.labelColor ?? "#fff";
-									ctx.fillText(label, bx + useBarW / 2, by + bh - 2);
+									if (this._options.barLabelAtTop) {
+										ctx.textBaseline = "top";
+										ctx.fillText(label, bx + useBarW / 2, by + 2);
+									} else {
+										ctx.fillText(
+											label,
+											bx + useBarW / 2,
+											by + bh - 2,
+										);
+									}
 								} else {
 									ctx.fillStyle = ds.outsideLabelColor ?? "#555";
 									ctx.fillText(label, bx + useBarW / 2, by - 2);
@@ -219,13 +233,13 @@ class BarChart {
 			}
 		}
 
-		ctx.fillStyle = "#888";
+		ctx.fillStyle = "#595959";
 		ctx.font = "10px sans-serif";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
 		for (let gi = 0; gi < nGroups; gi++) {
 			const gx = left + gi * groupW + groupW / 2;
-			ctx.fillText(this._labels[gi], gx, H - bottom + 4);
+			ctx.fillText(this._labels[gi], gx, H - bottom + 5);
 		}
 
 		ctx.strokeStyle = "#ccc";

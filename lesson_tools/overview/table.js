@@ -3,9 +3,9 @@
 function renderTable() {
 	const table = document.getElementById("grades-table");
 	table.innerHTML = "";
-	table.classList.remove("anon-name", "anon-id");
-	if (_anonMode === "name") table.classList.add("anon-name");
-	else if (_anonMode === "id") table.classList.add("anon-id");
+	table.classList.toggle("hide-id", _hiddenCols.has("id"));
+	table.classList.toggle("hide-name", _hiddenCols.has("name"));
+	table.classList.toggle("hide-num", _hiddenCols.has("num"));
 
 	const thead = document.createElement("thead");
 	const r1 = document.createElement("tr");
@@ -19,6 +19,7 @@ function renderTable() {
 	mkBase("col-id sticky-l");
 	mkBase("col-name sticky-l");
 	mkBase("col-num sticky-l");
+	mkBase();
 	mkBase();
 	mkBase();
 
@@ -39,12 +40,46 @@ function renderTable() {
 		r2.appendChild(th);
 		return th;
 	};
+	const obsHeader = (a, cls, sep = false) => {
+		const th = col("", cls, sep);
+		const schema = _artefactSchema[(a.name || "").toLowerCase()];
+		if (Array.isArray(schema) && schema.length) {
+			const fmt = (code) =>
+				String(code).replace(/([^_]+)|_(\w+)/g, (m, main, sub) =>
+					main
+						? escHtml(main.toUpperCase())
+						: `<sub>${escHtml(sub.toLowerCase())}</sub>`,
+				);
+			th.innerHTML = schema
+				.map(
+					(e) =>
+						`<span style="display:inline-block;width:14px;margin:0 1px;` +
+						`text-align:center;font-size:9px;font-weight:600;text-transform:none">` +
+						fmt(e.code || e.key || "?") +
+						`</span>`,
+				)
+				.join("");
+			const tip = schema
+				.map(
+					(e) =>
+						`${escHtml(String(e.code || e.key || "?"))}: ${escHtml(
+							e.label || "",
+						)}`,
+				)
+				.join("<br>");
+			if (tip) attachHtmlTip(th, tip);
+		} else {
+			th.textContent = "Obs";
+		}
+		return th;
+	};
 
 	col("ID", "col-id sticky-l");
 	col("Name", "col-name sticky-l");
 	col("#", "col-num sticky-l");
-	col("KPM");
 	col("Self");
+	col("KPM");
+	col("Quiz");
 
 	for (const a of ASSIGNMENTS) {
 		if (a.follow != null) {
@@ -54,32 +89,23 @@ function renderTable() {
 				"lessons",
 			);
 			_attachStudentsLink(
-				grp(`${a.name} Assignment`, 2, false),
+				grp("Assignment", 1, false),
 				a.name,
 				"assignments",
 			);
 			_attachTimelineLink(col("Follow%", "lhd", true), a.name);
 			col("Obs", "lhd");
-			col("Status", "ahd");
-			col("Obs", "ahd");
+			obsHeader(a, "");
 		} else {
-			_attachStudentsLink(
-				grp(`${a.name} Assignment`, 2, true),
-				a.name,
-				"assignments",
-			);
-			col("Status", "ahd", true);
-			col("Obs", "ahd");
+			_attachStudentsLink(grp("Assignment", 1, true), a.name, "assignments");
+			obsHeader(a, "", true);
 		}
 	}
-	grp("", 8, true);
-	col("Quiz", "", true);
-	col("KPM");
+	grp("", 5, true);
+	col("KPM", "", true);
 	col("Avg");
-	col("Part%");
-	col("Ans");
-	col("Qs");
-	col("Help");
+	col("Follow%");
+	col("Int");
 	col("Comments");
 
 	thead.appendChild(r1);
@@ -123,15 +149,24 @@ function renderTable() {
 		tr.appendChild(cell(s.id, "id-cell col-id sticky-l"));
 		tr.appendChild(cell(studentLabel(s), "name-cell col-name sticky-l"));
 		tr.appendChild(cell(s.number, "num col-num sticky-l"));
-		tr.appendChild(cell(fmtN(s.pre_typing), "num"));
 		tr.appendChild(cell(fmtN(s.self_eval), "num"));
+		tr.appendChild(cell(fmtN(s.pre_typing), "num"));
+		tr.appendChild(cell(fmtN(s.quiz_stii), "num"));
 
 		const makeLessonClickable = (td, entry) => {
+			if (entry.follow == null) return;
 			td.classList.add("clickable");
+			if (!td.title) td.title = `Open ${entry.name} lesson`;
 			td.addEventListener("click", () => openLessonDiff(s, entry));
 		};
 		const makeAssignClickable = (td, entry) => {
+			if (!entry.hasAssignment) return;
+			if (!_hasSubmission("assignments", entry.name, s.id)) {
+				td.title = "Forgot to send the code";
+				return;
+			}
 			td.classList.add("clickable");
+			if (!td.title) td.title = `Open ${entry.name} assignment`;
 			td.addEventListener("click", () => openAssignDiff(s, entry));
 		};
 
@@ -144,41 +179,28 @@ function renderTable() {
 					fc.style.color = followFg(entry.follow);
 				}
 				makeLessonClickable(fc, entry);
-				fc.title = `Open ${entry.name} lesson`;
 				tr.appendChild(fc);
 
-				const lobs = cell(obsText(entry.lesson_obs));
+				const _lo = (entry.lesson_obs || "").trim();
+				const lobs = cell(_lo === "_" ? "" : _lo);
+				if (_lo && _lo !== "_") {
+					lobs.style.fontWeight = "bold";
+					if (_lo.includes("<")) lobs.style.color = THEME.red;
+				}
 				makeLessonClickable(lobs, entry);
 				tr.appendChild(lobs);
-
-				const stc1 = document.createElement("td");
-				stc1.textContent = entry.status || "";
-				const sc1 = statusCellCls(entry.status);
-				stc1.className = sc1 || "asn-col";
-				makeAssignClickable(stc1, entry);
-				if (!stc1.title) stc1.title = `Open ${entry.name} assignment`;
-				tr.appendChild(stc1);
 
 				const aobs = obsCell(entry, "asn-col");
 				makeAssignClickable(aobs, entry);
 				tr.appendChild(aobs);
 			} else {
-				const stc2 = document.createElement("td");
-				stc2.textContent = entry.status || "";
-				const sc2 = statusCellCls(entry.status);
-				stc2.className = "asn-sep " + (sc2 || "asn-col");
-				makeAssignClickable(stc2, entry);
-				if (!stc2.title) stc2.title = `Open ${entry.name} assignment`;
-				tr.appendChild(stc2);
-
-				const aobs = obsCell(entry, "asn-col");
+				const aobs = obsCell(entry, "asn-sep asn-col");
 				makeAssignClickable(aobs, entry);
 				tr.appendChild(aobs);
 			}
 		}
 
-		tr.appendChild(cell(fmtN(s.quiz_stii), "num asn-sep"));
-		tr.appendChild(cell(fmtN(s.post_typing), "num"));
+		tr.appendChild(cell(fmtN(s.post_typing), "num asn-sep"));
 		tr.appendChild(cell(fmtN(s.avg_assignments, 1), "num"));
 
 		const pc = document.createElement("td");
@@ -193,10 +215,17 @@ function renderTable() {
 		pc.style.fontWeight = "700";
 		tr.appendChild(pc);
 
-		tr.appendChild(numCellBold(s.total_a));
-		tr.appendChild(numCellBold(s.total_q));
-		tr.appendChild(numCellBold(s.total_h));
-		tr.appendChild(cdiffCell(s.total_cdiff, cdiffMin, cdiffMax));
+		tr.appendChild(
+			cell(
+				formatInteractionCounts(s.total_a, s.total_q, s.total_h),
+				"col-int",
+			),
+		);
+		tr.appendChild(
+			followAvg(s) >= 0
+				? cdiffCell(s.total_cdiff, cdiffMin, cdiffMax)
+				: cell("", "num"),
+		);
 		tr.addEventListener("click", () => {
 			tbody
 				.querySelectorAll("tr.selected")
@@ -265,10 +294,13 @@ function _appendOverviewTotalsRow(tbody, rows) {
 	);
 	tr.appendChild(addCell(null, "col-num sticky-l"));
 	tr.appendChild(
+		addCell(fmtAvg(mean(cohort.map((s) => s.self_eval)), 0), "num"),
+	);
+	tr.appendChild(
 		addCell(fmtAvg(mean(cohort.map((s) => s.pre_typing)), 0), "num"),
 	);
 	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.self_eval)), 0), "num"),
+		addCell(fmtAvg(mean(cohort.map((s) => s.quiz_stii)), 0), "num"),
 	);
 
 	for (const a of ASSIGNMENTS) {
@@ -288,22 +320,18 @@ function _appendOverviewTotalsRow(tbody, rows) {
 			tr.appendChild(addCell(null));
 		}
 
-		tr.appendChild(
-			addCell(null, "asn-col" + (hasFollow ? "" : " asn-sep")),
-		);
-
 		const asnObsCounts = obsCounts(a, "asn");
 		const asnSchema = _artefactSchema[(a.name || "").toLowerCase()];
 		tr.appendChild(
-			addHtmlCell(renderArtefactTotals(asnObsCounts, asnSchema), "asn-col"),
+			addHtmlCell(
+				renderArtefactTotals(asnObsCounts, asnSchema),
+				"asn-col" + (hasFollow ? "" : " asn-sep"),
+			),
 		);
 	}
 
 	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.quiz_stii)), 0), "num asn-sep"),
-	);
-	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.post_typing)), 0), "num"),
+		addCell(fmtAvg(mean(cohort.map((s) => s.post_typing)), 0), "num asn-sep"),
 	);
 	tr.appendChild(
 		addCell(fmtAvg(mean(cohort.map((s) => s.avg_assignments)), 1), "num"),
@@ -317,24 +345,21 @@ function _appendOverviewTotalsRow(tbody, rows) {
 	}
 	tr.appendChild(pc);
 
-	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_a)), 0), "num"));
-	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_q)), 0), "num"));
-	tr.appendChild(addCell(fmtAvg(sum(cohort.map((s) => s.total_h)), 0), "num"));
+	tr.appendChild(
+		addCell(
+			formatInteractionCounts(
+				sum(cohort.map((s) => s.total_a)),
+				sum(cohort.map((s) => s.total_q)),
+				sum(cohort.map((s) => s.total_h)),
+			),
+			"col-int",
+		),
+	);
 	tr.appendChild(
 		addCell(fmtAvg(sum(cohort.map((s) => s.total_cdiff)), 0), "num"),
 	);
 
 	tbody.appendChild(tr);
-}
-
-function numCellBold(v) {
-	const td = document.createElement("td");
-	td.className = "num";
-	if (v != null && !isNaN(v) && +v !== 0) {
-		td.textContent = Math.round(+v).toString();
-		td.style.fontWeight = "700";
-	}
-	return td;
 }
 
 function cdiffCell(v, vmin, vmax) {
@@ -381,31 +406,81 @@ function applyStickyColumns() {
 		});
 }
 
-function onAnonChange(val) {
-	_anonMode = val;
-	if (_students.length) {
-		renderTable();
-		renderStats();
-		renderClusters();
-	} else {
-		const table = document.getElementById("grades-table");
-		table.classList.remove("anon-name", "anon-id");
-		if (val === "name") table.classList.add("anon-name");
-		else if (val === "id") table.classList.add("anon-id");
-	}
-	requestAnimationFrame(applyStickyColumns);
+function _loadHiddenCols() {
+	try {
+		const raw = localStorage.getItem("overview.hiddenCols");
+		if (!raw) return;
+		const arr = JSON.parse(raw);
+		if (!Array.isArray(arr)) return;
+		_hiddenCols.clear();
+		for (const k of arr) _hiddenCols.add(k);
+	} catch {}
 }
+
+function _saveHiddenCols() {
+	try {
+		localStorage.setItem(
+			"overview.hiddenCols",
+			JSON.stringify([..._hiddenCols]),
+		);
+	} catch {}
+}
+
+function _renderColsPanel() {
+	const panel = document.getElementById("cols-panel");
+	if (!panel) return;
+	panel.innerHTML = "";
+	for (const { key, label } of COL_HIDE_KEYS) {
+		const lab = document.createElement("label");
+		const cb = document.createElement("input");
+		cb.type = "checkbox";
+		cb.checked = !_hiddenCols.has(key);
+		cb.addEventListener("change", () => {
+			if (cb.checked) _hiddenCols.delete(key);
+			else _hiddenCols.add(key);
+			_saveHiddenCols();
+			if (_students.length) renderTable();
+			requestAnimationFrame(applyStickyColumns);
+		});
+		lab.appendChild(cb);
+		lab.appendChild(document.createTextNode(" " + label));
+		panel.appendChild(lab);
+	}
+}
+
+function _colsPanelOutsideClick(e) {
+	const panel = document.getElementById("cols-panel");
+	const btn = document.getElementById("cols-btn");
+	if (!panel || !btn) return;
+	if (panel.contains(e.target) || btn.contains(e.target)) return;
+	panel.hidden = true;
+	document.removeEventListener("click", _colsPanelOutsideClick, true);
+}
+
+function _toggleColsPanel() {
+	const panel = document.getElementById("cols-panel");
+	if (!panel) return;
+	if (panel.hidden) {
+		_renderColsPanel();
+		panel.hidden = false;
+		setTimeout(() => {
+			document.addEventListener("click", _colsPanelOutsideClick, true);
+		}, 0);
+	} else {
+		panel.hidden = true;
+		document.removeEventListener("click", _colsPanelOutsideClick, true);
+	}
+}
+
+_loadHiddenCols();
 
 function studentLabel(s) {
 	if (!s) return "";
-	if (_anonMode === "id") return s.id || "—";
-	if (_anonMode === "name") return _realToAlterMap[_nfc(s.name)] || s.name;
-	return s.name;
+	return _realToAlterMap[_nfc(s.name)] || s.name;
 }
 
 function studentLabelWithId(s) {
 	if (!s) return "";
-	if (_anonMode === "id") return s.id || "—";
 	const name = studentLabel(s);
 	return s.id ? `${s.id}. ${name}` : name;
 }
@@ -419,18 +494,6 @@ function followFg(pct) {
 	if (pct < 60) return THEME.orange;
 	if (pct < 75) return THEME.label;
 	return THEME.textStrong;
-}
-function statusCellCls(s) {
-	if (!s) return "";
-	return (
-		{
-			Pass: "st-bg-pass",
-			"Pass'": "st-bg-prime",
-			"Pass*": "st-bg-star",
-			"Fail*": "st-bg-fail",
-			Fail: "st-bg-fail",
-		}[s] || ""
-	);
 }
 function obsText(raw) {
 	return !raw || !raw.trim() ? "" : raw.trim();

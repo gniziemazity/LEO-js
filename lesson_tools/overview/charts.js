@@ -13,6 +13,7 @@ function addStackedShareCard(
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 	const restCounts = totalCounts.map((t, i) => t - subsetCounts[i]);
+	const baseColor = opts.color ?? THEME.label;
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax: yMax ?? Math.max(...totalCounts, 1) + 1,
@@ -34,53 +35,93 @@ function addStackedShareCard(
 	chart.setData(labels, [
 		{
 			data: subsetCounts,
-			backgroundColor: THEME.label,
-			borderColor: THEME.label,
+			backgroundColor: baseColor,
+			borderColor: baseColor,
 		},
 		{
 			data: restCounts,
-			backgroundColor: _hexToRgba(THEME.label, 0.22),
-			borderColor: _hexToRgba(THEME.label, 0.45),
+			backgroundColor: _hexToRgba(baseColor, 0.22),
+			borderColor: _hexToRgba(baseColor, 0.45),
 		},
 	]);
 	_barCharts.push(chart);
 }
 
-function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
-	const card = mkCard(parent, title);
+function addStackedBarCard(parent, title, labels, series, opts = {}) {
+	const card = mkCard(parent, title, opts.size);
 	const box = el("div", "chart-box");
 	card.appendChild(box);
-	const redC = artefactFiredColorFor("high");
-	const orangeC = artefactFiredColorFor("medium");
-	const grayC = THEME.artefactOk;
-	const pct = (n, gi) => (totals[gi] ? Math.round((n / totals[gi]) * 100) : 0);
+	const totals = labels.map((_, i) =>
+		series.reduce((sum, s) => sum + (s.data[i] ?? 0), 0),
+	);
 	const chart = new BarChart(box, {
 		yMin: 0,
-		yMax: Math.max(...totals, 1) + 1,
+		yMax:
+			opts.yMax != null
+				? opts.yMax
+				: Math.max(...totals, 1) * (opts.yScale ?? 1) + (opts.yPad ?? 0),
 		stacked: true,
-		tooltipCallback: (_l, _v, si, gi) => {
-			if (si === 0)
-				return [`strong AI: ${strong[gi]} (${pct(strong[gi], gi)}%)`];
-			if (si === 1)
-				return [
-					`+ medium: ${medium[gi]} → up to ${pct(strong[gi] + medium[gi], gi)}%`,
-				];
-			return [`no AI: ${none[gi]} of ${totals[gi] || 0}`];
-		},
-		barLabel: (gi, si) => {
-			if (!totals[gi]) return null;
-			if (si === 0) return strong[gi] ? pct(strong[gi], gi) + "%" : null;
-			if (si === 1)
-				return medium[gi] ? pct(strong[gi] + medium[gi], gi) + "%" : null;
-			return null;
-		},
+		tooltipCallback:
+			opts.tooltipCallback ??
+			((_l, val, si) => [`${series[si].label}: ${Math.round(val)}`]),
+		barLabel: opts.barLabel,
+		barLabelAtTop: opts.barLabelAtTop,
 	});
-	chart.setData(labels, [
-		{ data: strong, backgroundColor: redC, borderColor: redC },
-		{ data: medium, backgroundColor: orangeC, borderColor: orangeC },
-		{ data: none, backgroundColor: grayC, borderColor: grayC },
-	]);
+	chart.setData(
+		labels,
+		series.map((s) => ({
+			data: s.data.map((v) => v ?? 0),
+			backgroundColor: s.color,
+			borderColor: s.color,
+		})),
+	);
 	_barCharts.push(chart);
+	return chart;
+}
+
+function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
+	const pct = (n, gi) => (totals[gi] ? Math.round((n / totals[gi]) * 100) : 0);
+	addStackedBarCard(
+		parent,
+		title,
+		labels,
+		[
+			{
+				data: strong,
+				color: artefactFiredColorFor("high"),
+				label: "watermarks",
+			},
+			{
+				data: medium,
+				color: artefactFiredColorFor("medium"),
+				label: "reliable artefacts",
+			},
+			{ data: none, color: THEME.artefactOk, label: "clean" },
+		],
+		{
+			yMax:
+				Math.max(
+					...totals,
+					...strong.map((s, i) => s + medium[i] + none[i]),
+					1,
+				) + 1,
+			tooltipCallback: (_l, _v, si, gi) => {
+				if (si === 0) return [`Watermarks: ${strong[gi]}`];
+				if (si === 1) return [`Reliable artefacts: ${medium[gi]}`];
+				return [`Clean: ${none[gi]}`];
+			},
+			barLabel: (gi, si) => {
+				if (!totals[gi]) return null;
+				if (si === 0) return strong[gi] ? pct(strong[gi], gi) + "%" : null;
+				if (si === 1)
+					return medium[gi]
+						? pct(strong[gi] + medium[gi], gi) + "%"
+						: null;
+				return null;
+			},
+			barLabelAtTop: true,
+		},
+	);
 }
 
 function addBarCard(
@@ -100,6 +141,7 @@ function addBarCard(
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax,
+		yTickSuffix: tooltipFmt === "pct" ? "%" : "",
 		tooltipCallback:
 			tooltipFn ??
 			((_label, val) => [
@@ -114,7 +156,7 @@ function addBarCard(
 	chart.setData(labels, [
 		{
 			data,
-			backgroundColor: color + "44",
+			backgroundColor: color,
 			borderColor: color,
 			labelColor: opts.labelColor,
 		},
@@ -161,14 +203,19 @@ function _addDurationBoxCard(
 	const box = el("div", "chart-box");
 	card.appendChild(box);
 	const allVals = durationsByLesson.flat();
-	const yMax = Math.ceil(Math.max(...allVals, 1) * 1.1);
+	const yMax =
+		opts.yMax != null ? opts.yMax : Math.ceil(Math.max(...allVals, 1) * 1.1);
+	const xLabels = opts.subLabels
+		? labels.map((l, i) => `${l}\n${opts.subLabels[i] ?? ""}`)
+		: labels;
 	const chart = new BoxPlotChart(box, {
-		xLabels: labels,
+		xLabels,
 		leftAxis: {
 			min: 0,
 			max: yMax,
-			ticks: _autoTicks(yMax, 5),
-			color: THEME.textFaint,
+			ticks: opts.ticks || _autoTicks(yMax, 5),
+			color: THEME.label,
+			suffix: opts.tickSuffix || "",
 		},
 	});
 	chart.setData([

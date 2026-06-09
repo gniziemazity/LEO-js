@@ -8,12 +8,18 @@ let _globalStudentMap = {};
 let _realToAlterMap = {};
 let _lessonHandles = {};
 let _assignHandles = {};
+let _submittedIds = {};
 let _scatterCharts = [];
 let _barCharts = [];
 let _pyStats = null;
 let _artefactSchema = {};
 let _lessonStats = null;
-let _anonMode = "name";
+const COL_HIDE_KEYS = [
+	{ key: "id", label: "ID" },
+	{ key: "name", label: "Name" },
+	{ key: "num", label: "Number" },
+];
+const _hiddenCols = new Set(["num"]);
 let _hideExcluded = false;
 
 let _clusterCharts = [];

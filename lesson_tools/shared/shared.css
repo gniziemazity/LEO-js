@@ -37,7 +37,7 @@
 	--clr-gray: var(--c-gray-3);
 	--clr-text-dim: var(--c-gray-2);
 	--clr-text-faint: var(--c-gray-2);
-	--clr-label: var(--c-gray-2);
+	--clr-label: #595959;
 	--clr-muted: var(--c-gray-2);
 
 	--clr-border: var(--c-gray-2);
@@ -551,10 +551,28 @@ body.is-dragging-overlay iframe {
 
 .fv-tabs {
 	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
 	background: var(--clr-toolbar);
 	border-bottom: 1px solid var(--clr-border);
 	flex-shrink: 0;
+}
+.fv-tabs::-webkit-scrollbar {
+	height: 6px;
+}
+.fv-tabs::-webkit-scrollbar-thumb {
+	background: var(--clr-border-strong);
+	border-radius: 3px;
+}
+.fv-tabs > .file-tab {
+	flex-shrink: 0;
+}
+.fv-tabs > .fv-left-label {
+	position: sticky;
+	left: 0;
+	z-index: 1;
 }
 .fv-tabs:empty {
 	display: none;
