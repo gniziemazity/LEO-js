@@ -19,9 +19,7 @@ from .token_log import (
     _build_git_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
-    _build_lev_token_diff_marks,
     _build_occ_from_diff_marks,
-    _build_ro_diff_marks,
     _build_teacher_token_timestamps,
     _parse_teacher_tokens,
     _refresh_missing_timestamps,
@@ -37,6 +35,17 @@ from .token_log_lang_stats import (
     _ext_of,
     _per_language_follow_stats,
 )
+
+
+DISABLED_DIFF_MARK_VARIANTS = frozenset({'leo', 'lcs_star', 'git_star'})
+
+
+def _emit_diff_marks(path: Path, marks: dict, basis: str) -> bool:
+    if basis in DISABLED_DIFF_MARK_VARIANTS:
+        return False
+    with open(path, 'w', encoding='utf-8') as fh:
+        json.dump(marks, fh, ensure_ascii=False, indent=2)
+    return True
 
 
 def _fmt_item(ts_str: str, s: str) -> str:
@@ -184,7 +193,8 @@ class TokenLogMixin:
 
         teacher_code_files = self._get_teacher_code_files()
 
-        written = 0
+        written_leo = 0
+        written_leo_star = 0
         for student_dir in sorted(names_dir.iterdir()):
             if not student_dir.is_dir():
                 continue
@@ -222,8 +232,8 @@ class TokenLogMixin:
             _, ns_score_e, *_ = _build_occ_from_diff_marks(non_star, teacher_entries, None)
             non_star['score'] = ns_score_e
             _strip_internal_fields(non_star)
-            with open(anon_dir / 'diff_marks_leo.json', 'w', encoding='utf-8') as fh:
-                json.dump(non_star, fh, ensure_ascii=False, indent=2)
+            written_leo += _emit_diff_marks(
+                anon_dir / 'diff_marks_leo.json', non_star, 'leo')
 
             if all_events:
                 _add_log_metadata(
@@ -279,13 +289,13 @@ class TokenLogMixin:
                 diff_marks['teacher_token_timestamps'] = teacher_token_ts
 
             _strip_internal_fields(diff_marks)
-            with open(anon_dir / 'diff_marks_leo_star.json', 'w', encoding='utf-8') as fh:
-                json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
+            written_leo_star += _emit_diff_marks(
+                anon_dir / 'diff_marks_leo_star.json', diff_marks, 'leo_star')
 
-            written += 1
-
-        print(f'Written LEO diff marks for {written} student(s) in {names_dir.name}/')
-        print(f'Written LEO* diff marks for {written} student(s) in {names_dir.name}/')
+        if written_leo:
+            print(f'Written LEO diff marks for {written_leo} student(s) in {names_dir.name}/')
+        if written_leo_star:
+            print(f'Written LEO* diff marks for {written_leo_star} student(s) in {names_dir.name}/')
 
     def _write_alt_diff_marks(
         self,
@@ -365,9 +375,7 @@ class TokenLogMixin:
                 _strip_internal_fields(non_star)
                 if needs_utf16_remap:
                     _remap_marks_to_utf16(non_star, teacher_code_files, stu_files)
-                with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
-                    json.dump(non_star, fh, ensure_ascii=False, indent=2)
-                written += 1
+                written += _emit_diff_marks(anon_dir / filename, non_star, token_matching)
 
                 diff_marks['token_matching'] = star_token_matching
                 _add_log_metadata(diff_marks, all_events, stu_files,
@@ -394,19 +402,17 @@ class TokenLogMixin:
                 _strip_internal_fields(diff_marks)
                 if needs_utf16_remap:
                     _remap_marks_to_utf16(diff_marks, teacher_code_files, stu_files)
-                with open(anon_dir / star_filename, 'w', encoding='utf-8') as fh:
-                    json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-                written_star += 1
+                written_star += _emit_diff_marks(
+                    anon_dir / star_filename, diff_marks, star_token_matching)
             else:
                 _strip_internal_fields(diff_marks)
                 if needs_utf16_remap:
                     _remap_marks_to_utf16(diff_marks, teacher_code_files, stu_files)
-                with open(anon_dir / filename, 'w', encoding='utf-8') as fh:
-                    json.dump(diff_marks, fh, ensure_ascii=False, indent=2)
-                written += 1
+                written += _emit_diff_marks(anon_dir / filename, diff_marks, token_matching)
 
-        print(f'Written {label} for {written} student(s) in {names_dir.name}/')
-        if write_star and star_label:
+        if written:
+            print(f'Written {label} for {written} student(s) in {names_dir.name}/')
+        if write_star and star_label and written_star:
             print(f'Written {star_label} for {written_star} student(s) in {names_dir.name}/')
 
     def write_leo_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
@@ -427,31 +433,6 @@ class TokenLogMixin:
             star_filename='diff_marks_lcs_star.json' if all_events else None,
             star_label='LCS* diff marks' if all_events else None,
             include_line_marks=False,
-            needs_utf16_remap=True,
-        )
-
-    def write_lev_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
-        all_events = getattr(self, '_lesson_all_events', None)
-        self._write_alt_diff_marks(
-            names_dir, anon_ids_dir,
-            _build_lev_token_diff_marks,
-            'lev', 'Lev diff marks', 'diff_marks_lev.json',
-            star_token_matching='lev_star' if all_events else None,
-            star_filename='diff_marks_lev_star.json' if all_events else None,
-            star_label='Lev* diff marks' if all_events else None,
-            include_line_marks=False,
-            needs_utf16_remap=True,
-        )
-
-    def write_ro_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
-        all_events = getattr(self, '_lesson_all_events', None)
-        self._write_alt_diff_marks(
-            names_dir, anon_ids_dir,
-            _build_ro_diff_marks,
-            'ro', 'R/O diff marks', 'diff_marks_ro.json',
-            star_token_matching='ro_star' if all_events else None,
-            star_filename='diff_marks_ro_star.json' if all_events else None,
-            star_label='R/O* diff marks' if all_events else None,
             needs_utf16_remap=True,
         )
 

@@ -17,9 +17,14 @@ present.
 | ------ | ----- | ------ | ------------ | ------------------------------------------------------------ |
 | LEO    | `leo` | `leo*` | Token        | Per-token Hungarian matching on cosine-similar contexts      |
 | LCS    | `lcs` | `lcs*` | Token        | Difflib SequenceMatcher (Ratcliff/Obershelp) on token stream |
-| Lev    | `lev` | `lev*` | Token        | Levenshtein edit-distance traceback on token stream          |
-| R/O    | `ro`  | `ro*`  | Line + Token | Difflib SequenceMatcher on stripped lines, then per-line     |
 | Git    | `git` | `git*` | Line + Token | `git diff --no-index --unified=0 -w`, then per-line          |
+
+> **Retired methods.** The **Lev** (Levenshtein edit-distance on tokens) and
+> **R/O** (Ratcliff/Obershelp on stripped lines) families were removed —
+> nothing produces, lists, or evaluates them, and their builder, opcode, and
+> align functions were deleted from `token_log.py`. The §5.3 and §6.1
+> descriptions below are retained only as historical reference for how those
+> approaches worked.
 
 The star variant of every method is the same algorithm followed by a
 **ghost-token post-processing pass**: per token type, student `extra` marks
@@ -1232,8 +1237,6 @@ teacher reference files  +  student files
   │      └─► returns leo_assignments (no alignments/line_marks — borrowed at view time)
   │
   ├─► _build_lcs_token_diff_marks(...)        ← stamps _native_insert_at on missings
-  ├─► _build_lev_token_diff_marks(...)        ← stamps _native_insert_at on missings
-  ├─► _build_ro_diff_marks(...)               ← also produces alignments + line_marks
   └─► _build_git_diff_marks(...)              ← also produces alignments + line_marks
 
 

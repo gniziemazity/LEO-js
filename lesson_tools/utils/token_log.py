@@ -525,43 +525,6 @@ def _lcs_opcodes(a: List[str], b: List[str]):
     return difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
 
 
-def _levenshtein_opcodes(a: List[str], b: List[str]):
-    m, n = len(a), len(b)
-    if m == 0:
-        return [('insert', 0, 0, j, j + 1) for j in range(n)]
-    if n == 0:
-        return [('delete', i, i + 1, 0, 0) for i in range(m)]
-
-    dp = [[0] * (n + 1) for _ in range(m + 1)]
-    for i in range(m + 1):
-        dp[i][0] = i
-    for j in range(n + 1):
-        dp[0][j] = j
-    for i in range(1, m + 1):
-        ai = a[i - 1]
-        prev = dp[i - 1]
-        cur = dp[i]
-        for j in range(1, n + 1):
-            if ai == b[j - 1]:
-                cur[j] = prev[j - 1]
-            else:
-                cur[j] = 1 + min(prev[j - 1], prev[j], cur[j - 1])
-
-    ops: List[Tuple[str, int, int, int, int]] = []
-    i, j = m, n
-    while i > 0 or j > 0:
-        if i > 0 and j > 0 and a[i - 1] == b[j - 1]:
-            ops.append(('equal', i - 1, i, j - 1, j)); i -= 1; j -= 1
-        elif i > 0 and j > 0 and dp[i][j] == dp[i - 1][j - 1] + 1:
-            ops.append(('replace', i - 1, i, j - 1, j)); i -= 1; j -= 1
-        elif i > 0 and dp[i][j] == dp[i - 1][j] + 1:
-            ops.append(('delete', i - 1, i, j, j)); i -= 1
-        else:
-            ops.append(('insert', i, i, j - 1, j)); j -= 1
-    ops.reverse()
-    return ops
-
-
 def _build_token_seq_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
@@ -639,27 +602,6 @@ def _build_lcs_token_diff_marks(
     return _build_token_seq_diff_marks(teacher_files, student_files, _lcs_opcodes)
 
 
-def _build_lev_token_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
-    return _build_token_seq_diff_marks(teacher_files, student_files, _levenshtein_opcodes)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def _build_line_diff_marks(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
@@ -735,46 +677,6 @@ def _build_line_diff_marks(
         ))
 
     return _finalize_per_file_diff(per_file_results, n_total)
-
-
-def _ro_align(teacher_lines, student_lines, teacher_line_offsets, student_line_offsets,
-              teacher_blanked, student_blanked, student_path, ext,
-              all_token_positions, student_fname_for_native,
-              alignment, teacher_marks, student_marks,
-              teacher_line_marks, student_line_marks):
-    for tag, t_lo, t_hi, s_lo, s_hi in difflib.SequenceMatcher(
-        None,
-        [line.strip() for line in teacher_lines],
-        [line.strip() for line in student_lines],
-        autojunk=False,
-    ).get_opcodes():
-        if tag == 'equal':
-            for k in range(t_hi - t_lo):
-                alignment.append([t_lo + k, s_lo + k])
-        elif tag == 'delete':
-            for line_i in range(t_lo, t_hi):
-                _add_unpaired_teacher_line(alignment, teacher_marks, teacher_line_marks,
-                                            teacher_lines, teacher_line_offsets,
-                                            line_i, all_token_positions)
-        elif tag == 'insert':
-            for line_j in range(s_lo, s_hi):
-                _add_unpaired_student_line(alignment, student_marks, student_line_marks,
-                                            student_lines, student_line_offsets, line_j)
-        elif tag == 'replace':
-            _add_replace_block(alignment, teacher_marks, student_marks,
-                                teacher_line_marks, student_line_marks,
-                                teacher_lines, student_lines,
-                                teacher_line_offsets, student_line_offsets,
-                                t_lo, t_hi - t_lo, s_lo, s_hi - s_lo,
-                                all_token_positions,
-                                s_fname=student_fname_for_native)
-
-
-def _build_ro_diff_marks(
-    teacher_files: Dict[str, Path],
-    student_files: Dict[str, Path],
-) -> Tuple[Dict[str, List[dict]], Dict[str, List[dict]], Optional[float], Dict[str, list], dict, int]:
-    return _build_line_diff_marks(teacher_files, student_files, _ro_align)
 
 
 _GIT_HUNK_RE = _re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')

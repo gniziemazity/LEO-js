@@ -331,8 +331,6 @@ _REMARKS_BASES = [
     'ideal', 'minimal',
     'leo_star', 'leo',
     'lcs_star', 'lcs',
-    'lev_star', 'lev',
-    'ro_star', 'ro',
     'git_star', 'git',
 ]
 
@@ -408,8 +406,6 @@ def main() -> None:
     else:
         checker.write_leo_diff_marks(names_dir, anon_ids_dir)
     checker.write_lcs_diff_marks(names_dir, anon_ids_dir)
-    checker.write_lev_diff_marks(names_dir, anon_ids_dir)
-    checker.write_ro_diff_marks(names_dir, anon_ids_dir)
     checker.write_git_diff_marks(names_dir, anon_ids_dir)
     checker.copy_curated_diff_marks(
         current_dir / 'curated', names_dir, anon_ids_dir,

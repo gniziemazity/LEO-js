@@ -22,8 +22,6 @@ from utils.token_log import (
     _build_git_diff_marks,
     _build_lcs_token_diff_marks,
     _build_leo_diff_marks,
-    _build_lev_token_diff_marks,
-    _build_ro_diff_marks,
     _parse_teacher_tokens,
     _read_text_normalized,
     _remap_marks_to_utf16,
@@ -377,9 +375,7 @@ class TestUtf16OffsetRemap(unittest.TestCase):
 
     def test_codepoint_offsets_break_then_remap_fixes(self):
         for fn, name in ((_build_git_diff_marks, 'git'),
-                         (_build_lcs_token_diff_marks, 'lcs'),
-                         (_build_lev_token_diff_marks, 'lev'),
-                         (_build_ro_diff_marks, 'ro')):
+                         (_build_lcs_token_diff_marks, 'lcs')):
             with self.subTest(method=name):
                 dm = self._build(fn)
                 self.assertGreater(
@@ -480,8 +476,6 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
         for builder, name in [
             (_build_leo_diff_marks,        'leo'),
             (_build_lcs_token_diff_marks,  'lcs'),
-            (_build_lev_token_diff_marks,  'lev'),
-            (_build_ro_diff_marks,         'ro'),
             (_build_git_diff_marks,        'git'),
         ]:
             with self.subTest(method=name):
@@ -502,8 +496,6 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
     def test_position_sensitive_methods_drop_after_shuffle(self):
         for builder, name in [
             (_build_lcs_token_diff_marks, 'lcs'),
-            (_build_lev_token_diff_marks, 'lev'),
-            (_build_ro_diff_marks,        'ro'),
             (_build_git_diff_marks,       'git'),
         ]:
             with self.subTest(method=name):
@@ -628,8 +620,6 @@ def _pair_student_file(t_path: Path, t_name: str,
 
 _NON_STAR_RECONSTRUCT_METHODS = [
     ('lcs', _build_lcs_token_diff_marks, False),
-    ('lev', _build_lev_token_diff_marks, False),
-    ('ro',  _build_ro_diff_marks,        False),
     ('git', _build_git_diff_marks,       False),
 ]
 
@@ -638,14 +628,7 @@ _NON_STAR_RECONSTRUCT_METHODS = [
 # the teacher's non-comment token bag under language-aware tokenization. These
 # are pre-existing method limitations exposed by stricter (language-aware)
 # tokenization in the test.
-# sorting/17 ro/reconstructed.html: student wrote `//` comments inside <script>
-# (legitimate JS comments); ro line-aligns the student's <script> with
-# teacher's <style> block, so applying the marks lands those `//` lines inside
-# <style> in the spliced output, where `//` is not a comment per the HTML
-# profile and the tokens leak through as code.
-_CORRECTION_TEXT_EXCEPTIONS: Set[Tuple[str, str, str, str]] = {
-    ('sorting', '17', 'ro', 'reconstructed.html'),
-}
+_CORRECTION_TEXT_EXCEPTIONS: Set[Tuple[str, str, str, str]] = set()
 
 
 _MAX_STUDENTS_PER_PROJECT = 5

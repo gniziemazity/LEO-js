@@ -30,10 +30,6 @@ teacher typed and later deleted; star variants require a keylog):
                      Comments excluded from matching, marked as ``comment``.
 'lcs_star' / 'lcs'   ``difflib.SequenceMatcher`` (Ratcliff/Obershelp) on the
                      non-comment token sequence. Comments marked as ``comment``.
-'lev_star' / 'lev'   Levenshtein edit-distance traceback on the non-comment
-                     token sequence. Same comment handling as LCS.
-'ro_star'  / 'ro'    ``difflib.SequenceMatcher`` on stripped lines + per-line
-                     token-level diff. Treats comments as regular tokens.
 'git_star' / 'git'   ``git diff --no-index --unified=0 -w`` + per-line
                      token-level diff. Treats comments as regular tokens.
 
@@ -55,8 +51,6 @@ from .token_log import (
     _assemble_diff_marks,
     _build_leo_diff_marks,
     _build_lcs_token_diff_marks,
-    _build_lev_token_diff_marks,
-    _build_ro_diff_marks,
     _build_git_diff_marks,
     _strip_internal_fields,
 )
@@ -68,12 +62,8 @@ SUPPORTED_METHODS = [
     'leo',
     'lcs_star',
     'lcs',
-    'lev_star',
-    'lev',
     'git_star',
     'git',
-    'ro_star',
-    'ro',
 ]
 
 
@@ -147,8 +137,6 @@ def compare(
 _BUILDERS = {
     'leo': _build_leo_diff_marks,
     'lcs': _build_lcs_token_diff_marks,
-    'lev': _build_lev_token_diff_marks,
-    'ro':  _build_ro_diff_marks,
     'git': _build_git_diff_marks,
 }
 

@@ -33,10 +33,6 @@ const DIFF_MODE_OPTIONS = [
 	{ key: "leo", label: "LEO" },
 	{ key: "token-lcs-star", label: "LCS*" },
 	{ key: "token-lcs", label: "LCS" },
-	{ key: "token-lev-star", label: "Lev*" },
-	{ key: "token-lev", label: "Lev" },
-	{ key: "line-ro-star", label: "R/O*" },
-	{ key: "line-ro", label: "R/O" },
 	{ key: "line-git-star", label: "Git*" },
 	{ key: "line-git", label: "Git" },
 ];
@@ -132,14 +128,10 @@ function _activateFileTab(side, name) {
 const _BORROW_ALIGNMENT_ORDER = [
 	"line-git",
 	"line-git-star",
-	"line-ro",
-	"line-ro-star",
 	"leo",
 	"",
 	"token-lcs",
 	"token-lcs-star",
-	"token-lev",
-	"token-lev-star",
 ];
 
 let _borrowedAlignmentKey = null;
@@ -166,13 +158,7 @@ function _borrowedAlignments() {
 	return null;
 }
 
-const _BORROW_GHOSTS_ORDER = [
-	"",
-	"token-lcs-star",
-	"token-lev-star",
-	"line-ro-star",
-	"line-git-star",
-];
+const _BORROW_GHOSTS_ORDER = ["", "token-lcs-star", "line-git-star"];
 
 function _borrowedTeacherGhosts(fileName) {
 	for (const mode of _BORROW_GHOSTS_ORDER) {

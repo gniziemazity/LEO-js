@@ -95,10 +95,6 @@ METHOD_LABELS = {
     "leo":       "LEO",
     "lcs_star":  "LCS*",
     "lcs":       "LCS",
-    "lev_star":  "Lev*",
-    "lev":       "Lev",
-    "ro_star":   "R/O*",
-    "ro":        "R/O",
     "git_star":  "Git*",
     "git":       "Git",
 }
