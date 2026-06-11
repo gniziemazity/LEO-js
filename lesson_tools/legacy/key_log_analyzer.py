@@ -8,9 +8,9 @@ from tkinter import filedialog
 
 import matplotlib.pyplot as plt
 
-from utils.lv_timeline_config import Config
-from utils.lv_timeline_data import load_keypress_data, load_student_data_from_xlsx
-from utils.lv_timeline_chart import create_visualizations
+from lv_timeline_config import Config
+from lv_timeline_data import load_keypress_data, load_student_data_from_xlsx
+from lv_timeline_chart import create_visualizations
 
 
 def find_files_in_directory():

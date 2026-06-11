@@ -330,7 +330,7 @@ function _renderBasisPicker() {
 			_activeBasis = select.value;
 			select.classList.toggle(
 				"is-curated",
-				_activeBasis === "ideal" || _activeBasis === "required",
+				_activeBasis === "ideal" || _activeBasis === "minimal",
 			);
 			try {
 				if (_activeBasis === GRADES_KEY) {
@@ -364,6 +364,6 @@ function _renderBasisPicker() {
 	}
 	select.classList.toggle(
 		"is-curated",
-		select.value === "ideal" || select.value === "required",
+		select.value === "ideal" || select.value === "minimal",
 	);
 }

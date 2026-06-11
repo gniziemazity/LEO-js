@@ -257,55 +257,25 @@ function _curatedClearPair(mark, side) {
 	delete mark.paired_with;
 }
 
-function _curatedSetSwapPairGroups(missings, extras, missingFile, extraFile) {
-	for (const m of missings) _curatedClearPair(m, "teacher");
-	for (const e of extras) _curatedClearPair(e, "student");
-	if (!missings.length || !extras.length) return;
-	const mLo = Math.min(...missings.map((m) => m.start));
-	const mHi = Math.max(...missings.map((m) => m.end));
-	const eLo = Math.min(...extras.map((e) => e.start));
-	const eHi = Math.max(...extras.map((e) => e.end));
-	const mFirst = missings.reduce((a, b) => (b.start < a.start ? b : a));
-	const eFirst = extras.reduce((a, b) => (b.start < a.start ? b : a));
-	for (const m of missings) {
-		m.paired_with = {
-			file: extraFile,
-			start: eLo,
-			end: eHi,
-			token: eFirst.token,
-			label: "extra",
-		};
-		delete m.insert_at;
-	}
-	for (const e of extras) {
-		e.paired_with = {
-			file: missingFile,
-			start: mLo,
-			end: mHi,
-			token: mFirst.token,
-			label: "missing",
-		};
-		delete e.move_to;
-	}
-}
-
-function _curatedContiguousGroup(side, file, mark) {
-	const all = _curatedFileMarks(side, file)
-		.filter((m) => m.label === mark.label && !m.paired_with)
-		.sort((a, b) => a.start - b.start);
-	const idx = all.indexOf(mark);
-	if (idx < 0) return [mark];
-	const text = _curatedSrcText(side, file);
-	const run = [mark];
-	for (let i = idx - 1; i >= 0; i--) {
-		if (/[^ \t\r\n]/.test(text.slice(all[i].end, all[i + 1].start))) break;
-		run.unshift(all[i]);
-	}
-	for (let i = idx + 1; i < all.length; i++) {
-		if (/[^ \t\r\n]/.test(text.slice(all[i - 1].end, all[i].start))) break;
-		run.push(all[i]);
-	}
-	return run;
+function _curatedSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
+	_curatedClearPair(missingMark, "teacher");
+	_curatedClearPair(extraMark, "student");
+	missingMark.paired_with = {
+		file: extraFile,
+		start: extraMark.start,
+		end: extraMark.end,
+		token: extraMark.token,
+		label: "extra",
+	};
+	extraMark.paired_with = {
+		file: missingFile,
+		start: missingMark.start,
+		end: missingMark.end,
+		token: missingMark.token,
+		label: "missing",
+	};
+	delete missingMark.insert_at;
+	delete extraMark.move_to;
 }
 
 function _clearSelectionPreservingScroll() {

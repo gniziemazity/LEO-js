@@ -21,6 +21,7 @@ const COL_HIDE_KEYS = [
 ];
 const _hiddenCols = new Set(["num"]);
 let _hideExcluded = false;
+let _hideCopiers = false;
 
 let _clusterCharts = [];
 let _clusterSeed = 42;

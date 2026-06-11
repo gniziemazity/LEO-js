@@ -22,6 +22,7 @@ function _boxStats(values, coef = 1.5) {
 	const q1 = q(0.25);
 	const median = q(0.5);
 	const q3 = q(0.75);
+	const mean = sorted.reduce((s, v) => s + v, 0) / n;
 	const iqr = q3 - q1;
 	const lo = q1 - coef * iqr;
 	const hi = q3 + coef * iqr;
@@ -29,5 +30,5 @@ function _boxStats(values, coef = 1.5) {
 	const whiskerMax =
 		[...sorted].reverse().find((v) => v <= hi) ?? sorted[n - 1];
 	const outliers = sorted.filter((v) => v < lo || v > hi);
-	return { q1, median, q3, whiskerMin, whiskerMax, outliers };
+	return { q1, median, q3, mean, whiskerMin, whiskerMax, outliers };
 }

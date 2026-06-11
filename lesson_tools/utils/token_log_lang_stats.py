@@ -5,6 +5,7 @@ import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from .token_log import _read_text_normalized, _split_tokens_by_comment
+from .similarity_measures import token_edit_similarity
 
 
 _LANG_EXT_LABEL = (('.html', 'HTML'), ('.css', 'CSS'), ('.js', 'JS'), ('.py', 'Py'))
@@ -188,7 +189,7 @@ def _per_language_follow_stats(
             n_missing[_effective_ext_at(pos, file_ext, ranges)] += 1
         if nc:
             items_by_ext[file_ext].append(
-                ('99:99:99', f'(whole file missing: {fname} — {len(nc)} tokens)')
+                ('99:99:99', f'(whole file missing: {fname} — {len(nc)} tokens)', '')
             )
 
     counted_missing_for: set = set()
@@ -207,7 +208,12 @@ def _per_language_follow_stats(
                 eff_ext = _effective_ext_at(pos, file_ext, ranges)
                 n_missing[eff_ext] += 1
                 ts = _resolve_missing_ts(m, fname)
-                items_by_ext[eff_ext].append((ts, f'-{m.get("token", "")}'))
+                pw = m.get('paired_with')
+                suffix = (
+                    f' ~{token_edit_similarity(m.get("token", ""), pw.get("token", "")):.2f}'
+                    if pw else ''
+                )
+                items_by_ext[eff_ext].append((ts, f'-{m.get("token", "")}', suffix))
             if fname in missing_files:
                 counted_missing_for.add(fname)
     for fname in missing_files:
@@ -238,7 +244,7 @@ def _per_language_follow_stats(
                     ge_ext = eff_ext
                 n_ghost_extra[ge_ext] += 1
                 ts = _resolve_ghost_ts(m)
-                items_by_ext[ge_ext].append((ts, f'+{m.get("token", "")}*'))
+                items_by_ext[ge_ext].append((ts, f'+{m.get("token", "")}*', ''))
             elif lbl == 'extra':
                 if not m.get('paired_with'):
                     n_extra_unpaired[eff_ext] += 1
@@ -254,10 +260,10 @@ def _per_language_follow_stats(
             continue
         deduction = n_missing[ext] + n_ghost_extra[ext] + n_extra_unpaired[ext]
         score = round(max(0.0, (total - deduction) / total * 100), 1)
-        sorted_items = sorted(items_by_ext[ext])
+        sorted_items = sorted(items_by_ext[ext], key=lambda x: (x[0], x[1]))
         items_text = [
-            s if ts == '99:99:99' else f'{s} ({ts})'
-            for ts, s in sorted_items
+            (s if ts == '99:99:99' else f'{s} ({ts})') + suffix
+            for ts, s, suffix in sorted_items
         ]
         sorted_extras = sorted(extras_by_ext[ext], key=lambda t: (t[0], t[1]))
         for _fname, _pos, label in sorted_extras:

@@ -86,16 +86,13 @@ test("diffModeFromFilename: maps the canonical filenames back to mode keys", () 
 	assert.equal(api.diffModeFromFilename("diff_marks_ideal.json"), "ideal");
 	assert.equal(api.diffModeFromFilename("diff_marks_leo_star.json"), "");
 	assert.equal(api.diffModeFromFilename("diff_marks_leo.json"), "leo");
-	assert.equal(
-		api.diffModeFromFilename("DIFF_MARKS_REQUIRED.JSON"),
-		"required",
-	);
+	assert.equal(api.diffModeFromFilename("DIFF_MARKS_MINIMAL.JSON"), "minimal");
 	assert.equal(api.diffModeFromFilename("nope.json"), null);
 });
 
-test("defaultDiffModeKey: ideal > required > leo* > leo, honours a present request", () => {
+test("defaultDiffModeKey: ideal > minimal > leo* > leo, honours a present request", () => {
 	assert.equal(api.defaultDiffModeKey({ ideal: {}, leo: {} }), "ideal");
-	assert.equal(api.defaultDiffModeKey({ required: {}, leo: {} }), "required");
+	assert.equal(api.defaultDiffModeKey({ minimal: {}, leo: {} }), "minimal");
 	assert.equal(api.defaultDiffModeKey({ "": {}, leo: {} }), ""); // leo*
 	assert.equal(api.defaultDiffModeKey({ leo: {} }), "leo");
 	assert.equal(api.defaultDiffModeKey({ ideal: {}, leo: {} }, "leo"), "leo");
@@ -156,4 +153,17 @@ test("parseFollowEvents: extracts each +/- token with its timestamp", () => {
 		token: "color",
 	});
 	assert.deepEqual(api.parseFollowEvents(""), []);
+});
+
+test("parseFollowEvents: reads optional ~sim suffix on paired missing tokens", () => {
+	const evs = api.parseFollowEvents(
+		"-border (00:00:05) ~0.83, +color (00:00:06)",
+	);
+	assert.equal(evs.length, 2);
+	assert.equal(evs[0].kind, "missing");
+	assert.equal(evs[0].token, "border");
+	assert.equal(evs[0].sim, 0.83);
+	assert.equal(evs[1].kind, "extra");
+	assert.equal(evs[1].token, "color");
+	assert.equal("sim" in evs[1], false);
 });

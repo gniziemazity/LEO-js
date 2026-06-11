@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, time
 
-from .lv_timeline_config import Config
+from lv_timeline_config import Config
 
 _MIDNIGHT = time(0, 0, 0)
 

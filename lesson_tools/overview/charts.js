@@ -305,3 +305,94 @@ function addScatterCard(parent, assignment, points, isFirst) {
 	]);
 	_scatterCharts.push(chart);
 }
+
+function _chartSlug(text, fallback) {
+	const s = String(text || "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+	return s || fallback;
+}
+
+function _chartCanvasFilename(canvas, idx) {
+	const card = canvas.closest(".stat-card, .prog-card, .cluster-section");
+	const heading = card?.querySelector("h3, h4");
+	const base = _chartSlug(heading?.textContent, "chart");
+	return `${String(idx + 1).padStart(2, "0")}_${base}.png`;
+}
+
+const CHART_DL_SCALE = 3;
+
+function _chartByCanvas() {
+	const all = [..._barCharts, ..._scatterCharts, ..._clusterCharts];
+	return new Map(all.map((c) => [c._canvas, c]));
+}
+
+const MAX_CHART_DL_PX = 16384;
+
+function _exportChartAtScale(chart, scale) {
+	return new Promise((resolve) => {
+		const canvas = chart._canvas;
+		const r = canvas.getBoundingClientRect();
+		const baseDpr = chart._dpr || 1;
+		const cssW = r.width || canvas.width / baseDpr;
+		const cssH = r.height || canvas.height / baseDpr;
+		let dpr = (window.devicePixelRatio || 1) * scale;
+		const maxDim = Math.max(cssW, cssH) * dpr;
+		if (maxDim > MAX_CHART_DL_PX) dpr *= MAX_CHART_DL_PX / maxDim;
+		canvas.width = Math.max(1, Math.round(cssW * dpr));
+		canvas.height = Math.max(1, Math.round(cssH * dpr));
+		chart._dpr = dpr;
+		chart._draw();
+		canvas.toBlob((blob) => {
+			try {
+				chart._resize();
+			} catch {}
+			resolve(blob);
+		}, "image/png");
+	});
+}
+
+async function _downloadTabChartsZip(bodyEl, zipName) {
+	if (!bodyEl) return;
+	const canvases = Array.from(bodyEl.querySelectorAll("canvas"));
+	if (!canvases.length) return;
+	const byCanvas = _chartByCanvas();
+	const files = new Map();
+	const order = [];
+	for (let i = 0; i < canvases.length; i++) {
+		const canvas = canvases[i];
+		const chart = byCanvas.get(canvas);
+		const blob = await (chart
+			? _exportChartAtScale(chart, CHART_DL_SCALE)
+			: new Promise((res) => canvas.toBlob(res, "image/png")));
+		if (!blob) continue;
+		const name = _chartCanvasFilename(canvas, i);
+		files.set(name, new Uint8Array(await blob.arrayBuffer()));
+		order.push(name);
+	}
+	if (!order.length) return;
+	const zip = await miniZipBuild(files, order);
+	const url = URL.createObjectURL(
+		new Blob([zip], { type: "application/zip" }),
+	);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = zipName;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
+}
+
+function _refreshChartDownloadBtns() {
+	for (const [btnId, bodyId] of [
+		["stats-download-btn", "stats-body"],
+		["progress-download-btn", "clusters-body"],
+	]) {
+		const btn = document.getElementById(btnId);
+		if (!btn) continue;
+		const body = document.getElementById(bodyId);
+		btn.style.display = body && body.querySelector("canvas") ? "" : "none";
+	}
+}

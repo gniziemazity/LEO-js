@@ -356,6 +356,13 @@ async function _renderCodeFile(name) {
 		await _renderDocInFv(doc);
 		return;
 	}
+	const shot = _studentScreenshotFiles(_selectedStudent).find(
+		(d) => d.name === name,
+	);
+	if (shot) {
+		await _renderImageInFv(shot);
+		return;
+	}
 	_codeFV.editorEl.classList.remove("fv-doc-mode");
 	const entry = _studentCodeFiles().find(([n]) => n === name);
 	if (!entry) {
@@ -418,6 +425,20 @@ async function _renderDocInFv(doc) {
 	}
 }
 
+async function _renderImageInFv(img) {
+	_codeFV.hidePreview();
+	_codeFV.editorEl.classList.add("fv-doc-mode");
+	let url = img.file.url;
+	if (typeof url !== "string" || !url) {
+		url = await readFileDataUri(img.file);
+	}
+	_codeFV.setEditorHtml(
+		`<img class="fv-doc-img" src="${escAttr(url)}" alt="${escAttr(
+			img.name,
+		)}" />`,
+	);
+}
+
 async function _populateCodeView() {
 	const fv = _ensureCodeFV();
 	if (!fv || !_selectedStudent) return;
@@ -426,7 +447,8 @@ async function _populateCodeView() {
 	fv.setLeftLabel(s.name || "");
 	const codeNames = _studentCodeFiles().map(([n]) => n);
 	const docNames = _studentDocFiles(s).map((d) => d.name);
-	const names = [...codeNames, ...docNames];
+	const shotNames = _studentScreenshotFiles(s).map((d) => d.name);
+	const names = [...codeNames, ...docNames, ...shotNames];
 	const want =
 		_pendingCodeDoc && names.includes(_pendingCodeDoc)
 			? _pendingCodeDoc
@@ -474,6 +496,13 @@ function _setBottomView(view) {
 function selectStudentInline(student) {
 	_ensureViewers();
 	_selectedStudent = student;
+	if (_pendingCodeDoc == null) {
+		const shots = _studentScreenshotFiles(student);
+		if (shots.length) {
+			_bottomView = "code";
+			_pendingCodeDoc = shots[0].name;
+		}
+	}
 	const tb = _vEl("asgn-view-toggle");
 	if (tb) tb.hidden = _paperMode;
 	const col = _vEl("side-col");

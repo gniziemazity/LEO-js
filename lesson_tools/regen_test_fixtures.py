@@ -24,7 +24,7 @@ _TEST = _ROOT / "test" / "lessons"
 _CASES = [
     ("wall",    True),
     ("chess",   True),
-    ("js",      True),
+    ("gallery", True),
     ("qr",      True),
     ("sorting", True),
     ("python",  True),

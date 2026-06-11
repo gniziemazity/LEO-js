@@ -47,7 +47,7 @@ function _curatedBackfillTimestamps(teacherFiles, studentFiles) {
 }
 
 function _curatedBuildJson() {
-	const matching = _diffMode === "required" ? "required" : "ideal";
+	const matching = _diffMode === "minimal" ? "minimal" : "ideal";
 	const t = _curatedMarks() || {
 		token_matching: matching,
 		teacher_files: {},
@@ -74,8 +74,8 @@ function _curatedDownload() {
 	const a = document.createElement("a");
 	a.href = url;
 	a.download =
-		_diffMode === "required"
-			? "diff_marks_required.json"
+		_diffMode === "minimal"
+			? "diff_marks_minimal.json"
 			: "diff_marks_ideal.json";
 	document.body.appendChild(a);
 	a.click();

@@ -10,10 +10,12 @@ Two modes:
     `<root>/lessons/<lesson>/` for each lesson dir, evaluates every student
     under `<lesson>/anon_ids/`, and writes a combined workbook
     `<root>/Method_Evaluation.xlsx` with:
-      * Summary sheet — F1, Pair F1, Pair Mean Dist, Result, and Progress
-        per method × lesson (5 columns/lesson; Result and Progress are
-        filled only on the per-method Total row, since they are not
-        per-label metrics)
+      * Summary sheet — F1, Pair F1, Pair Mean Dist, Result, Ideal, and
+        Assist Rate per method × lesson (6 columns/lesson; Result, Ideal, and
+        Assist Rate are filled only on the per-method Total row, since they are
+        not per-label metrics). Ideal is an N/M count: of the M students with
+        a comparable submission, how many the method reproduced exactly
+        (per-student Result = 1.0).
       * one sheet per lesson — the same totals + per-student tables that
         single-project mode produces.
 
@@ -48,7 +50,7 @@ Per (student, method) — outcome-based, independent of the label classification
     tokens. Conversely, compensating errors — an FP delete cancelled by an
     FP insert — can score artificially well here; treat as a complement to
     F1, not a replacement.
-  * Progress: 1 - edit_distance(method_corrected, ideal_corrected) /
+  * Assist Rate: 1 - edit_distance(method_corrected, ideal_corrected) /
     edit_distance(student_original, ideal_corrected), pooled. Normalises the
     same numerator as Result by the *amount of work the student needed*
     rather than total file size — so unchanged-but-already-correct tokens
@@ -587,12 +589,14 @@ def evaluate(
                 student_ideal_len += len(ideal_tokens)
             ragg = result_aggregate.setdefault(method, {
                 "Result Dist": 0, "Result Ideal Tokens": 0,
-                "Baseline Dist": 0, "Students": 0,
+                "Baseline Dist": 0, "Students": 0, "Exact": 0,
             })
             ragg["Result Dist"] += student_dist
             ragg["Result Ideal Tokens"] += student_ideal_len
             ragg["Baseline Dist"] += student_baseline_dist
             ragg["Students"] += 1
+            if student_ideal_len > 0 and student_dist == 0:
+                ragg["Exact"] += 1
 
             method_marks = _collect_marks(mdata)
             method_marks = {
@@ -903,7 +907,7 @@ def _result_score(result_agg: dict | None, mkey: str) -> float | str:
     return round(score, 4)
 
 
-def _progress_score(result_agg: dict | None, mkey: str) -> float | str:
+def _assist_score(result_agg: dict | None, mkey: str) -> float | str:
     if not result_agg:
         return ""
     r = result_agg.get(mkey)
@@ -913,6 +917,17 @@ def _progress_score(result_agg: dict | None, mkey: str) -> float | str:
     if not base:
         return ""
     return round(1.0 - r.get("Result Dist", 0) / base, 4)
+
+
+def _ideal_count(result_agg: dict | None, mkey: str) -> str:
+    if not result_agg:
+        return ""
+    r = result_agg.get(mkey)
+    if not r:
+        return ""
+    if not r.get("Result Ideal Tokens", 0):
+        return ""
+    return f"{r.get('Exact', 0)}/{r.get('Students', 0)}"
 
 
 def _build_summary_rows(method_keys, results):
@@ -933,14 +948,16 @@ def _build_summary_rows(method_keys, results):
                     row[f"{lesson_name} Pair F1"] = ""
                     row[f"{lesson_name} Pair Mean Dist"] = ""
                     row[f"{lesson_name} Result"] = ""
-                    row[f"{lesson_name} Progress"] = ""
+                    row[f"{lesson_name} Ideal"] = ""
+                    row[f"{lesson_name} Assist Rate"] = ""
                     continue
                 f1, pf1, pmd = _summary_metrics_from_stats(stats)
                 row[f"{lesson_name} F1"] = f1
                 row[f"{lesson_name} Pair F1"] = pf1
                 row[f"{lesson_name} Pair Mean Dist"] = pmd
                 row[f"{lesson_name} Result"] = ""
-                row[f"{lesson_name} Progress"] = ""
+                row[f"{lesson_name} Ideal"] = ""
+                row[f"{lesson_name} Assist Rate"] = ""
             rows.append(row)
         row = {"Method": mdisp, "Label": "Total"}
         for lesson_name, (_ps, tot, ragg) in results.items():
@@ -951,14 +968,16 @@ def _build_summary_rows(method_keys, results):
                 row[f"{lesson_name} Pair F1"] = ""
                 row[f"{lesson_name} Pair Mean Dist"] = ""
                 row[f"{lesson_name} Result"] = _result_score(ragg, mkey)
-                row[f"{lesson_name} Progress"] = _progress_score(ragg, mkey)
+                row[f"{lesson_name} Ideal"] = _ideal_count(ragg, mkey)
+                row[f"{lesson_name} Assist Rate"] = _assist_score(ragg, mkey)
                 continue
             f1, pf1, pmd = _summary_metrics_from_stats(a)
             row[f"{lesson_name} F1"] = f1
             row[f"{lesson_name} Pair F1"] = pf1
             row[f"{lesson_name} Pair Mean Dist"] = pmd
             row[f"{lesson_name} Result"] = _result_score(ragg, mkey)
-            row[f"{lesson_name} Progress"] = _progress_score(ragg, mkey)
+            row[f"{lesson_name} Ideal"] = _ideal_count(ragg, mkey)
+            row[f"{lesson_name} Assist Rate"] = _assist_score(ragg, mkey)
         rows.append(row)
     return rows
 
@@ -1033,7 +1052,8 @@ def write_multi_excel(
         summary_cols.append(f"{lesson_name} Pair F1")
         summary_cols.append(f"{lesson_name} Pair Mean Dist")
         summary_cols.append(f"{lesson_name} Result")
-        summary_cols.append(f"{lesson_name} Progress")
+        summary_cols.append(f"{lesson_name} Ideal")
+        summary_cols.append(f"{lesson_name} Assist Rate")
     summary_df = pd.DataFrame(summary_rows, columns=summary_cols)
 
     languages_rows = _build_languages_rows(lang_stats_by_lesson or {})

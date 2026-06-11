@@ -328,7 +328,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         }
 
 _REMARKS_BASES = [
-    'ideal', 'required',
+    'ideal', 'minimal',
     'leo_star', 'leo',
     'lcs_star', 'lcs',
     'lev_star', 'lev',
@@ -342,7 +342,7 @@ def _resolve_follow_basis(requested: str, generated: List[str]) -> str:
         if requested in generated:
             return requested
         print(f'  --follow-basis={requested!r} not available; falling back to auto pick')
-    for preferred in ('ideal', 'required', 'leo_star', 'leo'):
+    for preferred in ('ideal', 'minimal', 'leo_star', 'leo'):
         if preferred in generated:
             return preferred
     return generated[0] if generated else ''
@@ -419,6 +419,24 @@ def main() -> None:
     print('\nGenerating per-basis remarks reports...')
     excels_dir = current_dir / 'excels'
     excels_dir.mkdir(exist_ok=True)
+
+    remarks_path = excels_dir / 'remarks.xlsx'
+    backup_path = None
+    if remarks_path.exists():
+        backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+        backup_path = excels_dir / f'bck_{backup_ts}.xlsx'
+        shutil.copy2(str(remarks_path), str(backup_path))
+        print(f'Backed up previous remarks -> {backup_path.name}')
+
+    def _merge_obs_into(path: Path) -> None:
+        if backup_path is None:
+            return
+        try:
+            merge_manual_columns(backup_path, path)
+        except PermissionError:
+            print(f'  Warning: {path.name} is open in Excel; '
+                  f'skipped manual-column merge.')
+
     generated_bases: List[str] = []
     for basis in _REMARKS_BASES:
         stats = checker.compute_basis_token_stats(
@@ -428,6 +446,7 @@ def main() -> None:
             continue
         out_path = excels_dir / f'remarks_{basis}.xlsx'
         checker.generate_remarks_report(str(out_path), token_stats=stats)
+        _merge_obs_into(out_path)
         generated_bases.append(basis)
         print(f'  {out_path.name}  ({len(stats)} student(s))')
 
@@ -457,19 +476,12 @@ def main() -> None:
             checker.generate_remarks_report(
                 str(out_path), basis_marks_by_sid=basis_marks_by_sid,
             )
+            _merge_obs_into(out_path)
             generated_bases.append(basis)
             print(f'  {out_path.name}  ({len(basis_marks_by_sid)} student(s))')
 
     chosen_basis = _resolve_follow_basis(follow_basis, generated_bases)
-    remarks_path = excels_dir / 'remarks.xlsx'
     print()
-
-    backup_path = None
-    if remarks_path.exists():
-        backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_path = excels_dir / f'bck_{backup_ts}.xlsx'
-        shutil.copy2(str(remarks_path), str(backup_path))
-        print(f'Backed up previous remarks -> {backup_path.name}')
 
     while True:
         try:

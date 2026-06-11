@@ -33,6 +33,26 @@ def calculate_char_histogram_similarity(lines1: List[str], lines2: List[str]) ->
     total_diff = sum(abs(freq1.get(c, 0) - freq2.get(c, 0)) for c in all_chars)
     return 1.0 - total_diff / (total1 + total2)
 
+
+def token_edit_similarity(a: str, b: str) -> float:
+    a = a or ''
+    b = b or ''
+    if a == b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(
+                prev[j] + 1,
+                cur[j - 1] + 1,
+                prev[j - 1] + (ca != cb),
+            ))
+        prev = cur
+    return 1.0 - prev[len(b)] / max(len(a), len(b))
+
 _FALLBACK_DETECT_RE = re.compile(r'/\*[\s\S]*?\*/|<!--[\s\S]*?-->|(?<!:)//[^\n]*')
 
 

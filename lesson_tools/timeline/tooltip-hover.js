@@ -190,9 +190,10 @@ function hitBottomBarBlock(ts, my, p, L, thT) {
 		}
 	}
 	if (!blk) return null;
+	const vis = _visibleStudents();
 	const studentsAffected = [];
 	const langCounts = {};
-	for (const s of _students) {
+	for (const s of vis) {
 		const evs = (s.follow_events || []).filter(
 			(e) => _isMistakeEvent(e) && e.ts >= blk.ts1 && e.ts <= blk.ts2,
 		);
@@ -206,7 +207,7 @@ function hitBottomBarBlock(ts, my, p, L, thT) {
 	if (!studentsAffected.length) return null;
 	const { M, plotHbot } = L;
 	const bottomY = M.top + plotHbot;
-	const denom = Math.max(1, _students.length);
+	const denom = Math.max(1, vis.length);
 	const bh = Math.min(plotHbot, (studentsAffected.length / denom) * plotHbot);
 	const barTop = bottomY - bh;
 	const yPad = 10;
@@ -325,7 +326,7 @@ function hitBottomChart(ts, my, p, L, thT, restrictStudent) {
 	const DOT_PX = 7;
 	let best = null,
 		bestD = Infinity;
-	for (const s of _students) {
+	for (const s of _visibleStudents()) {
 		if (restrictStudent && s !== restrictStudent) continue;
 		const jitter = _jitterFor(s.name);
 		const sy = _clampStudentY(s, jitter, L);

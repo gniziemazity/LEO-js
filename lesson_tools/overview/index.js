@@ -40,6 +40,25 @@ function onHideExcludedChange(checked) {
 		}
 	} catch {}
 })();
+
+function onHideCopiersChange(checked) {
+	_hideCopiers = !!checked;
+	try {
+		localStorage.setItem("hide_copiers", _hideCopiers ? "1" : "0");
+	} catch {}
+	if (_students.length) renderStats();
+}
+
+(function _initHideCopiers() {
+	try {
+		const saved = localStorage.getItem("hide_copiers");
+		if (saved === "1") {
+			_hideCopiers = true;
+			const cb = document.getElementById("hide-copiers");
+			if (cb) cb.checked = true;
+		}
+	} catch {}
+})();
 const _tookCode = (entry) => (entry?.lesson_obs || "").includes("<");
 const followAvg = (s) => {
 	const vs = s.lessons
@@ -88,12 +107,36 @@ function showPage(name) {
 		.forEach((p) => p.classList.remove("active"));
 	document.getElementById("page-" + name).classList.add("active");
 	if (name === "students") requestAnimationFrame(applyStickyColumns);
+	_refreshChartDownloadBtns();
 }
 
 document.getElementById("open-btn").addEventListener("click", pickFolder);
 document
 	.getElementById("open-btn-toolbar")
 	?.addEventListener("click", pickFolder);
+async function _runChartDownload(btn, bodyId, zipName) {
+	if (btn.disabled) return;
+	btn.disabled = true;
+	try {
+		await _downloadTabChartsZip(document.getElementById(bodyId), zipName);
+	} finally {
+		btn.disabled = false;
+	}
+}
+document
+	.getElementById("stats-download-btn")
+	?.addEventListener("click", (e) =>
+		_runChartDownload(e.currentTarget, "stats-body", "statistics-charts.zip"),
+	);
+document
+	.getElementById("progress-download-btn")
+	?.addEventListener("click", (e) =>
+		_runChartDownload(
+			e.currentTarget,
+			"clusters-body",
+			"progress-charts.zip",
+		),
+	);
 
 (async function tryAutoLoad() {
 	showLoading(true);

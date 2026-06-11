@@ -146,7 +146,7 @@ body {
 	color: var(--clr-text-soft);
 }
 #chart-bottom-basis select option[value="ideal"],
-#chart-bottom-basis select option[value="required"] {
+#chart-bottom-basis select option[value="minimal"] {
 	color: var(--clr-mark-extra);
 }
 

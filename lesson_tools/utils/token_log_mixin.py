@@ -486,7 +486,7 @@ class TokenLogMixin:
             if sid is None:
                 continue
             student_anon_dir = self._resolve_anon_dir(student_dir, anon_dir, sid)
-            for basis_name in ('ideal', 'required'):
+            for basis_name in ('ideal', 'minimal'):
                 src = curated_dir / sid / f'diff_marks_{basis_name}.json'
                 if not src.is_file():
                     continue

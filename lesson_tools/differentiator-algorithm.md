@@ -30,12 +30,12 @@ the same cosine-context function used in LEO. Pairs with cosine
 
 In addition to the ten algorithmic methods, the differentiator can load
 two hand-curated modes for any student: `ideal` (`diff_marks_ideal.json`,
-the recommended-fix list) and `required` (`diff_marks_required.json`,
+the recommended-fix list) and `minimal` (`diff_marks_minimal.json`,
 the minimum-fix list). Both use the same schema and are edited inside
 the differentiator itself via `differentiator-curated.js`; the ideal file
 is also the reference that `compare_methods_to_ideal.py` (`npm run eval`)
 evaluates the algorithmic methods against. Ideal mode is the default
-when present; otherwise required, then `leo*`, falling back to `leo`.
+when present; otherwise minimal, then `leo*`, falling back to `leo`.
 See §8.
 
 The output of every method is a JSON document of the same shape — a list of
@@ -992,7 +992,7 @@ differentiator's highlight would drift (it slices the raw file by these
 offsets).
 
 `alignments` and `line_marks` exist **only for the line-based methods (R/O and
-Git)**. Per-token methods (LEO, LCS, Lev) and curated (`ideal`/`required`) files omit them; the
+Git)**. Per-token methods (LEO, LCS, Lev) and curated (`ideal`/`minimal`) files omit them; the
 differentiator borrows them from any loaded line-based method via
 `_borrowedAlignments()` to drive the side-by-side aligned view. The aligned
 view itself can also be toggled off in the differentiator (Padding button), in
@@ -1104,9 +1104,9 @@ Two normalisation passes keep the rendered output readable:
 ### 8.1 Curated files (hand-curated)
 
 `diff_marks_ideal.json` (the recommended-fix list) and
-`diff_marks_required.json` (the minimum-fix list) follow the same
+`diff_marks_minimal.json` (the minimum-fix list) follow the same
 per-mark schema as the algorithmic methods but are produced and edited
-by hand in the differentiator (Ideal/Required modes, implemented in
+by hand in the differentiator (Ideal/Minimal modes, implemented in
 `differentiator-curated.js`). The curator's job is to label every
 divergence between teacher and student as one of `missing`, `extra`,
 `ghost_extra`, or `comment`, connect swap pairs (`paired_with`), and
@@ -1116,7 +1116,7 @@ Curated files omit the algorithm-derived top-level fields (`score`,
 `alignments`, `line_marks`, `leo_assignments`, `teacher_ghosts`); the
 differentiator borrows `alignments` from any line-based method that's
 also loaded for the same student so the side-by-side aligned view still
-works in Ideal/Required mode.
+works in Ideal/Minimal mode.
 
 Curated files may carry an optional top-level `file_pairs` map
 (`{studentFile: teacherFile}`) when the curator has manually paired
@@ -1320,11 +1320,11 @@ openDifferentiator() / openDiffWindow()
   │
   ├─► load whichever diff_marks files exist into `allMarks`
   ├─► default mode preference (defaultDiffModeKey in diff-utils.js):
-  │     ideal → required → '' (=leo_star) → leo → first loaded mode
+  │     ideal → minimal → '' (=leo_star) → leo → first loaded mode
   ├─► dropdown is populated from DIFF_MODE_OPTIONS, filtered to loaded modes
   └─► render with `diffColorizePositions()` (no re-tokenisation in browser);
        line-based methods bring `alignments` and `line_marks`, which the
-       per-token methods and curated (`ideal`/`required`) borrow via `_borrowedAlignments()`
+       per-token methods and curated (`ideal`/`minimal`) borrow via `_borrowedAlignments()`
 ```
 
 ---

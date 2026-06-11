@@ -13,8 +13,8 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnnotationBbox, TextArea, HPacker, VPacker
 from matplotlib.transforms import blended_transform_factory as _blended_tf
 
-from .lv_timeline_config import Config
-from .lv_timeline_data import analyze_typing_blocks, calculate_intervals, extract_interactions, _positionable_event
+from lv_timeline_config import Config
+from lv_timeline_data import analyze_typing_blocks, calculate_intervals, extract_interactions, _positionable_event
 
 warnings.filterwarnings('ignore', category=UserWarning, module='tkinter')
 warnings.filterwarnings('ignore', message='.*tight_layout.*')

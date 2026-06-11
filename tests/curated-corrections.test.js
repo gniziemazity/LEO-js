@@ -17,7 +17,7 @@ let _curatedFloatWin = null;
 let __rows = [];
 const _curatedTokenCache = new Map();
 const _curatedCommentRangeCache = new Map();
-function _curatedWorkingKey() { return _diffMode === "required" ? "required" : "ideal"; }
+function _curatedWorkingKey() { return _diffMode === "minimal" ? "minimal" : "ideal"; }
 function _curatedEnsureButtons() {}
 function newTokenRegex() { return /[a-zA-Z0-9]+|[^\\s]/g; }
 function getFileExt(n) { const m = String(n).toLowerCase().match(/\\.([^.]+)$/); return m ? m[1] : ""; }
@@ -151,14 +151,14 @@ test("reindent strips deletion-marker content for depth, keeps the marker", () =
 	assert.ok(out.includes(DO) && out.includes(DC), "deletion marker preserved");
 });
 
-test("reindent collapses consecutive blank lines", () => {
+test("reindent preserves blank lines 1:1 (no collapse)", () => {
 	const src = "<div>\n\n\n\n<p>x</p>\n</div>";
 	const out = api._curatedReindent(src, "html", reindentLP);
-	assert.ok(
-		!/\n\n\n/.test(out),
-		"blank-line runs collapsed: " + JSON.stringify(out),
+	assert.equal(
+		out.split("\n").length,
+		src.split("\n").length,
+		"line count preserved for student-line mapping: " + JSON.stringify(out),
 	);
-	assert.ok(/\n\n/.test(out), "a single blank line is kept");
 });
 
 test("changed-line groups merge across small gaps, split on large ones", () => {

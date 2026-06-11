@@ -738,6 +738,7 @@ function _curatedPairAnchorRoles() {
 		};
 	}
 	const primarySide = allMissing ? "student" : "teacher";
+	const multi = anchorMarks.length > 1;
 	return {
 		anchorMarks,
 		allMissing,
@@ -746,9 +747,11 @@ function _curatedPairAnchorRoles() {
 		wantedSides: allExtra
 			? new Set(["teacher", "student"])
 			: new Set([primarySide]),
-		wantedTargetLabels: allMissing
-			? new Set(["extra"])
-			: new Set(["missing"]),
+		wantedTargetLabels: multi
+			? new Set()
+			: allMissing
+				? new Set(["extra"])
+				: new Set(["missing"]),
 	};
 }
 
@@ -787,24 +790,11 @@ function _curatedApplyPendingPair(info, ev) {
 			arr.push(target);
 			arr.sort((a, b) => a.start - b.start);
 		}
-		const targetGroup =
-			roles.anchorMarks.length > 1 && intent.kind === "mark"
-				? _curatedContiguousGroup(info.side, info.file, target)
-				: [target];
+		const a = roles.anchorMarks[0];
 		if (roles.allMissing) {
-			_curatedSetSwapPairGroups(
-				roles.anchorMarks,
-				targetGroup,
-				_curatedPending.anchorFile,
-				info.file,
-			);
+			_curatedSetSwapPair(a, target, _curatedPending.anchorFile, info.file);
 		} else {
-			_curatedSetSwapPairGroups(
-				targetGroup,
-				roles.anchorMarks,
-				info.file,
-				_curatedPending.anchorFile,
-			);
+			_curatedSetSwapPair(target, a, info.file, _curatedPending.anchorFile);
 		}
 	} else if (intent.kind === "insert" && roles.allMissing) {
 		for (const m of roles.anchorMarks) {

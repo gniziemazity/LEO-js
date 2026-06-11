@@ -2,7 +2,7 @@
 
 const REMARKS_BASES = [
 	{ key: "ideal", label: "Ideal" },
-	{ key: "required", label: "Required" },
+	{ key: "minimal", label: "Minimal" },
 	{ key: "leo_star", label: "LEO*" },
 	{ key: "leo", label: "LEO" },
 	{ key: "lcs_star", label: "LCS*" },
@@ -15,7 +15,7 @@ const REMARKS_BASES = [
 	{ key: "git", label: "Git" },
 ];
 
-const DEFAULT_BASIS_ORDER = ["ideal", "required", "leo_star", "leo"];
+const DEFAULT_BASIS_ORDER = ["ideal", "minimal", "leo_star", "leo"];
 
 function _cssVar(name) {
 	return getComputedStyle(document.documentElement)
@@ -445,7 +445,15 @@ function buildToolUrl(
 function navigateToStudents(args = {}) {
 	window.open(buildToolUrl("students.html", args), "_blank");
 }
-function openInNewTab(url) {
+function openInNewTab(url, focus = false) {
+	if (focus) {
+		const win = window.open(url, "_blank");
+		if (win) {
+			win.opener = null;
+			win.focus();
+			return;
+		}
+	}
 	const a = document.createElement("a");
 	a.href = url;
 	a.target = "_blank";
@@ -467,8 +475,8 @@ function previewBaseTarget(html) {
 		return s.replace(/(<html\b[^>]*>)/i, "$1" + tag);
 	return tag + s;
 }
-function navigateToDifferentiator(args = {}) {
-	openInNewTab(buildToolUrl("differentiator.html", args));
+function navigateToDifferentiator(args = {}, focus = false) {
+	openInNewTab(buildToolUrl("differentiator.html", args), focus);
 }
 function navigateToTimeline(args = {}) {
 	openInNewTab(buildToolUrl("timeline.html", args));
@@ -523,12 +531,12 @@ const DIFF_MARKS_FILES = {
 	"line-git": "diff_marks_git.json",
 	"line-git-star": "diff_marks_git_star.json",
 	ideal: "diff_marks_ideal.json",
-	required: "diff_marks_required.json",
+	minimal: "diff_marks_minimal.json",
 };
 
-const DIFF_MARKS_PRIORITY = ["ideal", "required", "", "leo"];
+const DIFF_MARKS_PRIORITY = ["ideal", "minimal", "", "leo"];
 
-const CURATED_MODES = new Set(["ideal", "required"]);
+const CURATED_MODES = new Set(["ideal", "minimal"]);
 
 function diffModeFromFilename(filename) {
 	const lower = String(filename || "").toLowerCase();
@@ -542,7 +550,7 @@ function defaultDiffModeKey(allMarks, requestedMode = null) {
 	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
 	if (has("ideal")) return "ideal";
-	if (has("required")) return "required";
+	if (has("minimal")) return "minimal";
 	if (has("")) return "";
 	if (has("leo")) return "leo";
 	return Object.keys(allMarks)[0] ?? null;
@@ -807,7 +815,8 @@ function _hmsToSeconds(hms, sessionDate) {
 	return dt.getTime() / 1000;
 }
 
-const _FOLLOW_DESC_RE = /([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)/g;
+const _FOLLOW_DESC_RE =
+	/([+-])(.+?)\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\)(?:\s*~([0-9.]+))?/g;
 
 function parseFollowEvents(descText, sessionDate) {
 	const events = [];
@@ -816,11 +825,13 @@ function parseFollowEvents(descText, sessionDate) {
 	let m;
 	while ((m = re.exec(String(descText))) !== null) {
 		const rawLabel = m[1] + m[2];
-		events.push({
+		const ev = {
 			label: rawLabel,
 			ts: _hmsToSeconds(m[3], sessionDate),
 			...parseFollowLabel(rawLabel),
-		});
+		};
+		if (m[4] != null) ev.sim = parseFloat(m[4]);
+		events.push(ev);
 	}
 	return events;
 }

@@ -35,7 +35,7 @@ function _curatedIsBackgroundClick(target) {
 
 function _curatedEnsureButtons() {
 	const bar = document.getElementById("bottom-bar");
-	if (!bar || document.getElementById("btn-save-curated")) return;
+	if (!bar || document.getElementById("btn-preview-curated")) return;
 	const make = (id, text, onClick, extraClass) => {
 		const b = document.createElement("button");
 		b.id = id;
@@ -45,24 +45,30 @@ function _curatedEnsureButtons() {
 		bar.appendChild(b);
 	};
 	make(
+		"btn-copy-curated",
+		"📋 Copy Diff",
+		_curatedCopyToClipboard,
+		"curated-only-btn",
+	);
+	make(
 		"btn-save-curated",
 		"💾 Download",
 		_curatedDownload,
 		"curated-only-btn",
 	);
 	make(
-		"btn-copy-curated",
-		"📋 Copy",
-		_curatedCopyToClipboard,
+		"btn-preview-curated",
+		"🪄 Corrections",
+		_curatedPreview,
 		"curated-only-btn",
 	);
-	make(
-		"btn-corrlist-curated",
-		"📑 Corrections",
-		_curatedCorrectionsList,
-		"curated-only-btn",
-	);
-	make("btn-preview-curated", "👁 Test", _curatedPreview, "curated-only-btn");
+
+	const parity = document.createElement("div");
+	parity.id = "curated-parity-line";
+	parity.style.cssText =
+		"display:none;font-size:11px;font-weight:600;text-align:center;" +
+		"padding:3px 8px;border-radius:6px;border:1px solid;white-space:nowrap;";
+	bar.appendChild(parity);
 }
 
 function _curatedRenderPreservingScroll() {
@@ -76,6 +82,8 @@ function _curatedRenderPreservingScroll() {
 		_curatedRefreshOverlays();
 		_curatedRefreshPairConnectors();
 	});
+	if (typeof _curatedUpdateParityIndicator === "function")
+		_curatedUpdateParityIndicator();
 }
 
 function _curatedWorkingKey() {
@@ -137,7 +145,7 @@ function _curatedEnable() {
 	if (!_curatedWorking[key]) {
 		const base = _allMarks[key] ?? null;
 		const seed = {
-			token_matching: key === "required" ? "required" : "ideal",
+			token_matching: key === "minimal" ? "minimal" : "ideal",
 			teacher_files: (base && base.teacher_files) || {},
 			student_files: (base && base.student_files) || {},
 			file_pairs: (base && base.file_pairs) || {},

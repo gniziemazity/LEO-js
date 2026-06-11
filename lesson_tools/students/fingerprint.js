@@ -54,11 +54,15 @@ function _renderByteFingerprint(
 	wrap.appendChild(bar);
 }
 
-function _maskToBytes(bits) {
+function _maskToBytes(vals) {
 	const groups = [];
-	for (let i = 0; i < bits.length; i += 8) {
-		const chunk = bits.slice(i, i + 8).padEnd(8, "0");
-		groups.push(parseInt(chunk, 2));
+	for (let i = 0; i < vals.length; i += 8) {
+		let byte = 0;
+		for (let k = 0; k < 8; k++) {
+			const v = i + k < vals.length ? vals[i + k] : 0;
+			byte += v * (1 << (7 - k));
+		}
+		groups.push(Math.max(0, Math.min(255, Math.round(byte))));
 	}
 	return groups.map((b) => String(b).padStart(3, "0")).join("-");
 }
@@ -104,10 +108,12 @@ function _computeFingerprintMask(students) {
 		s._fpMaskLangs = null;
 	}
 	const studentTsLang = students.map(() => new Map());
+	const studentTsVal = students.map(() => new Map());
 	const allTs = new Set();
 	for (let i = 0; i < students.length; i++) {
 		const s = students[i];
 		const tsLang = studentTsLang[i];
+		const tsVal = studentTsVal[i];
 		for (const ev of s.langEvents || []) {
 			if (
 				ev.ts != null &&
@@ -115,6 +121,9 @@ function _computeFingerprintMask(students) {
 				(ev.kind === "missing" || ev.kind === "extra-star")
 			) {
 				tsLang.set(ev.ts, ev.lang || null);
+				const val = ev.kind === "missing" && ev.sim != null ? ev.sim : 1;
+				if (!tsVal.has(ev.ts) || val < tsVal.get(ev.ts))
+					tsVal.set(ev.ts, val);
 				allTs.add(ev.ts);
 			}
 		}
@@ -123,19 +132,20 @@ function _computeFingerprintMask(students) {
 	const sortedTs = [...allTs].sort((a, b) => a - b);
 	for (let i = 0; i < students.length; i++) {
 		const tsLang = studentTsLang[i];
+		const tsVal = studentTsVal[i];
 		if (tsLang.size === 0) continue;
-		let bits = "";
+		const vals = [];
 		const langs = [];
 		for (const t of sortedTs) {
 			if (tsLang.has(t)) {
-				bits += "1";
+				vals.push(tsVal.get(t));
 				langs.push(tsLang.get(t));
 			} else {
-				bits += "0";
+				vals.push(0);
 				langs.push(null);
 			}
 		}
-		students[i]._fpMask = bits;
+		students[i]._fpMask = vals;
 		students[i]._fpMaskLangs = langs;
 	}
 }

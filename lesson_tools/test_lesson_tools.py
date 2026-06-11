@@ -263,21 +263,21 @@ class TestChessStudent50Tokens(_StudentBase, unittest.TestCase):
 
 
 class TestJSStudent78Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'js' / 'tokens.txt'
-    student_html        = _TEST / 'js' / '78' / 'index.html'
-    tokens_file         = _TEST / 'js' / '78' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'gallery' / 'tokens.txt'
+    student_html        = _TEST / 'gallery' / '78' / 'index.html'
+    tokens_file         = _TEST / 'gallery' / '78' / 'tokens.txt'
 
 
 class TestJSStudent35Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'js' / 'tokens.txt'
-    student_html        = _TEST / 'js' / '35' / 'index.html'
-    tokens_file         = _TEST / 'js' / '35' / 'tokens.txt'
+    teacher_tokens_file = _TEST / 'gallery' / 'tokens.txt'
+    student_html        = _TEST / 'gallery' / '35' / 'index.html'
+    tokens_file         = _TEST / 'gallery' / '35' / 'tokens.txt'
 
 
 class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'js' / 'log.json'
-    reconstructed_file = _TEST / 'js' / 'reconstructed.html'
-    tokens_file        = _TEST / 'js' / 'tokens.txt'
+    log_file           = _TEST / 'gallery' / 'log.json'
+    reconstructed_file = _TEST / 'gallery' / 'reconstructed.html'
+    tokens_file        = _TEST / 'gallery' / 'tokens.txt'
 
 
 class TestQRReconstruction(_ReconstructionBase, unittest.TestCase):
@@ -1126,16 +1126,16 @@ def _curated_nc_token_bag(text: str, ext: str = None) -> Counter:
     return Counter(t for _, t in nc)
 
 
-# (project_name, student_dir_name) pairs whose `required <= ideal` check is
-# intentionally skipped. Use only when the curator decided required should
-# fix the student via a different approach than ideal — e.g.,
+# (project_name, student_dir_name) pairs whose `minimal <= ideal` check is
+# intentionally skipped. Use only when the curator decided the minimal marks
+# should fix the student via a different approach than ideal — e.g.,
 # sorting/67: student wrote a different bubble-sort variant, so the
 # minimum-fix marks legitimately diverge from ideal's recommended fix.
-# js/59: student renamed a variable consistently and required keeps that
-# rename everywhere except one spot where ideal suggests a different fix.
-_REQUIRED_SUBSET_EXCEPTIONS: Set[Tuple[str, str]] = {
+# gallery/59: student renamed a variable consistently and the minimal marks keep
+# that rename everywhere except one spot where ideal suggests a different fix.
+_MINIMAL_SUBSET_EXCEPTIONS: Set[Tuple[str, str]] = {
     ('sorting', '67'),
-    ('js', '59'),
+    ('gallery', '59'),
 }
 
 
@@ -1198,28 +1198,28 @@ class TestCuratedSanity(unittest.TestCase):
                 f'{mode} schema violations: {errors}',
             )
 
-    def _check_required_subset_of_ideal(self, project_dir: Path,
-                                         student_dir: Path) -> None:
+    def _check_minimal_subset_of_ideal(self, project_dir: Path,
+                                        student_dir: Path) -> None:
         ideal_path = student_dir / 'diff_marks_ideal.json'
-        required_path = student_dir / 'diff_marks_required.json'
-        if not ideal_path.exists() or not required_path.exists():
-            self.skipTest('missing ideal or required file')
-        if (project_dir.name, student_dir.name) in _REQUIRED_SUBSET_EXCEPTIONS:
+        minimal_path = student_dir / 'diff_marks_minimal.json'
+        if not ideal_path.exists() or not minimal_path.exists():
+            self.skipTest('missing ideal or minimal file')
+        if (project_dir.name, student_dir.name) in _MINIMAL_SUBSET_EXCEPTIONS:
             self.skipTest(
                 f'{project_dir.name}/{student_dir.name}: known acceptable '
-                f'divergence (see _REQUIRED_SUBSET_EXCEPTIONS)'
+                f'divergence (see _MINIMAL_SUBSET_EXCEPTIONS)'
             )
         ideal = _load_json(ideal_path)
-        required = _load_json(required_path)
+        minimal = _load_json(minimal_path)
         ideal_set = _curated_collect_marks(ideal)
-        required_set = _curated_collect_marks(required)
-        extra = required_set - ideal_set
+        minimal_set = _curated_collect_marks(minimal)
+        extra = minimal_set - ideal_set
         with self.subTest(project=project_dir.name,
                           student=student_dir.name,
-                          check='required<=ideal'):
+                          check='minimal<=ideal'):
             self.assertFalse(
                 extra,
-                f'required has {len(extra)} mark(s) not in ideal '
+                f'minimal has {len(extra)} mark(s) not in ideal '
                 f'(sample: {sorted(extra)[:3]})',
             )
 
@@ -1239,7 +1239,7 @@ def _attach_curated_sanity_tests() -> None:
 
             def make_subset(p=project_dir, s=student_dir):
                 def test(self):
-                    self._check_required_subset_of_ideal(p, s)
+                    self._check_minimal_subset_of_ideal(p, s)
                 return test
 
             def make_schema(p=project_dir, s=student_dir, mode='ideal'):
@@ -1250,13 +1250,13 @@ def _attach_curated_sanity_tests() -> None:
             setattr(TestCuratedSanity,
                     f'test_ideal_token_bag_{base}', make_bag())
             setattr(TestCuratedSanity,
-                    f'test_required_subset_{base}', make_subset())
+                    f'test_minimal_subset_{base}', make_subset())
             setattr(TestCuratedSanity,
                     f'test_schema_ideal_{base}',
                     make_schema(mode='ideal'))
             setattr(TestCuratedSanity,
-                    f'test_schema_required_{base}',
-                    make_schema(mode='required'))
+                    f'test_schema_minimal_{base}',
+                    make_schema(mode='minimal'))
 
 
 _attach_curated_sanity_tests()

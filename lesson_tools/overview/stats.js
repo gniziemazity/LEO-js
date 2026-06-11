@@ -14,6 +14,7 @@ function renderStats() {
 
 	if (!_pyStats) {
 		noData.style.display = "";
+		_refreshChartDownloadBtns();
 		return;
 	}
 	noData.style.display = "none";
@@ -114,7 +115,9 @@ function renderStats() {
 				_students
 					.filter((s) => !s.excluded)
 					.map((s) => s.lessons[a.n - 1])
-					.filter((e) => e.follow != null && !_tookCode(e))
+					.filter(
+						(e) => e.follow != null && (!_hideCopiers || !_tookCode(e)),
+					)
 					.map((e) => e.follow),
 			);
 			addBarCard(
@@ -427,4 +430,6 @@ function renderStats() {
 		const h = card.querySelector("h3");
 		if (h && _hideCard(h.textContent)) card.remove();
 	});
+
+	_refreshChartDownloadBtns();
 }

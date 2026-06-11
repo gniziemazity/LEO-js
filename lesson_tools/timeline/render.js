@@ -86,7 +86,7 @@ function renderCharts(p) {
 	setupTopChartLegend(p);
 	if (_students) {
 		setupBottomChartLegend();
-		drawBottomChart(prep(bottomChart, W, Hbot), p, _students, L);
+		drawBottomChart(prep(bottomChart, W, Hbot), p, _visibleStudents(), L);
 	}
 
 	setupZoomPan(middleChart, p, L);
@@ -101,7 +101,7 @@ function redrawBottomChart() {
 	const dpr = window.devicePixelRatio || 1;
 	const ctx = bottomChart.getContext("2d");
 	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-	drawBottomChart(ctx, _p, _students, _lastL);
+	drawBottomChart(ctx, _p, _visibleStudents(), _lastL);
 }
 
 const BAR_COLORS = {
@@ -268,7 +268,28 @@ const _bottomChartVisible = {
 	followRank: true,
 	interactions: true,
 	barMode: true,
+	hideCopiers: false,
 };
+
+function _studentIsCopier(s) {
+	return !!s && typeof s.obs === "string" && s.obs.includes("<");
+}
+
+function _visibleStudents() {
+	if (!_students) return _students;
+	const out = _bottomChartVisible.hideCopiers
+		? _students.filter((s) => !_studentIsCopier(s))
+		: _students;
+	console.log(
+		"[copiers] _visibleStudents: hideCopiers=",
+		_bottomChartVisible.hideCopiers,
+		"total=",
+		_students.length,
+		"visible=",
+		out.length,
+	);
+	return out;
+}
 
 let _studentYByName = new Map();
 
@@ -308,15 +329,21 @@ const BOTTOM_LEGEND_ITEMS = [
 		key: "barMode",
 		onChange: _updateBottomLegendState,
 	},
+	{ id: "leg-bottom-hidecopiers", key: "hideCopiers", alwaysEnabled: true },
 ];
 
 function setupBottomChartLegend() {
 	for (const { id, key, onChange } of BOTTOM_LEGEND_ITEMS) {
 		const cb = document.getElementById(id);
-		if (!cb) continue;
+		if (!cb) {
+			console.log("[copiers] legend checkbox NOT FOUND:", id);
+			continue;
+		}
 		cb.checked = _bottomChartVisible[key];
 		cb.onchange = () => {
 			_bottomChartVisible[key] = cb.checked;
+			if (key === "hideCopiers")
+				console.log("[copiers] toggled hideCopiers =", cb.checked);
 			if (onChange) onChange();
 			scheduleRender();
 		};
@@ -327,8 +354,8 @@ function setupBottomChartLegend() {
 function _updateBottomLegendState() {
 	const btn = document.getElementById("btn-shake");
 	if (btn) btn.style.display = _bottomChartVisible.barMode ? "none" : "";
-	for (const { id, key } of BOTTOM_LEGEND_ITEMS) {
-		if (key === "barMode") continue;
+	for (const { id, key, alwaysEnabled } of BOTTOM_LEGEND_ITEMS) {
+		if (key === "barMode" || alwaysEnabled) continue;
 		const cb = document.getElementById(id);
 		if (!cb) continue;
 		cb.disabled = _bottomChartVisible.barMode;

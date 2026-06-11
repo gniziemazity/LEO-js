@@ -20,10 +20,10 @@ function _diffCommentRanges(text, fileName) {
 let _teacherTokenTotalCache = null;
 let _teacherTokenTotalCacheKey = null;
 
-function _countNonCommentTokens(text, fileName) {
-	if (!text) return 0;
+function _diffNonCommentTokens(text, fileName) {
+	if (!text) return [];
 	const ranges = _diffCommentRanges(text, fileName);
-	let count = 0;
+	const out = [];
 	_DIFF_TOKEN_RE.lastIndex = 0;
 	let m;
 	while ((m = _DIFF_TOKEN_RE.exec(text)) !== null) {
@@ -36,9 +36,13 @@ function _countNonCommentTokens(text, fileName) {
 			}
 			if (pos < lo) break;
 		}
-		if (!inComment) count++;
+		if (!inComment) out.push(m[0]);
 	}
-	return count;
+	return out;
+}
+
+function _countNonCommentTokens(text, fileName) {
+	return _diffNonCommentTokens(text, fileName).length;
 }
 
 function _getTeacherNonCommentTokenTotal() {

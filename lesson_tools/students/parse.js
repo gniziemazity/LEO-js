@@ -214,13 +214,15 @@ function parseSimilarityEvents(descText) {
 	const events = [];
 	const text = String(descText || "");
 	const re =
-		/([+-])(.+?)(?:\s+\(x(\d+)\)|\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\))?(?=,\s+[+-]|$)/g;
+		/([+-])(.+?)(?:\s+\(x(\d+)\)|\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\))?(?:\s*~([0-9.]+))?(?=,\s+[+-]|$)/g;
 	let m;
 	while ((m = re.exec(text)) !== null) {
 		const kind = m[1] === "-" ? "missing" : "extra";
 		const token = m[2];
 		if (m[4]) {
-			events.push({ kind, token, ts: _hmsToSeconds(m[4]) });
+			const ev = { kind, token, ts: _hmsToSeconds(m[4]) };
+			if (m[5] != null) ev.sim = parseFloat(m[5]);
+			events.push(ev);
 		} else {
 			const count = m[3] ? parseInt(m[3]) : 1;
 			for (let i = 0; i < count; i++) events.push({ kind, token });

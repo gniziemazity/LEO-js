@@ -77,7 +77,7 @@ LESSON_DIFFICULTY = {
     "wall":    "easy",
     "chess":   "easy",
     "sorting": "hard",
-    "js":      "hard",
+    "gallery": "hard",
     "qr":      "hard",
     "web":     "project",
 }

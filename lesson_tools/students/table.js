@@ -240,14 +240,14 @@ function renderTable() {
 			el.classList.add("clickable-open");
 			el.addEventListener("click", (e) => {
 				e.stopPropagation();
-				if (e.ctrlKey || e.metaKey) {
-					openDiffForStudent(s);
-					return;
-				}
 				document
 					.querySelectorAll("#tbody tr.selected")
 					.forEach((r) => r.classList.remove("selected"));
 				tr.classList.add("selected");
+				if (e.ctrlKey || e.metaKey) {
+					openDiffForStudent(s);
+					return;
+				}
 				selectStudentInline(s);
 			});
 		};
@@ -534,7 +534,6 @@ function _renderArtefactHighlights() {
 	).length;
 	const denom = _students.filter((s) => !s.ai_flagged).length;
 	const hiPct = denom ? Math.round((hiCount / denom) * 100) : 0;
-	const countText = `${hiCount}/${denom} (${hiPct}%)`;
 	for (const run of runs) {
 		const lRect = run.startTh.getBoundingClientRect();
 		const rRect = run.endTh.getBoundingClientRect();
@@ -554,7 +553,12 @@ function _renderArtefactHighlights() {
 
 		const count = document.createElement("div");
 		count.className = "artefact-highlight-count";
-		count.textContent = countText;
+		const countMain = document.createElement("div");
+		countMain.textContent = `${hiCount}/${denom}`;
+		const countPct = document.createElement("div");
+		countPct.textContent = `(${hiPct}%)`;
+		count.appendChild(countMain);
+		count.appendChild(countPct);
 		count.style.left = (left + right) / 2 + "px";
 		count.style.top = top + height + 3 + "px";
 		layer.appendChild(count);
@@ -936,10 +940,13 @@ function _diffTitleFor(student) {
 
 function openDiffForStudent(student) {
 	if (!_lessonName || !student.id) return;
-	navigateToDifferentiator({
-		lesson: _lessonName,
-		group: _groupFolder(),
-		id: student.id,
-		title: _diffTitleFor(student),
-	});
+	navigateToDifferentiator(
+		{
+			lesson: _lessonName,
+			group: _groupFolder(),
+			id: student.id,
+			title: _diffTitleFor(student),
+		},
+		true,
+	);
 }

@@ -121,7 +121,6 @@ function _renderAligned(
 
 function _lineNumberMap(lines, lineStarts, normText, fileGhosts) {
 	const numbers = new Array(lines.length);
-	const offsets = new Array(lines.length).fill(0);
 	let visible = 0;
 	for (let i = 0; i < lines.length; i++) {
 		const ls = lineStarts[i] ?? normText.length;
@@ -143,7 +142,7 @@ function _lineNumberMap(lines, lineStarts, normText, fileGhosts) {
 			numbers[i] = ++visible;
 		}
 	}
-	return { numbers, offsets };
+	return { numbers };
 }
 
 function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
@@ -185,14 +184,9 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 			);
 		const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
 		const ln = lineNumFor.numbers[lineIdx];
-		const offset = lineNumFor.offsets[lineIdx] || 0;
 		const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
-		const styleAttr =
-			ln != null && offset > 0
-				? ` style="--ghost-lines-before:${offset}"`
-				: "";
 		parts.push(
-			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}${styleAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
+			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
 		);
 	}
 	return parts.join("");
@@ -239,19 +233,31 @@ function _getInsertAnchors(studentFileName) {
 	}
 	const sFiles = _currentMarksEntry?.student_files;
 	if (sFiles) {
+		const moveGroups = new Map();
 		for (const [sFile, marks] of Object.entries(sFiles)) {
 			for (const m of marks || []) {
 				if (m.label !== "extra") continue;
 				if (m.paired_with) continue;
 				const mt = m.move_to;
 				if (!mt || mt.file !== studentFileName) continue;
-				out.push({
-					pos: mt.pos,
-					token: m.token,
-					move_source_file: sFile,
-					move_source_pos: m.start,
-				});
+				const key = sFile + "|" + mt.pos;
+				let g = moveGroups.get(key);
+				if (!g) {
+					g = { sFile, pos: mt.pos, marks: [] };
+					moveGroups.set(key, g);
+				}
+				g.marks.push(m);
 			}
+		}
+		for (const g of moveGroups.values()) {
+			g.marks.sort((a, b) => a.start - b.start);
+			const first = g.marks[0];
+			out.push({
+				pos: g.pos,
+				token: first.token,
+				move_source_file: g.sFile,
+				move_source_pos: first.start,
+			});
 		}
 	}
 	return out;
@@ -275,13 +281,40 @@ function _syncAlignedRowHeights() {
 	for (let i = 0; i < n; i++) {
 		const th = tRows[i].getBoundingClientRect().height;
 		const sh = sRows[i].getBoundingClientRect().height;
-		const mx = Math.max(th, sh);
+		const mx = Math.max(Math.ceil(th), Math.ceil(sh));
 		if (mx > 0) {
 			tRows[i].style.minHeight = `${mx}px`;
 			sRows[i].style.minHeight = `${mx}px`;
 		}
 	}
 	_syncDividerHeight();
+}
+
+let _syncPending = false;
+function _scheduleAlignedSync() {
+	if (_syncPending) return;
+	_syncPending = true;
+	const run = () =>
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => {
+				_syncPending = false;
+				_syncAlignedRowHeights();
+				if (typeof _curatedRefreshOverlays === "function") {
+					_curatedRefreshOverlays();
+				} else if (typeof _curatedRefreshGhostPairs === "function") {
+					_curatedRefreshGhostPairs();
+				}
+			}),
+		);
+	if (
+		typeof document !== "undefined" &&
+		document.fonts &&
+		document.fonts.status !== "loaded"
+	) {
+		document.fonts.ready.then(run);
+	} else {
+		run();
+	}
 }
 
 function _syncDividerHeight() {
@@ -429,13 +462,10 @@ function renderPanel(side, files, marks) {
 	});
 
 	requestAnimationFrame(() => {
-		_syncAlignedRowHeights();
-		if (typeof _curatedRefreshGhostPairs === "function") {
-			_curatedRefreshGhostPairs();
-		}
 		_updateHScrollProxy(side);
 		if (typeof _updateTabHScroll === "function") _updateTabHScroll(side);
 	});
+	_scheduleAlignedSync();
 
 	if (localStorage.getItem("diff-preview-mode") === "preview") {
 		const files = side === "teacher" ? _teacherFiles : _studentFiles;

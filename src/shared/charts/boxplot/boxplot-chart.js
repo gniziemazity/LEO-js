@@ -176,6 +176,22 @@ class BoxPlotChart {
 						ctx.fill();
 					}
 				}
+
+				if (
+					this._options.showMean !== false &&
+					ds.showMean !== false &&
+					Number.isFinite(stats.mean)
+				) {
+					const yMean = this._axisY(stats.mean, axKey);
+					const mr = Math.max(2.5, Math.min(4, boxW * 0.18));
+					ctx.beginPath();
+					ctx.arc(bxMid, yMean, mr, 0, Math.PI * 2);
+					ctx.fillStyle = ds.meanColor ?? ds.borderColor ?? "#333";
+					ctx.fill();
+					ctx.lineWidth = 1.2;
+					ctx.strokeStyle = ds.meanRingColor ?? "#fff";
+					ctx.stroke();
+				}
 			}
 		}
 

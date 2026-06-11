@@ -230,7 +230,10 @@ function renderClusters() {
 	if (!body) return;
 	body.innerHTML = "";
 	const students = visibleStudents();
-	if (!students.length) return;
+	if (!students.length) {
+		_refreshChartDownloadBtns();
+		return;
+	}
 
 	const mode = _clusterMode();
 	const labelsX = ASSIGNMENTS.map((a) => a.name);
@@ -338,6 +341,8 @@ function renderClusters() {
 		section.appendChild(grid);
 		body.appendChild(section);
 	}
+
+	_refreshChartDownloadBtns();
 }
 
 document.getElementById("cluster-k")?.addEventListener("change", () => {

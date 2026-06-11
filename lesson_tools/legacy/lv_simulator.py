@@ -4,6 +4,7 @@ Tkinter-based simulator (Legacy)
 import json
 import os
 import re
+import sys
 import time
 from datetime import datetime
 try:
@@ -21,6 +22,8 @@ except ImportError:
         def __getattr__(self, _): return None
     tk = _TkMock()
     filedialog = ttk = tkfont = _TkMockMod()
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.lv_constants import (
     FINLAND_TZ, ANCHOR_RE, DELAY_OPS,

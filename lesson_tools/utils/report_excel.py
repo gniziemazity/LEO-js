@@ -14,6 +14,7 @@ from .similarity_measures import (
     calculate_containment,
     iter_code_tokens,
     save_xlsx,
+    token_edit_similarity,
 )
 from .token_log import _split_tokens_by_comment
 from .token_log_mixin import (
@@ -547,7 +548,9 @@ class ExcelReportMixin:
                     continue
                 pos = m.get('start', 0)
                 eff = _effective_ext_at(pos, file_ext, ranges) if ranges else file_ext
-                miss_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', '')))
+                pw = m.get('paired_with')
+                repl = pw.get('token', '') if pw else None
+                miss_by_lang.setdefault(eff, []).append((fname, pos, m.get('token', ''), repl))
         for fname, marks in (basis_marks.get('student_files') or {}).items():
             file_ext = _ext_of(fname)
             if not file_ext:
@@ -583,15 +586,17 @@ class ExcelReportMixin:
                 if teacher_ext_total else 0.0
             )
             miss_sorted = sorted(
-                ((ts_teacher.get((fn, s), '99:99:99'), tok)
-                 for fn, s, tok in miss),
+                ((ts_teacher.get((fn, s), '99:99:99'), tok, repl)
+                 for fn, s, tok, repl in miss),
+                key=lambda x: (x[0], x[1]),
             )
             extras_sorted = sorted(extra, key=lambda t: (t[0], t[1]))
             parts: List[str] = []
             items: List[str] = []
-            for ts, tok in miss_sorted:
+            for ts, tok, repl in miss_sorted:
                 ts_s = '' if ts == '99:99:99' else f' ({ts})'
-                parts.append(f'-{tok}{ts_s}')
+                sim_s = f' ~{token_edit_similarity(tok, repl):.2f}' if repl is not None else ''
+                parts.append(f'-{tok}{ts_s}{sim_s}')
                 items.append(f'Missing: {tok}{ts_s}')
             for _fname, _pos, tok in extras_sorted:
                 parts.append(f'+{tok} (00:00:00)')

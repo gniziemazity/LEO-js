@@ -93,7 +93,7 @@
 			}
 
 			#toolbar select option[value="ideal"],
-			#toolbar select option[value="required"] {
+			#toolbar select option[value="minimal"] {
 				color: var(--clr-mark-extra);
 			}
 
@@ -132,6 +132,8 @@
 				position: absolute;
 				transform: translateX(-50%);
 				white-space: nowrap;
+				text-align: center;
+				line-height: 1.15;
 				pointer-events: none;
 				font-size: 11px;
 				font-weight: 700;
@@ -859,6 +861,13 @@
 			.fv-editor.fv-doc-mode .fv-doc img {
 				max-width: 100%;
 				height: auto;
+			}
+			.fv-editor.fv-doc-mode .fv-doc-img {
+				display: block;
+				max-width: 100%;
+				height: auto;
+				margin: 0 auto;
+				padding: 12px;
 			}
 			.fv-editor.fv-doc-mode .fv-doc-frame {
 				width: 100%;

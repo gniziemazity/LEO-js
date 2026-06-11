@@ -94,6 +94,15 @@ function _addProgressFollowBoxplot(body, students) {
 			item.appendChild(document.createTextNode(label));
 			legend.appendChild(item);
 		}
+		const meanHint = el("span");
+		meanHint.style.cssText =
+			"display:inline-flex;align-items:center;gap:4px;";
+		const dot = el("span");
+		dot.style.cssText =
+			"display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--clr-label);box-shadow:0 0 0 1.5px #fff inset;";
+		meanHint.appendChild(dot);
+		meanHint.appendChild(document.createTextNode("mean"));
+		legend.appendChild(meanHint);
 		header.appendChild(legend);
 	}
 	section.appendChild(header);
@@ -137,6 +146,10 @@ function _buildStudentProgressCard(s, labels) {
 		l.hasFollowCol ? (l.follow ?? null) : null,
 	);
 	const grades = s.lessons.map((l) => l.grade ?? null);
+	const redObs = s.lessons.map((l) => {
+		const t = l.lesson_obs?.trim();
+		return !!t && t !== "_" && t.includes("<");
+	});
 
 	const show = _progressShow();
 	const showAnyFollow = show.totalFollow || show.langFollow;
@@ -218,6 +231,7 @@ function _buildStudentProgressCard(s, labels) {
 				),
 				color: c,
 				pointFillColor: c,
+				pointColors: redObs.map((r) => (r ? THEME.red : c)),
 				lineWidth: 1.0,
 				pointRadius: 2.5,
 				yAxis: "left",
@@ -229,6 +243,7 @@ function _buildStudentProgressCard(s, labels) {
 			data: follows,
 			color: THEME.label,
 			pointFillColor: THEME.label,
+			pointColors: redObs.map((r) => (r ? THEME.red : THEME.label)),
 			lineWidth: 1.5,
 			pointRadius: 4,
 			yAxis: "left",
