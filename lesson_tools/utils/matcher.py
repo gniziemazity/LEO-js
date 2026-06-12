@@ -31,7 +31,8 @@ teacher typed and later deleted; star variants require a keylog):
 'lcs_star' / 'lcs'   ``difflib.SequenceMatcher`` (Ratcliff/Obershelp) on the
                      non-comment token sequence. Comments marked as ``comment``.
 'git_star' / 'git'   ``git diff --no-index --unified=0 -w`` + per-line
-                     token-level diff. Treats comments as regular tokens.
+                     token-level diff. Comments are blanked before diffing
+                     and re-attached as ``comment`` marks.
 
 See ``lesson_tools/differentiator-algorithm.md`` for the full algorithm description.
 

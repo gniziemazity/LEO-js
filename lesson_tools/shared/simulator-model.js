@@ -1,6 +1,5 @@
 "use strict";
 
-const ANCHOR_RE = /⚓([^⚓]*)⚓/g;
 const DELAY_OPS = 15;
 
 function lineStartAt(text, pos) {

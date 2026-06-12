@@ -68,35 +68,6 @@ class VSCodeSettings:
                 return cls({}, source=f"parse error: {exc}")
         return cls({}, source="defaults")
 
-    def summary(self) -> list[tuple[str, str, bool]]:
-        r = self.raw
-        def yesno(v):
-            if isinstance(v, bool):
-                return ("ON", v)
-            if isinstance(v, str):
-                on = v.lower() not in ("never", "off", "false", "0")
-                return (v, on)
-            return (str(v), bool(v))
-
-        rows = []
-        for key, label in [
-            ("editor.autoClosingBrackets", "Auto-close brackets"),
-            ("editor.autoClosingQuotes",   "Auto-close quotes"),
-            ("html.autoClosingTags",       "HTML auto-close tags"),
-            ("html.autoCreateQuotes",      "HTML auto-create quotes"),
-            ("editor.minimap.enabled",     "Minimap"),
-            ("editor.parameterHints.enabled", "Parameter hints"),
-            ("editor.quickSuggestions",    "Quick suggestions"),
-        ]:
-            val = r.get(key)
-            if isinstance(val, dict):
-                active = any(v for v in val.values() if v not in (False, "off"))
-                rows.append((label, "mixed", active))
-            else:
-                vs, active = yesno(val)
-                rows.append((label, vs, active))
-        return rows
-
     def _closing_mode(self, key: str) -> str:
         v = self.raw.get(key, "never")
         if isinstance(v, bool):

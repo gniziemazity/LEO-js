@@ -61,7 +61,6 @@ function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt
 function escAttr(s) { return escHtml(s); }
 function langColorFor() { return null; }
 function markColorFor() { return null; }
-function openDifferentiator() {}
 function openDifferentiatorWindow() {}
 function showLoading() {}
 function readFileText() { return Promise.resolve(""); }

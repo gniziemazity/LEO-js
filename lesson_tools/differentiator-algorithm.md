@@ -8,8 +8,8 @@ teacher's reference. The teacher's reference is normally **reconstructed from a
 keylog** (the live-coding event stream); when no keylog is available, the
 teacher's static source files are used directly.
 
-Up to ten matching methods can be loaded into the differentiator UI,
-organised in five families with a paired star (`*`) variant for each. The
+Up to six matching methods can be loaded into the differentiator UI,
+organised in three families with a paired star (`*`) variant for each. The
 browser only shows methods whose `diff_marks_*.json` files are actually
 present.
 
@@ -19,13 +19,6 @@ present.
 | LCS    | `lcs` | `lcs*` | Token        | Difflib SequenceMatcher (Ratcliff/Obershelp) on token stream |
 | Git    | `git` | `git*` | Line + Token | `git diff --no-index --unified=0 -w`, then per-line          |
 
-> **Retired methods.** The **Lev** (Levenshtein edit-distance on tokens) and
-> **R/O** (Ratcliff/Obershelp on stripped lines) families were removed —
-> nothing produces, lists, or evaluates them, and their builder, opcode, and
-> align functions were deleted from `token_log.py`. The §5.3 and §6.1
-> descriptions below are retained only as historical reference for how those
-> approaches worked.
-
 The star variant of every method is the same algorithm followed by a
 **ghost-token post-processing pass**: per token type, student `extra` marks
 and teacher ghost instances are paired with a Hungarian assignment scored by
@@ -33,11 +26,12 @@ the same cosine-context function used in LEO. Pairs with cosine
 `>= _CONTEXT_MATCH_THRESHOLD` are promoted to `ghost_extra` and receive
 `removal_ts` from the matched ghost instance.
 
-In addition to the ten algorithmic methods, the differentiator can load
+In addition to the six algorithmic methods, the differentiator can load
 two hand-curated modes for any student: `ideal` (`diff_marks_ideal.json`,
 the recommended-fix list) and `minimal` (`diff_marks_minimal.json`,
 the minimum-fix list). Both use the same schema and are edited inside
-the differentiator itself via `differentiator-curated.js`; the ideal file
+the differentiator itself via the curated editor
+(`differentiator/curated*.js`); the ideal file
 is also the reference that `compare_methods_to_ideal.py` (`npm run eval`)
 evaluates the algorithmic methods against. Ideal mode is the default
 when present; otherwise minimal, then `leo*`, falling back to `leo`.
@@ -49,9 +43,10 @@ character-offset position marks per file with one of four labels (`missing`,
 colour-coded highlighting.
 
 Mode-file mapping and cross-window data handoff are centralized in
-`lesson_tools/diff-utils.js` (`DIFF_MARKS_FILES`, `defaultDiffModeKey`,
-`openDifferentiator`). Dashboard, overview, and students views all use this
-same mapping, so adding/removing a diff mode should be done in one place.
+`lesson_tools/shared/diff-utils.js` (`DIFF_MARKS_FILES`, `defaultDiffModeKey`,
+`navigateToDifferentiator`). The timeline, overview, and students views all
+use this same mapping, so adding/removing a diff mode should be done in one
+place.
 
 ---
 
@@ -68,7 +63,7 @@ source files. The differentiator answers:
 - Which are extras beyond what was taught?
 - Did the student type something the teacher also typed but later deleted?
 
-The five method families exist because no single algorithm answers these
+The three method families exist because no single algorithm answers these
 questions correctly for every situation. Each family makes a different
 trade-off between matching granularity, ordering sensitivity, and tolerance
 to local rearrangement. They share a common token definition and a common
@@ -277,7 +272,7 @@ unchanged.
 
 ## 4. Common Helpers Used by All Methods
 
-All five methods share the helpers in `utils/token_log.py`:
+All methods share the helpers in `utils/token_log.py`:
 
 | Helper                          | Purpose                                                                                                                                                                                                         |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -319,9 +314,9 @@ pipeline.
 
 ---
 
-## 5. Per-Token Methods (LEO, LCS, Lev)
+## 5. Per-Token Methods (LEO, LCS)
 
-These three operate on **token sequences with comments excluded**. Each
+These operate on **token sequences with comments excluded**. Each
 non-comment token gets one of: `None` (matched), `missing` (teacher only) or
 `extra` (student only). Comment tokens get the `comment` label automatically
 (no matching is attempted on them).
@@ -448,9 +443,9 @@ def _compute_per_token_matching(teacher_files, student_files, k, teacher_ghosts=
 
 `_build_leo_diff_marks` is a thin wrapper: call `_compute_per_token_matching`,
 convert the colour map to position marks, and compute the score
-`(n_total − n_missing) / n_total · 100`. Per-token methods (LEO, LCS, Lev) do
+`(n_total − n_missing) / n_total · 100`. Per-token methods (LEO, LCS) do
 not embed `alignments` or `line_marks` — those are line-level structures and
-the differentiator borrows them from any loaded line-based method (R/O, Git)
+the differentiator borrows them from a loaded line-based method (Git)
 via `_borrowedAlignments()` for the side-by-side aligned view.
 
 ### 5.2 LCS — Difflib SequenceMatcher on Tokens
@@ -462,8 +457,8 @@ def _lcs_opcodes(a, b):
 
 Note: Python's `difflib.SequenceMatcher` is **Ratcliff/Obershelp** (longest
 common substring + recursive expansion), not strict longest-common-
-subsequence. The two often agree but R/O can favour different alignments
-when there are repeated subsequences.
+subsequence. The two often agree but Ratcliff/Obershelp can favour different
+alignments when there are repeated subsequences.
 
 `_build_lcs_token_diff_marks` calls a shared driver
 `_build_token_seq_diff_marks(…, _lcs_opcodes)`:
@@ -499,62 +494,12 @@ def _build_token_seq_diff_marks(teacher_files, student_files, opcodes_fn):
     return ...   # per-token methods don't embed alignments/line_marks
 ```
 
-### 5.3 Lev — Levenshtein Edit Distance on Tokens
-
-The Lev family uses minimum-edit-distance traceback on the same token stream,
-again with comments excluded. Implementation in
-`utils/token_log._levenshtein_opcodes`:
-
-```
-def _levenshtein_opcodes(a, b):
-    m, n = len(a), len(b)
-    dp[i][0] = i,  dp[0][j] = j
-    for i in 1..m:
-        for j in 1..n:
-            if a[i-1] == b[j-1]:  dp[i][j] = dp[i-1][j-1]
-            else:                 dp[i][j] = 1 + min(dp[i-1][j-1],
-                                                     dp[i-1][j],
-                                                     dp[i][j-1])
-    # traceback emits one opcode per edit step (no coalescing into ranges):
-    #   equal/replace -> (tag, i-1, i, j-1, j)
-    #   delete        -> ('delete', i-1, i, j, j)
-    #   insert        -> ('insert', i, i, j-1, j)
-    # consumer (_build_token_seq_diff_marks) iterates i1..i2 / j1..j2 anyway,
-    # so single-step ops work unchanged and skip difflib-style range merging.
-```
-
-Lev shares the LCS driver — `_build_lev_token_diff_marks` simply calls
-`_build_token_seq_diff_marks(..., _levenshtein_opcodes)`. As with LEO and LCS,
-per-token methods don't carry alignments/line_marks; the differentiator
-borrows them from R/O or Git for side-by-side rendering.
-
-Comments are excluded from matching, exactly like LCS — they get the `comment`
-label without participating in the diff.
-
-**Why both LCS and Lev?** Levenshtein finds the _minimum number of
-single-token edits_ to transform teacher's sequence into student's. R/O finds
-the _longest matching substrings_. They make different trade-offs:
-
-- For a student who reordered a few statements, LCS often finds the larger
-  block as a match and marks the moved block as missing+extra; Lev tends to
-  break it into more substitutions and ends up with similar counts but a
-  different distribution.
-- For local single-token mistakes (one wrong identifier), Lev produces a
-  cleaner `replace` (one `missing` next to one `extra` in the same spot),
-  while LCS may scatter the marks.
-- For nearly-identical files Lev's score is typically equal to or slightly
-  lower than LCS (every replace counts a missing + an extra; LCS may match
-  through the surrounding tokens).
-
-Cost: O(m·n) time and space where m, n are non-comment token counts. For
-typical lessons (~1000 tokens), this is fast enough to run interactively.
-
 ---
 
-## 6. Per-Line Methods (R/O, Git)
+## 6. Per-Line Method (Git)
 
-Both line-based methods do the same thing structurally, differing only in
-how they obtain the line-level alignment. **Comments are blanked first** so
+The line-based method aligns whole lines first, then refines within each
+paired line. **Comments are blanked first** so
 the diff sees `code; // foo` and `code; // bar` as the same `code;`:
 
 ```
@@ -594,28 +539,14 @@ def _build_<line>_diff_marks(teacher_files, student_files):
     return _finalize_per_file_diff(per_file_results, n_total)
 ```
 
-Both methods share this skeleton through a single
+The skeleton lives in a single
 `_build_line_diff_marks(teacher_files, student_files, align_fn)` driver: the
 `for (tag, …) in line_ops` step above is the only per-method part, supplied as
-an `align_fn` callback (`_ro_align` for R/O, `_git_align` for Git) that fills the
-alignment + line/token marks in place — the same pattern
-`_build_token_seq_diff_marks` uses to share LCS and Lev.
+an `align_fn` callback (`_git_align`) that fills the alignment + line/token
+marks in place — the same pattern `_build_token_seq_diff_marks` uses with
+`_lcs_opcodes`.
 
-### 6.1 R/O — Difflib SequenceMatcher on Lines
-
-```
-opcodes = difflib.SequenceMatcher(
-    None,
-    [l.strip() for l in t_lines],
-    [l.strip() for l in s_lines],
-    autojunk=False,
-).get_opcodes()
-```
-
-Lines are normalised by `.strip()` before comparison — leading/trailing
-whitespace differences don't count, but interior whitespace does.
-
-### 6.2 Git — `git diff --no-index`
+### 6.1 Git — `git diff --no-index`
 
 ```
 result = subprocess.run([
@@ -640,9 +571,9 @@ diff; lines on only one side become unpaired entries and get
 `_add_unpaired_teacher_line` / `_add_unpaired_student_line` marks like a
 `delete` / `insert` opcode would produce.
 
-### 6.3 What happens inside a paired line
+### 6.2 What happens inside a paired line
 
-When R/O or Git pair two lines that are not byte-identical, `_add_paired_line_block`
+When Git pairs two lines that are not byte-identical, `_add_paired_line_block`
 runs **token-level difflib** within the pair:
 
 ```
@@ -663,15 +594,15 @@ def _diff_line_pair_tokens(t_line, t_off, s_line, s_off, tok_all_positions):
 ```
 
 This refines the line-level diff with per-token marks where the lines mostly
-agree. Because the per-line builders blank out comments before splitting into
+agree. Because the per-line builder blanks out comments before splitting into
 lines (see top of §6), the regex `_TOK_RE.finditer(t_line)` here only emits
 non-comment tokens — the spaces produced by `blank_comments` aren't matched
 by the token regex. Comment tokens are appended separately as `comment`
 marks after the diff completes.
 
-### 6.4 Line-level marks
+### 6.3 Line-level marks
 
-R/O and Git produce both **per-token marks** (red/blue letters inside lines)
+Git produces both **per-token marks** (red/blue letters inside lines)
 _and_ **per-line marks** (light-red / light-blue line backgrounds), via
 `_make_line_mark`. The differentiator displays them together: a missing line
 gets a red background and red letters for every token on it.
@@ -690,7 +621,7 @@ explored or made the same mistake / edit the teacher demonstrated and corrected.
 
 ### 7.1 LEO-style cosine Hungarian (used for every star variant)
 
-Every star variant — `leo*`, `lcs*`, `lev*`, `ro*`, `git*` — runs the same
+Every star variant — `leo*`, `lcs*`, `git*` — runs the same
 post-pass: [`_apply_ghost_extra_promotion`](../lesson_tools/utils/token_log.py)
 solves a per-token Hungarian assignment between student `extra` marks and
 ghost teacher instances, scoring by the same cosine-context function used in
@@ -710,7 +641,7 @@ detects these pre-set ghost matches (any extra whose `match_idx` references
 a teacher entry with `ghost: true`) and **skips its own Hungarian for
 those**, simply relabelling them and copying `removal_ts`. It then runs the
 Hungarian only for the remaining unpaired extras and ghosts. For
-`lcs*/lev*/ro*/git*` no extras carry pre-set ghost match_idx, so the whole
+`lcs*/git*` no extras carry pre-set ghost match_idx, so the whole
 post-pass falls through to the original Hungarian path.
 
 ```
@@ -737,7 +668,7 @@ def _apply_ghost_extra_promotion(diff_marks, events):
             else:
                 unmatched_extras.append((i, s))
 
-        # 2. Hungarian over the remainder (lcs*/lev*/ro*/git* path).
+        # 2. Hungarian over the remainder (lcs*/git* path).
         remaining_ghosts = [g for g in ghosts if local idx ∉ pre_matched_ghost_local]
         if unmatched_extras and remaining_ghosts:
             sim = [[cos(context(student_seq,       s.seq_idx),
@@ -749,7 +680,7 @@ def _apply_ghost_extra_promotion(diff_marks, events):
                     with removal_ts = ts_to_local(remaining_ghosts[g_local].del_ts)
 ```
 
-Non-LEO base methods (LCS/Lev/RO/Git) don't produce `leo_assignments`
+Non-LEO base methods (LCS/Git) don't produce `leo_assignments`
 themselves, so [`_add_log_metadata`](../lesson_tools/utils/token_log.py)
 calls [`_build_assignments_for_post_pass`](../lesson_tools/utils/token_log.py)
 first to synthesize them from the existing diff_marks: it scans
@@ -894,7 +825,7 @@ locally-correct fix. Paired missings (those with `paired_with`)
 have any stale `insert_at` cleared because the pair already encodes
 a replace action.
 
-For LCS, Lev, R/O, and Git, the base method already knows the right
+For LCS and Git, the base method already knows the right
 anchor from its own alignment, so it stamps a **method-native**
 anchor on every missing mark at build time (in an internal field
 `_native_insert_at` that is stripped before write). The post-pass
@@ -902,8 +833,8 @@ copies it into `insert_at` for unpaired missings:
 
 | Method      | Native anchor source                                                                                                                                                                                                                                       |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lcs`/`lev` | For a `delete (i1,i2,j1,j2)` or `replace (i1,i2,j1,j2)` opcode, every teacher token in `[i1,i2)` anchors at `s_nc[j1].start_char`.                                                                                                                         |
-| `ro`/`git`  | Within a paired-but-replaced line, `_diff_line_pair_tokens` uses the same per-line `j1` anchor. For tokens on an unpaired teacher line, the anchor is the start of the next paired student line in the file alignment (or end-of-file if there isn't one). |
+| `lcs`       | For a `delete (i1,i2,j1,j2)` or `replace (i1,i2,j1,j2)` opcode, every teacher token in `[i1,i2)` anchors at `s_nc[j1].start_char`.                                                                                                                         |
+| `git`       | Within a paired-but-replaced line, `_diff_line_pair_tokens` uses the same per-line `j1` anchor. For tokens on an unpaired teacher line, the anchor is the start of the next paired student line in the file alignment (or end-of-file if there isn't one). |
 
 LEO has no native concept of an insert anchor — its matching is
 per-token-type, not order-preserving — so LEO marks fall through
@@ -946,7 +877,7 @@ context (and most do).
 
 ## 8. From Marks to JSON
 
-All ten methods produce the same per-file output shape:
+All methods produce the same per-file output shape:
 
 ```json
 {
@@ -985,9 +916,9 @@ JS string is UTF-16, so an astral character (e.g. the motorcycle emoji
 **two** units, not one. LEO produces these directly in
 `_colors_to_position_marks` (it builds a per-file `_build_utf16_map` and
 looks each occurrence's code-point position up through it). The line/token
-methods (LCS, Lev, R/O, Git) compute raw **code-point** offsets while
+methods (LCS, Git) compute raw **code-point** offsets while
 building marks, then `_remap_marks_to_utf16` (in `token_log.py`, called from
-`_write_alt_diff_marks` for those four methods only) shifts every offset
+`_write_alt_diff_marks` for those two methods only) shifts every offset
 through the same map just before the JSON is written — files with no astral
 characters are a no-op. Ghost references (`paired_with.ghost`) and
 `teacher_ghosts` blob positions live in the reconstructed-with-ghosts view
@@ -996,8 +927,8 @@ mark after an emoji would be off by one unit per astral character and the
 differentiator's highlight would drift (it slices the raw file by these
 offsets).
 
-`alignments` and `line_marks` exist **only for the line-based methods (R/O and
-Git)**. Per-token methods (LEO, LCS, Lev) and curated (`ideal`/`minimal`) files omit them; the
+`alignments` and `line_marks` exist **only for the line-based method (Git)**.
+Per-token methods (LEO, LCS) and curated (`ideal`/`minimal`) files omit them; the
 differentiator borrows them from any loaded line-based method via
 `_borrowedAlignments()` to drive the side-by-side aligned view. The aligned
 view itself can also be toggled off in the differentiator (Padding button), in
@@ -1026,7 +957,8 @@ student_text[pos:]`). Paired missings deliberately omit it — their
 
 `move_to: {file, pos}` is the student-side mirror of `insert_at`. It
 appears only on `extra` marks and is **curator-only** (no algorithmic
-method emits it) — set inside `differentiator-curated.js` when the
+method emits it) — set inside the curated editor
+(`differentiator/curated*.js`) when the
 curator decides an extra token is in the wrong place rather than
 genuinely surplus. Applying the diff deletes the token from
 `[start, end]` and re-inserts the same token at `move_to.pos` in
@@ -1112,7 +1044,7 @@ Two normalisation passes keep the rendered output readable:
 `diff_marks_minimal.json` (the minimum-fix list) follow the same
 per-mark schema as the algorithmic methods but are produced and edited
 by hand in the differentiator (Ideal/Minimal modes, implemented in
-`differentiator-curated.js`). The curator's job is to label every
+`differentiator/curated*.js`). The curator's job is to label every
 divergence between teacher and student as one of `missing`, `extra`,
 `ghost_extra`, or `comment`, connect swap pairs (`paired_with`), and
 place anchors (`insert_at`) for unpaired missings.
@@ -1126,7 +1058,7 @@ works in Ideal/Minimal mode.
 Curated files may carry an optional top-level `file_pairs` map
 (`{studentFile: teacherFile}`) when the curator has manually paired
 student/teacher files whose names don't match. This is used by
-`_pairedFileName` in `differentiator.js` to drive tab synchronisation
+`_pairedFileName` in `differentiator/index.js` to drive tab synchronisation
 when the student named a file differently from the teacher (e.g. the
 student's `654321.js` should pair with the teacher's `123456.js`). The
 field is omitted from the JSON when empty.
@@ -1174,7 +1106,7 @@ code.
 
 ## 9. Browser Rendering
 
-`differentiator.js` reads one JSON per method (or all of them, packaged
+`differentiator/index.js` reads one JSON per method (or all of them, packaged
 together under `allMarks`) and renders both files side by side. Position
 marks are applied directly with `<span>` wrappers — no re-tokenisation
 happens in the browser. This is intentional: regex-based highlighting in the
@@ -1183,15 +1115,15 @@ browser would re-introduce false matches (e.g., `border` matching inside
 solve.
 
 Colour scheme (defined as `--clr-mark-*` variables in
-`lesson_tools/shared.css`, looked up by `_cssVar()` in `differentiator.js` so
-the JS palette and the CSS rules stay in sync):
+`shared/shared.css`, read once into `MARK_COLORS` by `_cssVar()` in
+`shared/diff-utils.js` so the JS palette and the CSS rules stay in sync):
 
 | Label         | CSS variable         | Default        | Meaning                                                                             |
 | ------------- | -------------------- | -------------- | ----------------------------------------------------------------------------------- |
 | `missing`     | `--clr-mark-missing` | Red `#e00`     | In teacher reference, absent from student                                           |
 | `extra`       | `--clr-mark-extra`   | Blue `#00c`    | In student, never typed by teacher                                                  |
 | `ghost_extra` | `--clr-mark-ghost`   | Cyan `#3aa0e0` | In student; teacher typed it then deleted it                                        |
-| `comment`     | `--clr-mark-comment` | Green `#4a4`   | Token in a comment (LEO, LCS, Lev only; R/O and Git treat comment tokens uniformly) |
+| `comment`     | `--clr-mark-comment` | Green `#4a4`   | Token in a comment (all methods; comments are excluded from matching)              |
 
 For line-based methods, line backgrounds use a faded version of the same
 colours (`--clr-mark-missing-bg` ≈ `rgba(220,0,0,0.13)`,
@@ -1242,7 +1174,9 @@ teacher reference files  +  student files
 
 PIPELINE WRITING
 ────────────────
-LEO family (`TokenLogMixin.write_leo_diff_marks`):
+LEO family (`TokenLogMixin.write_student_token_files`, keylog runs only;
+without a keylog plain LEO goes through `write_leo_diff_marks` →
+`_write_alt_diff_marks` instead):
   build result  →  diff_marks dict
    │
    ├─► deepcopy → token_matching='leo'
@@ -1267,7 +1201,7 @@ LEO family (`TokenLogMixin.write_leo_diff_marks`):
           │
           ▼ write tokens.txt + diff_marks_leo_star.json
 
-Other families (`TokenLogMixin._write_alt_diff_marks`, used for LCS/Lev/R/O/Git):
+Other families (`TokenLogMixin._write_alt_diff_marks`, used for LCS/Git):
   build result  →  _assemble_diff_marks (token_matching=plain key)
    │
    ├─► _apply_insert_at_to_unpaired_missings  (copy _native_insert_at into insert_at)
@@ -1291,14 +1225,18 @@ Other families (`TokenLogMixin._write_alt_diff_marks`, used for LCS/Lev/R/O/Git)
           │
           ▼ _strip_internal_fields → write diff_marks_<plain>_star.json
 
+Every write goes through `_emit_diff_marks`, which skips bases listed in
+`DISABLED_DIFF_MARK_VARIANTS` (default: plain `leo`, `lcs_star`, `git_star`
+are not written — see the CLAUDE.md "Disabling diff-mark generation" note).
+
 
 FALLBACK WHEN NO KEYLOG EXISTS
 ──────────────────────────────
 sim_check.py drives all writers:
   · no `tokens.txt` / student token files
-  · only the plain diff_marks files are written (no `*_star`)
-  · LEO writes only `diff_marks_leo.json`; LCS/Lev/R/O/Git write only
-    their plain files
+  · only the plain diff_marks files are written (no `*_star`) — and only
+    for bases not in `DISABLED_DIFF_MARK_VARIANTS`, so by default `lcs`
+    and `git` (plain `leo` generation is disabled)
   · `_add_log_metadata` is a no-op without events, so `timestamp`,
     `removal_ts`, ghost promotion, and `teacher_ghosts` are absent
 
@@ -1319,7 +1257,7 @@ write `<root>/Method_Evaluation.xlsx`:
 
 BROWSER
 ───────
-openDifferentiator() / openDiffWindow()
+navigateToDifferentiator() / openDifferentiatorWindow()
   │
   ├─► load whichever diff_marks files exist into `allMarks`
   ├─► default mode preference (defaultDiffModeKey in diff-utils.js):
@@ -1347,12 +1285,13 @@ differentiator dropdown without any code changes elsewhere.
 orthogonal step; every method's `extra` marks are eligible. This avoids
 having a different "stars-aware" version of each algorithm.
 
-**Comments excluded from per-token methods, included in line-based methods.**
-LEO and the per-token methods (LCS, Lev) treat comments as non-participating
-so a student's natural-language comment doesn't affect the score. Line-based
-methods (R/O, Git) treat comments uniformly because the line itself is the
-unit of comparison and trying to special-case comments produced confusing
-visual results (green letters appearing on lines without comments).
+**Comments excluded from matching in every method.** Per-token methods
+(LEO, LCS) filter comment tokens out before matching
+(`_split_tokens_by_comment`); the line-based method (Git) blanks comment
+ranges to spaces first (`_sm.blank_comments`), so comment-only lines drop
+out of the line diff and `code; // foo` matches `code; // bar` on `code;`
+alone. Both re-attach comment tokens afterwards as `comment` marks, so a
+student's natural-language comment never affects the score.
 
 **`timestamp` on missing marks, `removal_ts` on ghost_extra marks.** A
 `missing` mark carries the wall-clock moment the teacher _typed_ the
@@ -1546,7 +1485,7 @@ blob.
 ## 12. Parameter Sensitivity
 
 The matching pipeline has a small number of tunables. None of them require
-per-corpus tuning today — defaults work across all five test fixtures and
+per-corpus tuning today — defaults work across all test fixtures and
 the production grading pipeline — but the sensitivities below are the
 guide-rails to keep in mind when changing them.
 
@@ -1597,15 +1536,14 @@ guide-rails to keep in mind when changing them.
   cases where the surrounding context isn't quite identical.
 
 - **Test-suite signal.** `regen_test_fixtures.py` regenerates every LEO\*
-  fixture across the five test corpora; running `python -m unittest
+  fixture across the `test/lessons/*` corpora; running `python -m unittest
 test_lesson_tools` is the fastest way to detect a parameter
-  change that breaks something. Per-student fixtures like
-  `test/chess/student_b/tokens.txt` and `test/chess/student_g/tokens.txt`
-  are the most informative diff: student_b is the count-surplus case
-  (LEO Hungarian leaves room for ghost-extra promotion to rescue
-  duplicate occurrences), student_g is the count-parity case (LEO Hungarian uses
-  every surviving slot, so only the line-based methods can recover the
-  HTML-attribute tokens).
+  change that breaks something. The per-student `tokens.txt` fixtures
+  under `test/lessons/` are the most informative diff: the corpus covers
+  both the count-surplus case (LEO Hungarian leaves room for ghost-extra
+  promotion to rescue duplicate occurrences) and the count-parity case
+  (LEO Hungarian uses every surviving slot, so only the line-based method
+  can recover the HTML-attribute tokens).
 
 ---
 
@@ -1616,9 +1554,6 @@ The classical algorithms used here:
 - **Hungarian assignment** — Kuhn (1955), via `scipy.optimize.linear_sum_assignment`.
 - **Ratcliff/Obershelp** ("gestalt pattern matching") — Ratcliff & Metzener
   (1988), implemented in Python's `difflib.SequenceMatcher`.
-- **Levenshtein distance** — Levenshtein (1965); the dynamic-programming
-  formulation is described in Cormen, Leiserson, Rivest & Stein,
-  _Introduction to Algorithms_, §15.4.
 - **Myers diff** — Myers (1986), "An O(ND) Difference Algorithm and Its
   Variations", _Algorithmica_. This is what `git diff` uses, and what
   `difflib` also approximates.

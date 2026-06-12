@@ -14,38 +14,6 @@ function _curatedForwardWhitespace(text, pos) {
 	return text.slice(pos, i);
 }
 
-function _curatedLineIndentAt(text, pos) {
-	let end = pos;
-	while (end > 0) {
-		const ls = text.lastIndexOf("\n", end - 1) + 1;
-		const line = text.slice(ls, end);
-		if (line.trim()) return (line.match(/^[ \t]*/) || [""])[0];
-		end = ls - 1;
-	}
-	return "";
-}
-
-function _curatedDedentBlock(body) {
-	const lines = body.split("\n");
-	if (lines.length < 2) return body;
-	const startIdx = /^[ \t\n]/.test(body) ? 0 : 1;
-	let minIndent = Infinity;
-	for (let i = startIdx; i < lines.length; i++) {
-		const line = lines[i];
-		if (line.length === 0) continue;
-		const m = line.match(/^[ \t]*/);
-		const indentLen = m[0].length;
-		if (indentLen === line.length) continue;
-		if (indentLen < minIndent) minIndent = indentLen;
-	}
-	if (!isFinite(minIndent) || minIndent === 0) return body;
-	return lines
-		.map((l, i) =>
-			i >= startIdx && l.length >= minIndent ? l.slice(minIndent) : l,
-		)
-		.join("\n");
-}
-
 function _curatedAlignWhitespace(
 	srcText,
 	srcStart,

@@ -186,55 +186,6 @@ body {
 	box-sizing: border-box;
 }
 
-body.tool-shell {
-	display: flex;
-	flex-direction: column;
-	height: 100vh;
-	overflow: hidden;
-	background: var(--clr-page);
-}
-body.tool-shell .app-toolbar button {
-	padding: 2px 10px;
-	border: 1px solid var(--clr-border-strong);
-	border-radius: 3px;
-	background: var(--clr-bg);
-	color: var(--clr-label);
-	cursor: pointer;
-	font-size: 11px;
-	font-family: inherit;
-	transition: 0.12s;
-	text-transform: capitalize;
-}
-body.tool-shell .app-toolbar button.active {
-	background: var(--clr-accent);
-	color: var(--clr-bg);
-	border-color: var(--clr-accent);
-}
-body.tool-shell .app-toolbar button:hover:not(.active):not(:disabled) {
-	background: var(--clr-accent-light);
-	border-color: var(--clr-accent);
-	color: var(--clr-accent);
-}
-body.tool-shell .app-toolbar button:disabled {
-	opacity: 0.4;
-	cursor: default;
-}
-body.tool-shell #main {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-	background: var(--clr-bg);
-}
-body.tool-shell .tool-empty-state {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--clr-muted);
-	font-size: 14px;
-}
-
 .pane-title {
 	background: var(--clr-surface);
 	border-bottom: 1px solid var(--clr-border);
