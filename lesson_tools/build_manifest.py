@@ -37,7 +37,7 @@ def _keep_root_file(name: str) -> bool:
     return lower in _ROOT_KEEP_FILES or bool(_OVERVIEW_RE.match(lower))
 
 
-def _keep_project_file(rel: str, lesson_name: str) -> bool:
+def _keep_project_file(rel: str, lesson_name: str, teacher_media=frozenset()) -> bool:
     parts = rel.split("/")
     top = parts[0]
     if top in _PROJECT_DROP_DIRS:
@@ -46,7 +46,11 @@ def _keep_project_file(rel: str, lesson_name: str) -> bool:
     if _DIFF_MARKS_RE.match(lower):
         return False
     if _MEDIA_RE.search(lower):
-        return top in _MEDIA_KEEP_DIRS
+        if top in _MEDIA_KEEP_DIRS:
+            return True
+        if top == "anon_ids":
+            return lower not in teacher_media
+        return False
     if top in _PROJECT_KEEP_DIRS:
         return True
     if len(parts) == 1 and (
@@ -90,8 +94,24 @@ def _list_root_files(course: Path, *, exclude_pii: bool) -> list[str]:
     return out
 
 
+def _teacher_media_basenames(lesson_dir: Path) -> set:
+    names: set = set()
+    for d in _MEDIA_KEEP_DIRS:
+        base = lesson_dir / d
+        if not base.is_dir():
+            continue
+        for p in base.rglob("*"):
+            if p.is_file() and _MEDIA_RE.search(p.name.lower()):
+                names.add(p.name.lower())
+    return names
+
+
 def _build_lesson_entry(lesson_dir: Path) -> dict:
-    files = [f for f in _list_files_relative(lesson_dir) if _keep_project_file(f, lesson_dir.name)]
+    teacher_media = _teacher_media_basenames(lesson_dir)
+    files = [
+        f for f in _list_files_relative(lesson_dir)
+        if _keep_project_file(f, lesson_dir.name, teacher_media)
+    ]
     students: list[str] = []
     anon = lesson_dir / "anon_ids"
     if anon.is_dir():

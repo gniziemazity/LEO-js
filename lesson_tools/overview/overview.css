@@ -19,6 +19,12 @@ body {
 	font-size: 1.8em;
 	font-weight: 300;
 }
+html.autoload #landing {
+	visibility: hidden;
+}
+html.autoload #loading {
+	display: flex;
+}
 
 #toolbar {
 	display: none;
@@ -477,6 +483,10 @@ td.asn-sep {
 }
 .prog-card.row-ai h4 {
 	color: var(--clr-red);
+}
+.prog-card.prog-emph {
+	outline: 6px solid var(--clr-accent);
+	outline-offset: 1px;
 }
 .prog-card h4 {
 	font-size: 11px;

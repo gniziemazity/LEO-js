@@ -20,9 +20,10 @@ const COL_HIDE_KEYS = [
 	{ key: "num", label: "Number" },
 ];
 const _hiddenCols = new Set(["num"]);
-let _hideExcluded = false;
-let _hideCopiers = false;
+let _hideExcluded = true;
+let _hideCopiers = true;
+let _hideArtefacts = true;
 
 let _clusterCharts = [];
 let _clusterSeed = 42;
-let _clusterSort = "id";
+let _clusterSort = "total-follow";

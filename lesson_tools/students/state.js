@@ -12,6 +12,7 @@ let _lessonGroup = null;
 let _mode = "assignment";
 let _modeParam = null;
 let _paperMode = false;
+let _fingerprintParam = false;
 let _highlightIds = null;
 let _starIds = null;
 let _artefactHighlights = null;

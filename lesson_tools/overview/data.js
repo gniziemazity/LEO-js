@@ -420,11 +420,11 @@ function finishLoad(filename) {
 	_barCharts = [];
 	document.getElementById("landing").style.display = "none";
 	document.getElementById("toolbar").classList.add("show");
-	_clusterSort = "id";
+	_clusterSort = "total-follow";
 	document
 		.querySelectorAll(".cluster-sort[data-cluster-sort]")
 		.forEach((b) =>
-			b.classList.toggle("active", b.dataset.clusterSort === "id"),
+			b.classList.toggle("active", b.dataset.clusterSort === "total-follow"),
 		);
 	renderTable();
 	renderStats();

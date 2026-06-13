@@ -133,11 +133,11 @@ function _hitTs(hit) {
 function showVLine(ts, L) {
 	if (ts == null || !vlineEl) return hideVLine();
 	const charts = document.getElementById("charts");
-	const middleChart = document.getElementById("chart-middle");
-	if (!charts || !middleChart) return;
-	const cRect = middleChart.getBoundingClientRect();
+	const topChart = document.getElementById("chart-top");
+	if (!charts || !topChart) return;
+	const cRect = topChart.getBoundingClientRect();
 	const chartsRect = charts.getBoundingClientRect();
-	const x = cRect.left - chartsRect.left + tsToX(ts, L);
+	const x = cRect.left - chartsRect.left + tsToX(ts, L) - 0.5;
 	vlineEl.style.left = x + "px";
 	vlineEl.style.display = "block";
 }

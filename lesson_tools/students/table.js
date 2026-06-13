@@ -57,7 +57,7 @@ function _makeNameStar() {
 
 function _setHeaderLabel(el, spec) {
 	if (spec.artefactIdx != null) {
-		el.innerHTML = escHtml(spec.label).replace(/_(\w+)/g, "<sub>$1</sub>");
+		el.innerHTML = artefactCodeHtml(spec.label);
 	} else {
 		el.textContent = spec.label;
 	}
@@ -67,7 +67,7 @@ function _artefactHeaderTipHtml() {
 	return (_artefactSchema || [])
 		.map(
 			(e) =>
-				`${escHtml(String(e.code || e.key || "?"))}: ${escHtml(e.label || "")}`,
+				`${artefactCodeHtml(String(e.code || e.key || "?"))}: ${escHtml(e.label || "")}`,
 		)
 		.join("<br>");
 }
@@ -149,13 +149,14 @@ function renderTable() {
 	const { showFingerprint, hasAnyFp2, hasAnyFp3 } =
 		computeFingerprints(_students);
 	const showFp1 =
-		!_paperMode && showFingerprint && !_hiddenCols.has("fingerprint1");
+		showFingerprint &&
+		(_paperMode ? _fingerprintParam : !_hiddenCols.has("fingerprint1"));
 	const showFp2 = !_paperMode && hasAnyFp2 && !_hiddenCols.has("fingerprint2");
 	const showFp3 = !_paperMode && hasAnyFp3 && !_hiddenCols.has("fingerprint3");
 	if (showFp1)
 		specs.push({
 			cls: "col-fingerprint col-fp1",
-			label: "Fingerprint (F)",
+			label: "Fingerprint",
 			sortKey: "fingerprint1",
 		});
 	if (showFp2)
@@ -339,7 +340,7 @@ function renderTable() {
 		if (!_paperMode && _hasInteractions) {
 			const el = document.createElement("td");
 			el.className = "col-int";
-			el.textContent = s.interactions;
+			el.innerHTML = s.interactions;
 			tr.appendChild(el);
 		}
 		if (showFollow) {
@@ -559,9 +560,13 @@ function _renderArtefactHighlights() {
 		countPct.textContent = `(${hiPct}%)`;
 		count.appendChild(countMain);
 		count.appendChild(countPct);
-		count.style.left = (left + right) / 2 + "px";
 		count.style.top = top + height + 3 + "px";
 		layer.appendChild(count);
+		const half = count.offsetWidth / 2;
+		const minCx = wrap.scrollLeft + half + 4;
+		const maxCx = wrap.scrollLeft + wrap.clientWidth - half - 4;
+		const cx = Math.max(minCx, Math.min((left + right) / 2, maxCx));
+		count.style.left = cx + "px";
 	}
 }
 

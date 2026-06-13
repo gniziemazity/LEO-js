@@ -317,7 +317,9 @@ function hitTopChart(ts, my, p, L, thT) {
 			}
 		}
 	}
-	return best || hitInteraction(ts, p);
+	return (
+		best || (_topChartVisible.interactions ? hitInteraction(ts, p) : null)
+	);
 }
 
 function hitBottomChart(ts, my, p, L, thT, restrictStudent) {

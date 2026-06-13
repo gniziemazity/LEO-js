@@ -247,6 +247,12 @@ body {
 	flex-shrink: 0;
 	display: inline-block;
 }
+html.autoload #landing-buttons {
+	visibility: hidden;
+}
+html.autoload #loading {
+	display: flex;
+}
 .leg-swatch.leg-dia {
 	width: 9px;
 	height: 9px;

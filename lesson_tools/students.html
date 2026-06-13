@@ -150,7 +150,8 @@
 			table {
 				width: 100%;
 				min-width: 100%;
-				border-collapse: collapse;
+				border-collapse: separate;
+				border-spacing: 0;
 				font-size: 12px;
 			}
 
@@ -159,7 +160,7 @@
 				border-bottom: 2px solid var(--clr-border);
 				border-right: 1px solid var(--clr-border);
 				padding: 5px 8px;
-				text-align: left;
+				text-align: center;
 				font-size: 11px !important;
 				font-family: inherit !important;
 				font-weight: 700;
@@ -171,6 +172,12 @@
 				top: 0;
 				z-index: 2;
 				user-select: none;
+			}
+			thead th.col-id,
+			thead th.col-name,
+			thead th.col-num,
+			thead th.col-mismatch {
+				text-align: left;
 			}
 			thead th.sortable {
 				cursor: pointer;
@@ -189,8 +196,10 @@
 			}
 
 			tbody tr {
-				border-bottom: 1px solid var(--clr-border-mid);
 				transition: background 0.08s;
+			}
+			tbody td {
+				border-bottom: 1px solid var(--clr-border-mid);
 			}
 
 			tbody tr.row-ai {
@@ -300,6 +309,8 @@
 			.col-comments {
 				width: 220px;
 				max-width: 220px;
+			}
+			td.col-comments {
 				padding: 0;
 				vertical-align: top;
 			}

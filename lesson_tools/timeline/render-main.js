@@ -157,18 +157,19 @@ function drawTopChart(ctx, p, L) {
 		ctx.stroke();
 	}
 
-	drawInteractionSpans(ctx, p, L, M.top, plotHtop, {
-		...Object.fromEntries(
-			Object.entries(INTERACTION_COLORS).map(([k, v]) => [k, v.spanRgba]),
-		),
-		"teacher-question": (q) =>
-			q.answered_by?.length
-				? INTERACTION_COLORS["teacher-question"].spanRgba
-				: {
-						striped: true,
-						color: INTERACTION_COLORS["teacher-question"].hex,
-					},
-	});
+	if (_topChartVisible.interactions)
+		drawInteractionSpans(ctx, p, L, M.top, plotHtop, {
+			...Object.fromEntries(
+				Object.entries(INTERACTION_COLORS).map(([k, v]) => [k, v.spanRgba]),
+			),
+			"teacher-question": (q) =>
+				q.answered_by?.length
+					? INTERACTION_COLORS["teacher-question"].spanRgba
+					: {
+							striped: true,
+							color: INTERACTION_COLORS["teacher-question"].hex,
+						},
+		});
 
 	if (cum.length > 1) {
 		const pts = cum.map((c) => [tsToX(c.ts, L), countToY(c.count, maxN, L)]);
@@ -299,7 +300,7 @@ function drawTopChart(ctx, p, L) {
 		ctx.lineTo(M.left, y);
 		ctx.stroke();
 	}
-	rotatedLabel(ctx, 22, M.top + plotHtop / 2, "Chars Typed", THEME.label);
+	rotatedLabel(ctx, 22, M.top + plotHtop / 2, "Key Presses", THEME.label);
 
 	drawTimeAxis(ctx, L, M.top + plotHtop, H);
 }

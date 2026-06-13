@@ -5,6 +5,10 @@
 		<title>Timeline</title>
 		<link rel="stylesheet" href="shared/shared.css" />
 		<link rel="stylesheet" href="timeline/timeline.css" />
+		<script>
+			if (/[?&](autoload=1|lesson=)/.test(location.search))
+				document.documentElement.classList.add("autoload");
+		</script>
 	</head>
 	<body>
 		<div id="landing">
@@ -73,6 +77,10 @@
 							></span
 							><span>Moves <span class="leg-count"></span></span
 						></label>
+						<label
+							><input type="checkbox" id="leg-interactions" /><span
+								>Interactions <span class="leg-count"></span></span
+						></label>
 					</div>
 				</div>
 				<div class="chart-section" id="chart-middle-section">
@@ -116,9 +124,11 @@
 						>
 						<label
 							title="Remove students whose lesson Obs marks them as a copier (contains '<')"
-							><input type="checkbox" id="leg-bottom-hidecopiers" /><span
-								>Hide copiers</span
-							></label
+							><input
+								type="checkbox"
+								id="leg-bottom-hidecopiers"
+								checked
+							/><span>Hide copiers</span></label
 						>
 					</div>
 					<button

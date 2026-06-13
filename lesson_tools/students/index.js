@@ -19,6 +19,7 @@ lessonNameEl.addEventListener("click", () => {
 		qs.get("paper") === "1" ||
 		(params.ids && params.ids.length > 0) ||
 		(params.star && params.star.length > 0);
+	_fingerprintParam = qs.get("fingerprint") === "1";
 	const m = qs.get("mode") || "";
 	_modeParam = m === "lesson" || m === "assignment" ? m : null;
 	if (_paperMode) {
@@ -39,6 +40,8 @@ lessonNameEl.addEventListener("click", () => {
 		hasSaved = localStorage.getItem("students.hiddenCols") != null;
 	} catch (_e) {}
 	if (hasSaved) return;
+	_hiddenCols.add("grade");
+	_hiddenCols.add("comments");
 	const anon = qs.get("anon") || "";
 	if (anon === "name") {
 		_hiddenCols.add("num");

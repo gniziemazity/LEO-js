@@ -74,14 +74,14 @@ function renderCharts(p) {
 	const middleChart = document.getElementById("chart-middle");
 	const topChart = document.getElementById("chart-top");
 	const bottomChart = document.getElementById("chart-bottom");
-	const W = middleChart.parentElement.clientWidth;
-	const Hmid = middleChart.parentElement.clientHeight;
+	const W = topChart.parentElement.clientWidth;
+	const Hmid = _midChartHidden ? 0 : middleChart.parentElement.clientHeight;
 	const Htop = topChart.parentElement.clientHeight;
 	const Hbot = _students ? bottomChart.parentElement.clientHeight : 0;
 	const L = makeLayout(p, W, Hmid, Htop, Hbot);
 	_lastL = L;
 
-	drawMiddleChart(prep(middleChart, W, Hmid), p, L);
+	if (!_midChartHidden) drawMiddleChart(prep(middleChart, W, Hmid), p, L);
 	drawTopChart(prep(topChart, W, Htop), p, L);
 	setupTopChartLegend(p);
 	if (_students) {
@@ -261,6 +261,7 @@ const _topChartVisible = {
 	anchors: true,
 	dev: true,
 	moves: true,
+	interactions: false,
 };
 
 const _bottomChartVisible = {
@@ -268,7 +269,7 @@ const _bottomChartVisible = {
 	followRank: true,
 	interactions: true,
 	barMode: true,
-	hideCopiers: false,
+	hideCopiers: true,
 };
 
 function _studentIsCopier(s) {
@@ -375,6 +376,13 @@ function setupTopChartLegend(p) {
 		{ key: "dev", count: p.devChars.length },
 		{ key: "anchors", count: p.anchors.length },
 		{ key: "moves", count: p.moves.length },
+		{
+			key: "interactions",
+			count: Object.values(p.interactions || {}).reduce(
+				(n, a) => n + a.length,
+				0,
+			),
+		},
 	];
 	for (const { key, count } of items) {
 		const cb = document.getElementById("leg-" + key);

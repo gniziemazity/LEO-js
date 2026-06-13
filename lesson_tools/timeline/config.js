@@ -37,6 +37,9 @@ let _hoveredStudent = null;
 let _hoveredCluster = null;
 let _lockedStudent = null;
 let _lastL = null;
+let _emphasisStartHms = null;
+let _emphasisEndHms = null;
+let _midChartHidden = false;
 
 const PAN_STATE = { active: false, startX: 0, startMin: 0, startMax: 0 };
 const _abortCtrls = new Map();

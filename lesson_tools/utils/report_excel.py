@@ -692,42 +692,36 @@ class ExcelReportMixin:
         return ''.join(deduped), raw
 
     def _extract_interactions(self) -> Dict[str, str]:
-        def _names_from(raw) -> List[str]:
-            if raw is None or raw == '':
+        def _ids_from(raw) -> List[str]:
+            if isinstance(raw, bool):
                 return []
+            if isinstance(raw, int):
+                return [str(raw)]
             if isinstance(raw, list):
-                return [str(s).strip() for s in raw if str(s).strip()]
-            return [p.strip() for p in str(raw).split(',') if p.strip()]
+                return [str(x) for x in raw
+                        if isinstance(x, int) and not isinstance(x, bool)]
+            return []
 
+        field_by_type = {
+            'teacher-question': ('answered_by', 'A'),
+            'student-question': ('asked_by', 'Q'),
+            'providing-help':   ('student', 'H'),
+        }
         iacts: List[Tuple[float, str, str]] = []
         for ev in self._lesson_interactions:
-            ts_s  = ev.get('timestamp', 0) / 1000
-            itype = ev.get('interaction', '')
-            if itype == 'teacher-question':
-                for n in _names_from(ev.get('answered_by')):
-                    iacts.append((ts_s, 'A', n))
-            elif itype == 'student-question':
-                for n in _names_from(ev.get('asked_by')):
-                    iacts.append((ts_s, 'Q', n))
-            elif itype == 'providing-help':
-                for n in _names_from(ev.get('student')):
-                    iacts.append((ts_s, 'H', n))
+            spec = field_by_type.get(ev.get('interaction', ''))
+            if spec is None:
+                continue
+            field_name, letter = spec
+            ts_s = ev.get('timestamp', 0) / 1000
+            for sid in _ids_from(ev.get(field_name)):
+                iacts.append((ts_s, letter, sid))
 
         iacts.sort(key=lambda x: x[0])
         per_sid: Dict[str, List[str]] = {}
-        for _, letter, nm in iacts:
-            found = self.name_to_id.get(nm)
-            if not found and nm in self.student_info:
-                found = nm
-            if not found:
-                try:
-                    candidate = str(int(nm))
-                    if candidate in self.student_info:
-                        found = candidate
-                except (ValueError, TypeError):
-                    pass
-            if found:
-                per_sid.setdefault(found, []).append(letter)
+        for _, letter, sid in iacts:
+            if sid in self.student_info:
+                per_sid.setdefault(sid, []).append(letter)
         return {s: ', '.join(v) for s, v in per_sid.items()}
 
     def _check_required(self, sid: str, has_submission: bool, code_not_found: bool):

@@ -33,11 +33,9 @@ function onHideExcludedChange(checked) {
 (function _initHideExcluded() {
 	try {
 		const saved = localStorage.getItem("hide_excluded");
-		if (saved === "1") {
-			_hideExcluded = true;
-			const cb = document.getElementById("hide-excluded");
-			if (cb) cb.checked = true;
-		}
+		_hideExcluded = saved === null ? true : saved === "1";
+		const cb = document.getElementById("hide-excluded");
+		if (cb) cb.checked = _hideExcluded;
 	} catch {}
 })();
 
@@ -52,11 +50,26 @@ function onHideCopiersChange(checked) {
 (function _initHideCopiers() {
 	try {
 		const saved = localStorage.getItem("hide_copiers");
-		if (saved === "1") {
-			_hideCopiers = true;
-			const cb = document.getElementById("hide-copiers");
-			if (cb) cb.checked = true;
-		}
+		_hideCopiers = saved === null ? true : saved === "1";
+		const cb = document.getElementById("hide-copiers");
+		if (cb) cb.checked = _hideCopiers;
+	} catch {}
+})();
+
+function onHideArtefactsChange(checked) {
+	_hideArtefacts = !!checked;
+	try {
+		localStorage.setItem("hide_artefacts", _hideArtefacts ? "1" : "0");
+	} catch {}
+	if (_students.length) renderClusters();
+}
+
+(function _initHideArtefacts() {
+	try {
+		const saved = localStorage.getItem("hide_artefacts");
+		_hideArtefacts = saved === null ? true : saved === "1";
+		const cb = document.getElementById("hide-artefacts");
+		if (cb) cb.checked = _hideArtefacts;
 	} catch {}
 })();
 const _tookCode = (entry) => (entry?.lesson_obs || "").includes("<");
@@ -110,6 +123,20 @@ function showPage(name) {
 	_refreshChartDownloadBtns();
 }
 
+function _applyInitialTab() {
+	const tab = new URLSearchParams(location.search).get("tab");
+	if (!tab) return;
+	const want = tab.trim().toLowerCase();
+	const btn = [
+		...document.querySelectorAll("#toolbar button[data-page]"),
+	].find(
+		(b) =>
+			b.dataset.page === want || b.textContent.trim().toLowerCase() === want,
+	);
+	if (btn) btn.click();
+}
+_applyInitialTab();
+
 document.getElementById("open-btn").addEventListener("click", pickFolder);
 document
 	.getElementById("open-btn-toolbar")
@@ -140,40 +167,45 @@ document
 
 (async function tryAutoLoad() {
 	showLoading(true);
-	let served = null;
 	try {
-		served = await detectServedDataSource();
-	} catch (e) {
-		console.warn("[overview] served-source detection failed:", e);
-	}
-	if (served) {
+		let served = null;
 		try {
-			await served.load();
-			await loadCourse(served);
+			served = await detectServedDataSource();
 		} catch (e) {
-			console.error("[overview] web-mode load failed:", e);
-			alert("Error loading served dataset: " + e.message);
+			console.warn("[overview] served-source detection failed:", e);
+		}
+		if (served) {
+			try {
+				await served.load();
+				await loadCourse(served);
+			} catch (e) {
+				console.error("[overview] web-mode load failed:", e);
+				alert("Error loading served dataset: " + e.message);
+			}
+			showLoading(false);
+			return;
+		}
+		const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
+		if (!handle) {
+			showLoading(false);
+			return;
+		}
+		try {
+			const ds = new FsDataSource({
+				idbKey: "lastCourseDir",
+				dbName: "grades-dash",
+			});
+			ds.rootHandle = handle;
+			ds.rootName = handle.name;
+			await _idbSet(IDB_KEY_COURSE_ROOT, handle);
+			await ds.load();
+			await loadCourse(ds);
+		} catch (e) {
+			if (e.name !== "AbortError") alert("Error: " + e.message);
 		}
 		showLoading(false);
-		return;
+	} finally {
+		document.documentElement.classList.remove("autoload");
+		_applyInitialTab();
 	}
-	const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
-	if (!handle) {
-		showLoading(false);
-		return;
-	}
-	try {
-		const ds = new FsDataSource({
-			idbKey: "lastCourseDir",
-			dbName: "grades-dash",
-		});
-		ds.rootHandle = handle;
-		ds.rootName = handle.name;
-		await _idbSet(IDB_KEY_COURSE_ROOT, handle);
-		await ds.load();
-		await loadCourse(ds);
-	} catch (e) {
-		if (e.name !== "AbortError") alert("Error: " + e.message);
-	}
-	showLoading(false);
 })();

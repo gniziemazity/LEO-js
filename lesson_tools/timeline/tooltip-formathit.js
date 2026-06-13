@@ -337,15 +337,13 @@ function formatHitSimple(hit) {
 	switch (hit.type) {
 		case "char": {
 			const ch = hit.ev.char;
-			return ch === "↩" || ch === "\n"
-				? `<span class="tt-nl">\\n</span>`
-				: escHtml(ch);
+			if (ch === "↩" || ch === "\n") return `<span class="tt-nl">\\n</span>`;
+			return ch === " " ? "␣" : escHtml(ch);
 		}
 		case "dev_char": {
 			const ch = hit.ev.char;
-			return ch === "↩" || ch === "\n"
-				? `<span class="tt-nl">\\n</span>`
-				: escHtml(ch);
+			if (ch === "↩" || ch === "\n") return `<span class="tt-nl">\\n</span>`;
+			return ch === " " ? "␣" : escHtml(ch);
 		}
 		case "delete": {
 			return escHtml(hit.ev.char);

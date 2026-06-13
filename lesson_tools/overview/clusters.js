@@ -1,9 +1,9 @@
 "use strict";
 
 const _DEFAULT_MANUAL_A_PARTITIONS = [
-	"80, 81, 78, 50, 55, 23, 82, 20, 24, 3",
-	"70, 77, 48, 72, 18, 30, 76, 67, 4, 74, 58, 34, 69, 35, 49, 8",
-	"61, 29, 25, 11, 44, 63, 71, 31, 47, 45, 36, 65, 10, 41, 38, 60, 28, 17, 62, 73, 84, 13, 59, 66, 15, 22, 53",
+	"80, 81, 78, 50, 55, 23, 82, 20, 24",
+	"70, 77, 48, 72, 18, 30, 76, 67, 4, 74, 58, 34, 69, 35, 8",
+	"61, 29, 25, 11, 44, 63, 71, 31, 47, 45, 36, 65, 10, 41, 38, 28, 17, 62, 73, 84, 59, 66, 15, 22, 53",
 	"rest",
 ].join("\n");
 
@@ -13,6 +13,13 @@ const _MANUAL_LS_KEYS = {
 const _MANUAL_DEFAULTS = {
 	A: _DEFAULT_MANUAL_A_PARTITIONS,
 };
+
+const _MANUAL_CLUSTER_DESCS = [
+	"Type 1:Follow well from the start",
+	"Type 2: Learned to follow along",
+	"We can't tell. Could be Type 1 or Type 2",
+	"Others",
+];
 
 function _clusterMode() {
 	const v = document.getElementById("cluster-mode")?.value;
@@ -274,8 +281,6 @@ function renderClusters() {
 		centroids = res.centroids;
 	}
 
-	_addProgressFollowBoxplot(body, students);
-
 	const buckets = Array.from({ length: k }, () => []);
 	students.forEach((s, i) => {
 		buckets[labels[i]].push(s);
@@ -298,6 +303,9 @@ function renderClusters() {
 		const header = el("div", "cluster-header");
 		const h3 = el("h3");
 		h3.textContent = `Cluster ${displayIdx + 1}`;
+		if (mode === "manualA" && _MANUAL_CLUSTER_DESCS[entry.idx]) {
+			h3.textContent += ` (${_MANUAL_CLUSTER_DESCS[entry.idx]})`;
+		}
 		header.appendChild(h3);
 		const meta = el("span", "cluster-meta");
 		const followVals = bucket.map(followAvg).filter((v) => v >= 0);
@@ -320,7 +328,7 @@ function renderClusters() {
 	});
 
 	const llmStudents = _students.filter((s) => s.ai_flagged);
-	if (llmStudents.length) {
+	if (llmStudents.length && !_hideArtefacts) {
 		const section = el("div", "cluster-section");
 		const header = el("div", "cluster-header");
 		const h3 = el("h3");
@@ -341,6 +349,8 @@ function renderClusters() {
 		section.appendChild(grid);
 		body.appendChild(section);
 	}
+
+	_addProgressFollowBoxplot(body, students);
 
 	_refreshChartDownloadBtns();
 }

@@ -5,6 +5,9 @@
 		<title>Course Dashboard</title>
 		<link rel="stylesheet" href="shared/shared.css" />
 		<link rel="stylesheet" href="overview/overview.css" />
+		<script>
+			document.documentElement.classList.add("autoload");
+		</script>
 	</head>
 	<body>
 		<div id="landing">
@@ -35,20 +38,10 @@
 				<input
 					type="checkbox"
 					id="hide-excluded"
+					checked
 					onchange="onHideExcludedChange(this.checked)"
 				/>
 				Hide excluded
-			</label>
-			<label
-				style="font-size: 11px; color: var(--clr-label); margin-left: 8px"
-				title="Exclude copied submissions (lesson Obs contains '<') from the follow-score charts"
-			>
-				<input
-					type="checkbox"
-					id="hide-copiers"
-					onchange="onHideCopiersChange(this.checked)"
-				/>
-				Hide copiers
 			</label>
 		</div>
 
@@ -58,9 +51,23 @@
 
 		<div id="page-stats" class="page">
 			<div class="sort-bar">
-				<button id="stats-download-btn" style="margin-left: auto">
-					⬇ Download charts
-				</button>
+				<label
+					style="
+						font-size: 11px;
+						color: var(--clr-label);
+						margin-left: auto;
+					"
+					title="Exclude copied submissions (lesson Obs contains '<') from the follow-score charts"
+				>
+					<input
+						type="checkbox"
+						id="hide-copiers"
+						checked
+						onchange="onHideCopiersChange(this.checked)"
+					/>
+					Hide copiers
+				</label>
+				<button id="stats-download-btn">⬇ Download charts</button>
 			</div>
 			<div id="stats-no-data" style="display: none">
 				Run <code>npm run overview</code> first to generate statistics.
@@ -71,13 +78,14 @@
 		<div id="page-clusters" class="page">
 			<div class="sort-bar">
 				<span>Sort:</span>
-				<button class="cluster-sort active" data-cluster-sort="id">
-					ID
-				</button>
+				<button class="cluster-sort" data-cluster-sort="id">ID</button>
 				<button class="cluster-sort" data-cluster-sort="avg-follow">
 					Avg Follow
 				</button>
-				<button class="cluster-sort" data-cluster-sort="total-follow">
+				<button
+					class="cluster-sort active"
+					data-cluster-sort="total-follow"
+				>
 					Total Follow
 				</button>
 				<button class="cluster-sort" data-cluster-sort="artefacts">
@@ -124,9 +132,23 @@
 						border-radius: 3px;
 					"
 				/>
-				<button id="progress-download-btn" style="margin-left: auto">
-					⬇ Download charts
-				</button>
+				<label
+					style="
+						font-size: 11px;
+						color: var(--clr-label);
+						margin-left: auto;
+					"
+					title="Hide assignment artefact rows on the Progress cards (and the LLM Probes group)"
+				>
+					<input
+						type="checkbox"
+						id="hide-artefacts"
+						checked
+						onchange="onHideArtefactsChange(this.checked)"
+					/>
+					Hide assignment artefacts
+				</label>
+				<button id="progress-download-btn">⬇ Download charts</button>
 			</div>
 			<div
 				id="cluster-manual-panel"

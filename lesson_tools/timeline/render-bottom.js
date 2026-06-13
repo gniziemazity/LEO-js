@@ -9,6 +9,7 @@ function drawBottomChart(ctx, p, students, L) {
 
 	if (_bottomChartVisible.barMode) {
 		_drawBottomChartBars(ctx, p, students, L);
+		_drawEmphasisRange(ctx, p, L);
 		return;
 	}
 
@@ -218,6 +219,43 @@ function drawBottomChart(ctx, p, students, L) {
 
 	drawTimeAxis(ctx, L, M.top + plotHbot, H);
 	drawBlockMistakeCounts(ctx, p, students, L);
+	_drawEmphasisRange(ctx, p, L);
+}
+
+function _drawEmphasisRange(ctx, p, L) {
+	if (!_emphasisStartHms || !_emphasisEndHms) return;
+	const sessionDate = new Date(p.sessionStart * 1000);
+	let t1 = _hmsToSeconds(_emphasisStartHms, sessionDate);
+	let t2 = _hmsToSeconds(_emphasisEndHms, sessionDate);
+	if (t1 == null || t2 == null) return;
+	if (t2 < t1) [t1, t2] = [t2, t1];
+	const { M, plotW, plotHbot } = L;
+	const x1 = tsToX(t1, L);
+	const x2 = tsToX(t2, L);
+	if (x2 < M.left || x1 > M.left + plotW) return;
+	ctx.save();
+	ctx.beginPath();
+	ctx.rect(M.left, M.top, plotW, plotHbot);
+	ctx.clip();
+	ctx.beginPath();
+	ctx.roundRect(x1, M.top + 2, Math.max(x2 - x1, 2), plotHbot - 4, 3);
+	ctx.lineWidth = 3.5;
+	ctx.strokeStyle = THEME.black;
+	ctx.stroke();
+	const tipX = x1 - 5;
+	const ay = M.top + 2 + 0.3 * (plotHbot - 4);
+	ctx.beginPath();
+	ctx.moveTo(tipX, ay);
+	ctx.lineTo(tipX - 14, ay - 10);
+	ctx.lineTo(tipX - 14, ay - 4);
+	ctx.lineTo(tipX - 34, ay - 4);
+	ctx.lineTo(tipX - 34, ay + 4);
+	ctx.lineTo(tipX - 14, ay + 4);
+	ctx.lineTo(tipX - 14, ay + 10);
+	ctx.closePath();
+	ctx.fillStyle = THEME.black;
+	ctx.fill();
+	ctx.restore();
 }
 
 function _drawBottomChartBars(ctx, p, students, L) {

@@ -11,7 +11,7 @@ function _progressShow() {
 		grade: false,
 		totalFollow: mode === "total",
 		langFollow: mode === "lang",
-		artefacts: true,
+		artefacts: !_hideArtefacts,
 	};
 }
 
@@ -124,17 +124,28 @@ function _addProgressFollowBoxplot(body, students) {
 	body.appendChild(section);
 }
 
+const _EMPH_IDS = (() => {
+	try {
+		return new Set((parseToolParams().ids || []).map((x) => String(x)));
+	} catch (_e) {
+		return new Set();
+	}
+})();
+
 function _buildStudentProgressCard(s, labels) {
 	const card = el(
 		"div",
 		"prog-card" +
 			(s.passed_course ? "" : " not-passed") +
-			(s.ai_flagged ? " row-ai" : ""),
+			(s.ai_flagged ? " row-ai" : "") +
+			(_EMPH_IDS.has(String(s.id)) ? " prog-emph" : ""),
 	);
 	const h4 = el("h4");
-	const titleParts = [studentLabelWithId(s)];
 	const avgF = followAvg(s);
-	if (avgF >= 0) titleParts.push(`follow ${avgF.toFixed(1)}%`);
+	const nameLabel =
+		studentLabelWithId(s) +
+		(avgF >= 0 ? ` (average ${avgF.toFixed(1)}%)` : "");
+	const titleParts = [nameLabel];
 	const avgG = s.avg_assignments;
 	if (avgG != null) titleParts.push(`grade ${avgG.toFixed(2)}`);
 	h4.textContent = titleParts.join(" · ");

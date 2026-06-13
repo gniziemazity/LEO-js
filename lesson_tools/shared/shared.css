@@ -402,6 +402,17 @@ body {
 	font-weight: bold;
 	text-decoration: underline;
 }
+.ia-box {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 0 5px;
+	margin-right: 3px;
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+	background: var(--clr-surface);
+	white-space: nowrap;
+}
 .tt-grid {
 	display: grid;
 	grid-template-columns: max-content max-content minmax(0, 1fr);

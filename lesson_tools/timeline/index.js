@@ -202,11 +202,11 @@ async function loadJsonData(file, data) {
 	landingEl.style.display = "none";
 	document.getElementById("main").style.display = "flex";
 
-	scheduleRender();
 	if (_pendingXlsx.length) {
-		loadXlsxFiles(_pendingXlsx);
+		await loadXlsxFiles(_pendingXlsx);
 		_pendingXlsx = [];
 	}
+	scheduleRender();
 	saveLessonStatsCsv();
 }
 
@@ -363,9 +363,27 @@ async function _tryLoadTimelineFromUrlParams() {
 
 (async function () {
 	const qs = new URLSearchParams(location.search);
+	const bm = qs.get("barmode");
+	if (bm === "0" || bm === "1") _bottomChartVisible.barMode = bm === "1";
+	_emphasisStartHms = qs.get("start");
+	_emphasisEndHms = qs.get("end");
+	if (qs.get("interactions") === "1") {
+		_topChartVisible.interactions = true;
+		const ic = document.getElementById("leg-interactions");
+		if (ic) ic.checked = true;
+	}
+	if (qs.get("midchart") === "0") {
+		_midChartHidden = true;
+		const sec = document.getElementById("chart-middle-section");
+		if (sec) sec.style.display = "none";
+	}
 	const params = parseToolParams();
 	const wantsAutoload = qs.get("autoload") === "1" || params.lesson != null;
-	if (!wantsAutoload) return;
+	if (!wantsAutoload) {
+		document.documentElement.classList.remove("autoload");
+		return;
+	}
+	document.documentElement.classList.add("autoload");
 	await waitForXlsxBundle();
 	let ok = false;
 	if (params.lesson) {
@@ -377,6 +395,8 @@ async function _tryLoadTimelineFromUrlParams() {
 	}
 	if (!ok) ok = await _tryAutoLoadTimeline();
 	if (!ok) {
+		showLoading(false);
+		document.documentElement.classList.remove("autoload");
 		const btn = document.createElement("button");
 		btn.className = "landing-btn";
 		btn.textContent = "🔄 Load Lesson";
