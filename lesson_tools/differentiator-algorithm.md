@@ -110,7 +110,9 @@ or `commentRangesOf(profile, text)` (JS:
 Each language's detect regex and any embedded-tag rules live as data on
 the profile JSON ([javascript.json](../lesson_tools/languages/javascript.json),
 [css.json](../lesson_tools/languages/css.json),
-[html.json](../lesson_tools/languages/html.json)).
+[html.json](../lesson_tools/languages/html.json),
+[python.json](../lesson_tools/languages/python.json),
+[plaintext.json](../lesson_tools/languages/plaintext.json)).
 
 Behaviour by extension (preserved exactly through the migration):
 
@@ -130,10 +132,10 @@ Behaviour by extension (preserved exactly through the migration):
 This means a stray `/* … */` written by a student in HTML body text
 (invalid HTML — would render as visible text) shows up in the diff as a
 cluster of `extra` marks rather than being silently swallowed as
-"comment". The Python side keeps `_legacy_comment_ranges` as a parity
-oracle; `lesson_tools/test_languages.py::TestCommentRangesParity` walks
-every fixture file and asserts byte-identical output between the legacy
-implementation and the profile-driven path.
+"comment". Comment-range behaviour is exercised by the language-profile
+tests in `lesson_tools/test_languages.py` (e.g. `TestPythonProfile`,
+which checks `comment_ranges` / `_comment_ranges` output against fixture
+text).
 
 ---
 
@@ -831,10 +833,10 @@ anchor on every missing mark at build time (in an internal field
 `_native_insert_at` that is stripped before write). The post-pass
 copies it into `insert_at` for unpaired missings:
 
-| Method      | Native anchor source                                                                                                                                                                                                                                       |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lcs`       | For a `delete (i1,i2,j1,j2)` or `replace (i1,i2,j1,j2)` opcode, every teacher token in `[i1,i2)` anchors at `s_nc[j1].start_char`.                                                                                                                         |
-| `git`       | Within a paired-but-replaced line, `_diff_line_pair_tokens` uses the same per-line `j1` anchor. For tokens on an unpaired teacher line, the anchor is the start of the next paired student line in the file alignment (or end-of-file if there isn't one). |
+| Method | Native anchor source                                                                                                                                                                                                                                       |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lcs`  | For a `delete (i1,i2,j1,j2)` or `replace (i1,i2,j1,j2)` opcode, every teacher token in `[i1,i2)` anchors at `s_nc[j1].start_char`.                                                                                                                         |
+| `git`  | Within a paired-but-replaced line, `_diff_line_pair_tokens` uses the same per-line `j1` anchor. For tokens on an unpaired teacher line, the anchor is the start of the next paired student line in the file alignment (or end-of-file if there isn't one). |
 
 LEO has no native concept of an insert anchor — its matching is
 per-token-type, not order-preserving — so LEO marks fall through
@@ -1118,12 +1120,12 @@ Colour scheme (defined as `--clr-mark-*` variables in
 `shared/shared.css`, read once into `MARK_COLORS` by `_cssVar()` in
 `shared/diff-utils.js` so the JS palette and the CSS rules stay in sync):
 
-| Label         | CSS variable         | Default        | Meaning                                                                             |
-| ------------- | -------------------- | -------------- | ----------------------------------------------------------------------------------- |
-| `missing`     | `--clr-mark-missing` | Red `#e00`     | In teacher reference, absent from student                                           |
-| `extra`       | `--clr-mark-extra`   | Blue `#00c`    | In student, never typed by teacher                                                  |
-| `ghost_extra` | `--clr-mark-ghost`   | Cyan `#3aa0e0` | In student; teacher typed it then deleted it                                        |
-| `comment`     | `--clr-mark-comment` | Green `#4a4`   | Token in a comment (all methods; comments are excluded from matching)              |
+| Label         | CSS variable         | Default        | Meaning                                                               |
+| ------------- | -------------------- | -------------- | --------------------------------------------------------------------- |
+| `missing`     | `--clr-mark-missing` | Red `#e00`     | In teacher reference, absent from student                             |
+| `extra`       | `--clr-mark-extra`   | Blue `#00c`    | In student, never typed by teacher                                    |
+| `ghost_extra` | `--clr-mark-ghost`   | Cyan `#3aa0e0` | In student; teacher typed it then deleted it                          |
+| `comment`     | `--clr-mark-comment` | Green `#4a4`   | Token in a comment (all methods; comments are excluded from matching) |
 
 For line-based methods, line backgrounds use a faded version of the same
 colours (`--clr-mark-missing-bg` ≈ `rgba(220,0,0,0.13)`,

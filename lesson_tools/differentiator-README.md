@@ -46,8 +46,8 @@ view used inside the students tool).
 | **Left panel** | The **teacher** reference (labelled *Starter Code* in embed mode). |
 | **Right panel** | The **student**'s submission, with the follow **%** beside the name. |
 | **File tabs** | One per code file, on each panel header. The active HTML tab drives the preview. |
-| **◀ A / B ▶** (student header) | Previous / next student, with a position counter. |
-| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `⇲ Padding`, `Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **📋 Copy Diff**, **💾 Download**, and **🪄 Corrections** buttons. |
+| **← A / B →** (student header) | Previous / next student, with a position counter (current / total). |
+| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `↕️ Padding`, `🔢 Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **📋 Copy Diff**, **💾 Download**, and **🪄 Corrections** buttons. |
 
 ---
 
@@ -152,14 +152,17 @@ shows:
 
 - **Full Code** / **Step-by-step** — the corrected file, or a numbered list of
   the individual fixes.
+- A **Fix Indentation** checkbox (toolbar) re-indents the corrected code for
+  display; turn it off to keep the student's original indentation.
 - **Result After Corrections** — a live render (iframe) of the corrected program,
   so you can confirm it works.
 - A **token-parity line** below the Corrections button, updated live:
-  - 🟢 **Same tokens & order** — the corrections reproduce the teacher's
+  - **✓ Same tokens & order** (green) — the corrections reproduce the teacher's
     non-comment tokens exactly.
-  - 🟠 **Same tokens · reordered** — same tokens, different (still-valid) order.
-  - 🔴 **Δ +N · −M** — the corrections don't reproduce the teacher's tokens yet
-    (N surplus, M missing). Aim for green/orange before you trust the marks.
+  - **✓ Same tokens · reordered** (orange) — same tokens, different (still-valid)
+    order.
+  - **Δ +N · −M** (red) — the corrections don't reproduce the teacher's tokens
+    yet (N surplus, M missing). Aim for green/orange before you trust the marks.
 
 Export the corrections as a **📸 Screenshot** (image — students can't copy-paste
 it) or **🌐 HTML** (paste into a Moodle comment), or just use them as a scaffold
@@ -184,8 +187,8 @@ In the grading pipeline, place the saved file in the student's
 
 | Button | Effect |
 | --- | --- |
-| `⇲ Padding` | Line-align the two panels so matching lines sit across from each other. |
-| `Line №` | Show line numbers. |
+| `↕️ Padding` | Line-align the two panels so matching lines sit across from each other. |
+| `🔢 Line №` | Show line numbers. |
 | `🎨 Lang color` | Color missing marks by language (HTML / CSS / JS / Py) instead of one color. |
 | `⬜ Preview` | Render the active HTML file instead of showing its source. |
 
