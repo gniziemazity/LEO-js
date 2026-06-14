@@ -348,6 +348,35 @@
 			</div>
 		</div>
 
+		<div id="studentsModal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2>Add Students</h2>
+					<button id="closeStudentsModal" class="close-btn">
+						&times;
+					</button>
+				</div>
+				<div class="modal-body">
+					<p class="students-help">
+						Paste one student name per line. LEO writes a sorted
+						<code>students.csv</code> to the course with a random alter
+						ego per student.
+					</p>
+					<textarea
+						id="studentsTextarea"
+						rows="14"
+						placeholder="Frank Castle&#10;Eddie Brock&#10;Bruce Wayne"
+					></textarea>
+					<div id="studentsStatus"></div>
+				</div>
+				<div class="modal-footer">
+					<button id="saveStudentsBtn" class="btn-primary">
+						Save Students
+					</button>
+				</div>
+			</div>
+		</div>
+
 		<script src="./renderer/renderer.js"></script>
 	</body>
 </html>

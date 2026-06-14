@@ -17,7 +17,15 @@ class LessonManager {
 
 			try {
 				const parsed = JSON.parse(data);
-				this.data = LessonManager._migrateBlocks(parsed);
+				const migrated = LessonManager._migrateBlocks(parsed);
+				if (!Array.isArray(migrated)) {
+					callback(
+						new Error("Not a valid LEO plan (expected a list of blocks)"),
+						null,
+					);
+					return;
+				}
+				this.data = migrated;
 				this.currentFilePath = filePath;
 				this.hasUnsavedChanges = false;
 				callback(null, this.data);
@@ -61,14 +69,16 @@ class LessonManager {
 		});
 	}
 
-	create(filePath, callback) {
-		const defaultData = [
+	static defaultBlocks() {
+		return [
 			{ type: "comment", text: "Enter lesson title" },
 			{ type: "code", text: "// Enter first code snippet" },
 		];
+	}
 
+	create(filePath, callback) {
 		this.currentFilePath = filePath;
-		this.data = defaultData;
+		this.data = LessonManager.defaultBlocks();
 		this.hasUnsavedChanges = true;
 
 		this.save(callback);

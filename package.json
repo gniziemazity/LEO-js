@@ -34,6 +34,13 @@
 				"description": "LEO Lesson Plan",
 				"icon": "src/shared/icon.ico",
 				"role": "Editor"
+			},
+			{
+				"ext": "leo-course",
+				"name": "LEO Course",
+				"description": "LEO Course",
+				"icon": "src/shared/icon.ico",
+				"role": "Editor"
 			}
 		],
 		"files": [

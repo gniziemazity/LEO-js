@@ -9,6 +9,8 @@ const {
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
+const http = require("http");
 const { WINDOW_CONFIG } = require("../shared/constants");
 const state = require("./state");
 const HotkeyManager = require("./hotkey-manager");
@@ -402,97 +404,179 @@ function setMenuMode(mode) {
 	createApplicationMenu();
 }
 
+let courseMenuState = { open: false, plans: [], currentPath: "" };
+
+const LESSON_TOOLS = [
+	{ label: "Timeline", file: "timeline.html", perLesson: true },
+	{ label: "Simulator", file: "simulator.html", perLesson: true },
+	{ label: "Students", file: "students.html", perLesson: true },
+	{ label: "Overview", file: "overview.html", perLesson: false },
+];
+const lessonToolWindows = new Map();
+
 function createApplicationMenu() {
 	const currentMode = settingsManager.get("mode") || "record";
 
-	Menu.setApplicationMenu(
-		Menu.buildFromTemplate([
-			{
-				label: "File",
-				submenu: [
-					{
-						label: "New Plan",
-						accelerator: "CmdOrCtrl+N",
-						click: () => state.mainWindow.webContents.send("new-plan"),
+	const template = [
+		{
+			label: "File",
+			submenu: [
+				{
+					label: "New Course",
+					click: () => state.mainWindow.webContents.send("new-course"),
+				},
+				{
+					label: "Open Course",
+					click: () => state.mainWindow.webContents.send("open-course"),
+				},
+				{
+					label: "Save Course",
+					click: () => state.mainWindow.webContents.send("save-course"),
+				},
+				{ type: "separator" },
+				...(courseMenuState.open
+					? []
+					: [
+							{
+								label: "New Plan",
+								accelerator: "CmdOrCtrl+N",
+								click: () =>
+									state.mainWindow.webContents.send("new-plan"),
+							},
+						]),
+				{
+					label: "Save Plan",
+					accelerator: "CmdOrCtrl+S",
+					click: () => state.mainWindow.webContents.send("save-plan"),
+				},
+				...(courseMenuState.open
+					? []
+					: [
+							{
+								label: "Load Plan",
+								accelerator: "CmdOrCtrl+O",
+								click: () =>
+									state.mainWindow.webContents.send("load-plan"),
+							},
+						]),
+				{ type: "separator" },
+				{
+					label: "Add Students…",
+					click: () => state.mainWindow.webContents.send("add-students"),
+				},
+				{ type: "separator" },
+				{
+					label: "Exit",
+					accelerator: "CmdOrCtrl+Q",
+					click: () => {
+						app.isQuitting = true;
+						app.quit();
 					},
-					{
-						label: "Save Plan",
-						accelerator: "CmdOrCtrl+S",
-						click: () => state.mainWindow.webContents.send("save-plan"),
-					},
-					{
-						label: "Load Plan",
-						accelerator: "CmdOrCtrl+O",
-						click: () => state.mainWindow.webContents.send("load-plan"),
-					},
-					{ type: "separator" },
-					{
-						label: "Exit",
-						accelerator: "CmdOrCtrl+Q",
-						click: () => {
-							app.isQuitting = true;
-							app.quit();
-						},
-					},
-				],
-			},
-			{
-				label: "Edit",
-				submenu: [
-					{
-						label: "Undo",
-						accelerator: "CmdOrCtrl+Z",
-						click: () => state.mainWindow.webContents.send("undo"),
-					},
-					{
-						label: "Redo",
-						accelerator: "CmdOrCtrl+Shift+Z",
-						click: () => state.mainWindow.webContents.send("redo"),
-					},
-					{ type: "separator" },
-					{
-						label: "Settings",
-						accelerator: "CmdOrCtrl+,",
-						click: () =>
-							state.mainWindow.webContents.send("open-settings"),
-					},
-					{ type: "separator" },
-					{
-						label: "Toggle Developer Tools",
-						accelerator: "CmdOrCtrl+I",
-						click: () => state.mainWindow.webContents.toggleDevTools(),
-					},
-				],
-			},
-			{
-				label: "Mode",
-				submenu: [
-					{
-						label: "Record",
-						type: "radio",
-						checked: currentMode === "record",
-						click: () => setMenuMode("record"),
-					},
-					{
-						label: "Classroom",
-						type: "radio",
-						checked: currentMode === "classroom",
-						click: () => setMenuMode("classroom"),
-					},
-					{
-						label: "Scientific",
-						type: "radio",
-						checked: currentMode === "scientific",
-						click: () => setMenuMode("scientific"),
-					},
-				],
-			},
-		]),
-	);
+				},
+			],
+		},
+		{
+			label: "Edit",
+			submenu: [
+				{
+					label: "Undo",
+					accelerator: "CmdOrCtrl+Z",
+					click: () => state.mainWindow.webContents.send("undo"),
+				},
+				{
+					label: "Redo",
+					accelerator: "CmdOrCtrl+Shift+Z",
+					click: () => state.mainWindow.webContents.send("redo"),
+				},
+				{ type: "separator" },
+				{
+					label: "Settings",
+					accelerator: "CmdOrCtrl+,",
+					click: () => state.mainWindow.webContents.send("open-settings"),
+				},
+				{ type: "separator" },
+				{
+					label: "Toggle Developer Tools",
+					accelerator: "CmdOrCtrl+I",
+					click: () => state.mainWindow.webContents.toggleDevTools(),
+				},
+			],
+		},
+		{
+			label: "Mode",
+			submenu: [
+				{
+					label: "Record",
+					type: "radio",
+					checked: currentMode === "record",
+					click: () => setMenuMode("record"),
+				},
+				{
+					label: "Classroom",
+					type: "radio",
+					checked: currentMode === "classroom",
+					click: () => setMenuMode("classroom"),
+				},
+				{
+					label: "Scientific",
+					type: "radio",
+					checked: currentMode === "scientific",
+					click: () => setMenuMode("scientific"),
+				},
+			],
+		},
+		{
+			label: "Tools",
+			submenu: [
+				{ label: "VSCode", click: () => launchVSCode() },
+				{ label: "Chrome", click: () => launchExternalApp("chrome") },
+				{ type: "separator" },
+				...LESSON_TOOLS.map((t) => ({
+					label: t.label,
+					click: () => openLessonTool(t),
+				})),
+			],
+		},
+	];
+
+	if (courseMenuState.open) {
+		const planItems = courseMenuState.plans.length
+			? courseMenuState.plans.map((p) => ({
+					label: p.name,
+					type: "radio",
+					checked: p.path === courseMenuState.currentPath,
+					click: () =>
+						state.mainWindow.webContents.send("open-plan-file", p.path),
+				}))
+			: [{ label: "(no plans yet)", enabled: false }];
+		template.splice(1, 0, {
+			label: "Plans",
+			submenu: [
+				{
+					label: "Add Plan",
+					accelerator: "CmdOrCtrl+N",
+					click: () => state.mainWindow.webContents.send("new-plan"),
+				},
+				{ type: "separator" },
+				...planItems,
+			],
+		});
+	}
+
+	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 ipcMain.on("toggle-window", () => toggleMainWindow());
 state.onToggleWindow = toggleMainWindow;
+
+ipcMain.on("set-course-menu", (event, payload) => {
+	courseMenuState = {
+		open: !!(payload && payload.open),
+		plans: (payload && payload.plans) || [],
+		currentPath: (payload && payload.currentPath) || "",
+	};
+	createApplicationMenu();
+});
 
 ipcMain.handle("load-students-file", async (event, lessonFilePath) => {
 	if (!lessonFilePath) return [];
@@ -977,26 +1061,44 @@ ipcMain.on(
 			state.mainWindow.webContents.send("auto-typing-finished");
 	},
 );
-ipcMain.handle("show-save-dialog", async () => {
+ipcMain.handle("show-save-dialog", async (event, opts = {}) => {
 	const result = await dialog.showSaveDialog(state.mainWindow, {
 		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
-		defaultPath: "lesson.leo",
+		defaultPath: opts.defaultPath || "lesson.leo",
+		title: opts.title || undefined,
 	});
 	return result.filePath;
 });
-ipcMain.handle("show-open-dialog", async () => {
+ipcMain.handle("show-open-dialog", async (event, opts = {}) => {
 	const result = await dialog.showOpenDialog(state.mainWindow, {
 		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
 		properties: ["openFile"],
+		defaultPath: opts.defaultPath || undefined,
 	});
 	return result.filePaths[0];
+});
+ipcMain.handle("show-open-course-dialog", async () => {
+	const result = await dialog.showOpenDialog(state.mainWindow, {
+		title: "Open Course Folder",
+		properties: ["openDirectory"],
+	});
+	return result.filePaths[0];
+});
+ipcMain.handle("show-create-course-dialog", async () => {
+	const result = await dialog.showSaveDialog(state.mainWindow, {
+		title: "New Course",
+		buttonLabel: "Create Course",
+		defaultPath: "MyCourse",
+		properties: ["createDirectory"],
+	});
+	return result.filePath;
 });
 
 ipcMain.on("update-window-title", (event, titleData) => {
 	if (!state.mainWindow) return;
-	let fileName, studentCount;
+	let fileName, studentCount, courseName;
 	if (typeof titleData === "object" && titleData !== null)
-		({ fileName, studentCount } = titleData);
+		({ fileName, studentCount, courseName } = titleData);
 	else {
 		fileName = titleData;
 		studentCount = null;
@@ -1005,12 +1107,89 @@ ipcMain.on("update-window-title", (event, titleData) => {
 	const hasUnsaved = typeof fileName === "string" && fileName.endsWith(" *");
 	const cleanName = hasUnsaved ? fileName.slice(0, -2) : fileName;
 	state.mainWindow.setTitle(
-		buildWindowTitle(cleanName, studentCount, hasUnsaved),
+		buildWindowTitle(cleanName, studentCount, hasUnsaved, courseName),
 	);
 });
 
 const { shell } = require("electron");
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
+
+const EXTERNAL_APPS = {
+	vscode: {
+		name: "VSCode",
+		candidates: [
+			path.join(
+				process.env.LOCALAPPDATA || "",
+				"Programs/Microsoft VS Code/Code.exe",
+			),
+			"C:/Program Files/Microsoft VS Code/Code.exe",
+			"C:/Program Files (x86)/Microsoft VS Code/Code.exe",
+		],
+		fallback: "code",
+	},
+	chrome: {
+		name: "Chrome",
+		candidates: [
+			"C:/Program Files/Google/Chrome/Application/chrome.exe",
+			"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+			path.join(
+				process.env.LOCALAPPDATA || "",
+				"Google/Chrome/Application/chrome.exe",
+			),
+		],
+		fallback: 'start "" chrome',
+	},
+};
+
+function launchExternalApp(key, args = []) {
+	const cfg = EXTERNAL_APPS[key];
+	if (!cfg) return;
+	const exe = cfg.candidates.find((p) => p && fs.existsSync(p));
+	const onError = () =>
+		dialog.showErrorBox("LEO", `Could not launch ${cfg.name}.`);
+	try {
+		let child;
+		if (exe) {
+			child = spawn(exe, args, { detached: true, stdio: "ignore" });
+		} else {
+			const line = [
+				cfg.fallback,
+				...args.map((a) => (a.startsWith("-") ? a : `"${a}"`)),
+			].join(" ");
+			child = spawn(line, { detached: true, stdio: "ignore", shell: true });
+		}
+		child.on("error", onError);
+		child.unref();
+	} catch (_) {
+		onError();
+	}
+}
+
+function currentCourseContext() {
+	const lessonPath = courseMenuState.currentPath;
+	if (!lessonPath || !courseMenuState.open) return null;
+	const plansDir = path.dirname(lessonPath);
+	if (path.basename(plansDir).toLowerCase() !== "plans") return null;
+	return {
+		courseRoot: path.dirname(plansDir),
+		lesson: path.basename(lessonPath).replace(/\.(leo|json)$/i, ""),
+	};
+}
+
+function lessonWorkspaceFolder() {
+	const ctx = currentCourseContext();
+	if (!ctx) return null;
+	const folder = path.join(ctx.courseRoot, "lessons", ctx.lesson, ctx.lesson);
+	try {
+		fs.mkdirSync(folder, { recursive: true });
+	} catch (_) {}
+	return folder;
+}
+
+function launchVSCode() {
+	const folder = lessonWorkspaceFolder();
+	launchExternalApp("vscode", folder ? [folder] : []);
+}
 
 let _pythonCmd = null;
 function resolvePython() {
@@ -1028,8 +1207,144 @@ function resolvePython() {
 	return _pythonCmd;
 }
 
+const _LESSON_TOOLS_PORT = 7891;
+const _LESSON_TOOLS_SERVER = path.join(
+	__dirname,
+	"../../lesson_tools/server.js",
+);
+const _GRADES_SESSION_FILE = path.join(
+	__dirname,
+	"../../lesson_tools/.grades_session.json",
+);
+
+function writeGradesSession(folder) {
+	try {
+		fs.writeFileSync(
+			_GRADES_SESSION_FILE,
+			JSON.stringify({ folder }),
+			"utf8",
+		);
+	} catch (_) {}
+}
+
+function lessonToolUrl(tool) {
+	const ctx = currentCourseContext();
+	if (ctx) writeGradesSession(ctx.courseRoot);
+	let url = `http://127.0.0.1:${_LESSON_TOOLS_PORT}/${tool.file}`;
+	if (ctx && tool.perLesson) {
+		url += `?lesson=${encodeURIComponent(ctx.lesson)}&group=lessons`;
+	}
+	return url;
+}
+
+const _LESSON_TOOL_PAGES = new Set([
+	"timeline.html",
+	"simulator.html",
+	"students.html",
+	"differentiator.html",
+	"overview.html",
+]);
+
+function isLessonToolPageUrl(url) {
+	try {
+		const u = new URL(url);
+		return (
+			u.hostname === "127.0.0.1" &&
+			String(u.port) === String(_LESSON_TOOLS_PORT) &&
+			_LESSON_TOOL_PAGES.has(u.pathname.replace(/^\//, "").toLowerCase())
+		);
+	} catch (_) {
+		return false;
+	}
+}
+
+function wireLessonToolNav(win, tool) {
+	win.webContents.setWindowOpenHandler(({ url }) => {
+		if (isLessonToolPageUrl(url)) {
+			setImmediate(() => {
+				if (!win.isDestroyed()) win.loadURL(url);
+			});
+		} else if (/^https?:\/\//i.test(url)) {
+			shell.openExternal(url);
+		}
+		return { action: "deny" };
+	});
+	win.webContents.on("did-navigate", (_e, navUrl) => {
+		const entry = lessonToolWindows.get(tool.file);
+		if (entry && entry.win === win) entry.url = navUrl;
+	});
+	const nav = () => win.webContents.navigationHistory;
+	win.on("app-command", (_e, cmd) => {
+		if (cmd === "browser-backward" && nav().canGoBack()) nav().goBack();
+		else if (cmd === "browser-forward" && nav().canGoForward())
+			nav().goForward();
+	});
+	win.webContents.on("before-input-event", (_e, input) => {
+		if (input.type !== "keyDown" || !input.alt) return;
+		if (input.key === "ArrowLeft" && nav().canGoBack()) nav().goBack();
+		else if (input.key === "ArrowRight" && nav().canGoForward())
+			nav().goForward();
+	});
+}
+
+function ensureLessonToolsServer(cb) {
+	const onUnreachable = () => {
+		try {
+			spawn(process.execPath, [_LESSON_TOOLS_SERVER], {
+				detached: true,
+				stdio: "ignore",
+				env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+			}).unref();
+		} catch (_) {}
+		setTimeout(cb, 400);
+	};
+	const req = http
+		.get(`http://127.0.0.1:${_LESSON_TOOLS_PORT}/`, (res) => {
+			res.destroy();
+			cb();
+		})
+		.on("error", onUnreachable);
+	req.setTimeout(500, () => {
+		req.destroy();
+		onUnreachable();
+	});
+}
+
+function openLessonTool(tool) {
+	const url = lessonToolUrl(tool);
+	ensureLessonToolsServer(() => {
+		const entry = lessonToolWindows.get(tool.file);
+		if (entry && !entry.win.isDestroyed()) {
+			if (entry.url !== url) {
+				entry.win.loadURL(url);
+				entry.url = url;
+			}
+			if (entry.win.isMinimized()) entry.win.restore();
+			entry.win.show();
+			entry.win.focus();
+			return;
+		}
+		const win = new BrowserWindow({
+			width: 1280,
+			height: 860,
+			title: tool.label,
+			icon: path.join(__dirname, "../shared/icon.ico"),
+			autoHideMenuBar: true,
+			webPreferences: {
+				nodeIntegration: false,
+				contextIsolation: true,
+			},
+		});
+		win.setMenu(null);
+		wireLessonToolNav(win, tool);
+		win.loadURL(url);
+		win.on("closed", () => lessonToolWindows.delete(tool.file));
+		lessonToolWindows.set(tool.file, { win, url });
+	});
+}
+
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
-const _VIS_DATA = path.join(__dirname, "../../lesson_tools/.last_vis_data.js");
+const _VIS_DATA = path.join(os.tmpdir(), "leo-last-vis-data.js");
 const _VIS_PRELOAD = path.join(__dirname, "vis-preload.js");
 
 function openLogVisualizer(logFilePath) {

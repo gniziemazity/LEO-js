@@ -7,6 +7,8 @@ const LessonRenderer = require("./renderer/lesson-renderer");
 const BlockEditor = require("./renderer/block-editor");
 const UndoManager = require("./renderer/undo-manager");
 const FileOperations = require("./renderer/file-operations");
+const CourseManager = require("./renderer/course-manager");
+const CourseUI = require("./renderer/course-ui");
 const SettingsUI = require("./renderer/settings-ui");
 const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
@@ -34,13 +36,16 @@ const blockEditor = new BlockEditor(
 	lessonRenderer,
 	undoManager,
 );
+const courseManager = new CourseManager();
 const fileOperations = new FileOperations(
 	lessonManager,
 	logManager,
 	cursorManager,
 	lessonRenderer,
 	undoManager,
+	courseManager,
 );
+const courseUI = new CourseUI(courseManager, fileOperations, lessonManager);
 const settingsUI = new SettingsUI();
 const specialKeys = new SpecialKeys(uiManager, blockEditor, lessonManager);
 const typingController = new TypingController(
@@ -117,6 +122,8 @@ fileOperations.onStudentsLoaded = (students) => {
 	ipcRenderer.send("broadcast-students", students);
 };
 
+fileOperations.onLessonLoaded = () => courseUI.refresh();
+
 let _fireworksSoundUrl = null;
 function playFireworksSound() {
 	if (!_fireworksSoundUrl) {
@@ -141,7 +148,10 @@ window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	settingsUI.initialize();
 	specialKeys.initialize();
-	fileOperations.loadLastLesson();
+	const coursePlanLoaded = courseUI.init();
+	if (!coursePlanLoaded) {
+		fileOperations.loadLastLesson();
+	}
 	setupEventListeners();
 	setupGlobalIpcListeners();
 	setupUndoRedoShortcuts();
@@ -211,9 +221,13 @@ function setupGlobalIpcListeners() {
 		applyMode(s.mode || "record");
 		settingsUI.close();
 	});
-	ipcRenderer.on("new-plan", () => fileOperations.createNewLesson());
+	ipcRenderer.on("new-plan", () => courseUI.newPlan());
 	ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
-	ipcRenderer.on("load-plan", () => fileOperations.loadLesson());
+	ipcRenderer.on("load-plan", () => courseUI.loadPlan());
+	ipcRenderer.on("new-course", () => courseUI.newCourse());
+	ipcRenderer.on("open-course", () => courseUI.openCourse());
+	ipcRenderer.on("save-course", () => courseUI.saveCourse());
+	ipcRenderer.on("add-students", () => courseUI.showStudents());
 	ipcRenderer.on("open-plan-file", (e, filePath) =>
 		fileOperations.loadFilePath(filePath),
 	);

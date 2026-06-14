@@ -672,6 +672,31 @@ body.mode-record .key-btn[data-char="⚓"] {
 	gap: 10px;
 }
 
+#studentsModal .modal-footer {
+	justify-content: flex-end;
+}
+
+#studentsTextarea {
+	width: 100%;
+	box-sizing: border-box;
+	font-family: Consolas, monospace;
+	font-size: 13px;
+	resize: vertical;
+}
+
+.students-help {
+	margin: 0 0 10px;
+	font-size: 13px;
+	color: var(--clr-muted, #666);
+}
+
+#studentsStatus {
+	margin-top: 10px;
+	min-height: 18px;
+	font-size: 13px;
+	color: var(--clr-muted, #666);
+}
+
 .btn-primary,
 .btn-secondary {
 	padding: 10px 20px;

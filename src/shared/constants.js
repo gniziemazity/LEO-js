@@ -66,11 +66,14 @@ function getBlockSubtype(text) {
 	return null;
 }
 
-function buildWindowTitle(fileName, studentCount, hasUnsaved) {
+function buildWindowTitle(fileName, studentCount, hasUnsaved, courseName) {
 	const baseTitle = "LEO";
-	if (!fileName || fileName.trim() === "") return baseTitle;
-	const displayName = fileName.replace(/\.json$/i, "");
-	let title = `${baseTitle} - ${displayName}`;
+	const parts = [];
+	if (courseName && courseName.trim() !== "") parts.push(courseName.trim());
+	if (fileName && fileName.trim() !== "")
+		parts.push(fileName.replace(/\.(leo|json)$/i, ""));
+	if (parts.length === 0) return baseTitle;
+	let title = `${baseTitle} - ${parts.join(" / ")}`;
 	if (studentCount !== null && studentCount !== undefined)
 		title += ` [${studentCount} students]`;
 	if (hasUnsaved) title += " *";

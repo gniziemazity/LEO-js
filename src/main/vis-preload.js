@@ -3,13 +3,11 @@
 const { contextBridge } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 function loadVisData() {
 	try {
-		const dataPath = path.join(
-			__dirname,
-			"../../lesson_tools/.last_vis_data.js",
-		);
+		const dataPath = path.join(os.tmpdir(), "leo-last-vis-data.js");
 		const content = fs.readFileSync(dataPath, "utf8");
 		const m = content.match(/window\.__LOG_DATA__\s*=\s*([\s\S]+?);\s*$/);
 		if (!m) return null;
