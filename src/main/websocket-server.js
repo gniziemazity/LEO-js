@@ -76,6 +76,9 @@ class LEOBroadcastServer extends EventEmitter {
 					console.error("Error parsing client message:", err);
 				}
 			});
+			ws.on("close", () => {
+				this.emit("client-disconnected");
+			});
 		});
 
 		this.server.listen(this.port, () => {
@@ -233,7 +236,10 @@ class LEOBroadcastServer extends EventEmitter {
 		if (type === "toggle-active") {
 			this.emit("client-toggle-active");
 		} else if (type === "jump-to") {
-			this.emit("client-jump-to", data.stepIndex);
+			this.emit(
+				"client-jump-to",
+				Math.max(0, Math.round(clampNum(data.stepIndex, 1e7))),
+			);
 		} else if (type === "interaction") {
 			this.emit("client-interaction", data.interactionType);
 		} else if (type === "student-answered") {
@@ -313,7 +319,7 @@ class LEOBroadcastServer extends EventEmitter {
 		} else if (type === "timer-stop") {
 			this.emit("client-timer-stop");
 		} else if (type === "timer-adjust") {
-			this.emit("client-timer-adjust", data.minutes);
+			this.emit("client-timer-adjust", clampNum(data.minutes, 600));
 		} else if (type === "remote-key-press") {
 			this.emit("client-remote-key-press");
 		} else if (type === "dismiss-question") {

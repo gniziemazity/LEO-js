@@ -36,9 +36,6 @@ function _clusterOpts() {
 			1,
 			Math.min(25, +document.getElementById("cluster-k")?.value || 1),
 		),
-		useFollow: true,
-		useGrade: false,
-		useLang: true,
 	};
 }
 
@@ -119,6 +116,40 @@ function _buildClusterFeatures(students, opts) {
 		}
 	}
 	return rows;
+}
+
+const _IMPROVEMENT_WEIGHT = 2.5;
+
+function _kmeansImprovement(s) {
+	const vs = s.lessons
+		.filter((l) => l.hasFollowCol && l.follow != null)
+		.map((l) => l.follow);
+	if (!vs.length) return 0;
+	return Math.max(...vs) - vs[0];
+}
+
+function _buildKmeans2DFeatures(students) {
+	const raw = students.map((s) => {
+		const af = followAvg(s);
+		return { follow: af >= 0 ? af : null, improve: _kmeansImprovement(s) };
+	});
+	const known = raw.map((r) => r.follow).filter((v) => v != null);
+	const followMean = known.length
+		? known.reduce((a, b) => a + b, 0) / known.length
+		: 0;
+	const cols = [
+		raw.map((r) => (r.follow == null ? followMean : r.follow)),
+		raw.map((r) => r.improve),
+	];
+	const norm = cols.map((col) => {
+		const lo = Math.min(...col);
+		const span = Math.max(...col) - lo;
+		return col.map((v) => (span > 0 ? (v - lo) / span : 0));
+	});
+	return students.map((_, i) => [
+		norm[0][i],
+		_IMPROVEMENT_WEIGHT * norm[1][i],
+	]);
 }
 
 function _seededRng(seed) {
@@ -269,12 +300,7 @@ function renderClusters() {
 		}
 	} else {
 		const opts = _clusterOpts();
-		if (!opts.useFollow && !opts.useGrade && !opts.useLang) {
-			body.innerHTML =
-				'<div class="cluster-empty">Pick at least one feature to cluster on.</div>';
-			return;
-		}
-		const features = _buildClusterFeatures(students, opts);
+		const features = _buildKmeans2DFeatures(students);
 		k = Math.min(opts.k, students.length);
 		const res = _kmeans(features, k, 10000, _clusterSeed);
 		labels = res.labels;

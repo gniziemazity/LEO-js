@@ -83,7 +83,7 @@ function renderTable() {
 	const showId = true;
 	const showName = _paperMode ? true : !_hiddenCols.has("name");
 	const showNum = _paperMode ? false : !_hiddenCols.has("num");
-	const showFollow = !_paperMode && !_hiddenCols.has("follow");
+	const showFollow = _paperMode ? _simParam : !_hiddenCols.has("follow");
 
 	const showLangs = !_paperMode && !_hiddenCols.has("languages");
 	const presentLangs = showLangs
@@ -530,12 +530,10 @@ function _renderArtefactHighlights() {
 			runs.push({ endIdx: idx, startTh: th, endTh: th, cells });
 		}
 	}
-	const hiCount = rows.filter(
-		(r) => !(r._student && r._student.ai_flagged),
-	).length;
-	const denom = _students.filter((s) => !s.ai_flagged).length;
+	const hiCount = rows.length;
+	const denom = _students.length;
 	const hiPct = denom ? Math.round((hiCount / denom) * 100) : 0;
-	for (const run of runs) {
+	runs.forEach((run, ri) => {
 		const lRect = run.startTh.getBoundingClientRect();
 		const rRect = run.endTh.getBoundingClientRect();
 		const firstRect = run.cells[0].getBoundingClientRect();
@@ -552,6 +550,7 @@ function _renderArtefactHighlights() {
 		box.style.height = height + "px";
 		layer.appendChild(box);
 
+		if (ri !== 0) return;
 		const count = document.createElement("div");
 		count.className = "artefact-highlight-count";
 		const countMain = document.createElement("div");
@@ -567,7 +566,7 @@ function _renderArtefactHighlights() {
 		const maxCx = wrap.scrollLeft + wrap.clientWidth - half - 4;
 		const cx = Math.max(minCx, Math.min((left + right) / 2, maxCx));
 		count.style.left = cx + "px";
-	}
+	});
 }
 
 function _appendTotalsRow(

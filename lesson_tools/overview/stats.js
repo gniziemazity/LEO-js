@@ -417,6 +417,15 @@ function renderStats() {
 			aiNone,
 			aiTotal,
 		);
+		addAiBandCard(
+			body,
+			"AI Use Bounds (Assignments)",
+			py.assignments.map((a) => a.name),
+			aiStrong,
+			aiMedium,
+			aiNone,
+			aiTotal,
+		);
 	}
 
 	const _hideCard = (t) =>

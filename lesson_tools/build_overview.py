@@ -563,7 +563,7 @@ def _update_existing_workbook(wb: 'Workbook',
                 cell = ws.cell(row=row, column=col)
                 if not is_new_row:
                     if header_name in ('Name', 'Number'):
-                        if cell.value not in (None, '', 0):
+                        if value in (None, '', 0):
                             continue
                     elif header_name.endswith((' Grade', ' Status')):
                         if cell.value not in (None, ''):

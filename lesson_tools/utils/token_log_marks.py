@@ -283,9 +283,8 @@ def _build_occ_from_diff_marks(
 
     if has_timestamps:
         for (tok, ts), count in missing_remaining_by_tok_ts.items():
-            if ts:
-                for _ in range(count):
-                    all_occurrences.append((ts, tok, {'MISSING'}))
+            for _ in range(count):
+                all_occurrences.append((ts or '00:00:00', tok, {'MISSING'}))
     else:
         for tok, count in missing_remaining_by_tok.items():
             for _ in range(count):

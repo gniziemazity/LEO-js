@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from .lv_constants import FINLAND_TZ
 from .lv_editor import replay_with_timestamps_all
 from languages import get_profile, comment_ranges as _profile_comment_ranges
 
@@ -193,7 +194,7 @@ def calculate_containment(a: Counter, b: Counter) -> float:
     return round(sum((a & b).values()) / sum(a.values()) * 100, 1)
 
 def ts_to_local(ts_ms: int) -> str:
-    dt = datetime.fromtimestamp(ts_ms / 1000)
+    dt = datetime.fromtimestamp(ts_ms / 1000, tz=FINLAND_TZ)
     return dt.strftime('%H:%M:%S') + f'.{dt.microsecond // 1000:03d}'
 
 

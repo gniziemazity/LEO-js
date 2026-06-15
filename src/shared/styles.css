@@ -58,6 +58,13 @@
 	--clr-danger-darker: var(--c-red-2);
 	--clr-pos: var(--c-green-2);
 
+	--clr-q-bg: rgb(255, 235, 238);
+	--clr-ask-bg: rgb(255, 224, 178);
+	--clr-help-bg: rgb(200, 230, 201);
+	--clr-moveto-bg: #ecf0f1;
+	--clr-done-bg: rgba(231, 76, 60, 0.15);
+	--clr-done-border: rgba(231, 76, 60, 0.4);
+
 	--shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.18);
 
 	--font-mono: "Consolas", "Monaco", "Courier New", monospace;
@@ -679,7 +686,7 @@ body.mode-record .key-btn[data-char="⚓"] {
 #studentsTextarea {
 	width: 100%;
 	box-sizing: border-box;
-	font-family: Consolas, monospace;
+	font-family: var(--font-mono);
 	font-size: 13px;
 	resize: vertical;
 }
@@ -687,14 +694,14 @@ body.mode-record .key-btn[data-char="⚓"] {
 .students-help {
 	margin: 0 0 10px;
 	font-size: 13px;
-	color: var(--clr-muted, #666);
+	color: var(--clr-muted);
 }
 
 #studentsStatus {
 	margin-top: 10px;
 	min-height: 18px;
 	font-size: 13px;
-	color: var(--clr-muted, #666);
+	color: var(--clr-muted);
 }
 
 .btn-primary,

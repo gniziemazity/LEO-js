@@ -74,10 +74,17 @@ class CourseManager {
 			);
 		}
 		this.rootPath = rootPath;
-		const meta = this._readMeta();
-		this.name = meta.name || path.basename(rootPath);
-		this.lastPlan = meta.lastPlan || "";
-		this._ensureDirs();
+		try {
+			const meta = this._readMeta();
+			this.name = meta.name || path.basename(rootPath);
+			this.lastPlan = meta.lastPlan || "";
+			this._ensureDirs();
+		} catch (e) {
+			this.rootPath = "";
+			this.name = "";
+			this.lastPlan = "";
+			throw e;
+		}
 	}
 
 	_readMeta() {
@@ -133,7 +140,11 @@ class CourseManager {
 	addPlan(planName, sourceFilePath = null) {
 		const safe = this._safeName(planName);
 		if (!safe) throw new Error("Invalid plan name");
-		const planPath = path.join(this.plansDir(), `${safe}.leo`);
+		const srcExt = sourceFilePath
+			? path.extname(sourceFilePath).toLowerCase()
+			: "";
+		const ext = srcExt === ".json" ? ".json" : ".leo";
+		const planPath = path.join(this.plansDir(), `${safe}${ext}`);
 		let content;
 		if (sourceFilePath) {
 			content = fs.readFileSync(sourceFilePath, "utf8");
@@ -155,8 +166,11 @@ class CourseManager {
 	}
 
 	isInPlans(filePath) {
-		const rel = path.relative(this.plansDir(), path.resolve(filePath));
-		return rel === path.basename(filePath);
+		const fileDir = path.resolve(path.dirname(filePath));
+		const plansDir = path.resolve(this.plansDir());
+		return process.platform === "win32"
+			? fileDir.toLowerCase() === plansDir.toLowerCase()
+			: fileDir === plansDir;
 	}
 
 	listPlans() {
@@ -202,14 +216,11 @@ class CourseManager {
 	}
 
 	writeStudentsCsv(pastedText) {
-		const names = [
-			...new Set(
-				pastedText
-					.split(/\r?\n/)
-					.map((l) => l.trim())
-					.filter(Boolean),
-			),
-		].sort((a, b) => a.localeCompare(b));
+		const names = pastedText
+			.split(/\r?\n/)
+			.map((l) => l.trim())
+			.filter(Boolean)
+			.sort((a, b) => a.localeCompare(b));
 
 		const assigned = assignAlterEgos(names);
 		const rows = assigned.map((s, i) => `${i + 1};${s.name};;${s.alterEgo}`);

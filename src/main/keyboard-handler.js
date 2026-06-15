@@ -140,7 +140,6 @@ class KeyboardHandler {
 				charLower,
 				isInterceptorKey,
 			);
-			this.processQueue();
 
 			if (state.mainWindow) {
 				state.mainWindow.webContents.send("character-typed");

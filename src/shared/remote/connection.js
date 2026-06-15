@@ -1,12 +1,17 @@
 let ws = null;
 let messageHandler = null;
 let wakeLock = null;
+let reconnectTimer = null;
 
 function setMessageHandler(handler) {
 	messageHandler = handler;
 }
 
 function connect() {
+	if (reconnectTimer) {
+		clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+	}
 	const host = window.location.host;
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	if (ws) {
@@ -21,7 +26,7 @@ function connect() {
 	};
 	ws.onclose = () => {
 		ws = null;
-		setTimeout(connect, 2000);
+		reconnectTimer = setTimeout(connect, 2000);
 	};
 }
 

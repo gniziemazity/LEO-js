@@ -478,7 +478,7 @@ _loadHiddenCols();
 
 function studentLabel(s) {
 	if (!s) return "";
-	return _realToAlterMap[_nfc(s.name)] || s.name;
+	return s.name;
 }
 
 function studentLabelWithId(s) {

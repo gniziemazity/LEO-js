@@ -20,6 +20,9 @@ lessonNameEl.addEventListener("click", () => {
 		(params.ids && params.ids.length > 0) ||
 		(params.star && params.star.length > 0);
 	_fingerprintParam = qs.get("fingerprint") === "1";
+	_simParam = qs.get("sim") === "1";
+	const setq = qs.get("set");
+	_setParam = setq === "ideal" || setq === "minimal" ? setq : null;
 	const m = qs.get("mode") || "";
 	_modeParam = m === "lesson" || m === "assignment" ? m : null;
 	if (_paperMode) {

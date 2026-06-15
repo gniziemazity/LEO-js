@@ -61,6 +61,8 @@ function addStackedBarCard(parent, title, labels, series, opts = {}) {
 				? opts.yMax
 				: Math.max(...totals, 1) * (opts.yScale ?? 1) + (opts.yPad ?? 0),
 		stacked: true,
+		hideYAxis: opts.hideYAxis,
+		yTickSuffix: opts.yTickSuffix || "",
 		tooltipCallback:
 			opts.tooltipCallback ??
 			((_l, val, si) => [`${series[si].label}: ${Math.round(val)}`]),
@@ -73,6 +75,11 @@ function addStackedBarCard(parent, title, labels, series, opts = {}) {
 			data: s.data.map((v) => v ?? 0),
 			backgroundColor: s.color,
 			borderColor: s.color,
+			fuzzy: s.fuzzy,
+			minBarPx: s.minBarPx,
+			labelColor: s.labelColor,
+			edgeLabels: s.edgeLabels,
+			noHit: s.noHit,
 		})),
 	);
 	_barCharts.push(chart);
@@ -120,6 +127,44 @@ function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
 				return null;
 			},
 			barLabelAtTop: true,
+		},
+	);
+}
+
+function addAiBandCard(parent, title, labels, strong, medium, none, totals) {
+	const pctVal = (n, gi) => (totals[gi] ? (n / totals[gi]) * 100 : 0);
+	const pct = (n, gi) => Math.round(pctVal(n, gi));
+	const transparent = "rgba(0,0,0,0)";
+	const strongPct = strong.map((s, i) => pctVal(s, i));
+	const mediumPct = medium.map((m, i) => pctVal(m, i));
+	const nonePct = none.map((n, i) => pctVal(n, i));
+	addStackedBarCard(
+		parent,
+		title,
+		labels,
+		[
+			{ data: strongPct, color: transparent, noHit: true },
+			{
+				data: mediumPct,
+				color: artefactFiredColorFor("medium"),
+				label: "reliable artefacts",
+				fuzzy: true,
+				minBarPx: 2,
+				edgeLabels: {
+					bottom: (gi) => (totals[gi] ? pct(strong[gi], gi) + "%" : null),
+					top: (gi) =>
+						totals[gi] ? pct(strong[gi] + medium[gi], gi) + "%" : null,
+				},
+			},
+			{ data: nonePct, color: transparent, noHit: true },
+		],
+		{
+			yMax: 100,
+			hideYAxis: true,
+			tooltipCallback: (_l, _v, _si, gi) => [
+				`Reliable artefacts: ${medium[gi]} / ${totals[gi]}`,
+				`Bounds: ${pct(strong[gi], gi)}%–${pct(strong[gi] + medium[gi], gi)}%`,
+			],
 		},
 	);
 }

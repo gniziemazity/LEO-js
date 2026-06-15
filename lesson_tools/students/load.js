@@ -179,17 +179,30 @@ async function loadXlsxFiles(files) {
 		return _basisRank(a.key) - _basisRank(b.key);
 	});
 
+	let _desiredBasis = _setParam;
+	if (!_desiredBasis && _paperMode) _desiredBasis = "ideal";
+	const _desiredBasisFile =
+		_desiredBasis && _basisFiles.has(_desiredBasis)
+			? _basisFiles.get(_desiredBasis)
+			: null;
+
 	const _topCandidate = defaultCandidates[0] || null;
 	let initialFile = null;
 	let overlayFile = null;
 	if (_basisFallbackFile) {
 		initialFile = _basisFallbackFile;
-		if (_topCandidate && _topCandidate.key !== GRADES_KEY) {
+		if (_desiredBasisFile) {
+			overlayFile = _desiredBasisFile;
+			_activeBasis = _desiredBasis;
+		} else if (_topCandidate && _topCandidate.key !== GRADES_KEY) {
 			overlayFile = _topCandidate.f;
 			_activeBasis = _topCandidate.key;
 		} else {
 			_activeBasis = GRADES_KEY;
 		}
+	} else if (_desiredBasisFile) {
+		initialFile = _desiredBasisFile;
+		_activeBasis = _desiredBasis;
 	} else if (_topCandidate) {
 		initialFile = _topCandidate.f;
 		_activeBasis = _topCandidate.key;

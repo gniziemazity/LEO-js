@@ -20,7 +20,7 @@ function showQuestionOverlay(question, students, bgColor) {
 	document.getElementById("qText").textContent = question;
 
 	const overlay = document.getElementById("questionOverlay");
-	overlay.style.background = bgColor ? bgColor : "rgb(255,235,238)";
+	overlay.style.background = bgColor ? bgColor : "var(--clr-q-bg)";
 
 	const grid = document.getElementById("qGrid");
 	const answered = document.getElementById("qAnsweredRow");
@@ -35,11 +35,11 @@ function showQuestionOverlay(question, students, bgColor) {
 	const list = students && students.length ? students : null;
 
 	if (list) {
-		list.forEach((name) => {
+		list.forEach((name, idx) => {
 			const btn = document.createElement("button");
 			btn.className = "popup-student-btn";
 			btn.textContent = name;
-			btn.onclick = () => onStudentAnswered(name);
+			btn.onclick = () => onStudentAnswered(idx);
 			grid.appendChild(btn);
 		});
 	} else {
@@ -62,8 +62,8 @@ function showQuestionToTeacher() {
 	document.getElementById("qGrid").style.display = "flex";
 }
 
-function onStudentAnswered(name) {
-	const studentId = name ? currentStudents.indexOf(name) + 1 : null;
+function onStudentAnswered(idx) {
+	const studentId = idx != null && idx >= 0 ? idx + 1 : null;
 	sendMessage("student-answered", { studentName: studentId });
 
 	document.getElementById("questionOverlay").classList.remove("active");
@@ -106,10 +106,10 @@ function showInteractionOverlay(title, students, type) {
 	modal.className = "popup-modal";
 	if (type === "student-question") {
 		document.getElementById("interactionOverlay").style.background =
-			"rgb(255,224,178)";
+			"var(--clr-ask-bg)";
 	} else {
 		document.getElementById("interactionOverlay").style.background =
-			"rgb(200,230,201)";
+			"var(--clr-help-bg)";
 	}
 
 	document.getElementById("iTitle").textContent = title;
@@ -125,14 +125,14 @@ function showInteractionOverlay(title, students, type) {
 
 	const grid = document.getElementById("iGrid");
 	grid.innerHTML = "";
-	students.forEach((name) => {
+	students.forEach((name, idx) => {
 		const btn = document.createElement("button");
 		btn.className = "popup-student-btn";
 		btn.textContent = name;
 		btn.onclick = () => {
 			const qText =
 				type === "student-question" ? questionInput.value.trim() : null;
-			onStudentSelected(name, type, qText);
+			onStudentSelected(idx, type, qText);
 		};
 		grid.appendChild(btn);
 	});
@@ -141,8 +141,8 @@ function showInteractionOverlay(title, students, type) {
 	sendMessage("interaction-overlay-shown", {});
 }
 
-function onStudentSelected(name, type, questionText) {
-	const studentId = currentStudents.indexOf(name) + 1;
+function onStudentSelected(idx, type, questionText) {
+	const studentId = idx != null && idx >= 0 ? idx + 1 : null;
 	const msgData = {
 		interactionType: type,
 		studentName: studentId,
@@ -166,7 +166,7 @@ function onStudentSelected(name, type, questionText) {
 	doneBtn.className = "popup-student-btn";
 	doneBtn.style.cssText =
 		"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
-		"background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:rgba(0,0,0,0.75);";
+		"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);";
 	doneBtn.textContent = "✓ Done — close";
 	doneBtn.onclick = () => closeInteractionOverlay();
 	grid.appendChild(doneBtn);
@@ -219,7 +219,7 @@ function showMoveToOverlay(payload) {
 	const snippetEl = document.getElementById("mtoSnippet");
 	if (!overlay) return;
 
-	overlay.style.background = "#ecf0f1";
+	overlay.style.background = "var(--clr-moveto-bg)";
 
 	if (emojiEl) emojiEl.style.display = "none";
 	if (titleEl) titleEl.textContent = "Go to:";

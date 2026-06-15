@@ -1,11 +1,3 @@
-"""Star post-processing pipeline: timestamp metadata, ghost-extra promotion,
-swap pairing, and insert-anchor stamping.
-
-Split out of token_log.py for readability. All names below are re-exported
-from token_log.py so existing `from utils.token_log import _foo` imports
-keep working.
-"""
-
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -29,10 +21,6 @@ from .token_log_marks import (
     _read_text_normalized,
     _split_tokens_by_comment,
 )
-
-
-# ── Timestamp metadata builders ─────────────────────────────────────────
-
 
 def _build_file_ordered_ts_map(all_events: list) -> Dict[str, List[str]]:
     surviving_chars_with_ts, _ = replay_with_timestamps_all(all_events)
@@ -80,10 +68,6 @@ def _build_teacher_token_timestamps(events: list) -> Dict[str, list]:
                 })
         entries_by_file[fname] = token_entries
     return entries_by_file
-
-
-# ── Timestamp refresh helpers ───────────────────────────────────────────
-
 
 def _build_token_secprefix_map(
     ts_map: Dict[str, List[str]],
@@ -205,10 +189,6 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
             if upgraded:
                 mark['removal_ts'] = upgraded
 
-
-# ── Full star post-pass orchestration ───────────────────────────────────
-
-
 def _add_log_metadata(
     diff_marks: dict,
     events: list,
@@ -245,21 +225,12 @@ def _add_log_metadata(
     if teacher_ghosts:
         diff_marks['teacher_ghosts'] = teacher_ghosts
 
-
-# ── Swap pairing (missing ↔ extra) ──────────────────────────────────────
-
-
 def _apply_swap_pairing_to_marks(
     t_marks_by_file: Dict[str, List[dict]],
     s_marks_by_file: Dict[str, List[dict]],
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
 ) -> None:
-    # Greedy (not Hungarian) by design: pairs are gated by a 0.8 threshold and
-    # curated truth concentrates on the strongest swaps. Greedy "best-first"
-    # protects the highest-scoring pair, while Hungarian can sacrifice a strong
-    # pair to gain two medium ones — measurably worse against truth on the
-    # test corpus.
     for marks in t_marks_by_file.values():
         for mark in marks:
             paired_with = mark.get('paired_with')
@@ -311,7 +282,6 @@ def _apply_swap_pairing_to_marks(
         if not missing_entries or not extra_entries:
             continue
 
-        # cos_matrix is indexed [extra_idx][missing_idx] — student rows, teacher cols.
         cos_matrix = _pairwise_context_sim(
             student_seq, [idx for idx, _ in extra_entries],
             teacher_seq, [idx for idx, _ in missing_entries],
@@ -356,9 +326,6 @@ def _apply_swap_pairing_to_marks(
             }
 
 
-# ── Insert-anchor stamping ──────────────────────────────────────────────
-
-
 def _apply_insert_at_to_unpaired_missings(
     t_marks_by_file: Dict[str, List[dict]],
     s_marks_by_file: Dict[str, List[dict]],
@@ -378,12 +345,14 @@ def _apply_insert_at_to_unpaired_missings(
             else:
                 mark.pop('insert_at', None)
 
+    matched_student_for_teacher: dict = {}
     for teacher_filepath, teacher_path, student_path in _match_files_by_name_then_ext(
             teacher_files, student_files):
         if student_path is None:
             continue
         teacher_fname = Path(teacher_filepath).name
         student_fname = student_path.name
+        matched_student_for_teacher[teacher_fname] = student_fname
 
         unpaired_missings = [
             mark for mark in t_marks_by_file.get(teacher_fname, [])
@@ -442,32 +411,34 @@ def _apply_insert_at_to_unpaired_missings(
             mark['insert_at'] = {'file': student_fname, 'pos': insert_pos}
 
     if student_files:
-        default_fname = sorted(student_files.keys())[0]
-        try:
-            default_eof = len(_read_text_normalized(student_files[default_fname]))
-        except Exception:
-            default_eof = 0
-        for marks in t_marks_by_file.values():
+        global_fname = sorted(student_files.keys())[0]
+        eof_cache: dict = {}
+
+        def _eof_of(fname):
+            if fname not in eof_cache:
+                try:
+                    eof_cache[fname] = len(
+                        _read_text_normalized(student_files[fname]))
+                except Exception:
+                    eof_cache[fname] = 0
+            return eof_cache[fname]
+
+        for teacher_fname, marks in t_marks_by_file.items():
+            target_fname = matched_student_for_teacher.get(teacher_fname, global_fname)
+            if target_fname not in student_files:
+                target_fname = global_fname
             for mark in marks:
                 if (mark.get('label') == 'missing'
                         and not mark.get('paired_with')
                         and 'insert_at' not in mark):
-                    mark['insert_at'] = {'file': default_fname, 'pos': default_eof}
-
-
-# ── Ghost-extra promotion ───────────────────────────────────────────────
+                    mark['insert_at'] = {
+                        'file': target_fname, 'pos': _eof_of(target_fname)}
 
 
 def _apply_ghost_extra_promotion(
     diff_marks: dict,
     events: list,
 ) -> None:
-    # Hungarian here is interchangeable with greedy under the 0.8 threshold
-    # gate: per-token-type candidate sets are small enough that the two
-    # algorithms pick the same pairs (verified on the test corpus, F1 identical
-    # to four decimals). Hungarian is kept because the same helper is required
-    # by `_compute_per_token_matching` (LEO base), where greedy collapses on
-    # dense unthresholded matrices like chess's repeating cells.
     if not events:
         return
     assignments = diff_marks.get('leo_assignments') or {}
@@ -568,9 +539,6 @@ def _apply_ghost_extra_promotion(
             _promote(student_inst, ghost_inst, tok)
 
 
-# ── Assignments synthesis for non-LEO bases ─────────────────────────────
-
-
 def _build_assignments_for_post_pass(
     teacher_files: Dict[str, Path],
     student_files: Dict[str, Path],
@@ -614,12 +582,12 @@ def _build_assignments_for_post_pass(
     extra_keys: set = set()
     for fname, marks in diff_marks.get('student_files', {}).items():
         for mark in marks:
-            if mark.get('label') == 'extra' and not mark.get('line') and mark.get('token'):
+            if mark.get('label') == 'extra' and mark.get('token'):
                 extra_keys.add((fname, mark.get('start'), mark['token']))
     missing_keys: set = set()
     for fname, marks in diff_marks.get('teacher_files', {}).items():
         for mark in marks:
-            if mark.get('label') == 'missing' and not mark.get('line') and mark.get('token'):
+            if mark.get('label') == 'missing' and mark.get('token'):
                 missing_keys.add((fname, mark.get('start'), mark['token']))
 
     tokens_data: Dict[str, dict] = {}

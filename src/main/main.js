@@ -148,13 +148,23 @@ broadcastServer.on("client-mouse-scroll", async (dy) => {
 		else await mouse.scrollUp(amount);
 	} catch (e) {}
 });
+let mouseDragActive = false;
 broadcastServer.on("client-mouse-drag-start", async () => {
 	try {
+		mouseDragActive = true;
 		await mouse.pressButton(Button.LEFT);
 	} catch (e) {}
 });
 broadcastServer.on("client-mouse-drag-end", async () => {
 	try {
+		mouseDragActive = false;
+		await mouse.releaseButton(Button.LEFT);
+	} catch (e) {}
+});
+broadcastServer.on("client-disconnected", async () => {
+	if (!mouseDragActive) return;
+	try {
+		mouseDragActive = false;
 		await mouse.releaseButton(Button.LEFT);
 	} catch (e) {}
 });
@@ -648,8 +658,10 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		};
 		questionWindow.setMenu(null);
 		questionWindow.loadFile(path.join(__dirname, "../question-window.html"));
-		questionWindow.webContents.on("did-finish-load", () => {
-			questionWindow.webContents.send("set-question", payload);
+		const qWin = questionWindow;
+		qWin.webContents.on("did-finish-load", () => {
+			if (!qWin.isDestroyed())
+				qWin.webContents.send("set-question", payload);
 		});
 		questionWindow.on("closed", () => {
 			if (questionWindowIsLesson) {
@@ -838,8 +850,10 @@ ipcMain.on(
 		};
 		imageWindow.setMenu(null);
 		imageWindow.loadFile(path.join(__dirname, "../image-window.html"));
-		imageWindow.webContents.on("did-finish-load", () => {
-			imageWindow.webContents.send("set-image", {
+		const imgWin = imageWindow;
+		imgWin.webContents.on("did-finish-load", () => {
+			if (imgWin.isDestroyed()) return;
+			imgWin.webContents.send("set-image", {
 				imagePath,
 				bgColor,
 				shouldPin,
@@ -945,8 +959,10 @@ ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
 	};
 	webWindow.setMenu(null);
 	webWindow.loadFile(path.join(__dirname, "../web-window.html"));
-	webWindow.webContents.on("did-finish-load", () => {
-		webWindow.webContents.send("set-url", { url, bgColor, shouldPin });
+	const wWin = webWindow;
+	wWin.webContents.on("did-finish-load", () => {
+		if (!wWin.isDestroyed())
+			wWin.webContents.send("set-url", { url, bgColor, shouldPin });
 	});
 	webWindow.on("closed", () => {
 		broadcastServer.broadcastFloatingWindowClosed();
@@ -985,22 +1001,27 @@ ipcMain.on("force-close-web-window", () => {
 	}
 });
 
+let activeResize = null;
+function stopActiveResize() {
+	if (!activeResize) return;
+	clearInterval(activeResize.interval);
+	ipcMain.removeListener("end-resizing", activeResize.stopResize);
+	activeResize = null;
+}
+
 ipcMain.on("start-resizing", (event, edge) => {
 	stopFloatLerp();
+	stopActiveResize();
 	const win = event.sender.getOwnerBrowserWindow();
 	if (!win) return;
 	const { screen } = require("electron");
 	const initBounds = win.getBounds();
 	const initCursor = screen.getCursorScreenPoint();
-	let stopped = false;
-	const stopResize = () => {
-		stopped = true;
-	};
+	const stopResize = () => stopActiveResize();
 	ipcMain.once("end-resizing", stopResize);
 	const interval = setInterval(() => {
-		if (stopped || !win || win.isDestroyed()) {
-			clearInterval(interval);
-			ipcMain.removeListener("end-resizing", stopResize);
+		if (!win || win.isDestroyed()) {
+			stopActiveResize();
 			return;
 		}
 		const cur = screen.getCursorScreenPoint();
@@ -1029,6 +1050,7 @@ ipcMain.on("start-resizing", (event, edge) => {
 		}
 		win.setBounds(b);
 	}, 16);
+	activeResize = { interval, stopResize };
 });
 
 ipcMain.on("pin-web-window", (event, isPinned) => {

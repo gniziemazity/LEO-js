@@ -20,6 +20,7 @@ let scrollAccum = 0;
 
 const touchpadModeHandlers = {};
 let activeModeHandler = null;
+let touchpadModeSeq = 0;
 
 function registerTouchpadMode(name, handler) {
 	touchpadModeHandlers[name] = handler;
@@ -124,6 +125,8 @@ async function setTouchpadMode(mode) {
 	const handler = touchpadModeHandlers[mode];
 	if (!handler && mode === "keyboard" && !autoTypingActive) return;
 
+	const seq = ++touchpadModeSeq;
+
 	const alreadyActive = handler
 		? activeModeHandler === handler
 		: touchpadActive && !activeModeHandler && touchpadMode === mode;
@@ -144,6 +147,7 @@ async function setTouchpadMode(mode) {
 		overlay.classList.add("active");
 		header.classList.add("hidden");
 		if (handler.activate) await handler.activate({ overlay, header });
+		if (seq !== touchpadModeSeq) return;
 	} else {
 		touchpadActive = true;
 		touchpadMode = mode;

@@ -867,6 +867,16 @@ missing — paired ones get nothing, unpaired ones with a native
 anchor get the native anchor restored, and unpaired ones without
 fall through to the heuristic.
 
+After the native-anchor copy and the matched-walk heuristic, any
+unpaired missing that still lacks an `insert_at` (e.g. a mark whose
+token position isn't in the matched sequence, or one in a teacher
+file with no student counterpart) is anchored at end-of-file. This
+final fallback prefers the **name/ext-matched student file** for the
+teacher file the mark belongs to, and only falls back to the first
+student file (alphabetical) when that teacher file has no matched
+student — so a teacher file's leftover missings don't get dumped
+into an unrelated student file.
+
 **Why pure cosine, no text similarity?** The point is to surface
 _positional substitutions_ — places where the student wrote a
 different token in the same code spot the teacher wrote something

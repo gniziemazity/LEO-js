@@ -42,8 +42,9 @@ class CourseUI {
 			localStorage.removeItem("lastCoursePath");
 			return false;
 		}
-		this.refresh();
-		return this._loadDefaultPlan();
+		const loaded = this._loadDefaultPlan();
+		if (!loaded) this.refresh();
+		return loaded;
 	}
 
 	refresh() {
@@ -97,8 +98,7 @@ class CourseUI {
 			return;
 		}
 		localStorage.setItem("lastCoursePath", dir);
-		this.refresh();
-		this._loadDefaultPlan();
+		if (!this._loadDefaultPlan()) this.refresh();
 	}
 
 	saveCourse() {

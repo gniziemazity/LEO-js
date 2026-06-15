@@ -9,7 +9,12 @@ class BarChart {
 		this._options = options;
 		this._datasets = [];
 		this._labels = [];
-		this._margin = { top: 6, right: 4, bottom: 28, left: 34 };
+		this._margin = {
+			top: 6,
+			right: 4,
+			bottom: 28,
+			left: options.hideYAxis ? 8 : 34,
+		};
 
 		this._hitAreas = [];
 		this._hovered = null;
@@ -131,6 +136,7 @@ class BarChart {
 			ctx.moveTo(left, py);
 			ctx.lineTo(W - right, py);
 			ctx.stroke();
+			if (this._options.hideYAxis) continue;
 			ctx.fillStyle = "#595959";
 			ctx.font = "9px sans-serif";
 			ctx.textAlign = "right";
@@ -166,8 +172,12 @@ class BarChart {
 				const bx = isOverlap
 					? left + gi * groupW + overlapOffset
 					: toX(gi, slot);
-				const by = toY(base + val);
-				const bh = toY(base) - by;
+				let by = toY(base + val);
+				let bh = toY(base) - by;
+				if (ds.minBarPx && bh < ds.minBarPx) {
+					bh = ds.minBarPx;
+					by = toY(base) - bh;
+				}
 				if (bh > 0) {
 					const fillColor = bgPerBar
 						? (bg[gi] ?? "rgba(100,100,100,0.4)")
@@ -183,21 +193,33 @@ class BarChart {
 							fillColor,
 							strokeColor,
 						);
+					} else if (ds.fuzzy) {
+						_drawFuzzyBar(
+							ctx,
+							bx,
+							by,
+							useBarW,
+							bh,
+							fillColor,
+							6,
+							top + plotH,
+						);
 					} else {
 						if (bgPerBar) ctx.fillStyle = fillColor;
 						if (bdPerBar) ctx.strokeStyle = strokeColor;
 						ctx.fillRect(bx, by, useBarW, bh);
 						ctx.strokeRect(bx, by, useBarW, bh);
 					}
-					this._hitAreas.push({
-						x: bx,
-						y: by,
-						w: useBarW,
-						h: bh,
-						gi,
-						si,
-						val,
-					});
+					if (!ds.noHit)
+						this._hitAreas.push({
+							x: bx,
+							y: by,
+							w: useBarW,
+							h: bh,
+							gi,
+							si,
+							val,
+						});
 					const labelCb = this._options.barLabel;
 					if (labelCb) {
 						const label = labelCb(gi, si, val, ds);
@@ -228,6 +250,41 @@ class BarChart {
 							ctx.restore();
 						}
 					}
+					if (ds.edgeLabels) {
+						ctx.save();
+						ctx.font = "bold 10px sans-serif";
+						ctx.textAlign = "center";
+						const cx = bx + useBarW / 2;
+						const lineH = 12;
+						const white = ds.labelColor ?? "#fff";
+						const topText = ds.edgeLabels.top && ds.edgeLabels.top(gi);
+						const botText =
+							ds.edgeLabels.bottom && ds.edgeLabels.bottom(gi);
+						const fitsW = (t) => useBarW >= ctx.measureText(t).width + 6;
+						if (bh >= 2 * lineH + 2) {
+							if (botText) {
+								const inside = fitsW(botText);
+								ctx.fillStyle = inside ? white : "#000";
+								ctx.textBaseline = inside ? "bottom" : "top";
+								ctx.fillText(
+									botText,
+									cx,
+									inside ? by + bh - 2 : by + bh + 2,
+								);
+							}
+							if (topText) {
+								const inside = fitsW(topText);
+								ctx.fillStyle = inside ? white : "#000";
+								ctx.textBaseline = inside ? "top" : "bottom";
+								ctx.fillText(topText, cx, inside ? by + 2 : by - 2);
+							}
+						} else if (botText) {
+							ctx.fillStyle = white;
+							ctx.textBaseline = "middle";
+							ctx.fillText(botText, cx, by + bh / 2);
+						}
+						ctx.restore();
+					}
 				}
 				if (!isOverlap) stackTops[slot][gi] += val;
 			}
@@ -245,8 +302,11 @@ class BarChart {
 		ctx.strokeStyle = "#ccc";
 		ctx.lineWidth = 1;
 		ctx.beginPath();
-		ctx.moveTo(left, top);
-		ctx.lineTo(left, H - bottom);
+		if (!this._options.hideYAxis) {
+			ctx.moveTo(left, top);
+			ctx.lineTo(left, H - bottom);
+		}
+		ctx.moveTo(left, H - bottom);
 		ctx.lineTo(W - right, H - bottom);
 		ctx.stroke();
 
@@ -326,4 +386,41 @@ function _drawStripedBar(ctx, x, y, w, h, fillColor, strokeColor) {
 	ctx.strokeStyle = strokeColor;
 	ctx.lineWidth = 1;
 	ctx.strokeRect(x, y, w, h);
+}
+
+function _colorWithAlpha(color, alpha) {
+	const c = String(color).trim();
+	if (c[0] === "#") {
+		const hex = c.slice(1);
+		const n =
+			hex.length === 3
+				? hex
+						.split("")
+						.map((d) => d + d)
+						.join("")
+				: hex.slice(0, 6);
+		const r = parseInt(n.slice(0, 2), 16);
+		const g = parseInt(n.slice(2, 4), 16);
+		const b = parseInt(n.slice(4, 6), 16);
+		return `rgba(${r},${g},${b},${alpha})`;
+	}
+	const m = c.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+	if (m) return `rgba(${m[1]},${m[2]},${m[3]},${alpha})`;
+	return c;
+}
+
+function _drawFuzzyBar(ctx, x, y, w, h, color, expand, maxY) {
+	if (w <= 0 || h <= 0) return;
+	const top = y - expand;
+	const totalH = h + 2 * expand;
+	const ramp = Math.min(0.5, (expand + 4) / totalH);
+	const grad = ctx.createLinearGradient(0, top, 0, top + totalH);
+	grad.addColorStop(0, _colorWithAlpha(color, 0));
+	grad.addColorStop(ramp, color);
+	grad.addColorStop(1 - ramp, color);
+	grad.addColorStop(1, _colorWithAlpha(color, 0));
+	ctx.fillStyle = grad;
+	let bottom = top + totalH;
+	if (maxY != null && bottom > maxY) bottom = maxY;
+	if (bottom > top) ctx.fillRect(x, top, w, bottom - top);
 }

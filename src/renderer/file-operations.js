@@ -56,9 +56,6 @@ class FileOperations {
 		const filePath = await ipcRenderer.invoke("show-open-dialog");
 		if (!filePath) return;
 
-		const fileName = filePath.split(/[\\/]/).pop();
-		await this._loadStudents(filePath);
-		this.updateWindowTitle(fileName);
 		this.loadFilePath(filePath, 0);
 	}
 
