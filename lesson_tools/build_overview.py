@@ -781,10 +781,6 @@ def main(argv) -> int:
     parser.add_argument('--no-stats', action='store_true',
                         help='Skip the chained analyze_grades step '
                              '(grades_stats.json will not be refreshed).')
-    parser.add_argument('--launch-web', action='store_true',
-                        help='After building, hand off to inspect_dataset.py '
-                             'on the same course folder so the browser '
-                             'overview opens with a fresh dataset.')
     args = parser.parse_args(argv[1:])
 
     root = Path(args.root) if args.root else _pick_folder()
@@ -901,9 +897,6 @@ def main(argv) -> int:
     if not args.no_stats:
         _run_analyze_grades(out_path)
 
-    if args.launch_web:
-        return _run_inspect_dataset(root)
-
     return 0
 
 
@@ -918,20 +911,6 @@ def _run_analyze_grades(xlsx_path: Path) -> None:
     except (subprocess.CalledProcessError, OSError) as exc:
         print(f'  WARNING: analyze_grades step failed ({exc}); '
               f'grades_stats.json not refreshed', file=sys.stderr)
-
-
-def _run_inspect_dataset(course: Path) -> int:
-    script = Path(__file__).resolve().parent / 'inspect_dataset.py'
-    print(f'\nLaunching browser overview via inspect_dataset.py…')
-    try:
-        result = subprocess.run(
-            [sys.executable, str(script), str(course)],
-        )
-        return result.returncode
-    except OSError as exc:
-        print(f'  ERROR: inspect_dataset step failed ({exc})',
-              file=sys.stderr)
-        return 1
 
 
 if __name__ == '__main__':

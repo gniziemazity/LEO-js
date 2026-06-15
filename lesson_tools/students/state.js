@@ -6,8 +6,12 @@ let _hasInteractions = false;
 let _followLabel = "FOLLOW";
 let _allFiles = new Map();
 let _dirHandle = null;
-let _isReadOnly = false;
+let _serverWritable = false;
 let _lessonName = null;
+
+function _canEditCells() {
+	return !!(_dirHandle || _serverWritable);
+}
 let _lessonGroup = null;
 let _mode = "assignment";
 let _modeParam = null;

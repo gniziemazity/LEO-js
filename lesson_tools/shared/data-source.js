@@ -62,12 +62,19 @@ class FsDataSource extends DataSource {
 }
 
 class ScopedDataSource extends DataSource {
-	constructor({ files, name, isReadOnly = false, rootHandle = null }) {
+	constructor({
+		files,
+		name,
+		isReadOnly = false,
+		rootHandle = null,
+		serverWritable = false,
+	}) {
 		super();
 		this.files = files;
 		this.rootName = name;
 		this.rootHandle = rootHandle;
 		this.isReadOnly = isReadOnly;
+		this.serverWritable = serverWritable;
 	}
 	async load() {
 		return [...this.files.values()];
@@ -164,6 +171,7 @@ class GradesDataSource extends DataSource {
 	constructor() {
 		super();
 		this.isReadOnly = true;
+		this.serverWritable = true;
 	}
 	async open() {
 		const r = await fetch("/grades-session");
@@ -258,6 +266,7 @@ class GradesDataSource extends DataSource {
 					files: fileMap,
 					name: match.name,
 					isReadOnly: true,
+					serverWritable: true,
 				});
 			}
 		}

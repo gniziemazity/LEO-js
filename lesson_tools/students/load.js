@@ -5,7 +5,7 @@ async function _loadFromDataSource(ds) {
 	const files = await ds.load();
 	_dirHandle = ds.rootHandle;
 	_allFiles = ds.files;
-	_isReadOnly = ds.isReadOnly;
+	_serverWritable = !!ds.serverWritable;
 	_lessonName = ds.rootName;
 	if (ds.rootHandle) {
 		try {
@@ -17,7 +17,8 @@ async function _loadFromDataSource(ds) {
 	lessonNameEl.classList.add("clickable");
 	document.title = "Students: " + name;
 	const saveBtn = document.getElementById("save-btn");
-	if (saveBtn) saveBtn.style.display = _isReadOnly ? "none" : "";
+	if (saveBtn)
+		saveBtn.style.display = _dirHandle || _serverWritable ? "" : "none";
 	await loadXlsxFiles(files);
 }
 

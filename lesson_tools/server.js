@@ -82,6 +82,36 @@ function serveUnder(res, baseDir, fullPath, { allowDirListing }) {
 	_sendFile(res, fullPath);
 }
 
+function writeUnder(res, baseDir, fullPath, req) {
+	if (!fullPath.startsWith(baseDir + path.sep)) {
+		res.writeHead(403);
+		res.end();
+		return;
+	}
+	if (path.extname(fullPath).toLowerCase() !== ".xlsx") {
+		res.writeHead(403);
+		res.end("Only .xlsx writes are allowed");
+		return;
+	}
+	const chunks = [];
+	req.on("data", (c) => chunks.push(c));
+	req.on("error", () => {
+		res.writeHead(400);
+		res.end();
+	});
+	req.on("end", () => {
+		try {
+			fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+			fs.writeFileSync(fullPath, Buffer.concat(chunks));
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok: true }));
+		} catch (err) {
+			res.writeHead(500, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok: false, error: String(err && err.message) }));
+		}
+	});
+}
+
 http
 	.createServer((req, res) => {
 		let urlPath = req.url.split("?")[0];
@@ -108,6 +138,10 @@ http
 
 			const rel = urlPath.slice("/grades-data/".length);
 			const fullPath = path.resolve(folder, ...rel.split("/"));
+			if (req.method === "PUT") {
+				writeUnder(res, folder, fullPath, req);
+				return;
+			}
 			serveUnder(res, folder, fullPath, { allowDirListing: true });
 			return;
 		}

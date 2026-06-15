@@ -2,22 +2,8 @@
 
 let _saveInFlight = false;
 
-function _detectTimestampFormat(name) {
-	if (/_\d{8}-\d{6}\.xlsx$/i.test(name)) return "datetime";
-	if (/_\d{10,}\.xlsx$/i.test(name)) return "unix";
-	return "unix";
-}
-
-function _stripTimestamp(name) {
-	return name
-		.replace(/_\d{8}-\d{6}\.xlsx$/i, "")
-		.replace(/_\d{10,}\.xlsx$/i, "")
-		.replace(/\.xlsx$/i, "");
-}
-
-function _formatTimestamp(fmt, d = new Date()) {
-	if (fmt === "unix") return String(Math.floor(d.getTime() / 1000));
-	const pad = (n, w = 2) => String(n).padStart(w, "0");
+function _backupTimestamp(d = new Date()) {
+	const pad = (n) => String(n).padStart(2, "0");
 	return (
 		String(d.getFullYear()) +
 		pad(d.getMonth() + 1) +
@@ -29,10 +15,8 @@ function _formatTimestamp(fmt, d = new Date()) {
 	);
 }
 
-function _buildSaveName(origName) {
-	const base = _stripTimestamp(origName);
-	const fmt = _detectTimestampFormat(origName);
-	return `${base}_${_formatTimestamp(fmt)}.xlsx`;
+function _backupName() {
+	return `bck_${_backupTimestamp()}.xlsx`;
 }
 
 function _setDirty(studentId, colName, value) {
@@ -69,10 +53,9 @@ function _updateSaveButton() {
 			? `💾 Save (${_dirtyEdits.size})`
 			: "💾 Save";
 	if (_activeBasisFileName) {
-		const newName = hasEdits ? _buildSaveName(_activeBasisFileName) : "";
 		btn.title = hasEdits
-			? `Save edits to a new file: ${newName}\n(original ${_activeBasisFileName} stays untouched)`
-			: `No edits. Will save to ${_activeBasisFileName} family when there are changes.`;
+			? `Save ${_dirtyEdits.size} edit(s) to ${_activeBasisFileName} (previous copy backed up as bck_<timestamp>.xlsx)`
+			: `No edits yet. Saving overwrites ${_activeBasisFileName} after backing it up.`;
 	}
 }
 
@@ -194,100 +177,120 @@ function _patchSheetXml(xml, edits) {
 	return xml;
 }
 
+async function _buildSavedXlsxBytes() {
+	const origBuf = new Uint8Array(await _activeBasisFile.arrayBuffer());
+	const zip = await miniZipParse(origBuf);
+
+	const td = new TextDecoder("utf-8");
+	const te = new TextEncoder();
+
+	const workbookBytes = zip.files.get("xl/workbook.xml");
+	const relsBytes = zip.files.get("xl/_rels/workbook.xml.rels");
+	if (!workbookBytes || !relsBytes) {
+		throw new Error("xlsx missing workbook.xml or its rels");
+	}
+	const workbookXml = td.decode(workbookBytes);
+	const relsXml = td.decode(relsBytes);
+
+	const sheetPath = _findSheetTarget(workbookXml, relsXml, _activeSheetName);
+	if (!sheetPath || !zip.files.get(sheetPath)) {
+		const names = Array.from(
+			workbookXml.matchAll(/<sheet\b[^>]*\bname="([^"]+)"/g),
+		)
+			.map((mm) => mm[1])
+			.join(", ");
+		throw new Error(
+			`Sheet "${_activeSheetName}" not found in workbook (sheets present: ${names || "(none)"})`,
+		);
+	}
+
+	const byId = new Map();
+	for (const s of _baseStudents || _students) {
+		if (s.id) byId.set(s.id, s);
+	}
+
+	const edits = [];
+	for (const { studentId, colName, value } of _dirtyEdits.values()) {
+		const s = byId.get(studentId);
+		if (!s || s._rowIndex == null) continue;
+		const c = _activeRemarkColIdx[colName];
+		if (c == null) continue;
+		edits.push({
+			ref: XLSX.utils.encode_cell({ r: s._rowIndex, c }),
+			value: value,
+			forceString: OBS_COL_RE.test(colName),
+		});
+	}
+
+	const sheetXml = td.decode(zip.files.get(sheetPath));
+	const patchedXml = _patchSheetXml(sheetXml, edits);
+	zip.files.set(sheetPath, te.encode(patchedXml));
+
+	const outBytes = await miniZipBuild(zip.files, zip.order);
+	return { origBuf, outBytes, editsCount: edits.length };
+}
+
+async function _writeBytesToHandle(outBytes, newName) {
+	const fileHandle = await _dirHandle.getFileHandle(newName, { create: true });
+	const writable = await fileHandle.createWritable();
+	await writable.write(outBytes);
+	await writable.close();
+	return fileHandle.getFile();
+}
+
+async function _writeBytesToServer(outBytes, newName) {
+	const u = new URL(_activeBasisFile.url);
+	u.pathname = u.pathname.replace(/[^/]+$/, encodeURIComponent(newName));
+	const res = await fetch(u.href, { method: "PUT", body: outBytes });
+	if (!res.ok) throw new Error(`Server write failed: ${res.status}`);
+	return new HttpFileLike(u.href, newName);
+}
+
 async function _saveActiveBasis() {
 	if (_saveInFlight) return;
 	if (!_dirtyEdits.size) return;
-	if (!_dirHandle) {
-		alert("No folder is open.");
+	if (!_dirHandle && !_serverWritable) {
+		alert("No writable location for this dataset.");
 		return;
 	}
 	if (!_activeBasisFile || !_activeBasisFileName) {
 		alert("No active spreadsheet to save.");
 		return;
 	}
-	try {
-		const perm = await _dirHandle.requestPermission({ mode: "readwrite" });
-		if (perm !== "granted") {
-			alert("Write permission denied for the folder.");
+	if (_dirHandle) {
+		try {
+			const perm = await _dirHandle.requestPermission({ mode: "readwrite" });
+			if (perm !== "granted") {
+				alert("Write permission denied for the folder.");
+				return;
+			}
+		} catch (e) {
+			alert("Could not request write permission: " + e.message);
 			return;
 		}
-	} catch (e) {
-		alert("Could not request write permission: " + e.message);
-		return;
 	}
 
 	_saveInFlight = true;
 	_updateSaveButton();
 	try {
-		const origBuf = new Uint8Array(await _activeBasisFile.arrayBuffer());
-		const zip = await miniZipParse(origBuf);
-
-		const td = new TextDecoder("utf-8");
-		const te = new TextEncoder();
-
-		const workbookBytes = zip.files.get("xl/workbook.xml");
-		const relsBytes = zip.files.get("xl/_rels/workbook.xml.rels");
-		if (!workbookBytes || !relsBytes) {
-			throw new Error("xlsx missing workbook.xml or its rels");
+		const { origBuf, outBytes, editsCount } = await _buildSavedXlsxBytes();
+		const targetName = _activeBasisFileName;
+		const backupName = _backupName();
+		let newFile;
+		if (_dirHandle) {
+			await _writeBytesToHandle(origBuf, backupName);
+			newFile = await _writeBytesToHandle(outBytes, targetName);
+		} else {
+			await _writeBytesToServer(origBuf, backupName);
+			newFile = await _writeBytesToServer(outBytes, targetName);
 		}
-		const workbookXml = td.decode(workbookBytes);
-		const relsXml = td.decode(relsBytes);
-
-		const sheetPath = _findSheetTarget(
-			workbookXml,
-			relsXml,
-			_activeSheetName,
-		);
-		if (!sheetPath || !zip.files.get(sheetPath)) {
-			const names = Array.from(
-				workbookXml.matchAll(/<sheet\b[^>]*\bname="([^"]+)"/g),
-			)
-				.map((mm) => mm[1])
-				.join(", ");
-			throw new Error(
-				`Sheet "${_activeSheetName}" not found in workbook (sheets present: ${names || "(none)"})`,
-			);
-		}
-
-		const byId = new Map();
-		for (const s of _baseStudents || _students) {
-			if (s.id) byId.set(s.id, s);
-		}
-
-		const edits = [];
-		for (const { studentId, colName, value } of _dirtyEdits.values()) {
-			const s = byId.get(studentId);
-			if (!s || s._rowIndex == null) continue;
-			const c = _activeRemarkColIdx[colName];
-			if (c == null) continue;
-			edits.push({
-				ref: XLSX.utils.encode_cell({ r: s._rowIndex, c }),
-				value: value,
-				forceString: OBS_COL_RE.test(colName),
-			});
-		}
-
-		const sheetXml = td.decode(zip.files.get(sheetPath));
-		const patchedXml = _patchSheetXml(sheetXml, edits);
-		zip.files.set(sheetPath, te.encode(patchedXml));
-
-		const outBytes = await miniZipBuild(zip.files, zip.order);
-
-		const newName = _buildSaveName(_activeBasisFileName);
-		const fileHandle = await _dirHandle.getFileHandle(newName, {
-			create: true,
-		});
-		const writable = await fileHandle.createWritable();
-		await writable.write(outBytes);
-		await writable.close();
 
 		_dirtyEdits.clear();
-		const newFile = await fileHandle.getFile();
 		_activeBasisFile = newFile;
-		_activeBasisFileName = newName;
+		_activeBasisFileName = targetName;
 		if (_activeBasis) _basisFiles.set(_activeBasis, newFile);
 		else if (_basisFallbackFile) _basisFallbackFile = newFile;
-		_allFiles.set(newName.toLowerCase(), newFile);
+		_allFiles.set(targetName.toLowerCase(), newFile);
 		_updateSaveButton();
 		document.querySelectorAll("#tbody td.dirty").forEach((el) => {
 			el.classList.remove("dirty");
@@ -296,7 +299,7 @@ async function _saveActiveBasis() {
 		document.querySelectorAll("#tbody td.artefact-changed").forEach((el) => {
 			el.classList.remove("artefact-changed");
 		});
-		alert(`Saved ${edits.length} edit(s) to ${newName}.`);
+		alert(`Saved ${editsCount} edit(s) to ${targetName} (backup: ${backupName}).`);
 	} catch (ex) {
 		console.error("[Students] save failed", ex);
 		alert("Save failed: " + ex.message);

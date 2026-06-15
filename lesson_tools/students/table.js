@@ -290,7 +290,7 @@ function renderTable() {
 					const cell = document.createElement("td");
 					cell.className = "col-remark col-obs col-artefact";
 					_renderArtefactCell(cell, s, rk.col, i, code);
-					if (_isReadOnly) openOnClick(cell);
+					if (!_canEditCells()) openOnClick(cell);
 					tr.appendChild(cell);
 				});
 				continue;
@@ -833,7 +833,7 @@ function _renderArtefactCell(el, student, colName, idx, code) {
 	if (_artefactChangedSince(student.id, idx, fired)) {
 		el.classList.add("artefact-changed");
 	}
-	if (!_isReadOnly && student.id) {
+	if (_canEditCells() && student.id) {
 		el.classList.add("artefact-toggle");
 		el.addEventListener("mousedown", (e) => e.stopPropagation());
 		el.addEventListener("click", (e) => {
@@ -892,7 +892,7 @@ function _toggleArtefact(student, colName, idx, el) {
 
 function _makeCellEditable(el, student, colName) {
 	if (!student.id) return;
-	if (_isReadOnly) return;
+	if (!_canEditCells()) return;
 	el.classList.add("editable-cell");
 	el.contentEditable = "plaintext-only";
 	el.spellcheck = false;
