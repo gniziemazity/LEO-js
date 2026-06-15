@@ -1,6 +1,6 @@
 {
 	"name": "leo",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "Live-coding Assistant for Teachers",
 	"author": "Radu Mariescu-Istodor <gniziemazity@gmail.com>",
 	"main": "src/main/main.js",
