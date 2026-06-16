@@ -258,8 +258,7 @@ function _applyIncomingData(data) {
 }
 
 function _showLoading(on) {
-	const el = document.getElementById("loading");
-	if (el) el.style.display = on ? "flex" : "none";
+	showLoading(on);
 	document.body.classList.toggle("diff-loading", on);
 }
 

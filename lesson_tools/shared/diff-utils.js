@@ -485,16 +485,7 @@ function navigateToSimulator(args = {}) {
 async function listServerDir(path) {
 	const resp = await fetch(path);
 	if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-	const text = await resp.text();
-	try {
-		return JSON.parse(text);
-	} catch {
-		const matches = [...text.matchAll(/href="([^/"]+)\/?"/g)];
-		return matches.map((m) => ({
-			name: m[1],
-			kind: m[1].includes(".") ? "file" : "directory",
-		}));
-	}
+	return JSON.parse(await resp.text());
 }
 
 async function waitForXlsxBundle() {
@@ -513,6 +504,59 @@ async function waitForXlsxBundle() {
 function showLoading(on) {
 	const el = document.getElementById("loading");
 	if (el) el.style.display = on ? "flex" : "none";
+}
+
+// Column-visibility dropdown shared by the overview + students tables.
+// `hiddenCols` is a Set the caller owns; `onChange` runs after each toggle.
+function makeColsPanel({
+	colHideKeys,
+	hiddenCols,
+	onChange,
+	panelId = "cols-panel",
+	btnId = "cols-btn",
+}) {
+	function outsideClick(e) {
+		const panel = document.getElementById(panelId);
+		const btn = document.getElementById(btnId);
+		if (!panel || !btn) return;
+		if (panel.contains(e.target) || btn.contains(e.target)) return;
+		panel.hidden = true;
+		document.removeEventListener("click", outsideClick, true);
+	}
+	function render() {
+		const panel = document.getElementById(panelId);
+		if (!panel) return;
+		panel.innerHTML = "";
+		for (const { key, label } of colHideKeys) {
+			const lab = document.createElement("label");
+			const cb = document.createElement("input");
+			cb.type = "checkbox";
+			cb.checked = !hiddenCols.has(key);
+			cb.addEventListener("change", () => {
+				if (cb.checked) hiddenCols.delete(key);
+				else hiddenCols.add(key);
+				onChange();
+			});
+			lab.appendChild(cb);
+			lab.appendChild(document.createTextNode(" " + label));
+			panel.appendChild(lab);
+		}
+	}
+	function toggle() {
+		const panel = document.getElementById(panelId);
+		if (!panel) return;
+		if (panel.hidden) {
+			render();
+			panel.hidden = false;
+			setTimeout(() => {
+				document.addEventListener("click", outsideClick, true);
+			}, 0);
+		} else {
+			panel.hidden = true;
+			document.removeEventListener("click", outsideClick, true);
+		}
+	}
+	return { render, toggle };
 }
 
 const DIFF_MARKS_FILES = {
@@ -1025,7 +1069,6 @@ function _buildDiffPayload(data) {
 		mode: defaultMode,
 		teacherMarks: defaultMarks?.teacher_files ?? null,
 		studentMarks: defaultMarks?.student_files ?? null,
-		caseSensitive: defaultMarks?.case_sensitive === true,
 		title: data.title,
 		teacherBaseUrl: data.teacherBaseUrl ?? null,
 		studentBaseUrl: data.studentBaseUrl ?? null,

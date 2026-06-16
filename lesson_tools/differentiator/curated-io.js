@@ -95,16 +95,15 @@ function _curatedFlashButton(id, label) {
 	}, 900);
 }
 
-function _curatedCopyToClipboard() {
-	const json = _curatedBuildJson();
-	const done = () => _curatedFlashButton("btn-copy-curated", "✓ Copied");
-	const fail = () => _curatedFlashButton("btn-copy-curated", "✖ Failed");
+function _curatedCopyText(text, btnId) {
+	const done = () => _curatedFlashButton(btnId, "✓ Copied");
+	const fail = () => _curatedFlashButton(btnId, "✖ Failed");
 	if (navigator.clipboard && navigator.clipboard.writeText) {
-		navigator.clipboard.writeText(json).then(done).catch(fail);
+		navigator.clipboard.writeText(text).then(done).catch(fail);
 		return;
 	}
 	const ta = document.createElement("textarea");
-	ta.value = json;
+	ta.value = text;
 	ta.style.position = "fixed";
 	ta.style.left = "-9999px";
 	document.body.appendChild(ta);
@@ -117,4 +116,8 @@ function _curatedCopyToClipboard() {
 	ta.remove();
 	if (ok) done();
 	else fail();
+}
+
+function _curatedCopyToClipboard() {
+	_curatedCopyText(_curatedBuildJson(), "btn-copy-curated");
 }

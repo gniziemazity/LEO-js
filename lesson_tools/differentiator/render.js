@@ -59,6 +59,53 @@ function _lineStartOffsets(text) {
 	return starts;
 }
 
+function _renderDiffLine(lineIdx, ctx) {
+	const {
+		lines,
+		lineStarts,
+		normText,
+		sortedMarks,
+		fileGhosts,
+		fileAnchors,
+		lineFileMarks,
+		side,
+		fileName,
+		lineNumFor,
+		anchorEndInclusive,
+	} = ctx;
+	const lineStart = lineStarts[lineIdx] ?? normText.length;
+	const lineEnd =
+		lineIdx + 1 < lineStarts.length
+			? lineStarts[lineIdx + 1]
+			: normText.length + 1;
+	const lineText = lines[lineIdx] ?? "";
+	const lineMarks = sortedMarks
+		.filter((m) => m.start >= lineStart && m.start < lineEnd)
+		.map((m) => ({
+			...m,
+			_abs_start: m.start,
+			start: m.start - lineStart,
+			end: Math.min(m.end, lineEnd) - lineStart,
+		}));
+	const lineGhosts = fileGhosts
+		.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
+		.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
+	const lineAnchors = fileAnchors
+		.filter(
+			(a) =>
+				a.pos >= lineStart &&
+				(anchorEndInclusive ? a.pos <= lineEnd : a.pos < lineEnd),
+		)
+		.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
+	const bgMark =
+		lineFileMarks &&
+		lineFileMarks.find((lm) => lm.start >= lineStart && lm.start < lineEnd);
+	const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
+	const ln = lineNumFor.numbers[lineIdx];
+	const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
+	return `<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`;
+}
+
 function _renderAligned(
 	text,
 	alignment,
@@ -77,43 +124,26 @@ function _renderAligned(
 	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
 	const lineNumFor = _lineNumberMap(lines, lineStarts, normText, fileGhosts);
 
+	const ctx = {
+		lines,
+		lineStarts,
+		normText,
+		sortedMarks,
+		fileGhosts,
+		fileAnchors,
+		lineFileMarks,
+		side,
+		fileName,
+		lineNumFor,
+		anchorEndInclusive: false,
+	};
 	const parts = [];
 	for (const pair of alignment) {
 		const lineIdx = pair[sideIdx];
 		if (lineIdx === null) {
 			parts.push('<div class="diff-spacer" contenteditable="false">​</div>');
 		} else {
-			const lineStart = lineStarts[lineIdx] ?? normText.length;
-			const lineEnd =
-				lineIdx + 1 < lineStarts.length
-					? lineStarts[lineIdx + 1]
-					: normText.length + 1;
-			const lineText = lines[lineIdx] ?? "";
-			const lineMarks = sortedMarks
-				.filter((m) => m.start >= lineStart && m.start < lineEnd)
-				.map((m) => ({
-					...m,
-					_abs_start: m.start,
-					start: m.start - lineStart,
-					end: Math.min(m.end, lineEnd) - lineStart,
-				}));
-			const lineGhosts = fileGhosts
-				.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
-				.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
-			const lineAnchors = fileAnchors
-				.filter((a) => a.pos >= lineStart && a.pos < lineEnd)
-				.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
-			const bgMark =
-				lineFileMarks &&
-				lineFileMarks.find(
-					(lm) => lm.start >= lineStart && lm.start < lineEnd,
-				);
-			const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
-			const ln = lineNumFor.numbers[lineIdx];
-			const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
-			parts.push(
-				`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
-			);
+			parts.push(_renderDiffLine(lineIdx, ctx));
 		}
 	}
 	return parts.join("");
@@ -155,39 +185,22 @@ function _renderFlat(text, fileMarks, lineFileMarks, side, fileName) {
 	const fileAnchors = side === "student" ? _getInsertAnchors(fileName) : [];
 	const lineNumFor = _lineNumberMap(lines, lineStarts, normText, fileGhosts);
 
+	const ctx = {
+		lines,
+		lineStarts,
+		normText,
+		sortedMarks,
+		fileGhosts,
+		fileAnchors,
+		lineFileMarks,
+		side,
+		fileName,
+		lineNumFor,
+		anchorEndInclusive: true,
+	};
 	const parts = [];
 	for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-		const lineStart = lineStarts[lineIdx] ?? normText.length;
-		const lineEnd =
-			lineIdx + 1 < lineStarts.length
-				? lineStarts[lineIdx + 1]
-				: normText.length + 1;
-		const lineText = lines[lineIdx] ?? "";
-		const lineMarks = sortedMarks
-			.filter((m) => m.start >= lineStart && m.start < lineEnd)
-			.map((m) => ({
-				...m,
-				_abs_start: m.start,
-				start: m.start - lineStart,
-				end: Math.min(m.end, lineEnd) - lineStart,
-			}));
-		const lineGhosts = fileGhosts
-			.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
-			.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
-		const lineAnchors = fileAnchors
-			.filter((a) => a.pos >= lineStart && a.pos <= lineEnd)
-			.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
-		const bgMark =
-			lineFileMarks &&
-			lineFileMarks.find(
-				(lm) => lm.start >= lineStart && lm.start < lineEnd,
-			);
-		const bgCls = bgMark ? ` diff-line--${bgMark.label}` : "";
-		const ln = lineNumFor.numbers[lineIdx];
-		const numAttr = ln != null ? ` data-line-num="${ln}"` : "";
-		parts.push(
-			`<div class="diff-line${bgCls}" data-src-start="${lineStart}"${numAttr}>${diffColorizePositions(lineText, lineMarks, side, lineGhosts, lineAnchors, fileName, normText)}</div>`,
-		);
+		parts.push(_renderDiffLine(lineIdx, ctx));
 	}
 	return parts.join("");
 }

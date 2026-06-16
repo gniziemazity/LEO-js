@@ -17,6 +17,7 @@ async function loadXlsxFiles(files) {
 
 	_basisFiles = new Map();
 	_basisFallbackFile = null;
+	const workingRe = /^remarks(?:_(\d{8}-\d{6}|\d{10,}))?\.xlsx$/;
 	for (const f of files) {
 		const n = f.name.toLowerCase();
 		if (!n.includes("remarks") || !n.endsWith(".xlsx")) continue;
@@ -29,7 +30,7 @@ async function loadXlsxFiles(files) {
 			}
 		}
 		if (!matched) {
-			if (n === "remarks.xlsx") _basisFiles.set(_DEFAULT_BASIS_KEY, f);
+			if (workingRe.test(n)) _basisFiles.set(_DEFAULT_BASIS_KEY, f);
 			_basisFallbackFile = f;
 		}
 	}

@@ -61,14 +61,8 @@ def _per_language_follow_stats(
 
     ghost_ts_by_pair: dict = {}
     if teacher_ghosts:
-        from .similarity_measures import ts_to_local
-        from .token_log_marks import iter_ghost_tokens
-        for fname, blob_pos, start_rel, tok, raw_ts in iter_ghost_tokens(teacher_ghosts):
-            if raw_ts is None:
-                continue
-            ts_str = (ts_to_local(raw_ts)
-                      if isinstance(raw_ts, (int, float)) else raw_ts)
-            ghost_ts_by_pair[(fname, blob_pos + start_rel, tok)] = ts_str
+        from .token_log_marks import build_ghost_ts_by_pair
+        ghost_ts_by_pair = build_ghost_ts_by_pair(teacher_ghosts)
 
     ghost_blobs_sorted: Dict[str, list] = {}
     if teacher_ghosts:

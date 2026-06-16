@@ -54,17 +54,7 @@ async function openFolderPicker() {
 }
 
 async function loadXlsxFiles(files) {
-	if (typeof XLSX === "undefined") {
-		await new Promise((resolve) => {
-			const s = document.querySelector('script[src*="xlsx"]');
-			if (s) {
-				s.addEventListener("load", resolve, { once: true });
-				s.addEventListener("error", resolve, { once: true });
-			} else {
-				resolve();
-			}
-		});
-	}
+	await waitForXlsxBundle();
 	if (typeof XLSX === "undefined") {
 		alert(
 			"SheetJS not loaded — need an internet connection or xlsx.full.min.js next to this file.",
@@ -88,20 +78,6 @@ async function loadXlsxFiles(files) {
 				+t.slice(0, 2),
 				+t.slice(2, 4),
 				+t.slice(4, 6),
-			);
-			if (!Number.isNaN(ms)) return ms;
-		}
-		m = name.match(/_(\d{13})\b/);
-		if (m) return Number(m[1]);
-		m = name.match(/_(\d{10})\b/);
-		if (m) return Number(m[1]) * 1000;
-		m = name.match(/(\d{8})(?=\D*$)/);
-		if (m) {
-			const d = m[1];
-			const ms = Date.UTC(
-				+d.slice(0, 4),
-				+d.slice(4, 6) - 1,
-				+d.slice(6, 8),
 			);
 			if (!Number.isNaN(ms)) return ms;
 		}
@@ -139,8 +115,11 @@ async function loadXlsxFiles(files) {
 		_basisFiles.set(key, arr[0].f);
 	}
 
+	const _workingRemarksRe = /^remarks(?:_(\d{8}-\d{6}|\d{10,}))?\.xlsx$/;
 	_basisFallbackFile =
-		xlsxFiles.find((f) => f.name.toLowerCase() === "remarks.xlsx") || null;
+		xlsxFiles
+			.filter((f) => _workingRemarksRe.test(f.name.toLowerCase()))
+			.sort((a, b) => _recency(b) - _recency(a))[0] || null;
 
 	if (!_basisFallbackFile && _lessonName) {
 		const lessonLc = String(_lessonName)
@@ -259,7 +238,7 @@ async function _loadRemarksFile(file) {
 			? "lesson"
 			: _lessonGroup === "assignments"
 				? "assignment"
-				: _followLabel === "SIM"
+				: result.scoreKind === "similarity"
 					? "assignment"
 					: "lesson");
 	_baseStudents = _students.map((s) => ({ ...s }));

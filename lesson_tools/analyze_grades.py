@@ -4,8 +4,8 @@ import math
 import os
 import re
 import sys
-from utils.folder_utils import pick_file
-from utils.anonymize import load_excluded_student_ids
+from utils.folder_utils import normalize_sid, pick_file
+from utils.anonymize import is_llm_category, load_excluded_student_ids
 import warnings
 from datetime import datetime
 
@@ -185,9 +185,9 @@ _HEADER_ALIASES = {
     "exam":            ["Exam"],
     "weeklies":        ["Weeklies"],
     "notes":           ["Notes"],
-    "excluded":        ["Category", "Excluded", "Excluded?"],
-    "pre_typing":      ["Pre Typing", "Pre KPM", "Pre-typing", "Pre K/min"],
-    "post_typing":     ["Post Typing", "Post KPM", "Post-typing", "Post K/min"],
+    "excluded":        ["Category"],
+    "pre_typing":      ["Pre K/min"],
+    "post_typing":     ["Post K/min"],
     "self_eval":       ["Self Eval", "Self Evaluation", "Self"],
     "kahoot":          ["Kahoot"],
     "quiz_stii":       ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
@@ -202,6 +202,7 @@ _HEADER_ALIASES = {
 COL: dict = {}
 ASSIGNMENTS: dict = {}
 POOLED_ASSIGNMENTS: dict = {}
+_LESSON_STATS = None
 
 
 def _build_header_map(headers):
@@ -281,28 +282,6 @@ def _populate_columns_from_header(df):
     POOLED_ASSIGNMENTS = {k: v for k, v in ASSIGNMENTS.items()
                           if v.get("follow") is not None}
 
-    if ASSIGNMENTS:
-        lesson_grades = [a["grade"] for a in ASSIGNMENTS.values()
-                         if a.get("grade") is not None]
-        first_grade = min(lesson_grades) if lesson_grades else None
-        last_grade = max(lesson_grades) if lesson_grades else None
-
-        def _find_all(lower):
-            return [i for i, h in enumerate(headers)
-                    if h is not None
-                    and str(h).strip().lower() == lower]
-
-        if first_grade is not None and last_grade is not None:
-            km = _find_all("k/min")
-            if COL.get("pre_typing") is None:
-                before = next((i for i in km if i < first_grade), None)
-                if before is not None:
-                    COL["pre_typing"] = before
-            if COL.get("post_typing") is None:
-                after = next((i for i in km if i > last_grade), None)
-                if after is not None:
-                    COL["post_typing"] = after
-
 
 def _col_series(st, col_idx, *, numeric=True):
     if col_idx is None or col_idx >= st.shape[1]:
@@ -315,20 +294,24 @@ def _col_series(st, col_idx, *, numeric=True):
 
 
 def load_data(path):
-    global _course_root
+    global _course_root, _LESSON_STATS
     _course_root = os.path.dirname(os.path.abspath(path))
     _artefact_flags_cache.clear()
-    ext = os.path.splitext(path)[1].lower()
-    engine = "openpyxl" if ext == ".xlsx" else "xlrd"
-    df = pd.read_excel(path, engine=engine, header=None)
+    if os.path.splitext(path)[1].lower() != ".json":
+        raise ValueError(
+            f"analyze_grades expects an overview.json file (got {path!r}); "
+            "run `npm run overview` to (re)build it.")
+    with open(path, encoding="utf-8") as f:
+        payload = json.load(f)
+    _LESSON_STATS = payload.get("lesson_stats")
+    df = pd.DataFrame([payload.get("header") or []]
+                      + (payload.get("rows") or []))
     if df.empty:
         return df
     _populate_columns_from_header(df)
     return df.iloc[1:].copy().reset_index(drop=True)
 
 
-def _row_is_llm(excluded: str) -> bool:
-    return (excluded or "").strip().upper() in ("AI", "LLM")
 
 
 def enrich(st):
@@ -337,7 +320,7 @@ def enrich(st):
                      if COL.get("excluded") is not None
                      else pd.Series([""] * len(st), index=st.index))
         st["is_llm"] = pd.Series(
-            [_row_is_llm(e) for e in excludeds],
+            [is_llm_category(e) for e in excludeds],
             index=st.index,
         )
     else:
@@ -558,11 +541,9 @@ def analyze_ai_vs_trouble(st):
     ai_t, ai_p, nai_t, nai_p = totals
     table_all = np.array([[ai_t, ai_p], [nai_t, nai_p]])
 
-    rate_ai = ai_t / (ai_t + ai_p)
-    rate_nai = nai_t / (nai_t + nai_p)
-    odds_all = (ai_t * nai_p) / (ai_p * nai_t) if ai_p * nai_t > 0 else float("inf")
-    chi2, p_chi, _, _ = chi2_contingency(table_all, correction=True)
-    _, p_fisher = fisher_exact(table_all)
+    rate_ai_s = f"{ai_t / (ai_t + ai_p):.1%}" if (ai_t + ai_p) > 0 else "n/a"
+    rate_nai_s = (f"{nai_t / (nai_t + nai_p):.1%}"
+                  if (nai_t + nai_p) > 0 else "n/a")
 
     print(f"""
   Contingency table:
@@ -570,9 +551,25 @@ def analyze_ai_vs_trouble(st):
     AI flagged:      {ai_t:>7}      {ai_p:>7}     {ai_t+ai_p:>5}
     No AI flag:      {nai_t:>7}      {nai_p:>7}     {nai_t+nai_p:>5}
 
-  Trouble rate WITH AI:      {rate_ai:.1%}  ({ai_t}/{ai_t+ai_p})
-  Trouble rate WITHOUT AI:   {rate_nai:.1%}  ({nai_t}/{nai_t+nai_p})
+  Trouble rate WITH AI:      {rate_ai_s}  ({ai_t}/{ai_t+ai_p})
+  Trouble rate WITHOUT AI:   {rate_nai_s}  ({nai_t}/{nai_t+nai_p})""")
 
+    # chi2_contingency raises on a zero marginal (e.g. no AI-flagged students),
+    # and fisher needs both groups too — skip the association test if degenerate.
+    row_ok = (ai_t + ai_p) > 0 and (nai_t + nai_p) > 0
+    col_ok = (ai_t + nai_t) > 0 and (ai_p + nai_p) > 0
+    if not (row_ok and col_ok):
+        print("""
+  Not enough data for an AI-vs-trouble association test (need both
+  AI-flagged and non-AI students, with both Trouble and Pass outcomes).
+""")
+        return
+
+    odds_all = (ai_t * nai_p) / (ai_p * nai_t) if ai_p * nai_t > 0 else float("inf")
+    chi2, p_chi, _, _ = chi2_contingency(table_all, correction=True)
+    _, p_fisher = fisher_exact(table_all)
+
+    print(f"""
   Odds Ratio:        {odds_all:.2f}× the trouble
     → AI-flagged students had {odds_all:.2f}× the odds of trouble vs. non-AI.
   Formula:           ({ai_t} × {nai_p}) ÷ ({ai_p} × {nai_t}) = {odds_all:.2f}
@@ -1263,9 +1260,7 @@ def _ids_of(st_subset, COL_ID):
         return []
     out = []
     for v in _col_series(st_subset, COL_ID, numeric=False):
-        s = str(v).strip()
-        if s.endswith(".0"):
-            s = s[:-2]
+        s = normalize_sid(v)
         if s:
             out.append(s)
     return out
@@ -1814,14 +1809,17 @@ def save_stats_json(st, grades_path):
     if ai_p > 0 and nai_t > 0:
         ao["odds_ratio"] = sf((ai_t * nai_p) / (ai_p * nai_t))
     tbl = np.array([[ai_t, ai_p], [nai_t, nai_p]])
-    try:
-        chi2, p_chi, _, _ = chi2_contingency(tbl, correction=True)
-        _, p_fisher = fisher_exact(tbl)
-        ao["fisher_p"] = sf(p_fisher)
-        ao["chi2"]     = sf(chi2)
-        ao["chi2_p"]   = sf(p_chi)
-    except Exception:
-        pass
+    row_ok = (ai_t + ai_p) > 0 and (nai_t + nai_p) > 0
+    col_ok = (ai_t + nai_t) > 0 and (ai_p + nai_p) > 0
+    if row_ok and col_ok:
+        try:
+            chi2, p_chi, _, _ = chi2_contingency(tbl, correction=True)
+            _, p_fisher = fisher_exact(tbl)
+            ao["fisher_p"] = sf(p_fisher)
+            ao["chi2"]     = sf(chi2)
+            ao["chi2_p"]   = sf(p_chi)
+        except Exception:
+            pass
     result["ai_overall"] = ao
 
     if "total_artefacts_fired" in st.columns and st["total_artefacts_fired"].notna().any():
@@ -1904,6 +1902,9 @@ def save_stats_json(st, grades_path):
 
         result["artefact_summary"] = ts
 
+    if _LESSON_STATS:
+        result["lesson_stats"] = _LESSON_STATS
+
     folder   = os.path.dirname(os.path.abspath(grades_path))
     out_path = os.path.join(folder, "grades_stats.json")
     with open(out_path, "w", encoding="utf-8") as f:
@@ -1983,16 +1984,20 @@ def plot_follow_vs_grade(st):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyse a grades_*.xlsx / Overview*.xlsx file and write "
+        description="Analyse an overview.json (or a course folder) and write "
                     "grades_stats.json next to it."
     )
     parser.add_argument("path", nargs="?",
-                        help="Path to the xlsx (skips the file picker).")
+                        help="Path to overview.json or a course folder "
+                             "(skips the file picker).")
     parser.add_argument("--no-plot", action="store_true",
                         help="Skip the interactive matplotlib plot at the end "
                              "(used when chained from build_overview.py).")
     args = parser.parse_args()
     path = args.path
+
+    if path and os.path.isdir(path):
+        path = os.path.join(path, "overview.json")
 
     if not path:
         session_path = os.path.join(os.path.dirname(__file__),
@@ -2005,8 +2010,9 @@ def main():
             pass
 
         path = pick_file(
-            "Select OverviewPlus.xlsx or Overview.xlsx",
-            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            "Select overview.json",
+            filetypes=[("Overview JSON", "overview.json"),
+                       ("JSON files", "*.json"), ("All files", "*.*")],
             initialdir=last_folder or "",
         )
 
@@ -2031,9 +2037,7 @@ def main():
     if excluded_ids:
         id_col_idx = COL.get('id')
         if id_col_idx is not None:
-            ids = _col_series(st, id_col_idx, numeric=False).apply(
-                lambda s: s[:-2] if s.endswith('.0') else s
-            )
+            ids = _col_series(st, id_col_idx, numeric=False).apply(normalize_sid)
             n_before = len(st)
             st = st[~ids.isin(excluded_ids)].reset_index(drop=True)
             n_excluded = n_before - len(st)

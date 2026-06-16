@@ -2,20 +2,20 @@
 
 const _DEFAULT_MANUAL_A_PARTITIONS = [
 	"80, 81, 78, 50, 55, 23, 82, 20, 24",
-	"70, 77, 48, 72, 18, 30, 76, 67, 4, 74, 58, 34, 69, 35, 8",
+	"70, 77, 48, 72, 18, 30, 76, 67, 4, 74, 58, 34, 69, 35",
 	"61, 29, 25, 11, 44, 63, 71, 31, 47, 45, 36, 65, 10, 41, 38, 28, 17, 62, 73, 84, 59, 66, 15, 22, 53",
 	"rest",
 ].join("\n");
 
 const _MANUAL_LS_KEYS = {
-	A: "cluster_manual_text_a_v1",
+	A: "cluster_manual_text_a_v2",
 };
 const _MANUAL_DEFAULTS = {
 	A: _DEFAULT_MANUAL_A_PARTITIONS,
 };
 
 const _MANUAL_CLUSTER_DESCS = [
-	"Type 1:Follow well from the start",
+	"Type 1: Follow well from the start",
 	"Type 2: Learned to follow along",
 	"We can't tell. Could be Type 1 or Type 2",
 	"Others",

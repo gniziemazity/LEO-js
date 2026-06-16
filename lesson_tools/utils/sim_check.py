@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Set
 
 from .anonymize import classify_student_row
-from .folder_utils import LANG_EXTS, code_files
+from .folder_utils import LANG_EXTS, code_files, find_working_remarks
 from .similarity_measures import (
     calculate_containment,
     open_csv_encoded,
@@ -386,12 +386,9 @@ def main() -> None:
         remarks_csv.unlink()
 
     expected_csv = current_dir / 'expected.csv'
-    if not expected_csv.exists():
-        expected_csv = current_dir / 'required.csv'
     checker.load_expected_csv(str(expected_csv))
     checker.load_lesson_json(current_dir)
 
-    folder_name = current_dir.name
     print('\nWriting diff mark files...')
     if checker._lesson_keypresses:
         checker.write_keyword_log()
@@ -416,12 +413,13 @@ def main() -> None:
     excels_dir = current_dir / 'excels'
     excels_dir.mkdir(exist_ok=True)
 
-    remarks_path = excels_dir / 'remarks.xlsx'
+    prev_remarks = find_working_remarks(current_dir)
+    run_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+    remarks_path = excels_dir / f'remarks_{run_ts}.xlsx'
     backup_path = None
-    if remarks_path.exists():
-        backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_path = excels_dir / f'bck_{backup_ts}.xlsx'
-        shutil.copy2(str(remarks_path), str(backup_path))
+    if prev_remarks is not None and prev_remarks.exists():
+        backup_path = excels_dir / f'bck_{run_ts}.xlsx'
+        shutil.copy2(str(prev_remarks), str(backup_path))
         print(f'Backed up previous remarks -> {backup_path.name}')
 
     def _merge_obs_into(path: Path) -> None:
@@ -500,20 +498,17 @@ def main() -> None:
                 print('  Aborted; remarks not written.')
                 return
 
+    if (prev_remarks is not None and prev_remarks.exists()
+            and prev_remarks != remarks_path):
+        try:
+            prev_remarks.unlink()
+        except OSError as e:
+            print(f'  Warning: could not remove old {prev_remarks.name}: {e}')
+
     if chosen_basis:
         print(f'Follow basis: {chosen_basis} -> {remarks_path.name}')
     else:
         print(f'Follow basis: (default LEO* re-scored) -> {remarks_path.name}')
-
-    removed = 0
-    for old_grades in current_dir.glob(f'grades_{folder_name}_*.xlsx'):
-        try:
-            old_grades.unlink()
-            removed += 1
-        except OSError as e:
-            print(f'  Warning: could not remove {old_grades.name}: {e}')
-    if removed:
-        print(f'  Removed {removed} obsolete grades file(s).')
 
     print(f'Done — {remarks_path.name} generated'
           + (f' (backup: {backup_path.name})' if backup_path else '')

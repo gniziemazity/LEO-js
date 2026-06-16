@@ -416,6 +416,8 @@ class TokenLogMixin:
             print(f'Written {star_label} for {written_star} student(s) in {names_dir.name}/')
 
     def write_leo_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
+        if 'leo' in DISABLED_DIFF_MARK_VARIANTS:
+            return
         self._write_alt_diff_marks(
             names_dir, anon_ids_dir,
             _build_leo_diff_marks,
@@ -501,10 +503,6 @@ class TokenLogMixin:
             return {}
 
         teacher_entries = _parse_teacher_tokens(teacher_tokens_path)
-        removal_ts_by_token: Dict[str, List[str]] = {}
-        for tok, _, _, is_rem, removal_ts in teacher_entries:
-            if is_rem and removal_ts:
-                removal_ts_by_token.setdefault(tok, []).append(removal_ts)
 
         all_events = getattr(self, '_lesson_all_events', None)
         ts_map_cached: Dict[str, List[str]] = (
@@ -581,7 +579,7 @@ class TokenLogMixin:
             all_occ, score_e, score_c, n_found, n_missing, n_extra, _n_ghost_extra = (
                 _build_occ_from_diff_marks(
                     diff_marks, teacher_entries,
-                    fresh_removal or removal_ts_by_token or None,
+                    fresh_removal or None,
                     teacher_ghosts=teacher_ghosts,
                 )
             )
@@ -596,7 +594,7 @@ class TokenLogMixin:
             stats['follow_e_by_lang'] = _per_language_follow_stats(
                 diff_marks, teacher_code_files, student_code_files,
                 teacher_ghosts=teacher_ghosts,
-                removal_ts_by_token=fresh_removal or removal_ts_by_token,
+                removal_ts_by_token=fresh_removal,
                 teacher_entries=teacher_entries,
                 teacher_token_timestamps=teacher_token_timestamps,
             )

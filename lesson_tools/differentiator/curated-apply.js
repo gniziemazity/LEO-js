@@ -597,15 +597,17 @@ function _curatedDisplayLineNumbers(marked) {
 	return nums;
 }
 
+function _curatedFileExtRank(n) {
+	const r = { html: 0, htm: 0, js: 1, css: 2 };
+	const e = getFileExt(n);
+	return r[e] != null ? r[e] : 3;
+}
+
 function _curatedCorrectionsData() {
 	const out = _curatedApplyToStudent({ mark: true });
-	const rank = (n) => {
-		const r = { html: 0, htm: 0, js: 1, css: 2 };
-		const e = getFileExt(n);
-		return r[e] != null ? r[e] : 3;
-	};
 	const names = Object.keys(out).sort(
-		(a, b) => rank(a) - rank(b) || a.localeCompare(b),
+		(a, b) =>
+			_curatedFileExtRank(a) - _curatedFileExtRank(b) || a.localeCompare(b),
 	);
 	const showHeaders = names.length > 1;
 	const blocks = [];
@@ -838,13 +840,9 @@ function _curatedDownloadCorrectionsImage() {
 
 function _curatedCorrectedCodeBlocks() {
 	const out = _curatedApplyToStudent({ mark: true });
-	const rank = (n) => {
-		const r = { html: 0, htm: 0, js: 1, css: 2 };
-		const e = getFileExt(n);
-		return r[e] != null ? r[e] : 3;
-	};
 	const names = Object.keys(out).sort(
-		(a, b) => rank(a) - rank(b) || a.localeCompare(b),
+		(a, b) =>
+			_curatedFileExtRank(a) - _curatedFileExtRank(b) || a.localeCompare(b),
 	);
 	const showHeaders = names.length > 1;
 	const blocks = [];
@@ -920,26 +918,7 @@ function _curatedCorrectionsHtml() {
 function _curatedCopyCorrectionsHtml() {
 	const html = _curatedCorrectionsHtml();
 	if (!html) return;
-	const done = () => _curatedFlashButton("tw-html-btn", "✓ Copied");
-	const fail = () => _curatedFlashButton("tw-html-btn", "✖ Failed");
-	if (navigator.clipboard && navigator.clipboard.writeText) {
-		navigator.clipboard.writeText(html).then(done).catch(fail);
-		return;
-	}
-	const ta = document.createElement("textarea");
-	ta.value = html;
-	ta.style.position = "fixed";
-	ta.style.left = "-9999px";
-	document.body.appendChild(ta);
-	ta.focus();
-	ta.select();
-	let ok = false;
-	try {
-		ok = document.execCommand("copy");
-	} catch {}
-	ta.remove();
-	if (ok) done();
-	else fail();
+	_curatedCopyText(html, "tw-html-btn");
 }
 
 function _curatedBuildCorrectionsListEl(blocks) {
@@ -964,8 +943,7 @@ function _curatedBuildCorrectionsListEl(blocks) {
 		label.textContent = b.label;
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre tw-corr-pre";
-		if (typeof _diffMissingColorFor === "function")
-			pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(b.file));
+		pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(b.file));
 		pre.innerHTML = _curatedMarkedToHtml(b.marked);
 		row.appendChild(label);
 		row.appendChild(pre);
@@ -1187,8 +1165,7 @@ function _curatedPreview() {
 
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre" + (i === 0 ? " active" : "");
-		if (typeof _diffMissingColorFor === "function")
-			pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(name));
+		pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(name));
 		paneEls.push({ pre, name, text });
 		panes.appendChild(pre);
 	});

@@ -315,11 +315,7 @@ function _curatedRefreshPairConnectors() {
 				? _teacherFiles[file].replace(/\r\n/g, "\n")
 				: "";
 		const pos = marks && marks[0] ? marks[0].start : 0;
-		return typeof _diffMissingColorAt === "function"
-			? _diffMissingColorAt(file, text, pos)
-			: typeof _diffMissingColorFor === "function"
-				? _diffMissingColorFor(file)
-				: missingColor;
+		return _diffMissingColorAt(file, text, pos);
 	};
 
 	for (const item of _curatedPairConnectorItems) {

@@ -12,8 +12,7 @@ _GROUPS = ("lessons", "assignments")
 _PII_FILES = {"students.csv", "name_map.csv"}
 _SKIP_DIR_NAMES = {"__pycache__", ".git", ".venv", "node_modules"}
 _SKIP_FILE_NAMES = {".DS_Store", "Thumbs.db"}
-_ROOT_KEEP_FILES = {"grades_stats.json"}
-_OVERVIEW_RE = re.compile(r"^overview.*\.xlsx$", re.IGNORECASE)
+_ROOT_KEEP_FILES = {"grades_stats.json", "overview.json"}
 _DIFF_MARKS_RE = re.compile(r"^diff_marks_.*\.json$")
 _MEDIA_RE = re.compile(
     r"\.(?:png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$",
@@ -33,8 +32,7 @@ def _is_hidden(path: Path) -> bool:
 
 
 def _keep_root_file(name: str) -> bool:
-    lower = name.lower()
-    return lower in _ROOT_KEEP_FILES or bool(_OVERVIEW_RE.match(lower))
+    return name.lower() in _ROOT_KEEP_FILES
 
 
 def _keep_project_file(rel: str, lesson_name: str, teacher_media=frozenset()) -> bool:

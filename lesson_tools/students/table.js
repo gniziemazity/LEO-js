@@ -299,13 +299,15 @@ function renderTable() {
 			let cls = "col-remark";
 			const isObs = OBS_COL_RE.test(rk.col);
 			const isGrade = /^grade$/i.test(rk.col);
+			const isStatus = /^status$/i.test(rk.col);
 			const isComments = /^comments?$/i.test(rk.col);
 			const isExpected = /^expected$/i.test(rk.col);
 			if (isObs) cls += " col-obs";
 			else if (isGrade) cls += " col-grade";
+			else if (isStatus) cls += " col-status";
 			else if (isComments) cls += " col-comments";
 			el.className = cls;
-			const editable = isObs || isGrade || isComments;
+			const editable = isObs || isGrade || isStatus || isComments;
 			if (isComments) {
 				const inner = document.createElement("div");
 				inner.className = "comments-inner";
@@ -711,49 +713,16 @@ function renderMismatches(cell, events) {
 	cell.addEventListener("mouseleave", () => hideTip());
 }
 
-function _colsPanelOutsideClick(e) {
-	const panel = document.getElementById("cols-panel");
-	const btn = document.getElementById("cols-btn");
-	if (!panel || !btn) return;
-	if (panel.contains(e.target) || btn.contains(e.target)) return;
-	panel.hidden = true;
-	document.removeEventListener("click", _colsPanelOutsideClick, true);
-}
-
-function _renderColsPanel() {
-	const panel = document.getElementById("cols-panel");
-	if (!panel) return;
-	panel.innerHTML = "";
-	for (const { key, label } of COL_HIDE_KEYS) {
-		const lab = document.createElement("label");
-		const cb = document.createElement("input");
-		cb.type = "checkbox";
-		cb.checked = !_hiddenCols.has(key);
-		cb.addEventListener("change", () => {
-			if (cb.checked) _hiddenCols.delete(key);
-			else _hiddenCols.add(key);
-			_saveHiddenCols();
-			renderTable();
-		});
-		lab.appendChild(cb);
-		lab.appendChild(document.createTextNode(" " + label));
-		panel.appendChild(lab);
-	}
-}
-
+const _colsPanel = makeColsPanel({
+	colHideKeys: COL_HIDE_KEYS,
+	hiddenCols: _hiddenCols,
+	onChange: () => {
+		_saveHiddenCols();
+		renderTable();
+	},
+});
 function _toggleColsPanel() {
-	const panel = document.getElementById("cols-panel");
-	if (!panel) return;
-	if (panel.hidden) {
-		_renderColsPanel();
-		panel.hidden = false;
-		setTimeout(() => {
-			document.addEventListener("click", _colsPanelOutsideClick, true);
-		}, 0);
-	} else {
-		panel.hidden = true;
-		document.removeEventListener("click", _colsPanelOutsideClick, true);
-	}
+	_colsPanel.toggle();
 }
 
 function _studentHasFiles(student) {

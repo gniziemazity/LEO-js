@@ -34,9 +34,11 @@ function upperBound(a, v, k) {
 }
 function _singletonToTextPart(e) { return e.char || ""; }
 function alert(msg) { console.error(msg); }
+function newTokenRegex() { return /[a-zA-Z0-9]+|[^\\s]/gu; }
 `;
 
-const bundle = stub + "\n" + modelSrc + "\n" + cfgSrc + "\n" + dataSrc + "\n" + statsSrc;
+const bundle =
+	stub + "\n" + modelSrc + "\n" + cfgSrc + "\n" + dataSrc + "\n" + statsSrc;
 
 const api = new Function(`
 	${bundle}

@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 import tkinter as tk
 from tkinter import filedialog
@@ -11,6 +12,38 @@ _LESSONS_DIR      = _ROOT / 'lessons'
 
 CODE_EXTS = ('.html', '.htm', '.css', '.js', '.py')
 LANG_EXTS = ('.html', '.css', '.js', '.py')
+
+TEACHER_SUBDIRS = ('reconstructed', 'start', 'correct')
+
+def normalize_sid(v) -> str:
+    s = '' if v is None else str(v).strip()
+    if not s:
+        return ''
+    if s.endswith('.0'):
+        try:
+            s = str(int(float(s)))
+        except (ValueError, TypeError):
+            pass
+    return s
+
+
+WORKING_REMARKS_RE = re.compile(
+    r'^remarks(?:_(\d{8}-\d{6}|\d{10,}))?\.xlsx$', re.IGNORECASE)
+
+
+def find_working_remarks(folder: Path) -> Path | None:
+    for base in (folder / 'excels', folder):
+        if not base.is_dir():
+            continue
+        cands = []
+        for p in base.glob('remarks*.xlsx'):
+            m = WORKING_REMARKS_RE.match(p.name)
+            if m:
+                cands.append((m.group(1) or '', p.stat().st_mtime, p))
+        if cands:
+            cands.sort(key=lambda t: (t[0], t[1]))
+            return cands[-1][2]
+    return None
 
 
 def code_files(directory: Path, *, first_only: bool = False) -> dict:

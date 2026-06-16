@@ -344,12 +344,7 @@ function _curatedActiveRectBg(marks) {
 			tFile && typeof _teacherFiles !== "undefined" && _teacherFiles[tFile]
 				? _teacherFiles[tFile].replace(/\r\n/g, "\n")
 				: "";
-		const c =
-			typeof _diffMissingColorAt === "function"
-				? _diffMissingColorAt(tFile, tText, tPos)
-				: typeof _diffMissingColorFor === "function"
-					? _diffMissingColorFor(tFile)
-					: null;
+		const c = _diffMissingColorAt(tFile, tText, tPos);
 		if (c && typeof _hexToRgba === "function") return _hexToRgba(c, 0.22);
 		return c || "var(--clr-mark-active-bg)";
 	}

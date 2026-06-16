@@ -1,7 +1,7 @@
 import os
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, NamedTuple, Tuple
 
 from openpyxl import Workbook
 from openpyxl.comments import Comment
@@ -60,6 +60,28 @@ def _build_synth_ts(files: Dict[str, Path]) -> Dict[Tuple[str, int], str]:
     return out
 
 
+class _Col(NamedTuple):
+    key: str
+    header: str
+    hidden: bool = False
+    cf: str = ''
+
+
+_CF_RULES = {
+    'extra': lambda: ColorScaleRule(
+        start_type='num', start_value=0, start_color='FFFFFF',
+        end_type='max', end_color='F8696B'),
+    'inc': lambda: ColorScaleRule(
+        start_type='num', start_value=0, start_color='F8696B',
+        end_type='num', end_value=100, end_color='FFFFFF'),
+    'redlow': lambda: ColorScaleRule(
+        start_type='min', start_color='F8696B',
+        end_type='max', end_color='FFFFFF'),
+}
+
+_OPTIONAL_TRAIL = ('status', 'comments', 'category')
+
+
 class ExcelReportMixin:
     def generate_remarks_report(
         self,
@@ -86,180 +108,115 @@ class ExcelReportMixin:
             self._basis_marks_by_sid = prev_basis
 
     def _add_remarks_sheet(self, wb: Workbook, anonymize: bool = False) -> None:
-        sheet   = wb.create_sheet(title='Remarks')
-        has_log = bool(self._lesson_keypresses)
-        has_sim = not has_log
+        sheet = wb.create_sheet(title='Remarks')
+        is_assignment = not bool(self._lesson_keypresses)
 
-        _LANG_COLS = tuple(
-            (ext, f'{label} (E)') for ext, label in _LANG_EXT_LABEL
-        )
-        if has_log:
-            present_lang_exts = []
-            for ext, _label in _LANG_COLS:
-                if any(
-                    (v.get('follow_e_by_lang') or {}).get(ext) is not None
-                    for v in self._student_token_stats.values()
-                ):
-                    present_lang_exts.append(ext)
-        else:
-            teacher_by_lang = self._teacher_tokens_by_lang()
-            present_lang_exts = [
-                ext for ext, _label in _LANG_COLS if teacher_by_lang.get(ext)
-            ]
-
-        lang_label_by_ext = dict(_LANG_COLS)
-        header = ['ID', 'Student', 'Number', 'Remarks', 'Extra', 'Extra Desc', 'Inc']
-        if has_log:
-            header.extend(['Follow (C)', 'Follow (C) Desc',
-                            'Follow (E)', 'Follow (E) Desc', 'Interactions'])
-            for ext in present_lang_exts:
-                header.append(lang_label_by_ext[ext])
-                header.append(f'{lang_label_by_ext[ext]} Desc')
-        if has_sim:
-            header.extend(['Similarity', 'Similarity Desc'])
-            for ext in present_lang_exts:
-                header.append(lang_label_by_ext[ext])
-                header.append(f'{lang_label_by_ext[ext]} Desc')
-        if self.required_items or self.not_expected_items:
-            header.extend(['Expected', 'Expected Desc'])
-        header.extend(['Obs', 'Grade', 'Comments', 'Category'])
-
-        COL_EXTRA   = 5
-        COL_EXTRA_T = 6
-        COL_INC     = 7
-        _next = 8
-        COL_LANG_BY_EXT: Dict[str, int] = {}
-        COL_LANG_DESC_BY_EXT: Dict[str, int] = {}
-        if has_log:
-            COL_FOLLOWC   = _next; _next += 1
-            COL_FOLLOWC_T = _next; _next += 1
-            COL_FOLLOWE   = _next; _next += 1
-            COL_FOLLOWE_T = _next; _next += 1
-            COL_INTERACT  = _next; _next += 1
-            for ext in present_lang_exts:
-                COL_LANG_BY_EXT[ext] = _next; _next += 1
-                COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
-        else:
-            COL_FOLLOWC = COL_FOLLOWC_T = COL_FOLLOWE = COL_FOLLOWE_T = COL_INTERACT = None
-        if has_sim:
-            COL_SIM    = _next; _next += 1
-            COL_SIM_T  = _next; _next += 1
-            for ext in present_lang_exts:
-                COL_LANG_BY_EXT[ext] = _next; _next += 1
-                COL_LANG_DESC_BY_EXT[ext] = _next; _next += 1
-        else:
-            COL_SIM = COL_SIM_T = None
-        if self.required_items or self.not_expected_items:
-            COL_EXPECTED   = _next; _next += 1
-            COL_EXPECTED_T = _next; _next += 1
-        else:
-            COL_EXPECTED = COL_EXPECTED_T = None
+        present_lang_exts = self._present_lang_exts(is_assignment)
+        cols = self._remarks_columns(is_assignment, present_lang_exts)
+        header = [c.header for c in cols]
+        idx = {c.key: i + 1 for i, c in enumerate(cols)}
 
         sheet.append(header)
         for cell in sheet[1]:
             cell.font = Font(bold=True)
 
         excluded = getattr(self, 'excluded_ids', set()) or set()
-        ai_ids   = getattr(self, 'ai_ids', set()) or set()
+        ai_ids = getattr(self, 'ai_ids', set()) or set()
         anon_mode = (
             os.environ.get('STUDENT_ANALYTICS_USE_ALTER_EGO') == '1'
             or anonymize
         )
-        sids               = sorted(self.student_info.keys(), key=int)
-        active_sids        = [s for s in sids if s not in excluded]
+        sids = sorted(self.student_info.keys(), key=int)
+        active_sids = [s for s in sids if s not in excluded]
         all_extra_counters = {
             sid: sum(self.student_simple_extra_by_ext.get(sid, {}).values(), Counter())
             for sid in active_sids
         }
-
         _extra_denom = max(
             1, sum(sum(c.values()) for c in self.teacher_outside_by_ext.values())
         )
-
-        student_interactions = self._extract_interactions() if has_log else {}
+        student_interactions = self._extract_interactions() if not is_assignment else {}
 
         for sid in sids:
-            info          = self.student_info[sid]
-            display_name  = sid if anonymize else info['name']
+            info = self.student_info[sid]
+            display_name = sid if anonymize else info['name']
             display_number = (
                 '123456'
                 if anon_mode and sid not in ai_ids
                 else info['number']
             )
             if sid in excluded:
-                row = [int(sid), display_name, display_number]
-                row.extend([''] * (len(header) - len(row) - 1))
-                row.append('EXCLUDED')
-                sheet.append(row)
+                vals = {'id': int(sid), 'student': display_name,
+                        'number': display_number, 'category': 'EXCLUDED'}
+                sheet.append(self._row_cells(cols, vals, full=True))
                 continue
-            extra_ctr     = all_extra_counters.get(sid, Counter())
-            extra_all     = [f'{kw} (x{n})' if n > 1 else kw
-                             for kw, n in sorted(extra_ctr.items())]
+
+            extra_ctr = all_extra_counters.get(sid, Counter())
+            extra_all = [f'{kw} (x{n})' if n > 1 else kw
+                         for kw, n in sorted(extra_ctr.items())]
             has_submission = sid in self.results
             code_not_found = has_submission and not self.student_raw_texts.get(sid, '').strip()
 
             remarks_emoji, details = self._remarks_emoji(
                 info['number'], has_submission, code_not_found
             )
-
             inc_pct = self._avg_inc(sid) if has_submission and not code_not_found else ''
-
             _ts = self._student_token_stats.get(sid)
-
             if _ts and has_submission and not code_not_found:
-                follow_e_pct  = _ts['follow_e']
-                comment_pct   = _ts['follow_c']
-                ts_denom_r    = _ts['teacher_total_e'] or 1
-                extra_pct     = (round(min(_ts['extra'] / ts_denom_r * 100, 100.0), 1)
-                                 if _ts['extra'] else 0.0)
-                extra_e_text  = _ts['extra_e_text']
-                comment_text  = _ts['comment_text']
-                extra_all     = _ts['extra_all']
+                follow_e_pct = _ts['follow_e']
+                comment_pct = _ts['follow_c']
+                ts_denom_r = _ts['teacher_total_e'] or 1
+                extra_pct = (round(min(_ts['extra'] / ts_denom_r * 100, 100.0), 1)
+                             if _ts['extra'] else 0.0)
+                extra_e_text = _ts['extra_e_text']
+                comment_text = _ts['comment_text']
+                extra_all = _ts['extra_all']
             else:
                 follow_e_pct = comment_pct = ''
-                extra_e_text = comment_text  = ''
-                extra_pct    = (round(min(sum(extra_ctr.values()) / _extra_denom * 100, 100.0), 1)
-                                if has_submission and not code_not_found else '')
+                extra_e_text = comment_text = ''
+                extra_pct = (round(min(sum(extra_ctr.values()) / _extra_denom * 100, 100.0), 1)
+                             if has_submission and not code_not_found else '')
 
             req_count, req_details, req_missing, req_fill = self._check_required(
                 sid, has_submission, code_not_found
             )
-            sim_items = []
             sim_by_lang: Dict[str, Dict] = {}
 
+            vals: Dict[str, object] = {
+                'id': int(sid), 'student': display_name, 'number': display_number,
+            }
             if code_not_found:
-                row = [int(sid), display_name, display_number, '⛔']
-                row.extend([''] * (len(header) - 4))
+                vals['remarks'] = '⛔'
             else:
-                row = [int(sid), display_name, display_number,
-                       remarks_emoji, extra_pct,
-                       ', '.join(extra_all) if extra_all else '',
-                       inc_pct]
-                if has_log:
-                    row.extend([comment_pct, comment_text,
-                                 follow_e_pct, extra_e_text,
-                                 student_interactions.get(sid, '')])
+                vals['remarks'] = remarks_emoji
+                vals['extra'] = extra_pct
+                vals['extra_t'] = ', '.join(extra_all) if extra_all else ''
+                vals['inc'] = inc_pct
+                if not is_assignment:
+                    vals['follow_c'] = comment_pct
+                    vals['follow_c_t'] = comment_text
+                    vals['follow_e'] = follow_e_pct
+                    vals['follow_e_t'] = extra_e_text
+                    vals['interact'] = student_interactions.get(sid, '')
                     lang_scores = (_ts or {}).get('follow_e_by_lang') or {}
                     for ext in present_lang_exts:
                         v = lang_scores.get(ext)
-                        if v is None:
-                            row.append('')
-                            row.append('')
-                        else:
-                            row.append(v.get('score', ''))
-                            row.append(v.get('text', ''))
-                if has_sim:
+                        if v is not None:
+                            vals[f'lang:{ext}'] = v.get('score', '')
+                            vals[f'lang_t:{ext}'] = v.get('text', '')
+                else:
                     basis_marks = (getattr(self, '_basis_marks_by_sid', None) or {}).get(sid)
                     pb_info = (
                         self._per_basis_sim_info(sid, basis_marks)
                         if basis_marks else None
                     )
                     if pb_info is not None:
-                        sim_pct, sim_desc, sim_items = pb_info
+                        sim_pct, sim_desc, _sim_items = pb_info
                     else:
-                        sim_pct, sim_desc, sim_items = self._similarity_info(
+                        sim_pct, sim_desc, _sim_items = self._similarity_info(
                             sid, has_submission, code_not_found)
-                    row.extend([sim_pct, sim_desc])
+                    vals['sim'] = sim_pct
+                    vals['sim_t'] = sim_desc
                     sim_by_lang = (
                         self._similarity_info_by_lang_from_marks(
                             sid, has_submission, code_not_found, basis_marks)
@@ -269,63 +226,61 @@ class ExcelReportMixin:
                     )
                     for ext in present_lang_exts:
                         v = sim_by_lang.get(ext)
-                        if v is None:
-                            row.append('')
-                            row.append('')
-                        else:
-                            row.append(v['score'])
-                            row.append(v['desc'])
+                        if v is not None:
+                            vals[f'lang:{ext}'] = v['score']
+                            vals[f'lang_t:{ext}'] = v['desc']
                 if self.required_items or self.not_expected_items:
-                    row.extend([req_count, req_details])
-                row.extend(['_' if has_submission else '', ''])
+                    vals['expected'] = req_count
+                    vals['expected_t'] = req_details
+                vals['obs'] = '_' if has_submission else ''
+            if sid in ai_ids:
+                vals['category'] = 'LLM'
 
-            sheet.append(row)
+            sheet.append(self._row_cells(cols, vals, full=code_not_found))
             cur = sheet.max_row
 
-            if sid in ai_ids:
-                sheet.cell(row=cur, column=len(header)).value = 'LLM'
+            if req_fill and 'expected' in idx:
+                sheet.cell(row=cur, column=idx['expected']).fill = req_fill
 
-            if req_fill and COL_EXPECTED:
-                sheet.cell(row=cur, column=COL_EXPECTED).fill = req_fill
-
+            rem_col = idx['remarks']
             if code_not_found:
                 c = Comment('No code files found in submission', 'sim_check')
                 c.width = 400; c.height = 80
-                sheet.cell(row=cur, column=4).comment = c
-                sheet.cell(row=cur, column=4).font = Font(name='Segoe UI Emoji')
+                sheet.cell(row=cur, column=rem_col).comment = c
+                sheet.cell(row=cur, column=rem_col).font = Font(name='Segoe UI Emoji')
             elif details:
                 items = [r for r in details.split('; ') if r]
                 c = Comment(', '.join(items), 'sim_check')
                 c.width = 500; c.height = min(100 + 30 * len(items), 1200)
-                sheet.cell(row=cur, column=4).comment = c
+                sheet.cell(row=cur, column=rem_col).comment = c
             else:
-                sheet.cell(row=cur, column=4).font = Font(name='Segoe UI Emoji')
+                sheet.cell(row=cur, column=rem_col).font = Font(name='Segoe UI Emoji')
 
             if extra_all and not code_not_found:
                 c = Comment(', '.join(extra_all), 'sim_check')
-                c.width  = 400
+                c.width = 400
                 c.height = min(200 + 80 * len(extra_all), 6000)
-                sheet.cell(row=cur, column=COL_EXTRA).comment = c
+                sheet.cell(row=cur, column=idx['extra']).comment = c
 
-            if has_log and comment_text and COL_FOLLOWC:
+            if not is_assignment and comment_text:
                 _c_items = (_ts['comment_items'] if _ts and _ts.get('comment_items')
                             else comment_text.split(', '))
                 c = Comment(', '.join(_c_items), 'sim_check')
-                c.width  = 400
+                c.width = 400
                 c.height = min(200 + 80 * len(_c_items), 6000)
-                sheet.cell(row=cur, column=COL_FOLLOWC).comment = c
+                sheet.cell(row=cur, column=idx['follow_c']).comment = c
 
-            if has_log and extra_e_text and COL_FOLLOWE:
+            if not is_assignment and extra_e_text:
                 _e_items = (_ts['extra_e_items'] if _ts and _ts.get('extra_e_items')
                             else extra_e_text.split(', '))
                 c = Comment(', '.join(_e_items), 'sim_check')
-                c.width  = 400
+                c.width = 400
                 c.height = min(200 + 80 * len(_e_items), 6000)
-                sheet.cell(row=cur, column=COL_FOLLOWE).comment = c
+                sheet.cell(row=cur, column=idx['follow_e']).comment = c
 
-            if has_log and not code_not_found and _ts:
+            if not is_assignment and not code_not_found and _ts:
                 _lang_scores = _ts.get('follow_e_by_lang') or {}
-                for ext, col_n in COL_LANG_BY_EXT.items():
+                for ext in present_lang_exts:
                     lang_v = _lang_scores.get(ext)
                     if not lang_v:
                         continue
@@ -334,12 +289,12 @@ class ExcelReportMixin:
                         continue
                     items = lang_v.get('items') or [text]
                     c = Comment(text, 'sim_check')
-                    c.width  = 400
+                    c.width = 400
                     c.height = min(200 + 80 * len(items), 6000)
-                    sheet.cell(row=cur, column=col_n).comment = c
+                    sheet.cell(row=cur, column=idx[f'lang:{ext}']).comment = c
 
-            if has_sim and not code_not_found and sim_by_lang:
-                for ext, col_n in COL_LANG_BY_EXT.items():
+            if is_assignment and not code_not_found and sim_by_lang:
+                for ext in present_lang_exts:
                     v = sim_by_lang.get(ext)
                     if not v:
                         continue
@@ -348,90 +303,117 @@ class ExcelReportMixin:
                         continue
                     items = v.get('items') or [desc]
                     c = Comment(desc, 'sim_check')
-                    c.width  = 400
+                    c.width = 400
                     c.height = min(200 + 80 * len(items), 6000)
-                    sheet.cell(row=cur, column=col_n).comment = c
+                    sheet.cell(row=cur, column=idx[f'lang:{ext}']).comment = c
 
-            if has_sim and sim_desc and COL_SIM:
+            if is_assignment and not code_not_found and sim_desc and 'sim' in idx:
                 c = Comment(sim_desc, 'sim_check')
-                c.width  = 400
+                c.width = 400
                 c.height = 200
-                sheet.cell(row=cur, column=COL_SIM).comment = c
+                sheet.cell(row=cur, column=idx['sim']).comment = c
 
-            if (self.required_items or self.not_expected_items) and req_missing and COL_EXPECTED:
+            if (self.required_items or self.not_expected_items) and req_missing and 'expected' in idx:
                 c = Comment(', '.join(req_missing), 'sim_check')
                 c.width = 500; c.height = min(100 + 30 * len(req_missing), 1200)
-                sheet.cell(row=cur, column=COL_EXPECTED).comment = c
+                sheet.cell(row=cur, column=idx['expected']).comment = c
 
-        _hidden = [get_column_letter(COL_EXTRA_T)]
-        if has_log:
-            _hidden += [get_column_letter(COL_FOLLOWC_T), get_column_letter(COL_FOLLOWE_T)]
-        if has_sim and COL_SIM_T:
-            _hidden.append(get_column_letter(COL_SIM_T))
-        for col_n in COL_LANG_DESC_BY_EXT.values():
-            _hidden.append(get_column_letter(col_n))
-        if self.required_items and COL_EXPECTED_T:
-            _hidden.append(get_column_letter(COL_EXPECTED_T))
-        for col in _hidden:
-            sheet.column_dimensions[col].hidden = True
+        self._apply_remarks_formatting(sheet, cols, idx)
 
-        max_row     = sheet.max_row
-        GREEN_FILL  = PatternFill(start_color='CCFFCC', end_color='CCFFCC', fill_type='solid')
-        RED_FILL    = PatternFill(start_color='FFCCCC', end_color='FFCCCC', fill_type='solid')
+    @staticmethod
+    def _row_cells(cols: 'List[_Col]', vals: Dict[str, object],
+                   full: bool) -> List[object]:
+        out: List[object] = []
+        for c in cols:
+            if c.key in vals:
+                out.append(vals[c.key])
+            elif full or c.key not in _OPTIONAL_TRAIL:
+                out.append('')
+            else:
+                out.append(None)
+        return out
+
+    def _present_lang_exts(self, is_assignment: bool) -> List[str]:
+        lang_exts = [ext for ext, _label in _LANG_EXT_LABEL]
+        if not is_assignment:
+            return [
+                ext for ext in lang_exts
+                if any(
+                    (v.get('follow_e_by_lang') or {}).get(ext) is not None
+                    for v in self._student_token_stats.values()
+                )
+            ]
+        teacher_by_lang = self._teacher_tokens_by_lang()
+        return [ext for ext in lang_exts if teacher_by_lang.get(ext)]
+
+    def _remarks_columns(self, is_assignment: bool,
+                         present_lang_exts: List[str]) -> 'List[_Col]':
+        lang_label = {ext: f'{label} (E)' for ext, label in _LANG_EXT_LABEL}
+        cols = [
+            _Col('id', 'ID'),
+            _Col('student', 'Student'),
+            _Col('number', 'Number'),
+            _Col('remarks', 'Remarks'),
+            _Col('extra', 'Extra', cf='extra'),
+            _Col('extra_t', 'Extra Desc', hidden=True),
+            _Col('inc', 'Inc', cf='inc'),
+        ]
+        if not is_assignment:
+            cols += [
+                _Col('follow_c', 'Follow (C)', cf='redlow'),
+                _Col('follow_c_t', 'Follow (C) Desc', hidden=True),
+                _Col('follow_e', 'Follow (E)', cf='redlow'),
+                _Col('follow_e_t', 'Follow (E) Desc', hidden=True),
+                _Col('interact', 'Interactions'),
+            ]
+        else:
+            cols += [
+                _Col('sim', 'Similarity', cf='redlow'),
+                _Col('sim_t', 'Similarity Desc', hidden=True, cf='redlow'),
+            ]
+        for ext in present_lang_exts:
+            cols.append(_Col(f'lang:{ext}', lang_label[ext], cf='redlow'))
+            cols.append(_Col(f'lang_t:{ext}', f'{lang_label[ext]} Desc', hidden=True))
+        if self.required_items or self.not_expected_items:
+            cols += [
+                _Col('expected', 'Expected'),
+                _Col('expected_t', 'Expected Desc', hidden=bool(self.required_items)),
+            ]
+        cols += [_Col('obs', 'Obs'), _Col('grade', 'Grade')]
+        if is_assignment:
+            cols.append(_Col('status', 'Status'))
+        cols += [_Col('comments', 'Comments'), _Col('category', 'Category')]
+        return cols
+
+    def _apply_remarks_formatting(self, sheet, cols: 'List[_Col]',
+                                  idx: Dict[str, int]) -> None:
+        for c in cols:
+            if c.hidden:
+                sheet.column_dimensions[get_column_letter(idx[c.key])].hidden = True
+
+        max_row = sheet.max_row
+        GREEN_FILL = PatternFill(start_color='CCFFCC', end_color='CCFFCC', fill_type='solid')
+        RED_FILL = PatternFill(start_color='FFCCCC', end_color='FFCCCC', fill_type='solid')
+        rem_col = idx['remarks']
         for r in range(2, max_row + 1):
-            val = sheet.cell(row=r, column=4).value
+            val = sheet.cell(row=r, column=rem_col).value
             if val == '✅':
-                sheet.cell(row=r, column=4).fill = GREEN_FILL
+                sheet.cell(row=r, column=rem_col).fill = GREEN_FILL
             elif val == '⛔':
-                sheet.cell(row=r, column=4).fill = RED_FILL
+                sheet.cell(row=r, column=rem_col).fill = RED_FILL
 
         if max_row > 1:
-            L_EXTRA = get_column_letter(COL_EXTRA)
-            L_INC   = get_column_letter(COL_INC)
-            sheet.conditional_formatting.add(
-                f'{L_EXTRA}2:{L_EXTRA}{max_row}',
-                ColorScaleRule(start_type='num', start_value=0, start_color='FFFFFF',
-                               end_type='max', end_color='F8696B'))
-            sheet.conditional_formatting.add(
-                f'{L_INC}2:{L_INC}{max_row}',
-                ColorScaleRule(start_type='num', start_value=0, start_color='F8696B',
-                               end_type='num', end_value=100, end_color='FFFFFF'))
-            if has_log:
-                for col_n in [COL_FOLLOWC, COL_FOLLOWE]:
-                    if col_n:
-                        ltr = get_column_letter(col_n)
-                        sheet.conditional_formatting.add(
-                            f'{ltr}2:{ltr}{max_row}',
-                            ColorScaleRule(start_type='min', start_color='F8696B',
-                                           end_type='max', end_color='FFFFFF'))
-            if has_sim and COL_SIM:
-                ltr = get_column_letter(COL_SIM)
+            for c in cols:
+                if not c.cf:
+                    continue
+                ltr = get_column_letter(idx[c.key])
                 sheet.conditional_formatting.add(
-                    f'{ltr}2:{ltr}{max_row}',
-                    ColorScaleRule(start_type='min', start_color='F8696B',
-                                   end_type='max', end_color='FFFFFF'))
-            if has_sim and COL_SIM_T:
-                ltr = get_column_letter(COL_SIM_T)
-                sheet.conditional_formatting.add(
-                    f'{ltr}2:{ltr}{max_row}',
-                    ColorScaleRule(start_type='min', start_color='F8696B',
-                                   end_type='max', end_color='FFFFFF'))
-            for col_n in COL_LANG_BY_EXT.values():
-                ltr = get_column_letter(col_n)
-                sheet.conditional_formatting.add(
-                    f'{ltr}2:{ltr}{max_row}',
-                    ColorScaleRule(start_type='min', start_color='F8696B',
-                                   end_type='max', end_color='FFFFFF'))
+                    f'{ltr}2:{ltr}{max_row}', _CF_RULES[c.cf]())
 
         self._auto_column_widths(sheet)
         sheet.column_dimensions['B'].width = 18
 
     def _similarity_info(self, sid: str, has_submission: bool, code_not_found: bool):
-        """Returns (sim_pct, sim_desc_str, sim_items_list) for no-log Similarity column.
-        sim_pct   = average inc_sim across files.
-        sim_desc  = '-TOKEN / +TOKEN' formatted string for students.html mismatch rendering.
-        sim_items = human-readable comment items.
-        """
         if not has_submission or code_not_found:
             return ('', '', [])
         data = self.results.get(sid, {})

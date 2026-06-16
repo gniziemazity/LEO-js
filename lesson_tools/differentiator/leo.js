@@ -185,14 +185,10 @@ function _fmtCtxToken(t) {
 	return escHtml(t);
 }
 
-let _leoTip = null;
-let _leoTipBody = null;
-let _leoTipTitle = null;
-function _ensureLeoTooltip() {
-	if (_leoTip) return _leoTip;
-	_leoTip = document.createElement("div");
-	_leoTip.id = "leo-tooltip";
-	_leoTip.className = "float-win";
+function _makeFloatWin({ id, className, onClose }) {
+	const win = document.createElement("div");
+	win.className = className;
+	if (id) win.id = id;
 
 	const header = document.createElement("div");
 	header.className = "float-win__header";
@@ -200,24 +196,40 @@ function _ensureLeoTooltip() {
 	dragHint.className = "float-win__drag";
 	dragHint.textContent = "⠿";
 	header.appendChild(dragHint);
-	_leoTipTitle = document.createElement("span");
-	_leoTipTitle.className = "float-win__title";
-	header.appendChild(_leoTipTitle);
+	const titleEl = document.createElement("span");
+	titleEl.className = "float-win__title";
+	header.appendChild(titleEl);
 	const closeBtn = document.createElement("button");
 	closeBtn.className = "float-win__close";
 	closeBtn.textContent = "×";
-	closeBtn.addEventListener("click", _hideLeoTooltip);
+	if (onClose) closeBtn.addEventListener("click", onClose);
 	header.appendChild(closeBtn);
 
-	_leoTipBody = document.createElement("div");
-	_leoTipBody.className = "float-win__body";
+	const body = document.createElement("div");
+	body.className = "float-win__body";
 
-	_leoTip.appendChild(header);
-	_leoTip.appendChild(_leoTipBody);
-	document.body.appendChild(_leoTip);
+	win.appendChild(header);
+	win.appendChild(body);
+	document.body.appendChild(win);
 
-	makeDraggable(header, _leoTip);
+	makeDraggable(header, win);
 
+	return { win, header, titleEl, body };
+}
+
+let _leoTip = null;
+let _leoTipBody = null;
+let _leoTipTitle = null;
+function _ensureLeoTooltip() {
+	if (_leoTip) return _leoTip;
+	const fw = _makeFloatWin({
+		id: "leo-tooltip",
+		className: "float-win",
+		onClose: _hideLeoTooltip,
+	});
+	_leoTip = fw.win;
+	_leoTipTitle = fw.titleEl;
+	_leoTipBody = fw.body;
 	return _leoTip;
 }
 

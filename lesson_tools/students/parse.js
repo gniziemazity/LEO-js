@@ -2,11 +2,7 @@
 
 function parseStudentRows(remarksBuf) {
 	const wbR = XLSX.read(remarksBuf, { type: "array", cellStyles: true });
-	const sheetName = wbR.Sheets["Grades"]
-		? "Grades"
-		: wbR.Sheets["Remarks"]
-			? "Remarks"
-			: wbR.SheetNames[0];
+	const sheetName = wbR.Sheets["Remarks"] ? "Remarks" : wbR.SheetNames[0];
 	const wsR = wbR.Sheets[sheetName];
 	const rowsR = XLSX.utils.sheet_to_json(wsR, {
 		header: 1,
@@ -24,13 +20,13 @@ function parseStudentRows(remarksBuf) {
 		iFollowPct = iSimilarity;
 		iFollowDesc = hdrR.indexOf("Similarity Desc");
 	}
+	const isSimilarity = iSimilarity !== -1;
 	let iCommentDesc = hdrR.indexOf("Follow (C) Desc");
 	if (iCommentDesc === -1) iCommentDesc = hdrR.indexOf("Sim (C) Desc");
 	const iRemarksDesc = findCol(hdrR, /^remarks?\s*desc/i);
 
 	const iInteractions = findCol(hdrR, /^interactions?$/i);
-	let iExcluded = hdrR.indexOf("Category");
-	if (iExcluded === -1) iExcluded = hdrR.indexOf("Excluded");
+	const iExcluded = hdrR.indexOf("Category");
 	const langIdx = {};
 	const langDescIdx = {};
 	for (const def of LANG_COL_DEFS) {
@@ -82,7 +78,7 @@ function parseStudentRows(remarksBuf) {
 			iFollowDesc !== -1 ? String(row[iFollowDesc] || "") : "";
 		const followEvents = isNaN(followPct)
 			? []
-			: iSimilarity !== -1
+			: isSimilarity
 				? parseSimilarityEvents(followDesc)
 				: parseFollowEvents(followDesc);
 		const remarksDesc =
@@ -139,8 +135,9 @@ function parseStudentRows(remarksBuf) {
 		const interactions = formatInteractionCounts(_ia, _iq, _ih);
 		const langPcts = {};
 		const langEvents = [];
-		const langParser =
-			iSimilarity !== -1 ? parseSimilarityEvents : parseFollowEvents;
+		const langParser = isSimilarity
+			? parseSimilarityEvents
+			: parseFollowEvents;
 		for (const def of LANG_COL_DEFS) {
 			if (langIdx[def.key] != null) {
 				const v = parseFloat(row[langIdx[def.key]]);
@@ -198,7 +195,8 @@ function parseStudentRows(remarksBuf) {
 		remarkCols: remarkCols.map((c) => c.name),
 		remarkColIdx,
 		hasInteractions: iInteractions !== -1,
-		followLabel: iSimilarity !== -1 ? "SIM" : "FOLLOW",
+		scoreKind: isSimilarity ? "similarity" : "follow",
+		followLabel: isSimilarity ? "SIM" : "FOLLOW",
 		workbook: wbR,
 		sheetName,
 		headerRow: hdrR,

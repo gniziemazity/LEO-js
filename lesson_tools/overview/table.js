@@ -1,5 +1,13 @@
 "use strict";
 
+function _extraLabel(name) {
+	for (const [pre, post] of _extraColumns.pairs || []) {
+		if (name === pre) return pre.replace(/^Pre\s+/, "");
+		if (name === post) return post.replace(/^Post\s+/, "");
+	}
+	return name;
+}
+
 function renderTable() {
 	const table = document.getElementById("grades-table");
 	table.innerHTML = "";
@@ -19,9 +27,7 @@ function renderTable() {
 	mkBase("col-id sticky-l");
 	mkBase("col-name sticky-l");
 	mkBase("col-num sticky-l");
-	mkBase();
-	mkBase();
-	mkBase();
+	for (let i = 0; i < _extraColumns.before.length; i++) mkBase();
 
 	const grp = (label, colspan, sep = false) => {
 		const th = document.createElement("th");
@@ -77,9 +83,7 @@ function renderTable() {
 	col("ID", "col-id sticky-l");
 	col("Name", "col-name sticky-l");
 	col("#", "col-num sticky-l");
-	col("Self");
-	col("KPM");
-	col("Quiz");
+	for (const name of _extraColumns.before) col(_extraLabel(name));
 
 	for (const a of ASSIGNMENTS) {
 		if (a.follow != null) {
@@ -101,9 +105,11 @@ function renderTable() {
 			obsHeader(a, "", true);
 		}
 	}
-	grp("", 5, true);
-	col("KPM", "", true);
-	col("Avg");
+	grp("", _extraColumns.after.length + 4, true);
+	_extraColumns.after.forEach((name, i) =>
+		col(_extraLabel(name), "", i === 0),
+	);
+	col("Avg", "", _extraColumns.after.length === 0);
 	col("Follow%");
 	col("Int");
 	col("Comments");
@@ -150,9 +156,9 @@ function renderTable() {
 		tr.appendChild(cell(s.id, "id-cell col-id sticky-l"));
 		tr.appendChild(cell(studentLabel(s), "name-cell col-name sticky-l"));
 		tr.appendChild(cell(s.number, "num col-num sticky-l"));
-		tr.appendChild(cell(fmtN(s.self_eval), "num"));
-		tr.appendChild(cell(fmtN(s.pre_typing), "num"));
-		tr.appendChild(cell(fmtN(s.quiz_stii), "num"));
+		for (const name of _extraColumns.before) {
+			tr.appendChild(cell(fmtN(s.extraVals[name]), "num"));
+		}
 
 		const makeLessonClickable = (td, entry) => {
 			if (entry.follow == null) return;
@@ -201,8 +207,17 @@ function renderTable() {
 			}
 		}
 
-		tr.appendChild(cell(fmtN(s.post_typing), "num asn-sep"));
-		tr.appendChild(cell(fmtN(s.avg_assignments, 1), "num"));
+		_extraColumns.after.forEach((name, i) => {
+			tr.appendChild(
+				cell(fmtN(s.extraVals[name]), "num" + (i === 0 ? " asn-sep" : "")),
+			);
+		});
+		tr.appendChild(
+			cell(
+				fmtN(s.avg_assignments, 1),
+				"num" + (_extraColumns.after.length === 0 ? " asn-sep" : ""),
+			),
+		);
 
 		const pc = document.createElement("td");
 		pc.className = "num";
@@ -295,15 +310,11 @@ function _appendOverviewTotalsRow(tbody, rows) {
 		addCell(`${nonAiCount} students`, "name-cell col-name sticky-l"),
 	);
 	tr.appendChild(addCell(null, "col-num sticky-l"));
-	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.self_eval)), 0), "num"),
-	);
-	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.pre_typing)), 0), "num"),
-	);
-	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.quiz_stii)), 0), "num"),
-	);
+	for (const name of _extraColumns.before) {
+		tr.appendChild(
+			addCell(fmtAvg(mean(cohort.map((s) => s.extraVals[name])), 0), "num"),
+		);
+	}
 
 	for (const a of ASSIGNMENTS) {
 		const hasFollow = a.follow != null;
@@ -332,11 +343,19 @@ function _appendOverviewTotalsRow(tbody, rows) {
 		);
 	}
 
+	_extraColumns.after.forEach((name, i) => {
+		tr.appendChild(
+			addCell(
+				fmtAvg(mean(cohort.map((s) => s.extraVals[name])), 0),
+				"num" + (i === 0 ? " asn-sep" : ""),
+			),
+		);
+	});
 	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.post_typing)), 0), "num asn-sep"),
-	);
-	tr.appendChild(
-		addCell(fmtAvg(mean(cohort.map((s) => s.avg_assignments)), 1), "num"),
+		addCell(
+			fmtAvg(mean(cohort.map((s) => s.avg_assignments)), 1),
+			"num" + (_extraColumns.after.length === 0 ? " asn-sep" : ""),
+		),
 	);
 
 	const partAvg = mean(cohort.map((s) => s.participation));
@@ -428,50 +447,17 @@ function _saveHiddenCols() {
 	} catch {}
 }
 
-function _renderColsPanel() {
-	const panel = document.getElementById("cols-panel");
-	if (!panel) return;
-	panel.innerHTML = "";
-	for (const { key, label } of COL_HIDE_KEYS) {
-		const lab = document.createElement("label");
-		const cb = document.createElement("input");
-		cb.type = "checkbox";
-		cb.checked = !_hiddenCols.has(key);
-		cb.addEventListener("change", () => {
-			if (cb.checked) _hiddenCols.delete(key);
-			else _hiddenCols.add(key);
-			_saveHiddenCols();
-			if (_students.length) renderTable();
-			requestAnimationFrame(applyStickyColumns);
-		});
-		lab.appendChild(cb);
-		lab.appendChild(document.createTextNode(" " + label));
-		panel.appendChild(lab);
-	}
-}
-
-function _colsPanelOutsideClick(e) {
-	const panel = document.getElementById("cols-panel");
-	const btn = document.getElementById("cols-btn");
-	if (!panel || !btn) return;
-	if (panel.contains(e.target) || btn.contains(e.target)) return;
-	panel.hidden = true;
-	document.removeEventListener("click", _colsPanelOutsideClick, true);
-}
-
+const _colsPanel = makeColsPanel({
+	colHideKeys: COL_HIDE_KEYS,
+	hiddenCols: _hiddenCols,
+	onChange: () => {
+		_saveHiddenCols();
+		if (_students.length) renderTable();
+		requestAnimationFrame(applyStickyColumns);
+	},
+});
 function _toggleColsPanel() {
-	const panel = document.getElementById("cols-panel");
-	if (!panel) return;
-	if (panel.hidden) {
-		_renderColsPanel();
-		panel.hidden = false;
-		setTimeout(() => {
-			document.addEventListener("click", _colsPanelOutsideClick, true);
-		}, 0);
-	} else {
-		panel.hidden = true;
-		document.removeEventListener("click", _colsPanelOutsideClick, true);
-	}
+	_colsPanel.toggle();
 }
 
 _loadHiddenCols();

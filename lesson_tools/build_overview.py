@@ -1,89 +1,34 @@
+"""Merge per-lesson/assignment remarks + root Extra.xlsx into overview.json."""
 from __future__ import annotations
 
 import argparse
-import shutil
+import json
 import subprocess
 import sys
-import tkinter as tk
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from utils.anonymize import load_student_category_ids
+from utils.anonymize import is_llm_category, load_student_category_ids
+from utils.folder_utils import (
+    find_working_remarks, normalize_sid as _normalize_sid, pick_folder)
 
 try:
-    from openpyxl import Workbook, load_workbook
-    from openpyxl.formatting.rule import ColorScaleRule, FormulaRule
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
+    from openpyxl import load_workbook
 except ImportError:
     print('error: openpyxl required. pip install openpyxl', file=sys.stderr)
     sys.exit(1)
 
-from overview.formula_cache import (
-    _snapshot_cached_values,
-    _evaluate_formulas_into_snapshot,
-    _patch_cached_values,
-)
-
-
-_FONT_DEFAULT = Font(name='Arial', size=10)
-_FONT_BOLD = Font(name='Arial', size=10, bold=True)
-_FONT_GREY = Font(name='Arial', size=10, color='808080')
-_ALIGN_CENTER = Alignment(horizontal='center', vertical='center')
-_ALIGN_LEFT = Alignment(horizontal='left', vertical='center')
-
-_FOLLOW_INC_COLOR_SCALE = dict(
-    start_type='min',        start_color='F86B6B',
-    mid_type='percentile',   mid_value=50, mid_color='FCFFFF',
-    end_type='max',          end_color='5A8CC6',
-)
-_INTERACT_COLOR_SCALE = dict(
-    start_type='min', start_color='FCFFFF',
-    end_type='max',   end_color='5A8CC6',
-)
-_CDIFF_COLOR_SCALE = dict(
-    start_type='min', start_color='F86B6B',
-    mid_type='num',   mid_value=0, mid_color='FCFFFF',
-    end_type='max',   end_color='5A8CC6',
-)
-_STATUS_COLORS = {
-    'Pass':  '33CC33',
-    "Pass'": '99CC00',
-    'Pass*': 'FFC000',
-    'Fail':  'FF4D50',
-    'Fail*': 'C00000',
-}
-
-_COL_WIDTHS = {
-    0:  4.7,   # ID
-    1:  17.9,  # Name
-    3:  9.0,   # Number
-}
-_FOLLOW_INC_WIDTHS = {0: 10.2, 1: 7.7, 2: 7.4, 3: 7.4, 4: 7.4}
-_INTERACT_WIDTHS = {0: 5.0, 1: 5.0, 2: 5.0, 3: 5.5, 4: 5.5, 5: 6.0}
-_LESSON_OBS_WIDTH = 6.8
-_GRADE_WIDTH = 10.3
-_STATUS_WIDTH = 7.1
-_ASSIGN_OBS_WIDTH = 6.8
-
-
-_PREFIX_COLS = 17
-_BLOCK_WIDTH = 15
-_BLOCK_OFFSETS = {
-    'follow_first': 0,
-    'interact_first': 5,
-    'lesson_obs': 11,
-    'grade': 12,
-    'status': 13,
-    'obs': 14,
-}
 
 _LESSON_ORDER_FILE = 'lesson_order.txt'
 
-LESSON_TO_COLS: Dict[str, Dict[str, int]] = {}
+_BLOCK_COLS = (
+    'HTML Follow', 'CSS Follow', 'JS Follow', 'Follow', 'Inc',
+    'A', 'Q', 'H', 'C+', 'C-', 'C Diff',
+    'LessonObs', 'Grade', 'Status', 'Obs',
+)
+
+_EXTRA_IDENTITY = {'id', 'name', 'number'}
 
 
 def _read_lesson_order(root: Optional[Path]) -> list:
@@ -102,9 +47,9 @@ def _read_lesson_order(root: Optional[Path]) -> list:
     return order
 
 
-def _discover_topics(lessons_root: Optional[Path],
-                     assignments_root: Optional[Path],
-                     order: Sequence[str]) -> list:
+def _ordered_topics(lessons_root: Optional[Path],
+                    assignments_root: Optional[Path],
+                    order: Sequence[str]) -> list:
     names: set = set()
     for group_root in (lessons_root, assignments_root):
         if group_root is not None and group_root.is_dir():
@@ -116,59 +61,12 @@ def _discover_topics(lessons_root: Optional[Path],
     return known + extras
 
 
-def _build_lesson_columns(lessons_root: Optional[Path],
-                          assignments_root: Optional[Path],
-                          order: Sequence[str]
-                          ) -> Dict[str, Dict[str, int]]:
-    cols: Dict[str, Dict[str, int]] = {}
-    for i, key in enumerate(
-            _discover_topics(lessons_root, assignments_root, order)):
-        base = _PREFIX_COLS + i * _BLOCK_WIDTH
-        cols[key] = {name: base + off for name, off in _BLOCK_OFFSETS.items()}
-    return cols
-
-LESSON_FOLLOW_OFFSET = 3
-LESSON_INC_OFFSET = 4
-INTERACT_A_OFFSET = 0
-INTERACT_Q_OFFSET = 1
-INTERACT_H_OFFSET = 2
-INTERACT_CPLUS_OFFSET = 3
-INTERACT_CMINUS_OFFSET = 4
-INTERACT_CDIFF_OFFSET = 5
-INTERACT_COL_COUNT = 6
-_LANG_HEADER_BY_OFFSET = {0: 'HTML Follow', 1: 'CSS Follow', 2: 'JS Follow'}
-_INTERACT_HEADER_BY_OFFSET = {0: 'A', 1: 'Q', 2: 'H', 3: 'C+', 4: 'C-', 5: 'C Diff'}
-
-
-def _pick_folder() -> Optional[Path]:
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
-    root.update()
-    chosen = filedialog.askdirectory(title='Select the course root folder')
-    root.destroy()
-    return Path(chosen) if chosen else None
-
-
 def _find_subdir(parent: Path, name: str) -> Optional[Path]:
     if not parent.is_dir():
         return None
     for entry in parent.iterdir():
         if entry.is_dir() and entry.name.lower() == name.lower():
             return entry
-    return None
-
-
-def _latest_remarks_xlsx(folder: Path) -> Optional[Path]:
-    for base in (folder / 'excels', folder):
-        if not base.is_dir():
-            continue
-        canon = base / 'remarks.xlsx'
-        if canon.is_file():
-            return canon
-        fallback = list(base.glob('remarks_*.xlsx'))
-        if fallback:
-            return max(fallback, key=lambda p: p.stat().st_mtime)
     return None
 
 
@@ -202,8 +100,7 @@ def _read_grades_rows(xlsx_path: Path,
 def _to_str(v) -> str:
     if v is None:
         return ''
-    s = str(v).strip()
-    return s
+    return str(v).strip()
 
 
 def _count_interactions(raw) -> Tuple[int, int, int]:
@@ -271,10 +168,11 @@ def _read_lesson_stats_csv(csv_path: Path) -> Optional[Dict[str, object]]:
 _LESSON_STATS_SOURCES = ('lesson_stats_py.csv', 'lesson_stats.csv')
 
 
-def _add_lesson_stats_sheet(wb: 'Workbook',
-                            lessons_root: Optional[Path]) -> None:
+def _collect_lesson_stats_rows(lessons_root: Optional[Path],
+                               topics: Sequence[str]
+                               ) -> Optional[Dict[str, list]]:
     if lessons_root is None or not lessons_root.is_dir():
-        return
+        return None
     rows: list = []
     column_order: list = []
     seen = set()
@@ -283,10 +181,8 @@ def _add_lesson_stats_sheet(wb: 'Workbook',
         for d in lessons_root.iterdir()
         if d.is_dir()
     }
-    ordered_keys = [lk for lk in LESSON_TO_COLS.keys() if lk in dirs_by_lower]
-    ordered_keys += sorted(
-        lk for lk in dirs_by_lower if lk not in LESSON_TO_COLS
-    )
+    ordered_keys = [lk for lk in topics if lk in dirs_by_lower]
+    ordered_keys += sorted(lk for lk in dirs_by_lower if lk not in topics)
     for lk in ordered_keys:
         lesson_dir = dirs_by_lower[lk]
         data = None
@@ -302,36 +198,28 @@ def _add_lesson_stats_sheet(wb: 'Workbook',
                 seen.add(k)
                 column_order.append(k)
     if not rows:
-        return
-    ws = wb.create_sheet(title='Lesson Stats')
+        return None
     header = ['Lesson'] + column_order
-    ws.append(header)
-    for cell in ws[1]:
-        cell.font = _FONT_BOLD
-        cell.alignment = _ALIGN_CENTER
-    for lesson_name, data in rows:
-        ws.append([lesson_name] + [data.get(k, '') for k in column_order])
-    ws.column_dimensions['A'].width = 12
-    for i, k in enumerate(column_order, start=2):
-        ws.column_dimensions[get_column_letter(i)].width = max(len(k) + 2, 8)
-    ws.freeze_panes = 'B2'
+    out_rows = [[name] + [data.get(k, '') for k in column_order]
+                for name, data in rows]
+    return {'header': header, 'rows': out_rows}
 
 
-def _normalize_sid(v) -> str:
-    s = _to_str(v)
-    if not s:
-        return ''
-    if s.endswith('.0'):
-        try:
-            s = str(int(float(s)))
-        except (ValueError, TypeError):
-            pass
-    return s
+def _update_identity(student_data: Dict[str, dict], sid: str, r: dict) -> None:
+    name = _to_str(r.get('Student'))
+    number = _to_str(r.get('Number'))
+    cat = _to_str(r.get('Category'))
+    if name and 'name' not in student_data[sid]:
+        student_data[sid]['name'] = name
+    if number and 'number' not in student_data[sid]:
+        student_data[sid]['number'] = number
+    if cat and 'category' not in student_data[sid]:
+        student_data[sid]['category'] = cat
 
 
-def _collect_student_data(root: Path,
-                          lessons_root: Optional[Path],
+def _collect_student_data(lessons_root: Optional[Path],
                           assignments_root: Optional[Path],
+                          topics: set,
                           excluded_ids) -> Tuple[Dict[str, dict], Dict[str, dict]]:
     student_data: Dict[str, dict] = defaultdict(dict)
     lesson_meta: Dict[str, dict] = {}
@@ -339,12 +227,11 @@ def _collect_student_data(root: Path,
     if lessons_root is not None:
         for lesson_dir in sorted(d for d in lessons_root.iterdir() if d.is_dir()):
             lesson_key = lesson_dir.name.lower()
-            if lesson_key not in LESSON_TO_COLS:
-                print(f'  [lesson/{lesson_dir.name}] skipped: no column mapping')
+            if lesson_key not in topics:
                 continue
-            xlsx = _latest_remarks_xlsx(lesson_dir)
+            xlsx = find_working_remarks(lesson_dir)
             if xlsx is None:
-                print(f'  [lesson/{lesson_dir.name}] skipped: no remarks.xlsx or remarks_*.xlsx')
+                print(f'  [lesson/{lesson_dir.name}] skipped: no remarks.xlsx or remarks_<ts>.xlsx')
                 continue
             wanted = ('ID', 'Student', 'Number', 'Category', 'Inc',
                       'Interactions',
@@ -365,15 +252,7 @@ def _collect_student_data(root: Path,
                 sid = _normalize_sid(r.get('ID'))
                 if not sid:
                     continue
-                name = _to_str(r.get('Student'))
-                number = _to_str(r.get('Number'))
-                if name and 'name' not in student_data[sid]:
-                    student_data[sid]['name'] = name
-                if number and 'number' not in student_data[sid]:
-                    student_data[sid]['number'] = number
-                cat = _to_str(r.get('Category'))
-                if cat and 'category' not in student_data[sid]:
-                    student_data[sid]['category'] = cat
+                _update_identity(student_data, sid, r)
                 if sid in excluded_ids:
                     continue
                 student_data[sid][f'lesson_{lesson_key}'] = {
@@ -392,17 +271,16 @@ def _collect_student_data(root: Path,
     if assignments_root is not None:
         for assign_dir in sorted(d for d in assignments_root.iterdir() if d.is_dir()):
             assign_key = assign_dir.name.lower()
-            if assign_key not in LESSON_TO_COLS:
-                print(f'  [assign/{assign_dir.name}] skipped: no column mapping')
+            if assign_key not in topics:
                 continue
-            xlsx = _latest_remarks_xlsx(assign_dir)
+            xlsx = find_working_remarks(assign_dir)
             if xlsx is None:
-                print(f'  [assign/{assign_dir.name}] skipped: no remarks.xlsx or remarks_*.xlsx')
+                print(f'  [assign/{assign_dir.name}] skipped: no remarks.xlsx or remarks_<ts>.xlsx')
                 continue
-            wanted = ('ID', 'Student', 'Number', 'Category', 'Grade', 'Obs')
+            wanted = ('ID', 'Student', 'Number', 'Category', 'Grade', 'Status', 'Obs')
             col_idx, rows = _read_grades_rows(xlsx, wanted)
             missing = [h for h in wanted if col_idx.get(h) is None]
-            for h in ('Grade', 'Obs'):
+            for h in ('Grade', 'Status', 'Obs'):
                 if h in missing:
                     print(f'  [assign/{assign_dir.name}] WARNING: column '
                           f'{h!r} not found in {xlsx.name}')
@@ -411,20 +289,13 @@ def _collect_student_data(root: Path,
                 sid = _normalize_sid(r.get('ID'))
                 if not sid:
                     continue
-                name = _to_str(r.get('Student'))
-                number = _to_str(r.get('Number'))
-                if name and 'name' not in student_data[sid]:
-                    student_data[sid]['name'] = name
-                if number and 'number' not in student_data[sid]:
-                    student_data[sid]['number'] = number
-                cat = _to_str(r.get('Category'))
-                if cat and 'category' not in student_data[sid]:
-                    student_data[sid]['category'] = cat
+                _update_identity(student_data, sid, r)
                 if sid in excluded_ids:
                     continue
                 student_data[sid][f'assign_{assign_key}'] = {
-                    'grade': r.get('Grade'),
-                    'obs':   _to_str(r.get('Obs')),
+                    'grade':  r.get('Grade'),
+                    'status': _to_str(r.get('Status')),
+                    'obs':    _to_str(r.get('Obs')),
                 }
                 n += 1
             print(f'  [assign/{assign_dir.name}] {n} student row(s) from {xlsx.name}')
@@ -435,6 +306,7 @@ def _collect_student_data(root: Path,
 def _build_row_values(sid: str,
                       info: dict,
                       lesson_meta: Dict[str, dict],
+                      topics: Sequence[str],
                       excluded: bool,
                       is_llm: bool = False) -> Dict[str, Any]:
     category = 'EXCLUDED' if excluded else ('LLM' if is_llm else None)
@@ -443,11 +315,10 @@ def _build_row_values(sid: str,
         'Name': info.get('name', ''),
         'Number': info.get('number', ''),
         'Category': category,
-        'Excluded': category,
     }
     if excluded:
         return out
-    for lk in LESSON_TO_COLS.keys():
+    for lk in topics:
         prefix = lk.title()
         lesson_info = info.get(f'lesson_{lk}')
         meta = lesson_meta.get(lk, {})
@@ -472,24 +343,68 @@ def _build_row_values(sid: str,
         assign_info = info.get(f'assign_{lk}')
         if assign_info:
             out[f'{prefix} Grade'] = assign_info.get('grade')
+            out[f'{prefix} Status'] = assign_info.get('status', '')
             out[f'{prefix} Obs'] = assign_info.get('obs', '')
     return out
 
 
-def _find_latest_overview(root: Path) -> Optional[Path]:
-    candidates = []
-    for p in root.iterdir():
-        if not p.is_file():
+def _read_extra_xlsx(root: Path) -> Tuple[
+        Dict[str, dict], List[str], List[str], List[Tuple[str, str]]]:
+    empty = ({}, [], [], [])
+    path = root / 'Extra.xlsx'
+    if not path.is_file():
+        return empty
+    wb = load_workbook(path, data_only=True, read_only=True)
+    ws = wb['Grades'] if 'Grades' in wb.sheetnames else wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+    if not rows:
+        return empty
+
+    header = [_to_str(c) for c in rows[0]]
+    id_idx = next((i for i, h in enumerate(header) if h.lower() == 'id'), None)
+    if id_idx is None:
+        print('  [Extra.xlsx] WARNING: no ID column; skipped')
+        return empty
+
+    sep_idx = next((i for i, h in enumerate(header) if h == ''), len(header))
+
+    def _is_data_col(i: int) -> bool:
+        return bool(header[i]) and header[i].lower() not in _EXTRA_IDENTITY
+
+    before = [i for i in range(len(header)) if i < sep_idx and _is_data_col(i)]
+    after = [i for i in range(len(header)) if i > sep_idx and _is_data_col(i)]
+    dup = ({header[i].lower() for i in before}
+           & {header[i].lower() for i in after})
+
+    def _canonical(i: int, is_after: bool) -> str:
+        name = header[i]
+        if name.lower() in dup:
+            return ('Post ' if is_after else 'Pre ') + name
+        return name
+
+    before_spec = [(i, _canonical(i, False)) for i in before]
+    after_spec = [(i, _canonical(i, True)) for i in after]
+    before_names = [name for _, name in before_spec]
+    after_names = [name for _, name in after_spec]
+    pairs = [('Pre ' + header[i], 'Post ' + header[i])
+             for i in before if header[i].lower() in dup]
+
+    extra_by_sid: Dict[str, dict] = {}
+    for r in rows[1:]:
+        if not r or all(c is None for c in r):
             continue
-        nl = p.name.lower()
-        if not nl.endswith('.xlsx'):
+        sid = _normalize_sid(r[id_idx]) if id_idx < len(r) else ''
+        if not sid:
             continue
-        if not (nl.startswith('overview') or nl == 'overviewplus.xlsx'):
-            continue
-        candidates.append(p)
-    if not candidates:
-        return None
-    return max(candidates, key=lambda p: p.stat().st_mtime)
+        extra_by_sid[sid] = {
+            name: (r[i] if i < len(r) else None)
+            for i, name in before_spec + after_spec
+        }
+    print(f'  [Extra.xlsx] {len(extra_by_sid)} row(s); '
+          f'before: {", ".join(before_names) or "(none)"}; '
+          f'after: {", ".join(after_names) or "(none)"}')
+    return extra_by_sid, before_names, after_names, pairs
 
 
 def _sid_sort_key(sid: str):
@@ -499,291 +414,54 @@ def _sid_sort_key(sid: str):
         return (1, sid)
 
 
-def _update_existing_workbook(wb: 'Workbook',
-                              student_data: Dict[str, dict],
-                              lesson_meta: Dict[str, dict],
-                              excluded_ids,
-                              llm_ids,
-                              lessons_root: Optional[Path]) -> int:
-    if 'Grades' in wb.sheetnames:
-        ws = wb['Grades']
-    else:
-        ws = wb.active
+def _build_table(student_data: Dict[str, dict],
+                 lesson_meta: Dict[str, dict],
+                 topics: Sequence[str],
+                 excluded_ids,
+                 llm_ids,
+                 extra_by_sid: Dict[str, dict],
+                 extra_before: List[str],
+                 extra_after: List[str]) -> Tuple[List[str], List[list]]:
+    header: List[str] = ['ID', 'Name', 'Number', 'Category']
+    header += extra_before
+    for lk in topics:
+        prefix = lk.title()
+        header += [f'{prefix} {bc}' for bc in _BLOCK_COLS]
+    header += extra_after
 
-    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
-    cols_for_header: Dict[str, list] = {}  # header → 1-based col indices
-    for i, h in enumerate(header_row, start=1):
-        if h is None:
-            continue
-        cols_for_header.setdefault(str(h).strip(), []).append(i)
-
-    if 'ID' not in cols_for_header:
-        raise ValueError("Existing Overview sheet has no 'ID' column header")
-
-    id_col = cols_for_header['ID'][0]
-
-    existing_rows: Dict[str, int] = {}
-    for row in range(2, ws.max_row + 1):
-        sid = _normalize_sid(ws.cell(row=row, column=id_col).value)
-        if sid:
-            existing_rows[sid] = row
-
-    appended = 0
-    updated = 0
+    rows: List[list] = []
     for sid in sorted(student_data.keys(), key=_sid_sort_key):
         info = student_data[sid]
-        is_excluded = sid in excluded_ids
-        values = _build_row_values(
-            sid, info, lesson_meta, is_excluded, sid in llm_ids,
+        d = _build_row_values(
+            sid, info, lesson_meta, topics,
+            sid in excluded_ids, sid in llm_ids,
         )
-
-        if sid in existing_rows:
-            row = existing_rows[sid]
-            updated += 1
-            is_new_row = False
-        else:
-            row = ws.max_row + 1
-            ws.cell(row=row, column=id_col, value=sid)
-            existing_rows[sid] = row
-            appended += 1
-            is_new_row = True
-
-        for header_name, value in values.items():
-            cols = cols_for_header.get(header_name)
-            if not cols:
-                new_col = max(
-                    (c for cs in cols_for_header.values() for c in cs),
-                    default=0,
-                ) + 1
-                hcell = ws.cell(row=1, column=new_col, value=header_name)
-                hcell.font = _FONT_BOLD
-                cols_for_header[header_name] = [new_col]
-                cols = [new_col]
-            for col in cols:
-                cell = ws.cell(row=row, column=col)
-                if not is_new_row:
-                    if header_name in ('Name', 'Number'):
-                        if value in (None, '', 0):
-                            continue
-                    elif header_name.endswith((' Grade', ' Status')):
-                        if cell.value not in (None, ''):
-                            continue
-                    elif header_name in ('Category', 'Excluded'):
-                        if value is None:
-                            continue
-                cell.value = value
-
-    if 'Lesson Stats' in wb.sheetnames:
-        del wb['Lesson Stats']
-    _add_lesson_stats_sheet(wb, lessons_root)
-
-    return appended
-
-
-def _build_workbook_from_scratch(student_data: Dict[str, dict],
-                                 lesson_meta: Dict[str, dict],
-                                 excluded_ids,
-                                 llm_ids,
-                                 lessons_root: Optional[Path]) -> 'Workbook':
-    n_cols = max(c for cols in LESSON_TO_COLS.values() for c in cols.values()) + 1
-
-    column_styles: Dict[int, dict] = {}
-    column_widths: Dict[int, float] = {}
-
-    def _set_col_style(col: int, header_font: Font, data_font: Font,
-                       align: Alignment, fmt: Optional[str], width: float):
-        column_styles[col] = {
-            'header_font': header_font,
-            'data_font': data_font,
-            'align': align,
-            'fmt': fmt,
-        }
-        column_widths[col] = width
-
-    _set_col_style(0, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, None, _COL_WIDTHS[0])
-    _set_col_style(1, _FONT_BOLD, _FONT_GREY,    _ALIGN_LEFT,   None, _COL_WIDTHS[1])
-    _set_col_style(3, _FONT_BOLD, _FONT_GREY,    _ALIGN_LEFT,   None, _COL_WIDTHS[3])
-
-    header = [''] * n_cols
-    header[0] = 'ID'
-    header[1] = 'Name'
-    header[3] = 'Number'
-    header[4] = 'Category'
-    for lk, cols in LESSON_TO_COLS.items():
-        first = cols['follow_first']
-        for off in (0, 1, 2):
-            col = first + off
-            header[col] = f'{lk.title()} {_LANG_HEADER_BY_OFFSET[off]}'
-            _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
-                           _FOLLOW_INC_WIDTHS[off])
-        col = first + LESSON_FOLLOW_OFFSET
-        header[col] = f'{lk.title()} Follow'
-        _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
-                       _FOLLOW_INC_WIDTHS[LESSON_FOLLOW_OFFSET])
-        col = first + LESSON_INC_OFFSET
-        header[col] = f'{lk.title()} Inc'
-        _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
-                       _FOLLOW_INC_WIDTHS[LESSON_INC_OFFSET])
-
-        interact_first = cols['interact_first']
-        for off in range(INTERACT_COL_COUNT):
-            col = interact_first + off
-            header[col] = f'{lk.title()} {_INTERACT_HEADER_BY_OFFSET[off]}'
-            _set_col_style(col, _FONT_BOLD, _FONT_DEFAULT, _ALIGN_CENTER, '0',
-                           _INTERACT_WIDTHS[off])
-
-        header[cols['lesson_obs']] = f'{lk.title()} LessonObs'
-        _set_col_style(cols['lesson_obs'], _FONT_BOLD, _FONT_DEFAULT,
-                       _ALIGN_CENTER, None, _LESSON_OBS_WIDTH)
-
-        header[cols['grade']] = f'{lk.title()} Grade'
-        _set_col_style(cols['grade'], _FONT_BOLD, _FONT_DEFAULT,
-                       _ALIGN_CENTER, None, _GRADE_WIDTH)
-
-        header[cols['status']] = f'{lk.title()} Status'
-        _set_col_style(cols['status'], _FONT_BOLD, _FONT_DEFAULT,
-                       _ALIGN_CENTER, None, _STATUS_WIDTH)
-
-        header[cols['obs']] = f'{lk.title()} Obs'
-        _set_col_style(cols['obs'], _FONT_BOLD, _FONT_DEFAULT,
-                       _ALIGN_CENTER, None, _ASSIGN_OBS_WIDTH)
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = 'Grades'
-    ws.append(header)
-    for col_idx, cell in enumerate(ws[1]):
-        style = column_styles.get(col_idx)
-        if style:
-            cell.font = style['header_font']
-            cell.alignment = _ALIGN_CENTER
-
-    for col_idx, width in column_widths.items():
-        ws.column_dimensions[get_column_letter(col_idx + 1)].width = width
-
-    for sid in sorted(student_data.keys(), key=_sid_sort_key):
-        info = student_data[sid]
-        row = [None] * n_cols
-        row[0] = sid
-        row[1] = info.get('name', '')
-        row[3] = info.get('number', '')
-        if sid in excluded_ids:
-            row[4] = 'EXCLUDED'
-        elif sid in llm_ids:
-            row[4] = 'LLM'
-        for lk, cols in LESSON_TO_COLS.items():
-            first = cols['follow_first']
-            interact_first = cols['interact_first']
-            lesson_info = info.get(f'lesson_{lk}')
-            meta = lesson_meta.get(lk, {})
-            if lesson_info:
-                row[first + 0] = lesson_info.get('follow_html')
-                row[first + 1] = lesson_info.get('follow_css')
-                row[first + 2] = lesson_info.get('follow_js')
-                row[first + LESSON_FOLLOW_OFFSET] = lesson_info.get('follow')
-                row[first + LESSON_INC_OFFSET] = lesson_info.get('inc')
-                attended = lesson_info.get('follow') not in (None, '')
-                if attended and meta.get('has_interactions'):
-                    a, q, h = _count_interactions(lesson_info.get('interactions'))
-                    row[interact_first + INTERACT_A_OFFSET] = a
-                    row[interact_first + INTERACT_Q_OFFSET] = q
-                    row[interact_first + INTERACT_H_OFFSET] = h
-                if attended and meta.get('has_follow_c_desc'):
-                    cplus, cminus = _count_extra_missing(lesson_info.get('follow_c_desc'))
-                    row[interact_first + INTERACT_CPLUS_OFFSET] = cplus
-                    row[interact_first + INTERACT_CMINUS_OFFSET] = cminus
-                    row[interact_first + INTERACT_CDIFF_OFFSET] = cplus - cminus
-                row[cols['lesson_obs']] = lesson_info.get('obs', '')
-            assign_info = info.get(f'assign_{lk}')
-            if assign_info:
-                row[cols['grade']] = assign_info.get('grade')
-                row[cols['obs']] = assign_info.get('obs', '')
-        ws.append(row)
-
-        excel_row = ws.max_row
-        for col_idx, style in column_styles.items():
-            cell = ws.cell(row=excel_row, column=col_idx + 1)
-            cell.font = style['data_font']
-            cell.alignment = style['align']
-            if style['fmt']:
-                cell.number_format = style['fmt']
-
-    ws.freeze_panes = 'B2'
-
-    last_row = ws.max_row
-    if last_row >= 2:
-        for lk, cols in LESSON_TO_COLS.items():
-            first = cols['follow_first']
-            for off in range(0, 5):
-                col_letter = get_column_letter(first + off + 1)
-                ws.conditional_formatting.add(
-                    f'{col_letter}2:{col_letter}{last_row}',
-                    ColorScaleRule(**_FOLLOW_INC_COLOR_SCALE),
-                )
-            interact_first = cols['interact_first']
-            for off in range(INTERACT_COL_COUNT):
-                col_letter = get_column_letter(interact_first + off + 1)
-                scale = (
-                    _CDIFF_COLOR_SCALE
-                    if off == INTERACT_CDIFF_OFFSET
-                    else _INTERACT_COLOR_SCALE
-                )
-                ws.conditional_formatting.add(
-                    f'{col_letter}2:{col_letter}{last_row}',
-                    ColorScaleRule(**scale),
-                )
-            grade_letter = get_column_letter(cols['grade'] + 1)
-            status_letter = get_column_letter(cols['status'] + 1)
-            grade_range = f'{grade_letter}2:{grade_letter}{last_row}'
-            for status_value, color in _STATUS_COLORS.items():
-                escaped = status_value.replace('"', '""')
-                formula = f'={status_letter}2="{escaped}"'
-                fill = PatternFill(start_color=color, end_color=color,
-                                   fill_type='solid')
-                ws.conditional_formatting.add(
-                    grade_range,
-                    FormulaRule(formula=[formula], fill=fill),
-                )
-
-    _add_lesson_stats_sheet(wb, lessons_root)
-    return wb
-
-
-def _save_overview_with_retry(wb: 'Workbook', out_path: Path) -> bool:
-    while True:
-        try:
-            wb.save(out_path)
-            return True
-        except PermissionError:
-            print(f'\n  Could not write {out_path.name} — it looks like it is '
-                  f'open in Excel.')
-            resp = input(
-                '  Close the file, then press Enter to retry '
-                '(or type "q" to abort): '
-            ).strip().lower()
-            if resp == 'q':
-                return False
+        ex = extra_by_sid.get(sid, {})
+        row = [d[h] if h in d else (ex[h] if h in ex else None)
+               for h in header]
+        rows.append(row)
+    return header, rows
 
 
 def main(argv) -> int:
-    description = __doc__.split('\n')[0] if __doc__ else 'Build overview spreadsheet'
-    parser = argparse.ArgumentParser(description=description)
+    parser = argparse.ArgumentParser(
+        description='Merge per-lesson/assignment remarks + Extra.xlsx into '
+                    'overview.json.')
     parser.add_argument('root', nargs='?',
                         help='Course root folder (containing lessons/ and assignments/).')
     parser.add_argument('--output', default=None,
                         help='Output filename (relative to root). '
-                             'Defaults to Overview.xlsx.')
-    parser.add_argument('--from-scratch', action='store_true',
-                        help='Ignore any existing Overview*.xlsx and build fresh.')
-    parser.add_argument('--basis',
-                        help='Path to a specific Overview xlsx to use as basis '
-                             '(overrides auto-discovery).')
+                             'Defaults to overview.json.')
     parser.add_argument('--no-stats', action='store_true',
                         help='Skip the chained analyze_grades step '
                              '(grades_stats.json will not be refreshed).')
     args = parser.parse_args(argv[1:])
 
-    root = Path(args.root) if args.root else _pick_folder()
+    if args.root:
+        root = Path(args.root)
+    else:
+        chosen = pick_folder('Select the course root folder')
+        root = Path(chosen) if chosen else None
     if root is None or not root.is_dir():
         print('No root folder selected.', file=sys.stderr)
         return 1
@@ -791,13 +469,14 @@ def main(argv) -> int:
 
     lessons_root = _find_subdir(root, 'lessons')
     assignments_root = _find_subdir(root, 'assignments')
-    global LESSON_TO_COLS
-    LESSON_TO_COLS = _build_lesson_columns(
-        lessons_root, assignments_root, _read_lesson_order(root))
     if lessons_root is None and assignments_root is None:
         print(f'error: no lessons/ or assignments/ folder in {root}',
               file=sys.stderr)
         return 1
+
+    topics = _ordered_topics(
+        lessons_root, assignments_root, _read_lesson_order(root))
+    topics_set = set(topics)
 
     print(f'Root:        {root}')
     print(f'Lessons:     {lessons_root or "(missing)"}')
@@ -815,7 +494,7 @@ def main(argv) -> int:
         print()
 
     student_data, lesson_meta = _collect_student_data(
-        root, lessons_root, assignments_root, excluded_ids,
+        lessons_root, assignments_root, topics_set, excluded_ids,
     )
 
     if not student_data:
@@ -823,76 +502,35 @@ def main(argv) -> int:
         return 1
 
     for sid, info in student_data.items():
-        if (info.get('category') or '').strip().upper() in ('LLM', 'AI'):
+        if is_llm_category(info.get('category')):
             llm_ids.add(sid)
     if llm_ids:
         print(f'LLM/AI total: {len(llm_ids)} row(s) '
               f'(students.csv + remarks sheets)')
 
-    basis_path: Optional[Path] = None
-    if not args.from_scratch:
-        if args.basis:
-            candidate = Path(args.basis)
-            if candidate.is_file():
-                basis_path = candidate.resolve()
-            else:
-                print(f'  WARNING: --basis path not found: {candidate}; '
-                      f'will build from scratch')
-        else:
-            basis_path = _find_latest_overview(root)
+    extra_by_sid, extra_before, extra_after, extra_pairs = _read_extra_xlsx(root)
 
-    appended = 0
-    if basis_path is not None:
-        print(f'\nUsing basis: {basis_path.name}')
-        wb = load_workbook(basis_path)
-        try:
-            appended = _update_existing_workbook(
-                wb, student_data, lesson_meta, excluded_ids, llm_ids,
-                lessons_root,
-            )
-        except ValueError as e:
-            print(f'  WARNING: {e}; falling back to from-scratch build')
-            wb = _build_workbook_from_scratch(
-                student_data, lesson_meta, excluded_ids, llm_ids,
-                lessons_root,
-            )
-    else:
-        print('\nBuilding from scratch.')
-        wb = _build_workbook_from_scratch(
-            student_data, lesson_meta, excluded_ids, llm_ids, lessons_root,
-        )
+    header, rows = _build_table(
+        student_data, lesson_meta, topics, excluded_ids, llm_ids,
+        extra_by_sid, extra_before, extra_after,
+    )
+    lesson_stats = _collect_lesson_stats_rows(lessons_root, topics)
 
-    if args.output:
-        out_path = root / args.output
-    else:
-        out_path = root / 'Overview.xlsx'
-
-    cached_snapshot = _snapshot_cached_values(basis_path) if basis_path else {}
-
-    if out_path.exists():
-        backup_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_path = root / f'bck_{backup_ts}.xlsx'
-        try:
-            shutil.copy2(str(out_path), str(backup_path))
-            print(f'\nBacked up current overview -> {backup_path.name}')
-        except OSError as e:
-            print(f'\n  Warning: could not back up {out_path.name}: {e}')
-
-    if not _save_overview_with_retry(wb, out_path):
-        print('  Aborted; overview not written.')
-        return 1
-
-    cached_snapshot = _evaluate_formulas_into_snapshot(out_path, cached_snapshot)
-
-    if cached_snapshot:
-        n_restored = _patch_cached_values(out_path, cached_snapshot)
-        if n_restored:
-            print(f'  preserved {n_restored} cached formula value(s) '
-                  f'(e.g. K/min, Race-derived columns)')
+    out_path = root / (args.output or 'overview.json')
+    payload = {'header': header, 'rows': rows}
+    if extra_before or extra_after:
+        payload['extra_columns'] = {
+            'before': extra_before,
+            'after': extra_after,
+            'pairs': [list(p) for p in extra_pairs],
+        }
+    if lesson_stats:
+        payload['lesson_stats'] = lesson_stats
+    out_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=1), encoding='utf-8')
 
     print(f'\nWrote {out_path}')
-    print(f'  {len(student_data)} student row(s)' +
-          (f' (+{appended} new)' if appended else ''))
+    print(f'  {len(rows)} student row(s)')
 
     if not args.no_stats:
         _run_analyze_grades(out_path)
@@ -900,12 +538,12 @@ def main(argv) -> int:
     return 0
 
 
-def _run_analyze_grades(xlsx_path: Path) -> None:
+def _run_analyze_grades(json_path: Path) -> None:
     script = Path(__file__).resolve().parent / 'analyze_grades.py'
     print(f'\nGenerating grades_stats.json…')
     try:
         subprocess.run(
-            [sys.executable, str(script), str(xlsx_path), '--no-plot'],
+            [sys.executable, str(script), str(json_path), '--no-plot'],
             check=True,
         )
     except (subprocess.CalledProcessError, OSError) as exc:

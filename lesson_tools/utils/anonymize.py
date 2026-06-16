@@ -29,20 +29,19 @@ def _safe_folder_name(name):
     return cleaned
 
 
+def is_llm_category(value) -> bool:
+    return (value or '').strip().upper() in ('LLM', 'AI')
+
+
 def classify_student_row(row):
     if 'Category' in row:
         val = (row.get('Category') or '').strip().upper()
-        return (val == 'EXCLUDED', val in ('LLM', 'AI'))
-    if 'Include' in row:
-        val = (row.get('Include') or '').strip().upper()
-        return (val not in ('OK', 'AI', 'LLM'), val in ('AI', 'LLM'))
+        return (val == 'EXCLUDED', is_llm_category(val))
     return (False, False)
 
 
 def _has_category_column(fieldnames):
-    return bool(fieldnames) and (
-        'Category' in fieldnames or 'Include' in fieldnames
-    )
+    return bool(fieldnames) and 'Category' in fieldnames
 
 
 def load_student_category_ids(csv_path):

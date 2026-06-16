@@ -103,7 +103,6 @@ const CLR =
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
 const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
 const _EXPAND_FILE_EXTS = [".js", ".css", ".html", ".htm"];
-const _EXPAND_MAX_DELAY = Infinity;
 
 function _splitCodeWithAnchors(code) {
 	const result = [];
@@ -128,7 +127,7 @@ function expandEvents(events) {
 		const ev = events[i];
 		const ts = ev.timestamp || 0;
 		const nts = i + 1 < n ? events[i + 1].timestamp || ts : ts;
-		const realDelay = Math.min(Math.max(nts - ts, 1), _EXPAND_MAX_DELAY);
+		const realDelay = Math.max(nts - ts, 1);
 
 		if ("move_to" in ev) {
 			const target = ev.move_to;

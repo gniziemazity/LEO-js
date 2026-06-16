@@ -138,9 +138,6 @@ function _applyInitialTab() {
 _applyInitialTab();
 
 document.getElementById("open-btn").addEventListener("click", pickFolder);
-document
-	.getElementById("open-btn-toolbar")
-	?.addEventListener("click", pickFolder);
 async function _runChartDownload(btn, bodyId, zipName) {
 	if (btn.disabled) return;
 	btn.disabled = true;

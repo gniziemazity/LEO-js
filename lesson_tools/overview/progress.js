@@ -47,8 +47,8 @@ function _addProgressFollowBoxplot(body, students) {
 
 	let datasets;
 	if (_followMode() === "lang") {
-		datasets = LANG_FOLLOW_KEYS.map(({ entryKey, colorVar }) => {
-			const c = _cssVar(colorVar) || THEME.label;
+		datasets = LANG_FOLLOW_KEYS.map(({ entryKey, color }) => {
+			const c = color || THEME.label;
 			return {
 				data: collect(entryKey),
 				color: _hexToRgba(c, 0.44),
@@ -84,8 +84,8 @@ function _addProgressFollowBoxplot(body, students) {
 		const legend = el("div");
 		legend.style.cssText =
 			"display:flex;gap:12px;align-items:center;font-size:11px;color:var(--clr-label);";
-		for (const { label, colorVar } of LANG_FOLLOW_KEYS) {
-			const c = _cssVar(colorVar) || THEME.label;
+		for (const { label, color } of LANG_FOLLOW_KEYS) {
+			const c = color || THEME.label;
 			const item = el("span");
 			item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
 			const sq = el("span");
@@ -234,8 +234,8 @@ function _buildStudentProgressCard(s, labels) {
 
 	const datasets = [];
 	if (show.langFollow) {
-		for (const { entryKey, colorVar } of LANG_FOLLOW_KEYS) {
-			const c = _cssVar(colorVar) || THEME.label;
+		for (const { entryKey, color } of LANG_FOLLOW_KEYS) {
+			const c = color || THEME.label;
 			datasets.push({
 				data: s.lessons.map((l) =>
 					l.hasFollowCol ? (l[entryKey] ?? null) : null,

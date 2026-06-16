@@ -368,7 +368,7 @@ function makeBurst(evs) {
 		.filter((e) => !DELETE_CHARS.has(e.char))
 		.map((e) => e.char)
 		.join("");
-	const tokens = (forwardText.match(/[a-zA-Z0-9]+|[^\s]/gu) || []).length;
+	const tokens = (forwardText.match(newTokenRegex()) || []).length;
 	const isClosingTagBurst = ["</html>", "</style>", "</script>"].some((t) =>
 		forwardText.includes(t),
 	);

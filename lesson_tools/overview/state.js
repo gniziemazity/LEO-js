@@ -2,6 +2,8 @@
 
 let COL = {};
 let ASSIGNMENTS = [];
+let _extraColumns = { before: [], after: [], pairs: [] };
+let _extraColIdx = {};
 
 let _students = [];
 let _globalStudentMap = {};

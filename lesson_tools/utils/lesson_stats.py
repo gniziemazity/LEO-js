@@ -5,6 +5,7 @@ from bisect import bisect_right
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .folder_utils import TEACHER_SUBDIRS
 from .similarity_measures import _comment_ranges
 from .token_log_mixin import _embedded_lang_ranges_for
 
@@ -189,7 +190,7 @@ def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
 
 
 def _find_teacher_files(project_dir: Path) -> List[Tuple[Path, str]]:
-    for sub in ("reconstructed", "start", "correct"):
+    for sub in TEACHER_SUBDIRS:
         d = project_dir / sub
         if not d.is_dir():
             continue

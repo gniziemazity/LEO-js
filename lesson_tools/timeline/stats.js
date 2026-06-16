@@ -35,7 +35,6 @@ function computePauseStats(charEvents) {
 	return { count: pauses.length, min, max, avg: sum / pauses.length, sum };
 }
 
-const _DEV_TOKEN_RE = /[a-zA-Z0-9]+|[^\s]/g;
 function countDevTokens(p) {
 	let text = "";
 	for (const e of p.events) {
@@ -45,8 +44,8 @@ function countDevTokens(p) {
 		text += e.char;
 	}
 	let n = 0;
-	_DEV_TOKEN_RE.lastIndex = 0;
-	while (_DEV_TOKEN_RE.exec(text) !== null) n++;
+	const re = newTokenRegex();
+	while (re.exec(text) !== null) n++;
 	return n;
 }
 

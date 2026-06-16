@@ -31,6 +31,16 @@ def iter_ghost_tokens(
                 yield fname, blob_pos, start_rel, tok_match.group(), raw_ts
 
 
+def build_ghost_ts_by_pair(teacher_ghosts: Optional[Dict[str, list]]) -> dict:
+    out: dict = {}
+    for fname, blob_pos, start_rel, tok, raw_ts in iter_ghost_tokens(teacher_ghosts):
+        if raw_ts is None:
+            continue
+        ts_str = ts_to_local(raw_ts) if isinstance(raw_ts, (int, float)) else raw_ts
+        out[(fname, blob_pos + start_rel, tok)] = ts_str
+    return out
+
+
 def _missing_mark(
     pos: int, tok: str,
     tok_all_positions: Optional[Dict[str, List[int]]] = None,
@@ -214,16 +224,7 @@ def _build_occ_from_diff_marks(
     ghosts_for_lookup = teacher_ghosts
     if ghosts_for_lookup is None:
         ghosts_for_lookup = diff_marks.get('teacher_ghosts')
-    ghost_ts_by_pair: dict = {}
-    for fname, blob_pos, start_rel, tok, raw_ts in iter_ghost_tokens(ghosts_for_lookup):
-        if raw_ts is None:
-            continue
-        ts_str = (
-            ts_to_local(raw_ts)
-            if isinstance(raw_ts, (int, float))
-            else raw_ts
-        )
-        ghost_ts_by_pair[(fname, blob_pos + start_rel, tok)] = ts_str
+    ghost_ts_by_pair = build_ghost_ts_by_pair(ghosts_for_lookup)
 
     def _ghost_pair_ts(mark: dict) -> str:
         paired_with = mark.get('paired_with') or {}

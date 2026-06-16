@@ -70,7 +70,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from utils.folder_utils import pick_file
+from utils.folder_utils import TEACHER_SUBDIRS, pick_file
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from utils.token_log_mixin import (
     _LANG_EXT_LABEL,
@@ -225,15 +225,10 @@ def _find_teacher_file(project_dir: Path, fname: str) -> Path | None:
     direct = project_dir / fname
     if direct.is_file():
         return direct
-    reco = project_dir / "reconstructed" / fname
-    if reco.is_file():
-        return reco
-    start = project_dir / "start" / fname
-    if start.is_file():
-        return start
-    correct = project_dir / "correct" / fname
-    if correct.is_file():
-        return correct
+    for sub in TEACHER_SUBDIRS:
+        cand = project_dir / sub / fname
+        if cand.is_file():
+            return cand
     return None
 
 

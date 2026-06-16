@@ -76,11 +76,7 @@ function renderLessonStats(body) {
 		const box = el("div", "chart-box");
 		card.appendChild(box);
 		const all = [...tQ, ...sQ, ...hG].filter((v) => v != null);
-		const colors = [
-			_cssVar("--clr-accent"),
-			_cssVar("--clr-orange"),
-			_cssVar("--clr-green"),
-		];
+		const colors = [THEME.blue, THEME.orange, THEME.green];
 		const tQAns = tQ.map((v, i) => {
 			const t = v ?? 0;
 			const u = tQun[i] ?? 0;
@@ -139,10 +135,10 @@ function renderLessonStats(body) {
 			"Code Tokens",
 			lessonNames,
 			[
-				{ data: tHtml, color: _cssVar("--clr-red"), label: "HTML" },
-				{ data: tCss, color: _cssVar("--clr-accent"), label: "CSS" },
-				{ data: tJs, color: _cssVar("--clr-orange"), label: "JS" },
-				{ data: tPy, color: _cssVar("--clr-black"), label: "Py" },
+				{ data: tHtml, color: THEME.red, label: "HTML" },
+				{ data: tCss, color: THEME.blue, label: "CSS" },
+				{ data: tJs, color: THEME.orange, label: "JS" },
+				{ data: tPy, color: THEME.black, label: "Py" },
 			],
 			{ yScale: 1.1 },
 		);

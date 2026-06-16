@@ -238,6 +238,16 @@ function _curatedOnGroupHover(ev) {
 let _curatedHoverToken = null;
 let _curatedHoverGhost = null;
 
+function _curatedAppendHoverRect(layerEl, className, left, top, width, height) {
+	const div = document.createElement("div");
+	div.className = "curated-hover-rect " + className;
+	div.style.left = `${left}px`;
+	div.style.top = `${top}px`;
+	div.style.width = `${width}px`;
+	div.style.height = `${height}px`;
+	layerEl.appendChild(div);
+}
+
 function _curatedRefreshGhostHoverOverlay() {
 	for (const layer of document.querySelectorAll(".curated-bg-layer")) {
 		for (const el of layer.querySelectorAll(".curated-ghost-hover-rect")) {
@@ -250,9 +260,7 @@ function _curatedRefreshGhostHoverOverlay() {
 		return;
 	}
 	document.body.classList.add("curated-token-hover-active");
-	const el =
-		_curatedHoverGhost.el ||
-		_curatedFindGhostEl(_curatedHoverGhost);
+	const el = _curatedHoverGhost.el || _curatedFindGhostEl(_curatedHoverGhost);
 	if (!el) return;
 	const r = el.getBoundingClientRect();
 	const pane = el.closest(".code-pane");
@@ -260,13 +268,14 @@ function _curatedRefreshGhostHoverOverlay() {
 	const paneRect = pane.getBoundingClientRect();
 	const layers = _curatedEnsurePaneOverlays(pane);
 	if (!layers) return;
-	const div = document.createElement("div");
-	div.className = "curated-hover-rect curated-ghost-hover-rect";
-	div.style.left = `${r.left - paneRect.left}px`;
-	div.style.top = `${r.top - paneRect.top}px`;
-	div.style.width = `${r.width}px`;
-	div.style.height = `${r.height}px`;
-	layers.bg.appendChild(div);
+	_curatedAppendHoverRect(
+		layers.bg,
+		"curated-ghost-hover-rect",
+		r.left - paneRect.left,
+		r.top - paneRect.top,
+		r.width,
+		r.height,
+	);
 }
 
 function _curatedClearGhostHover() {
@@ -292,13 +301,14 @@ function _curatedRefreshTokenHoverOverlay() {
 	if (!r) return;
 	const layers = _curatedEnsurePaneOverlays(r.pane);
 	if (!layers) return;
-	const div = document.createElement("div");
-	div.className = "curated-hover-rect curated-token-hover-rect";
-	div.style.left = `${r.left}px`;
-	div.style.top = `${r.top}px`;
-	div.style.width = `${r.width}px`;
-	div.style.height = `${r.height}px`;
-	layers.bg.appendChild(div);
+	_curatedAppendHoverRect(
+		layers.bg,
+		"curated-token-hover-rect",
+		r.left,
+		r.top,
+		r.width,
+		r.height,
+	);
 }
 
 function _curatedClearTokenHover() {

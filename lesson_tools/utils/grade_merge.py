@@ -17,8 +17,8 @@ def merge_manual_columns(src_path: Path, dst_path: Path) -> None:
         def _hdr(ws, *names):
             return {c.value: c.column for c in ws[1] if c.value in names}
 
-        src_c = _hdr(src_ws, 'Obs', 'Grade', 'Comments')
-        dst_c = _hdr(dst_ws, 'Obs', 'Grade', 'Comments')
+        src_c = _hdr(src_ws, 'Obs', 'Grade', 'Status', 'Comments')
+        dst_c = _hdr(dst_ws, 'Obs', 'Grade', 'Status', 'Comments')
         if not (src_c and dst_c):
             return
 
@@ -47,7 +47,7 @@ def merge_manual_columns(src_path: Path, dst_path: Path) -> None:
                     dc.number_format = sc.number_format
 
         save_xlsx(dst_wb, str(dst_path), vml_source=str(dst_path))
-        print(f'  Merged Obs/Grade/Comments from: {src_path.name}')
+        print(f'  Merged Obs/Grade/Status/Comments from: {src_path.name}')
     except PermissionError:
         raise
     except Exception as e:
