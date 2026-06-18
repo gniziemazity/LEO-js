@@ -27,7 +27,6 @@ class UIManager {
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
-			editorToolbar: document.getElementById("editor-toolbar"),
 			specialKeysContainer: document.getElementById(
 				"special-keys-container",
 			),

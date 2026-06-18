@@ -46,8 +46,9 @@ function _curatedBackfillTimestamps(teacherFiles, studentFiles) {
 	}
 }
 
-function _curatedBuildJson() {
-	const matching = _diffMode === "minimal" ? "minimal" : "ideal";
+function _curatedBuildJson(matchingOverride) {
+	const matching =
+		matchingOverride || (_diffMode === "minimal" ? "minimal" : "ideal");
 	const t = _curatedMarks() || {
 		token_matching: matching,
 		teacher_files: {},
@@ -67,16 +68,13 @@ function _curatedBuildJson() {
 	return JSON.stringify(out, null, 2) + "\n";
 }
 
-function _curatedDownload() {
-	const json = _curatedBuildJson();
+function _curatedDownloadFile(fname, matching) {
+	const json = _curatedBuildJson(matching);
 	const blob = new Blob([json], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
 	a.href = url;
-	a.download =
-		_diffMode === "minimal"
-			? "diff_marks_minimal.json"
-			: "diff_marks_ideal.json";
+	a.download = fname;
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
@@ -118,6 +116,223 @@ function _curatedCopyText(text, btnId) {
 	else fail();
 }
 
-function _curatedCopyToClipboard() {
-	_curatedCopyText(_curatedBuildJson(), "btn-copy-curated");
+function _curatedCurrentSid() {
+	if (typeof _navState === "undefined" || !_navState) return null;
+	const { folders, currentIdx } = _navState;
+	if (!Array.isArray(folders) || currentIdx == null || currentIdx < 0) {
+		return null;
+	}
+	return folders[currentIdx] || null;
+}
+
+function _curatedActiveDataSource() {
+	if (typeof _navState === "undefined" || !_navState) return null;
+	return _navState.dataSource || null;
+}
+
+function _curatedLessonBaseUrl(ds, sid) {
+	const pfx = `anon_ids/${String(sid).toLowerCase()}/`;
+	for (const [rel, f] of ds.files) {
+		if (!f || !f.url) continue;
+		if (rel.startsWith(pfx) && rel.indexOf("/", pfx.length) === -1) {
+			return f.url.replace(/\/anon_ids\/[^/]+\/[^/?#]*$/i, "");
+		}
+	}
+	return null;
+}
+
+async function _curatedWriteServer(url, text) {
+	const res = await fetch(url, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: text,
+	});
+	if (!res.ok) throw new Error(`Server write failed: ${res.status}`);
+}
+
+async function _curatedWriteFs(rootHandle, relParts, text) {
+	let dir = rootHandle;
+	for (let i = 0; i < relParts.length - 1; i++) {
+		dir = await dir.getDirectoryHandle(relParts[i], { create: true });
+	}
+	const fh = await dir.getFileHandle(relParts[relParts.length - 1], {
+		create: true,
+	});
+	const writable = await fh.createWritable();
+	await writable.write(text);
+	await writable.close();
+}
+
+async function _curatedSaveToFolder(fname, matching) {
+	const ds = _curatedActiveDataSource();
+	const sid = _curatedCurrentSid();
+	if (!ds || !sid) {
+		throw new Error(
+			"Open a student from a course folder first — there is no target folder to save into.",
+		);
+	}
+	const text = _curatedBuildJson(matching);
+
+	if (ds.serverWritable) {
+		const base = _curatedLessonBaseUrl(ds, sid);
+		if (!base) {
+			throw new Error("Could not locate the student folder on the server.");
+		}
+		await _curatedWriteServer(`${base}/anon_ids/${sid}/${fname}`, text);
+		await _curatedWriteServer(`${base}/curated/${sid}/${fname}`, text);
+		return `anon_ids/${sid}/ and curated/${sid}/`;
+	}
+
+	if (ds.rootHandle) {
+		try {
+			if (ds.rootHandle.requestPermission) {
+				const perm = await ds.rootHandle.requestPermission({
+					mode: "readwrite",
+				});
+				if (perm !== "granted") {
+					throw new Error("Write permission denied for the folder.");
+				}
+			}
+		} catch (e) {
+			throw new Error("Could not get write permission: " + e.message);
+		}
+		await _curatedWriteFs(ds.rootHandle, ["anon_ids", sid, fname], text);
+		await _curatedWriteFs(ds.rootHandle, ["curated", sid, fname], text);
+		return `anon_ids/${sid}/ and curated/${sid}/`;
+	}
+
+	throw new Error("This dataset is read-only (no writable location).");
+}
+
+function _curatedResolveSaveName(basis, custom) {
+	if (basis === "ideal") {
+		return { fname: "diff_marks_ideal.json", matching: "ideal" };
+	}
+	if (basis === "minimal") {
+		return { fname: "diff_marks_minimal.json", matching: "minimal" };
+	}
+	let n = String(custom || "").trim();
+	n = n.replace(/\.json$/i, "").replace(/^diff_marks_/i, "");
+	n = n.replace(/[^a-zA-Z0-9._-]/g, "");
+	if (!n) return null;
+	const matching = _diffMode === "minimal" ? "minimal" : "ideal";
+	return { fname: `diff_marks_${n}.json`, matching };
+}
+
+function _curatedCloseSaveDialog() {
+	if (typeof _curatedFloatWin !== "undefined" && _curatedFloatWin) {
+		_curatedFloatWin.win.style.display = "none";
+	}
+}
+
+function _curatedOpenSaveDialog() {
+	if (typeof _embedMode !== "undefined" && _embedMode) return;
+	const defaultBasis = _diffMode === "minimal" ? "minimal" : "ideal";
+
+	const form = document.createElement("div");
+	form.className = "csm-form";
+	form.style.minWidth = "300px";
+	form.innerHTML = `
+		<label style="display:block;margin-bottom:8px;">
+			File
+			<select id="csm-basis" style="width:100%;margin-top:4px;padding:6px;
+				background:var(--clr-page);color:var(--clr-text);
+				border:1px solid var(--clr-border);border-radius:6px;">
+				<option value="ideal">ideal</option>
+				<option value="minimal">minimal</option>
+				<option value="custom">Custom…</option>
+			</select>
+		</label>
+		<label id="csm-custom-row" style="display:none;margin-bottom:8px;">
+			Differentiating part <span style="opacity:0.7;">(diff_marks_&lt;name&gt;.json)</span>
+			<input id="csm-custom" type="text" placeholder="name" style="width:100%;
+				margin-top:4px;padding:6px;background:var(--clr-page);color:var(--clr-text);
+				border:1px solid var(--clr-border);border-radius:6px;">
+		</label>
+		<div id="csm-status" style="display:none;font-weight:600;margin:8px 0;"></div>
+		<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+			<button id="csm-copy" class="btn-edit">📋 Copy</button>
+			<button id="csm-download" class="btn-edit">⬇ Download</button>
+			<button id="csm-save" class="btn-edit">💾 Save</button>
+		</div>`;
+
+	const basisSel = form.querySelector("#csm-basis");
+	const customRow = form.querySelector("#csm-custom-row");
+	const customInp = form.querySelector("#csm-custom");
+	const statusEl = form.querySelector("#csm-status");
+	basisSel.value = defaultBasis;
+
+	const syncCustom = () => {
+		const isCustom = basisSel.value === "custom";
+		customRow.style.display = isCustom ? "block" : "none";
+		if (isCustom) customInp.focus();
+	};
+	basisSel.addEventListener("change", syncCustom);
+	syncCustom();
+
+	const showStatus = (msg, ok) => {
+		statusEl.style.display = "block";
+		statusEl.textContent = msg;
+		statusEl.style.color = ok ? "var(--clr-green)" : "var(--clr-red)";
+	};
+
+	const resolve = () => {
+		const r = _curatedResolveSaveName(basisSel.value, customInp.value);
+		if (!r) showStatus("Enter a name for the file.", false);
+		return r;
+	};
+	const resolveLoose = () => {
+		const r = _curatedResolveSaveName(basisSel.value, customInp.value);
+		if (r) return r;
+		const matching = _diffMode === "minimal" ? "minimal" : "ideal";
+		return { fname: `diff_marks_${matching}.json`, matching };
+	};
+
+	form.querySelector("#csm-copy").addEventListener("click", () => {
+		const r = resolveLoose();
+		_curatedCopyText(_curatedBuildJson(r.matching), "csm-copy");
+	});
+	form.querySelector("#csm-download").addEventListener("click", () => {
+		const r = resolveLoose();
+		_curatedDownloadFile(r.fname, r.matching);
+		showStatus(`⬇ Downloaded ${r.fname}`, true);
+	});
+
+	const saveBtn = form.querySelector("#csm-save");
+	saveBtn.addEventListener("click", async () => {
+		const r = resolve();
+		if (!r) return;
+		saveBtn.disabled = true;
+		showStatus("Saving…", true);
+		try {
+			await _curatedSaveToFolder(r.fname, r.matching);
+			showStatus(`✓ Saved ${r.fname}`, true);
+			setTimeout(_curatedCloseSaveDialog, 1000);
+		} catch (err) {
+			console.error("[Differentiator] Save failed", err);
+			showStatus("Save failed: " + (err && err.message), false);
+			saveBtn.disabled = false;
+		}
+	});
+
+	_curatedShowFloatWin("Save diff marks", form);
+}
+
+function _curatedClearDiff() {
+	if (typeof _embedMode !== "undefined" && _embedMode) return;
+	const t = _curatedMarks();
+	if (!t) return;
+	const hasMarks =
+		Object.keys(t.teacher_files || {}).length ||
+		Object.keys(t.student_files || {}).length;
+	if (!hasMarks) return;
+	_curatedSnapshot();
+	t.teacher_files = {};
+	t.student_files = {};
+	if (t.file_pairs) t.file_pairs = {};
+	_curatedCancelPending();
+	_curatedClearPairHover();
+	_curatedHideControls();
+	_curatedClearPairConnectors();
+	_curatedRerender();
 }

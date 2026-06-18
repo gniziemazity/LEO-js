@@ -1,46 +1,46 @@
 # LEO: Auto-typing Tool for Teaching Coding
 
-**LEO** is an Electron-based auto-typing application designed for live coding demonstrations, programming tutorials, and technical presentations. It allows instructors to prepare lessons in advance and "type" them out smoothly during presentations, ensuring stress-free demonstrations while maintaining the authentic feel of live coding.
+**LEO** is a teaching assistant designed for live coding demonstrations, programming tutorials, and technical presentations. It allows instructors to prepare lessons in advance and auto-type them smoothly during presentations, ensuring stress-free demonstrations while maintaining the authentic feel of live coding.
 
-**LEO** was originally developed in [Python](https://github.com/gniziemazity/LEO) and created to help with making programming tutorials. This Electron version adds new features specifically tailored for in-class demos.
+**LEO** was originally developed in [Python](https://github.com/gniziemazity/LEO) and created with the purpose of making coding tutorials. This Electron version adds new features specifically tailored for in-class demos.
 
-To best understand how **LEO** works, please check the [Video Tutorial](https://youtu.be/hHYjqfI19r0) and read the [Paper](https://dl.acm.org/doi/10.1145/3769994.3770055).
+To understand the main idea behind **LEO**, please check the [Video Tutorial](https://youtu.be/hHYjqfI19r0) and read the [Paper](https://dl.acm.org/doi/10.1145/3769994.3770055).
 
 ## ✨ Features
 
 ### 🎯 Core Features
 
-- **Auto-Typing (Code) Blocks**: Press any hotkey to advance through pre-written code character by character
-- **Comment Blocks**: Brief explanations for the teacher (not auto-typed)
+- **Auto-Typing Blocks**: Press any hotkey to advance through pre-written code character by character
+- **Comment Blocks**: Brief explanations for the teacher
 - **Visual Progress**: Real-time progress bar and cursor highlighting
-- **Timer Integration**: Presentation timer with adjustable duration (default 90 minutes)
-- **Remote Viewing**: Mobile-friendly client viewer via WebSocket connection
+- **Timer Integration**: Presentation timer with adjustable duration
+- **Remote Viewing**: Mobile client viewer via WebSocket connection
 
-### 💬 Special Comment Block Types
+### 💬 Special Block Types
 
 Comment blocks can be given special roles by starting their text with a specific emoji:
 
-| Prefix | Type        | Behavior                                                       |
-| ------ | ----------- | -------------------------------------------------------------- |
-| ❓     | Question    | Displayed in a floating question window                        |
-| 🖼️     | Image       | Opens a floating image window showing the specified image file |
-| 🌐     | Web         | Opens a floating web viewer window for the specified URL       |
-| 📋     | Code Insert | Inserts pre-written code into the editor                       |
-| ➡️     | Move To     | Moves the editor cursor to a specific location                 |
+| Prefix | Type        | Behavior                    |
+| ------ | ----------- | --------------------------- |
+| ❓     | Question    | Opens a question window     |
+| 🖼️     | Image       | Opens a image window        |
+| 🌐     | Web         | Opens a web viewer window   |
+| 📋     | Code Insert | Logs code from copy paste   |
+| ➡️     | Move To     | Informs a move is necessary |
 
 ### 🪟 Floating Windows
 
-When a special comment block is reached, LEO opens a dedicated floating window:
+When a special comment block is reached, LEO opens a dedicated window:
 
-- **Question Window**: Displays the question text and student answer buttons (loaded from `students.txt`)
-- **Image Window**: Shows an image file with resize and pin controls
-- **Web Window**: Displays a URL inside an embedded web viewer
+- **Question**: Displays the question and student who answered
+- **Image**: Shows an image file
+- **Web**: Displays a URL inside an embedded web viewer
 
 ### 👨‍🎓 Student Management
 
-- Load a class roster by placing a `students.txt` file next to your lesson file (one student per line)
-- Student names appear as answer buttons in the question window
-- When a student answers, a **fireworks sound effect** plays and the event is logged
+- Load a class from `students.csv`
+- Student names appear as answer buttons on the remote
+- When a student answers, **fireworks appear** and the event is logged
 
 ### ⚙️ Advanced Features
 
@@ -50,19 +50,19 @@ When a special comment block is reached, LEO opens a dedicated floating window:
 - **Navigation**: Click any character to jump directly to that position
 - **Step Navigation**: `Ctrl+Left` / `Ctrl+Right` to step backward or forward one block
 - **Auto-Typing Modes**:
-   - **Single Key** (default): Press any key to advance one character
-   - **Entire Block**: Press a key to auto-type an entire code block at configurable speed
-- **Interaction Tracking**: Log student questions (❓) and help sessions (🤝) for later analysis
-- **Special Characters**: Easy insertion of navigation keys, shortcuts, and timing controls
-- **Auto-Formatting**: Auto-format code with ✨ button (still work in progress...)
-- **Keystroke Logging**: Automatic session logging saved to a `logs/` directory
-- **Lesson Tools**: Standalone browser tools for session analysis, animated replay, student comparison
+   - **Single Key** (default): Press a hotkey to advance one character
+   - **Entire Block**: Press a hotkey to auto-type an entire block
+- **Interaction Tracking**: Log student questions (🙋) and help sessions (🤝)
+- **Special Characters**: Easy insertion of navigation keys and shortcuts
+- **Auto-Formatting**: Auto-format code with ✨ (still work in progress...)
+- **Keystroke Logging**: Automatic session logging saved to `logs/`
+- **Lesson Tools**: Tools for session analysis, animated replay and student comparison
 - **Customizable Styling**: Configure colors, fonts, and appearance
 
 ## 📋 Prerequisites
 
 - **Node.js** (v20 or higher)
-- **npm** or **yarn**
+- **npm**
 
 ## 🚀 Installation
 
@@ -85,7 +85,7 @@ npm start
 1. **Launch LEO** and go to File → New Plan (`Ctrl+N`)
 2. **Add blocks**:
    - **Yellow +** button: Add comment block (for explanations)
-   - **White +** button: Add code block (for typing simulation)
+   - **White +** button: Add code block (for auto-typing)
 3. **Remove blocks**: Select a block and press the – button
 4. **Save**: File → Save Plan (`Ctrl+S`)
 
@@ -98,9 +98,9 @@ npm start
    - `Ctrl+Right`: Step forward
    - Click on any character to jump to that position
 4. **Track interactions** (buttons on the mobile remote):
-   - ❓ button: Log a student question
+   - 🙋 button: Log a student question
    - 🤝 button: Log when you provide help
-5. **Use the timer** (optional): Press ⏱️ to start a 90-minute timer, use +/- to adjust
+5. **Use the timer**: Press ⏱️ to start a 90-minute timer, use +/- to adjust
 
 ### Editing Features
 
@@ -140,20 +140,24 @@ The remote client supports two interaction modes:
 - **Mouse Mode**: Touchpad-style cursor and click control
 - **Keyboard Mode**: On-screen keyboard input
 
-### Lesson Tools (standalone browser tools)
+### Lesson Tools (browser analysis tools)
 
-LEO ships eight standalone browser-based analysis tools in the `lesson_tools/` directory. Open them with the npm scripts below; each opens in your browser, served by a small local helper that the script starts for you.
+LEO ships five browser-based analysis tools in the `lesson_tools/` directory. They
+are reached from the running app's **Tools** menu (served by a small local helper on
+port 7891) or from the published web overview (`npm run web`). Only the overview has
+its own npm launcher; the others open from within the app or by linking from the
+overview/students tables.
 
-| Tool              | Script             | Description                                                                          |
-| ----------------- | ------------------ | ------------------------------------------------------------------------------------ |
-| 📊 Timeline       | `npm run time`     | Key log charts and session analysis                                                  |
-| 📋 Simulator      | `npm run sim`      | Animated keystroke log replay with live preview                                      |
-| 🔍 Differentiator | `npm run diff`     | Side-by-side teacher/student code comparison                                         |
-| 📈 Overview       | `npm run overview` | One-shot: builds `Overview.xlsx`, writes `grades_stats.json`, opens the browser      |
-| 👥 Students       | `npm run students` | Per-student submission viewer (anonymisation mode picker in-page)                    |
-| 📚 Lessons        | `npm run lessons`     | Per-lesson simulator preview + Open Timeline / Show Students / Download Plans      |
-| 📝 Assignments    | `npm run assignments` | Per-assignment instructions + starting-code browser                               |
-| 🎓 Course         | `npm run course`      | Unified browser: topic dropdown + Lessons / Assignments toggle                    |
+| Tool              | How to open                         | Description                                                                                                        |
+| ----------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 📈 Overview       | `npm run overview` (or Tools menu)  | Merges per-lesson/assignment remarks into `overview.json` + `grades_stats.json`, opens the multi-student dashboard |
+| 👥 Students       | app Tools menu                      | Per-student submission viewer with an inline differentiator                                                        |
+| 🔍 Differentiator | from Overview / Students / Timeline | Side-by-side teacher/student code comparison                                                                       |
+| 📊 Timeline       | app Tools menu                      | Keylog charts and session analysis                                                                                 |
+| 📋 Simulator      | app Tools menu                      | Animated keystroke-log replay with live preview                                                                    |
+
+See `lesson_tools/CLAUDE.md` for the grading pipeline and the full `npm run` command list
+(`main`, `main-all`, `web`, `eval`, `overview`).
 
 ## 📺 Demo
 
@@ -209,18 +213,15 @@ These symbols are automatically translated to actual keystrokes during auto-typi
 - **`code`**: Text typed character-by-character (for controlled pacing)
    - Use special symbols (←, →, 💾, 🕛, etc.) to insert keystrokes and pauses
 
-## 👥 Student File Format
+## 👥 Students
 
-To enable student answer buttons in the question window, create a `students.txt` file in the same directory as your lesson file:
+Student answer buttons in the question window come from the open **course's** roster. Add students via **File → Add Students…**: paste one name per line and LEO writes a sorted `students.csv` to the course root, with the columns:
 
 ```
-Alice
-Bob
-Carol
-David
+Student ID;Student Name;Student Number;Alter Ego
 ```
 
-One student name per line. The file is loaded automatically when the lesson is opened.
+(one random alter ego assigned per student). The roster loads automatically whenever a lesson from that course is opened. Lessons opened outside a course have no student buttons.
 
 ## ⚙️ Configuration
 

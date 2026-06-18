@@ -7,7 +7,6 @@ let _navState = {
 	folders: [],
 	currentIdx: -1,
 	idToFolder: {},
-	folderToId: {},
 };
 
 function _sortFolders(names) {
@@ -28,11 +27,9 @@ function _extractStudentFolders(files, prefix) {
 
 async function _buildIdFolderMaps(ds) {
 	const idToFolder = {};
-	const folderToId = {};
-	const lowerToOriginal = {};
 	const csvEntry =
 		ds.files.get("name_map.csv") || ds.files.get("students.csv");
-	if (!csvEntry) return { idToFolder, folderToId, lowerToOriginal };
+	if (!csvEntry) return { idToFolder };
 	try {
 		const text = await readFileText(csvEntry);
 		const { header, rows } = parseCsv(text);
@@ -40,19 +37,16 @@ async function _buildIdFolderMaps(ds) {
 		const alterIdx = header.findIndex((h) => /alter.?ego/i.test(h));
 		const nameIdx = header.findIndex((h) => /student.?name|^name$/i.test(h));
 		const folderIdx = alterIdx !== -1 ? alterIdx : nameIdx;
-		if (idIdx === -1 || folderIdx === -1)
-			return { idToFolder, folderToId, lowerToOriginal };
+		if (idIdx === -1 || folderIdx === -1) return { idToFolder };
 		for (const parts of rows) {
 			const id = (parts[idIdx] || "").trim();
 			const folder = (parts[folderIdx] || "").trim();
 			if (id && folder) {
 				idToFolder[id.toLowerCase()] = folder;
-				folderToId[folder.toLowerCase()] = id;
-				lowerToOriginal[folder.toLowerCase()] = folder;
 			}
 		}
 	} catch {}
-	return { idToFolder, folderToId, lowerToOriginal };
+	return { idToFolder };
 }
 
 function _updateStudentNavButtons() {

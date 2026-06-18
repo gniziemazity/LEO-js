@@ -3,6 +3,7 @@ const http = require("http");
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const qrcode = require("qrcode-terminal");
@@ -25,7 +26,7 @@ class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
 		super();
 		this.port = port;
-		this.token = crypto.randomBytes(16).toString("hex");
+		this.token = this._loadOrCreateDailyToken();
 		this.app = express();
 		this.server = null;
 		this.wss = null;
@@ -42,6 +43,39 @@ class LEOBroadcastServer extends EventEmitter {
 			timeRemaining: null,
 			floatingWindowCount: 0,
 		};
+	}
+
+	_tokenPath() {
+		return path.join(os.homedir(), ".leo-remote-token.json");
+	}
+
+	_localDateStr(d = new Date()) {
+		const pad = (n) => String(n).padStart(2, "0");
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+	}
+
+	_loadOrCreateDailyToken() {
+		const today = this._localDateStr();
+		try {
+			const data = JSON.parse(fs.readFileSync(this._tokenPath(), "utf8"));
+			if (
+				data &&
+				data.date === today &&
+				typeof data.token === "string" &&
+				data.token
+			) {
+				return data.token;
+			}
+		} catch (e) {}
+		const token = crypto.randomBytes(16).toString("hex");
+		try {
+			fs.writeFileSync(
+				this._tokenPath(),
+				JSON.stringify({ date: today, token }),
+				"utf8",
+			);
+		} catch (e) {}
+		return token;
 	}
 
 	async start() {

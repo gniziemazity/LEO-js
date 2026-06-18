@@ -14,7 +14,6 @@ class CursorManager {
 		this.onImageBlock = null;
 		this.onWebBlock = null;
 		this.onEnterMoveToBlock = null;
-		this.onLeaveMoveToBlock = null;
 		this._moveToWindowOpen = false;
 
 		this._questionWindowOpen = false;
@@ -36,7 +35,6 @@ class CursorManager {
 					this.logManager.addEntry({ char: step.char });
 				}
 				this.currentStepIndex = stepIndex + 1;
-				this.updateLastStepIndex();
 				this.updateCursor();
 			}
 		};
@@ -55,7 +53,6 @@ class CursorManager {
 				} else if (current.type === "block") {
 					current.element.classList.add("consumed");
 					this.currentStepIndex++;
-					this.updateLastStepIndex();
 					this.updateCursor();
 					ipcRenderer.send("input-complete");
 					return;
@@ -63,7 +60,6 @@ class CursorManager {
 					break;
 				}
 			}
-			this.updateLastStepIndex();
 			this.updateCursor();
 		};
 		ipcRenderer.on("auto-type-step-complete", this._onAutoStepComplete);
@@ -167,16 +163,11 @@ class CursorManager {
 		this._moveToWindowOpen = false;
 		this._activeMoveToIndex = null;
 		ipcRenderer.send("close-move-to-window");
-		if (this.onLeaveMoveToBlock) this.onLeaveMoveToBlock();
 	}
 
 	_clearSpecialBlockState() {
 		this._activeCodeInsertIndex = null;
 		this._activeMoveToIndex = null;
-	}
-
-	updateLastStepIndex() {
-		localStorage.setItem("lastStepIndex", this.currentStepIndex);
 	}
 
 	resetProgress() {
@@ -189,7 +180,6 @@ class CursorManager {
 		this._activeCodeInsertIndex = null;
 		this._activeMoveToIndex = null;
 		this.currentStepIndex = 0;
-		this.updateLastStepIndex();
 		this.uiManager.updateProgressBar(0);
 	}
 
@@ -316,27 +306,15 @@ class CursorManager {
 		});
 	}
 
-	advanceCursor(waitForCompletion = false) {
+	advanceCursor() {
 		if (this.currentStepIndex >= this.executionSteps.length) return;
 		const currentStep = this.executionSteps[this.currentStepIndex];
 
 		if (currentStep.type === "char") {
 			currentStep.element.classList.add("consumed");
 			this.logManager.addEntry({ char: currentStep.char });
-			if (waitForCompletion) {
-				return new Promise((resolve) => {
-					ipcRenderer.once("character-typed", () => {
-						this.currentStepIndex++;
-						this.updateLastStepIndex();
-						this.updateCursor();
-						resolve();
-					});
-					ipcRenderer.send("type-character", currentStep.char);
-				});
-			} else {
-				ipcRenderer.send("type-character", currentStep.char);
-				this.currentStepIndex++;
-			}
+			ipcRenderer.send("type-character", currentStep.char);
+			this.currentStepIndex++;
 		} else if (currentStep.type === "anchor") {
 			currentStep.element.classList.add("consumed");
 			if (!currentStep._logged) {
@@ -351,10 +329,7 @@ class CursorManager {
 			ipcRenderer.send("input-complete");
 		}
 
-		if (!waitForCompletion || currentStep.type !== "char") {
-			this.updateLastStepIndex();
-			this.updateCursor();
-		}
+		this.updateCursor();
 	}
 
 	async startAutoTyping() {
@@ -415,7 +390,6 @@ class CursorManager {
 			if (i < index) step.element.classList.add("consumed");
 		});
 
-		this.updateLastStepIndex();
 		this.updateCursor();
 	}
 
@@ -437,7 +411,6 @@ class CursorManager {
 			this.updateCursor();
 		}, 0);
 	}
-
 }
 
 module.exports = CursorManager;

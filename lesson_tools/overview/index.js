@@ -137,7 +137,6 @@ function _applyInitialTab() {
 }
 _applyInitialTab();
 
-document.getElementById("open-btn").addEventListener("click", pickFolder);
 async function _runChartDownload(btn, bodyId, zipName) {
 	if (btn.disabled) return;
 	btn.disabled = true;
@@ -172,36 +171,18 @@ document
 			console.warn("[overview] served-source detection failed:", e);
 		}
 		if (served) {
-			try {
-				await served.load();
-				await loadCourse(served);
-			} catch (e) {
-				console.error("[overview] web-mode load failed:", e);
-				alert("Error loading served dataset: " + e.message);
-			}
-			showLoading(false);
-			return;
+			await served.load();
+			await loadCourse(served);
+		} else {
+			alert(
+				"No course data found. Open the overview via `npm run overview` or the app Tools menu.",
+			);
 		}
-		const handle = await loadSavedDirHandle("lastCourseDir", "grades-dash");
-		if (!handle) {
-			showLoading(false);
-			return;
-		}
-		try {
-			const ds = new FsDataSource({
-				idbKey: "lastCourseDir",
-				dbName: "grades-dash",
-			});
-			ds.rootHandle = handle;
-			ds.rootName = handle.name;
-			await _idbSet(IDB_KEY_COURSE_ROOT, handle);
-			await ds.load();
-			await loadCourse(ds);
-		} catch (e) {
-			if (e.name !== "AbortError") alert("Error: " + e.message);
-		}
-		showLoading(false);
+	} catch (e) {
+		console.error("[overview] load failed:", e);
+		alert("Error loading dataset: " + e.message);
 	} finally {
+		showLoading(false);
 		document.documentElement.classList.remove("autoload");
 		_applyInitialTab();
 	}

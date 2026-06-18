@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const LessonManager = require("./lesson-manager");
 const { assignAlterEgos, ALTER_EGO_POOL } = require("../shared/alter-egos");
+const { readTextFileSync } = require("../shared/encoding");
 
 const COURSE_META_FILE = ".leo-course";
 const STUDENTS_CSV = "students.csv";
@@ -19,6 +20,12 @@ class CourseManager {
 
 	isOpen() {
 		return !!this.rootPath;
+	}
+
+	close() {
+		this.rootPath = "";
+		this.name = "";
+		this.lastPlan = "";
 	}
 
 	getName() {
@@ -205,7 +212,7 @@ class CourseManager {
 		const csvPath = this._studentsCsvPath();
 		if (!fs.existsSync(csvPath)) return [];
 		try {
-			return this._parseStudentNames(fs.readFileSync(csvPath, "utf8"));
+			return this._parseStudentNames(readTextFileSync(csvPath));
 		} catch {
 			return [];
 		}

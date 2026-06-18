@@ -4,9 +4,6 @@ let _basisFiles = new Map();
 let _basisFallbackFile = null;
 let _activeBasis = null;
 
-const _DEFAULT_BASIS_KEY = "default";
-const _DEFAULT_BASIS_LABEL = "Default (remarks.xlsx)";
-
 async function loadXlsxFiles(files) {
 	if (typeof XLSX === "undefined") {
 		alert(
@@ -17,7 +14,6 @@ async function loadXlsxFiles(files) {
 
 	_basisFiles = new Map();
 	_basisFallbackFile = null;
-	const workingRe = /^remarks(?:_(\d{8}-\d{6}|\d{10,}))?\.xlsx$/;
 	for (const f of files) {
 		const n = f.name.toLowerCase();
 		if (!n.includes("remarks") || !n.endsWith(".xlsx")) continue;
@@ -29,28 +25,21 @@ async function loadXlsxFiles(files) {
 				break;
 			}
 		}
-		if (!matched) {
-			if (workingRe.test(n)) _basisFiles.set(_DEFAULT_BASIS_KEY, f);
-			_basisFallbackFile = f;
-		}
+		if (!matched) _basisFallbackFile = f;
 	}
 
 	let chosenKey = null;
-	if (_basisFiles.has(_DEFAULT_BASIS_KEY)) {
-		chosenKey = _DEFAULT_BASIS_KEY;
-	} else {
-		for (const key of DEFAULT_BASIS_ORDER) {
+	for (const key of ["ideal", "leo_star"]) {
+		if (_basisFiles.has(key)) {
+			chosenKey = key;
+			break;
+		}
+	}
+	if (!chosenKey) {
+		for (const { key } of REMARKS_BASES) {
 			if (_basisFiles.has(key)) {
 				chosenKey = key;
 				break;
-			}
-		}
-		if (!chosenKey) {
-			for (const { key } of REMARKS_BASES) {
-				if (_basisFiles.has(key)) {
-					chosenKey = key;
-					break;
-				}
 			}
 		}
 	}
@@ -58,17 +47,6 @@ async function loadXlsxFiles(files) {
 	const remarksFile = chosenKey
 		? _basisFiles.get(chosenKey)
 		: _basisFallbackFile;
-	console.log(
-		"[copiers] remarks candidates:",
-		files.map((f) => f.name),
-	);
-	console.log(
-		"[copiers] basis files matched:",
-		[..._basisFiles.keys()],
-		"| fallback:",
-		_basisFallbackFile && _basisFallbackFile.name,
-	);
-	console.log("[copiers] chosen basis:", chosenKey);
 	if (!remarksFile) return;
 
 	try {
@@ -82,12 +60,6 @@ async function loadXlsxFiles(files) {
 }
 
 async function _loadRemarksFile(file) {
-	console.log(
-		"[copiers] READING remarks file:",
-		file && file.name,
-		"| path:",
-		file && (file.url || file.path || file.webkitRelativePath || "(none)"),
-	);
 	const rBuf = await readFileArray(file);
 	const sessionDate = new Date(_p.sessionStart * 1000);
 	const result = parseStudentData(
@@ -109,7 +81,10 @@ async function _loadRemarksFile(file) {
 function _renderBasisPicker() {
 	const container = document.getElementById("chart-bottom-basis");
 	if (!container) return;
-	if (_basisFiles.size === 0) {
+	const hasBasisOptions = REMARKS_BASES.some(({ key }) =>
+		_basisFiles.has(key),
+	);
+	if (!hasBasisOptions) {
 		container.classList.remove("has-options");
 		container.innerHTML = "";
 		return;
@@ -139,12 +114,6 @@ function _renderBasisPicker() {
 		});
 	}
 	select.innerHTML = "";
-	if (_basisFiles.has(_DEFAULT_BASIS_KEY)) {
-		const opt = document.createElement("option");
-		opt.value = _DEFAULT_BASIS_KEY;
-		opt.textContent = _DEFAULT_BASIS_LABEL;
-		select.appendChild(opt);
-	}
 	for (const { key, label } of REMARKS_BASES) {
 		if (!_basisFiles.has(key)) continue;
 		const opt = document.createElement("option");
@@ -157,16 +126,6 @@ function _renderBasisPicker() {
 		"is-curated",
 		select.value === "ideal" || select.value === "minimal",
 	);
-}
-
-function _colLetter(i) {
-	let s = "";
-	i = Number(i);
-	do {
-		s = String.fromCharCode(65 + (i % 26)) + s;
-		i = Math.floor(i / 26) - 1;
-	} while (i >= 0);
-	return s;
 }
 
 function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
@@ -267,38 +226,5 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 					?.ts ?? sessionEnd + CFG.PADDING / 2,
 		});
 	}
-	console.log(
-		"[copiers] header:",
-		hdrR.map((h, i) => `${_colLetter(i)}=${JSON.stringify(String(h))}`),
-	);
-	console.log(
-		"[copiers] obs columns detected:",
-		obsColRs.map((i) => `${_colLetter(i)}: ${hdrR[i]}`),
-	);
-	const _obsDump = [];
-	const _markerCells = [];
-	for (let i = 1; i < rowsR.length; i++) {
-		const row = rowsR[i] || [];
-		const name = String(row[nameColR] || "").trim();
-		if (!name || name === "undefined") continue;
-		_obsDump.push(`${name} | S(18)=${JSON.stringify(String(row[18] ?? ""))}`);
-		for (let c = 0; c < row.length; c++) {
-			const v = String(row[c] ?? "").trim();
-			if (v && v.length <= 12 && /[<>]/.test(v) && !v.includes("(")) {
-				_markerCells.push(
-					`${name}: ${_colLetter(c)}(${c}) [${hdrR[c]}] = ${JSON.stringify(v)}`,
-				);
-			}
-		}
-	}
-	console.log("[copiers] column S (18) per student:", _obsDump);
-	console.log(
-		"[copiers] short marker-like cells (</> w/o '('):",
-		_markerCells,
-	);
-	console.log(
-		"[copiers] detected copiers (obs contains '<'):",
-		students.filter((s) => (s.obs || "").includes("<")).map((s) => s.name),
-	);
 	return { students, idMap };
 }

@@ -28,15 +28,7 @@ class LineChart {
 	}
 
 	_resize() {
-		const c = this._canvas;
-		const r = c.getBoundingClientRect();
-		const dpr = window.devicePixelRatio || 1;
-		const w = r.width || c.offsetWidth || 300;
-		const h = r.height || c.offsetHeight || 150;
-		c.width = w * dpr;
-		c.height = h * dpr;
-		this._dpr = dpr;
-		this._draw();
+		_resizeChartCanvas(this, 150);
 	}
 
 	_axisY(v, axisKey) {

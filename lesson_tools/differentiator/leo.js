@@ -255,6 +255,19 @@ function _renderSimpleTooltip(token, mark) {
 	return html;
 }
 
+function _positionLeoTipNear(tip, target) {
+	tip.style.display = "flex";
+	const r = target.getBoundingClientRect();
+	const tw = tip.offsetWidth;
+	const th = tip.offsetHeight;
+	let left = r.left;
+	let top = r.bottom + 6;
+	if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+	if (top + th > window.innerHeight - 8) top = r.top - th - 6;
+	tip.style.left = `${Math.max(8, left)}px`;
+	tip.style.top = `${Math.max(8, top)}px`;
+}
+
 function _showLeoTooltip(target) {
 	if (typeof _curatedHideControls === "function") _curatedHideControls();
 	const token = target.getAttribute("data-leo-token");
@@ -277,16 +290,7 @@ function _showLeoTooltip(target) {
 		const color = _labelColor(label);
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
 		_leoTipBody.innerHTML = _renderSimpleTooltip(token, mark);
-		tip.style.display = "flex";
-		const r = target.getBoundingClientRect();
-		const tw = tip.offsetWidth;
-		const th = tip.offsetHeight;
-		let left = r.left;
-		let top = r.bottom + 6;
-		if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
-		if (top + th > window.innerHeight - 8) top = r.top - th - 6;
-		tip.style.left = `${Math.max(8, left)}px`;
-		tip.style.top = `${Math.max(8, top)}px`;
+		_positionLeoTipNear(tip, target);
 		return;
 	}
 	_clearLeoHighlights();
@@ -303,16 +307,7 @@ function _showLeoTooltip(target) {
 		pos,
 		ghostOffset,
 	);
-	tip.style.display = "flex";
-	const r = target.getBoundingClientRect();
-	const tw = tip.offsetWidth;
-	const th = tip.offsetHeight;
-	let left = r.left;
-	let top = r.bottom + 6;
-	if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
-	if (top + th > window.innerHeight - 8) top = r.top - th - 6;
-	tip.style.left = `${Math.max(8, left)}px`;
-	tip.style.top = `${Math.max(8, top)}px`;
+	_positionLeoTipNear(tip, target);
 }
 
 function _hideLeoTooltip() {
@@ -425,22 +420,7 @@ function _applyMarkPairHighlight(target) {
 }
 
 function _applyLeoHighlights(target, data, side, pos, ghostOffset) {
-	target.classList.add("leo-highlight-active");
-	if (target.hasAttribute("data-swap-pos")) {
-		const partnerSide = target.getAttribute("data-swap-side");
-		target.classList.add(
-			partnerSide === "student"
-				? "leo-highlight-pair-extra"
-				: "leo-highlight-pair-missing",
-		);
-	}
-	_leoHighlighted.push(target);
-	if (target.hasAttribute("data-swap-pos")) {
-		_applySwapPartnerHighlight(target);
-	}
-	if (target.hasAttribute("data-insert-pos")) {
-		_applyInsertAnchorHighlight(target);
-	}
+	_addMarkPairHighlight(target);
 	const list = side === "teacher" ? data.teacher : data.student;
 	const idx = _findInstanceIdx(list, pos, ghostOffset);
 	const inst = idx >= 0 ? list[idx] : null;

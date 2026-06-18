@@ -1023,7 +1023,7 @@ function _curatedParityInfo(p) {
 	if (p.sameOrder)
 		return {
 			clr: _cssVar("--clr-green") || "#1a7f37",
-			text: "✓ Same tokens & order",
+			text: "Same tokens",
 			title:
 				"Applying these corrections reproduces the teacher's non-comment " +
 				"tokens exactly, in the same order.",
@@ -1031,7 +1031,7 @@ function _curatedParityInfo(p) {
 	if (p.sameSet)
 		return {
 			clr: _cssVar("--clr-orange") || "#bf8700",
-			text: "✓ Same tokens · reordered",
+			text: "Different order",
 			title:
 				"Applying these corrections reproduces the same set of teacher " +
 				"non-comment tokens, but in a different order.",

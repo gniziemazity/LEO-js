@@ -85,6 +85,9 @@ function renderTable() {
 	const showNum = _paperMode ? false : !_hiddenCols.has("num");
 	const showFollow = _paperMode ? _simParam : !_hiddenCols.has("follow");
 
+	const showInteractions =
+		!_paperMode && _hasInteractions && !_hiddenCols.has("interactions");
+
 	const showLangs = !_paperMode && !_hiddenCols.has("languages");
 	const presentLangs = showLangs
 		? LANG_COL_DEFS.filter((def) =>
@@ -135,8 +138,8 @@ function renderTable() {
 			sortKey: "remark:" + col,
 		});
 	}
-	if (!_paperMode && _hasInteractions)
-		specs.push({ cls: "col-int", label: "INT", sortKey: "int" });
+	if (showInteractions)
+		specs.push({ cls: "col-int", label: "Interactions", sortKey: "int" });
 	if (showFollow)
 		specs.push({ cls: "col-follow", label: _followLabel, sortKey: "follow" });
 	for (const def of presentLangs)
@@ -339,7 +342,7 @@ function renderTable() {
 			}
 			tr.appendChild(el);
 		}
-		if (!_paperMode && _hasInteractions) {
+		if (showInteractions) {
 			const el = document.createElement("td");
 			el.className = "col-int";
 			el.innerHTML = s.interactions;

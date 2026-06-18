@@ -281,14 +281,6 @@ function _visibleStudents() {
 	const out = _bottomChartVisible.hideCopiers
 		? _students.filter((s) => !_studentIsCopier(s))
 		: _students;
-	console.log(
-		"[copiers] _visibleStudents: hideCopiers=",
-		_bottomChartVisible.hideCopiers,
-		"total=",
-		_students.length,
-		"visible=",
-		out.length,
-	);
 	return out;
 }
 
@@ -336,15 +328,10 @@ const BOTTOM_LEGEND_ITEMS = [
 function setupBottomChartLegend() {
 	for (const { id, key, onChange } of BOTTOM_LEGEND_ITEMS) {
 		const cb = document.getElementById(id);
-		if (!cb) {
-			console.log("[copiers] legend checkbox NOT FOUND:", id);
-			continue;
-		}
+		if (!cb) continue;
 		cb.checked = _bottomChartVisible[key];
 		cb.onchange = () => {
 			_bottomChartVisible[key] = cb.checked;
-			if (key === "hideCopiers")
-				console.log("[copiers] toggled hideCopiers =", cb.checked);
 			if (onChange) onChange();
 			scheduleRender();
 		};

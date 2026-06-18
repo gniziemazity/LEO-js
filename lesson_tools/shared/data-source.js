@@ -20,20 +20,12 @@ class DataSource {
 }
 
 class FsDataSource extends DataSource {
-	constructor({ idbKey = "lastDir", dbName, lowercaseKeys = true } = {}) {
+	constructor({ lowercaseKeys = true } = {}) {
 		super();
-		this._idbKey = idbKey;
-		this._dbName = dbName;
 		this._lowercaseKeys = lowercaseKeys;
 	}
-	async open({ tryResume = false } = {}) {
-		let handle = null;
-		if (tryResume) {
-			handle = await loadSavedDirHandle(this._idbKey, this._dbName);
-		}
-		if (!handle) {
-			handle = await pickFolderWithMemory(this._idbKey, this._dbName);
-		}
+	async open() {
+		const handle = await pickFolder();
 		this.rootHandle = handle;
 		this.rootName = handle.name;
 		return handle;
@@ -51,13 +43,8 @@ class FsDataSource extends DataSource {
 		});
 		return flatFiles;
 	}
-	async lessonFiles({ lesson, group }) {
-		const resolved = await resolveLessonHandle({ lesson, group });
-		if (!resolved) return null;
-		const sub = new FsDataSource({ lowercaseKeys: this._lowercaseKeys });
-		sub.rootHandle = resolved.handle;
-		sub.rootName = resolved.handle.name;
-		return sub;
+	async lessonFiles() {
+		return null;
 	}
 }
 
@@ -311,8 +298,7 @@ async function detectServedDataSource() {
 
 async function loadLessonDataSource({ lesson, group }) {
 	const served = await detectServedDataSource();
-	const scoped = served ? await served.lessonFiles({ lesson, group }) : null;
-	return scoped || new FsDataSource().lessonFiles({ lesson, group });
+	return served ? await served.lessonFiles({ lesson, group }) : null;
 }
 
 async function _resolveSubHandle(rootHandle, subPath) {

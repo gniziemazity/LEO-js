@@ -26,8 +26,6 @@ let _sortCol = "id";
 let _sortDir = "asc";
 let _shownUnicodeCorruptionWarning = false;
 
-const GRADES_KEY = "_grades";
-
 let _basisFiles = new Map();
 let _basisFallbackFile = null;
 let _activeBasis = null;
@@ -61,6 +59,7 @@ const COL_HIDE_KEYS = [
 	{ key: "expected", label: "Expected" },
 	{ key: "grade", label: "Grade" },
 	{ key: "comments", label: "Comments" },
+	{ key: "interactions", label: "Interactions" },
 	{ key: "follow", label: "Follow / SIM" },
 	{ key: "languages", label: "Languages (HTML/CSS/JS/Py)" },
 	{ key: "fingerprint1", label: "Fingerprint · timeline" },

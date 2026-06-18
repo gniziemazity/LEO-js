@@ -2,6 +2,15 @@
 
 let vis;
 
+let _visReady = null;
+let _pendingVisData = null;
+
+window.__leoApplyVisData = (data) => {
+	if (!data) return;
+	if (_visReady) _visReady(data);
+	else _pendingVisData = data;
+};
+
 const _SIM_LOG_SKIP = new Set(["diff_marks.json"]);
 const _SIM_LOG_RANK = (name) => {
 	const n = name.toLowerCase();
@@ -127,12 +136,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 		vis.loadFile(data);
 	}
 
+	// The engine is ready: apply any log already pushed by the Electron
+	// visualizer, and route future pushes straight through.
+	_visReady = loadFromData;
+	if (_pendingVisData) {
+		loadFromData(_pendingVisData);
+		_pendingVisData = null;
+	}
+
 	const params = parseToolParams();
-	const isReload =
-		performance.getEntriesByType("navigation")[0]?.type === "reload";
 
 	let urlAutoloaded = false;
-	if (!isReload && params.lesson) {
+	if (params.lesson) {
 		showLoading(true);
 		try {
 			urlAutoloaded = await _trySimAutoloadFromUrlParams(
@@ -145,46 +160,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 		showLoading(false);
 		if (!urlAutoloaded) landing.style.display = "";
-	}
-
-	if (!isReload && !urlAutoloaded && !params.lesson) {
-		try {
-			const logData = window.__LOG_DATA__;
-			const logTs = logData?.loadedAt || 0;
-			let parsed = null;
-			try {
-				const stored = localStorage.getItem("timeline_sim_data");
-				if (stored) parsed = JSON.parse(stored);
-			} catch {}
-			const storedTs = parsed?.loadedAt || 0;
-
-			if (logData && logTs >= storedTs) {
-				loadFromData(logData);
-			} else if (parsed) {
-				const { filePath, events, lessonFile, lessonName, studentNameMap } =
-					parsed;
-				let imageUris = {};
-				try {
-					const raw = localStorage.getItem("timeline_sim_images");
-					if (raw) imageUris = JSON.parse(raw);
-				} catch {}
-				const micro = expandEvents(events || []);
-				const interactions = (events || []).filter((e) => e.interaction);
-				loadFromData({
-					filePath,
-					micro,
-					events,
-					error: null,
-					imageUris,
-					lessonFile,
-					lessonName,
-					interactions,
-					studentNameMap: studentNameMap || {},
-				});
-			} else if (logData) {
-				loadFromData(logData);
-			}
-		} catch {}
 	}
 
 	try {
@@ -200,7 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	btnFolder.addEventListener("click", async () => {
 		try {
-			const dirHandle = await pickFolderWithMemory();
+			const dirHandle = await pickFolder();
 			const files = [];
 			const pathMap = new Map();
 			await readDirHandle(dirHandle, "", pathMap, files);
@@ -218,7 +193,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	btnOpen.addEventListener("click", async () => {
 		try {
-			const [fh] = await pickFilesWithMemory({
+			const [fh] = await pickFiles({
 				types: [
 					{
 						description: "Log files",

@@ -17,7 +17,9 @@ class LessonRenderer {
 	attachEditHandlers(element) {
 		element.onpaste = (e) => {
 			e.preventDefault();
-			const text = e.clipboardData.getData("text/plain");
+			const text = e.clipboardData
+				.getData("text/plain")
+				.replace(/\r\n?/g, "\n");
 			document.execCommand("insertText", false, text);
 		};
 		element.onkeydown = (e) => {
@@ -30,7 +32,7 @@ class LessonRenderer {
 
 	makeCodeBlockEditable(element, block, blockIdx) {
 		element.contentEditable = "true";
-		element.innerText = block.text;
+		element.textContent = block.text;
 		element.oninput = () => {
 			this.saveEditState(blockIdx, element.innerText);
 			this.lessonManager.updateBlock(blockIdx, element.innerText);
@@ -147,12 +149,12 @@ class LessonRenderer {
 
 		if (isMultilineInsert && !isExpanded) {
 			blockDiv.contentEditable = "false";
-			blockDiv.innerText = block.text.split("\n")[0] + "...";
+			blockDiv.textContent = block.text.split("\n")[0] + "...";
 			blockDiv.title = block.text;
 			blockDiv.classList.add("collapsed");
 		} else {
 			blockDiv.contentEditable = !isTypingActive;
-			blockDiv.innerText = block.text;
+			blockDiv.textContent = block.text;
 			blockDiv.title = "";
 		}
 
@@ -310,7 +312,11 @@ class LessonRenderer {
 			type: "block",
 			subtype: "move-to",
 			target,
-			snippet: extractAnchorSnippet(target, blockIdx, this.lessonManager.getAllBlocks()),
+			snippet: extractAnchorSnippet(
+				target,
+				blockIdx,
+				this.lessonManager.getAllBlocks(),
+			),
 			element: blockDiv,
 			blockIndex: blockIdx,
 			globalIndex: globalStepCounter,

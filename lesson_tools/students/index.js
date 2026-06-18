@@ -77,7 +77,6 @@ lessonNameEl.addEventListener("click", () => {
 			console.warn("[Students] URL-param load failed:", e);
 		}
 	}
-	if (!ok) ok = await _tryAutoLoad();
 	let _autoSid =
 		params.star && params.star.length === 1
 			? String(params.star[0])
@@ -107,14 +106,5 @@ lessonNameEl.addEventListener("click", () => {
 	if (!ok) {
 		showLoading(false);
 		landingEl.style.display = "";
-		const btn = document.createElement("button");
-		btn.className = "landing-btn";
-		btn.textContent = "🔄 Load Students";
-		btn.onclick = async () => {
-			btn.disabled = true;
-			await _tryAutoLoad();
-			btn.disabled = false;
-		};
-		document.getElementById("landing-buttons").prepend(btn);
 	}
 })();

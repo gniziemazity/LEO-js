@@ -342,9 +342,6 @@ body {
 	border-left-color: var(--clr-accent);
 	pointer-events: auto;
 }
-.tt-muted {
-	color: var(--clr-muted);
-}
 .tt-nl {
 	color: var(--clr-muted);
 	opacity: 0.6;
@@ -410,7 +407,11 @@ body {
 	margin-right: 3px;
 	border: 1px solid var(--clr-border);
 	border-radius: 4px;
-	background: var(--clr-surface);
+	white-space: nowrap;
+}
+
+.ia-one {
+	margin-right: 3px;
 	white-space: nowrap;
 }
 .tt-grid {

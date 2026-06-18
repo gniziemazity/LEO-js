@@ -25,6 +25,7 @@ from .token_log import (
     _refresh_missing_timestamps,
     _remap_marks_to_utf16,
     _strip_internal_fields,
+    _ttt_pos_index,
     _write_teacher_tokens_file,
 )
 from .folder_utils import CODE_EXTS
@@ -555,14 +556,7 @@ class TokenLogMixin:
                     fresh_removal.setdefault(tok, []).append(removal_ts)
 
             if teacher_token_timestamps:
-                ttt_lookup: Dict[Tuple[str, int, int], str] = {}
-                for fname_t, entries in teacher_token_timestamps.items():
-                    for e in entries or []:
-                        s = e.get('start')
-                        en = e.get('end')
-                        ts = e.get('ts')
-                        if isinstance(s, int) and isinstance(en, int) and ts:
-                            ttt_lookup[(fname_t, s, en)] = ts
+                ttt_lookup = _ttt_pos_index(teacher_token_timestamps)
                 for fname_t, marks_t in (diff_marks.get('teacher_files') or {}).items():
                     for m in marks_t or []:
                         if m.get('label') != 'missing':

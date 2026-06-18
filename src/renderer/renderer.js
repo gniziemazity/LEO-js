@@ -67,23 +67,34 @@ function applyMode(mode) {
 }
 
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
-	pendingQuestion = { question, timestamp, answeredBy: null };
+	pendingQuestion = { question, timestamp, answeredBy: null, entry: null };
 	const students = fileOperations.getStudents();
 	const bgColor = getColor("questionCommentColor", "#facaca");
 	ipcRenderer.send("enter-question-block", { question, students, bgColor });
 };
 
-cursorManager.onLeaveQuestionBlock = () => {
-	if (pendingQuestion) {
-		logManager.addEntry({
-			timestamp: pendingQuestion.timestamp,
-			interaction: "teacher-question",
-			info: pendingQuestion.question,
-			answered_by: pendingQuestion.answeredBy,
-			closed_at: Date.now(),
-		});
-		pendingQuestion = null;
+function logTeacherQuestionShown() {
+	if (!pendingQuestion || pendingQuestion.entry) return;
+	pendingQuestion.entry = logManager.addEntry({
+		timestamp: pendingQuestion.timestamp,
+		interaction: "teacher-question",
+		info: pendingQuestion.question,
+		answered_by: pendingQuestion.answeredBy,
+	});
+}
+
+function finalizeTeacherQuestion() {
+	if (!pendingQuestion) return;
+	if (pendingQuestion.entry) {
+		pendingQuestion.entry.answered_by = pendingQuestion.answeredBy;
+		pendingQuestion.entry.closed_at = Date.now();
+		logManager.save();
 	}
+	pendingQuestion = null;
+}
+
+cursorManager.onLeaveQuestionBlock = () => {
+	finalizeTeacherQuestion();
 };
 
 cursorManager.onImageBlock = (imageName, shouldPin) => {
@@ -227,6 +238,7 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("new-course", () => courseUI.newCourse());
 	ipcRenderer.on("open-course", () => courseUI.openCourse());
 	ipcRenderer.on("save-course", () => courseUI.saveCourse());
+	ipcRenderer.on("close-course", () => courseUI.closeCourse());
 	ipcRenderer.on("add-students", () => courseUI.showStudents());
 	ipcRenderer.on("open-plan-file", (e, filePath) =>
 		fileOperations.loadFilePath(filePath),
@@ -253,11 +265,19 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("question-answered", (event, { studentName }) => {
 		if (pendingQuestion) {
 			pendingQuestion.answeredBy = studentName;
+			if (pendingQuestion.entry) {
+				pendingQuestion.entry.answered_by = studentName;
+				logManager.save();
+			}
 		}
 		if (studentName) {
 			playFireworksSound();
 		}
 	});
+
+	ipcRenderer.on("question-shown", () => logTeacherQuestionShown());
+
+	ipcRenderer.on("question-window-closed", () => finalizeTeacherQuestion());
 
 	ipcRenderer.on(
 		"log-student-interaction",

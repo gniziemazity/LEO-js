@@ -149,6 +149,14 @@ body {
 #chart-bottom-basis select option[value="minimal"] {
 	color: var(--clr-mark-extra);
 }
+#chart-bottom-basis select option[value="leo_star"],
+#chart-bottom-basis select option[value="leo"],
+#chart-bottom-basis select option[value="lcs_star"],
+#chart-bottom-basis select option[value="lcs"],
+#chart-bottom-basis select option[value="git_star"],
+#chart-bottom-basis select option[value="git"] {
+	color: var(--clr-accent);
+}
 
 .chart-wrap {
 	width: 100%;

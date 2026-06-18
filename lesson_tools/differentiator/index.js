@@ -27,8 +27,8 @@ let _diffMissingLangColor =
 	localStorage.getItem("diff-missing-lang-color") !== "off";
 
 const DIFF_MODE_OPTIONS = [
-	{ key: "minimal", label: "Minimal" },
 	{ key: "ideal", label: "Ideal" },
+	{ key: "minimal", label: "Minimal" },
 	{ key: "", label: "LEO*" },
 	{ key: "leo", label: "LEO" },
 	{ key: "token-lcs-star", label: "LCS*" },
@@ -37,6 +37,8 @@ const DIFF_MODE_OPTIONS = [
 	{ key: "line-git", label: "Git" },
 ];
 
+const CLEAR_DIFF_KEY = "__clear__";
+
 function _refreshModeSelect() {
 	const modeSelect = document.getElementById("mode-select");
 	if (!modeSelect) return;
@@ -44,12 +46,32 @@ function _refreshModeSelect() {
 	const availableKeys = new Set(Object.keys(_allMarks));
 	modeSelect.innerHTML = "";
 
-	for (const optionDef of DIFF_MODE_OPTIONS) {
+	const knownKeys = new Set(DIFF_MODE_OPTIONS.map((o) => o.key));
+	const customDefs = [...availableKeys]
+		.filter((k) => !knownKeys.has(k))
+		.sort((a, b) => a.localeCompare(b))
+		.map((k) => ({ key: k, label: k }));
+	const curatedDefs = DIFF_MODE_OPTIONS.filter((o) =>
+		CURATED_MODES.has(o.key),
+	);
+	const methodDefs = DIFF_MODE_OPTIONS.filter(
+		(o) => !CURATED_MODES.has(o.key),
+	);
+	const ordered = [...curatedDefs, ...customDefs, ...methodDefs];
+
+	for (const optionDef of ordered) {
 		if (!availableKeys.has(optionDef.key)) continue;
 		const option = document.createElement("option");
 		option.value = optionDef.key;
 		option.textContent = optionDef.label;
 		modeSelect.appendChild(option);
+	}
+
+	if (typeof _embedMode === "undefined" || !_embedMode) {
+		const clearOpt = document.createElement("option");
+		clearOpt.value = CLEAR_DIFF_KEY;
+		clearOpt.textContent = "Clear";
+		modeSelect.appendChild(clearOpt);
 	}
 
 	const nextMode = defaultDiffModeKey(_allMarks, _diffMode);
@@ -295,6 +317,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 	const modeSelect = document.getElementById("mode-select");
 	if (modeSelect) {
 		modeSelect.addEventListener("change", () => {
+			if (modeSelect.value === CLEAR_DIFF_KEY) {
+				if (typeof _curatedClearDiff === "function") _curatedClearDiff();
+				modeSelect.value = _diffMode ?? "";
+				return;
+			}
 			_diffMode = modeSelect.value;
 			modeSelect.classList.toggle(
 				"is-curated",

@@ -46,7 +46,6 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
 
         self.teacher_tokens_by_ext:           Dict[str, Counter] = {}
         self.teacher_outside_by_ext:          Dict[str, Counter] = {}
-        self.teacher_inside_by_ext:           Dict[str, Counter] = {}
 
         self.remarks_data:       Dict[str, str]  = {}
         self.required_items:     List[List[str]] = []
@@ -171,24 +170,16 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 return self.start_dir
         return self.reference_dir
 
-    def compare_files(self,
-                      ref_file: Path, student_file: Path,
-                      teacher_tokens: Counter,
-                      baseline_outside: Counter) -> Dict:
+    def compare_files(self, student_file: Path,
+                      teacher_tokens: Counter) -> Dict:
         try:
             student_raw = student_file.read_text(encoding='utf-8', errors='ignore')
-
-            student_outside, student_inside = split_code_tokens(student_raw)
-            inc_sim       = calculate_containment(teacher_tokens, student_outside)
-            extra_outside = student_outside - baseline_outside
-
+            student_outside, _ = split_code_tokens(student_raw)
+            inc_sim = calculate_containment(teacher_tokens, student_outside)
             return {
-                'status':                   'success',
-                'file_name':                student_file.name,
-                'inc_sim':                  inc_sim,
-                'extra_outside':            extra_outside,
-                'student_outside':          student_outside,
-                'student_inside':           student_inside,
+                'status':    'success',
+                'file_name': student_file.name,
+                'inc_sim':   inc_sim,
             }
         except Exception:
             return {'status': 'error'}
@@ -197,19 +188,16 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         ref_files = self.get_code_files(self._effective_reference_dir())
 
         t_outside:      Dict[str, Counter] = {}
-        t_inside:       Dict[str, Counter] = {}
         t_tokens:       Dict[str, Counter] = {}
 
         for ext, ref_file in ref_files.items():
             raw = ref_file.read_text(encoding='utf-8', errors='ignore')
             out, ins = split_code_tokens(raw)
             t_outside[ext] = out
-            t_inside[ext]  = ins
             t_tokens[ext]  = out + ins
 
         self.teacher_tokens_by_ext  = t_tokens
         self.teacher_outside_by_ext = t_outside
-        self.teacher_inside_by_ext  = t_inside
 
         bl_outside = self._build_baselines(ref_files, t_outside)
 
@@ -227,9 +215,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 if ext not in stu_files:
                     continue
                 result = self.compare_files(
-                    ref_file, stu_files[ext],
-                    t_outside.get(ext, Counter()),
-                    bl_outside.get(ext, t_outside.get(ext, Counter())),
+                    stu_files[ext], t_outside.get(ext, Counter()),
                 )
                 res['files_compared'][ext] = result
 
@@ -240,12 +226,9 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
                 t_ref = t_outside.get('.html', Counter())
                 if t_ref:
                     s_raw   = s_file.read_text(encoding='utf-8', errors='ignore')
-                    s_out, s_ins = split_code_tokens(s_raw)
-                    _bl_out = bl_outside.get('.html', t_outside.get('.html', Counter()))
-                    extra_out = s_out - _bl_out
+                    s_out, _ = split_code_tokens(s_raw)
                     res['files_compared'][_ext] = self._no_ref_result(
-                        s_file, s_out, s_ins, extra_out,
-                        calculate_containment(t_ref, s_out))
+                        s_file, calculate_containment(t_ref, s_out))
                     continue
                 res['files_compared'][_ext] = {'status': 'no_reference',
                                                'file_name': s_file.name}
@@ -316,15 +299,11 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         return bl_outside
 
     @staticmethod
-    def _no_ref_result(s_file: Path, s_out: Counter, s_ins: Counter,
-                       extra_out: Counter, inc_sim: float) -> Dict:
+    def _no_ref_result(s_file: Path, inc_sim: float) -> Dict:
         return {
-            'status':          'success',
-            'file_name':       s_file.name,
-            'inc_sim':         inc_sim,
-            'extra_outside':   extra_out,
-            'student_outside': s_out,
-            'student_inside':  s_ins,
+            'status':    'success',
+            'file_name': s_file.name,
+            'inc_sim':   inc_sim,
         }
 
 _REMARKS_BASES = [

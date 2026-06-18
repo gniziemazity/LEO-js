@@ -13,7 +13,7 @@ const landingEl = document.getElementById("landing");
 
 async function openFilePicker() {
 	try {
-		const handles = await pickFilesWithMemory({ multiple: true });
+		const handles = await pickFiles({ multiple: true });
 		if (!handles.length) return;
 		_allFiles = new Map();
 		showLoading(true);
@@ -330,25 +330,10 @@ async function saveLessonStatsCsv() {
 async function _loadTimelineFromDataSource(ds) {
 	_dirHandle = ds.rootHandle;
 	_lessonName = ds.rootName;
-	if (ds.rootHandle) {
-		try {
-			await _idbSet(IDB_KEY_LESSON_ROOT, ds.rootHandle);
-		} catch {}
-	}
 	showLoading(true);
 	const files = await ds.load();
 	_allFiles = ds.files;
 	handleFiles(files);
-}
-
-async function _tryAutoLoadTimeline() {
-	const handle = await loadSavedDirHandle();
-	if (!handle) return false;
-	const ds = new FsDataSource();
-	ds.rootHandle = handle;
-	ds.rootName = handle.name;
-	await _loadTimelineFromDataSource(ds);
-	return true;
 }
 
 async function _tryLoadTimelineFromUrlParams() {
@@ -393,20 +378,9 @@ async function _tryLoadTimelineFromUrlParams() {
 			console.warn("[Timeline] URL-param load failed:", e);
 		}
 	}
-	if (!ok) ok = await _tryAutoLoadTimeline();
 	if (!ok) {
 		showLoading(false);
 		document.documentElement.classList.remove("autoload");
-		const btn = document.createElement("button");
-		btn.className = "landing-btn";
-		btn.textContent = "🔄 Load Lesson";
-		btn.onclick = async () => {
-			btn.disabled = true;
-			await _tryAutoLoadTimeline();
-			btn.disabled = false;
-		};
-		const landingButtons = document.getElementById("landing-buttons");
-		if (landingButtons) landingButtons.prepend(btn);
 	}
 })();
 

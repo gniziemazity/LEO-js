@@ -6,6 +6,7 @@ const {
 	Menu,
 	Tray,
 	nativeImage,
+	screen,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -443,6 +444,15 @@ function createApplicationMenu() {
 					label: "Save Course",
 					click: () => state.mainWindow.webContents.send("save-course"),
 				},
+				...(courseMenuState.open
+					? [
+							{
+								label: "Close Course",
+								click: () =>
+									state.mainWindow.webContents.send("close-course"),
+							},
+						]
+					: []),
 				{ type: "separator" },
 				...(courseMenuState.open
 					? []
@@ -540,11 +550,15 @@ function createApplicationMenu() {
 			submenu: [
 				{ label: "VSCode", click: () => launchVSCode() },
 				{ label: "Chrome", click: () => launchExternalApp("chrome") },
-				{ type: "separator" },
-				...LESSON_TOOLS.map((t) => ({
-					label: t.label,
-					click: () => openLessonTool(t),
-				})),
+				...(courseMenuState.open
+					? [
+							{ type: "separator" },
+							...LESSON_TOOLS.map((t) => ({
+								label: t.label,
+								click: () => openLessonTool(t),
+							})),
+						]
+					: []),
 			],
 		},
 	];
@@ -588,24 +602,6 @@ ipcMain.on("set-course-menu", (event, payload) => {
 	createApplicationMenu();
 });
 
-ipcMain.handle("load-students-file", async (event, lessonFilePath) => {
-	if (!lessonFilePath) return [];
-	const dir = path.dirname(lessonFilePath);
-	const studentsFile = path.join(dir, "students.txt");
-	try {
-		if (fs.existsSync(studentsFile)) {
-			const content = fs.readFileSync(studentsFile, "utf8");
-			return content
-				.split(/\r?\n/)
-				.map((l) => l.trim())
-				.filter((l) => l.length > 0);
-		}
-	} catch (err) {
-		console.error("Failed to load students.txt:", err);
-	}
-	return [];
-});
-
 ipcMain.on("broadcast-students", (event, students) => {
 	broadcastServer.updateStudents(students);
 });
@@ -615,6 +611,63 @@ ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
 	broadcastServer.broadcastQuestionStarted(question, students, bgColor);
 	openQuestionWindow(question, bgColor);
 });
+
+function _makeFloatingWindow({
+	width,
+	height,
+	x,
+	y,
+	title,
+	html,
+	extraWebPrefs,
+}) {
+	const win = new BrowserWindow({
+		width,
+		height,
+		...(x != null ? { x } : {}),
+		...(y != null ? { y } : {}),
+		frame: false,
+		transparent: true,
+		resizable: true,
+		autoHideMenuBar: true,
+		alwaysOnTop: true,
+		title,
+		icon: path.join(__dirname, "../shared/icon.ico"),
+		webPreferences: {
+			nodeIntegration: true,
+			contextIsolation: false,
+			...(extraWebPrefs || {}),
+		},
+	});
+	broadcastServer.broadcastFloatingWindowOpened();
+	win.setMenu(null);
+	win.loadFile(path.join(__dirname, html));
+	return win;
+}
+
+function _floatRect(win) {
+	const b = win.getBounds();
+	return { x: b.x, y: b.y, w: b.width, h: b.height };
+}
+
+function _trackWindowRect(win, getRect) {
+	win.on("move", () => {
+		const r = getRect();
+		if (!win.isDestroyed() && r) {
+			const b = win.getBounds();
+			r.x = b.x;
+			r.y = b.y;
+		}
+	});
+	win.on("resize", () => {
+		const r = getRect();
+		if (!win.isDestroyed() && r) {
+			const b = win.getBounds();
+			r.w = b.width;
+			r.h = b.height;
+		}
+	});
+}
 
 function openQuestionWindow(question, bgColor, emoji, studentName) {
 	const payload = { question, bgColor, emoji, studentName };
@@ -626,7 +679,6 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		questionWindow.show();
 		questionWindow.focus();
 	} else {
-		const { screen } = require("electron");
 		const display = screen.getPrimaryDisplay();
 		const workArea = display.workArea;
 		const winW = 900;
@@ -635,29 +687,15 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		const offY = questionWindowIsLesson
 			? workArea.y + workArea.height + 40
 			: Math.floor(workArea.y + (workArea.height - winH) / 2);
-		questionWindow = new BrowserWindow({
+		questionWindow = _makeFloatingWindow({
 			width: winW,
 			height: winH,
 			x: offX,
 			y: offY,
-			frame: false,
-			transparent: true,
-			resizable: true,
-			autoHideMenuBar: true,
-			alwaysOnTop: true,
 			title: "Question",
-			icon: path.join(__dirname, "../shared/icon.ico"),
-			webPreferences: { nodeIntegration: true, contextIsolation: false },
+			html: "../question-window.html",
 		});
-		broadcastServer.broadcastFloatingWindowOpened();
-		questionWindowRect = {
-			x: questionWindow.getBounds().x,
-			y: questionWindow.getBounds().y,
-			w: questionWindow.getBounds().width,
-			h: questionWindow.getBounds().height,
-		};
-		questionWindow.setMenu(null);
-		questionWindow.loadFile(path.join(__dirname, "../question-window.html"));
+		questionWindowRect = _floatRect(questionWindow);
 		const qWin = questionWindow;
 		qWin.webContents.on("did-finish-load", () => {
 			if (!qWin.isDestroyed())
@@ -672,34 +710,16 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 						studentName: null,
 					});
 				}
+				if (state.mainWindow) {
+					state.mainWindow.webContents.send("question-window-closed");
+				}
 			}
 			broadcastServer.broadcastFloatingWindowClosed();
 			questionWindow = null;
 			questionWindowRect = null;
 			questionWindowStudentAnswered = null;
 		});
-		questionWindow.on("move", () => {
-			if (
-				questionWindow &&
-				!questionWindow.isDestroyed() &&
-				questionWindowRect
-			) {
-				const b = questionWindow.getBounds();
-				questionWindowRect.x = b.x;
-				questionWindowRect.y = b.y;
-			}
-		});
-		questionWindow.on("resize", () => {
-			if (
-				questionWindow &&
-				!questionWindow.isDestroyed() &&
-				questionWindowRect
-			) {
-				const b = questionWindow.getBounds();
-				questionWindowRect.w = b.width;
-				questionWindowRect.h = b.height;
-			}
-		});
+		_trackWindowRect(questionWindow, () => questionWindowRect);
 	}
 }
 
@@ -710,7 +730,6 @@ function animateQuestionWindowOnScreen() {
 		clearInterval(questionWindowSlideTimer);
 		questionWindowSlideTimer = null;
 	}
-	const { screen } = require("electron");
 	const display = screen.getPrimaryDisplay();
 	const workArea = display.workArea;
 	const bounds = questionWindow.getBounds();
@@ -747,6 +766,9 @@ function animateQuestionWindowOnScreen() {
 
 broadcastServer.on("client-show-question", () => {
 	animateQuestionWindowOnScreen();
+	if (state.mainWindow) {
+		state.mainWindow.webContents.send("question-shown");
+	}
 });
 
 ipcMain.on("close-question-window", () => {
@@ -829,27 +851,13 @@ ipcMain.on(
 		}
 
 		imageWindowPinned = shouldPin || false;
-		imageWindow = new BrowserWindow({
+		imageWindow = _makeFloatingWindow({
 			width: 900,
 			height: 650,
-			frame: false,
-			transparent: true,
-			resizable: true,
-			autoHideMenuBar: true,
-			alwaysOnTop: true,
 			title: "Image",
-			icon: path.join(__dirname, "../shared/icon.ico"),
-			webPreferences: { nodeIntegration: true, contextIsolation: false },
+			html: "../image-window.html",
 		});
-		broadcastServer.broadcastFloatingWindowOpened();
-		imageWindowRect = {
-			x: imageWindow.getBounds().x,
-			y: imageWindow.getBounds().y,
-			w: imageWindow.getBounds().width,
-			h: imageWindow.getBounds().height,
-		};
-		imageWindow.setMenu(null);
-		imageWindow.loadFile(path.join(__dirname, "../image-window.html"));
+		imageWindowRect = _floatRect(imageWindow);
 		const imgWin = imageWindow;
 		imgWin.webContents.on("did-finish-load", () => {
 			if (imgWin.isDestroyed()) return;
@@ -865,20 +873,7 @@ ipcMain.on(
 			imageWindowPinned = false;
 			imageWindowRect = null;
 		});
-		imageWindow.on("move", () => {
-			if (imageWindow && !imageWindow.isDestroyed() && imageWindowRect) {
-				const b = imageWindow.getBounds();
-				imageWindowRect.x = b.x;
-				imageWindowRect.y = b.y;
-			}
-		});
-		imageWindow.on("resize", () => {
-			if (imageWindow && !imageWindow.isDestroyed() && imageWindowRect) {
-				const b = imageWindow.getBounds();
-				imageWindowRect.w = b.width;
-				imageWindowRect.h = b.height;
-			}
-		});
+		_trackWindowRect(imageWindow, () => imageWindowRect);
 	},
 );
 
@@ -888,7 +883,6 @@ ipcMain.on("pin-image-window", (event, pinned) => {
 
 ipcMain.on("resize-image-window", (event, { width, height }) => {
 	if (!imageWindow || imageWindow.isDestroyed()) return;
-	const { screen } = require("electron");
 	const display = screen.getPrimaryDisplay();
 	const maxW = Math.floor(display.workAreaSize.width * 0.95);
 	const maxH = Math.floor(display.workAreaSize.height * 0.95);
@@ -934,31 +928,14 @@ ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
 	}
 
 	webWindowPinned = shouldPin || false;
-	webWindow = new BrowserWindow({
+	webWindow = _makeFloatingWindow({
 		width: 1100,
 		height: 800,
-		frame: false,
-		transparent: true,
-		resizable: true,
-		autoHideMenuBar: true,
-		alwaysOnTop: true,
 		title: "Web",
-		icon: path.join(__dirname, "../shared/icon.ico"),
-		webPreferences: {
-			nodeIntegration: true,
-			contextIsolation: false,
-			webviewTag: true,
-		},
+		html: "../web-window.html",
+		extraWebPrefs: { webviewTag: true },
 	});
-	broadcastServer.broadcastFloatingWindowOpened();
-	webWindowRect = {
-		x: webWindow.getBounds().x,
-		y: webWindow.getBounds().y,
-		w: webWindow.getBounds().width,
-		h: webWindow.getBounds().height,
-	};
-	webWindow.setMenu(null);
-	webWindow.loadFile(path.join(__dirname, "../web-window.html"));
+	webWindowRect = _floatRect(webWindow);
 	const wWin = webWindow;
 	wWin.webContents.on("did-finish-load", () => {
 		if (!wWin.isDestroyed())
@@ -970,20 +947,7 @@ ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
 		webWindowPinned = false;
 		webWindowRect = null;
 	});
-	webWindow.on("move", () => {
-		if (webWindow && !webWindow.isDestroyed() && webWindowRect) {
-			const b = webWindow.getBounds();
-			webWindowRect.x = b.x;
-			webWindowRect.y = b.y;
-		}
-	});
-	webWindow.on("resize", () => {
-		if (webWindow && !webWindow.isDestroyed() && webWindowRect) {
-			const b = webWindow.getBounds();
-			webWindowRect.w = b.width;
-			webWindowRect.h = b.height;
-		}
-	});
+	_trackWindowRect(webWindow, () => webWindowRect);
 });
 
 ipcMain.on("close-web-window", () => {
@@ -1014,7 +978,6 @@ ipcMain.on("start-resizing", (event, edge) => {
 	stopActiveResize();
 	const win = event.sender.getOwnerBrowserWindow();
 	if (!win) return;
-	const { screen } = require("electron");
 	const initBounds = win.getBounds();
 	const initCursor = screen.getCursorScreenPoint();
 	const stopResize = () => stopActiveResize();
@@ -1280,7 +1243,19 @@ function isLessonToolPageUrl(url) {
 	}
 }
 
+function enableDevToolsShortcut(win) {
+	win.webContents.on("before-input-event", (e, input) => {
+		if (input.type !== "keyDown") return;
+		const mod = process.platform === "darwin" ? input.meta : input.control;
+		if (mod && (input.key === "i" || input.key === "I")) {
+			win.webContents.toggleDevTools();
+			e.preventDefault();
+		}
+	});
+}
+
 function wireLessonToolNav(win, tool) {
+	enableDevToolsShortcut(win);
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (isLessonToolPageUrl(url)) {
 			setImmediate(() => {
@@ -1366,11 +1341,11 @@ function openLessonTool(tool) {
 }
 
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
-const _VIS_DATA = path.join(os.tmpdir(), "leo-last-vis-data.js");
 const _VIS_PRELOAD = path.join(__dirname, "vis-preload.js");
 
 function openLogVisualizer(logFilePath) {
 	const stamp = Date.now();
+	let payload = null;
 	if (logFilePath) {
 		const scriptPath = path.join(
 			__dirname,
@@ -1379,7 +1354,6 @@ function openLogVisualizer(logFilePath) {
 		const result = spawnSync(resolvePython(), [scriptPath, logFilePath], {
 			encoding: "utf8",
 		});
-		let payload;
 		if (result.error) {
 			payload = {
 				filePath: logFilePath,
@@ -1404,26 +1378,39 @@ function openLogVisualizer(logFilePath) {
 				error: result.stderr || `Python exited with code ${result.status}`,
 			};
 		}
-		fs.writeFileSync(
-			_VIS_DATA,
-			`window.__LOG_DATA__ = ${JSON.stringify({ ...payload, loadedAt: stamp })};`,
-			"utf8",
-		);
-	} else {
+		payload.loadedAt = stamp;
+		// A `resources/` folder alongside the lesson plans (sibling of the .leo,
+		// i.e. one level above the logs/ folder) is exposed to the preview iframe
+		// as its base URL, so relative refs like ./pieces/p1.png resolve to
+		// resources/pieces/p1.png on disk — no encoding needed.
 		try {
-			fs.writeFileSync(_VIS_DATA, "window.__LOG_DATA__ = null;", "utf8");
+			const resDir = path.resolve(
+				path.dirname(logFilePath),
+				"..",
+				"resources",
+			);
+			if (fs.existsSync(resDir) && fs.statSync(resDir).isDirectory()) {
+				payload.resourcesBase = require("url")
+					.pathToFileURL(resDir)
+					.href.replace(/\/?$/, "/");
+			}
 		} catch (_) {}
 	}
+
+	let prevBounds = null;
 	if (visualizerWindow && !visualizerWindow.isDestroyed()) {
-		visualizerWindow.loadFile(_VIS_HTML);
-		if (visualizerWindow.isMinimized()) visualizerWindow.restore();
-		visualizerWindow.show();
-		visualizerWindow.focus();
-		return;
+		const old = visualizerWindow;
+		visualizerWindow = null;
+		try {
+			prevBounds = old.getBounds();
+		} catch (_) {}
+		old.removeAllListeners("closed");
+		old.destroy();
 	}
 	visualizerWindow = new BrowserWindow({
-		width: 1200,
-		height: 800,
+		width: prevBounds ? prevBounds.width : 1200,
+		height: prevBounds ? prevBounds.height : 800,
+		...(prevBounds ? { x: prevBounds.x, y: prevBounds.y } : {}),
 		title: "Log Visualizer",
 		icon: path.join(__dirname, "../shared/icon.ico"),
 		autoHideMenuBar: true,
@@ -1434,8 +1421,20 @@ function openLogVisualizer(logFilePath) {
 		},
 	});
 	visualizerWindow.setMenu(null);
-	visualizerWindow.loadFile(_VIS_HTML);
-	visualizerWindow.on("closed", () => {
+	enableDevToolsShortcut(visualizerWindow);
+	const target = visualizerWindow;
+	// Push the freshly-expanded log straight into the page once it has loaded.
+	// This is the single source of truth — no shared/stale data files involved.
+	target.webContents.once("did-finish-load", () => {
+		if (target.isDestroyed() || !payload) return;
+		target.webContents
+			.executeJavaScript(
+				`window.__leoApplyVisData && window.__leoApplyVisData(${JSON.stringify(payload)});`,
+			)
+			.catch((e) => console.error("Visualizer data push failed:", e));
+	});
+	target.loadFile(_VIS_HTML);
+	target.on("closed", () => {
 		visualizerWindow = null;
 	});
 }
@@ -1457,18 +1456,21 @@ ipcMain.on("broadcast-lesson", (e, n) => broadcastServer.updateLessonName(n));
 ipcMain.handle("get-settings", () => settingsManager.getAll());
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());
 
-ipcMain.on("save-settings", (event, settings) => {
-	Object.keys(settings).forEach((key) => {
-		settingsManager.settings[key] = settings[key];
-	});
-	settingsManager.save();
+function reapplySettings() {
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
 	if (state.isActive) {
 		hotkeyManager.registerTypingHotkeys();
 	}
-
 	keyboardHandler.updatePlatformSettings();
+}
+
+ipcMain.on("save-settings", (event, settings) => {
+	Object.keys(settings).forEach((key) => {
+		settingsManager.settings[key] = settings[key];
+	});
+	settingsManager.save();
+	reapplySettings();
 
 	broadcastServer.updateSettings(settings);
 	createApplicationMenu();
@@ -1476,13 +1478,7 @@ ipcMain.on("save-settings", (event, settings) => {
 });
 ipcMain.on("reset-settings", (event) => {
 	settingsManager.reset();
-	hotkeyManager.unregisterAll();
-	hotkeyManager.registerSystemShortcuts();
-	if (state.isActive) {
-		hotkeyManager.registerTypingHotkeys();
-	}
-
-	keyboardHandler.updatePlatformSettings();
+	reapplySettings();
 
 	event.reply("settings-loaded", settingsManager.getAll());
 });

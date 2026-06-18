@@ -1,24 +1,19 @@
 from __future__ import annotations
 
-import re
 from bisect import bisect_right
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .folder_utils import TEACHER_SUBDIRS
-from .similarity_measures import _comment_ranges
+from .lv_constants import BACKSPACE_CHARS, DELETE_FWRD_CHARS, DELETE_LINE_CHAR
+from .similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from .token_log_mixin import _embedded_lang_ranges_for
 
 
 BURST_GAP_S = 30
 MIN_BURST = 2
 
-DELETE_LINE_CHAR = "⛔"
-BACKSPACE_CHARS = frozenset({"↢", "⌫"})
-DELETE_FWRD_CHARS = frozenset({"↣", "⌦"})
 DELETE_CHARS = BACKSPACE_CHARS | DELETE_FWRD_CHARS | {DELETE_LINE_CHAR}
-
-_TOKEN_RE = re.compile(r"[a-zA-Z0-9]+|[^\s]")
 
 _LANG_EXT_TO_BUCKET = {
     ".html": "html", ".htm": "html",
@@ -56,7 +51,7 @@ def _make_burst(evs):
         and e.get("char") is not None
         and e["char"] not in DELETE_CHARS
     )
-    tokens = len(_TOKEN_RE.findall(forward_text))
+    tokens = len(_CHAR_TOKEN_RE.findall(forward_text))
     return {
         "start_ts": start_ts,
         "end_ts":   end_ts,
@@ -166,7 +161,7 @@ def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
                 continue
             for lo, hi in ranges:
                 flat.append((bucket, lo, hi))
-        for m in _TOKEN_RE.finditer(text):
+        for m in _CHAR_TOKEN_RE.finditer(text):
             pos = m.start()
             out["total"] += 1
             if _in_comment(pos):
@@ -179,7 +174,7 @@ def _count_tokens(text: str, file_ext: str) -> Dict[str, int]:
                     break
             out[bucket] += 1
     else:
-        for m in _TOKEN_RE.finditer(text):
+        for m in _CHAR_TOKEN_RE.finditer(text):
             pos = m.start()
             out["total"] += 1
             if _in_comment(pos):
@@ -224,7 +219,7 @@ def _count_dev_tokens(dev_chars: list) -> int:
         e["char"] for e in dev_chars
         if e.get("char") and e["char"] not in DELETE_CHARS
     )
-    return sum(1 for _ in _TOKEN_RE.finditer(text))
+    return sum(1 for _ in _CHAR_TOKEN_RE.finditer(text))
 
 
 def compute_lesson_stats_csv(

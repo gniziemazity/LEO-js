@@ -23,11 +23,6 @@
 				user-select: none;
 			}
 
-			#landing-buttons {
-				display: flex;
-				gap: 16px;
-			}
-
 			#toolbar {
 				gap: 12px;
 			}
@@ -95,6 +90,15 @@
 			#toolbar select option[value="ideal"],
 			#toolbar select option[value="minimal"] {
 				color: var(--clr-mark-extra);
+			}
+
+			#toolbar select option[value="leo_star"],
+			#toolbar select option[value="leo"],
+			#toolbar select option[value="lcs_star"],
+			#toolbar select option[value="lcs"],
+			#toolbar select option[value="git_star"],
+			#toolbar select option[value="git"] {
+				color: var(--clr-accent);
 			}
 
 			#main {
@@ -909,10 +913,8 @@
 		<div id="loading">Loading…</div>
 
 		<div id="landing">
-			<div id="landing-buttons">
-				<button class="landing-btn" onclick="openFolderPicker()">
-					📁 Open Folder
-				</button>
+			<div id="landing-msg">
+				Open a lesson from the app to view its students.
 			</div>
 		</div>
 		<script>

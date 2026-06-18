@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from .token_log import _read_text_normalized, _split_tokens_by_comment
+from .token_log import _read_text_normalized, _split_tokens_by_comment, _ttt_pos_index
 from .similarity_measures import token_edit_similarity
 
 
@@ -96,15 +96,7 @@ def _per_language_follow_stats(
             continue
         missing_ts_pool.setdefault(tok, []).append(ts)
 
-    ttt_by_pos: Dict[Tuple[str, int, int], str] = {}
-    if teacher_token_timestamps:
-        for fname, entries in teacher_token_timestamps.items():
-            for e in entries or []:
-                s = e.get('start')
-                t_end = e.get('end')
-                ts = e.get('ts')
-                if isinstance(s, int) and isinstance(t_end, int) and ts:
-                    ttt_by_pos[(fname, s, t_end)] = ts
+    ttt_by_pos = _ttt_pos_index(teacher_token_timestamps)
 
     def _resolve_missing_ts(mark: dict, fname: str) -> str:
         ts = mark.get('timestamp')

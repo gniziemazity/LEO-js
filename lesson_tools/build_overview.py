@@ -28,7 +28,59 @@ _BLOCK_COLS = (
     'LessonObs', 'Grade', 'Status', 'Obs',
 )
 
+_BLOCK_FIELD_ROLE = {
+    'HTML Follow': 'follow_html', 'CSS Follow': 'follow_css',
+    'JS Follow': 'follow_js', 'Follow': 'follow', 'Inc': 'inc',
+    'A': 'a', 'Q': 'q', 'H': 'h', 'C+': 'c_plus', 'C-': 'c_minus',
+    'C Diff': 'c_diff', 'LessonObs': 'lesson_obs', 'Grade': 'grade',
+    'Status': 'status', 'Obs': 'obs',
+}
+
+_ROLE_ALIASES = {
+    'id':              ('ID',),
+    'name':            ('Name',),
+    'number':          ('Number',),
+    'excluded':        ('Category',),
+    'final_grade':     ('Final Grade', 'Grade'),
+    'avg_assignments': ('Avg Assignments', 'Avg Grade', 'Average'),
+    'participation':   ('Participation',),
+    'pre_typing':      ('Pre K/min',),
+    'post_typing':     ('Post K/min',),
+    'self_eval':       ('Self Eval', 'Self Evaluation', 'Self'),
+    'kahoot':          ('Kahoot',),
+    'quiz_stii':       ('Final Quiz', 'Quiz Stii', 'Stii', 'Știi'),
+    'answers':         ('Total Answers', 'Answers'),
+    'questions':       ('Total Questions', 'Questions'),
+    'help':            ('Total Help', 'Help'),
+}
+
 _EXTRA_IDENTITY = {'id', 'name', 'number'}
+
+
+def _build_columns_contract(header: Sequence[str],
+                            topics: Sequence[str]) -> Dict[str, object]:
+    lower_to_idx: Dict[str, int] = {}
+    for i, h in enumerate(header):
+        key = str(h).strip().lower()
+        if key and key not in lower_to_idx:
+            lower_to_idx[key] = i
+    roles: Dict[str, int] = {}
+    for role, aliases in _ROLE_ALIASES.items():
+        for a in aliases:
+            idx = lower_to_idx.get(a.lower())
+            if idx is not None:
+                roles[role] = idx
+                break
+    topic_list = []
+    for lk in topics:
+        prefix = lk.title()
+        fields: Dict[str, int] = {}
+        for bc in _BLOCK_COLS:
+            idx = lower_to_idx.get(f'{prefix} {bc}'.lower())
+            if idx is not None:
+                fields[_BLOCK_FIELD_ROLE[bc]] = idx
+        topic_list.append({'name': lk, 'label': prefix, 'fields': fields})
+    return {'roles': roles, 'topics': topic_list}
 
 
 def _read_lesson_order(root: Optional[Path]) -> list:
@@ -518,6 +570,7 @@ def main(argv) -> int:
 
     out_path = root / (args.output or 'overview.json')
     payload = {'header': header, 'rows': rows}
+    payload['columns'] = _build_columns_contract(header, topics)
     if extra_before or extra_after:
         payload['extra_columns'] = {
             'before': extra_before,

@@ -6,22 +6,6 @@ body {
 	overflow: hidden;
 }
 
-#landing {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 20px;
-	user-select: none;
-}
-#landing h1 {
-	font-size: 1.8em;
-	font-weight: 300;
-}
-html.autoload #landing {
-	visibility: hidden;
-}
 html.autoload #loading {
 	display: flex;
 }
@@ -102,7 +86,7 @@ th {
 	z-index: 10;
 	font-size: 11px;
 	font-weight: 700;
-	color: var(--clr-label);
+	color: var(--clr-text-soft);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 }
@@ -335,6 +319,11 @@ table.hide-num .col-num {
 th.asn-sep,
 td.asn-sep {
 	border-left: 2px solid var(--clr-text-soft) !important;
+}
+
+th.asn-div,
+td.asn-div {
+	border-left: 1px solid var(--clr-border) !important;
 }
 
 #page-stats {

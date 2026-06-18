@@ -13,7 +13,7 @@ final file.
 
 > For the matching internals (how the algorithmic marks are produced), see
 > [`differentiator-algorithm.md`](differentiator-algorithm.md). This file is the
-> *user* guide.
+> _user_ guide.
 
 ---
 
@@ -41,13 +41,13 @@ view used inside the students tool).
 
 ## 2. The screen
 
-| Area | What it is |
-| --- | --- |
-| **Left panel** | The **teacher** reference (labelled *Starter Code* in embed mode). |
-| **Right panel** | The **student**'s submission, with the follow **%** beside the name. |
-| **File tabs** | One per code file, on each panel header. The active HTML tab drives the preview. |
-| **← A / B →** (student header) | Previous / next student, with a position counter (current / total). |
-| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `↕️ Padding`, `🔢 Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **📋 Copy Diff**, **💾 Download**, and **🪄 Corrections** buttons. |
+| Area                                 | What it is                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Left panel**                       | The **teacher** reference (labelled _Starter Code_ in embed mode).                                                                                                                                                                                                                                                                                                             |
+| **Right panel**                      | The **student**'s submission, with the follow **%** beside the name.                                                                                                                                                                                                                                                                                                           |
+| **File tabs**                        | One per code file, on each panel header. The active HTML tab drives the preview.                                                                                                                                                                                                                                                                                               |
+| **← A / B →** (student header)       | Previous / next student, with a position counter (current / total).                                                                                                                                                                                                                                                                                                            |
+| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `↕️ Padding`, `🔢 Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **💾 Save** and **🪄 Corrections** buttons. **💾 Save** opens a popup that also holds **📋 Copy** and **⬇ Download** (see §8). Selecting **Clear** (bottom of the Mode dropdown) wipes all marks to start fresh. |
 
 ---
 
@@ -55,9 +55,9 @@ view used inside the students tool).
 
 Four kinds of mark, each prescribing a correction:
 
-- **missing** — teacher code the student doesn't have → *insert it*. Highlighted
+- **missing** — teacher code the student doesn't have → _insert it_. Highlighted
   on the **teacher** side (per-language colored when `🎨 Lang color` is on).
-- **extra** — code the student added that the teacher never typed → *remove it*.
+- **extra** — code the student added that the teacher never typed → _remove it_.
   Highlighted on the **student** side.
 - **ghost** (`ghost_extra`) — code the teacher typed then **deleted**, which the
   student kept → also removed, but it inherits the moment the teacher deleted it.
@@ -76,11 +76,17 @@ Four kinds of mark, each prescribing a correction:
 
 ## 4. Choosing a basis (the Mode dropdown)
 
-The dropdown switches *which* marks you're looking at:
+The dropdown switches _which_ marks you're looking at:
 
 - **Minimal**, **Ideal** — the two **hand-curated** fix-lists (editable; see §5).
+- Any **custom** `diff_marks_<name>.json` saved into the student folder appears
+  here too — listed by its `<name>`, right after Ideal/Minimal and before the
+  automated methods.
 - **LEO\***, **LEO**, **LCS**, **Git**, … — **algorithmic** marks, produced
   automatically. Read-only; useful as a starting point.
+- **Clear** (at the bottom of the list) — not a basis but an action: selecting it
+  wipes every mark from the editor so you can curate from a blank slate (undoable
+  with Ctrl+Z; nothing is written until you Save).
 
 A common workflow: glance at **LEO\*** to see the automatic suggestion, then
 curate **Ideal** / **Minimal** by hand.
@@ -109,21 +115,21 @@ corrections reproduce the teacher's tokens yet.
 
 ### Keyboard shortcuts
 
-| Context | Key | Action |
-| --- | --- | --- |
-| Nothing selected | `m` / `i` / `l` | Switch basis to **Minimal** / **Ideal** / **LEO\*** |
-| Token selected, teacher side | `m` | Mark **missing** |
-| Token selected, student side | `e` | Mark **extra** |
-| Token selected, student side | `g` | Mark **ghost** |
-| Token selected | `c` | Mark **comment** |
-| Token selected | `i` or `p` | **Insert** anchor / **Pair** (then click partner) |
-| Token selected | `r` | **Remove** pair |
-| Token selected | `d` / `Delete` / `Backspace` | **Delete** mark (Shift = include its pair / comments) |
-| Any | `Esc` | Cancel a pending pair / close the panel |
-| Any | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| Context                      | Key                          | Action                                                |
+| ---------------------------- | ---------------------------- | ----------------------------------------------------- |
+| Nothing selected             | `m` / `i` / `l`              | Switch basis to **Minimal** / **Ideal** / **LEO\***   |
+| Token selected, teacher side | `m`                          | Mark **missing**                                      |
+| Token selected, student side | `e`                          | Mark **extra**                                        |
+| Token selected, student side | `g`                          | Mark **ghost**                                        |
+| Token selected               | `c`                          | Mark **comment**                                      |
+| Token selected               | `i` or `p`                   | **Insert** anchor / **Pair** (then click partner)     |
+| Token selected               | `r`                          | **Remove** pair                                       |
+| Token selected               | `d` / `Delete` / `Backspace` | **Delete** mark (Shift = include its pair / comments) |
+| Any                          | `Esc`                        | Cancel a pending pair / close the panel               |
+| Any                          | `Ctrl+Z` / `Ctrl+Y`          | Undo / redo                                           |
 
-> The same letters `m`/`i` mean *switch basis* when nothing is selected and
-> *label a mark* when a token is selected — there's no clash because the two
+> The same letters `m`/`i` mean _switch basis_ when nothing is selected and
+> _label a mark_ when a token is selected — there's no clash because the two
 > never apply at the same time.
 
 ---
@@ -132,7 +138,7 @@ corrections reproduce the teacher's tokens yet.
 
 You curate **two** fix-lists per student, same schema, different bar:
 
-- **Ideal** = the **recommended** result. Marks *every* deviation from the
+- **Ideal** = the **recommended** result. Marks _every_ deviation from the
   teacher's solution (including best-practice nits like a missing `;`).
 - **Minimal** = the **minimum** the student must fix for the program to work
   acceptably. Drops cosmetic differences (casing, optional semicolons, consistent
@@ -157,40 +163,45 @@ shows:
 - **Result After Corrections** — a live render (iframe) of the corrected program,
   so you can confirm it works.
 - A **token-parity line** below the Corrections button, updated live:
-  - **✓ Same tokens & order** (green) — the corrections reproduce the teacher's
-    non-comment tokens exactly.
-  - **✓ Same tokens · reordered** (orange) — same tokens, different (still-valid)
-    order.
-  - **Δ +N · −M** (red) — the corrections don't reproduce the teacher's tokens
-    yet (N surplus, M missing). Aim for green/orange before you trust the marks.
+   - **Same tokens** (green) — the corrections reproduce the teacher's
+     non-comment tokens exactly.
+   - **Different order** (orange) — same tokens, different order.
+   - **Δ +N · −M** (red) — the corrections don't reproduce the teacher's tokens (N surplus, M missing).
 
-Export the corrections as a **📸 Screenshot** (image — students can't copy-paste
-it) or **🌐 HTML** (paste into a Moodle comment), or just use them as a scaffold
-for written feedback.
+Export the corrections as a **📸 Screenshot** or **🌐 HTML**.
 
 ---
 
 ## 8. Saving your work
 
-- **💾 Download** writes `diff_marks_<mode>.json` — `diff_marks_ideal.json` in
-  Ideal mode, `diff_marks_minimal.json` in Minimal mode.
-- **📋 Copy Diff** copies that JSON to the clipboard.
+**💾 Save** opens a popup where you pick the file — **ideal**, **minimal**, or
+**Custom…** (type the differentiating part, saved as `diff_marks_<part>.json`).
+The popup has three actions:
 
-In the grading pipeline, place the saved file in the student's
-`curated/<sid>/` folder (`copy_curated_diff_marks` copies it into
-`anon_ids/<sid>/` on the next `npm run main`). The differentiator reads
-`anon_ids/<sid>/` directly.
+- **💾 Save** writes the file straight into the student's `anon_ids/<sid>/`
+  **and** `curated/<sid>/` folders (creating `curated/` if needed). Requires a
+  writable dataset — the app's **Tools ▸ Differentiator** window or a
+  folder-picker session; the read-only web publish can't save.
+- **⬇ Download** downloads the same JSON to your browser's downloads folder.
+- **📋 Copy** copies the JSON to the clipboard.
+
+`curated/<sid>/` is the pipeline's source of truth: `copy_curated_diff_marks`
+copies `diff_marks_{ideal,minimal}.json` from there into `anon_ids/<sid>/` on
+the next `npm run main`. The differentiator reads `anon_ids/<sid>/` directly.
+
+To start over, pick **Clear** at the bottom of the Mode dropdown (§4) — it clears every mark from
+the editor (undoable with Ctrl+Z; nothing is written until you Save).
 
 ---
 
 ## 9. Display toggles (bottom bar)
 
-| Button | Effect |
-| --- | --- |
-| `↕️ Padding` | Line-align the two panels so matching lines sit across from each other. |
-| `🔢 Line №` | Show line numbers. |
+| Button          | Effect                                                                       |
+| --------------- | ---------------------------------------------------------------------------- |
+| `↕️ Padding`    | Line-align the two panels so matching lines sit across from each other.      |
+| `🔢 Line №`     | Show line numbers.                                                           |
 | `🎨 Lang color` | Color missing marks by language (HTML / CSS / JS / Py) instead of one color. |
-| `⬜ Preview` | Render the active HTML file instead of showing its source. |
+| `⬜ Preview`    | Render the active HTML file instead of showing its source.                   |
 
 ---
 

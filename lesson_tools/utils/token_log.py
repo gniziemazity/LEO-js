@@ -13,7 +13,7 @@ from .similarity_measures import (
     reconstruct_tokens_from_keylog_full,
     ts_to_local,
 )
-from .lv_editor import replay_with_timestamps_all, reconstruct_all_with_ghosts
+from .lv_editor import replay_with_timestamps_all
 
 from .token_log_leo import (
     _CONTEXT_K,
@@ -75,6 +75,7 @@ from .token_log_starpass import (
     _build_teacher_token_timestamps,
     _build_token_secprefix_map,
     _refresh_missing_timestamps,
+    _ttt_pos_index,
     _upgrade_secprefix,
 )
 

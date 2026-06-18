@@ -294,6 +294,7 @@ class LogVisualizer {
 		micro,
 		error,
 		imageUris,
+		resourcesBase,
 		lessonFile,
 		lessonName,
 		interactions,
@@ -308,6 +309,7 @@ class LogVisualizer {
 		}
 
 		this._imageUris = imageUris || {};
+		this._resourcesBase = resourcesBase || "";
 		this._lessonFile = lessonFile || null;
 		this._logEvents = events || null;
 		this._filePath = filePath || null;
@@ -1073,6 +1075,9 @@ class LogVisualizer {
 			if (key === "MAIN") continue;
 			const base = key.replace(/\\/g, "/").split("/").pop();
 			filesMap[base] = st.text;
+		}
+		if (this._resourcesBase) {
+			return buildPreviewSrcdoc(html, filesMap, {}, this._resourcesBase);
 		}
 		if (!Object.keys(filesMap).length) return html;
 		return inlineFilesInHtml(html, filesMap);

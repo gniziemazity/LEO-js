@@ -60,7 +60,7 @@ class LogManager {
 	addEntry(entry) {
 		if (!this.sessionStartTime) {
 			console.warn("LogManager not initialized. Call initialize() first.");
-			return;
+			return null;
 		}
 
 		const logEntry = {
@@ -73,6 +73,8 @@ class LogManager {
 		if (this.keyPressLog.length % this.saveInterval === 0) {
 			this.save();
 		}
+
+		return logEntry;
 	}
 
 	addInteraction(interactionType, extraFields = null) {

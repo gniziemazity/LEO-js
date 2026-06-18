@@ -101,6 +101,13 @@ class CourseUI {
 		if (!this._loadDefaultPlan()) this.refresh();
 	}
 
+	closeCourse() {
+		if (!this.courseManager.isOpen()) return;
+		this.courseManager.close();
+		localStorage.removeItem("lastCoursePath");
+		this.refresh();
+	}
+
 	saveCourse() {
 		if (!this.courseManager.isOpen()) {
 			alert("No course is open.");

@@ -69,6 +69,19 @@ def _build_teacher_token_timestamps(events: list) -> Dict[str, list]:
         entries_by_file[fname] = token_entries
     return entries_by_file
 
+
+def _ttt_pos_index(teacher_token_ts) -> Dict[Tuple[str, int, int], str]:
+    out: Dict[Tuple[str, int, int], str] = {}
+    for fname, entries in (teacher_token_ts or {}).items():
+        for e in entries or []:
+            s = e.get('start')
+            en = e.get('end')
+            ts = e.get('ts')
+            if isinstance(s, int) and isinstance(en, int) and ts:
+                out[(fname, s, en)] = ts
+    return out
+
+
 def _build_token_secprefix_map(
     ts_map: Dict[str, List[str]],
 ) -> Dict[str, Dict[str, List[str]]]:
@@ -109,7 +122,7 @@ def _build_removal_ts_map(events: list, lesson_file: str | None = None) -> Dict[
     return out
 
 
-def _upgrade_secprefix(existing: str, candidates: List[str],
+def _upgrade_secprefix(candidates: List[str],
                         consumed: Dict[Tuple[str, str], int],
                         key: Tuple[str, str]) -> Optional[str]:
     if not candidates:
@@ -131,14 +144,7 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
         _teacher_token_ts if _teacher_token_ts is not None
         else _build_teacher_token_timestamps(events)
     )
-    pos_ts: Dict[Tuple[str, int, int], str] = {}
-    for fname, entries in (teacher_token_ts or {}).items():
-        for e in entries or []:
-            s = e.get('start')
-            en = e.get('end')
-            ts = e.get('ts')
-            if isinstance(s, int) and isinstance(en, int) and ts:
-                pos_ts[(fname, s, en)] = ts
+    pos_ts = _ttt_pos_index(teacher_token_ts)
 
     insert_ts_by_tok_secprefix = _build_token_secprefix_map(ts_map)
     insert_consumed: Dict[Tuple[str, str], int] = {}
@@ -162,7 +168,7 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
             if existing_ts:
                 candidates = insert_ts_by_tok_secprefix.get(tok, {}).get(existing_ts, [])
                 upgraded = _upgrade_secprefix(
-                    existing_ts, candidates, insert_consumed, (tok, existing_ts),
+                    candidates, insert_consumed, (tok, existing_ts),
                 )
                 if upgraded:
                     mark['timestamp'] = upgraded
@@ -184,7 +190,7 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
             tok = mark.get('token', '')
             candidates = removal_ts_by_tok_secprefix.get(tok, {}).get(existing_ts, [])
             upgraded = _upgrade_secprefix(
-                existing_ts, candidates, removal_consumed, (tok, existing_ts),
+                candidates, removal_consumed, (tok, existing_ts),
             )
             if upgraded:
                 mark['removal_ts'] = upgraded

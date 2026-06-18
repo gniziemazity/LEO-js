@@ -143,6 +143,7 @@ function showInteractionOverlay(title, students, type) {
 
 function onStudentSelected(idx, type, questionText) {
 	const studentId = idx != null && idx >= 0 ? idx + 1 : null;
+	const name = currentStudents[idx] ?? "";
 	const msgData = {
 		interactionType: type,
 		studentName: studentId,

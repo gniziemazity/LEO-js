@@ -6,8 +6,6 @@ let _extraColumns = { before: [], after: [], pairs: [] };
 let _extraColIdx = {};
 
 let _students = [];
-let _globalStudentMap = {};
-let _realToAlterMap = {};
 let _lessonHandles = {};
 let _assignHandles = {};
 let _submittedIds = {};

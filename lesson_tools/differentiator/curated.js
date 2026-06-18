@@ -45,15 +45,9 @@ function _curatedEnsureButtons() {
 		bar.appendChild(b);
 	};
 	make(
-		"btn-copy-curated",
-		"📋 Copy Diff",
-		_curatedCopyToClipboard,
-		"curated-only-btn",
-	);
-	make(
-		"btn-save-curated",
-		"💾 Download",
-		_curatedDownload,
+		"btn-savefolder-curated",
+		"💾 Save",
+		_curatedOpenSaveDialog,
 		"curated-only-btn",
 	);
 	make(

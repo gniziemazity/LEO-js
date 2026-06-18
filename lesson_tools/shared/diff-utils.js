@@ -94,45 +94,6 @@ function markColorFor(key) {
 	return MARK_COLORS[k] || null;
 }
 
-function _idbOpen(dbName = "lesson_tools") {
-	return new Promise((res, rej) => {
-		const req = indexedDB.open(dbName, 1);
-		req.onupgradeneeded = (e) => {
-			const db = e.target.result;
-			if (!db.objectStoreNames.contains("state")) {
-				db.createObjectStore("state");
-			}
-		};
-		req.onsuccess = (e) => res(e.target.result);
-		req.onerror = () => rej(req.error);
-	});
-}
-
-async function _idbGet(key, dbName = "lesson_tools") {
-	try {
-		const db = await _idbOpen(dbName);
-		return await new Promise((res) => {
-			const r = db.transaction("state").objectStore("state").get(key);
-			r.onsuccess = () => res(r.result ?? null);
-			r.onerror = () => res(null);
-		});
-	} catch {
-		return null;
-	}
-}
-
-async function _idbSet(key, value, dbName = "lesson_tools") {
-	try {
-		const db = await _idbOpen(dbName);
-		await new Promise((res, rej) => {
-			const tx = db.transaction("state", "readwrite");
-			tx.objectStore("state").put(value, key);
-			tx.oncomplete = res;
-			tx.onerror = rej;
-		});
-	} catch {}
-}
-
 function parseCsv(text) {
 	const lines = String(text || "")
 		.replace(/^\uFEFF/, "")
@@ -270,41 +231,14 @@ const MEDIA_EXT =
 const CODE_EXT = /\.(html|css|js|py)$/i;
 const DOC_EXT = /\.docx$/i;
 
-async function pickFolderWithMemory(idbKey = "lastDir", dbName = undefined) {
-	const lastDir = await _idbGet(idbKey, dbName);
-	const opts = { mode: "read" };
-	if (lastDir) opts.startIn = lastDir;
-	const handle = await window.showDirectoryPicker(opts);
-	_idbSet(idbKey, handle, dbName);
-	return handle;
+async function pickFolder() {
+	return window.showDirectoryPicker({ mode: "read" });
 }
 
-async function pickFilesWithMemory(
-	opts = {},
-	idbKey = "lastDir",
-	dbName = undefined,
-) {
-	const lastDir = await _idbGet(idbKey, dbName);
-	if (lastDir) opts.startIn = lastDir;
+async function pickFiles(opts = {}) {
 	const handles = await window.showOpenFilePicker(opts);
-	if (handles && handles.length) _idbSet(idbKey, handles[0], dbName);
 	return handles || [];
 }
-
-async function loadSavedDirHandle(idbKey = "lastDir", dbName = undefined) {
-	const handle = await _idbGet(idbKey, dbName);
-	if (!handle || handle.kind !== "directory") return null;
-	try {
-		if ((await handle.requestPermission({ mode: "read" })) !== "granted")
-			return null;
-	} catch {
-		return null;
-	}
-	return handle;
-}
-
-const IDB_KEY_COURSE_ROOT = "courseRoot";
-const IDB_KEY_LESSON_ROOT = "lessonRoot";
 
 function parseToolParams(search = location.search) {
 	const p = new URLSearchParams(search);
@@ -348,60 +282,6 @@ function parseToolParams(search = location.search) {
 		ts,
 		speed,
 	};
-}
-
-async function resolveLessonHandle({ lesson, group } = {}) {
-	if (!lesson) return null;
-	if (!group) {
-		const lessonRoot = await _idbGet(IDB_KEY_LESSON_ROOT);
-		if (
-			lessonRoot &&
-			lessonRoot.kind === "directory" &&
-			lessonRoot.name === lesson
-		) {
-			try {
-				if (
-					(await lessonRoot.requestPermission({ mode: "read" })) ===
-					"granted"
-				) {
-					return { handle: lessonRoot, group: null };
-				}
-			} catch {}
-		}
-	}
-	const tryGroups = group ? [group] : ["lessons", "assignments"];
-	const courseRoot = await _idbGet(IDB_KEY_COURSE_ROOT);
-	if (courseRoot && courseRoot.kind === "directory") {
-		try {
-			if (
-				(await courseRoot.requestPermission({ mode: "read" })) === "granted"
-			) {
-				for (const g of tryGroups) {
-					try {
-						const groupHandle = await courseRoot.getDirectoryHandle(g);
-						const lessonHandle =
-							await groupHandle.getDirectoryHandle(lesson);
-						return { handle: lessonHandle, group: g };
-					} catch {}
-				}
-			}
-		} catch {}
-	}
-	const lessonRoot = await _idbGet(IDB_KEY_LESSON_ROOT);
-	if (
-		lessonRoot &&
-		lessonRoot.kind === "directory" &&
-		lessonRoot.name === lesson
-	) {
-		try {
-			if (
-				(await lessonRoot.requestPermission({ mode: "read" })) === "granted"
-			) {
-				return { handle: lessonRoot, group: group || null };
-			}
-		} catch {}
-	}
-	return null;
 }
 
 function buildToolUrl(
@@ -612,8 +492,8 @@ function formatInteractionCounts(a, q, h) {
 	const fmt = (n, emoji) => {
 		const c = Math.round(+n);
 		if (!(c > 0)) return null;
-		const inner = c === 1 ? emoji : `${emoji}&nbsp;${c}`;
-		return `<span class="ia-box">${inner}</span>`;
+		if (c === 1) return `<span class="ia-one">${emoji}</span>`;
+		return `<span class="ia-box">${c}${emoji}</span>`;
 	};
 	return [fmt(a, "🙋"), fmt(q, "❓"), fmt(h, "🤝")].filter(Boolean).join("");
 }
@@ -881,6 +761,27 @@ function parseFollowEvents(descText, sessionDate) {
 	return events;
 }
 
+function parseSimilarityEvents(descText) {
+	const events = [];
+	const text = String(descText || "");
+	const re =
+		/([+-])(.+?)(?:\s+\(x(\d+)\)|\s+\((\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)\))?(?:\s*~([0-9.]+))?(?=,\s+[+-]|$)/g;
+	let m;
+	while ((m = re.exec(text)) !== null) {
+		const kind = m[1] === "-" ? "missing" : "extra";
+		const token = m[2];
+		if (m[4]) {
+			const ev = { kind, token, ts: _hmsToSeconds(m[4]) };
+			if (m[5] != null) ev.sim = parseFloat(m[5]);
+			events.push(ev);
+		} else {
+			const count = m[3] ? parseInt(m[3]) : 1;
+			for (let i = 0; i < count; i++) events.push({ kind, token });
+		}
+	}
+	return events;
+}
+
 function parseFollowLabel(label) {
 	if (label.startsWith("-")) {
 		return { kind: "missing", token: label.slice(1).trimStart() };
@@ -978,6 +879,26 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 		priorityModes.map(async (mode) => {
 			const json = await fetchMark(mode);
 			if (json) allMarks[mode] = json;
+		}),
+	);
+
+	const knownFnames = new Set(
+		Object.values(DIFF_MARKS_FILES).map((n) => n.toLowerCase()),
+	);
+	const customEntries = [];
+	for (const [p, f] of entries) {
+		if (!p.startsWith(studentDir)) continue;
+		if (p.indexOf("/", studentDir.length) !== -1) continue;
+		const m = /^diff_marks_(.+)\.json$/i.exec(f.name);
+		if (!m || knownFnames.has(f.name.toLowerCase())) continue;
+		customEntries.push([m[1], f]);
+	}
+	await Promise.all(
+		customEntries.map(async ([key, f]) => {
+			try {
+				const json = JSON.parse(await readFileText(f));
+				if (json) allMarks[key] = json;
+			} catch {}
 		}),
 	);
 	const pendingMarks = Promise.all(

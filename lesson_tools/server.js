@@ -88,9 +88,10 @@ function writeUnder(res, baseDir, fullPath, req) {
 		res.end();
 		return;
 	}
-	if (path.extname(fullPath).toLowerCase() !== ".xlsx") {
+	const writeExt = path.extname(fullPath).toLowerCase();
+	if (writeExt !== ".xlsx" && writeExt !== ".json") {
 		res.writeHead(403);
-		res.end("Only .xlsx writes are allowed");
+		res.end("Only .xlsx and .json writes are allowed");
 		return;
 	}
 	const chunks = [];
@@ -107,7 +108,9 @@ function writeUnder(res, baseDir, fullPath, req) {
 			res.end(JSON.stringify({ ok: true }));
 		} catch (err) {
 			res.writeHead(500, { "Content-Type": "application/json" });
-			res.end(JSON.stringify({ ok: false, error: String(err && err.message) }));
+			res.end(
+				JSON.stringify({ ok: false, error: String(err && err.message) }),
+			);
 		}
 	});
 }

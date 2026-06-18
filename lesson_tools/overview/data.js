@@ -1,90 +1,32 @@
 "use strict";
 
-const _COL_ALIASES = {
-	id: ["ID"],
-	name: ["Name"],
-	number: ["Number"],
-	excluded: ["Category"],
-	final_grade: ["Final Grade", "Grade"],
-	avg_assignments: ["Avg Assignments", "Avg Grade"],
-	participation: ["Participation"],
-};
-
-function _buildHeaderMap(headerRow) {
-	const m = {};
+function _populateColumnsFromHeader(headerRow, columns) {
+	if (!columns) {
+		alert(
+			"overview.json is missing the 'columns' contract — run `npm run overview` to rebuild it.",
+		);
+		COL = {};
+		ASSIGNMENTS = [];
+		_extraColIdx = {};
+		return;
+	}
+	COL = columns.roles || {};
+	ASSIGNMENTS = (columns.topics || []).map((t, i) => ({
+		n: i + 1,
+		name: t.label,
+		...t.fields,
+	}));
+	const idxByName = {};
 	for (let i = 0; i < headerRow.length; i++) {
 		const v = headerRow[i];
 		if (v == null) continue;
-		const orig = String(v).trim();
-		if (!orig) continue;
-		const lower = orig.toLowerCase();
-		if (!(lower in m)) m[lower] = { orig, idx: i };
+		const k = String(v).trim().toLowerCase();
+		if (k && !(k in idxByName)) idxByName[k] = i;
 	}
-	return m;
-}
-
-function _findCol(headerMap, names) {
-	for (const n of names) {
-		const e = headerMap[n.toLowerCase()];
-		if (e != null) return e.idx;
-	}
-	return null;
-}
-
-function _detectAssignments(headerMap) {
-	const result = [];
-	const seen = new Set();
-	const sorted = Object.values(headerMap).sort((a, b) => a.idx - b.idx);
-
-	for (const { orig, idx } of sorted) {
-		const m = orig.match(/^(.+?) Grade$/i);
-		if (!m) continue;
-		const name = m[1].trim();
-		const lower = name.toLowerCase();
-		if (seen.has(lower)) continue;
-		seen.add(lower);
-
-		const get = (suffix) => {
-			const key1 = (name + " " + suffix).toLowerCase();
-			const key2 = (name + suffix).toLowerCase();
-			const e = headerMap[key1] || headerMap[key2];
-			return e ? e.idx : null;
-		};
-
-		result.push({
-			n: result.length + 1,
-			name,
-			follow_html: get("HTML Follow"),
-			follow_css: get("CSS Follow"),
-			follow_js: get("JS Follow"),
-			follow: get("Follow"),
-			inc: get("Inc"),
-			a: get("A"),
-			q: get("Q"),
-			h: get("H"),
-			c_plus: get("C+"),
-			c_minus: get("C-"),
-			c_diff: get("C Diff"),
-			lesson_obs: get("LessonObs"),
-			grade: idx,
-			status: get("Status"),
-			obs: get("Obs"),
-		});
-	}
-	return result;
-}
-
-function _populateColumnsFromHeader(headerRow) {
-	const headerMap = _buildHeaderMap(headerRow);
-	COL = {};
-	for (const [key, aliases] of Object.entries(_COL_ALIASES)) {
-		COL[key] = _findCol(headerMap, aliases);
-	}
-	ASSIGNMENTS = _detectAssignments(headerMap);
 	_extraColIdx = {};
 	for (const name of [..._extraColumns.before, ..._extraColumns.after]) {
-		const e = headerMap[String(name).toLowerCase()];
-		_extraColIdx[name] = e ? e.idx : null;
+		const i = idxByName[String(name).toLowerCase()];
+		_extraColIdx[name] = i == null ? null : i;
 	}
 }
 
@@ -111,22 +53,13 @@ const LANG_FOLLOW_KEYS = [
 
 const PASSING = new Set(["Pass", "Pass'", "Pass*"]);
 
-async function pickFolder() {
-	try {
-		const ds = new FsDataSource({
-			idbKey: "lastCourseDir",
-			dbName: "grades-dash",
-		});
-		await ds.open();
-		await _idbSet(IDB_KEY_COURSE_ROOT, ds.rootHandle);
-		showLoading(true);
-		await ds.load();
-		await loadCourse(ds);
-		showLoading(false);
-	} catch (e) {
-		showLoading(false);
-		if (e.name !== "AbortError") alert("Error: " + e.message);
+function _hasAnyStatusValues() {
+	for (const s of _students || []) {
+		for (const e of s.lessons || []) {
+			if ((e.status || "") !== "") return true;
+		}
 	}
+	return false;
 }
 
 function _lessonStatsFromPyStats(py) {
@@ -176,7 +109,7 @@ async function loadCourse(ds) {
 		after: [],
 		pairs: [],
 	};
-	_populateColumnsFromHeader(rows[0]);
+	_populateColumnsFromHeader(rows[0], payload.columns);
 	if (COL.id == null) {
 		alert("Could not find 'ID' column in " + gradesFile.name);
 		return;
@@ -208,25 +141,6 @@ async function loadCourse(ds) {
 		} catch {}
 	_artefactSchema = _pyStats?.artefact_schema || {};
 	_lessonStats = _lessonStatsFromPyStats(_pyStats);
-
-	_globalStudentMap = {};
-	_realToAlterMap = {};
-	const studentsCsvFile = ds.files.get("students.csv");
-	if (studentsCsvFile) {
-		try {
-			const text = await readCsvText(studentsCsvFile);
-			_globalStudentMap = parseStudentCsv(text);
-			_realToAlterMap = parseAlterEgoMap(text, { keyTransform: _nfc });
-		} catch {}
-	}
-	const nameMapCsvFile = ds.files.get("name_map.csv");
-	if (nameMapCsvFile) {
-		try {
-			const text = await readCsvText(nameMapCsvFile);
-			const m = parseAlterEgoMap(text, { keyTransform: _nfc });
-			if (Object.keys(m).length) _realToAlterMap = m;
-		} catch {}
-	}
 
 	_lessonHandles = {};
 	_assignHandles = {};
@@ -325,7 +239,6 @@ function finishLoad(filename) {
 	});
 	_scatterCharts = [];
 	_barCharts = [];
-	document.getElementById("landing").style.display = "none";
 	document.getElementById("toolbar").classList.add("show");
 	_clusterSort = "total-follow";
 	document
@@ -337,18 +250,6 @@ function finishLoad(filename) {
 	renderStats();
 	renderClusters();
 	showPage("students");
-}
-
-function _nfc(s) {
-	return typeof s === "string" && s.normalize ? s.normalize("NFC") : s;
-}
-
-function parseStudentCsv(text) {
-	const map = {};
-	for (const parts of parseCsv(text).rows) {
-		if (parts.length >= 3 && parts[0]) map[parts[0]] = parts[2];
-	}
-	return map;
 }
 
 function parseStudent(r) {
@@ -407,9 +308,7 @@ function parseStudent(r) {
 				? PASSING.has(_rawStatus)
 					? ""
 					: _rawStatus
-				: hasAssignment
-					? "Pass"
-					: "",
+				: _rawStatus,
 			obs: str(a.obs),
 		};
 		if (!PASSING.has(entry.status)) s.passed_course = false;

@@ -32,3 +32,15 @@ function _boxStats(values, coef = 1.5) {
 	const outliers = sorted.filter((v) => v < lo || v > hi);
 	return { q1, median, q3, mean, whiskerMin, whiskerMax, outliers };
 }
+
+function _resizeChartCanvas(chart, fallbackH = 200) {
+	const c = chart._canvas;
+	const r = c.getBoundingClientRect();
+	const dpr = window.devicePixelRatio || 1;
+	const w = r.width || c.offsetWidth || 300;
+	const h = r.height || c.offsetHeight || fallbackH;
+	c.width = w * dpr;
+	c.height = h * dpr;
+	chart._dpr = dpr;
+	chart._draw();
+}

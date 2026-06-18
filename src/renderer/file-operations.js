@@ -38,7 +38,7 @@ class FileOperations {
 			}
 
 			const fileName = filePath.split(/[\\/]/).pop();
-			await this._loadStudents(filePath);
+			this._loadStudents();
 			this.updateWindowTitle(fileName);
 			localStorage.setItem("lastLessonPath", filePath);
 			this.logManager.initialize(filePath);
@@ -56,11 +56,11 @@ class FileOperations {
 		const filePath = await ipcRenderer.invoke("show-open-dialog");
 		if (!filePath) return;
 
-		this.loadFilePath(filePath, 0);
+		this.loadFilePath(filePath);
 	}
 
-	async loadFilePath(filePath, savedIndex = 0) {
-		await this._loadStudents(filePath);
+	async loadFilePath(filePath) {
+		this._loadStudents();
 		this.updateWindowTitle(filePath.split(/[\\/]/).pop());
 
 		this.lessonManager.load(filePath, (err, data) => {
@@ -74,8 +74,6 @@ class FileOperations {
 			}
 
 			localStorage.setItem("lastLessonPath", filePath);
-			this.cursorManager.currentStepIndex = savedIndex;
-
 			this.cursorManager.resetProgress();
 			this.logManager.initialize(filePath);
 
@@ -95,13 +93,11 @@ class FileOperations {
 		});
 	}
 
-	async _loadStudents(filePath) {
-		let students;
-		if (this.courseManager && this.courseManager.isOpen()) {
-			students = this.courseManager.getStudentNames();
-		} else {
-			students = await ipcRenderer.invoke("load-students-file", filePath);
-		}
+	_loadStudents() {
+		const students =
+			this.courseManager && this.courseManager.isOpen()
+				? this.courseManager.getStudentNames()
+				: [];
 		this.students = students;
 		if (this.onStudentsLoaded) {
 			this.onStudentsLoaded(students);
@@ -109,7 +105,7 @@ class FileOperations {
 	}
 
 	refreshStudents() {
-		return this._loadStudents(this.lessonManager.getCurrentFilePath());
+		return this._loadStudents();
 	}
 
 	getStudents() {
@@ -129,10 +125,8 @@ class FileOperations {
 
 	loadLastLesson() {
 		const lastFile = localStorage.getItem("lastLessonPath");
-		const lastIndex = localStorage.getItem("lastStepIndex");
-
 		if (lastFile) {
-			this.loadFilePath(lastFile, lastIndex ? parseInt(lastIndex) : 0);
+			this.loadFilePath(lastFile);
 		} else {
 			this.logManager.initialize();
 		}

@@ -133,10 +133,11 @@ const _EMPH_IDS = (() => {
 })();
 
 function _buildStudentProgressCard(s, labels) {
+	const markPass = _hasAnyStatusValues();
 	const card = el(
 		"div",
 		"prog-card" +
-			(s.passed_course ? "" : " not-passed") +
+			(!markPass || s.passed_course ? "" : " not-passed") +
 			(s.ai_flagged ? " row-ai" : "") +
 			(_EMPH_IDS.has(String(s.id)) ? " prog-emph" : ""),
 	);

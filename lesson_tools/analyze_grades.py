@@ -178,106 +178,29 @@ def _parse_artefact_digits(obs_series, n):
     return fired_by_pos, valid, mismatched, ans_by_pos
 
 
-_HEADER_ALIASES = {
-    "id":              ["ID"],
-    "name":            ["Name"],
-    "number":          ["Number"],
-    "exam":            ["Exam"],
-    "weeklies":        ["Weeklies"],
-    "notes":           ["Notes"],
-    "excluded":        ["Category"],
-    "pre_typing":      ["Pre K/min"],
-    "post_typing":     ["Post K/min"],
-    "self_eval":       ["Self Eval", "Self Evaluation", "Self"],
-    "kahoot":          ["Kahoot"],
-    "quiz_stii":       ["Final Quiz", "Quiz Stii", "Stii", "Știi"],
-    "final_grade":     ["Final Grade", "Grade"],
-    "avg_assignments": ["Avg Assignments", "Avg Grade", "Average"],
-    "participation":   ["Participation"],
-    "answers":         ["Total Answers", "Answers"],
-    "questions":       ["Total Questions", "Questions"],
-    "help":            ["Total Help", "Help"],
-}
-
 COL: dict = {}
 ASSIGNMENTS: dict = {}
 POOLED_ASSIGNMENTS: dict = {}
 _LESSON_STATS = None
 
 
-def _build_header_map(headers):
-    m = {}
-    for i, h in enumerate(headers):
-        if h is None or (isinstance(h, float) and math.isnan(h)):
-            continue
-        key = str(h).strip().lower()
-        if key and key not in m:
-            m[key] = i
-    return m
-
-
-def _find_col(header_map, aliases):
-    for a in aliases:
-        idx = header_map.get(a.lower())
-        if idx is not None:
-            return idx
-    return None
-
-
-def _detect_assignments(headers, header_map):
-    result = []
-    seen = set()
-    for idx, h in enumerate(headers):
-        if h is None or (isinstance(h, float) and math.isnan(h)):
-            continue
-        orig = str(h).strip()
-        if not orig:
-            continue
-        m = re.match(r"^(.+?)\s+Grade$", orig, re.IGNORECASE)
-        if not m:
-            continue
-        name = m.group(1).strip()
-        lower = name.lower()
-        if lower in seen:
-            continue
-        seen.add(lower)
-
-        def get(suffix, _n=name):
-            return (header_map.get((_n + " " + suffix).lower())
-                    or header_map.get((_n + suffix).lower()))
-
-        result.append({
-            "name":        name,
-            "lower":       lower,
-            "difficulty":  LESSON_DIFFICULTY.get(lower, ""),
-            "follow_html": get("HTML Follow"),
-            "follow_css":  get("CSS Follow"),
-            "follow_js":   get("JS Follow"),
-            "follow":      get("Follow"),
-            "inc":         get("Inc"),
-            "a":           get("A"),
-            "q":           get("Q"),
-            "h":           get("H"),
-            "c_plus":      get("C+"),
-            "c_minus":     get("C-"),
-            "c_diff":      get("C Diff"),
-            "lesson_obs":  get("LessonObs"),
-            "grade":       idx,
-            "status":      get("Status"),
-            "obs":         get("Obs"),
-        })
-    return result
-
-
-def _populate_columns_from_header(df):
+def _populate_columns_from_contract(columns):
     global COL, ASSIGNMENTS, POOLED_ASSIGNMENTS
-    if df.empty:
-        return
-    headers = df.iloc[0].tolist()
-    header_map = _build_header_map(headers)
-    COL = {k: _find_col(header_map, aliases)
-           for k, aliases in _HEADER_ALIASES.items()}
-    assn_list = _detect_assignments(headers, header_map)
+    if not columns:
+        raise ValueError(
+            "overview.json is missing the 'columns' contract; "
+            "run `npm run overview` to rebuild it.")
+    COL = dict(columns.get("roles") or {})
+    assn_list = []
+    for t in (columns.get("topics") or []):
+        lower = t.get("name", "")
+        entry = {
+            "name":       t.get("label", lower),
+            "lower":      lower,
+            "difficulty": LESSON_DIFFICULTY.get(lower, ""),
+        }
+        entry.update(t.get("fields") or {})
+        assn_list.append(entry)
     ASSIGNMENTS = {(i + 1): a for i, a in enumerate(assn_list)}
     POOLED_ASSIGNMENTS = {k: v for k, v in ASSIGNMENTS.items()
                           if v.get("follow") is not None}
@@ -308,7 +231,7 @@ def load_data(path):
                       + (payload.get("rows") or []))
     if df.empty:
         return df
-    _populate_columns_from_header(df)
+    _populate_columns_from_contract(payload.get("columns"))
     return df.iloc[1:].copy().reset_index(drop=True)
 
 
