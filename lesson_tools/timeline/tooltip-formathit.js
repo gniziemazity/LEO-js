@@ -118,7 +118,6 @@ function formatHit(hit, simple = false) {
 					perLangCounts,
 					maxLangWidths,
 				),
-				blockLangs,
 			);
 		}
 		case "token-bar": {
@@ -140,12 +139,7 @@ function formatHit(hit, simple = false) {
 			_barBlockStudents = sorted;
 			const nStudents = sorted.length;
 			const header = nStudents === 1 ? "1 student" : `${nStudents} students`;
-			const legendLangs = bar.lang ? [bar.lang] : [];
-			return _wrapBarTooltip(
-				header,
-				_renderStudentGrid(sorted, [], [], []),
-				legendLangs,
-			);
+			return _wrapBarTooltip(header, _renderStudentGrid(sorted, [], [], []));
 		}
 		case "code_insert": {
 			const code = hit.ev.code_insert || "";
@@ -364,8 +358,9 @@ function formatHitSimple(hit) {
 		case "interaction": {
 			const q = hit.q;
 			const clr = INTERACTION_COLORS[hit.itype]?.hex;
+			const icon = INTERACTION_KINDS[hit.itype]?.icon || "💬";
 			if (hit.itype === "teacher-question") {
-				let h = `<span style="color:${clr}">❓ ${escHtml(q.info || "")}</span>`;
+				let h = `<span style="color:${clr}">${icon} ${escHtml(q.info || "")}</span>`;
 				if (q.answered_by && q.answered_by.length) {
 					const names = q.answered_by.map((field) =>
 						resolveInteractionStudentDisplayWithId(field),
@@ -374,14 +369,14 @@ function formatHitSimple(hit) {
 				}
 				return h;
 			} else if (hit.itype === "student-question") {
-				let h = `<span style="color:${clr}">🙋 ${escHtml(q.info || "")}</span>`;
+				let h = `<span style="color:${clr}">${icon} ${escHtml(q.info || "")}</span>`;
 				if (q.asked_by) {
 					const name = resolveInteractionStudentDisplayWithId(q.asked_by);
 					h += `\nAsked by: ${escHtml(name)}`;
 				}
 				return h;
 			} else if (hit.itype === "providing-help") {
-				let h = `<span style="color:${clr}">🤝 Providing Help</span>`;
+				let h = `<span style="color:${clr}">${icon} Provided Help</span>`;
 				if (q.student) {
 					const name = resolveInteractionStudentDisplayWithId(q.student);
 					h += `\nStudent: ${escHtml(name)}`;

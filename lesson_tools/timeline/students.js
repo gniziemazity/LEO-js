@@ -29,12 +29,17 @@ async function loadXlsxFiles(files) {
 	}
 
 	let chosenKey = null;
-	for (const key of ["ideal", "leo_star"]) {
-		if (_basisFiles.has(key)) {
-			chosenKey = key;
-			break;
-		}
+	const _wantBasis = parseToolParams().basis;
+	if (_wantBasis && _basisFiles.has(_wantBasis)) {
+		chosenKey = _wantBasis;
 	}
+	if (!chosenKey)
+		for (const key of ["ideal", "leo_star"]) {
+			if (_basisFiles.has(key)) {
+				chosenKey = key;
+				break;
+			}
+		}
 	if (!chosenKey) {
 		for (const { key } of REMARKS_BASES) {
 			if (_basisFiles.has(key)) {

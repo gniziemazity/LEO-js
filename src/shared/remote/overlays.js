@@ -1,8 +1,4 @@
 let currentStudents = [];
-let autoCloseTimer = null;
-let interactionOpenedAt = null;
-let interactionWaiting = false;
-let pendingWaitingData = null;
 
 function setInteractionBtnsVisible(visible) {
 	document
@@ -14,312 +10,58 @@ function setStudents(students) {
 	currentStudents = students || [];
 }
 
+const questionOverlay = new QuestionOverlay();
+const interactionOverlay = new InteractionOverlay();
+const moveToOverlay = new MoveToOverlay();
+
 function showQuestionOverlay(question, students, bgColor) {
-	clearAutoCloseTimer();
-
-	document.getElementById("qText").textContent = question;
-
-	const overlay = document.getElementById("questionOverlay");
-	overlay.style.background = bgColor ? bgColor : "var(--clr-q-bg)";
-
-	const grid = document.getElementById("qGrid");
-	const answered = document.getElementById("qAnsweredRow");
-	const showBtn = document.getElementById("qShowBtn");
-	grid.innerHTML = "";
-	grid.style.display = "none";
-	answered.style.display = "none";
-	if (showBtn) showBtn.style.display = "block";
-	document.getElementById("qCloseBarFill").style.transition = "none";
-	document.getElementById("qCloseBarFill").style.width = "0%";
-
-	const list = students && students.length ? students : null;
-
-	if (list) {
-		list.forEach((name, idx) => {
-			const btn = document.createElement("button");
-			btn.className = "popup-student-btn";
-			btn.textContent = name;
-			btn.onclick = () => onStudentAnswered(idx);
-			grid.appendChild(btn);
-		});
-	} else {
-		const btn = document.createElement("button");
-		btn.className = "popup-student-btn";
-		btn.style.cssText = "width:100%;margin-bottom:4px";
-		btn.textContent = "Answered";
-		btn.onclick = () => onStudentAnswered(null);
-		grid.appendChild(btn);
-	}
-
-	overlay.classList.add("active");
-	setInteractionBtnsVisible(false);
+	questionOverlay.show(question, students, bgColor);
 }
 
 function showQuestionToTeacher() {
-	sendMessage("show-question", {});
-	const showBtn = document.getElementById("qShowBtn");
-	if (showBtn) showBtn.style.display = "none";
-	document.getElementById("qGrid").style.display = "flex";
+	questionOverlay.showToTeacher();
 }
 
 function onStudentAnswered(idx) {
-	const studentId = idx != null && idx >= 0 ? idx + 1 : null;
-	sendMessage("student-answered", { studentName: studentId });
-
-	document.getElementById("questionOverlay").classList.remove("active");
-	setInteractionBtnsVisible(true);
+	questionOverlay.studentAnswered(idx);
 }
 
 function closeQuestionOverlayUI() {
-	clearAutoCloseTimer();
-	document.getElementById("questionOverlay").classList.remove("active");
-	setInteractionBtnsVisible(true);
+	questionOverlay.closeUI();
 }
 
 function closeQuestionOverlay() {
-	sendMessage("dismiss-question", {});
-	closeQuestionOverlayUI();
+	questionOverlay.dismiss();
 }
 
 function clearAutoCloseTimer() {
-	if (autoCloseTimer) {
-		clearTimeout(autoCloseTimer);
-		autoCloseTimer = null;
-	}
+	questionOverlay.clearTimer();
 }
 
 function handleInteractionBtn(interactionType) {
-	if (currentStudents.length > 0) {
-		interactionOpenedAt = Date.now();
-		const isQuestion = interactionType === "student-question";
-		const title = isQuestion
-			? "❓ Who asked a question?"
-			: "🤝 Who needs help?";
-		showInteractionOverlay(title, currentStudents, interactionType);
-	} else {
-		sendMessage("interaction", { interactionType });
-	}
+	interactionOverlay.handleBtn(interactionType);
 }
 
 function showInteractionOverlay(title, students, type) {
-	const modal = document.getElementById("iModal");
-	modal.className = "popup-modal";
-	if (type === "student-question") {
-		document.getElementById("interactionOverlay").style.background =
-			"var(--clr-ask-bg)";
-	} else {
-		document.getElementById("interactionOverlay").style.background =
-			"var(--clr-help-bg)";
-	}
-
-	document.getElementById("iTitle").textContent = title;
-
-	const questionInput = document.getElementById("iQuestionInput");
-	if (type === "student-question") {
-		questionInput.style.display = "block";
-		questionInput.value = "";
-		setTimeout(() => questionInput.focus(), 100);
-	} else {
-		questionInput.style.display = "none";
-	}
-
-	const grid = document.getElementById("iGrid");
-	grid.innerHTML = "";
-	students.forEach((name, idx) => {
-		const btn = document.createElement("button");
-		btn.className = "popup-student-btn";
-		btn.textContent = name;
-		btn.onclick = () => {
-			const qText =
-				type === "student-question" ? questionInput.value.trim() : null;
-			onStudentSelected(idx, type, qText);
-		};
-		grid.appendChild(btn);
-	});
-	document.getElementById("interactionOverlay").classList.add("active");
-	setInteractionBtnsVisible(false);
-	sendMessage("interaction-overlay-shown", {});
+	interactionOverlay.show(title, students, type);
 }
 
 function onStudentSelected(idx, type, questionText) {
-	const studentId = idx != null && idx >= 0 ? idx + 1 : null;
-	const name = currentStudents[idx] ?? "";
-	const msgData = {
-		interactionType: type,
-		studentName: studentId,
-		questionText: questionText || null,
-		openedAt: interactionOpenedAt,
-	};
-	sendMessage("show-student-interaction", msgData);
-
-	interactionWaiting = true;
-	pendingWaitingData = msgData;
-
-	const isQuestion = type === "student-question";
-	document.getElementById("iQuestionInput").style.display = "none";
-	document.getElementById("iTitle").textContent = isQuestion
-		? `❓ ${name}${questionText ? ": " + questionText : ""}`
-		: `🤝 Helping ${name}`;
-
-	const grid = document.getElementById("iGrid");
-	grid.innerHTML = "";
-	const doneBtn = document.createElement("button");
-	doneBtn.className = "popup-student-btn";
-	doneBtn.style.cssText =
-		"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
-		"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);";
-	doneBtn.textContent = "✓ Done — close";
-	doneBtn.onclick = () => closeInteractionOverlay();
-	grid.appendChild(doneBtn);
-}
-
-function makeSegSpan(text, color) {
-	const span = document.createElement("span");
-	span.textContent = text;
-	if (color) span.style.color = color;
-	return span;
-}
-
-function renderLine(row, segs) {
-	for (const seg of segs) row.appendChild(makeSegSpan(seg.text, seg.color));
-}
-
-function makeCursorSpan() {
-	const cursor = document.createElement("span");
-	cursor.className = "mt-modal-anchor-cursor";
-	cursor.textContent = " ";
-	return cursor;
-}
-
-function renderLineWithArrow(row, segs, col) {
-	let consumed = 0;
-	let inserted = false;
-	for (const seg of segs) {
-		if (!inserted && consumed + seg.text.length >= col) {
-			const cut = col - consumed;
-			if (cut > 0)
-				row.appendChild(makeSegSpan(seg.text.slice(0, cut), seg.color));
-			row.appendChild(makeCursorSpan());
-			if (cut < seg.text.length)
-				row.appendChild(makeSegSpan(seg.text.slice(cut), seg.color));
-			inserted = true;
-		} else {
-			row.appendChild(makeSegSpan(seg.text, seg.color));
-		}
-		consumed += seg.text.length;
-	}
-	if (!inserted) row.appendChild(makeCursorSpan());
-}
-
-function showMoveToOverlay(payload) {
-	const { mode, target, snippet } = payload || {};
-	const overlay = document.getElementById("moveToOverlay");
-	const emojiEl = document.getElementById("mtoEmoji");
-	const titleEl = document.getElementById("mtoTitle");
-	const targetEl = document.getElementById("mtoTarget");
-	const snippetEl = document.getElementById("mtoSnippet");
-	if (!overlay) return;
-
-	overlay.style.background = "var(--clr-moveto-bg)";
-
-	if (emojiEl) emojiEl.style.display = "none";
-	if (titleEl) titleEl.textContent = "Go to:";
-
-	snippetEl.style.display = "none";
-	snippetEl.innerHTML = "";
-	targetEl.style.display = "none";
-	targetEl.textContent = "";
-
-	if (mode === "dev") {
-		targetEl.style.display = "";
-		targetEl.textContent = "Dev Tools";
-	} else if (mode === "main") {
-		targetEl.style.display = "";
-		targetEl.textContent = "Main Editor";
-	} else if (mode === "file") {
-		targetEl.style.display = "";
-		const fname =
-			target && target.startsWith("⚓") && target.endsWith("⚓")
-				? target.slice(1, -1)
-				: target || "";
-		targetEl.textContent = fname;
-	} else if (mode === "anchor") {
-		if (snippet && snippet.lines && snippet.lines.length) {
-			snippetEl.style.display = "block";
-			const col = Math.max(0, snippet.anchorCol || 0);
-			const colored = snippet.colored || null;
-			snippet.lines.forEach((line, i) => {
-				const row = document.createElement("div");
-				row.className = "mt-modal-line";
-				const segs =
-					colored && colored[i]
-						? colored[i]
-						: [{ text: line || "", color: null }];
-				if (i === snippet.arrowIdx) {
-					renderLineWithArrow(row, segs, col);
-				} else {
-					renderLine(row, segs);
-				}
-				snippetEl.appendChild(row);
-			});
-		} else {
-			targetEl.style.display = "";
-			targetEl.textContent = target || "";
-			snippetEl.style.display = "block";
-			const div = document.createElement("div");
-			div.className = "mt-modal-empty";
-			div.textContent =
-				"(Anchor not found in plan — move to the matching position.)";
-			snippetEl.appendChild(div);
-		}
-	} else {
-		targetEl.style.display = "";
-		targetEl.textContent = target || "";
-	}
-
-	overlay.classList.add("active");
-	setInteractionBtnsVisible(false);
-
-	const modal = document.getElementById("mtModal");
-	if (modal) {
-		const snippetVisible = snippetEl.style.display !== "none";
-		if (snippetVisible) {
-			requestAnimationFrame(() => {
-				if (snippetEl.offsetHeight > 0) {
-					const center = snippetEl.offsetTop + snippetEl.offsetHeight / 2;
-					modal.style.setProperty("--mt-confirm-top", center + "px");
-				} else {
-					modal.style.removeProperty("--mt-confirm-top");
-				}
-			});
-		} else {
-			modal.style.removeProperty("--mt-confirm-top");
-		}
-	}
-}
-
-function closeMoveToOverlayUI() {
-	const overlay = document.getElementById("moveToOverlay");
-	if (overlay) overlay.classList.remove("active");
-	setInteractionBtnsVisible(true);
-}
-
-function closeMoveToOverlay() {
-	sendMessage("move-to-confirmed", {});
-	closeMoveToOverlayUI();
+	interactionOverlay.studentSelected(idx, type, questionText);
 }
 
 function closeInteractionOverlay() {
-	if (interactionWaiting && pendingWaitingData) {
-		sendMessage("close-student-interaction", {
-			...pendingWaitingData,
-			closedAt: Date.now(),
-		});
-	}
-	interactionWaiting = false;
-	pendingWaitingData = null;
-	document.getElementById("interactionOverlay").classList.remove("active");
-	setInteractionBtnsVisible(true);
-	document.getElementById("iQuestionInput").style.display = "none";
-	sendMessage("interaction-overlay-closed", {});
+	interactionOverlay.closeOverlay();
+}
+
+function showMoveToOverlay(payload) {
+	moveToOverlay.show(payload);
+}
+
+function closeMoveToOverlayUI() {
+	moveToOverlay.closeUI();
+}
+
+function closeMoveToOverlay() {
+	moveToOverlay.confirm();
 }

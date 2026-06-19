@@ -5,7 +5,11 @@ function _sortKeyOf(s, sortCol) {
 	if (sortCol === "name") return { type: "str", v: s.name || "" };
 	if (sortCol === "num") return { type: "str", v: s.num || "" };
 	if (sortCol === "follow") return { type: "num", v: s.followPct };
-	if (sortCol === "int") return { type: "str", v: s.interactions || "" };
+	if (sortCol === "int")
+		return {
+			type: "num",
+			v: (s.total_a || 0) + (s.total_q || 0) + (s.total_h || 0),
+		};
 	if (sortCol === "fingerprint1")
 		return { type: "str", v: s._fpMask ? _maskToBytes(s._fpMask) : "" };
 	if (sortCol === "fingerprint2") return { type: "num", v: s._fp2Count };

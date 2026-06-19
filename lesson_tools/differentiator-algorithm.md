@@ -1188,8 +1188,10 @@ teacher reference files  +  student files
 PIPELINE WRITING
 ────────────────
 LEO family (`TokenLogMixin.write_student_token_files`, keylog runs only;
-without a keylog plain LEO goes through `write_leo_diff_marks` →
-`_write_alt_diff_marks` instead):
+without a keylog `write_leo_diff_marks` → `_write_alt_diff_marks` emits the
+base LEO result under the `leo_star` key instead — `diff_marks_leo_star.json`
+with no ghost/timestamp post-pass — so assignments get LEO\* like lessons, and
+plain `leo` is never written):
   build result  →  diff_marks dict
    │
    ├─► deepcopy → token_matching='leo'

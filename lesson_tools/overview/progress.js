@@ -1,8 +1,8 @@
 "use strict";
 
 function _followMode() {
-	const lang = document.getElementById("follow-mode-lang");
-	return lang && lang.classList.contains("active") ? "lang" : "total";
+	const cb = document.getElementById("follow-mode-lang-cb");
+	return cb && cb.checked ? "lang" : "total";
 }
 
 function _progressShow() {
@@ -17,18 +17,6 @@ function _progressShow() {
 
 function _onProgressControlChange() {
 	if (typeof _students !== "undefined" && _students.length) renderClusters();
-}
-
-for (const id of ["follow-mode-total", "follow-mode-lang"]) {
-	document.getElementById(id)?.addEventListener("click", () => {
-		document
-			.getElementById("follow-mode-total")
-			?.classList.toggle("active", id === "follow-mode-total");
-		document
-			.getElementById("follow-mode-lang")
-			?.classList.toggle("active", id === "follow-mode-lang");
-		_onProgressControlChange();
-	});
 }
 
 function _addProgressFollowBoxplot(body, students) {
@@ -72,7 +60,7 @@ function _addProgressFollowBoxplot(body, students) {
 	}
 	if (!datasets.some((d) => d.data.some((arr) => arr.length))) return;
 
-	const section = el("div", "cluster-section");
+	const section = el("div", "cluster-section prog-boxplot");
 	const header = el("div", "cluster-header");
 	const h3 = el("h3");
 	h3.textContent =
@@ -81,33 +69,17 @@ function _addProgressFollowBoxplot(body, students) {
 			: "Follow Distribution";
 	header.appendChild(h3);
 	if (_followMode() === "lang") {
-		const legend = el("div");
-		legend.style.cssText =
-			"display:flex;gap:12px;align-items:center;font-size:11px;color:var(--clr-label);";
-		for (const { label, color } of LANG_FOLLOW_KEYS) {
-			const c = color || THEME.label;
-			const item = el("span");
-			item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
-			const sq = el("span");
-			sq.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};`;
-			item.appendChild(sq);
-			item.appendChild(document.createTextNode(label));
-			legend.appendChild(item);
-		}
-		const meanHint = el("span");
-		meanHint.style.cssText =
-			"display:inline-flex;align-items:center;gap:4px;";
-		const dot = el("span");
-		dot.style.cssText =
-			"display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--clr-label);box-shadow:0 0 0 1.5px #fff inset;";
-		meanHint.appendChild(dot);
-		meanHint.appendChild(document.createTextNode("mean"));
-		legend.appendChild(meanHint);
-		header.appendChild(legend);
+		header.appendChild(
+			new ChartLegend(
+				LANG_FOLLOW_KEYS.map(({ label, color }) => ({
+					label,
+					color: color || THEME.label,
+				})),
+			).render(),
+		);
 	}
 	section.appendChild(header);
-	const box = el("div");
-	box.style.cssText = "position:relative;height:220px;";
+	const box = el("div", "prog-boxplot-chart");
 	section.appendChild(box);
 	const chart = new BoxPlotChart(box, {
 		xLabels: labels,
@@ -302,9 +274,12 @@ function _buildArtefactsRow(s) {
 	}
 	if (!anyPattern || maxRows === 0) return null;
 	const row = el("div", "prog-artefacts-row");
-	row.style.gridTemplateColumns = `repeat(${ASSIGNMENTS.length}, 1fr)`;
-	for (const { entry, obs, schema, schemaArr, has, rows } of cols) {
+	const n = ASSIGNMENTS.length;
+	row.style.height = maxRows * 12 + Math.max(0, maxRows - 1) * 2 + "px";
+	cols.forEach(({ entry, obs, schema, schemaArr, has, rows }, idx) => {
 		const col = el("div", "prog-artefact-col");
+		const frac = n <= 1 ? 0.5 : idx / (n - 1);
+		col.style.left = `calc(34px + ${frac} * (100% - 62px))`;
 		if (has) {
 			for (let i = 0; i < rows; i++) {
 				const ch = obs[i] || "0";
@@ -323,6 +298,6 @@ function _buildArtefactsRow(s) {
 			});
 		}
 		row.appendChild(col);
-	}
+	});
 	return row;
 }

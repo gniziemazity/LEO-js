@@ -173,8 +173,9 @@ class LineChart {
 			ctx.textBaseline = "middle";
 			ctx.textAlign = "center";
 			const padX = 5;
-			const boxH = 16;
-			const gap = 7;
+			const textH = 16;
+			const gap = 6;
+			const dotPad = 6;
 			for (let i = 0; i < obsMarks.length; i++) {
 				const m = obsMarks[i];
 				if (!m || !m.text) continue;
@@ -182,25 +183,28 @@ class LineChart {
 				const px = this._axisX(i);
 				const pyLow = this._axisY(m.belowVal, ax);
 				const pyHigh = this._axisY(m.aboveVal, ax);
-				let cy = pyLow + gap + boxH / 2;
-				if (cy + boxH / 2 > plotBottom) {
-					const above = pyHigh - gap - boxH / 2;
-					if (above - boxH / 2 >= plotTop) cy = above;
-				}
+				let textCy = pyLow + gap + textH / 2;
+				if (textCy + textH / 2 > plotBottom)
+					textCy = plotBottom - textH / 2;
+				const textBottom = textCy + textH / 2;
 				const textW = ctx.measureText(m.text).width;
 				const boxW = textW + padX * 2;
 				const bx = px - boxW / 2;
-				const by = cy - boxH / 2;
+				const color = m.color ?? "#888";
+				const groupTop = Math.max(plotTop, pyHigh - dotPad);
 				ctx.beginPath();
-				if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 3);
-				else ctx.rect(bx, by, boxW, boxH);
-				ctx.fillStyle = "#fff";
-				ctx.fill();
-				ctx.strokeStyle = m.color ?? "#888";
+				if (ctx.roundRect)
+					ctx.roundRect(bx, groupTop, boxW, textBottom - groupTop, 4);
+				else ctx.rect(bx, groupTop, boxW, textBottom - groupTop);
+				ctx.strokeStyle = color;
 				ctx.lineWidth = 1;
 				ctx.stroke();
-				ctx.fillStyle = m.color ?? "#333";
-				ctx.fillText(m.text, px, cy + 0.5);
+				ctx.lineWidth = 6;
+				ctx.lineJoin = "round";
+				ctx.strokeStyle = "#fff";
+				ctx.strokeText(m.text, px, textCy + 0.5);
+				ctx.fillStyle = color;
+				ctx.fillText(m.text, px, textCy + 0.5);
 			}
 		}
 

@@ -1,23 +1,110 @@
 "use strict";
 
-let _curatedPairConnectorSvg = null;
+const _SVG_NS = "http://www.w3.org/2000/svg";
+const _CURATED_LINE_GAP = 0.5;
+const _CURATED_ARROW_LEN = 5;
+const _CURATED_ARROW_HALF_WIDTH = 3;
+const _CURATED_INSERT_ANCHOR_LIFT = 2.25;
+
+class PairConnectorSvg {
+	constructor() {
+		this.svg = null;
+	}
+
+	ensure() {
+		if (this.svg) return this.svg;
+		const svg = document.createElementNS(_SVG_NS, "svg");
+		svg.id = "curated-pair-connector-svg";
+		svg.setAttribute("width", "100%");
+		svg.setAttribute("height", "100%");
+		document.body.appendChild(svg);
+		this.svg = svg;
+		return svg;
+	}
+
+	clear() {
+		if (this.svg) this.svg.innerHTML = "";
+	}
+
+	line(x1, y1, x2, y2, color) {
+		const ln = document.createElementNS(_SVG_NS, "line");
+		ln.setAttribute("x1", x1);
+		ln.setAttribute("y1", y1);
+		ln.setAttribute("x2", x2);
+		ln.setAttribute("y2", y2);
+		ln.setAttribute("stroke", color);
+		ln.setAttribute("stroke-width", "1");
+		ln.setAttribute("stroke-linecap", "round");
+		this.svg.appendChild(ln);
+	}
+
+	cross(cx, cy, size, color) {
+		const half = size / 2;
+		for (const [x1, y1, x2, y2] of [
+			[cx - half, cy - half, cx + half, cy + half],
+			[cx + half, cy - half, cx - half, cy + half],
+		]) {
+			const ln = document.createElementNS(_SVG_NS, "line");
+			ln.setAttribute("x1", x1);
+			ln.setAttribute("y1", y1);
+			ln.setAttribute("x2", x2);
+			ln.setAttribute("y2", y2);
+			ln.setAttribute("stroke", color);
+			ln.setAttribute("stroke-width", "1.5");
+			ln.setAttribute("stroke-linecap", "round");
+			this.svg.appendChild(ln);
+		}
+	}
+
+	arrowhead(tipX, tipY, dirX, dirY, color) {
+		const len = Math.hypot(dirX, dirY) || 1;
+		const ux = dirX / len;
+		const uy = dirY / len;
+		const px = -uy;
+		const py = ux;
+		const baseCenterX = tipX - ux * _CURATED_ARROW_LEN;
+		const baseCenterY = tipY - uy * _CURATED_ARROW_LEN;
+		const b1x = baseCenterX + px * _CURATED_ARROW_HALF_WIDTH;
+		const b1y = baseCenterY + py * _CURATED_ARROW_HALF_WIDTH;
+		const b2x = baseCenterX - px * _CURATED_ARROW_HALF_WIDTH;
+		const b2y = baseCenterY - py * _CURATED_ARROW_HALF_WIDTH;
+		const poly = document.createElementNS(_SVG_NS, "polygon");
+		poly.setAttribute(
+			"points",
+			`${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`,
+		);
+		poly.setAttribute("fill", color);
+		this.svg.appendChild(poly);
+	}
+
+	midConnector(
+		startX,
+		startY,
+		endX,
+		endY,
+		routeX,
+		seg1Color,
+		midColor,
+		seg3Color,
+		arrowDir,
+	) {
+		this.line(startX, startY, routeX, startY, seg1Color);
+		this.line(routeX, startY, routeX, endY, midColor);
+		this.line(routeX, endY, endX, endY, seg3Color);
+		this.arrowhead(endX, endY, arrowDir, 0, seg3Color);
+	}
+}
+
+const _curatedPairConnector = new PairConnectorSvg();
 let _curatedPairConnectorItems = [];
 
 function _curatedEnsurePairConnectorSvg() {
-	if (_curatedPairConnectorSvg) return _curatedPairConnectorSvg;
-	const svgNS = "http://www.w3.org/2000/svg";
-	const svg = document.createElementNS(svgNS, "svg");
-	svg.id = "curated-pair-connector-svg";
-	svg.setAttribute("width", "100%");
-	svg.setAttribute("height", "100%");
-	document.body.appendChild(svg);
-	_curatedPairConnectorSvg = svg;
-	return svg;
+	return _curatedPairConnector.ensure();
 }
 
 function _curatedClearPairConnectors() {
 	_curatedPairConnectorItems = [];
-	if (_curatedPairConnectorSvg) _curatedPairConnectorSvg.innerHTML = "";
+	_curatedPairConnector.clear();
 }
 
 function _curatedFindPartnerEl(side, mark) {
@@ -179,60 +266,6 @@ function _curatedRebuildPairConnectorsForSelection(side, file, lo, hi) {
 	);
 }
 
-const _SVG_NS = "http://www.w3.org/2000/svg";
-const _CURATED_LINE_GAP = 0.5;
-
-function _curatedSvgLine(svg, x1, y1, x2, y2, color) {
-	const ln = document.createElementNS(_SVG_NS, "line");
-	ln.setAttribute("x1", x1);
-	ln.setAttribute("y1", y1);
-	ln.setAttribute("x2", x2);
-	ln.setAttribute("y2", y2);
-	ln.setAttribute("stroke", color);
-	ln.setAttribute("stroke-width", "1");
-	ln.setAttribute("stroke-linecap", "round");
-	svg.appendChild(ln);
-}
-
-function _curatedSvgX(svg, cx, cy, size, color) {
-	const half = size / 2;
-	for (const [x1, y1, x2, y2] of [
-		[cx - half, cy - half, cx + half, cy + half],
-		[cx + half, cy - half, cx - half, cy + half],
-	]) {
-		const ln = document.createElementNS(_SVG_NS, "line");
-		ln.setAttribute("x1", x1);
-		ln.setAttribute("y1", y1);
-		ln.setAttribute("x2", x2);
-		ln.setAttribute("y2", y2);
-		ln.setAttribute("stroke", color);
-		ln.setAttribute("stroke-width", "1.5");
-		ln.setAttribute("stroke-linecap", "round");
-		svg.appendChild(ln);
-	}
-}
-
-const _CURATED_ARROW_LEN = 5;
-const _CURATED_ARROW_HALF_WIDTH = 3;
-
-function _curatedSvgArrowhead(svg, tipX, tipY, dirX, dirY, color) {
-	const len = Math.hypot(dirX, dirY) || 1;
-	const ux = dirX / len;
-	const uy = dirY / len;
-	const px = -uy;
-	const py = ux;
-	const baseCenterX = tipX - ux * _CURATED_ARROW_LEN;
-	const baseCenterY = tipY - uy * _CURATED_ARROW_LEN;
-	const b1x = baseCenterX + px * _CURATED_ARROW_HALF_WIDTH;
-	const b1y = baseCenterY + py * _CURATED_ARROW_HALF_WIDTH;
-	const b2x = baseCenterX - px * _CURATED_ARROW_HALF_WIDTH;
-	const b2y = baseCenterY - py * _CURATED_ARROW_HALF_WIDTH;
-	const poly = document.createElementNS(_SVG_NS, "polygon");
-	poly.setAttribute("points", `${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`);
-	poly.setAttribute("fill", color);
-	svg.appendChild(poly);
-}
-
 function _curatedSrcPosToClient(side, file, srcPos) {
 	if (typeof _curatedSrcPosToDomPoint !== "function") return null;
 	const dom = _curatedSrcPosToDomPoint(side, file, srcPos);
@@ -266,8 +299,6 @@ function _curatedSrcPosToClient(side, file, srcPos) {
 	return { x: rect.left, y: lineBottom };
 }
 
-const _CURATED_INSERT_ANCHOR_LIFT = 2.25;
-
 function _curatedElBelowLineY(el) {
 	if (el && el.classList && el.classList.contains("insert-anchor")) {
 		const line = el.closest(".diff-line");
@@ -291,8 +322,9 @@ function _curatedElBelowLineY(el) {
 }
 
 function _curatedRefreshPairConnectors() {
-	const svg = _curatedEnsurePairConnectorSvg();
-	svg.innerHTML = "";
+	const connector = _curatedPairConnector;
+	connector.ensure();
+	connector.clear();
 	if (!_curatedPairConnectorItems.length) return;
 
 	const teacherPanel = document.getElementById("panel-teacher");
@@ -334,10 +366,17 @@ function _curatedRefreshPairConnectors() {
 			const sRect = studentEl.getBoundingClientRect();
 			const tY = _curatedElBelowLineY(teacherEl);
 			const sY = _curatedElBelowLineY(studentEl);
-			_curatedSvgLine(svg, tRect.right, tY, midX, tY, paleBlueColor);
-			_curatedSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_curatedSvgLine(svg, midX, sY, sRect.left, sY, ghostPairColor);
-			_curatedSvgArrowhead(svg, sRect.left, sY, 1, 0, ghostPairColor);
+			connector.midConnector(
+				tRect.right,
+				tY,
+				sRect.left,
+				sY,
+				midX,
+				paleBlueColor,
+				blackColor,
+				ghostPairColor,
+				1,
+			);
 		} else if (item.kind === "pair") {
 			const srcEl = _curatedFindMarkEl(item.side, item.mark, item.file);
 			const partnerEl = _curatedFindPartnerEl(item.side, item.mark);
@@ -367,10 +406,17 @@ function _curatedRefreshPairConnectors() {
 				{ start: teacherMarkPos || 0 },
 			]);
 
-			_curatedSvgLine(svg, tRect.right, tY, midX, tY, extraColor);
-			_curatedSvgLine(svg, midX, tY, midX, sY, blackColor);
-			_curatedSvgLine(svg, midX, sY, sRect.left, sY, teacherLangColor);
-			_curatedSvgArrowhead(svg, sRect.left, sY, 1, 0, teacherLangColor);
+			connector.midConnector(
+				tRect.right,
+				tY,
+				sRect.left,
+				sY,
+				midX,
+				extraColor,
+				blackColor,
+				teacherLangColor,
+				1,
+			);
 		} else if (item.kind === "groupInsert") {
 			const g = item.group;
 			const langColor = _langForTeacher(g.file, g.marks);
@@ -391,20 +437,20 @@ function _curatedRefreshPairConnectors() {
 					const aRect = anchorEl.getBoundingClientRect();
 					const aY = _curatedElBelowLineY(anchorEl);
 					const aX = aRect.left;
-					_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
-					_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
-					_curatedSvgLine(svg, midX, aY, aX, aY, langColor);
-					_curatedSvgArrowhead(
-						svg,
+					connector.midConnector(
+						startX,
+						startY,
 						aX,
 						aY,
-						aX >= midX ? 1 : -1,
-						0,
+						midX,
+						blackColor,
+						blackColor,
 						langColor,
+						aX >= midX ? 1 : -1,
 					);
 				} else {
-					_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
-					_curatedSvgX(svg, midX, startY, 10, langColor);
+					connector.line(startX, startY, midX, startY, blackColor);
+					connector.cross(midX, startY, 10, langColor);
 				}
 				continue;
 			}
@@ -421,21 +467,21 @@ function _curatedRefreshPairConnectors() {
 				const aY = _curatedElBelowLineY(anchorEl);
 				const aX = aRect.left;
 				const startY = Math.max(boxTop, Math.min(boxBottom, aY));
-				_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
-				_curatedSvgLine(svg, midX, startY, midX, aY, blackColor);
-				_curatedSvgLine(svg, midX, aY, aX, aY, langColor);
-				_curatedSvgArrowhead(
-					svg,
+				connector.midConnector(
+					startX,
+					startY,
 					aX,
 					aY,
-					aX >= midX ? 1 : -1,
-					0,
+					midX,
+					blackColor,
+					blackColor,
 					langColor,
+					aX >= midX ? 1 : -1,
 				);
 			} else {
 				const startY = (boxTop + boxBottom) / 2;
-				_curatedSvgLine(svg, startX, startY, midX, startY, blackColor);
-				_curatedSvgX(svg, midX, startY, 10, langColor);
+				connector.line(startX, startY, midX, startY, blackColor);
+				connector.cross(midX, startY, 10, langColor);
 			}
 		} else if (item.kind === "extraMove") {
 			const g = item.group;
@@ -469,18 +515,24 @@ function _curatedRefreshPairConnectors() {
 					g.movePos,
 				);
 				if (!target) {
-					_curatedSvgLine(svg, startX, startY, rightX, startY, extraColor);
-					_curatedSvgX(svg, rightX, startY, 10, extraColor);
+					connector.line(startX, startY, rightX, startY, extraColor);
+					connector.cross(rightX, startY, 10, extraColor);
 					continue;
 				}
 				targetX = target.x;
 				targetY = target.y;
 			}
-			_curatedSvgLine(svg, startX, startY, rightX, startY, extraColor);
-			_curatedSvgLine(svg, rightX, startY, rightX, targetY, blackColor);
-			_curatedSvgLine(svg, rightX, targetY, targetX, targetY, extraColor);
-			const dirX = targetX <= rightX ? -1 : 1;
-			_curatedSvgArrowhead(svg, targetX, targetY, dirX, 0, extraColor);
+			connector.midConnector(
+				startX,
+				startY,
+				targetX,
+				targetY,
+				rightX,
+				extraColor,
+				blackColor,
+				extraColor,
+				targetX <= rightX ? -1 : 1,
+			);
 		}
 	}
 }

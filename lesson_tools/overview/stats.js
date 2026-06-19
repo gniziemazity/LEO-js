@@ -104,7 +104,7 @@ function renderStats() {
 				copyVals,
 				lessonTotals,
 				Math.max(...lessonTotals, 1) + 1,
-				{ color: THEME.red },
+				{ color: THEME.red, titleColor: THEME.red },
 			);
 		}
 
@@ -177,14 +177,23 @@ function renderStats() {
 					student: s,
 					assignment: a,
 				}));
-			addScatterCard(body, a, points, idx === 0);
+			addScatterCard(body, a, points);
 		});
 	}
 
 	if (py.assignments?.some((a) => a.ai_trouble != null)) {
 		const card = mkCard(body, "AI vs Trouble per Assignment", "wide");
-		let html =
-			'<table class="st-tbl"><tr><th>Assignment</th><th>AI+Trbl</th><th>AI+Pass</th><th>NoAI+Trbl</th><th>NoAI+Pass</th><th>Rate AI</th><th>Rate NoAI</th><th>OR</th><th>p(Fisher)</th></tr>';
+		const tbl = new StatTable([
+			"Assignment",
+			"AI+Trbl",
+			"AI+Pass",
+			"NoAI+Trbl",
+			"NoAI+Pass",
+			"Rate AI",
+			"Rate NoAI",
+			"OR",
+			"p(Fisher)",
+		]);
 		py.assignments.forEach((a) => {
 			if (a.ai_trouble == null) return;
 			const rAI =
@@ -195,14 +204,19 @@ function renderStats() {
 				a.no_ai_trouble + a.no_ai_pass > 0
 					? a.no_ai_trouble / (a.no_ai_trouble + a.no_ai_pass)
 					: null;
-			html +=
-				`<tr><td>${escHtml(a.name)}</td><td>${a.ai_trouble}</td><td>${a.ai_pass}</td>` +
-				`<td>${a.no_ai_trouble}</td><td>${a.no_ai_pass}</td>` +
-				`<td>${fmtPct(rAI)}</td><td>${fmtPct(rNoAI)}</td>` +
-				`<td>${a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
-				`<td>${a.fisher_p != null ? fmtP(a.fisher_p) : "—"}</td></tr>`;
+			tbl.row([
+				escHtml(a.name),
+				a.ai_trouble,
+				a.ai_pass,
+				a.no_ai_trouble,
+				a.no_ai_pass,
+				fmtPct(rAI),
+				fmtPct(rNoAI),
+				a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—",
+				a.fisher_p != null ? fmtP(a.fisher_p) : "—",
+			]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.ai_overall) {
@@ -217,46 +231,66 @@ function renderStats() {
 			html += `<tr>${row.map((v, j) => (i === 0 || j === 0 ? `<th>${escHtml(String(v))}</th>` : `<td>${fmtN(v)}</td>`)).join("")}</tr>`;
 		});
 		html += "</table><br>";
-		[
-			["Trouble rate (AI)", fmtPct(a.trouble_rate_ai)],
-			["Trouble rate (no AI)", fmtPct(a.trouble_rate_no_ai)],
-			[
-				"Odds ratio",
-				a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—",
-			],
-			["Fisher p", a.fisher_p != null ? fmtP(a.fisher_p) : "—"],
-			["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
-			["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
-		].forEach(([k, v]) => {
-			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
-		});
+		html += new KvList()
+			.addAll([
+				["Trouble rate (AI)", fmtPct(a.trouble_rate_ai)],
+				["Trouble rate (no AI)", fmtPct(a.trouble_rate_no_ai)],
+				[
+					"Odds ratio",
+					a.odds_ratio != null ? a.odds_ratio.toFixed(2) + "×" : "—",
+				],
+				["Fisher p", a.fisher_p != null ? fmtP(a.fisher_p) : "—"],
+				["χ²", a.chi2 != null ? a.chi2.toFixed(2) : "—"],
+				["χ² p", a.chi2_p != null ? fmtP(a.chi2_p) : "—"],
+			])
+			.html();
 		card.insertAdjacentHTML("beforeend", html);
 	}
 
 	if (py.assignments?.some((a) => a.traps?.length)) {
 		const card = mkCard(body, "Trap Hit Rate per Assignment", "wide");
-		let html =
-			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fired</th><th>Valid</th><th>Hit rate</th></tr>';
+		const tbl = new StatTable([
+			"Assignment",
+			"Trap",
+			"Fired",
+			"Valid",
+			"Hit rate",
+		]);
 		py.assignments.forEach((a) => {
 			if (!a.traps?.length) return;
 			a.traps.forEach((t, i) => {
-				html +=
-					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
-					`<td>${escHtml(t.label)}</td><td>${t.n_fired}</td>` +
-					`<td>${a.n_trap_valid ?? "—"}</td><td>${fmtPct(t.hit_rate)}</td></tr>`;
+				tbl.row([
+					i === 0 ? escHtml(a.name) : "",
+					escHtml(t.label),
+					t.n_fired,
+					a.n_trap_valid ?? "—",
+					fmtPct(t.hit_rate),
+				]);
 			});
-			html +=
-				`<tr><td></td><td><b>Any trap fired</b></td>` +
-				`<td>${a.any_trap_fired ?? "—"}</td><td>${a.n_trap_valid ?? "—"}</td>` +
-				`<td><b>${fmtPct(a.any_trap_rate)}</b></td></tr>`;
+			tbl.row([
+				"",
+				"<b>Any trap fired</b>",
+				a.any_trap_fired ?? "—",
+				a.n_trap_valid ?? "—",
+				`<b>${fmtPct(a.any_trap_rate)}</b>`,
+			]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.assignments?.some((a) => a.traps?.length)) {
 		const card = mkCard(body, "Trap Fired vs Trouble (per trap)", "wide");
-		let html =
-			'<table class="st-tbl"><tr><th>Assignment</th><th>Trap</th><th>Fire+Trbl</th><th>Fire+OK</th><th>Ok+Trbl</th><th>Ok+OK</th><th>OR</th><th>p(Fisher)</th><th>Grade fired→ok</th></tr>';
+		const tbl = new StatTable([
+			"Assignment",
+			"Trap",
+			"Fire+Trbl",
+			"Fire+OK",
+			"Ok+Trbl",
+			"Ok+OK",
+			"OR",
+			"p(Fisher)",
+			"Grade fired→ok",
+		]);
 		py.assignments.forEach((a) => {
 			if (!a.traps?.length) return;
 			a.traps.forEach((t, i) => {
@@ -264,17 +298,20 @@ function renderStats() {
 					t.fired_avg_grade != null && t.ok_avg_grade != null
 						? `${t.fired_avg_grade.toFixed(2)} → ${t.ok_avg_grade.toFixed(2)}`
 						: "—";
-				html +=
-					`<tr><td>${i === 0 ? escHtml(a.name) : ""}</td>` +
-					`<td>${escHtml(t.label)}</td>` +
-					`<td>${t.fired_trouble}</td><td>${t.fired_ok}</td>` +
-					`<td>${t.ok_trouble}</td><td>${t.safe_ok}</td>` +
-					`<td>${t.odds_ratio != null ? t.odds_ratio.toFixed(2) + "×" : "—"}</td>` +
-					`<td>${t.fisher_p != null ? fmtP(t.fisher_p) : "—"}</td>` +
-					`<td>${gradeCell}</td></tr>`;
+				tbl.row([
+					i === 0 ? escHtml(a.name) : "",
+					escHtml(t.label),
+					t.fired_trouble,
+					t.fired_ok,
+					t.ok_trouble,
+					t.safe_ok,
+					t.odds_ratio != null ? t.odds_ratio.toFixed(2) + "×" : "—",
+					t.fisher_p != null ? fmtP(t.fisher_p) : "—",
+					gradeCell,
+				]);
 			});
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.trap_summary) {
@@ -282,39 +319,38 @@ function renderStats() {
 		const card = mkCard(body, "Total Traps Fired (per student)", "sm");
 		const gc = t.grade_corr || {};
 		const pc = t.participation_corr || {};
-		let html = "";
-		[
-			["Students with decoded OBS", t.n_students ?? "—"],
-			[
-				"Mean traps fired",
-				t.mean_fired != null ? t.mean_fired.toFixed(2) : "—",
-			],
-			["Max traps fired", t.max_fired ?? "—"],
-			[
-				"Passed-course mean",
-				t.passed_mean != null ? t.passed_mean.toFixed(2) : "—",
-			],
-			[
-				"Failed-course mean",
-				t.failed_mean != null ? t.failed_mean.toFixed(2) : "—",
-			],
-			[
-				"Pass/fail Mann-Whitney p",
-				t.pass_fail_mannwhitney_p != null
-					? fmtP(t.pass_fail_mannwhitney_p)
-					: "—",
-			],
-			[
-				`→ Final grade (ρ, n=${gc.n ?? "—"})`,
-				`${fmtR(gc.rho)} ${gc.p_rho != null ? "p=" + fmtP(gc.p_rho) : ""}`,
-			],
-			[
-				`→ Participation (ρ, n=${pc.n ?? "—"})`,
-				`${fmtR(pc.rho)} ${pc.p_rho != null ? "p=" + fmtP(pc.p_rho) : ""}`,
-			],
-		].forEach(([k, v]) => {
-			html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--clr-border-mid)"><span>${escHtml(k)}</span><span>${v}</span></div>`;
-		});
+		const html = new KvList()
+			.addAll([
+				["Students with decoded OBS", t.n_students ?? "—"],
+				[
+					"Mean traps fired",
+					t.mean_fired != null ? t.mean_fired.toFixed(2) : "—",
+				],
+				["Max traps fired", t.max_fired ?? "—"],
+				[
+					"Passed-course mean",
+					t.passed_mean != null ? t.passed_mean.toFixed(2) : "—",
+				],
+				[
+					"Failed-course mean",
+					t.failed_mean != null ? t.failed_mean.toFixed(2) : "—",
+				],
+				[
+					"Pass/fail Mann-Whitney p",
+					t.pass_fail_mannwhitney_p != null
+						? fmtP(t.pass_fail_mannwhitney_p)
+						: "—",
+				],
+				[
+					`→ Final grade (ρ, n=${gc.n ?? "—"})`,
+					`${fmtR(gc.rho)} ${gc.p_rho != null ? "p=" + fmtP(gc.p_rho) : ""}`,
+				],
+				[
+					`→ Participation (ρ, n=${pc.n ?? "—"})`,
+					`${fmtR(pc.rho)} ${pc.p_rho != null ? "p=" + fmtP(pc.p_rho) : ""}`,
+				],
+			])
+			.html();
 		card.insertAdjacentHTML("beforeend", html);
 	}
 
@@ -324,18 +360,17 @@ function renderStats() {
 			"Follow Score vs Assignment Grade (per lesson)",
 			"sm",
 		);
-		let html =
-			'<table class="st-tbl"><tr><th>Lesson</th><th>r</th><th>ρ</th><th>p(ρ)</th><th>n</th></tr>';
+		const tbl = new StatTable(["Lesson", "r", "ρ", "p(ρ)", "n"]);
 		py.follow_vs_grade.forEach((f) => {
-			html += `<tr><td>${escHtml(f.name)}</td><td>${fmtR(f.r)}</td><td>${fmtR(f.rho)}</td><td>${fmtP(f.p_rho)}</td><td>${f.n}</td></tr>`;
+			tbl.row([escHtml(f.name), fmtR(f.r), fmtR(f.rho), fmtP(f.p_rho), f.n]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.typing) {
 		const t = py.typing;
 		const card = mkCard(body, "Typing Speed", "sm");
-		let html = '<table class="st-tbl">';
+		const tbl = new StatTable();
 		[
 			[
 				"Pre-course avg",
@@ -354,46 +389,56 @@ function renderStats() {
 					: "—",
 			],
 		].forEach(([k, v]) => {
-			html += `<tr><td>${escHtml(k)}</td><td>${v}</td></tr>`;
+			tbl.row([escHtml(k), v]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.self_eval) {
 		const se = py.self_eval,
 			c = se.corr_grade;
 		const card = mkCard(body, "Self-Evaluation", "sm");
-		let html = `<table class="st-tbl"><tr><td>Avg self-eval (1–5)</td><td>${se.avg != null ? se.avg.toFixed(2) : "—"}</td></tr>`;
-		if (c)
-			html +=
-				`<tr><td>r vs final grade</td><td>${fmtR(c.r)}</td></tr>` +
-				`<tr><td>ρ vs final grade</td><td>${fmtR(c.rho)}</td></tr>` +
-				`<tr><td>p(ρ)</td><td>${fmtP(c.p_rho)}</td></tr><tr><td>n</td><td>${c.n}</td></tr>`;
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		const tbl = new StatTable();
+		tbl.row([
+			"Avg self-eval (1–5)",
+			se.avg != null ? se.avg.toFixed(2) : "—",
+		]);
+		if (c) {
+			tbl.row(["r vs final grade", fmtR(c.r)]);
+			tbl.row(["ρ vs final grade", fmtR(c.rho)]);
+			tbl.row(["p(ρ)", fmtP(c.p_rho)]);
+			tbl.row(["n", c.n]);
+		}
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.correlations?.length) {
 		const card = mkCard(body, "Correlation Summary", "mid");
-		let html =
-			'<table class="st-tbl"><tr><th>Relationship</th><th>r</th><th>ρ</th><th>p(ρ)</th><th>n</th></tr>';
+		const tbl = new StatTable(["Relationship", "r", "ρ", "p(ρ)", "n"]);
 		py.correlations.forEach((c) => {
-			html += `<tr><td>${escHtml(c.label)}</td><td>${fmtR(c.r)}</td><td>${fmtR(c.rho)}</td><td>${fmtP(c.p_rho)}</td><td>${c.n}</td></tr>`;
+			tbl.row([
+				escHtml(c.label),
+				fmtR(c.r),
+				fmtR(c.rho),
+				fmtP(c.p_rho),
+				c.n,
+			]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	if (py.engagement?.length) {
 		const card = mkCard(body, "Engagement", "sm");
-		let html = '<table class="st-tbl">';
 		const _engLabel = {
 			Answers: "Students answering questions",
 			Questions: "Students asking questions",
 			Help: "Students accepting help",
 		};
+		const tbl = new StatTable();
 		py.engagement.forEach((e) => {
-			html += `<tr><td>${escHtml(_engLabel[e.label] ?? e.label)}</td><td>${e.n}</td></tr>`;
+			tbl.row([escHtml(_engLabel[e.label] ?? e.label), e.n]);
 		});
-		card.insertAdjacentHTML("beforeend", html + "</table>");
+		card.insertAdjacentHTML("beforeend", tbl.html());
 	}
 
 	renderCuratedMoments(body);

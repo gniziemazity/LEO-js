@@ -296,7 +296,7 @@ class TokenLogMixin:
         if written_leo:
             print(f'Written LEO diff marks for {written_leo} student(s) in {names_dir.name}/')
         if written_leo_star:
-            print(f'Written LEO* diff marks for {written_leo_star} student(s) in {names_dir.name}/')
+            print(f'Written Leo* diff marks for {written_leo_star} student(s) in {names_dir.name}/')
 
     def _write_alt_diff_marks(
         self,
@@ -417,12 +417,10 @@ class TokenLogMixin:
             print(f'Written {star_label} for {written_star} student(s) in {names_dir.name}/')
 
     def write_leo_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
-        if 'leo' in DISABLED_DIFF_MARK_VARIANTS:
-            return
         self._write_alt_diff_marks(
             names_dir, anon_ids_dir,
             _build_leo_diff_marks,
-            'leo', 'LEO diff marks', 'diff_marks_leo.json',
+            'leo_star', 'Leo* diff marks', 'diff_marks_leo_star.json',
             include_line_marks=False,
         )
 

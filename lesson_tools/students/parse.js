@@ -132,7 +132,6 @@ function parseStudentRows(remarksBuf) {
 				else if (ch === "H") _ih++;
 			}
 		}
-		const interactions = formatInteractionCounts(_ia, _iq, _ih);
 		const langPcts = {};
 		const langEvents = [];
 		const langParser = isSimilarity
@@ -177,7 +176,9 @@ function parseStudentRows(remarksBuf) {
 			followEvents,
 			remarksDesc,
 			remarks,
-			interactions,
+			total_a: _ia,
+			total_q: _iq,
+			total_h: _ih,
 			langPcts,
 			langEvents,
 			commentEvents,

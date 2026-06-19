@@ -17,7 +17,7 @@ from .similarity_measures import (
 )
 from .grade_merge import merge_manual_columns
 from .lesson_log import load_lesson_log
-from .token_log_mixin import TokenLogMixin
+from .token_log_mixin import TokenLogMixin, DISABLED_DIFF_MARK_VARIANTS
 from .report_excel import ExcelReportMixin
 
 
@@ -392,6 +392,24 @@ def main() -> None:
     excels_dir = current_dir / 'excels'
     excels_dir.mkdir(exist_ok=True)
 
+    for _b in DISABLED_DIFF_MARK_VARIANTS:
+        _stale = excels_dir / f'remarks_{_b}.xlsx'
+        if _stale.exists():
+            try:
+                _stale.unlink()
+            except OSError:
+                pass
+        if anon_ids_dir.is_dir():
+            for _sid_dir in anon_ids_dir.iterdir():
+                if not _sid_dir.is_dir():
+                    continue
+                _dm = _sid_dir / f'diff_marks_{_b}.json'
+                if _dm.exists():
+                    try:
+                        _dm.unlink()
+                    except OSError:
+                        pass
+
     prev_remarks = find_working_remarks(current_dir)
     run_ts = datetime.now().strftime('%Y%m%d-%H%M%S')
     remarks_path = excels_dir / f'remarks_{run_ts}.xlsx'
@@ -412,6 +430,8 @@ def main() -> None:
 
     generated_bases: List[str] = []
     for basis in _REMARKS_BASES:
+        if basis in DISABLED_DIFF_MARK_VARIANTS:
+            continue
         stats = checker.compute_basis_token_stats(
             f'diff_marks_{basis}.json', names_dir, anon_ids_dir,
         )
@@ -426,7 +446,7 @@ def main() -> None:
     if not checker._lesson_keypresses:
         checker._build_synth_teacher_timestamps()
         for basis in _REMARKS_BASES:
-            if basis in generated_bases:
+            if basis in generated_bases or basis in DISABLED_DIFF_MARK_VARIANTS:
                 continue
             basis_marks_by_sid: Dict[str, dict] = {}
             for sid_dir in anon_ids_dir.iterdir() if anon_ids_dir.is_dir() else []:
@@ -487,7 +507,7 @@ def main() -> None:
     if chosen_basis:
         print(f'Follow basis: {chosen_basis} -> {remarks_path.name}')
     else:
-        print(f'Follow basis: (default LEO* re-scored) -> {remarks_path.name}')
+        print(f'Follow basis: (default Leo* re-scored) -> {remarks_path.name}')
 
     print(f'Done — {remarks_path.name} generated'
           + (f' (backup: {backup_path.name})' if backup_path else '')

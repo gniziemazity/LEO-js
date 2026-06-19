@@ -1,20 +1,106 @@
 "use strict";
 
+class OverlayLayer {
+	constructor(pane, bg, fg) {
+		this.pane = pane;
+		this.bg = bg;
+		this.fg = fg;
+	}
+
+	static forPane(pane) {
+		if (!pane) return null;
+		let bg = pane.querySelector(":scope > .curated-bg-layer");
+		if (!bg) {
+			bg = document.createElement("div");
+			bg.className = "curated-bg-layer";
+			pane.insertBefore(bg, pane.firstChild);
+		}
+		let fg = pane.querySelector(":scope > .curated-fg-layer");
+		if (!fg) {
+			fg = document.createElement("div");
+			fg.className = "curated-fg-layer";
+			pane.appendChild(fg);
+		}
+		return new OverlayLayer(pane, bg, fg);
+	}
+
+	static clearAllRects(className) {
+		for (const layer of document.querySelectorAll(".curated-bg-layer")) {
+			for (const el of layer.querySelectorAll("." + className)) {
+				el.remove();
+			}
+		}
+	}
+
+	clearRects(className) {
+		for (const el of this.bg.querySelectorAll("." + className)) {
+			el.remove();
+		}
+	}
+
+	clearAll() {
+		this.bg.innerHTML = "";
+	}
+
+	addRect(className, { left, top, width, height }) {
+		const div = document.createElement("div");
+		div.className = className;
+		div.style.left = `${left}px`;
+		div.style.top = `${top}px`;
+		div.style.width = `${width}px`;
+		div.style.height = `${height}px`;
+		this.bg.appendChild(div);
+		return div;
+	}
+
+	static emptyBounds() {
+		return {
+			left: Infinity,
+			right: -Infinity,
+			top: Infinity,
+			bottom: -Infinity,
+		};
+	}
+
+	static expandBounds(bounds, r) {
+		if (r.left < bounds.left) bounds.left = r.left;
+		if (r.right > bounds.right) bounds.right = r.right;
+		if (r.top < bounds.top) bounds.top = r.top;
+		if (r.bottom > bounds.bottom) bounds.bottom = r.bottom;
+	}
+
+	static scanMarks(pane, side, positions, lineSet) {
+		const bounds = OverlayLayer.emptyBounds();
+		const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
+		for (const el of pane.querySelectorAll(sel)) {
+			const p = parseInt(el.getAttribute("data-leo-pos"), 10);
+			if (!positions.has(p)) continue;
+			const r = el.getBoundingClientRect();
+			if (r.width === 0 && r.height === 0) continue;
+			OverlayLayer.expandBounds(bounds, r);
+			if (lineSet) {
+				const lineEl = el.closest(".diff-line");
+				if (lineEl) lineSet.add(lineEl);
+			}
+		}
+		return bounds;
+	}
+
+	static paneRect(bounds, pane, pad) {
+		if (!Number.isFinite(bounds.left)) return null;
+		const paneRect = pane.getBoundingClientRect();
+		return {
+			pane,
+			left: bounds.left - paneRect.left - pad,
+			top: bounds.top - paneRect.top - pad,
+			width: bounds.right - bounds.left + 2 * pad,
+			height: bounds.bottom - bounds.top + 2 * pad,
+		};
+	}
+}
+
 function _curatedEnsurePaneOverlays(pane) {
-	if (!pane) return null;
-	let bg = pane.querySelector(":scope > .curated-bg-layer");
-	if (!bg) {
-		bg = document.createElement("div");
-		bg.className = "curated-bg-layer";
-		pane.insertBefore(bg, pane.firstChild);
-	}
-	let fg = pane.querySelector(":scope > .curated-fg-layer");
-	if (!fg) {
-		fg = document.createElement("div");
-		fg.className = "curated-fg-layer";
-		pane.appendChild(fg);
-	}
-	return { bg, fg };
+	return OverlayLayer.forPane(pane);
 }
 
 function _curatedGroupHasBox(kind) {
@@ -34,60 +120,37 @@ function _curatedBgRectKindClass(kind) {
 }
 
 function _curatedBounds() {
-	return {
-		left: Infinity,
-		right: -Infinity,
-		top: Infinity,
-		bottom: -Infinity,
-	};
+	return OverlayLayer.emptyBounds();
 }
 
 function _curatedExpand(bounds, r) {
-	if (r.left < bounds.left) bounds.left = r.left;
-	if (r.right > bounds.right) bounds.right = r.right;
-	if (r.top < bounds.top) bounds.top = r.top;
-	if (r.bottom > bounds.bottom) bounds.bottom = r.bottom;
+	OverlayLayer.expandBounds(bounds, r);
 }
 
 function _curatedScanMarks(pane, side, positions, lineSet) {
-	const bounds = _curatedBounds();
-	const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
-	for (const el of pane.querySelectorAll(sel)) {
-		const p = parseInt(el.getAttribute("data-leo-pos"), 10);
-		if (!positions.has(p)) continue;
-		const r = el.getBoundingClientRect();
-		if (r.width === 0 && r.height === 0) continue;
-		_curatedExpand(bounds, r);
-		if (lineSet) {
-			const lineEl = el.closest(".diff-line");
-			if (lineEl) lineSet.add(lineEl);
-		}
-	}
-	return bounds;
+	return OverlayLayer.scanMarks(pane, side, positions, lineSet);
 }
 
 function _curatedPaneRect(bounds, pane, pad) {
-	if (!Number.isFinite(bounds.left)) return null;
-	const paneRect = pane.getBoundingClientRect();
-	return {
-		pane,
-		left: bounds.left - paneRect.left - pad,
-		top: bounds.top - paneRect.top - pad,
-		width: bounds.right - bounds.left + 2 * pad,
-		height: bounds.bottom - bounds.top + 2 * pad,
-	};
+	return OverlayLayer.paneRect(bounds, pane, pad);
+}
+
+function _curatedPaneFor(side, file, activeOnly) {
+	const wrap = document.getElementById(`code-${side}`);
+	if (!wrap) return null;
+	for (const p of wrap.querySelectorAll(".code-pane")) {
+		if (
+			p.dataset.paneFile === file &&
+			(!activeOnly || p.classList.contains("active"))
+		) {
+			return p;
+		}
+	}
+	return null;
 }
 
 function _curatedSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
-	const wrap = document.getElementById(`code-${side}`);
-	if (!wrap) return null;
-	let pane = null;
-	for (const p of wrap.querySelectorAll(".code-pane")) {
-		if (p.dataset.paneFile === file) {
-			pane = p;
-			break;
-		}
-	}
+	const pane = _curatedPaneFor(side, file, false);
 	if (!pane) return null;
 	let bounds = _curatedBounds();
 	if (marks && marks.length) {
@@ -105,15 +168,7 @@ function _curatedSelectionBoundingRect(side, file, tokens, marks, pad = 0) {
 }
 
 function _curatedCollectGroupRect(group, pad = 6) {
-	const wrap = document.getElementById(`code-${group.side}`);
-	if (!wrap) return null;
-	let pane = null;
-	for (const p of wrap.querySelectorAll(".code-pane")) {
-		if (p.dataset.paneFile === group.file && p.classList.contains("active")) {
-			pane = p;
-			break;
-		}
-	}
+	const pane = _curatedPaneFor(group.side, group.file, true);
 	if (!pane) return null;
 	const positions = new Set();
 	for (const m of group.marks || []) positions.add(m.start);
@@ -193,7 +248,7 @@ function _curatedRefreshOverlays() {
 		if (!wrap) continue;
 		for (const pane of wrap.querySelectorAll(".code-pane")) {
 			const layers = _curatedEnsurePaneOverlays(pane);
-			if (layers) layers.bg.innerHTML = "";
+			if (layers) layers.clearAll();
 		}
 	}
 	const groups = _curatedGroupMarks();
@@ -205,14 +260,11 @@ function _curatedRefreshOverlays() {
 		if (!r) continue;
 		const layers = _curatedEnsurePaneOverlays(r.pane);
 		if (!layers) continue;
-		const div = document.createElement("div");
-		div.className = `curated-bg-rect ${_curatedBgRectKindClass(g.kind)}`;
+		const div = layers.addRect(
+			`curated-bg-rect ${_curatedBgRectKindClass(g.kind)}`,
+			r,
+		);
 		div.dataset.groupKey = `${g.side}|${g.file}|${g.lo}|${g.hi}`;
-		div.style.left = `${r.left}px`;
-		div.style.top = `${r.top}px`;
-		div.style.width = `${r.width}px`;
-		div.style.height = `${r.height}px`;
-		layers.bg.appendChild(div);
 		_curatedApplyGroupCountTitles(g, marks);
 	}
 	_curatedRebuildGroupRectCache();
@@ -305,15 +357,7 @@ function _curatedRefreshHoverBorder() {
 	}
 	if (!_curatedHoverGroupRange) return;
 	const { side, file, lo, hi } = _curatedHoverGroupRange;
-	const wrap = document.getElementById(`code-${side}`);
-	if (!wrap) return;
-	let pane = null;
-	for (const p of wrap.querySelectorAll(".code-pane")) {
-		if (p.dataset.paneFile === file) {
-			pane = p;
-			break;
-		}
-	}
+	const pane = _curatedPaneFor(side, file, false);
 	if (!pane) return;
 	const sel = `.leo-mark[data-leo-side="${side}"]:not([data-leo-ghost-offset])`;
 	for (const el of pane.querySelectorAll(sel)) {
@@ -369,23 +413,13 @@ function _curatedDrawActiveRect(range) {
 	if (!r) return;
 	const layers = _curatedEnsurePaneOverlays(r.pane);
 	if (!layers) return;
-	const div = document.createElement("div");
-	div.className = "curated-active-rect";
+	const div = layers.addRect("curated-active-rect", r);
 	const bg = _curatedActiveRectBg(range.marks);
 	if (bg) div.style.backgroundColor = bg;
-	div.style.left = `${r.left}px`;
-	div.style.top = `${r.top}px`;
-	div.style.width = `${r.width}px`;
-	div.style.height = `${r.height}px`;
-	layers.bg.appendChild(div);
 }
 
 function _curatedRefreshActiveOverlay() {
-	for (const layer of document.querySelectorAll(".curated-bg-layer")) {
-		for (const el of layer.querySelectorAll(".curated-active-rect")) {
-			el.remove();
-		}
-	}
+	OverlayLayer.clearAllRects("curated-active-rect");
 	if (_curatedActiveGhost) {
 		_curatedDrawGhostActiveRect(_curatedActiveGhost);
 		const partner = _curatedFindGhostPartner(_curatedActiveGhost);
@@ -454,11 +488,10 @@ function _curatedDrawGhostActiveRect(ghost) {
 	if (!layers) return;
 	const r = el.getBoundingClientRect();
 	const paneRect = pane.getBoundingClientRect();
-	const div = document.createElement("div");
-	div.className = "curated-active-rect is-dark-gray";
-	div.style.left = `${r.left - paneRect.left}px`;
-	div.style.top = `${r.top - paneRect.top}px`;
-	div.style.width = `${r.width}px`;
-	div.style.height = `${r.height}px`;
-	layers.bg.appendChild(div);
+	layers.addRect("curated-active-rect is-dark-gray", {
+		left: r.left - paneRect.left,
+		top: r.top - paneRect.top,
+		width: r.width,
+		height: r.height,
+	});
 }

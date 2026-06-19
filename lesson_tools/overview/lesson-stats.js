@@ -86,16 +86,18 @@ function renderLessonStats(body) {
 		const chart = new BarChart(box, {
 			yMin: 0,
 			yMax: Math.max(...all, 1) + 1,
-			tooltipCallback: (_l, val, si) => [
-				[
-					"Teacher Questions (Answered)",
-					"Teacher Questions (Unanswered)",
-					"Student Questions",
-					"Providing Help",
-				][si] +
-					": " +
-					Math.round(val),
-			],
+			tooltipCallback: (_l, val, si, gi) => {
+				if (si === 0 || si === 1) {
+					const a = tQAns[gi] ?? 0;
+					const b = tQ[gi] ?? 0;
+					return [`Answered Questions ${a}/${b}`];
+				}
+				return [
+					["", "", "Student Questions", "Provided Help"][si] +
+						": " +
+						Math.round(val),
+				];
+			},
 		});
 		chart.setData(lessonNames, [
 			{
@@ -140,7 +142,7 @@ function renderLessonStats(body) {
 				{ data: tJs, color: THEME.orange, label: "JS" },
 				{ data: tPy, color: THEME.black, label: "Py" },
 			],
-			{ yScale: 1.1 },
+			{ yScale: 1.1, legend: true },
 		);
 	}
 

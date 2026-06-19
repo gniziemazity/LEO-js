@@ -22,12 +22,29 @@ function _topicShowMap() {
 	return m;
 }
 
+function _overviewAssignmentSeps(hasFollow, ng) {
+	let lead = hasFollow ? "asn-div" : "asn-sep";
+	const take = () => {
+		const c = lead;
+		lead = "";
+		return c;
+	};
+	const seps = {};
+	if (ng.grade) seps.grade = take();
+	if (ng.status) seps.status = take();
+	seps.obs = take();
+	return seps;
+}
+
+function _followBarFrag(pct) {
+	return new FollowBar(pct).render();
+}
+
 function renderTable() {
 	const table = document.getElementById("grades-table");
 	table.innerHTML = "";
-	table.classList.toggle("hide-id", _hiddenCols.has("id"));
-	table.classList.toggle("hide-name", _hiddenCols.has("name"));
-	table.classList.toggle("hide-num", _hiddenCols.has("num"));
+	table.classList.remove("hide-id", "hide-name");
+	table.classList.add("hide-num");
 
 	const thead = document.createElement("thead");
 	const r1 = document.createElement("tr");
@@ -41,7 +58,6 @@ function renderTable() {
 	mkBase("col-id sticky-l");
 	mkBase("col-name sticky-l");
 	mkBase("col-num sticky-l");
-	for (let i = 0; i < _extraColumns.before.length; i++) mkBase();
 
 	const grp = (label, colspan, sep = false) => {
 		const th = document.createElement("th");
@@ -64,29 +80,15 @@ function renderTable() {
 		const th = col("", cls, sep);
 		const schema = _artefactSchema[(a.name || "").toLowerCase()];
 		if (Array.isArray(schema) && schema.length) {
-			const fmt = (code) =>
-				String(code).replace(/([^_]+)|_(\w+)/g, (m, main, sub) =>
-					main
-						? escHtml(main.toUpperCase())
-						: `<sub>${escHtml(sub.toLowerCase())}</sub>`,
-				);
 			th.innerHTML = schema
 				.map(
 					(e) =>
-						`<span style="display:inline-block;width:14px;margin:0 1px;` +
-						`text-align:center;font-size:9px;font-weight:600;text-transform:none">` +
-						fmt(e.code || e.key || "?") +
-						`</span>`,
+						`<span class="art-hdr-code">${artefactCodeHtml(
+							String(e.code || e.key || "?"),
+						)}</span>`,
 				)
 				.join("");
-			const tip = schema
-				.map(
-					(e) =>
-						`${artefactCodeHtml(String(e.code || e.key || "?"))}: ${escHtml(
-							e.label || "",
-						)}`,
-				)
-				.join("<br>");
+			const tip = buildArtefactSchemaTipHtml(schema);
 			if (tip) attachHtmlTip(th, tip);
 		} else {
 			th.textContent = "Obs";
@@ -97,19 +99,18 @@ function renderTable() {
 	col("ID", "col-id sticky-l");
 	col("Name", "col-name sticky-l");
 	col("#", "col-num sticky-l");
-	for (const name of _extraColumns.before) col(_extraLabel(name));
+	_extraColumns.before.forEach((name, i) =>
+		col(_extraLabel(name), "", i === 0),
+	);
+	if (_extraColumns.before.length)
+		grp("Pre-Course Stats", _extraColumns.before.length, true);
 
 	const topicShow = _topicShowMap();
 	for (const a of ASSIGNMENTS) {
 		const ng = topicShow[a.name] || { grade: false, status: false };
 		const asnExtra = (ng.grade ? 1 : 0) + (ng.status ? 1 : 0);
 		const lessonTopic = a.follow != null;
-		let lead = lessonTopic ? "asn-div" : "asn-sep";
-		const take = () => {
-			const c = lead;
-			lead = "";
-			return c;
-		};
+		const seps = _overviewAssignmentSeps(lessonTopic, ng);
 		if (lessonTopic) {
 			_attachStudentsLink(
 				grp(`${a.name} Lesson`, 2, true),
@@ -130,18 +131,19 @@ function renderTable() {
 				"assignments",
 			);
 		}
-		if (ng.grade) col("Grade", ("num " + take()).trim());
-		if (ng.status) col("Status", take());
-		obsHeader(a, take());
+		if (ng.grade) col("Grade", ("num " + seps.grade).trim());
+		if (ng.status) col("Status", seps.status);
+		obsHeader(a, seps.obs);
 	}
-	grp("", _extraColumns.after.length + 4, true);
+	grp("Totals", 3, true);
+	if (_extraColumns.after.length)
+		grp("Post-Course Stats", _extraColumns.after.length, true);
+	col("Follow%", "asn-sep");
+	col("Interactions", "col-int");
+	col("Comments");
 	_extraColumns.after.forEach((name, i) =>
 		col(_extraLabel(name), "", i === 0),
 	);
-	col("Avg", "", _extraColumns.after.length === 0);
-	col("Follow%");
-	col("Interactions");
-	col("Comments");
 
 	thead.appendChild(r1);
 	thead.appendChild(r2);
@@ -188,9 +190,11 @@ function renderTable() {
 		tr.appendChild(cell(s.id, "id-cell col-id sticky-l"));
 		tr.appendChild(cell(studentLabel(s), "name-cell col-name sticky-l"));
 		tr.appendChild(cell(s.number, "num col-num sticky-l"));
-		for (const name of _extraColumns.before) {
-			tr.appendChild(cell(fmtN(s.extraVals[name]), "num"));
-		}
+		_extraColumns.before.forEach((name, i) => {
+			tr.appendChild(
+				cell(fmtN(s.extraVals[name]), "num" + (i === 0 ? " asn-sep" : "")),
+			);
+		});
 
 		const makeLessonClickable = (td, entry) => {
 			if (entry.follow == null) return;
@@ -212,18 +216,12 @@ function renderTable() {
 		for (const entry of s.lessons) {
 			const ng = topicShow[entry.name] || { grade: false, status: false };
 			const gradeText = entry.grade == null ? "" : String(entry.grade);
-			let lead = entry.hasFollowCol ? "asn-div" : "asn-sep";
-			const take = () => {
-				const c = lead;
-				lead = "";
-				return c;
-			};
+			const seps = _overviewAssignmentSeps(entry.hasFollowCol, ng);
 			if (entry.hasFollowCol) {
 				const fc = document.createElement("td");
 				fc.className = "follow asn-sep";
 				if (entry.follow != null) {
-					fc.textContent = entry.follow.toFixed(0) + "%";
-					fc.style.color = followFg(entry.follow);
+					fc.appendChild(_followBarFrag(entry.follow));
 				}
 				makeLessonClickable(fc, entry);
 				tr.appendChild(fc);
@@ -238,56 +236,45 @@ function renderTable() {
 				tr.appendChild(lobs);
 			}
 			if (ng.grade) {
-				const gc = cell(gradeText, ("num " + take()).trim());
+				const gc = cell(gradeText, ("num " + seps.grade).trim());
 				makeAssignClickable(gc, entry);
 				tr.appendChild(gc);
 			}
 			if (ng.status) {
-				const sc = cell(entry.status || "", take());
+				const sc = cell(entry.status || "", seps.status);
 				makeAssignClickable(sc, entry);
 				tr.appendChild(sc);
 			}
-			const aobs = obsCell(entry, ("asn-col " + take()).trim());
+			const aobs = obsCell(entry, ("asn-col " + seps.obs).trim());
 			makeAssignClickable(aobs, entry);
 			tr.appendChild(aobs);
 		}
+
+		const pc = document.createElement("td");
+		pc.className = "num asn-sep";
+		if (s.participation != null) {
+			pc.appendChild(_followBarFrag(s.participation));
+		}
+		tr.appendChild(pc);
+
+		const intTd = document.createElement("td");
+		intTd.className = "col-int";
+		intTd.appendChild(
+			new InteractionCell(s.total_a, s.total_q, s.total_h).render(),
+		);
+		tr.appendChild(intTd);
+
+		tr.appendChild(
+			followAvg(s) >= 0
+				? cdiffCell(s.total_cdiff, cdiffMin, cdiffMax)
+				: cell("", "num"),
+		);
 
 		_extraColumns.after.forEach((name, i) => {
 			tr.appendChild(
 				cell(fmtN(s.extraVals[name]), "num" + (i === 0 ? " asn-sep" : "")),
 			);
 		});
-		tr.appendChild(
-			cell(
-				fmtN(s.avg_assignments, 1),
-				"num" + (_extraColumns.after.length === 0 ? " asn-sep" : ""),
-			),
-		);
-
-		const pc = document.createElement("td");
-		pc.className = "num";
-		if (s.participation != null) {
-			pc.textContent = s.participation.toFixed(0) + "%";
-			pc.style.color = followFg(s.participation);
-		} else {
-			pc.textContent = "—";
-			pc.style.color = THEME.codeMuted;
-		}
-		pc.style.fontWeight = "700";
-		tr.appendChild(pc);
-
-		tr.appendChild(
-			cell(
-				formatInteractionCounts(s.total_a, s.total_q, s.total_h),
-				"col-int",
-				true,
-			),
-		);
-		tr.appendChild(
-			followAvg(s) >= 0
-				? cdiffCell(s.total_cdiff, cdiffMin, cdiffMax)
-				: cell("", "num"),
-		);
 		tr.addEventListener("click", () => {
 			tbody
 				.querySelectorAll("tr.selected")
@@ -302,6 +289,7 @@ function renderTable() {
 	}
 
 	table.appendChild(tbody);
+	requestAnimationFrame(applyStickyColumns);
 }
 
 function _appendOverviewTotalsRow(tbody, rows, topicShow) {
@@ -320,20 +308,17 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 		return vs.length ? vs.reduce((a, b) => a + Number(b), 0) : null;
 	};
 
-	const obsCounts = (entries, kind) => {
-		const counts = [];
-		for (const s of cohort) {
-			const entry = (s.lessons || []).find((l) => l.name === entries.name);
-			if (!entry) continue;
-			const raw = kind === "lesson" ? entry.lesson_obs : entry.obs;
-			const code = (raw || "").trim();
-			if (!ARTEFACT_CODE_RE.test(code)) continue;
-			for (let i = 0; i < code.length; i++) {
-				counts[i] = (counts[i] || 0) + (code[i] === "1" ? 1 : 0);
-			}
-		}
-		return counts;
-	};
+	const obsCounts = (entries, kind) =>
+		countArtefactColumn(
+			cohort.map((s) => {
+				const entry = (s.lessons || []).find(
+					(l) => l.name === entries.name,
+				);
+				if (!entry) return "";
+				const raw = kind === "lesson" ? entry.lesson_obs : entry.obs;
+				return (raw || "").trim();
+			}),
+		);
 
 	const addCell = (content, cls = "") => {
 		const td = document.createElement("td");
@@ -355,11 +340,14 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 		addCell(`${nonAiCount} students`, "name-cell col-name sticky-l"),
 	);
 	tr.appendChild(addCell(null, "col-num sticky-l"));
-	for (const name of _extraColumns.before) {
+	_extraColumns.before.forEach((name, i) => {
 		tr.appendChild(
-			addCell(fmtAvg(mean(cohort.map((s) => s.extraVals[name])), 0), "num"),
+			addCell(
+				fmtAvg(mean(cohort.map((s) => s.extraVals[name])), 0),
+				"num" + (i === 0 ? " asn-sep" : ""),
+			),
 		);
-	}
+	});
 
 	for (const a of ASSIGNMENTS) {
 		const hasFollow = a.follow != null;
@@ -373,31 +361,23 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 
 		if (hasFollow) {
 			const followAvg = mean(entries.map((e) => e.follow));
-			const fc = addCell(fmtPct(followAvg), "follow asn-sep");
-			if (followAvg != null) {
-				fc.style.color = followFg(followAvg);
-				fc.style.fontWeight = "700";
-			}
+			const fc = addCell(null, "follow asn-sep");
+			if (followAvg != null) fc.appendChild(_followBarFrag(followAvg));
 			tr.appendChild(fc);
 			tr.appendChild(addCell(null));
 		}
 
-		let sepCls = hasFollow ? "asn-div" : "asn-sep";
-		const take = () => {
-			const c = sepCls;
-			sepCls = "";
-			return c;
-		};
+		const seps = _overviewAssignmentSeps(hasFollow, ng);
 		if (ng.grade) {
 			tr.appendChild(
 				addCell(
 					fmtAvg(mean(entries.map((e) => e.grade)), 1),
-					("num " + take()).trim(),
+					("num " + seps.grade).trim(),
 				),
 			);
 		}
 		if (ng.status) {
-			tr.appendChild(addCell(null, take()));
+			tr.appendChild(addCell(null, seps.status));
 		}
 
 		const asnObsCounts = obsCounts(a, "asn");
@@ -405,10 +385,29 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 		tr.appendChild(
 			addHtmlCell(
 				renderArtefactTotals(asnObsCounts, asnSchema),
-				("asn-col " + take()).trim(),
+				("asn-col " + seps.obs).trim(),
 			),
 		);
 	}
+
+	const partAvg = mean(cohort.map((s) => s.participation));
+	const pc = addCell(null, "num asn-sep");
+	if (partAvg != null) pc.appendChild(_followBarFrag(partAvg));
+	tr.appendChild(pc);
+
+	const intTd = document.createElement("td");
+	intTd.className = "col-int";
+	intTd.appendChild(
+		new InteractionCell(
+			sum(cohort.map((s) => s.total_a)),
+			sum(cohort.map((s) => s.total_q)),
+			sum(cohort.map((s) => s.total_h)),
+		).render(),
+	);
+	tr.appendChild(intTd);
+	tr.appendChild(
+		addCell(fmtAvg(sum(cohort.map((s) => s.total_cdiff)), 0), "num"),
+	);
 
 	_extraColumns.after.forEach((name, i) => {
 		tr.appendChild(
@@ -418,34 +417,6 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 			),
 		);
 	});
-	tr.appendChild(
-		addCell(
-			fmtAvg(mean(cohort.map((s) => s.avg_assignments)), 1),
-			"num" + (_extraColumns.after.length === 0 ? " asn-sep" : ""),
-		),
-	);
-
-	const partAvg = mean(cohort.map((s) => s.participation));
-	const pc = addCell(fmtPct(partAvg), "num");
-	if (partAvg != null) {
-		pc.style.color = followFg(partAvg);
-		pc.style.fontWeight = "700";
-	}
-	tr.appendChild(pc);
-
-	tr.appendChild(
-		addHtmlCell(
-			formatInteractionCounts(
-				sum(cohort.map((s) => s.total_a)),
-				sum(cohort.map((s) => s.total_q)),
-				sum(cohort.map((s) => s.total_h)),
-			),
-			"col-int",
-		),
-	);
-	tr.appendChild(
-		addCell(fmtAvg(sum(cohort.map((s) => s.total_cdiff)), 0), "num"),
-	);
 
 	tbody.appendChild(tr);
 }
@@ -494,41 +465,6 @@ function applyStickyColumns() {
 		});
 }
 
-function _loadHiddenCols() {
-	try {
-		const raw = localStorage.getItem("overview.hiddenCols");
-		if (!raw) return;
-		const arr = JSON.parse(raw);
-		if (!Array.isArray(arr)) return;
-		_hiddenCols.clear();
-		for (const k of arr) _hiddenCols.add(k);
-	} catch {}
-}
-
-function _saveHiddenCols() {
-	try {
-		localStorage.setItem(
-			"overview.hiddenCols",
-			JSON.stringify([..._hiddenCols]),
-		);
-	} catch {}
-}
-
-const _colsPanel = makeColsPanel({
-	colHideKeys: COL_HIDE_KEYS,
-	hiddenCols: _hiddenCols,
-	onChange: () => {
-		_saveHiddenCols();
-		if (_students.length) renderTable();
-		requestAnimationFrame(applyStickyColumns);
-	},
-});
-function _toggleColsPanel() {
-	_colsPanel.toggle();
-}
-
-_loadHiddenCols();
-
 function studentLabel(s) {
 	if (!s) return "";
 	return s.name;
@@ -543,12 +479,6 @@ function studentLabelWithId(s) {
 function fmtN(v, dec = 0) {
 	if (v == null || isNaN(v)) return null;
 	return dec > 0 ? (+v).toFixed(dec) : Math.round(+v).toString();
-}
-function followFg(pct) {
-	if (pct < 40) return THEME.red;
-	if (pct < 60) return THEME.orange;
-	if (pct < 75) return THEME.label;
-	return THEME.textStrong;
 }
 function obsText(raw) {
 	return !raw || !raw.trim() ? "" : raw.trim();
@@ -583,7 +513,11 @@ function _attachStudentsLink(th, name, group) {
 		th.classList.add("clickable");
 		th.title = `Open ${name} students`;
 		th.addEventListener("click", () => {
-			navigateToStudents({ lesson: key, group: "assignments" });
+			navigateToStudents({
+				lesson: key,
+				group: "assignments",
+				basis: _activeBasis,
+			});
 		});
 		return;
 	}
@@ -592,7 +526,11 @@ function _attachStudentsLink(th, name, group) {
 	th.classList.add("clickable");
 	th.title = `Open ${name} students`;
 	th.addEventListener("click", () => {
-		navigateToStudents({ lesson: key, group: "lessons" });
+		navigateToStudents({
+			lesson: key,
+			group: "lessons",
+			basis: _activeBasis,
+		});
 	});
 }
 
@@ -601,7 +539,11 @@ function _attachTimelineLink(th, name) {
 	th.classList.add("clickable");
 	th.title = `Open ${name} timeline`;
 	th.addEventListener("click", () => {
-		navigateToTimeline({ lesson: name, group: "lessons" });
+		navigateToTimeline({
+			lesson: name,
+			group: "lessons",
+			basis: _activeBasis,
+		});
 	});
 }
 
@@ -611,7 +553,20 @@ function openDiff(lesson, group, student, followPct) {
 		alert(`Cannot find anon folder for "${student.name}" (no ID).`);
 		return;
 	}
-	const label = followPct != null ? followPct.toFixed(0) + "%" : "assignment";
-	const title = `${student.id ? String(student.id) + ". " : ""}${studentLabel(student)} (${label})`;
-	navigateToDifferentiator({ lesson, group, id: sid, title });
+	const title = diffStudentTitle(
+		student.id,
+		studentLabel(student),
+		followPct,
+		{
+			decimals: 0,
+			fallback: "assignment",
+		},
+	);
+	navigateToDifferentiator({
+		lesson,
+		group,
+		id: sid,
+		title,
+		mode: basisToDiffMode(_activeBasis),
+	});
 }

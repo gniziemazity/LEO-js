@@ -40,11 +40,6 @@ class LogVisualizer {
 		this._totalDelay = 0;
 		this._skipRegions = [];
 
-		this._seeking = false;
-		this._seekWasPlaying = false;
-		this._dragFrac = 0;
-		this._dragTimer = null;
-
 		this._playMs = 0;
 		this._lastWall = 0;
 		this._rafId = null;
@@ -108,11 +103,18 @@ class LogVisualizer {
 		this.elSpeedLbl = document.getElementById("speed-label");
 		this.elAutoScroll = document.getElementById("chk-autoscroll");
 		this.elSkipPauses = document.getElementById("chk-skip-pauses");
+		if (this.elAutoScroll)
+			this.elAutoScroll.checked =
+				localStorage.getItem("sim-autoscroll") !== "off";
+		if (this.elSkipPauses)
+			this.elSkipPauses.checked =
+				localStorage.getItem("sim-skip-pauses") !== "off";
 		this.elTsLbl = document.getElementById("ts-label");
 		this.elCopyTs = document.getElementById("btn-copy-ts");
 		this.elProgLbl = document.getElementById("prog-label");
 		this.elSeekbar = document.getElementById("vis-seekbar");
 		this.elSeekFill = document.getElementById("vis-seekfill");
+		this._seekbar = new Seekbar(this, this.elSeekbar, this.elSeekFill);
 		this.elDevEditor = document.getElementById("vis-dev-editor");
 		this.elDevOuter = document.getElementById("vis-dev-outer");
 		this.elEventLog = document.getElementById("vis-event-log");
@@ -158,18 +160,22 @@ class LogVisualizer {
 			this.elSpeedLbl.textContent = `${this.speed.toFixed(0)}×`;
 		});
 
-		if (this.elSkipPauses)
-			this.elSkipPauses.addEventListener("change", () =>
-				this._renderSkipSegments(),
+		if (this.elAutoScroll)
+			this.elAutoScroll.addEventListener("change", () =>
+				localStorage.setItem(
+					"sim-autoscroll",
+					this.elAutoScroll.checked ? "on" : "off",
+				),
 			);
 
-		this.elSeekbar.addEventListener("pointerdown", (e) => {
-			this.elSeekbar.setPointerCapture(e.pointerId);
-			this._onSeekPress(e);
-		});
-		document.addEventListener("pointermove", (e) => this._onSeekDrag(e));
-		document.addEventListener("pointerup", (e) => this._onSeekRelease(e));
-		document.addEventListener("pointercancel", (e) => this._onSeekRelease(e));
+		if (this.elSkipPauses)
+			this.elSkipPauses.addEventListener("change", () => {
+				localStorage.setItem(
+					"sim-skip-pauses",
+					this.elSkipPauses.checked ? "on" : "off",
+				);
+				this._seekbar.renderSkips();
+			});
 
 		this._initHoverTooltip();
 		installDragDivider({
@@ -240,12 +246,7 @@ class LogVisualizer {
 	}
 
 	_renderInteractionHtml(it) {
-		const KIND = {
-			"teacher-question": { icon: "❓", label: "Teacher Question" },
-			"student-question": { icon: "🙋", label: "Student Question" },
-			"providing-help": { icon: "🤝", label: "Providing Help" },
-		};
-		const k = KIND[it.interaction] || {
+		const k = INTERACTION_KINDS[it.interaction] || {
 			icon: "💬",
 			label: it.interaction || "Interaction",
 		};
@@ -348,7 +349,7 @@ class LogVisualizer {
 		this._totalDelay = this._microCumDelay[micro.length];
 		this._tsOriginCum = this._microCumDelay[tsOriginIdx] || 0;
 		this._skipRegions = computeSkipRegions(this._microCumDelay, PAUSE_CAP_MS);
-		this._renderSkipSegments();
+		this._seekbar.renderSkips();
 
 		let targetMs = this._totalDelay;
 		if (seekTs != null && seekTs !== "") {
@@ -423,17 +424,12 @@ class LogVisualizer {
 			sessionStart: events[0]?.timestamp ?? Date.now(),
 			events,
 		};
-		const blob = new Blob([JSON.stringify(data, null, 2)], {
-			type: "application/json",
-		});
-		const a = document.createElement("a");
-		a.href = URL.createObjectURL(blob);
 		const base = (this._filePath || "keylog").replace(/\.[^.]+$/, "");
-		a.download = base + ".log";
-		document.body.appendChild(a);
-		a.click();
-		a.remove();
-		setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+		downloadBlob(
+			JSON.stringify(data, null, 2),
+			base + ".log",
+			"application/json",
+		);
 	}
 
 	_copyTimestampLink() {
@@ -513,13 +509,18 @@ class LogVisualizer {
 			cancelAnimationFrame(this._rafId);
 			this._rafId = null;
 		}
+		if (this._scrollRafId) {
+			cancelAnimationFrame(this._scrollRafId);
+			this._scrollRafId = null;
+		}
+		this._scrollTarget = null;
 		this.elPlay.textContent = "▶  Replay";
 		this.elPlay.style.background = "";
 	}
 
 	_raf() {
 		this._rafId = null;
-		if (!this.playing || this._seeking) return;
+		if (!this.playing || this._seekbar.seeking) return;
 		const now = performance.now();
 		const dtSec = (now - this._lastWall) / 1000;
 		this._lastWall = now;
@@ -560,7 +561,9 @@ class LogVisualizer {
 	}
 
 	_paintHud() {
-		this._drawSeekbar(this._totalDelay ? this._playMs / this._totalDelay : 0);
+		this._seekbar.drawFrac(
+			this._totalDelay ? this._playMs / this._totalDelay : 0,
+		);
 		if (this._tsOrigin) {
 			const ts = this._tsOrigin + (this._playMs - (this._tsOriginCum || 0));
 			this.elTsLbl.textContent = fmtTs(ts).slice(-12);
@@ -1017,7 +1020,7 @@ class LogVisualizer {
 			this._scrollTarget = null;
 			return;
 		}
-		if (Math.abs(target - c.scrollTop) > h * 2) {
+		if (!this.playing || Math.abs(target - c.scrollTop) > h * 2) {
 			if (this._scrollRafId) {
 				cancelAnimationFrame(this._scrollRafId);
 				this._scrollRafId = null;
@@ -1109,75 +1112,6 @@ class LogVisualizer {
 				return Math.min(r.end + 0.5, this._totalDelay);
 		}
 		return playMs;
-	}
-
-	_renderSkipSegments() {
-		if (!this.elSeekbar) return;
-		for (const el of this.elSeekbar.querySelectorAll(".seek-skip"))
-			el.remove();
-		if (!this.elSkipPauses || !this.elSkipPauses.checked || !this._totalDelay)
-			return;
-		const frag = document.createDocumentFragment();
-		for (const r of this._skipRegions) {
-			const seg = document.createElement("div");
-			seg.className = "seek-skip";
-			seg.style.left = `${(r.start / this._totalDelay) * 100}%`;
-			seg.style.width = `${((r.end - r.start) / this._totalDelay) * 100}%`;
-			frag.appendChild(seg);
-		}
-		this.elSeekbar.appendChild(frag);
-	}
-
-	_drawSeekbar(frac) {
-		this.elSeekFill.style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
-	}
-
-	_onSeekPress(e) {
-		if (!this.micro.length) return;
-		this._seeking = true;
-		this._seekWasPlaying = this.playing;
-		if (this.playing) this._pause();
-		const frac = e.offsetX / this.elSeekbar.offsetWidth;
-		this._playMs = frac * this._totalDelay;
-		this._drawSeekbar(frac);
-		if (this._tsOrigin) this._paintHud();
-	}
-
-	_onSeekDrag(e) {
-		if (!this._seeking) return;
-		const rect = this.elSeekbar.getBoundingClientRect();
-		const frac = Math.max(
-			0,
-			Math.min(1, (e.clientX - rect.left) / rect.width),
-		);
-		this._dragFrac = frac;
-		this._playMs = frac * this._totalDelay;
-		this._drawSeekbar(frac);
-		if (this._tsOrigin) this._paintHud();
-		if (!this._dragTimer)
-			this._dragTimer = setTimeout(() => {
-				this._dragTimer = null;
-				if (this._seeking)
-					this._seekToMs(this._dragFrac * this._totalDelay);
-			}, 150);
-	}
-
-	_onSeekRelease(e) {
-		if (!this._seeking) return;
-		if (this._dragTimer) {
-			clearTimeout(this._dragTimer);
-			this._dragTimer = null;
-		}
-		this._seeking = false;
-		let frac;
-		if (e.type === "pointercancel") {
-			frac = this._dragFrac;
-		} else {
-			const rect = this.elSeekbar.getBoundingClientRect();
-			frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-		}
-		this._seekToMs(frac * this._totalDelay);
-		if (this._seekWasPlaying) this._play();
 	}
 
 	_seekToMs(playMs) {

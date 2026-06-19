@@ -168,7 +168,7 @@
 				font-size: 11px !important;
 				font-family: inherit !important;
 				font-weight: 700;
-				color: var(--clr-label);
+				color: var(--clr-text-soft);
 				text-transform: uppercase;
 				letter-spacing: 0.5px;
 				white-space: nowrap;
@@ -186,9 +186,6 @@
 			thead th.sortable {
 				cursor: pointer;
 			}
-			thead th.sortable:hover {
-				background: var(--clr-row-hover);
-			}
 			thead th .sort-arrow {
 				display: inline-block;
 				margin-left: 4px;
@@ -201,9 +198,6 @@
 
 			tbody tr {
 				transition: background 0.08s;
-			}
-			tbody td {
-				border-bottom: 1px solid var(--clr-border-mid);
 			}
 
 			tbody tr.row-ai {
@@ -361,15 +355,24 @@
 				margin-left: auto;
 			}
 			#cols-btn {
-				padding: 3px 10px;
-				font-size: 12px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+				min-width: 92px;
+				padding: 1px 6px;
+				font-size: 11px;
 				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 3px;
 				background: var(--clr-bg);
+				color: var(--clr-text);
 				cursor: pointer;
 			}
 			#cols-btn:hover {
 				background: var(--clr-row-hover);
+			}
+			#cols-btn .cols-caret {
+				color: var(--clr-muted);
 			}
 			#cols-panel {
 				position: absolute;
@@ -395,24 +398,6 @@
 			}
 			#cols-panel label:hover {
 				color: var(--clr-accent);
-			}
-			.col-follow .follow-pct {
-				display: block;
-				font-weight: bold;
-				line-height: 1.1;
-				margin-bottom: 2px;
-				color: var(--clr-text);
-			}
-			.col-follow .follow-bar {
-				height: 5px;
-				background: var(--clr-bar-track);
-				border-radius: 2px;
-				overflow: hidden;
-			}
-			.col-follow .follow-bar-fill {
-				height: 100%;
-				background: var(--clr-text-strong);
-				border-radius: 2px;
 			}
 			#save-btn {
 				padding: 3px 12px;
@@ -455,43 +440,24 @@
 				overflow: visible;
 				text-overflow: clip;
 			}
-			.col-lang .lang-pct {
-				display: block;
-				font-weight: bold;
-				line-height: 1.1;
-				margin-bottom: 2px;
-				color: var(--clr-text);
-			}
-			.col-lang .lang-bar {
-				height: 5px;
-				background: var(--clr-bar-track);
-				border-radius: 2px;
-				overflow: hidden;
-			}
-			.col-lang .lang-bar-fill {
-				height: 100%;
-				border-radius: 2px;
-			}
-			.col-lang-html .lang-bar-fill {
-				background: var(--clr-red);
-			}
-			.col-lang-css .lang-bar-fill {
-				background: var(--clr-accent);
-			}
-			.col-lang-js .lang-bar-fill {
-				background: var(--clr-orange);
-			}
-			.col-lang-py .lang-bar-fill {
-				background: var(--clr-purple);
+			.col-lang:has(+ .col-lang) {
+				border-right: none;
 			}
 			.col-fingerprint {
 				width: auto;
-				padding: 0;
+				padding: 3px 4px;
 				height: 1px;
 				vertical-align: middle;
 				overflow: visible;
 				text-overflow: clip;
 				white-space: nowrap;
+			}
+			.col-fingerprint:has(+ .col-fingerprint) {
+				border-right: none;
+			}
+			.col-fp2,
+			.col-fp3 {
+				padding-left: 0;
 			}
 			.col-fingerprint .fp-wrap {
 				display: flex;
@@ -504,6 +470,9 @@
 				width: 160px;
 				height: 100%;
 				overflow: hidden;
+				border: 1px solid var(--clr-border);
+				border-radius: 2px;
+				background: var(--clr-bg);
 			}
 			.col-fingerprint .fp-mark {
 				position: absolute;
@@ -534,6 +503,9 @@
 				gap: 0;
 				width: fit-content;
 				height: 100%;
+				border: 1px solid var(--clr-border);
+				border-radius: 2px;
+				background: var(--clr-bg);
 			}
 			.col-fingerprint .fp2-byte,
 			.col-fingerprint .fp3-byte {
@@ -680,26 +652,6 @@
 				overflow: hidden;
 				text-overflow: ellipsis;
 				max-width: 40%;
-			}
-			.sp-toggle {
-				display: inline-flex;
-				gap: 2px;
-			}
-			.sp-toggle button {
-				padding: 2px 8px;
-				font-size: 11px;
-				border: 1px solid var(--clr-diff-btn-border);
-				background: var(--clr-bg);
-				color: var(--clr-text);
-				cursor: pointer;
-				border-radius: 3px;
-			}
-			.sp-toggle button:hover {
-				background: var(--clr-row-hover);
-			}
-			.sp-toggle button.active {
-				background: var(--clr-accent);
-				color: #fff;
 			}
 			#asgn-view-toggle {
 				margin-left: 12px;
@@ -941,7 +893,7 @@
 								type="button"
 								onclick="_toggleColsPanel()"
 							>
-								Columns ▾
+								Columns<span class="cols-caret">▾</span>
 							</button>
 							<div id="cols-panel" hidden></div>
 						</span>
@@ -1066,9 +1018,19 @@
 
 		<div id="tip"></div>
 
+		<script src="shared/tooltip.js"></script>
 		<script src="shared/diff-utils.js"></script>
+		<script src="shared/follow-bar.js"></script>
+		<script src="shared/interactions.js"></script>
+		<script src="shared/artefact.js"></script>
+		<script src="shared/mismatches.js"></script>
 		<script src="preview.js"></script>
 		<script src="shared/data-source.js"></script>
+		<script src="shared/http-file-like.js"></script>
+		<script src="shared/fs-data-source.js"></script>
+		<script src="shared/scoped-data-source.js"></script>
+		<script src="shared/http-data-source.js"></script>
+		<script src="shared/grades-data-source.js"></script>
 		<script src="shared/drag-divider.js"></script>
 		<script src="languages/profiles.js"></script>
 		<script src="shared/simulator-highlight.js"></script>

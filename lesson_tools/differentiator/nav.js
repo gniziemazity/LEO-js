@@ -46,7 +46,7 @@ async function _buildIdFolderMaps(ds) {
 			}
 		}
 	} catch {}
-	return { idToFolder };
+	return idToFolder;
 }
 
 function _updateStudentNavButtons() {
@@ -72,9 +72,9 @@ async function _loadFromUrlParams({ lesson, group, id, title }) {
 	if (!ds) return null;
 	await ds.load();
 
-	const { idToFolder } = await _buildIdFolderMaps(ds);
+	const idToFolder = await _buildIdFolderMaps(ds);
 	const prefix = "anon_ids/";
-	const folders = _extractStudentFolders(ds.files, "anon_ids/");
+	const folders = _extractStudentFolders(ds.files, prefix);
 	const folder =
 		folders.find((f) => f.toLowerCase() === String(id).toLowerCase()) ||
 		String(id);

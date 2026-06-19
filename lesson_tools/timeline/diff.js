@@ -2,9 +2,7 @@
 
 function openDifferentiatorWindow(student) {
 	if (!_lessonName || !student.id) return;
-	const followPct =
-		student.follow_pct != null ? student.follow_pct.toFixed(1) + "%" : "N/A";
-	const title = `${student.id ? student.id + ". " : ""}${student.name} (${followPct})`;
+	const title = diffStudentTitle(student.id, student.name, student.follow_pct);
 	navigateToDifferentiator({
 		lesson: _lessonName,
 		id: student.id,

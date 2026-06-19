@@ -74,7 +74,7 @@ function _curatedTokenCountSuffix(n) {
 	return n === 1 ? "1 Token" : `${n} Tokens`;
 }
 
-function _curatedShowControls(sel, x, y, opts) {
+function _curatedShowControls(sel, x, y) {
 	if (typeof _embedMode !== "undefined" && _embedMode) return;
 	if (typeof _hideLeoTooltip === "function") _hideLeoTooltip();
 	const el = _curatedEnsureControls();
@@ -318,8 +318,6 @@ function _curatedSelectGhostAndShow(ghost, x, y) {
 }
 
 function _curatedOnControlAction(action, sel, tokens, existing) {
-	const opts = {};
-
 	if (sel && sel.isGhost) {
 		if (action === "set-pair-ghost") {
 			const samePending =
@@ -382,7 +380,7 @@ function _curatedOnControlAction(action, sel, tokens, existing) {
 				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_curatedAddMark("teacher", sel.file, "missing", tokens, opts);
+				_curatedAddMark("teacher", sel.file, "missing", tokens);
 			}
 			break;
 		case "set-extra":
@@ -392,7 +390,7 @@ function _curatedOnControlAction(action, sel, tokens, existing) {
 				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_curatedAddMark("student", sel.file, "extra", tokens, opts);
+				_curatedAddMark("student", sel.file, "extra", tokens);
 			}
 			break;
 		case "set-ghost":
@@ -402,7 +400,7 @@ function _curatedOnControlAction(action, sel, tokens, existing) {
 				_curatedRemoveMark(sel.side, sel.file, m);
 			}
 			if (tokens.length) {
-				_curatedAddMark("student", sel.file, "ghost_extra", tokens, opts);
+				_curatedAddMark("student", sel.file, "ghost_extra", tokens);
 			}
 			break;
 		case "set-comment": {
@@ -420,7 +418,7 @@ function _curatedOnControlAction(action, sel, tokens, existing) {
 					!existingCommentStarts.has(t.start),
 			);
 			if (allTokens.length) {
-				_curatedAddMark(sel.side, sel.file, "comment", allTokens, opts);
+				_curatedAddMark(sel.side, sel.file, "comment", allTokens);
 			}
 			break;
 		}
@@ -507,6 +505,5 @@ function _curatedReselectAfterAction(prevSel) {
 		prevSel.rawHi,
 		0,
 		0,
-		{ preservePosition: true },
 	);
 }

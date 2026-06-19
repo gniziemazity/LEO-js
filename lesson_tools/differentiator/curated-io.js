@@ -231,26 +231,21 @@ function _curatedOpenSaveDialog() {
 
 	const form = document.createElement("div");
 	form.className = "csm-form";
-	form.style.minWidth = "300px";
 	form.innerHTML = `
-		<label style="display:block;margin-bottom:8px;">
+		<label>
 			File
-			<select id="csm-basis" style="width:100%;margin-top:4px;padding:6px;
-				background:var(--clr-page);color:var(--clr-text);
-				border:1px solid var(--clr-border);border-radius:6px;">
+			<select id="csm-basis">
 				<option value="ideal">ideal</option>
 				<option value="minimal">minimal</option>
 				<option value="custom">Custom…</option>
 			</select>
 		</label>
-		<label id="csm-custom-row" style="display:none;margin-bottom:8px;">
-			Differentiating part <span style="opacity:0.7;">(diff_marks_&lt;name&gt;.json)</span>
-			<input id="csm-custom" type="text" placeholder="name" style="width:100%;
-				margin-top:4px;padding:6px;background:var(--clr-page);color:var(--clr-text);
-				border:1px solid var(--clr-border);border-radius:6px;">
+		<label id="csm-custom-row" style="display:none;">
+			Differentiating part <span class="csm-hint">(diff_marks_&lt;name&gt;.json)</span>
+			<input id="csm-custom" type="text" placeholder="name">
 		</label>
-		<div id="csm-status" style="display:none;font-weight:600;margin:8px 0;"></div>
-		<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+		<div id="csm-status"></div>
+		<div class="csm-actions">
 			<button id="csm-copy" class="btn-edit">📋 Copy</button>
 			<button id="csm-download" class="btn-edit">⬇ Download</button>
 			<button id="csm-save" class="btn-edit">💾 Save</button>

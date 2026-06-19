@@ -5,15 +5,7 @@ let _curatedControlsEl = null;
 let _curatedPending = null;
 let _curatedFloatWin = null;
 let _curatedPairHoverMarkEls = [];
-const _curatedTokenCache = new Map();
-const _curatedCommentRangeCache = new Map();
 const _curatedFloaters = new Map();
-
-let _curatedWorking = {};
-
-let _curatedUndoStack = [];
-let _curatedRedoStack = [];
-const _CURATED_HISTORY_LIMIT = 100;
 
 const _CURATED_IGNORE_SELECTORS = [
 	"#curated-controls",
@@ -36,26 +28,16 @@ function _curatedIsBackgroundClick(target) {
 function _curatedEnsureButtons() {
 	const bar = document.getElementById("bottom-bar");
 	if (!bar || document.getElementById("btn-preview-curated")) return;
-	const make = (id, text, onClick, extraClass) => {
+	const make = (id, text, onClick) => {
 		const b = document.createElement("button");
 		b.id = id;
-		b.className = "btn-edit" + (extraClass ? " " + extraClass : "");
+		b.className = "btn-edit";
 		b.textContent = text;
 		b.addEventListener("click", onClick);
 		bar.appendChild(b);
 	};
-	make(
-		"btn-savefolder-curated",
-		"💾 Save",
-		_curatedOpenSaveDialog,
-		"curated-only-btn",
-	);
-	make(
-		"btn-preview-curated",
-		"🪄 Corrections",
-		_curatedPreview,
-		"curated-only-btn",
-	);
+	make("btn-savefolder-curated", "💾 Save", _curatedOpenSaveDialog);
+	make("btn-preview-curated", "🪄 Corrections", _curatedPreview);
 
 	const parity = document.createElement("div");
 	parity.id = "curated-parity-line";
@@ -81,21 +63,15 @@ function _curatedRenderPreservingScroll() {
 }
 
 function _curatedWorkingKey() {
-	return _diffMode == null ? "" : _diffMode;
+	return _curatedSel.workingKey();
 }
 
 function _curatedSwitchToCuratedMarks() {
-	_currentMarksEntry = _curatedWorking[_curatedWorkingKey()] ?? null;
-	_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
-	_studentMarks = _currentMarksEntry?.student_files ?? null;
+	_curatedSel.switchToCuratedMarks();
 }
 
 function _curatedResetForNewStudent() {
-	_curatedWorking = {};
-	_curatedUndoStack = [];
-	_curatedRedoStack = [];
-	_curatedTokenCache.clear();
-	_curatedCommentRangeCache.clear();
+	_curatedSel.reset();
 }
 
 let _curatedListenersInstalled = false;
@@ -125,18 +101,18 @@ function _curatedStripExtentFields(filesObj) {
 }
 
 function _curatedEnable() {
-	_curatedTokenCache.clear();
-	_curatedCommentRangeCache.clear();
+	_curatedSel.tokenCache.clear();
+	_curatedSel.commentRangeCache.clear();
 	_curatedCancelPending();
 	_curatedClearPairHover();
 	_curatedClearGroupHover();
 	_curatedHideControls();
 	_curatedClearPairConnectors();
 	_curatedActiveGroupRange = null;
-	_curatedUndoStack = [];
-	_curatedRedoStack = [];
+	_curatedSel.undoStack = [];
+	_curatedSel.redoStack = [];
 	const key = _curatedWorkingKey();
-	if (!_curatedWorking[key]) {
+	if (!_curatedSel.working[key]) {
 		const base = _allMarks[key] ?? null;
 		const seed = {
 			token_matching: key === "minimal" ? "minimal" : "ideal",
@@ -160,7 +136,7 @@ function _curatedEnable() {
 		const cloned = _deepClone(seed);
 		_curatedStripExtentFields(cloned.teacher_files);
 		_curatedStripExtentFields(cloned.student_files);
-		_curatedWorking[key] = cloned;
+		_curatedSel.working[key] = cloned;
 	}
 
 	_curatedEditMode = true;
@@ -247,50 +223,17 @@ function _curatedSetFilePair(studentFile, teacherFile) {
 }
 
 function _curatedSnapshot() {
-	const key = _curatedWorkingKey();
-	const cur = _curatedWorking[key];
-	if (!cur) return;
-	_curatedUndoStack.push({ key, state: _deepClone(cur) });
-	if (_curatedUndoStack.length > _CURATED_HISTORY_LIMIT)
-		_curatedUndoStack.shift();
-	_curatedRedoStack = [];
+	_curatedSel.snapshot();
 }
 
 function _curatedApplyHistoryState(entry) {
-	if (!entry) return;
-	_curatedWorking[entry.key] = _deepClone(entry.state);
-	_curatedCancelPending();
-	_curatedClearPairHover();
-	_curatedClearGroupHover();
-	_curatedHideControls();
-	_curatedClearPairConnectors();
-	_curatedSwitchToCuratedMarks();
-	_curatedRenderPreservingScroll();
-	_updateTitleScore();
+	_curatedSel.applyHistoryState(entry);
 }
 
 function _curatedUndo() {
-	if (!_curatedUndoStack.length) return;
-	const key = _curatedWorkingKey();
-	const cur = _curatedWorking[key];
-	const entry = _curatedUndoStack.pop();
-	if (cur) {
-		_curatedRedoStack.push({ key, state: _deepClone(cur) });
-		if (_curatedRedoStack.length > _CURATED_HISTORY_LIMIT)
-			_curatedRedoStack.shift();
-	}
-	_curatedApplyHistoryState(entry);
+	_curatedSel.undo();
 }
 
 function _curatedRedo() {
-	if (!_curatedRedoStack.length) return;
-	const key = _curatedWorkingKey();
-	const cur = _curatedWorking[key];
-	const entry = _curatedRedoStack.pop();
-	if (cur) {
-		_curatedUndoStack.push({ key, state: _deepClone(cur) });
-		if (_curatedUndoStack.length > _CURATED_HISTORY_LIMIT)
-			_curatedUndoStack.shift();
-	}
-	_curatedApplyHistoryState(entry);
+	_curatedSel.redo();
 }

@@ -14,16 +14,14 @@ let _barCharts = [];
 let _pyStats = null;
 let _artefactSchema = {};
 let _lessonStats = null;
-const COL_HIDE_KEYS = [
-	{ key: "id", label: "ID" },
-	{ key: "name", label: "Name" },
-	{ key: "num", label: "Number" },
-];
-const _hiddenCols = new Set(["num"]);
-let _hideExcluded = true;
+const _hideExcluded = true;
 let _hideCopiers = true;
 let _hideArtefacts = true;
 
+let _overviewDs = null;
+let _basisFiles = new Map();
+let _activeBasis = null;
+let _baseFollowSnapshot = null;
+
 let _clusterCharts = [];
-let _clusterSeed = 42;
 let _clusterSort = "total-follow";

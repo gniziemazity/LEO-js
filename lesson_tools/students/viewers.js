@@ -113,13 +113,7 @@ async function _downloadPlan() {
 		alert("No lesson_plan.zip found for this lesson.");
 		return;
 	}
-	const a = document.createElement("a");
-	a.href = URL.createObjectURL(blob);
-	a.download = fname;
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-	setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+	downloadBlob(blob, fname);
 }
 
 async function _renderAssignment() {
@@ -179,6 +173,7 @@ function _reloadStudentDiff(frame, student) {
 			group: _groupFolder(),
 			id: student.id,
 			title: _diffTitleFor(student),
+			mode: basisToDiffMode(_activeBasis),
 		}) +
 		"&embed=1" +
 		previewParam;
@@ -260,7 +255,11 @@ function _ensureViewers() {
 	);
 	_vEl("asgn-view-code").addEventListener("click", () => _setAsgnView("code"));
 	_vEl("asgn-timeline").addEventListener("click", () =>
-		navigateToTimeline({ lesson: _lessonName, group: _groupFolder() }),
+		navigateToTimeline({
+			lesson: _lessonName,
+			group: _groupFolder(),
+			basis: _activeBasis,
+		}),
 	);
 	_vEl("asgn-simulator").addEventListener("click", () =>
 		navigateToSimulator({ lesson: _lessonName, group: _groupFolder() }),

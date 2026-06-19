@@ -1,4 +1,7 @@
 "use strict";
+const _GHOST_TOKEN_RE = newTokenRegex();
+const _diffEmbedCache = new Map();
+const _DIFF_EMBED_TAG_LANG = { script: "js", style: "css" };
 
 function _diffMissingColorFor(fileName) {
 	if (typeof _diffMissingLangColor !== "undefined" && !_diffMissingLangColor)
@@ -6,28 +9,21 @@ function _diffMissingColorFor(fileName) {
 	return langColorFor(getFileExt(fileName)) || MARK_COLORS.missing;
 }
 
-const _DIFF_EMBED_TAG_LANG = { script: "js", style: "css" };
-const _diffEmbedCache = new Map();
-
 function _diffEmbeddedRangesFor(text) {
 	if (!text) return [];
 	const cached = _diffEmbedCache.get(text);
 	if (cached !== undefined) return cached;
 	const ranges = [];
-	const openRe = /<\s*(script|style)\b[^>]*>/gi;
-	let m;
-	while ((m = openRe.exec(text)) !== null) {
-		const tag = m[1].toLowerCase();
-		const innerStart = m.index + m[0].length;
-		const closeRe = new RegExp(
-			`<\\/\\s*${tag}\\s*>|<\\s*\\\\\\s*\\/?\\s*${tag}\\s*>|\\/\\s*${tag}\\s*>`,
-			"i",
-		);
-		const sub = text.slice(innerStart);
-		const cm = sub.match(closeRe);
-		const innerEnd = cm ? innerStart + cm.index : text.length;
-		ranges.push([innerStart, innerEnd, _DIFF_EMBED_TAG_LANG[tag]]);
-		openRe.lastIndex = cm ? innerEnd + cm[0].length : text.length;
+	const LP = window.LanguageProfiles;
+	const htmlProfile = LP && LP.getProfile ? LP.getProfile("html") : null;
+	if (htmlProfile && LP.embeddedTagRanges) {
+		const byTag = LP.embeddedTagRanges(htmlProfile, text);
+		for (const [tag, spans] of Object.entries(byTag)) {
+			const lang = _DIFF_EMBED_TAG_LANG[tag];
+			if (!lang) continue;
+			for (const [lo, hi] of spans) ranges.push([lo, hi, lang]);
+		}
+		ranges.sort((a, b) => a[0] - b[0]);
 	}
 	_diffEmbedCache.set(text, ranges);
 	return ranges;
@@ -90,11 +86,14 @@ function _renderDiffLine(lineIdx, ctx) {
 	const lineGhosts = fileGhosts
 		.filter((g) => g.pos >= lineStart && g.pos < lineEnd)
 		.map((g) => ({ ...g, _abs_pos: g.pos, pos: g.pos - lineStart }));
+	const _isLastLine = lineIdx + 1 >= lineStarts.length;
 	const lineAnchors = fileAnchors
 		.filter(
 			(a) =>
 				a.pos >= lineStart &&
-				(anchorEndInclusive ? a.pos <= lineEnd : a.pos < lineEnd),
+				(anchorEndInclusive && _isLastLine
+					? a.pos <= lineEnd
+					: a.pos < lineEnd),
 		)
 		.map((a) => ({ ...a, _abs_pos: a.pos, pos: a.pos - lineStart }));
 	const bgMark =
@@ -517,8 +516,6 @@ function sortFileNames(names, preferReconstructed) {
 	}
 	return [...html, ...css, ...js, ...py, ...other];
 }
-
-const _GHOST_TOKEN_RE = newTokenRegex();
 
 function _renderGhostBlob(ghost, tokensTbl) {
 	const text = ghost.text;

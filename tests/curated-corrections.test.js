@@ -41,6 +41,9 @@ function __setState(teacher, student, marks, mode) {
 	_studentFiles = student;
 	_curatedWorking = marks;
 	_diffMode = mode || "ideal";
+	_curatedSel.working = marks;
+	_curatedSel.tokenCache.clear();
+	_curatedSel.commentRangeCache.clear();
 	_curatedTokenCache.clear();
 	_curatedCommentRangeCache.clear();
 	_curatedFloatWin = null;

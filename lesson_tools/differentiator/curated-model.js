@@ -1,5 +1,377 @@
 "use strict";
 
+class CuratedSelection {
+	constructor() {
+		this.working = {};
+		this.undoStack = [];
+		this.redoStack = [];
+		this.tokenCache = new Map();
+		this.commentRangeCache = new Map();
+		this.HISTORY_LIMIT = 100;
+	}
+
+	workingKey() {
+		return _diffMode == null ? "" : _diffMode;
+	}
+
+	reset() {
+		this.working = {};
+		this.undoStack = [];
+		this.redoStack = [];
+		this.tokenCache.clear();
+		this.commentRangeCache.clear();
+	}
+
+	srcText(side, file) {
+		const text =
+			(side === "teacher" ? _teacherFiles : _studentFiles)[file] || "";
+		return text.replace(/\r\n/g, "\n");
+	}
+
+	tokensForFile(side, file) {
+		const key = side + ":" + file;
+		if (this.tokenCache.has(key)) return this.tokenCache.get(key);
+		const text = this.srcText(side, file);
+		const out = [];
+		const re = newTokenRegex();
+		let m;
+		while ((m = re.exec(text)) !== null) {
+			out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });
+		}
+		this.tokenCache.set(key, out);
+		return out;
+	}
+
+	commentRanges(side, file) {
+		const key = side + ":" + file;
+		if (this.commentRangeCache.has(key))
+			return this.commentRangeCache.get(key);
+		const text = this.srcText(side, file);
+		const ranges = _diffCommentRanges(text, file);
+		this.commentRangeCache.set(key, ranges);
+		return ranges;
+	}
+
+	marks() {
+		return this.working[this.workingKey()] ?? null;
+	}
+
+	fileMarks(side, file) {
+		const t = this.marks();
+		const sideKey = side === "teacher" ? "teacher_files" : "student_files";
+		if (!t[sideKey]) t[sideKey] = {};
+		if (!t[sideKey][file]) t[sideKey][file] = [];
+		return t[sideKey][file];
+	}
+
+	findMarks(side, file, lo, hi) {
+		return this.fileMarks(side, file).filter(
+			(m) =>
+				m.start < hi &&
+				m.end > lo &&
+				(m.label === "missing" ||
+					m.label === "extra" ||
+					m.label === "ghost_extra" ||
+					m.label === "comment"),
+		);
+	}
+
+	addMark(side, file, label, tokens) {
+		const arr = this.fileMarks(side, file);
+		const commentSpans =
+			label === "comment"
+				? null
+				: new Set(
+						arr
+							.filter((m) => m.label === "comment")
+							.map((m) => `${m.start}-${m.end}`),
+					);
+		for (const t of tokens) {
+			if (commentSpans && commentSpans.has(`${t.start}-${t.end}`)) continue;
+			arr.push({ token: t.token, label, start: t.start, end: t.end });
+		}
+		arr.sort((a, b) => a.start - b.start);
+	}
+
+	removeMark(side, file, mark) {
+		const arr = this.fileMarks(side, file);
+		const i = arr.indexOf(mark);
+		if (i >= 0) arr.splice(i, 1);
+		if (!mark.paired_with) return;
+		const otherSide = side === "teacher" ? "student" : "teacher";
+		for (const m of this.fileMarks(otherSide, mark.paired_with.file)) {
+			if (
+				m.paired_with &&
+				m.paired_with.start === mark.start &&
+				m.paired_with.token === mark.token
+			) {
+				delete m.paired_with;
+			}
+		}
+	}
+
+	clearPair(mark, side) {
+		if (!mark || !mark.paired_with) return;
+		if (mark.paired_with.ghost) {
+			delete mark.paired_with;
+			return;
+		}
+		const otherSide = side === "teacher" ? "student" : "teacher";
+		const pw = mark.paired_with;
+		const partners = this.fileMarks(otherSide, pw.file).filter(
+			(m) => m.paired_with && m.start >= pw.start && m.start <= pw.end,
+		);
+		let backFile = null;
+		let backLo = Infinity;
+		let backHi = -Infinity;
+		for (const p of partners) {
+			backFile = p.paired_with.file;
+			backLo = Math.min(backLo, p.paired_with.start);
+			backHi = Math.max(backHi, p.paired_with.end);
+			delete p.paired_with;
+		}
+		if (backFile != null) {
+			for (const m of this.fileMarks(side, backFile)) {
+				if (m.paired_with && m.start >= backLo && m.start <= backHi)
+					delete m.paired_with;
+			}
+		}
+		delete mark.paired_with;
+	}
+
+	setSwapPair(missingMark, extraMark, missingFile, extraFile) {
+		this.clearPair(missingMark, "teacher");
+		this.clearPair(extraMark, "student");
+		missingMark.paired_with = {
+			file: extraFile,
+			start: extraMark.start,
+			end: extraMark.end,
+			token: extraMark.token,
+			label: "extra",
+		};
+		extraMark.paired_with = {
+			file: missingFile,
+			start: missingMark.start,
+			end: missingMark.end,
+			token: missingMark.token,
+			label: "missing",
+		};
+		delete missingMark.insert_at;
+		delete extraMark.move_to;
+	}
+
+	groupKey(m) {
+		if (m.label === "missing") {
+			if (m.insert_at) return `mi|${m.insert_at.file}|${m.insert_at.pos}`;
+			return `m|free`;
+		}
+		if (m.label === "extra") {
+			if (m.paired_with) {
+				return `er|${m.paired_with.file}|${m.paired_with.start}`;
+			}
+			if (m.move_to) return `em|${m.move_to.file}|${m.move_to.pos}`;
+			return `e`;
+		}
+		if (m.label === "ghost_extra") return `ge`;
+		return `?|${m.label}`;
+	}
+
+	makeGroup(side, file, m) {
+		const g = { side, file, marks: [], lo: Infinity, hi: -Infinity };
+		if (m.label === "missing") {
+			g.kind = m.insert_at ? "missing-insert" : "missing";
+			if (m.insert_at) {
+				g.insertFile = m.insert_at.file;
+				g.insertPos = m.insert_at.pos;
+			}
+		} else if (m.label === "ghost_extra") {
+			g.kind = "ghost_extra";
+		} else {
+			if (m.paired_with) {
+				g.kind = "extra-replace";
+				g.pairFile = m.paired_with.file;
+				g.pairLo = m.paired_with.start;
+				g.pairHi = m.paired_with.end;
+			} else if (m.move_to) {
+				g.kind = "extra-move";
+				g.moveFile = m.move_to.file;
+				g.movePos = m.move_to.pos;
+			} else {
+				g.kind = "extra";
+			}
+		}
+		return g;
+	}
+
+	groupMarks() {
+		const t = this.marks();
+		if (!t) return [];
+		const groups = [];
+
+		for (const [side, sideKey] of [
+			["teacher", "teacher_files"],
+			["student", "student_files"],
+		]) {
+			const filesObj = t[sideKey] || {};
+			for (const [file, marks] of Object.entries(filesObj)) {
+				const sorted = [...marks].sort((a, b) => a.start - b.start);
+				const allTokens = this.tokensForFile(side, file);
+				const commentPositions = new Set();
+				for (const m of sorted) {
+					if (m.label === "comment") commentPositions.add(m.start);
+				}
+				const insertPositions = new Set();
+				if (side === "student") {
+					const tFiles = t.teacher_files || {};
+					for (const tMarks of Object.values(tFiles)) {
+						for (const tm of tMarks || []) {
+							if (tm.label !== "missing") continue;
+							if (tm.paired_with) continue;
+							const ia = tm.insert_at;
+							if (ia && ia.file === file) insertPositions.add(ia.pos);
+						}
+					}
+					const sFiles = t.student_files || {};
+					for (const sMarks of Object.values(sFiles)) {
+						for (const sm of sMarks || []) {
+							if (sm.label !== "extra") continue;
+							if (sm.paired_with) continue;
+							const mt = sm.move_to;
+							if (mt && mt.file === file) insertPositions.add(mt.pos);
+						}
+					}
+				}
+				const hasObstacleInGap = (lo, hi) => {
+					if (lo > hi) return false;
+					for (const tok of allTokens) {
+						if (tok.start < lo) continue;
+						if (tok.start >= hi) break;
+						if (!commentPositions.has(tok.start)) return true;
+					}
+					for (const pos of insertPositions) {
+						if (pos >= lo && pos <= hi) return true;
+					}
+					return false;
+				};
+
+				let cur = null,
+					curKey = null;
+				const flush = () => {
+					if (cur) groups.push(cur);
+					cur = null;
+					curKey = null;
+				};
+
+				for (const m of sorted) {
+					if (
+						m.label !== "missing" &&
+						m.label !== "extra" &&
+						m.label !== "ghost_extra"
+					)
+						continue;
+					if (side === "teacher" && m.label === "missing" && m.paired_with)
+						continue;
+
+					const key = this.groupKey(m);
+					const merge =
+						cur && curKey === key && !hasObstacleInGap(cur.hi, m.start);
+
+					if (!merge) {
+						flush();
+						cur = this.makeGroup(side, file, m);
+						curKey = key;
+					}
+
+					if (m.paired_with && cur.kind && cur.kind.endsWith("replace")) {
+						const partnerSide =
+							side === "teacher" ? "student" : "teacher";
+						const partnerKey =
+							partnerSide === "teacher"
+								? "teacher_files"
+								: "student_files";
+						const partner = (
+							t[partnerKey]?.[m.paired_with.file] || []
+						).find(
+							(p) =>
+								p.start === m.paired_with.start &&
+								p.token === m.paired_with.token,
+						);
+						const pLo = partner ? partner.start : m.paired_with.start;
+						const pHi = partner ? partner.end : m.paired_with.end;
+						cur.pairLo = Math.min(cur.pairLo, pLo);
+						cur.pairHi = Math.max(cur.pairHi, pHi);
+					}
+
+					cur.marks.push(m);
+					cur.lo = Math.min(cur.lo, m.start);
+					cur.hi = Math.max(cur.hi, m.end);
+				}
+				flush();
+			}
+		}
+
+		groups.sort((a, b) => {
+			if (a.side !== b.side) return a.side > b.side ? 1 : -1;
+			return a.lo - b.lo;
+		});
+		return groups;
+	}
+
+	switchToCuratedMarks() {
+		_currentMarksEntry = this.working[this.workingKey()] ?? null;
+		_teacherMarks = _currentMarksEntry?.teacher_files ?? null;
+		_studentMarks = _currentMarksEntry?.student_files ?? null;
+	}
+
+	snapshot() {
+		const key = this.workingKey();
+		const cur = this.working[key];
+		if (!cur) return;
+		this.undoStack.push({ key, state: _deepClone(cur) });
+		if (this.undoStack.length > this.HISTORY_LIMIT) this.undoStack.shift();
+		this.redoStack = [];
+	}
+
+	applyHistoryState(entry) {
+		if (!entry) return;
+		this.working[entry.key] = _deepClone(entry.state);
+		_curatedCancelPending();
+		_curatedClearPairHover();
+		_curatedClearGroupHover();
+		_curatedHideControls();
+		_curatedClearPairConnectors();
+		this.switchToCuratedMarks();
+		_curatedRenderPreservingScroll();
+		_updateTitleScore();
+	}
+
+	undo() {
+		if (!this.undoStack.length) return;
+		const key = this.workingKey();
+		const cur = this.working[key];
+		const entry = this.undoStack.pop();
+		if (cur) {
+			this.redoStack.push({ key, state: _deepClone(cur) });
+			if (this.redoStack.length > this.HISTORY_LIMIT) this.redoStack.shift();
+		}
+		this.applyHistoryState(entry);
+	}
+
+	redo() {
+		if (!this.redoStack.length) return;
+		const key = this.workingKey();
+		const cur = this.working[key];
+		const entry = this.redoStack.pop();
+		if (cur) {
+			this.undoStack.push({ key, state: _deepClone(cur) });
+			if (this.undoStack.length > this.HISTORY_LIMIT) this.undoStack.shift();
+		}
+		this.applyHistoryState(entry);
+	}
+}
+
+const _curatedSel = new CuratedSelection();
+
 function _curatedIsCommentPos(side, file, pos) {
 	for (const m of _curatedFileMarks(side, file)) {
 		if (m.label === "comment" && m.start <= pos && pos < m.end) return true;
@@ -87,33 +459,15 @@ function _curatedSnapToTokens(side, file, lo, hi) {
 }
 
 function _curatedSrcText(side, file) {
-	const text =
-		(side === "teacher" ? _teacherFiles : _studentFiles)[file] || "";
-	return text.replace(/\r\n/g, "\n");
+	return _curatedSel.srcText(side, file);
 }
 
 function _curatedTokensForFile(side, file) {
-	const key = side + ":" + file;
-	if (_curatedTokenCache.has(key)) return _curatedTokenCache.get(key);
-	const text = _curatedSrcText(side, file);
-	const out = [];
-	const re = newTokenRegex();
-	let m;
-	while ((m = re.exec(text)) !== null) {
-		out.push({ start: m.index, end: m.index + m[0].length, token: m[0] });
-	}
-	_curatedTokenCache.set(key, out);
-	return out;
+	return _curatedSel.tokensForFile(side, file);
 }
 
 function _curatedCommentRanges(side, file) {
-	const key = side + ":" + file;
-	if (_curatedCommentRangeCache.has(key))
-		return _curatedCommentRangeCache.get(key);
-	const text = _curatedSrcText(side, file);
-	const ranges = _diffCommentRanges(text, file);
-	_curatedCommentRangeCache.set(key, ranges);
-	return ranges;
+	return _curatedSel.commentRanges(side, file);
 }
 
 function _curatedSliceExcludingComments(side, file, lo, hi) {
@@ -168,114 +522,36 @@ function _curatedWhitespaceTokensInRange(side, file, lo, hi) {
 }
 
 function _curatedMarks() {
-	return _curatedWorking[_curatedWorkingKey()] ?? null;
+	return _curatedSel.marks();
 }
 
 function _curatedFileMarks(side, file) {
-	const t = _curatedMarks();
-	const sideKey = side === "teacher" ? "teacher_files" : "student_files";
-	if (!t[sideKey]) t[sideKey] = {};
-	if (!t[sideKey][file]) t[sideKey][file] = [];
-	return t[sideKey][file];
+	return _curatedSel.fileMarks(side, file);
 }
 
 function _curatedFindMarks(side, file, lo, hi) {
-	return _curatedFileMarks(side, file).filter(
-		(m) =>
-			m.start < hi &&
-			m.end > lo &&
-			(m.label === "missing" ||
-				m.label === "extra" ||
-				m.label === "ghost_extra" ||
-				m.label === "comment"),
-	);
+	return _curatedSel.findMarks(side, file, lo, hi);
 }
 
-function _curatedAddMark(side, file, label, tokens, opts) {
-	const arr = _curatedFileMarks(side, file);
-	const { insertAtPos } = opts || {};
-	const commentSpans =
-		label === "comment"
-			? null
-			: new Set(
-					arr
-						.filter((m) => m.label === "comment")
-						.map((m) => `${m.start}-${m.end}`),
-				);
-	for (const t of tokens) {
-		if (commentSpans && commentSpans.has(`${t.start}-${t.end}`)) continue;
-		const m = { token: t.token, label, start: t.start, end: t.end };
-		if (insertAtPos != null) m.insert_at = { file, pos: insertAtPos };
-		arr.push(m);
-	}
-	arr.sort((a, b) => a.start - b.start);
+function _curatedAddMark(side, file, label, tokens) {
+	return _curatedSel.addMark(side, file, label, tokens);
 }
 
 function _curatedRemoveMark(side, file, mark) {
-	const arr = _curatedFileMarks(side, file);
-	const i = arr.indexOf(mark);
-	if (i >= 0) arr.splice(i, 1);
-	if (!mark.paired_with) return;
-	const otherSide = side === "teacher" ? "student" : "teacher";
-	for (const m of _curatedFileMarks(otherSide, mark.paired_with.file)) {
-		if (
-			m.paired_with &&
-			m.paired_with.start === mark.start &&
-			m.paired_with.token === mark.token
-		) {
-			delete m.paired_with;
-		}
-	}
+	return _curatedSel.removeMark(side, file, mark);
 }
 
 function _curatedClearPair(mark, side) {
-	if (!mark || !mark.paired_with) return;
-	if (mark.paired_with.ghost) {
-		delete mark.paired_with;
-		return;
-	}
-	const otherSide = side === "teacher" ? "student" : "teacher";
-	const pw = mark.paired_with;
-	const partners = _curatedFileMarks(otherSide, pw.file).filter(
-		(m) => m.paired_with && m.start >= pw.start && m.start <= pw.end,
-	);
-	let backFile = null;
-	let backLo = Infinity;
-	let backHi = -Infinity;
-	for (const p of partners) {
-		backFile = p.paired_with.file;
-		backLo = Math.min(backLo, p.paired_with.start);
-		backHi = Math.max(backHi, p.paired_with.end);
-		delete p.paired_with;
-	}
-	if (backFile != null) {
-		for (const m of _curatedFileMarks(side, backFile)) {
-			if (m.paired_with && m.start >= backLo && m.start <= backHi)
-				delete m.paired_with;
-		}
-	}
-	delete mark.paired_with;
+	return _curatedSel.clearPair(mark, side);
 }
 
 function _curatedSetSwapPair(missingMark, extraMark, missingFile, extraFile) {
-	_curatedClearPair(missingMark, "teacher");
-	_curatedClearPair(extraMark, "student");
-	missingMark.paired_with = {
-		file: extraFile,
-		start: extraMark.start,
-		end: extraMark.end,
-		token: extraMark.token,
-		label: "extra",
-	};
-	extraMark.paired_with = {
-		file: missingFile,
-		start: missingMark.start,
-		end: missingMark.end,
-		token: missingMark.token,
-		label: "missing",
-	};
-	delete missingMark.insert_at;
-	delete extraMark.move_to;
+	return _curatedSel.setSwapPair(
+		missingMark,
+		extraMark,
+		missingFile,
+		extraFile,
+	);
 }
 
 function _clearSelectionPreservingScroll() {
@@ -325,155 +601,15 @@ function _curatedRerender() {
 }
 
 function _curatedGroupKey(m) {
-	if (m.label === "missing") {
-		if (m.insert_at) return `mi|${m.insert_at.file}|${m.insert_at.pos}`;
-		return `m|free`;
-	}
-	if (m.label === "extra") {
-		if (m.paired_with) {
-			return `er|${m.paired_with.file}|${m.paired_with.start}`;
-		}
-		if (m.move_to) return `em|${m.move_to.file}|${m.move_to.pos}`;
-		return `e`;
-	}
-	if (m.label === "ghost_extra") return `ge`;
-	return `?|${m.label}`;
+	return _curatedSel.groupKey(m);
 }
 
 function _curatedMakeGroup(side, file, m) {
-	const g = { side, file, marks: [], lo: Infinity, hi: -Infinity };
-	if (m.label === "missing") {
-		g.kind = m.insert_at ? "missing-insert" : "missing";
-		if (m.insert_at) {
-			g.insertFile = m.insert_at.file;
-			g.insertPos = m.insert_at.pos;
-		}
-	} else if (m.label === "ghost_extra") {
-		g.kind = "ghost_extra";
-	} else {
-		if (m.paired_with) {
-			g.kind = "extra-replace";
-			g.pairFile = m.paired_with.file;
-			g.pairLo = m.paired_with.start;
-			g.pairHi = m.paired_with.end;
-		} else if (m.move_to) {
-			g.kind = "extra-move";
-			g.moveFile = m.move_to.file;
-			g.movePos = m.move_to.pos;
-		} else {
-			g.kind = "extra";
-		}
-	}
-	return g;
+	return _curatedSel.makeGroup(side, file, m);
 }
 
 function _curatedGroupMarks() {
-	const t = _curatedMarks();
-	if (!t) return [];
-	const groups = [];
-
-	for (const [side, sideKey] of [
-		["teacher", "teacher_files"],
-		["student", "student_files"],
-	]) {
-		const filesObj = t[sideKey] || {};
-		for (const [file, marks] of Object.entries(filesObj)) {
-			const sorted = [...marks].sort((a, b) => a.start - b.start);
-			const allTokens = _curatedTokensForFile(side, file);
-			const commentPositions = new Set();
-			for (const m of sorted) {
-				if (m.label === "comment") commentPositions.add(m.start);
-			}
-			const insertPositions = new Set();
-			if (side === "student") {
-				const tFiles = t.teacher_files || {};
-				for (const tMarks of Object.values(tFiles)) {
-					for (const tm of tMarks || []) {
-						if (tm.label !== "missing") continue;
-						if (tm.paired_with) continue;
-						const ia = tm.insert_at;
-						if (ia && ia.file === file) insertPositions.add(ia.pos);
-					}
-				}
-				const sFiles = t.student_files || {};
-				for (const sMarks of Object.values(sFiles)) {
-					for (const sm of sMarks || []) {
-						if (sm.label !== "extra") continue;
-						if (sm.paired_with) continue;
-						const mt = sm.move_to;
-						if (mt && mt.file === file) insertPositions.add(mt.pos);
-					}
-				}
-			}
-			const hasObstacleInGap = (lo, hi) => {
-				if (lo > hi) return false;
-				for (const tok of allTokens) {
-					if (tok.start < lo) continue;
-					if (tok.start >= hi) break;
-					if (!commentPositions.has(tok.start)) return true;
-				}
-				for (const pos of insertPositions) {
-					if (pos >= lo && pos <= hi) return true;
-				}
-				return false;
-			};
-
-			let cur = null,
-				curKey = null;
-			const flush = () => {
-				if (cur) groups.push(cur);
-				cur = null;
-				curKey = null;
-			};
-
-			for (const m of sorted) {
-				if (
-					m.label !== "missing" &&
-					m.label !== "extra" &&
-					m.label !== "ghost_extra"
-				)
-					continue;
-				if (side === "teacher" && m.label === "missing" && m.paired_with)
-					continue;
-
-				const key = _curatedGroupKey(m);
-				const merge =
-					cur && curKey === key && !hasObstacleInGap(cur.hi, m.start);
-
-				if (!merge) {
-					flush();
-					cur = _curatedMakeGroup(side, file, m);
-					curKey = key;
-				}
-
-				if (m.paired_with && cur.kind && cur.kind.endsWith("replace")) {
-					const partnerSide = side === "teacher" ? "student" : "teacher";
-					const partnerKey =
-						partnerSide === "teacher" ? "teacher_files" : "student_files";
-					const partner = (t[partnerKey]?.[m.paired_with.file] || []).find(
-						(p) =>
-							p.start === m.paired_with.start &&
-							p.token === m.paired_with.token,
-					);
-					const pLo = partner ? partner.start : m.paired_with.start;
-					const pHi = partner ? partner.end : m.paired_with.end;
-					cur.pairLo = Math.min(cur.pairLo, pLo);
-					cur.pairHi = Math.max(cur.pairHi, pHi);
-				}
-
-				cur.marks.push(m);
-				cur.lo = Math.min(cur.lo, m.start);
-				cur.hi = Math.max(cur.hi, m.end);
-			}
-			flush();
-		}
-	}
-
-	groups.sort((a, b) => {
-		if (a.side !== b.side) return a.side > b.side ? 1 : -1;
-		return a.lo - b.lo;
-	});
-	return groups;
+	return _curatedSel.groupMarks();
 }
 
 window.addEventListener("DOMContentLoaded", _curatedEnsureButtons);

@@ -42,16 +42,6 @@ function renderMoveToTargetLabel(target) {
 	return target;
 }
 
-function createCharSpan(char, stepIndex) {
-	let el = document.createElement("span");
-	el.className = "char";
-	if (char === "\n") el = document.createElement("br");
-	else if (char === " ") el.innerHTML = "&nbsp;";
-	else el.textContent = char;
-	el.dataset.stepIndex = stepIndex;
-	return el;
-}
-
 function updateActiveState(active) {
 	isActive = active;
 	const toggleBtn = document.getElementById("toggleBtn");
@@ -114,24 +104,7 @@ function updateLessonData(data) {
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "code") {
-			const ANCHOR_RE = /⚓[^⚓]*⚓/g;
-			let last = 0;
-			ANCHOR_RE.lastIndex = 0;
-			let m;
-			while ((m = ANCHOR_RE.exec(block.text)) !== null) {
-				for (const char of block.text.slice(last, m.index)) {
-					div.appendChild(createCharSpan(char, ctr++));
-				}
-				const anchorSpan = document.createElement("span");
-				anchorSpan.className = "char anchor-token";
-				anchorSpan.dataset.stepIndex = ctr++;
-				anchorSpan.textContent = m[0];
-				div.appendChild(anchorSpan);
-				last = m.index + m[0].length;
-			}
-			for (const char of block.text.slice(last)) {
-				div.appendChild(createCharSpan(char, ctr++));
-			}
+			ctr = CodeTextRenderer.buildCodeText(block.text, div, ctr);
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleCodeClick;
 		}

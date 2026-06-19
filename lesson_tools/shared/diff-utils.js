@@ -3,15 +3,33 @@
 const REMARKS_BASES = [
 	{ key: "ideal", label: "Ideal" },
 	{ key: "minimal", label: "Minimal" },
-	{ key: "leo_star", label: "LEO*" },
-	{ key: "leo", label: "LEO" },
+	{ key: "leo_star", label: "Leo*" },
 	{ key: "lcs_star", label: "LCS*" },
 	{ key: "lcs", label: "LCS" },
 	{ key: "git_star", label: "Git*" },
 	{ key: "git", label: "Git" },
 ];
 
-const DEFAULT_BASIS_ORDER = ["ideal", "minimal", "leo_star", "leo"];
+const INTERACTION_KINDS = {
+	"teacher-question": { icon: "❓", label: "Teacher Question" },
+	"student-question": { icon: "🙋", label: "Student Question" },
+	"providing-help": { icon: "🤝", label: "Provided Help" },
+};
+
+const _BASIS_TO_DIFF_MODE = {
+	ideal: "ideal",
+	minimal: "minimal",
+	leo_star: "",
+	lcs_star: "token-lcs-star",
+	lcs: "token-lcs",
+	git_star: "line-git-star",
+	git: "line-git",
+};
+
+function basisToDiffMode(basisKey) {
+	if (!basisKey) return null;
+	return _BASIS_TO_DIFF_MODE[basisKey] ?? null;
+}
 
 function _cssVar(name) {
 	return getComputedStyle(document.documentElement)
@@ -119,62 +137,6 @@ async function readCsvText(file) {
 	return stripBom(new TextDecoder("latin1").decode(bytes));
 }
 
-const ARTEFACT_SEVERITY_COLORS = {
-	high: () => THEME.red,
-	medium: () => THEME.orange,
-	med: () => THEME.orange,
-	low: () => THEME.yellow,
-};
-
-function artefactFiredColorFor(severity) {
-	const key = String(severity || "")
-		.trim()
-		.toLowerCase();
-	const fn = ARTEFACT_SEVERITY_COLORS[key] || ARTEFACT_SEVERITY_COLORS.high;
-	return fn();
-}
-
-function parseArtefactLabelsCsv(text) {
-	const { header, rows } = parseCsv(text);
-	const keyIdx = header.findIndex((h) => /^key$/i.test(h));
-	const labelIdx = header.findIndex((h) => /^label$/i.test(h));
-	const codeIdx = header.findIndex((h) => /^code$/i.test(h));
-	const sevIdx = header.findIndex((h) => /^severity$/i.test(h));
-	if (keyIdx === -1 || labelIdx === -1) return [];
-	const out = [];
-	for (const parts of rows) {
-		const key = parts[keyIdx];
-		const label = parts[labelIdx];
-		if (!key || !label) continue;
-		const severity =
-			sevIdx !== -1 ? (parts[sevIdx] || "").trim().toLowerCase() : "high";
-		const code = codeIdx !== -1 ? (parts[codeIdx] || "").trim() : "";
-		out.push({ key, label, code, severity: severity || "high" });
-	}
-	return out;
-}
-
-async function loadArtefactLabelsFromHandle(dirHandle) {
-	if (!dirHandle) return [];
-	try {
-		const fh = await dirHandle.getFileHandle("artefact_labels.csv");
-		const file = await fh.getFile();
-		return parseArtefactLabelsCsv(await readFileText(file));
-	} catch {
-		return [];
-	}
-}
-
-function loadArtefactLabelsFromFileMap(fileMap) {
-	if (!fileMap) return null;
-	for (const [k, file] of fileMap) {
-		if (k.endsWith("/artefact_labels.csv") || k === "artefact_labels.csv") {
-			return file;
-		}
-	}
-	return null;
-}
-
 function parseStudentIdNameMap(text) {
 	const map = {};
 	const { header, rows } = parseCsv(text);
@@ -246,6 +208,7 @@ function parseToolParams(search = location.search) {
 	const group = p.get("group") || null;
 	const id = p.get("id") || null;
 	const mode = p.get("mode") || null;
+	const basis = p.get("basis") || null;
 	const title = p.get("title") || null;
 	const parseIdList = (raw) =>
 		raw
@@ -274,6 +237,7 @@ function parseToolParams(search = location.search) {
 		group,
 		id,
 		mode,
+		basis,
 		title,
 		ids,
 		star,
@@ -298,6 +262,7 @@ function buildToolUrl(
 		autoplay,
 		ts,
 		speed,
+		basis,
 	} = {},
 ) {
 	const params = new URLSearchParams();
@@ -305,6 +270,7 @@ function buildToolUrl(
 	if (group) params.set("group", group);
 	if (id) params.set("id", id);
 	if (mode) params.set("mode", mode);
+	if (basis) params.set("basis", basis);
 	if (title) params.set("title", title);
 	if (ids && ids.length)
 		params.set("ids", Array.isArray(ids) ? ids.join(",") : ids);
@@ -386,8 +352,28 @@ function showLoading(on) {
 	if (el) el.style.display = on ? "flex" : "none";
 }
 
-// Column-visibility dropdown shared by the overview + students tables.
-// `hiddenCols` is a Set the caller owns; `onChange` runs after each toggle.
+function makeHiddenColsStore(storageKey, set, opts = {}) {
+	return {
+		load() {
+			try {
+				const arr = JSON.parse(localStorage.getItem(storageKey) || "null");
+				if (!Array.isArray(arr)) return;
+				if (opts.clearFirst) set.clear();
+				for (const k of arr) {
+					const mapped = opts.migrate ? opts.migrate(k) : null;
+					if (mapped) for (const m of mapped) set.add(m);
+					else set.add(k);
+				}
+			} catch {}
+		},
+		save() {
+			try {
+				localStorage.setItem(storageKey, JSON.stringify([...set]));
+			} catch {}
+		},
+	};
+}
+
 function makeColsPanel({
 	colHideKeys,
 	hiddenCols,
@@ -483,162 +469,44 @@ function escAttr(s) {
 	return escHtml(s).replace(/"/g, "&quot;");
 }
 
-function isArtefactPattern(raw) {
-	const s = (raw ?? "").trim();
-	return s.length > 0 && /^[01]+$/.test(s);
+function diffStudentTitle(id, name, pct, opts = {}) {
+	const decimals = opts.decimals != null ? opts.decimals : 1;
+	const fallback = opts.fallback != null ? opts.fallback : "N/A";
+	const label = pct != null ? pct.toFixed(decimals) + "%" : fallback;
+	return `${id ? id + ". " : ""}${name} (${label})`;
 }
 
-function formatInteractionCounts(a, q, h) {
-	const fmt = (n, emoji) => {
-		const c = Math.round(+n);
-		if (!(c > 0)) return null;
-		if (c === 1) return `<span class="ia-one">${emoji}</span>`;
-		return `<span class="ia-box">${c}${emoji}</span>`;
-	};
-	return [fmt(a, "🙋"), fmt(q, "❓"), fmt(h, "🤝")].filter(Boolean).join("");
+function downloadBlob(data, filename, mime) {
+	const blob =
+		data instanceof Blob
+			? data
+			: new Blob([data], mime ? { type: mime } : undefined);
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
 }
 
-function artefactCodeHtml(code) {
-	return escHtml(String(code)).replace(/_(\w+)/g, "<sub>$1</sub>");
-}
-
-function renderArtefactBadges(raw, schema) {
-	const code = (raw ?? "").trim();
-	if (!isArtefactPattern(code)) return null;
-	const schemaArr = Array.isArray(schema) ? schema : [];
-	return code
-		.split("")
-		.map((ch, i) => {
-			const fired = ch === "1";
-			const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
-			const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
-			return (
-				`<span style="display:inline-block;` +
-				`width:14px;height:14px;border-radius:2px;margin:0 1px;` +
-				`vertical-align:middle;background:${clr}"></span>`
-			);
-		})
-		.join("");
-}
-
-function renderArtefactTotals(counts, schema) {
-	const schemaArr = Array.isArray(schema) ? schema : [];
-	const n = Math.max((counts || []).length, schemaArr.length);
-	if (!n) return "";
-	const parts = [];
-	for (let i = 0; i < n; i++) {
-		const count = (counts && counts[i]) || 0;
-		const sev = (schemaArr[i] && schemaArr[i].severity) || "high";
-		const clr = count > 0 ? artefactFiredColorFor(sev) : THEME.artefactOk;
-		parts.push(
-			`<span style="display:inline-block;` +
-				`min-width:14px;height:14px;border-radius:2px;margin:0 1px;` +
-				`vertical-align:middle;background:${clr};color:white;` +
-				`font-size:10px;font-weight:bold;text-align:center;` +
-				`line-height:14px;padding:0 2px">${count}</span>`,
-		);
-	}
-	return parts.join("");
-}
-
-function renderArtefactCellSquare(fired, entry) {
-	const sev = (entry && entry.severity) || "high";
-	const clr = fired ? artefactFiredColorFor(sev) : THEME.artefactOk;
-	return (
-		`<span style="display:inline-block;width:14px;height:14px;` +
-		`border-radius:2px;vertical-align:middle;background:${clr}"></span>`
-	);
-}
-
-function renderArtefactTotalOne(count, entry) {
-	const sev = (entry && entry.severity) || "high";
-	const clr = count > 0 ? artefactFiredColorFor(sev) : THEME.artefactOk;
-	return (
-		`<span style="display:inline-block;min-width:14px;height:14px;` +
-		`border-radius:2px;vertical-align:middle;background:${clr};color:white;` +
-		`font-size:10px;font-weight:bold;text-align:center;line-height:14px;` +
-		`padding:0 2px">${count}</span>`
-	);
-}
-
-function buildArtefactSummaryHtml(raw, schema) {
-	const code = (raw ?? "").trim();
-	if (!isArtefactPattern(code)) return "";
-	const schemaArr = Array.isArray(schema) ? schema : [];
-	const sq = (clr) =>
-		`<span style="display:inline-block;width:11px;height:11px;border-radius:2px;` +
-		`vertical-align:middle;margin-right:6px;background:${clr}"></span>`;
-	const lines = [];
-	const n = Math.max(code.length, schemaArr.length);
-	for (let i = 0; i < n; i++) {
-		const entry = schemaArr[i];
-		const fired = code[i] === "1";
-		const label = entry && entry.label ? entry.label : `bit ${i + 1}`;
-		const entryCode = entry && (entry.code || entry.key);
-		const codeHtml = entryCode ? `${artefactCodeHtml(entryCode)}: ` : "";
-		const clr = fired
-			? artefactFiredColorFor((entry && entry.severity) || "high")
-			: THEME.artefactOk;
-		const style = fired ? "font-weight:bold" : `color:${THEME.muted}`;
-		lines.push(
-			`<div style="${style}">${sq(clr)}${codeHtml}${escHtml(label)}</div>`,
-		);
-	}
-	return lines.join("");
-}
-
-let _SHARED_TIP_EL = null;
-
-function _ensureSharedTip() {
-	if (_SHARED_TIP_EL && document.body.contains(_SHARED_TIP_EL))
-		return _SHARED_TIP_EL;
-	let el = document.getElementById("shared-html-tip");
-	if (!el) {
-		el = document.createElement("div");
-		el.id = "shared-html-tip";
-		el.style.cssText =
-			"position:fixed;display:none;background:" +
-			THEME.bg +
-			";color:" +
-			THEME.textStrong +
-			";font-size:11px;font-family:Consolas,monospace;padding:6px 10px;" +
-			"border:1px solid " +
-			THEME.muted +
-			";border-radius:4px;pointer-events:none;z-index:10000;" +
-			"max-width:640px;box-shadow:0 2px 8px rgba(0,0,0,0.25);line-height:1.45;";
-		document.body.appendChild(el);
-	}
-	_SHARED_TIP_EL = el;
-	return el;
-}
-
-function _moveSharedTip(e) {
-	const el = _SHARED_TIP_EL;
-	if (!el) return;
-	const tw = el.offsetWidth;
-	const th = el.offsetHeight;
-	let tx = e.clientX + 14;
-	let ty = e.clientY - 8;
-	if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
-	if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 8;
-	el.style.left = tx + "px";
-	el.style.top = ty + "px";
-}
+const _sharedHtmlTip = new Tooltip({
+	createId: "shared-html-tip",
+	inlineStyle:
+		"position:fixed;display:none;background:" +
+		THEME.bg +
+		";color:" +
+		THEME.textStrong +
+		";font-size:11px;font-family:Consolas,monospace;padding:6px 10px;" +
+		"border:1px solid " +
+		THEME.muted +
+		";border-radius:4px;pointer-events:none;z-index:10000;" +
+		"max-width:640px;box-shadow:0 2px 8px rgba(0,0,0,0.25);line-height:1.45;",
+});
 
 function attachHtmlTip(el, htmlOrFn) {
-	const get = typeof htmlOrFn === "function" ? htmlOrFn : () => htmlOrFn;
-	el.addEventListener("mouseenter", (e) => {
-		const html = get();
-		if (!html) return;
-		const tip = _ensureSharedTip();
-		tip.innerHTML = html;
-		tip.style.display = "block";
-		_moveSharedTip(e);
-	});
-	el.addEventListener("mousemove", _moveSharedTip);
-	el.addEventListener("mouseleave", () => {
-		if (_SHARED_TIP_EL) _SHARED_TIP_EL.style.display = "none";
-	});
+	_sharedHtmlTip.attachHtml(el, htmlOrFn);
 }
 
 function readFileText(file) {
@@ -705,7 +573,6 @@ function newTokenRegex() {
 }
 
 const OBS_COL_RE = /^obs\.?$/i;
-const ARTEFACT_CODE_RE = /^[01]+$/;
 
 function round1(x) {
 	return Math.round(x * 10) / 10;

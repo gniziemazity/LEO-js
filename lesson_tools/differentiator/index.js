@@ -29,8 +29,7 @@ let _diffMissingLangColor =
 const DIFF_MODE_OPTIONS = [
 	{ key: "ideal", label: "Ideal" },
 	{ key: "minimal", label: "Minimal" },
-	{ key: "", label: "LEO*" },
-	{ key: "leo", label: "LEO" },
+	{ key: "", label: "Leo*" },
 	{ key: "token-lcs-star", label: "LCS*" },
 	{ key: "token-lcs", label: "LCS" },
 	{ key: "line-git-star", label: "Git*" },
@@ -306,6 +305,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 		_linePaddingEnabled = true;
 		const tt = document.getElementById("title-teacher");
 		if (tt) tt.textContent = "Starter Code";
+		const mc = document.getElementById("btn-missing-color");
+		if (mc) mc.style.display = "none";
 	}
 	if (toolParams.group === "assignments") {
 		document.body.classList.add("assignment");

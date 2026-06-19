@@ -2,6 +2,7 @@ const { ipcRenderer } = require("electron");
 
 const { getBlockSubtype } = require("../shared/constants");
 const { extractAnchorSnippet } = require("./anchor-snippet");
+const { buildCodeText } = require("../shared/code-text");
 
 class LessonRenderer {
 	constructor(lessonManager, uiManager, cursorManager, undoManager = null) {
@@ -202,61 +203,12 @@ class LessonRenderer {
 		} else {
 			blockDiv.contentEditable = "false";
 
-			const anchorRegex = /⚓[^⚓]*⚓/g;
-			const text = block.text;
-			let lastIndex = 0;
-			let match;
-
-			const segments = [];
-			while ((match = anchorRegex.exec(text)) !== null) {
-				if (match.index > lastIndex) {
-					segments.push({
-						type: "text",
-						value: text.slice(lastIndex, match.index),
-					});
-				}
-				segments.push({ type: "anchor", value: match[0] });
-				lastIndex = match.index + match[0].length;
-			}
-			if (lastIndex < text.length) {
-				segments.push({ type: "text", value: text.slice(lastIndex) });
-			}
-
-			for (const seg of segments) {
-				if (seg.type === "anchor") {
-					const span = document.createElement("span");
-					span.className = "char anchor-token";
-					span.textContent = seg.value;
-					span.dataset.stepIndex = globalStepCounter;
-					blockDiv.appendChild(span);
-
-					executionSteps.push({
-						type: "anchor",
-						element: span,
-						value: seg.value,
-						blockIndex: blockIdx,
-						globalIndex: globalStepCounter,
-					});
-					globalStepCounter++;
-				} else {
-					for (const char of seg.value) {
-						const span = this.uiManager.createCharSpan(
-							char,
-							globalStepCounter,
-						);
-						blockDiv.appendChild(span);
-
-						executionSteps.push({
-							type: "char",
-							element: span,
-							char: char,
-							blockIndex: blockIdx,
-							globalIndex: globalStepCounter,
-						});
-						globalStepCounter++;
-					}
-				}
-			}
+			globalStepCounter = buildCodeText(
+				block.text,
+				blockDiv,
+				globalStepCounter,
+				(step) => executionSteps.push({ ...step, blockIndex: blockIdx }),
+			);
 
 			executionSteps.push({
 				type: "block",

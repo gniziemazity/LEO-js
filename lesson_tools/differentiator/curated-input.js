@@ -150,9 +150,7 @@ function _curatedRefreshCurrentControls() {
 	if (sel.isGhost && typeof _curatedSelectGhostAndShow === "function") {
 		_curatedSelectGhostAndShow(sel.ghost, 0, 0);
 	} else if (!sel.isGhost) {
-		_curatedSelectAndShow(sel.side, sel.file, sel.rawLo, sel.rawHi, 0, 0, {
-			preservePosition: true,
-		});
+		_curatedSelectAndShow(sel.side, sel.file, sel.rawLo, sel.rawHi, 0, 0);
 	}
 }
 
@@ -285,7 +283,7 @@ function _curatedOnMouseUp(ev) {
 	_curatedSelectAndShow(side, file, rawLo, rawHi, ev.clientX, ev.clientY);
 }
 
-function _curatedSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
+function _curatedSelectAndShow(side, file, rawLo, rawHi, x, y) {
 	const snapped = _curatedSnapToTokens(side, file, rawLo, rawHi);
 	let tokens = _curatedTokensInRange(side, file, snapped.lo, snapped.hi);
 	let existing = _curatedFindMarks(side, file, snapped.lo, snapped.hi);
@@ -327,7 +325,6 @@ function _curatedSelectAndShow(side, file, rawLo, rawHi, x, y, showOpts) {
 		},
 		x,
 		y,
-		showOpts,
 	);
 	return true;
 }

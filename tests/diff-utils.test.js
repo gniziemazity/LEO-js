@@ -23,12 +23,17 @@ const navigator = { userAgent: "" };
 `;
 
 function loadAPI() {
+	const tooltipSrc = fs.readFileSync(
+		path.resolve(__dirname, "..", "lesson_tools", "shared/tooltip.js"),
+		"utf-8",
+	);
 	const src = fs.readFileSync(
 		path.resolve(__dirname, "..", "lesson_tools", "shared/diff-utils.js"),
 		"utf-8",
 	);
 	return new Function(`
 		${stub}
+		${tooltipSrc}
 		${src}
 		return {
 			parseCsv, parseStudentIdNameMap, getFileExt,

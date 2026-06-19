@@ -18,6 +18,7 @@ const HotkeyManager = require("./hotkey-manager");
 const KeyboardHandler = require("./keyboard-handler");
 const LEOBroadcastServer = require("./websocket-server");
 const SettingsManager = require("./settings-manager");
+const FloatingWindow = require("./floating-window");
 const settingsManager = new SettingsManager();
 const broadcastServer = new LEOBroadcastServer(8080);
 const hotkeyManager = new HotkeyManager(settingsManager);
@@ -109,10 +110,7 @@ broadcastServer.on(
 	"client-close-student-interaction",
 	(interactionType, studentName, questionText, openedAt, closedAt) => {
 		questionWindowIsLesson = false;
-		if (questionWindow && !questionWindow.isDestroyed()) {
-			questionWindow.close();
-			questionWindow = null;
-		}
+		_questionFloat.close({ force: true });
 		broadcastServer.broadcastQuestionEnded();
 		if (state.mainWindow) {
 			state.mainWindow.webContents.send("log-student-interaction", {
@@ -669,16 +667,12 @@ function _trackWindowRect(win, getRect) {
 	});
 }
 
-function openQuestionWindow(question, bgColor, emoji, studentName) {
-	const payload = { question, bgColor, emoji, studentName };
-	questionWindowIsLesson = !studentName;
-	questionWindowStudentAnswered = null;
-	if (questionWindow && !questionWindow.isDestroyed()) {
-		broadcastServer.signalFloatingWindowOpen();
-		questionWindow.webContents.send("set-question", payload);
-		questionWindow.show();
-		questionWindow.focus();
-	} else {
+const _questionFloat = new FloatingWindow({
+	broadcastServer,
+	floatRect: _floatRect,
+	trackWindowRect: _trackWindowRect,
+	channel: "set-question",
+	make: () => {
 		const display = screen.getPrimaryDisplay();
 		const workArea = display.workArea;
 		const winW = 900;
@@ -687,7 +681,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 		const offY = questionWindowIsLesson
 			? workArea.y + workArea.height + 40
 			: Math.floor(workArea.y + (workArea.height - winH) / 2);
-		questionWindow = _makeFloatingWindow({
+		return _makeFloatingWindow({
 			width: winW,
 			height: winH,
 			x: offX,
@@ -695,32 +689,73 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 			title: "Question",
 			html: "../question-window.html",
 		});
-		questionWindowRect = _floatRect(questionWindow);
-		const qWin = questionWindow;
-		qWin.webContents.on("did-finish-load", () => {
-			if (!qWin.isDestroyed())
-				qWin.webContents.send("set-question", payload);
-		});
-		questionWindow.on("closed", () => {
-			if (questionWindowIsLesson) {
-				broadcastServer.broadcastQuestionEnded();
-
-				if (state.mainWindow && questionWindowStudentAnswered === null) {
-					state.mainWindow.webContents.send("question-answered", {
-						studentName: null,
-					});
-				}
-				if (state.mainWindow) {
-					state.mainWindow.webContents.send("question-window-closed");
-				}
+	},
+	sync: (self) => {
+		questionWindow = self.win;
+		questionWindowRect = self.rect;
+	},
+	onClosed: () => {
+		if (questionWindowIsLesson) {
+			broadcastServer.broadcastQuestionEnded();
+			if (state.mainWindow && questionWindowStudentAnswered === null) {
+				state.mainWindow.webContents.send("question-answered", {
+					studentName: null,
+				});
 			}
-			broadcastServer.broadcastFloatingWindowClosed();
-			questionWindow = null;
-			questionWindowRect = null;
-			questionWindowStudentAnswered = null;
-		});
-		_trackWindowRect(questionWindow, () => questionWindowRect);
-	}
+			if (state.mainWindow) {
+				state.mainWindow.webContents.send("question-window-closed");
+			}
+		}
+		questionWindowStudentAnswered = null;
+	},
+});
+
+const _imageFloat = new FloatingWindow({
+	broadcastServer,
+	floatRect: _floatRect,
+	trackWindowRect: _trackWindowRect,
+	channel: "set-image",
+	make: () =>
+		_makeFloatingWindow({
+			width: 900,
+			height: 650,
+			title: "Image",
+			html: "../image-window.html",
+		}),
+	sync: (self) => {
+		imageWindow = self.win;
+		imageWindowRect = self.rect;
+		imageWindowPinned = self.pinned;
+	},
+	getPinned: () => imageWindowPinned,
+});
+
+const _webFloat = new FloatingWindow({
+	broadcastServer,
+	floatRect: _floatRect,
+	trackWindowRect: _trackWindowRect,
+	channel: "set-url",
+	make: () =>
+		_makeFloatingWindow({
+			width: 1100,
+			height: 800,
+			title: "Web",
+			html: "../web-window.html",
+			extraWebPrefs: { webviewTag: true },
+		}),
+	sync: (self) => {
+		webWindow = self.win;
+		webWindowRect = self.rect;
+		webWindowPinned = self.pinned;
+	},
+	getPinned: () => webWindowPinned,
+});
+
+function openQuestionWindow(question, bgColor, emoji, studentName) {
+	const payload = { question, bgColor, emoji, studentName };
+	questionWindowIsLesson = !studentName;
+	questionWindowStudentAnswered = null;
+	_questionFloat.showOrReuse(payload, {});
 }
 
 let questionWindowSlideTimer = null;
@@ -773,10 +808,7 @@ broadcastServer.on("client-show-question", () => {
 
 ipcMain.on("close-question-window", () => {
 	state.unpause();
-	if (questionWindow && !questionWindow.isDestroyed()) {
-		questionWindow.close();
-		questionWindow = null;
-	}
+	_questionFloat.close({ force: true });
 	broadcastServer.broadcastQuestionEnded();
 });
 
@@ -800,13 +832,8 @@ broadcastServer.on("client-move-to-confirmed", () => {
 
 broadcastServer.on("client-dismiss-question", () => {
 	state.unpause();
-	if (
-		questionWindowIsLesson &&
-		questionWindow &&
-		!questionWindow.isDestroyed()
-	) {
-		questionWindow.close();
-		questionWindow = null;
+	if (questionWindowIsLesson) {
+		_questionFloat.close({ force: true });
 	}
 });
 
@@ -835,49 +862,15 @@ ipcMain.on(
 			return;
 		}
 
-		if (imageWindow && !imageWindow.isDestroyed()) {
-			if (!imageWindowPinned) {
-				broadcastServer.signalFloatingWindowOpen();
-				imageWindow.webContents.send("set-image", {
-					imagePath,
-					bgColor,
-					shouldPin,
-				});
-				imageWindow.show();
-				imageWindow.focus();
-				if (shouldPin) imageWindowPinned = true;
-			}
-			return;
-		}
-
-		imageWindowPinned = shouldPin || false;
-		imageWindow = _makeFloatingWindow({
-			width: 900,
-			height: 650,
-			title: "Image",
-			html: "../image-window.html",
-		});
-		imageWindowRect = _floatRect(imageWindow);
-		const imgWin = imageWindow;
-		imgWin.webContents.on("did-finish-load", () => {
-			if (imgWin.isDestroyed()) return;
-			imgWin.webContents.send("set-image", {
-				imagePath,
-				bgColor,
-				shouldPin,
-			});
-		});
-		imageWindow.on("closed", () => {
-			broadcastServer.broadcastFloatingWindowClosed();
-			imageWindow = null;
-			imageWindowPinned = false;
-			imageWindowRect = null;
-		});
-		_trackWindowRect(imageWindow, () => imageWindowRect);
+		_imageFloat.showOrReuse(
+			{ imagePath, bgColor, shouldPin },
+			{ shouldPin, gatePin: true },
+		);
 	},
 );
 
 ipcMain.on("pin-image-window", (event, pinned) => {
+	_imageFloat.pinned = pinned;
 	imageWindowPinned = pinned;
 });
 
@@ -892,77 +885,36 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	imageWindow.setSize(newW, newH);
 	imageWindow.center();
 	const b = imageWindow.getBounds();
-	imageWindowRect = {
+	_imageFloat.rect = {
 		x: b.x,
 		y: b.y,
 		w: b.width,
 		h: b.height,
 	};
+	imageWindowRect = _imageFloat.rect;
 });
 
 ipcMain.on("force-close-image-window", () => {
-	if (imageWindow && !imageWindow.isDestroyed()) {
-		imageWindow.close();
-		imageWindow = null;
-	}
+	_imageFloat.close({ force: true });
 });
 
 ipcMain.on("close-image-window", () => {
-	if (imageWindowPinned) return;
-	if (imageWindow && !imageWindow.isDestroyed()) {
-		imageWindow.close();
-		imageWindow = null;
-	}
+	_imageFloat.close();
 });
 
 ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
-	if (webWindow && !webWindow.isDestroyed()) {
-		if (!webWindowPinned) {
-			broadcastServer.signalFloatingWindowOpen();
-			webWindow.webContents.send("set-url", { url, bgColor, shouldPin });
-			webWindow.show();
-			webWindow.focus();
-			if (shouldPin) webWindowPinned = true;
-		}
-		return;
-	}
-
-	webWindowPinned = shouldPin || false;
-	webWindow = _makeFloatingWindow({
-		width: 1100,
-		height: 800,
-		title: "Web",
-		html: "../web-window.html",
-		extraWebPrefs: { webviewTag: true },
-	});
-	webWindowRect = _floatRect(webWindow);
-	const wWin = webWindow;
-	wWin.webContents.on("did-finish-load", () => {
-		if (!wWin.isDestroyed())
-			wWin.webContents.send("set-url", { url, bgColor, shouldPin });
-	});
-	webWindow.on("closed", () => {
-		broadcastServer.broadcastFloatingWindowClosed();
-		webWindow = null;
-		webWindowPinned = false;
-		webWindowRect = null;
-	});
-	_trackWindowRect(webWindow, () => webWindowRect);
+	_webFloat.showOrReuse(
+		{ url, bgColor, shouldPin },
+		{ shouldPin, gatePin: true },
+	);
 });
 
 ipcMain.on("close-web-window", () => {
-	if (webWindowPinned) return;
-	if (webWindow && !webWindow.isDestroyed()) {
-		webWindow.close();
-		webWindow = null;
-	}
+	_webFloat.close();
 });
 
 ipcMain.on("force-close-web-window", () => {
-	if (webWindow && !webWindow.isDestroyed()) {
-		webWindow.close();
-		webWindow = null;
-	}
+	_webFloat.close({ force: true });
 });
 
 let activeResize = null;
@@ -1017,6 +969,7 @@ ipcMain.on("start-resizing", (event, edge) => {
 });
 
 ipcMain.on("pin-web-window", (event, isPinned) => {
+	_webFloat.pinned = isPinned;
 	webWindowPinned = isPinned;
 });
 

@@ -238,22 +238,17 @@ function _curatedOnGroupHover(ev) {
 let _curatedHoverToken = null;
 let _curatedHoverGhost = null;
 
-function _curatedAppendHoverRect(layerEl, className, left, top, width, height) {
-	const div = document.createElement("div");
-	div.className = "curated-hover-rect " + className;
-	div.style.left = `${left}px`;
-	div.style.top = `${top}px`;
-	div.style.width = `${width}px`;
-	div.style.height = `${height}px`;
-	layerEl.appendChild(div);
+function _curatedAppendHoverRect(layers, className, left, top, width, height) {
+	layers.addRect("curated-hover-rect " + className, {
+		left,
+		top,
+		width,
+		height,
+	});
 }
 
 function _curatedRefreshGhostHoverOverlay() {
-	for (const layer of document.querySelectorAll(".curated-bg-layer")) {
-		for (const el of layer.querySelectorAll(".curated-ghost-hover-rect")) {
-			el.remove();
-		}
-	}
+	OverlayLayer.clearAllRects("curated-ghost-hover-rect");
 	if (!_curatedHoverGhost) {
 		if (!_curatedHoverToken)
 			document.body.classList.remove("curated-token-hover-active");
@@ -269,7 +264,7 @@ function _curatedRefreshGhostHoverOverlay() {
 	const layers = _curatedEnsurePaneOverlays(pane);
 	if (!layers) return;
 	_curatedAppendHoverRect(
-		layers.bg,
+		layers,
 		"curated-ghost-hover-rect",
 		r.left - paneRect.left,
 		r.top - paneRect.top,
@@ -285,11 +280,7 @@ function _curatedClearGhostHover() {
 }
 
 function _curatedRefreshTokenHoverOverlay() {
-	for (const layer of document.querySelectorAll(".curated-bg-layer")) {
-		for (const el of layer.querySelectorAll(".curated-token-hover-rect")) {
-			el.remove();
-		}
-	}
+	OverlayLayer.clearAllRects("curated-token-hover-rect");
 	if (!_curatedHoverToken) {
 		if (!_curatedHoverGhost)
 			document.body.classList.remove("curated-token-hover-active");
@@ -302,7 +293,7 @@ function _curatedRefreshTokenHoverOverlay() {
 	const layers = _curatedEnsurePaneOverlays(r.pane);
 	if (!layers) return;
 	_curatedAppendHoverRect(
-		layers.bg,
+		layers,
 		"curated-token-hover-rect",
 		r.left,
 		r.top,

@@ -384,6 +384,7 @@ const _api = {
 	detectLanguageFromLessonFile,
 	lessonFileExtension,
 	commentRangesOf,
+	embeddedTagRanges: (profile, text) => _embeddedTagRanges(text, profile),
 	highlight,
 	emptyHighlightSpans,
 	shouldIncreaseAfter,

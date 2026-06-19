@@ -10,6 +10,7 @@ function _idChips(ids, max, assignmentLower) {
 			lesson: assignmentLower,
 			group: "assignments",
 			id: sid,
+			mode: basisToDiffMode(_activeBasis),
 		});
 		return `<a href="${url}" target="_blank" class="id-chip">${escHtml(sid)}</a>`;
 	});
@@ -35,9 +36,7 @@ function renderCuratedMoments(body) {
 			"<i>did</i> fire (polarity <code>fired</code>). Click a " +
 			"missed-id chip to inspect that student's submission.</div>",
 	);
-	let html =
-		'<table class="st-tbl"><tr><th>Assignment</th><th>Moment</th>' +
-		"<th>Reached</th><th>Missed by</th></tr>";
+	const tbl = new StatTable(["Assignment", "Moment", "Reached", "Missed by"]);
 	groups.forEach((g) => {
 		g.moments.forEach((m, i) => {
 			const reached =
@@ -45,11 +44,13 @@ function renderCuratedMoments(body) {
 				` <span style='color:var(--clr-muted)'>` +
 				`(${m.n_valid ? ((m.n_reached / m.n_valid) * 100).toFixed(0) + "%" : "—"})</span>`;
 			const chips = _idChips(m.missed_ids, 12, g.assignment);
-			html +=
-				`<tr><td>${i === 0 ? escHtml(g.name) : ""}</td>` +
-				`<td>${escHtml(m.label)}</td>` +
-				`<td>${reached}</td><td>${chips}</td></tr>`;
+			tbl.row([
+				i === 0 ? escHtml(g.name) : "",
+				escHtml(m.label),
+				reached,
+				chips,
+			]);
 		});
 	});
-	card.insertAdjacentHTML("beforeend", html + "</table>");
+	card.insertAdjacentHTML("beforeend", tbl.html());
 }

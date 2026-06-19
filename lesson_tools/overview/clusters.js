@@ -15,9 +15,9 @@ const _MANUAL_DEFAULTS = {
 };
 
 const _MANUAL_CLUSTER_DESCS = [
-	"Type 1: Follow well from the start",
-	"Type 2: Learned to follow along",
-	"We can't tell. Could be Type 1 or Type 2",
+	"Follow well from the start",
+	"Learned to follow along",
+	"Could be Type 1 or Type 2",
 	"Others",
 ];
 
@@ -302,7 +302,7 @@ function renderClusters() {
 		const opts = _clusterOpts();
 		const features = _buildKmeans2DFeatures(students);
 		k = Math.min(opts.k, students.length);
-		const res = _kmeans(features, k, 10000, _clusterSeed);
+		const res = _kmeans(features, k, 10000, 42);
 		labels = res.labels;
 		centroids = res.centroids;
 	}
@@ -328,19 +328,15 @@ function renderClusters() {
 		const section = el("div", "cluster-section");
 		const header = el("div", "cluster-header");
 		const h3 = el("h3");
-		h3.textContent = `Cluster ${displayIdx + 1}`;
-		if (mode === "manualA" && _MANUAL_CLUSTER_DESCS[entry.idx]) {
-			h3.textContent += ` (${_MANUAL_CLUSTER_DESCS[entry.idx]})`;
-		}
+		h3.textContent = `Cluster ${displayIdx + 1} (${bucket.length} student${
+			bucket.length === 1 ? "" : "s"
+		})`;
 		header.appendChild(h3);
-		const meta = el("span", "cluster-meta");
-		const followVals = bucket.map(followAvg).filter((v) => v >= 0);
-		meta.textContent =
-			`${bucket.length} student${bucket.length === 1 ? "" : "s"}` +
-			(followVals.length
-				? ` (follow ${Math.min(...followVals).toFixed(1)}–${Math.max(...followVals).toFixed(1)}%)`
-				: "");
-		header.appendChild(meta);
+		if (mode === "manualA" && _MANUAL_CLUSTER_DESCS[entry.idx]) {
+			const meta = el("span", "cluster-meta");
+			meta.textContent = _MANUAL_CLUSTER_DESCS[entry.idx];
+			header.appendChild(meta);
+		}
 		if (ordered.length > 1) section.appendChild(header);
 		const grid = el("div", "cluster-grid");
 		const sortedBucket = _sortStudents(bucket, _clusterSort);
@@ -358,13 +354,10 @@ function renderClusters() {
 		const section = el("div", "cluster-section");
 		const header = el("div", "cluster-header");
 		const h3 = el("h3");
-		h3.textContent = "LLM Probes";
-		header.appendChild(h3);
-		const meta = el("span", "cluster-meta");
-		meta.textContent = `${llmStudents.length} probe${
+		h3.textContent = `LLM Probes (${llmStudents.length} probe${
 			llmStudents.length === 1 ? "" : "s"
-		}`;
-		header.appendChild(meta);
+		})`;
+		header.appendChild(h3);
 		section.appendChild(header);
 		const grid = el("div", "cluster-grid");
 		for (const s of _sortStudents(llmStudents, _clusterSort)) {
@@ -413,12 +406,10 @@ document
 		if (_students.length) renderClusters();
 	});
 
-document.querySelectorAll(".cluster-sort[data-cluster-sort]").forEach((btn) => {
-	btn.addEventListener("click", () => {
-		_clusterSort = btn.dataset.clusterSort;
-		document
-			.querySelectorAll(".cluster-sort[data-cluster-sort]")
-			.forEach((b) => b.classList.toggle("active", b === btn));
+const _clusterSortSelect = document.getElementById("cluster-sort-select");
+if (_clusterSortSelect) {
+	_clusterSortSelect.addEventListener("change", () => {
+		_clusterSort = _clusterSortSelect.value;
 		if (_students.length) renderClusters();
 	});
-});
+}

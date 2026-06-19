@@ -1,4 +1,6 @@
 "use strict";
+const MAX_CHART_DL_PX = 16384;
+const CHART_DL_SCALE = 3;
 
 function addStackedShareCard(
 	parent,
@@ -9,9 +11,8 @@ function addStackedShareCard(
 	yMax,
 	opts = {},
 ) {
-	const card = mkCard(parent, title);
-	const box = el("div", "chart-box");
-	card.appendChild(box);
+	const cc = new ChartCard(parent, title, { titleColor: opts.titleColor });
+	const box = cc.box;
 	const restCounts = totalCounts.map((t, i) => t - subsetCounts[i]);
 	const baseColor = opts.color ?? THEME.label;
 	const chart = new BarChart(box, {
@@ -44,13 +45,19 @@ function addStackedShareCard(
 			borderColor: _hexToRgba(THEME.label, 0.45),
 		},
 	]);
-	_barCharts.push(chart);
+	cc.register(chart);
 }
 
 function addStackedBarCard(parent, title, labels, series, opts = {}) {
-	const card = mkCard(parent, title, opts.size);
-	const box = el("div", "chart-box");
-	card.appendChild(box);
+	const cc = new ChartCard(parent, title, {
+		size: opts.size,
+		legend: opts.legend
+			? series
+					.filter((s) => (s.data || []).some((v) => v > 0))
+					.map((s) => ({ label: s.label, color: s.color }))
+			: null,
+	});
+	const box = cc.box;
 	const totals = labels.map((_, i) =>
 		series.reduce((sum, s) => sum + (s.data[i] ?? 0), 0),
 	);
@@ -82,7 +89,7 @@ function addStackedBarCard(parent, title, labels, series, opts = {}) {
 			noHit: s.noHit,
 		})),
 	);
-	_barCharts.push(chart);
+	cc.register(chart);
 	return chart;
 }
 
@@ -180,9 +187,8 @@ function addBarCard(
 	tooltipFn,
 	opts = {},
 ) {
-	const card = mkCard(parent, title);
-	const box = el("div", "chart-box");
-	card.appendChild(box);
+	const cc = new ChartCard(parent, title);
+	const box = cc.box;
 	const chart = new BarChart(box, {
 		yMin: 0,
 		yMax,
@@ -206,7 +212,7 @@ function addBarCard(
 			labelColor: opts.labelColor,
 		},
 	]);
-	_barCharts.push(chart);
+	cc.register(chart);
 }
 
 function _parseSegments(raw) {
@@ -244,9 +250,8 @@ function _addDurationBoxCard(
 ) {
 	if (!durationsByLesson.some((d) => d.length)) return;
 	const hideOutliers = opts.hideOutliers !== false;
-	const card = mkCard(parent, title);
-	const box = el("div", "chart-box");
-	card.appendChild(box);
+	const cc = new ChartCard(parent, title);
+	const box = cc.box;
 	const allVals = durationsByLesson.flat();
 	const yMax =
 		opts.yMax != null ? opts.yMax : Math.ceil(Math.max(...allVals, 1) * 1.1);
@@ -274,7 +279,7 @@ function _addDurationBoxCard(
 			outlierRadius: 3,
 		},
 	]);
-	_barCharts.push(chart);
+	cc.register(chart);
 }
 
 function linReg(pts) {
@@ -296,10 +301,9 @@ function linReg(pts) {
 	}));
 }
 
-function addScatterCard(parent, assignment, points, isFirst) {
-	const card = mkCard(parent, assignment.name, "sm");
-	const box = el("div", "chart-box");
-	card.appendChild(box);
+function addScatterCard(parent, assignment, points) {
+	const cc = new ChartCard(parent, assignment.name, { size: "sm" });
+	const box = cc.box;
 
 	const noAI = points.filter((p) => !p.ai);
 	const aiPts = points.filter((p) => p.ai);
@@ -348,7 +352,7 @@ function addScatterCard(parent, assignment, points, isFirst) {
 			lineWidth: 1.5,
 		},
 	]);
-	_scatterCharts.push(chart);
+	cc.register(chart, _scatterCharts);
 }
 
 function _chartSlug(text, fallback) {
@@ -366,14 +370,10 @@ function _chartCanvasFilename(canvas, idx) {
 	return `${String(idx + 1).padStart(2, "0")}_${base}.png`;
 }
 
-const CHART_DL_SCALE = 3;
-
 function _chartByCanvas() {
 	const all = [..._barCharts, ..._scatterCharts, ..._clusterCharts];
 	return new Map(all.map((c) => [c._canvas, c]));
 }
-
-const MAX_CHART_DL_PX = 16384;
 
 function _exportChartAtScale(chart, scale) {
 	return new Promise((resolve) => {
@@ -418,16 +418,7 @@ async function _downloadTabChartsZip(bodyEl, zipName) {
 	}
 	if (!order.length) return;
 	const zip = await miniZipBuild(files, order);
-	const url = URL.createObjectURL(
-		new Blob([zip], { type: "application/zip" }),
-	);
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = zipName;
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-	URL.revokeObjectURL(url);
+	downloadBlob(zip, zipName, "application/zip");
 }
 
 function _refreshChartDownloadBtns() {

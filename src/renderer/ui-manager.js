@@ -106,22 +106,6 @@ class UIManager {
 		return blockDiv;
 	}
 
-	createCharSpan(char, stepIndex) {
-		let el = document.createElement("span");
-		el.className = "char";
-
-		if (char === "\n") {
-			el = document.createElement("br");
-		} else if (char === " ") {
-			el.innerHTML = "&nbsp;";
-		} else {
-			el.textContent = char;
-		}
-
-		el.dataset.stepIndex = stepIndex;
-		return el;
-	}
-
 	appendToLessonContainer(element) {
 		this.elements.lessonContainer.appendChild(element);
 	}

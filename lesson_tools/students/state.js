@@ -60,52 +60,25 @@ const COL_HIDE_KEYS = [
 	{ key: "grade", label: "Grade" },
 	{ key: "comments", label: "Comments" },
 	{ key: "interactions", label: "Interactions" },
-	{ key: "follow", label: "Follow / SIM" },
-	{ key: "languages", label: "Languages (HTML/CSS/JS/Py)" },
-	{ key: "fingerprint1", label: "Fingerprint · timeline" },
-	{ key: "fingerprint2", label: "Fingerprint · extras" },
-	{ key: "fingerprint3", label: "Fingerprint · comments" },
+	{ key: "follow", label: "Follow / Sim" },
+	{ key: "languages", label: "Languages" },
+	{ key: "fingerprint", label: "Fingerprint" },
 	{ key: "mismatches", label: "Mismatches" },
 ];
 
 const _hiddenCols = new Set();
 
-function _loadHiddenCols() {
-	try {
-		const raw = localStorage.getItem("students.hiddenCols");
-		if (!raw) return;
-		const arr = JSON.parse(raw);
-		if (!Array.isArray(arr)) return;
-		for (const k of arr) {
-			if (k === "fingerprint") {
-				_hiddenCols.add("fingerprint1");
-				_hiddenCols.add("fingerprint2");
-				_hiddenCols.add("fingerprint3");
-			} else {
-				_hiddenCols.add(k);
-			}
-		}
-	} catch (_e) {}
-}
-
-function _saveHiddenCols() {
-	try {
-		localStorage.setItem(
-			"students.hiddenCols",
-			JSON.stringify([..._hiddenCols]),
-		);
-	} catch (_e) {}
-}
+const _hiddenColsStore = makeHiddenColsStore(
+	"students.hiddenCols",
+	_hiddenCols,
+	{
+		migrate: (k) => (/^fingerprint[123]$/.test(k) ? "fingerprint" : null),
+	},
+);
+const _loadHiddenCols = () => _hiddenColsStore.load();
+const _saveHiddenCols = () => _hiddenColsStore.save();
 
 _loadHiddenCols();
-
-function _mismatchColor(ev) {
-	if (ev.kind === "missing" || ev.kind === "extra-star") {
-		const c = langColorFor(ev.lang);
-		if (c) return c;
-	}
-	return markColorFor(ev.kind) || THEME.muted;
-}
 
 const landingEl = document.getElementById("landing");
 const mainEl = document.getElementById("main");

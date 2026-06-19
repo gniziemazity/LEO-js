@@ -9,7 +9,7 @@
 lessonNameEl.title = "Open timeline for this lesson";
 lessonNameEl.addEventListener("click", () => {
 	if (!_lessonName) return;
-	navigateToTimeline({ lesson: _lessonName });
+	navigateToTimeline({ lesson: _lessonName, basis: _activeBasis });
 });
 
 (function () {
@@ -21,8 +21,8 @@ lessonNameEl.addEventListener("click", () => {
 		(params.star && params.star.length > 0);
 	_fingerprintParam = qs.get("fingerprint") === "1";
 	_simParam = qs.get("sim") === "1";
-	const setq = qs.get("set");
-	_setParam = setq === "ideal" || setq === "minimal" ? setq : null;
+	const setq = params.basis || qs.get("set");
+	_setParam = setq && REMARKS_BASES.some((b) => b.key === setq) ? setq : null;
 	const m = qs.get("mode") || "";
 	_modeParam = m === "lesson" || m === "assignment" ? m : null;
 	if (_paperMode) {

@@ -1,5 +1,12 @@
 "use strict";
 
+const CURATED_INS_OPEN = String.fromCharCode(0xe000);
+const CURATED_INS_CLOSE = String.fromCharCode(0xe001);
+const CURATED_DEL_OPEN = String.fromCharCode(0xe002);
+const CURATED_DEL_CLOSE = String.fromCharCode(0xe003);
+const CURATED_DEL_NL = String.fromCharCode(0xe004);
+let CURATED_REINDENT = true;
+
 function _curatedBackwardWhitespace(text, pos) {
 	if (pos <= 0 || !/\s/.test(text[pos - 1])) return "";
 	let i = pos;
@@ -94,13 +101,6 @@ function _curatedCleanupCorrectedText(text) {
 	while (e >= s && isBlank(lines[e])) e--;
 	return lines.slice(s, e + 1).join("\n");
 }
-
-const CURATED_INS_OPEN = String.fromCharCode(0xe000);
-const CURATED_INS_CLOSE = String.fromCharCode(0xe001);
-const CURATED_DEL_OPEN = String.fromCharCode(0xe002);
-const CURATED_DEL_CLOSE = String.fromCharCode(0xe003);
-const CURATED_DEL_NL = String.fromCharCode(0xe004);
-let CURATED_REINDENT = true;
 
 function _curatedApplyToStudent(opts) {
 	const _mark = !!(opts && opts.mark);
@@ -823,14 +823,7 @@ function _curatedRenderBlocksToImage(blocks, filename) {
 	}
 	canvas.toBlob((blob) => {
 		if (!blob) return;
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = filename;
-		document.body.appendChild(a);
-		a.click();
-		a.remove();
-		URL.revokeObjectURL(url);
+		downloadBlob(blob, filename);
 	}, "image/png");
 }
 
@@ -1110,7 +1103,7 @@ function _curatedPreview() {
 	htmlBtn.addEventListener("click", _curatedCopyCorrectionsHtml);
 	const dlBtn = document.createElement("button");
 	dlBtn.className = "btn-edit";
-	dlBtn.textContent = "📸 Screenshot";
+	dlBtn.textContent = "🖼️ Download";
 	const fmtLabel = document.createElement("label");
 	fmtLabel.className = "tw-preview-fmt";
 	const fmtChk = document.createElement("input");
@@ -1131,17 +1124,9 @@ function _curatedPreview() {
 	const panes = document.createElement("div");
 	panes.className = "tw-preview-panes";
 
-	const _previewExtRank = (n) => {
-		const m = n.toLowerCase().match(/\.([^.]+)$/);
-		const ext = m ? m[1] : "";
-		if (ext === "html" || ext === "htm") return 0;
-		if (ext === "js") return 1;
-		if (ext === "css") return 2;
-		return 3;
-	};
 	const sortedEntries = Object.entries(out).sort(([a], [b]) => {
-		const ra = _previewExtRank(a);
-		const rb = _previewExtRank(b);
+		const ra = _curatedFileExtRank(a);
+		const rb = _curatedFileExtRank(b);
 		if (ra !== rb) return ra - rb;
 		return a.localeCompare(b);
 	});

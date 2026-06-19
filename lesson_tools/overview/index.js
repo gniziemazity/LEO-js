@@ -2,8 +2,7 @@
 
 function _sortStudents(list, key) {
 	const sl = [...list];
-	if (key === "avg-follow") sl.sort((a, b) => followAvg(b) - followAvg(a));
-	else if (key === "total-follow")
+	if (key === "total-follow")
 		sl.sort((a, b) => followTotal(b) - followTotal(a));
 	else if (key === "artefacts")
 		sl.sort((a, b) => artefactsTotal(b) - artefactsTotal(a));
@@ -13,64 +12,53 @@ function _sortStudents(list, key) {
 }
 
 function visibleStudents() {
-	return _students.filter(
-		(s) => !s.ai_flagged && (!_hideExcluded || !s.excluded),
-	);
+	return _students.filter((s) => !s.ai_flagged && !s.excluded);
 }
 
-function onHideExcludedChange(checked) {
-	_hideExcluded = !!checked;
-	try {
-		localStorage.setItem("hide_excluded", _hideExcluded ? "1" : "0");
-	} catch {}
-	if (_students.length) {
-		renderTable();
-		renderStats();
-		renderClusters();
-	}
-}
-
-(function _initHideExcluded() {
-	try {
-		const saved = localStorage.getItem("hide_excluded");
-		_hideExcluded = saved === null ? true : saved === "1";
-		const cb = document.getElementById("hide-excluded");
-		if (cb) cb.checked = _hideExcluded;
-	} catch {}
-})();
-
-function onHideCopiersChange(checked) {
-	_hideCopiers = !!checked;
+function onShowCopiersChange(checked) {
+	_hideCopiers = !checked;
 	try {
 		localStorage.setItem("hide_copiers", _hideCopiers ? "1" : "0");
 	} catch {}
 	if (_students.length) renderStats();
 }
 
-(function _initHideCopiers() {
+(function _initShowCopiers() {
 	try {
 		const saved = localStorage.getItem("hide_copiers");
 		_hideCopiers = saved === null ? true : saved === "1";
-		const cb = document.getElementById("hide-copiers");
-		if (cb) cb.checked = _hideCopiers;
+		const cb = document.getElementById("show-copiers");
+		if (cb) cb.checked = !_hideCopiers;
 	} catch {}
 })();
 
-function onHideArtefactsChange(checked) {
-	_hideArtefacts = !!checked;
+function _updateArtefactSortVisibility() {
+	const opt = document.getElementById("cluster-sort-artefacts-opt");
+	if (opt) opt.hidden = _hideArtefacts;
+	if (_hideArtefacts && _clusterSort === "artefacts") {
+		_clusterSort = "total-follow";
+		const sel = document.getElementById("cluster-sort-select");
+		if (sel) sel.value = "total-follow";
+	}
+}
+
+function onShowArtefactsChange(checked) {
+	_hideArtefacts = !checked;
 	try {
 		localStorage.setItem("hide_artefacts", _hideArtefacts ? "1" : "0");
 	} catch {}
+	_updateArtefactSortVisibility();
 	if (_students.length) renderClusters();
 }
 
-(function _initHideArtefacts() {
+(function _initShowArtefacts() {
 	try {
 		const saved = localStorage.getItem("hide_artefacts");
 		_hideArtefacts = saved === null ? true : saved === "1";
-		const cb = document.getElementById("hide-artefacts");
-		if (cb) cb.checked = _hideArtefacts;
+		const cb = document.getElementById("show-artefacts");
+		if (cb) cb.checked = !_hideArtefacts;
 	} catch {}
+	_updateArtefactSortVisibility();
 })();
 const _tookCode = (entry) => (entry?.lesson_obs || "").includes("<");
 const followAvg = (s) => {
@@ -119,6 +107,9 @@ function showPage(name) {
 		.querySelectorAll(".page")
 		.forEach((p) => p.classList.remove("active"));
 	document.getElementById("page-" + name).classList.add("active");
+	document
+		.querySelectorAll("#toolbar .tab-controls")
+		.forEach((el) => el.toggleAttribute("hidden", el.dataset.tab !== name));
 	if (name === "students") requestAnimationFrame(applyStickyColumns);
 	_refreshChartDownloadBtns();
 }
@@ -135,7 +126,6 @@ function _applyInitialTab() {
 	);
 	if (btn) btn.click();
 }
-_applyInitialTab();
 
 async function _runChartDownload(btn, bodyId, zipName) {
 	if (btn.disabled) return;

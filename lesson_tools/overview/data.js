@@ -83,6 +83,7 @@ function _lessonStatsFromPyStats(py) {
 
 async function loadCourse(ds) {
 	console.log("[overview] loadCourse rootName =", ds.rootName);
+	_overviewDs = ds;
 
 	const gradesFile = ds.files.get("overview.json");
 	const pyStatsFile = ds.files.get("grades_stats.json") || null;
@@ -241,14 +242,13 @@ function finishLoad(filename) {
 	_barCharts = [];
 	document.getElementById("toolbar").classList.add("show");
 	_clusterSort = "total-follow";
-	document
-		.querySelectorAll(".cluster-sort[data-cluster-sort]")
-		.forEach((b) =>
-			b.classList.toggle("active", b.dataset.clusterSort === "total-follow"),
-		);
+	const _sortSel = document.getElementById("cluster-sort-select");
+	if (_sortSel) _sortSel.value = "total-follow";
 	renderTable();
 	renderStats();
 	renderClusters();
+	_overviewCaptureFollowSnapshot();
+	_overviewRenderBasisPicker();
 	showPage("students");
 }
 

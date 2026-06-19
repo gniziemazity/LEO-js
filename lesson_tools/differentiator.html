@@ -323,7 +323,11 @@
 				box-shadow: var(--shadow-soft);
 			}
 			.btn-edit:hover {
-				background: var(--clr-accent-light);
+				background: color-mix(
+					in srgb,
+					var(--clr-accent) 12%,
+					var(--clr-bg)
+				);
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
@@ -399,6 +403,68 @@
 			}
 			#mode-select option[value="__clear__"] {
 				color: var(--clr-red);
+			}
+
+			.csm-form {
+				min-width: 300px;
+			}
+			.csm-form label {
+				display: block;
+				margin-bottom: 8px;
+				font-size: 11px;
+				color: var(--clr-label);
+			}
+			.csm-form select,
+			.csm-form input[type="text"] {
+				width: 100%;
+				margin-top: 4px;
+				padding: 4px 8px;
+				font-size: 11px;
+				border: 1px solid var(--clr-diff-btn-border);
+				border-radius: 4px;
+				background: var(--clr-bg);
+				color: var(--clr-label);
+				box-shadow: var(--shadow-soft);
+			}
+			.csm-form select {
+				cursor: pointer;
+			}
+			.csm-form select option[value="ideal"],
+			.csm-form select option[value="minimal"] {
+				color: var(--clr-mark-extra);
+			}
+			.csm-form .csm-hint {
+				opacity: 0.7;
+			}
+			.csm-form #csm-status {
+				display: none;
+				font-weight: 600;
+				margin: 8px 0;
+			}
+			.csm-form .csm-actions {
+				display: flex;
+				gap: 8px;
+				justify-content: flex-end;
+				align-items: center;
+			}
+
+			.nav-btn {
+				padding: 0 6px;
+				border: 1px solid var(--clr-border-strong);
+				border-radius: 3px;
+				background: var(--clr-bg);
+				cursor: pointer;
+				font-size: 12px;
+			}
+			.nav-btn-lead {
+				margin-left: auto;
+			}
+			.nav-counter {
+				font-size: 11px;
+				font-family: Consolas, monospace;
+				color: var(--clr-muted);
+				min-width: 44px;
+				text-align: center;
 			}
 
 			.preview-frame {
@@ -580,10 +646,10 @@
 				display: inline-block;
 				cursor: pointer;
 				color: var(--insert-anchor-color, var(--clr-mark-missing));
-				font-size: 13px;
-				line-height: 1;
-				vertical-align: text-top;
-				margin: 0 -1px;
+				font-size: 18px;
+				line-height: 0;
+				vertical-align: middle;
+				margin: 0 -2px;
 				padding: 0;
 				user-select: none;
 				opacity: 1;
@@ -596,7 +662,7 @@
 				color: var(--insert-anchor-color, var(--clr-mark-missing));
 				opacity: 1;
 				font-weight: bold;
-				font-size: 15px;
+				font-size: 21px;
 				text-shadow: 0 0 2px
 					var(--insert-anchor-color, var(--clr-mark-missing));
 			}
@@ -878,23 +944,6 @@
 			body.curated-token-hover-active .diff-line {
 				cursor: pointer !important;
 			}
-			.btn-edit.curated-only-btn,
-			#btn-generate-curated {
-				background: color-mix(in srgb, var(--c-blue-1) 13%, var(--clr-bg));
-				border-color: color-mix(
-					in srgb,
-					var(--c-blue-1) 35%,
-					var(--clr-bg)
-				);
-				color: var(--clr-info-pill-text);
-			}
-			.btn-edit.curated-only-btn:hover,
-			#btn-generate-curated:hover {
-				background: color-mix(in srgb, var(--c-blue-1) 20%, var(--clr-bg));
-				border-color: var(--clr-accent);
-				color: var(--clr-accent);
-			}
-
 			#curated-controls {
 				position: absolute;
 				display: none;
@@ -924,7 +973,11 @@
 				-webkit-appearance: none;
 			}
 			#curated-controls .tc-row button:hover {
-				background: var(--clr-accent-light);
+				background: color-mix(
+					in srgb,
+					var(--clr-accent) 12%,
+					var(--clr-bg)
+				);
 				border-color: var(--clr-accent);
 				color: var(--clr-accent);
 			}
@@ -1077,26 +1130,6 @@
 				color: var(--clr-text);
 				cursor: pointer;
 				user-select: none;
-			}
-			.curated-float-win .tw-preview-toolbar .sp-toggle {
-				display: inline-flex;
-				gap: 2px;
-			}
-			.curated-float-win .tw-preview-toolbar .sp-toggle button {
-				padding: 2px 8px;
-				font-size: 11px;
-				border: 1px solid var(--clr-diff-btn-border);
-				background: var(--clr-bg);
-				color: var(--clr-text);
-				cursor: pointer;
-				border-radius: 3px;
-			}
-			.curated-float-win .tw-preview-toolbar .sp-toggle button:hover {
-				background: var(--clr-row-hover);
-			}
-			.curated-float-win .tw-preview-toolbar .sp-toggle button.active {
-				background: var(--clr-accent);
-				color: #fff;
 			}
 			.curated-float-win .tw-preview-codeview {
 				display: flex;
@@ -1259,42 +1292,18 @@
 					</div>
 					<button
 						id="nav-prev-student"
+						class="nav-btn nav-btn-lead"
 						title="Previous student"
 						disabled
-						style="
-							padding: 0 6px;
-							margin-left: auto;
-							border: 1px solid var(--clr-border-strong);
-							border-radius: 3px;
-							background: var(--clr-bg);
-							cursor: pointer;
-							font-size: 12px;
-						"
 					>
 						←
 					</button>
-					<span
-						id="nav-counter-student"
-						style="
-							font-size: 11px;
-							font-family: Consolas, monospace;
-							color: var(--clr-muted);
-							min-width: 44px;
-							text-align: center;
-						"
-					></span>
+					<span id="nav-counter-student" class="nav-counter"></span>
 					<button
 						id="nav-next-student"
+						class="nav-btn"
 						title="Next student"
 						disabled
-						style="
-							padding: 0 6px;
-							border: 1px solid var(--clr-border-strong);
-							border-radius: 3px;
-							background: var(--clr-bg);
-							cursor: pointer;
-							font-size: 12px;
-						"
 					>
 						→
 					</button>
@@ -1367,8 +1376,14 @@
 		</div>
 		<div id="loading">Loading…</div>
 		<script src="preview.js"></script>
+		<script src="shared/tooltip.js"></script>
 		<script src="shared/diff-utils.js"></script>
 		<script src="shared/data-source.js"></script>
+		<script src="shared/http-file-like.js"></script>
+		<script src="shared/fs-data-source.js"></script>
+		<script src="shared/scoped-data-source.js"></script>
+		<script src="shared/http-data-source.js"></script>
+		<script src="shared/grades-data-source.js"></script>
 		<script src="shared/mammoth.browser.min.js"></script>
 		<script src="languages/profiles.js"></script>
 		<script src="differentiator/index.js"></script>

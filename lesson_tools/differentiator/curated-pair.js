@@ -1,4 +1,5 @@
 "use strict";
+const _CURATED_EDGE_PX = 4;
 
 function _curatedEnsureFloater(id, init) {
 	if (_curatedFloaters.has(id)) return _curatedFloaters.get(id);
@@ -165,15 +166,7 @@ function _curatedFindMarkEl(side, mark, file) {
 }
 
 function _curatedSrcPosToDomPoint(side, file, srcPos) {
-	const wrap = document.getElementById(`code-${side}`);
-	if (!wrap) return null;
-	let pane = null;
-	for (const p of wrap.querySelectorAll(".code-pane.active")) {
-		if (p.dataset.paneFile === file) {
-			pane = p;
-			break;
-		}
-	}
+	const pane = _curatedPaneFor(side, file, true);
 	if (!pane) return null;
 	const lines = pane.querySelectorAll(".diff-line");
 	let lineEl = null;
@@ -228,8 +221,6 @@ function _curatedTokenBbox(side, file, tok) {
 	if (!rect || (rect.width === 0 && rect.height === 0)) return null;
 	return rect;
 }
-
-const _CURATED_EDGE_PX = 4;
 
 function _curatedEdgeFor(bbox) {
 	return Math.min(_CURATED_EDGE_PX, bbox.width / 4);
@@ -660,9 +651,7 @@ function _curatedApplyGhostPairFromExtraStar(ghost) {
 		_curatedCancelPending();
 		_curatedClearPairHover();
 		_curatedRerender();
-		_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0, {
-			preservePosition: true,
-		});
+		_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0);
 		return true;
 	}
 	const sortedAnchors = anchorMarks.slice().sort((a, b) => a.start - b.start);
@@ -681,9 +670,7 @@ function _curatedApplyGhostPairFromExtraStar(ghost) {
 	_curatedCancelPending();
 	_curatedClearPairHover();
 	_curatedRerender();
-	_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0, {
-		preservePosition: true,
-	});
+	_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0);
 	return true;
 }
 
@@ -700,7 +687,7 @@ function _curatedApplyGhostPairFromGhostAnchor(studentMark) {
 	_curatedClearPairHover();
 	_curatedRerender();
 	if (typeof _curatedSelectGhostAndShow === "function") {
-		_curatedSelectGhostAndShow(ghost, 0, 0, { preservePosition: true });
+		_curatedSelectGhostAndShow(ghost, 0, 0);
 	}
 	return true;
 }
@@ -819,9 +806,7 @@ function _curatedApplyPendingPair(info, ev) {
 	_curatedCancelPending();
 	_curatedClearPairHover();
 	_curatedRerender();
-	_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0, {
-		preservePosition: true,
-	});
+	_curatedSelectAndShow(anchorSide, anchorFile, anchorLo, anchorHi, 0, 0);
 	return true;
 }
 

@@ -87,12 +87,6 @@ class FileViewer {
 		this._renderTabs();
 	}
 
-	setActiveFile(name) {
-		if (this._activeFile === name) return;
-		this._activeFile = name;
-		this._renderTabs();
-	}
-
 	setLeftLabel(text) {
 		this._leftLabel = text || "";
 		this._renderTabs();
@@ -123,12 +117,6 @@ class FileViewer {
 		this.previewEl.src = url;
 	}
 
-	clearPreview() {
-		if (!this.previewEl) return;
-		this.previewEl.removeAttribute("src");
-		this.previewEl.srcdoc = "";
-	}
-
 	showPreviewLoading() {
 		if (!this.previewEl) return;
 		this.previewEl.removeAttribute("src");
@@ -145,14 +133,6 @@ class FileViewer {
 		if (this._rightEl) this._rightEl.style.display = "";
 		if (this.previewEl) this.previewEl.style.display = "";
 		if (this._dividerEl) this._dividerEl.style.display = "";
-	}
-
-	get activeFile() {
-		return this._activeFile;
-	}
-
-	get tabNames() {
-		return [...this._tabNames];
 	}
 
 	_renderTabs() {

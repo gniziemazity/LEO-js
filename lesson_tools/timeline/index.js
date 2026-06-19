@@ -1,4 +1,5 @@
 "use strict";
+const _TOKEN_RE = newTokenRegex();
 
 let _pendingXlsx = [];
 let _allFiles = new Map();
@@ -210,31 +211,14 @@ async function loadJsonData(file, data) {
 	saveLessonStatsCsv();
 }
 
-const _TOKEN_RE = newTokenRegex();
-
 function _findHtmlEmbeddedRanges(text) {
-	const result = { script: [], style: [] };
-	for (const tag of ["script", "style"]) {
-		const openRe = new RegExp(`<\\s*${tag}\\b[^>]*>`, "gi");
-		let om;
-		while ((om = openRe.exec(text)) !== null) {
-			const innerStart = om.index + om[0].length;
-			const closeRe = new RegExp(`<\\/\\s*${tag}\\s*>`, "i");
-			const sub = text.slice(innerStart);
-			const cm = sub.match(closeRe);
-			let innerEnd, nextPos;
-			if (cm) {
-				innerEnd = innerStart + cm.index;
-				nextPos = innerEnd + cm[0].length;
-			} else {
-				innerEnd = text.length;
-				nextPos = text.length;
-			}
-			result[tag].push([innerStart, innerEnd]);
-			openRe.lastIndex = nextPos;
-		}
-	}
-	return result;
+	const LP = window.LanguageProfiles;
+	const htmlProfile = LP && LP.getProfile ? LP.getProfile("html") : null;
+	const byTag =
+		htmlProfile && LP.embeddedTagRanges
+			? LP.embeddedTagRanges(htmlProfile, text)
+			: {};
+	return { script: byTag.script || [], style: byTag.style || [] };
 }
 
 function _bucketForPos(pos, ranges, defaultBucket) {
@@ -399,6 +383,18 @@ window.addEventListener("resize", () => {
 			navigateToStudents({ lesson: _lessonName, group: _lessonGroup });
 		} else {
 			window.open("students.html?autoload=1", "_blank");
+		}
+	});
+})();
+
+(function _wireSimButton() {
+	const btn = document.getElementById("btn-open-sim");
+	if (!btn) return;
+	btn.addEventListener("click", () => {
+		if (_lessonName) {
+			navigateToSimulator({ lesson: _lessonName, group: _lessonGroup });
+		} else {
+			window.open("simulator.html", "_blank");
 		}
 	});
 })();

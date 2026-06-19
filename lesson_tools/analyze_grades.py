@@ -1067,13 +1067,9 @@ def analyze_correlations_summary(st):
         print(f"  {label:<40} {fmt_r(r_p):>7} {fmt_r(r_s):>7} {fmt_p(p_s):>12} {n_s:>5}")
 
 
-def _artefact_schema_for(a):
-    return _raw_flags(a)
-
-
 def analyze_artefacts(st):
     have = [a_num for a_num, a in ASSIGNMENTS.items()
-            if _artefact_schema_for(a) and st.get(f"a{a_num}_artefact_valid") is not None
+            if _raw_flags(a) and st.get(f"a{a_num}_artefact_valid") is not None
             and st[f"a{a_num}_artefact_valid"].any()]
     if not have:
         return
@@ -1092,7 +1088,7 @@ def analyze_artefacts(st):
         a = ASSIGNMENTS[a_num]
         valid = st[f"a{a_num}_artefact_valid"]
         n_valid = int(valid.sum())
-        for key, label in _artefact_schema_for(a):
+        for key, label in _raw_flags(a):
             fired = int(st[f"a{a_num}_artefact_{key}"].sum())
             ans_col = f"a{a_num}_artefact_{key}_ans"
             n_ans = int(st[ans_col].sum()) if ans_col in st.columns else n_valid
@@ -1112,7 +1108,7 @@ def analyze_artefacts(st):
         a = ASSIGNMENTS[a_num]
         trouble = st[f"a{a_num}_trouble"]
         valid = st[f"a{a_num}_artefact_valid"]
-        for key, label in _artefact_schema_for(a):
+        for key, label in _raw_flags(a):
             fired = st[f"a{a_num}_artefact_{key}"]
             ans_col = f"a{a_num}_artefact_{key}_ans"
             ans = st[ans_col] if ans_col in st.columns else valid
@@ -1144,7 +1140,7 @@ def analyze_artefacts(st):
         a = ASSIGNMENTS[a_num]
         grade = st[f"a{a_num}_grade"]
         valid = st[f"a{a_num}_artefact_valid"]
-        for key, label in _artefact_schema_for(a):
+        for key, label in _raw_flags(a):
             fired = st[f"a{a_num}_artefact_{key}"]
             ans_col = f"a{a_num}_artefact_{key}_ans"
             ans = st[ans_col] if ans_col in st.columns else valid
@@ -1356,7 +1352,7 @@ def save_stats_json(st, grades_path):
             entry["ai_avg_grade"]   = sf(ai_grades.mean())   if len(ai_grades)   > 0 else None
             entry["no_ai_avg_grade"]= sf(noai_grades.mean()) if len(noai_grades) > 0 else None
 
-        schema = _artefact_schema_for(a)
+        schema = _raw_flags(a)
         severity_map = _load_artefact_severity(a.get("lower", ""))
         if schema and f"a{a_num}_artefact_valid" in st_students.columns:
             valid   = st_students[f"a{a_num}_artefact_valid"]
@@ -1433,7 +1429,7 @@ def save_stats_json(st, grades_path):
             "n_total": len(st_llm),
             "artefacts":   [],
         }
-        schema = _artefact_schema_for(a)
+        schema = _raw_flags(a)
         valid_col = f"a{a_num}_artefact_valid"
         if schema and valid_col in st_llm.columns:
             valid = st_llm[valid_col]
@@ -1788,7 +1784,7 @@ def save_stats_json(st, grades_path):
 
         per_artefact = []
         for a_num, a in ASSIGNMENTS.items():
-            schema = _artefact_schema_for(a)
+            schema = _raw_flags(a)
             if not schema: continue
             for key, label in schema:
                 fcol = f"a{a_num}_artefact_{key}"

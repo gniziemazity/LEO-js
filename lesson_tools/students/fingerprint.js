@@ -54,6 +54,49 @@ function _renderByteFingerprint(
 	wrap.appendChild(bar);
 }
 
+class FingerprintCell {
+	constructor({
+		cls,
+		tipHtml = null,
+		positions = null,
+		bytes = null,
+		langs = null,
+		classPrefix = null,
+	}) {
+		this.cls = cls;
+		this.tipHtml = tipHtml;
+		this.positions = positions;
+		this.bytes = bytes;
+		this.langs = langs;
+		this.classPrefix = classPrefix;
+	}
+	render() {
+		const fpEl = document.createElement("td");
+		fpEl.className = "col-fingerprint " + this.cls;
+		if (this.tipHtml) setupTipHtml(fpEl, this.tipHtml);
+		const wrap = document.createElement("div");
+		wrap.className = "fp-wrap";
+		if (this.positions) {
+			const bar = document.createElement("div");
+			bar.className = "fp-bar";
+			for (const entry of this.positions) {
+				const mark = document.createElement("div");
+				mark.className = "fp-mark lang-" + (entry.lang || "unk");
+				mark.style.left = entry.pos * 100 + "%";
+				bar.appendChild(mark);
+			}
+			wrap.appendChild(bar);
+		} else {
+			_renderByteFingerprint(wrap, this.bytes, {
+				langs: this.langs,
+				classPrefix: this.classPrefix,
+			});
+		}
+		fpEl.appendChild(wrap);
+		return fpEl;
+	}
+}
+
 function _maskToBytes(vals) {
 	const groups = [];
 	for (let i = 0; i < vals.length; i += 8) {

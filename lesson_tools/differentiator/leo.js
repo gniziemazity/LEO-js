@@ -47,7 +47,7 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 						? "leo-row-extra-star"
 						: "";
 
-	const renderSingleRow = (inst, sideName, ctx, highlight, score, isSelf) => {
+	const renderSingleRow = (inst, ctx, highlight, score, isSelf) => {
 		const fmt = isSelf ? _fmtCtxToken : _fmtCtxTokenBold;
 		const before = ctx ? ctx.before.map(fmt).join(" ") : "";
 		const after = ctx ? ctx.after.map(fmt).join(" ") : "";
@@ -82,7 +82,6 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		if (!isDual) {
 			return renderSingleRow(
 				inst,
-				sideName,
 				_contextSlice(inst, sideName),
 				highlight,
 				score,
@@ -94,8 +93,8 @@ function _renderLeoTooltip(token, data, side, pos, ghostOffset) {
 		const cls = `leo-pair${highlight ? " leo-this" : ""}`;
 		return (
 			`<div class="${cls}">` +
-			renderSingleRow(inst, sideName, ctxWith, false, score, isSelf) +
-			renderSingleRow(inst, sideName, ctxStripped, false, scoreAlt, isSelf) +
+			renderSingleRow(inst, ctxWith, false, score, isSelf) +
+			renderSingleRow(inst, ctxStripped, false, scoreAlt, isSelf) +
 			`</div>`
 		);
 	};
@@ -244,7 +243,7 @@ function _findMarkAtPos(side, token, pos) {
 	return null;
 }
 
-function _renderSimpleTooltip(token, mark) {
+function _renderSimpleTooltip(mark) {
 	let html = "";
 	if (mark.timestamp) {
 		html += `<div class="leo-row"><span class="leo-sub">teacher typed: ${escHtml(mark.timestamp)}</span></div>`;
@@ -289,7 +288,7 @@ function _showLeoTooltip(target) {
 		const label = mark.label || "matched";
 		const color = _labelColor(label);
 		_leoTipTitle.innerHTML = `<span style="color:${color};font-weight:bold">${escHtml(token)}</span> <span class="leo-sub">— ${escHtml(label)}</span>`;
-		_leoTipBody.innerHTML = _renderSimpleTooltip(token, mark);
+		_leoTipBody.innerHTML = _renderSimpleTooltip(mark);
 		_positionLeoTipNear(tip, target);
 		return;
 	}

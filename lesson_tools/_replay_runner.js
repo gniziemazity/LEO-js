@@ -15,6 +15,10 @@
 	await LP.initProfiles();
 	global.window = { LanguageProfiles: LP };
 
+	const textStateSrc = fs.readFileSync(
+		path.join(here, "shared/text-state.js"),
+		"utf-8",
+	);
 	const modelSrc = fs.readFileSync(
 		path.join(here, "shared/simulator-model.js"),
 		"utf-8",
@@ -25,7 +29,7 @@
 	);
 	const make = new Function(
 		"window",
-		`${modelSrc}\n${replaySrc}\nreturn { headlessReplay };`,
+		`${textStateSrc}\n${modelSrc}\n${replaySrc}\nreturn { headlessReplay };`,
 	);
 	const api = make(global.window);
 

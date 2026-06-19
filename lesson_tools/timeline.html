@@ -27,13 +27,7 @@
 				<div id="hover-vline"></div>
 				<div class="chart-section" id="chart-top-section">
 					<div class="chart-wrap"><canvas id="chart-top"></canvas></div>
-					<button
-						id="btn-open-sim"
-						onclick="window.open('simulator.html')"
-						title="Simulate Lesson"
-					>
-						▶
-					</button>
+					<button id="btn-open-sim" title="Simulate Lesson">▶</button>
 					<div id="chart-top-legend" class="chart-legend-overlay">
 						<div id="leg-total" class="leg-total-row"></div>
 						<label
@@ -146,9 +140,16 @@
 		<div id="loading">Loading…</div>
 		<div id="tooltip"></div>
 
+		<script src="shared/tooltip.js"></script>
 		<script src="shared/diff-utils.js"></script>
 		<script src="shared/data-source.js"></script>
+		<script src="shared/http-file-like.js"></script>
+		<script src="shared/fs-data-source.js"></script>
+		<script src="shared/scoped-data-source.js"></script>
+		<script src="shared/http-data-source.js"></script>
+		<script src="shared/grades-data-source.js"></script>
 		<script src="languages/profiles.js"></script>
+		<script src="shared/text-state.js"></script>
 		<script src="shared/simulator-model.js"></script>
 		<script src="shared/simulator-replay.js"></script>
 		<script src="shared/timeline-utils.js"></script>
