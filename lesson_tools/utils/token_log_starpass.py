@@ -195,7 +195,7 @@ def _refresh_missing_timestamps(diff_marks: dict, events: list,
             if upgraded:
                 mark['removal_ts'] = upgraded
 
-def _add_log_metadata(
+def _apply_star_post_pass(
     diff_marks: dict,
     events: list,
     student_files: Dict[str, Path],
@@ -230,6 +230,13 @@ def _add_log_metadata(
     teacher_ghosts = _collect_teacher_ghosts(events)
     if teacher_ghosts:
         diff_marks['teacher_ghosts'] = teacher_ghosts
+
+def _swap_pair_score(missing_token: str, extra_token: str, cos: float) -> float:
+    tok_sim = (
+        1.0 if missing_token == extra_token
+        else SequenceMatcher(None, missing_token, extra_token).ratio()
+    )
+    return cos + _SWAP_TOKEN_SIM_WEIGHT * tok_sim
 
 def _apply_swap_pairing_to_marks(
     t_marks_by_file: Dict[str, List[dict]],
@@ -298,11 +305,9 @@ def _apply_swap_pairing_to_marks(
         for missing_idx, (_, missing_mark) in enumerate(missing_entries):
             missing_tok = missing_mark['token']
             for extra_idx, (_, extra_mark) in enumerate(extra_entries):
-                tok_sim = (
-                    1.0 if missing_tok == extra_mark['token']
-                    else SequenceMatcher(None, missing_tok, extra_mark['token']).ratio()
+                score = _swap_pair_score(
+                    missing_tok, extra_mark['token'], cos_matrix[extra_idx][missing_idx],
                 )
-                score = cos_matrix[extra_idx][missing_idx] + _SWAP_TOKEN_SIM_WEIGHT * tok_sim
                 if score >= _CONTEXT_MATCH_THRESHOLD:
                     candidates.append((score, missing_idx, extra_idx))
         candidates.sort(reverse=True)
@@ -507,18 +512,18 @@ def _apply_ghost_extra_promotion(
                     and 0 <= match_idx < len(teacher_insts)
                     and teacher_insts[match_idx].get('ghost'))
 
-        prepaired_ghost_idxs: set = set()
+        leo_matched_ghost_idxs: set = set()
         unpaired_extras: List[Tuple[int, dict]] = []
         for student_idx, student_inst in extra_insts:
             match_idx = student_inst.get('match_idx')
             if _is_ghost_pair(match_idx):
                 _promote(student_inst, teacher_insts[match_idx], tok)
-                prepaired_ghost_idxs.add(match_idx)
+                leo_matched_ghost_idxs.add(match_idx)
             else:
                 unpaired_extras.append((student_idx, student_inst))
 
         unpaired_ghosts = [
-            (j, t) for j, t in ghost_insts if j not in prepaired_ghost_idxs
+            (j, t) for j, t in ghost_insts if j not in leo_matched_ghost_idxs
         ]
         if not unpaired_extras or not unpaired_ghosts:
             continue

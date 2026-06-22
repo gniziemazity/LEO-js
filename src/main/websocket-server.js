@@ -267,100 +267,93 @@ class LEOBroadcastServer extends EventEmitter {
 
 	handleClientMessage(message) {
 		const { type, data } = message;
-		if (type === "toggle-active") {
-			this.emit("client-toggle-active");
-		} else if (type === "jump-to") {
-			this.emit(
-				"client-jump-to",
-				Math.max(0, Math.round(clampNum(data.stepIndex, 1e7))),
-			);
-		} else if (type === "interaction") {
-			this.emit("client-interaction", data.interactionType);
-		} else if (type === "student-answered") {
-			this.emit("client-student-answered", data.studentName);
-		} else if (type === "student-interaction") {
-			this.emit(
-				"client-student-interaction",
-				data.interactionType,
-				data.studentName,
-				data.questionText || null,
-				data.openedAt || null,
-				data.closedAt || null,
-			);
-		} else if (type === "show-student-interaction") {
-			this.emit(
-				"client-show-student-interaction",
-				data.interactionType,
-				data.studentName,
-				data.questionText || null,
-				data.openedAt || null,
-			);
-		} else if (type === "move-to-confirmed") {
-			this.emit("client-move-to-confirmed");
-		} else if (type === "show-question") {
-			this.emit("client-show-question");
-		} else if (type === "interaction-overlay-shown") {
-			this.emit("client-interaction-overlay-shown");
-		} else if (type === "interaction-overlay-closed") {
-			this.emit("client-interaction-overlay-closed");
-		} else if (type === "close-student-interaction") {
-			this.emit(
-				"client-close-student-interaction",
-				data.interactionType,
-				data.studentName,
-				data.questionText || null,
-				data.openedAt || null,
-				data.closedAt || null,
-			);
-		} else if (type === "mouse-move") {
-			this.emit(
-				"client-mouse-move",
-				clampNum(data.dx, 5000),
-				clampNum(data.dy, 5000),
-			);
-		} else if (type === "window-drag") {
-			this.emit(
-				"client-window-drag",
-				clampNum(data.dx, 10000),
-				clampNum(data.dy, 10000),
-			);
-		} else if (type === "window-resize") {
-			this.emit(
-				"client-window-resize",
-				clampScale(data.scaleX ?? data.scale),
-				clampScale(data.scaleY ?? data.scale),
-			);
-		} else if (type === "window-pinch") {
-			this.emit(
-				"client-window-pinch",
-				clampScale(data.scale),
-				clampNum(data.dx, 10000),
-				clampNum(data.dy, 10000),
-			);
-		} else if (type === "mouse-click") {
-			this.emit(
-				"client-mouse-click",
-				data.button === "right" ? "right" : "left",
-			);
-		} else if (type === "mouse-scroll") {
-			this.emit("client-mouse-scroll", clampNum(data.dy, 5000));
-		} else if (type === "mouse-drag-start") {
-			this.emit("client-mouse-drag-start");
-		} else if (type === "mouse-drag-end") {
-			this.emit("client-mouse-drag-end");
-		} else if (type === "timer-start") {
-			this.emit("client-timer-start");
-		} else if (type === "timer-stop") {
-			this.emit("client-timer-stop");
-		} else if (type === "timer-adjust") {
-			this.emit("client-timer-adjust", clampNum(data.minutes, 600));
-		} else if (type === "remote-key-press") {
-			this.emit("client-remote-key-press");
-		} else if (type === "dismiss-question") {
-			this.emit("client-dismiss-question");
-		} else if (plugin.onClientMessage) {
-			plugin.onClientMessage(type, data, this);
-		}
+		const handlers = {
+			"toggle-active": () => this.emit("client-toggle-active"),
+			"jump-to": (data) =>
+				this.emit(
+					"client-jump-to",
+					Math.max(0, Math.round(clampNum(data.stepIndex, 1e7))),
+				),
+			interaction: (data) =>
+				this.emit("client-interaction", data.interactionType),
+			"student-answered": (data) =>
+				this.emit("client-student-answered", data.studentName),
+			"student-interaction": (data) =>
+				this.emit(
+					"client-student-interaction",
+					data.interactionType,
+					data.studentName,
+					data.questionText || null,
+					data.openedAt || null,
+					data.closedAt || null,
+				),
+			"show-student-interaction": (data) =>
+				this.emit(
+					"client-show-student-interaction",
+					data.interactionType,
+					data.studentName,
+					data.questionText || null,
+					data.openedAt || null,
+				),
+			"move-to-confirmed": () => this.emit("client-move-to-confirmed"),
+			"show-question": () => this.emit("client-show-question"),
+			"interaction-overlay-shown": () =>
+				this.emit("client-interaction-overlay-shown"),
+			"interaction-overlay-closed": () =>
+				this.emit("client-interaction-overlay-closed"),
+			"close-student-interaction": (data) =>
+				this.emit(
+					"client-close-student-interaction",
+					data.interactionType,
+					data.studentName,
+					data.questionText || null,
+					data.openedAt || null,
+					data.closedAt || null,
+				),
+			"mouse-move": (data) =>
+				this.emit(
+					"client-mouse-move",
+					clampNum(data.dx, 5000),
+					clampNum(data.dy, 5000),
+				),
+			"window-drag": (data) =>
+				this.emit(
+					"client-window-drag",
+					clampNum(data.dx, 10000),
+					clampNum(data.dy, 10000),
+				),
+			"window-resize": (data) =>
+				this.emit(
+					"client-window-resize",
+					clampScale(data.scaleX ?? data.scale),
+					clampScale(data.scaleY ?? data.scale),
+				),
+			"window-pinch": (data) =>
+				this.emit(
+					"client-window-pinch",
+					clampScale(data.scale),
+					clampNum(data.dx, 10000),
+					clampNum(data.dy, 10000),
+				),
+			"mouse-click": (data) =>
+				this.emit(
+					"client-mouse-click",
+					data.button === "right" ? "right" : "left",
+				),
+			"mouse-scroll": (data) =>
+				this.emit("client-mouse-scroll", clampNum(data.dy, 5000)),
+			"mouse-drag-start": () => this.emit("client-mouse-drag-start"),
+			"mouse-drag-end": () => this.emit("client-mouse-drag-end"),
+			"timer-start": () => this.emit("client-timer-start"),
+			"timer-stop": () => this.emit("client-timer-stop"),
+			"timer-adjust": (data) =>
+				this.emit("client-timer-adjust", clampNum(data.minutes, 600)),
+			"remote-key-press": () => this.emit("client-remote-key-press"),
+			"dismiss-question": () => this.emit("client-dismiss-question"),
+		};
+		const h = handlers[type];
+		if (h) h(data);
+		else if (plugin.onClientMessage) plugin.onClientMessage(type, data, this);
 	}
 
 	async getServerInfo() {

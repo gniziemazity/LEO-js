@@ -1,5 +1,30 @@
 "use strict";
 
+const CHART_FONT = {
+	tick: "9px sans-serif",
+	label: "10px sans-serif",
+	labelBold: "bold 10px sans-serif",
+	subBold: "bold 9px sans-serif",
+	tooltip: "11px sans-serif",
+	tooltipBold: "bold 11px sans-serif",
+	pointLabel: 'bold 7.5px "Segoe UI", sans-serif',
+	obsMark: 'bold 10px "Segoe UI", sans-serif',
+};
+
+const CHART_COLOR = {
+	axisText: "#595959",
+	grid: "#e8e8e8",
+	gridFaint: "#f0f0f0",
+	axisLine: "#ccc",
+	white: "#fff",
+	border: "#ddd",
+	text: "#333",
+	barBorder: "#999",
+	muted: "#555",
+	faint: "#888",
+	rightAxis: "#007acc",
+};
+
 function niceStep(range, targetSteps) {
 	if (!(range > 0)) return 1;
 	const raw = range / targetSteps;

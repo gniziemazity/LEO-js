@@ -30,10 +30,8 @@ let questionWindowIsLesson = false;
 let questionWindowStudentAnswered = null;
 let questionWindowRect = null;
 let imageWindow = null;
-let imageWindowPinned = false;
 let imageWindowRect = null;
 let webWindow = null;
-let webWindowPinned = false;
 let webWindowRect = null;
 let visualizerWindow = null;
 
@@ -56,7 +54,7 @@ function resolveStudentName(field) {
 }
 
 broadcastServer.on("client-toggle-active", () => {
-	state.mainWindow.webContents.send("global-toggle-active");
+	state.mainWindow.webContents.send("hotkey-toggle-active");
 });
 broadcastServer.on("client-jump-to", (stepIndex) => {
 	state.mainWindow.webContents.send("client-jump-to", stepIndex);
@@ -175,20 +173,20 @@ function getActiveFloatingWindow() {
 	return null;
 }
 
-let floatTargetX = null;
-let floatTargetY = null;
-let floatTargetW = null;
-let floatTargetH = null;
-let floatLerpTimer = null;
-let floatPrevBX = -1;
-let floatPrevBY = -1;
-let floatPrevBW = -1;
-let floatPrevBH = -1;
-const FLOAT_LERP = 0.5;
+const ANIMATION_FRAME_INTERVAL_MS = 16;
+const FLOATING_WINDOW_LERP_FACTOR = 0.5;
+const FLOATING_WINDOW_MIN_WIDTH = 200;
+const FLOATING_WINDOW_MIN_HEIGHT = 150;
+
+let floatAnim = {
+	target: { x: null, y: null, w: null, h: null },
+	prevRounded: { x: -1, y: -1, w: -1, h: -1 },
+	timer: null,
+};
 
 function startFloatLerp() {
-	if (floatLerpTimer) return;
-	floatLerpTimer = setInterval(() => {
+	if (floatAnim.timer) return;
+	floatAnim.timer = setInterval(() => {
 		const win = getActiveFloatingWindow();
 		if (!win) {
 			stopFloatLerp();
@@ -200,52 +198,49 @@ function startFloatLerp() {
 				: win === imageWindow
 					? imageWindowRect
 					: webWindowRect;
-		if (!rect || floatTargetX === null) {
+		if (!rect || floatAnim.target.x === null) {
 			stopFloatLerp();
 			return;
 		}
-		rect.x += (floatTargetX - rect.x) * FLOAT_LERP;
-		rect.y += (floatTargetY - rect.y) * FLOAT_LERP;
-		rect.w += (floatTargetW - rect.w) * FLOAT_LERP;
-		rect.h += (floatTargetH - rect.h) * FLOAT_LERP;
+		const target = floatAnim.target;
+		const prev = floatAnim.prevRounded;
+		rect.x += (target.x - rect.x) * FLOATING_WINDOW_LERP_FACTOR;
+		rect.y += (target.y - rect.y) * FLOATING_WINDOW_LERP_FACTOR;
+		rect.w += (target.w - rect.w) * FLOATING_WINDOW_LERP_FACTOR;
+		rect.h += (target.h - rect.h) * FLOATING_WINDOW_LERP_FACTOR;
 		const bx = Math.round(rect.x);
 		const by = Math.round(rect.y);
-		const bw = Math.max(200, Math.round(rect.w));
-		const bh = Math.max(150, Math.round(rect.h));
-		if (
-			bx !== floatPrevBX ||
-			by !== floatPrevBY ||
-			bw !== floatPrevBW ||
-			bh !== floatPrevBH
-		) {
-			floatPrevBX = bx;
-			floatPrevBY = by;
-			floatPrevBW = bw;
-			floatPrevBH = bh;
+		const bw = Math.max(FLOATING_WINDOW_MIN_WIDTH, Math.round(rect.w));
+		const bh = Math.max(FLOATING_WINDOW_MIN_HEIGHT, Math.round(rect.h));
+		if (bx !== prev.x || by !== prev.y || bw !== prev.w || bh !== prev.h) {
+			prev.x = bx;
+			prev.y = by;
+			prev.w = bw;
+			prev.h = bh;
 			win.setBounds({ x: bx, y: by, width: bw, height: bh });
 		}
 		if (
-			Math.abs(rect.x - floatTargetX) < 1 &&
-			Math.abs(rect.y - floatTargetY) < 1 &&
-			Math.abs(rect.w - floatTargetW) < 1 &&
-			Math.abs(rect.h - floatTargetH) < 1
+			Math.abs(rect.x - target.x) < 1 &&
+			Math.abs(rect.y - target.y) < 1 &&
+			Math.abs(rect.w - target.w) < 1 &&
+			Math.abs(rect.h - target.h) < 1
 		) {
-			rect.x = floatTargetX;
-			rect.y = floatTargetY;
-			rect.w = floatTargetW;
-			rect.h = floatTargetH;
+			rect.x = target.x;
+			rect.y = target.y;
+			rect.w = target.w;
+			rect.h = target.h;
 			stopFloatLerp();
 		}
-	}, 16);
+	}, ANIMATION_FRAME_INTERVAL_MS);
 }
 
 function stopFloatLerp() {
-	if (floatLerpTimer) {
-		clearInterval(floatLerpTimer);
-		floatLerpTimer = null;
+	if (floatAnim.timer) {
+		clearInterval(floatAnim.timer);
+		floatAnim.timer = null;
 	}
-	floatTargetX = floatTargetY = floatTargetW = floatTargetH = null;
-	floatPrevBX = floatPrevBY = floatPrevBW = floatPrevBH = -1;
+	floatAnim.target = { x: null, y: null, w: null, h: null };
+	floatAnim.prevRounded = { x: -1, y: -1, w: -1, h: -1 };
 }
 
 function getFloatRect() {
@@ -261,11 +256,11 @@ function getFloatRect() {
 }
 
 function ensureFloatTargets(rect) {
-	if (floatTargetX === null) {
-		floatTargetX = rect.x;
-		floatTargetY = rect.y;
-		floatTargetW = rect.w;
-		floatTargetH = rect.h;
+	if (floatAnim.target.x === null) {
+		floatAnim.target.x = rect.x;
+		floatAnim.target.y = rect.y;
+		floatAnim.target.w = rect.w;
+		floatAnim.target.h = rect.h;
 	}
 }
 
@@ -273,22 +268,23 @@ broadcastServer.on("client-window-pinch", (scale, dx, dy) => {
 	const rect = getFloatRect();
 	if (!rect) return;
 	ensureFloatTargets(rect);
-	const newW = Math.max(200, floatTargetW * scale);
-	const newH = Math.max(150, floatTargetH * scale);
-	floatTargetX -= (newW - floatTargetW) / 2;
-	floatTargetY -= (newH - floatTargetH) / 2;
-	floatTargetW = newW;
-	floatTargetH = newH;
-	floatTargetX += dx;
-	floatTargetY += dy;
+	const target = floatAnim.target;
+	const newW = Math.max(FLOATING_WINDOW_MIN_WIDTH, target.w * scale);
+	const newH = Math.max(FLOATING_WINDOW_MIN_HEIGHT, target.h * scale);
+	target.x -= (newW - target.w) / 2;
+	target.y -= (newH - target.h) / 2;
+	target.w = newW;
+	target.h = newH;
+	target.x += dx;
+	target.y += dy;
 	startFloatLerp();
 });
 broadcastServer.on("client-window-drag", (dx, dy) => {
 	const rect = getFloatRect();
 	if (rect) {
 		ensureFloatTargets(rect);
-		floatTargetX += dx;
-		floatTargetY += dy;
+		floatAnim.target.x += dx;
+		floatAnim.target.y += dy;
 		startFloatLerp();
 	}
 });
@@ -296,12 +292,13 @@ broadcastServer.on("client-window-resize", (scaleX, scaleY) => {
 	const rect = getFloatRect();
 	if (rect) {
 		ensureFloatTargets(rect);
-		const newW = Math.max(200, floatTargetW * scaleX);
-		const newH = Math.max(150, floatTargetH * scaleY);
-		floatTargetX -= (newW - floatTargetW) / 2;
-		floatTargetY -= (newH - floatTargetH) / 2;
-		floatTargetW = newW;
-		floatTargetH = newH;
+		const target = floatAnim.target;
+		const newW = Math.max(FLOATING_WINDOW_MIN_WIDTH, target.w * scaleX);
+		const newH = Math.max(FLOATING_WINDOW_MIN_HEIGHT, target.h * scaleY);
+		target.x -= (newW - target.w) / 2;
+		target.y -= (newH - target.h) / 2;
+		target.w = newW;
+		target.h = newH;
 		startFloatLerp();
 	}
 });
@@ -600,7 +597,7 @@ ipcMain.on("set-course-menu", (event, payload) => {
 	createApplicationMenu();
 });
 
-ipcMain.on("broadcast-students", (event, students) => {
+ipcMain.on("update-students", (event, students) => {
 	broadcastServer.updateStudents(students);
 });
 
@@ -725,9 +722,7 @@ const _imageFloat = new FloatingWindow({
 	sync: (self) => {
 		imageWindow = self.win;
 		imageWindowRect = self.rect;
-		imageWindowPinned = self.pinned;
 	},
-	getPinned: () => imageWindowPinned,
 });
 
 const _webFloat = new FloatingWindow({
@@ -746,9 +741,7 @@ const _webFloat = new FloatingWindow({
 	sync: (self) => {
 		webWindow = self.win;
 		webWindowRect = self.rect;
-		webWindowPinned = self.pinned;
 	},
-	getPinned: () => webWindowPinned,
 });
 
 function openQuestionWindow(question, bgColor, emoji, studentName) {
@@ -871,14 +864,19 @@ ipcMain.on(
 
 ipcMain.on("pin-image-window", (event, pinned) => {
 	_imageFloat.pinned = pinned;
-	imageWindowPinned = pinned;
 });
+
+const IMAGE_WINDOW_DISPLAY_SCALE = 0.95;
 
 ipcMain.on("resize-image-window", (event, { width, height }) => {
 	if (!imageWindow || imageWindow.isDestroyed()) return;
 	const display = screen.getPrimaryDisplay();
-	const maxW = Math.floor(display.workAreaSize.width * 0.95);
-	const maxH = Math.floor(display.workAreaSize.height * 0.95);
+	const maxW = Math.floor(
+		display.workAreaSize.width * IMAGE_WINDOW_DISPLAY_SCALE,
+	);
+	const maxH = Math.floor(
+		display.workAreaSize.height * IMAGE_WINDOW_DISPLAY_SCALE,
+	);
 	const scale = Math.min(1, maxW / width, maxH / height);
 	const newW = Math.round(width * scale);
 	const newH = Math.round(height * scale);
@@ -970,7 +968,6 @@ ipcMain.on("start-resizing", (event, edge) => {
 
 ipcMain.on("pin-web-window", (event, isPinned) => {
 	_webFloat.pinned = isPinned;
-	webWindowPinned = isPinned;
 });
 
 ipcMain.on("set-active", (event, isActive) => {
@@ -1300,6 +1297,11 @@ function openLogVisualizer(logFilePath) {
 	const stamp = Date.now();
 	let payload = null;
 	if (logFilePath) {
+		let lessonFile = null;
+		try {
+			lessonFile =
+				JSON.parse(fs.readFileSync(logFilePath, "utf8")).lessonFile || null;
+		} catch (_) {}
 		const scriptPath = path.join(
 			__dirname,
 			"../../lesson_tools/lv_expand_cli.py",
@@ -1316,7 +1318,7 @@ function openLogVisualizer(logFilePath) {
 		} else if (result.status === 0) {
 			try {
 				const micro = JSON.parse(result.stdout);
-				payload = { filePath: logFilePath, micro, error: null };
+				payload = { filePath: logFilePath, micro, lessonFile, error: null };
 			} catch (e) {
 				payload = {
 					filePath: logFilePath,
@@ -1396,15 +1398,13 @@ ipcMain.on("open-log-visualizer", (_event, logFilePath) => {
 	openLogVisualizer(logFilePath);
 });
 
-ipcMain.on("broadcast-lesson-data", (e, d) =>
-	broadcastServer.updateLessonData(d),
-);
-ipcMain.on("broadcast-cursor", (e, s) => broadcastServer.updateCursor(s));
-ipcMain.on("broadcast-progress", (e, d) =>
+ipcMain.on("update-lesson-data", (e, d) => broadcastServer.updateLessonData(d));
+ipcMain.on("update-cursor", (e, s) => broadcastServer.updateCursor(s));
+ipcMain.on("update-progress", (e, d) =>
 	broadcastServer.updateProgress(d.currentStep, d.totalSteps),
 );
-ipcMain.on("broadcast-active", (e, a) => broadcastServer.updateActiveState(a));
-ipcMain.on("broadcast-lesson", (e, n) => broadcastServer.updateLessonName(n));
+ipcMain.on("update-active", (e, a) => broadcastServer.updateActiveState(a));
+ipcMain.on("update-lesson-name", (e, n) => broadcastServer.updateLessonName(n));
 
 ipcMain.handle("get-settings", () => settingsManager.getAll());
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());

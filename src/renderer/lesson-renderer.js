@@ -279,10 +279,9 @@ class LessonRenderer {
 	}
 
 	_populateMoveToSelect(select, currentTarget) {
-		const anchorIds = this.lessonManager.getAllAnchorIds();
 		const fileRe = /\.[a-z0-9]+$/i;
-		const fileLike = anchorIds.filter((id) => fileRe.test(id));
-		const anchorLike = anchorIds
+		const anchorLike = this.lessonManager
+			.getAllAnchorIds()
 			.filter((id) => !fileRe.test(id))
 			.sort((a, b) => {
 				const na = Number(a);
@@ -294,13 +293,14 @@ class LessonRenderer {
 				if (bNum) return 1;
 				return a.localeCompare(b);
 			});
+		const fileLike = this.lessonManager.getAllMoveToFiles();
 
 		const opts = [];
 		for (const id of anchorLike) {
 			opts.push({ value: `⚓${id}⚓`, label: `⚓${id}⚓` });
 		}
-		for (const id of fileLike) {
-			opts.push({ value: `⚓${id}⚓`, label: `📄 ${id}` });
+		for (const name of fileLike) {
+			opts.push({ value: name, label: `📄 ${name}` });
 		}
 		opts.push({ value: "MAIN", label: "Main Editor" });
 		opts.push({ value: "DEV", label: "Dev Tools" });
@@ -342,8 +342,7 @@ class LessonRenderer {
 				e.preventDefault();
 				const val = input.value.trim();
 				if (val) {
-					const target = `⚓${val}⚓`;
-					this.lessonManager.updateMoveToTarget(blockIdx, target);
+					this.lessonManager.updateMoveToTarget(blockIdx, val);
 					this.render();
 				} else {
 					select.value = currentTarget;
@@ -362,101 +361,95 @@ class LessonRenderer {
 	}
 
 	handleBlockClick(e, block, blockIdx) {
-		const isTypingActive = this.uiManager.isActive();
+		if (this.uiManager.isActive()) {
+			this._handleClickWhileTyping(e, block, blockIdx);
+		} else {
+			this._handleClickWhileEditing(e, block, blockIdx);
+		}
+	}
 
-		if (!isTypingActive) {
-			const previousSelectedIndex = this.uiManager.getSelectedBlockIndex();
+	_rerenderAndFocus(blockIdx, clickX, clickY) {
+		this.render();
+		setTimeout(() => {
+			this.uiManager.focusBlock(blockIdx, clickX, clickY);
+		}, 0);
+	}
 
-			if (previousSelectedIndex === blockIdx) return;
+	_handleClickWhileEditing(e, block, blockIdx) {
+		const previousSelectedIndex = this.uiManager.getSelectedBlockIndex();
 
-			const selection = window.getSelection();
-			const hasSelection = selection && selection.toString().length > 0;
+		if (previousSelectedIndex === blockIdx) return;
 
-			this.uiManager.selectBlock(blockIdx);
+		const selection = window.getSelection();
+		const hasSelection = selection && selection.toString().length > 0;
 
-			if (hasSelection) {
-				const blocks = document.querySelectorAll(".block");
+		this.uiManager.selectBlock(blockIdx);
 
-				if (
-					previousSelectedIndex !== null &&
-					blocks[previousSelectedIndex]
-				) {
-					blocks[previousSelectedIndex].classList.remove("selected");
-				}
-				if (blocks[blockIdx]) {
-					blocks[blockIdx].classList.add("selected");
+		const blocks = document.querySelectorAll(".block");
 
-					if (block.type === "code") {
-						this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
-					}
-
-					blocks[blockIdx].focus();
-				}
-
-				return;
-			}
-
-			const clickX = e.clientX;
-			const clickY = e.clientY;
-
-			const blocks = document.querySelectorAll(".block");
-
+		if (hasSelection) {
 			if (previousSelectedIndex !== null && blocks[previousSelectedIndex]) {
 				blocks[previousSelectedIndex].classList.remove("selected");
-				if (
-					blocks[previousSelectedIndex].classList.contains("code-block")
-				) {
-					const prevBlock =
-						this.lessonManager.getAllBlocks()[previousSelectedIndex];
-					if (
-						prevBlock &&
-						blocks[previousSelectedIndex].contentEditable === "true"
-					) {
-						this.render();
-
-						setTimeout(() => {
-							this.uiManager.focusBlock(blockIdx, clickX, clickY);
-						}, 0);
-						return;
-					}
-				} else if (this.isMultilineCodeInsert(previousSelectedIndex)) {
-					this.render();
-					setTimeout(() => {
-						this.uiManager.focusBlock(blockIdx, clickX, clickY);
-					}, 0);
-					return;
-				}
 			}
-
 			if (blocks[blockIdx]) {
 				blocks[blockIdx].classList.add("selected");
 
 				if (block.type === "code") {
 					this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
-				} else if (this.isMultilineCodeInsert(blockIdx)) {
-					this.render();
-					setTimeout(() => {
-						this.uiManager.focusBlock(blockIdx, clickX, clickY);
-					}, 0);
-					return;
 				}
+
+				blocks[blockIdx].focus();
 			}
 
-			this.uiManager.focusBlock(blockIdx, clickX, clickY);
-		} else {
+			return;
+		}
+
+		const clickX = e.clientX;
+		const clickY = e.clientY;
+
+		if (previousSelectedIndex !== null && blocks[previousSelectedIndex]) {
+			blocks[previousSelectedIndex].classList.remove("selected");
+			if (blocks[previousSelectedIndex].classList.contains("code-block")) {
+				const prevBlock =
+					this.lessonManager.getAllBlocks()[previousSelectedIndex];
+				if (
+					prevBlock &&
+					blocks[previousSelectedIndex].contentEditable === "true"
+				) {
+					this._rerenderAndFocus(blockIdx, clickX, clickY);
+					return;
+				}
+			} else if (this.isMultilineCodeInsert(previousSelectedIndex)) {
+				this._rerenderAndFocus(blockIdx, clickX, clickY);
+				return;
+			}
+		}
+
+		if (blocks[blockIdx]) {
+			blocks[blockIdx].classList.add("selected");
+
 			if (block.type === "code") {
-				const clickedSpan = e.target.closest(".char");
-				if (clickedSpan) {
-					this.cursorManager.jumpTo(
-						parseInt(clickedSpan.dataset.stepIndex),
-					);
-				}
-			} else {
-				const executionSteps = this.cursorManager.getExecutionSteps();
-				const step = executionSteps.find((s) => s.blockIndex === blockIdx);
-				if (step) {
-					this.cursorManager.jumpTo(step.globalIndex);
-				}
+				this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
+			} else if (this.isMultilineCodeInsert(blockIdx)) {
+				this._rerenderAndFocus(blockIdx, clickX, clickY);
+				return;
+			}
+		}
+
+		this.uiManager.focusBlock(blockIdx, clickX, clickY);
+	}
+
+	_handleClickWhileTyping(e, block, blockIdx) {
+		if (block.type === "code") {
+			const clickedSpan = e.target.closest(".char");
+			if (clickedSpan) {
+				this.cursorManager.jumpTo(parseInt(clickedSpan.dataset.stepIndex));
+			}
+		} else {
+			const executionSteps = this.cursorManager.getExecutionSteps();
+			const step = executionSteps.find((s) => s.blockIndex === blockIdx);
+			if (step) {
+				this.cursorManager.jumpTo(step.globalIndex);
 			}
 		}
 	}
@@ -464,7 +457,7 @@ class LessonRenderer {
 	broadcastLessonData(executionSteps) {
 		const blocks = this.lessonManager.getAllBlocks();
 
-		ipcRenderer.send("broadcast-lesson-data", {
+		ipcRenderer.send("update-lesson-data", {
 			blocks: blocks,
 			executionSteps: executionSteps.map((step) => ({
 				type: step.type,

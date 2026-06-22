@@ -11,7 +11,7 @@ from utils.lv_editor import reconstruct_all_headless
 from utils.token_log import (
     _parse_teacher_tokens,
     _build_leo_diff_marks,
-    _add_log_metadata,
+    _apply_star_post_pass,
     _build_occ_from_diff_marks,
     _build_teacher_token_timestamps,
     _refresh_missing_timestamps,
@@ -157,7 +157,7 @@ def regen_student(case_dir: Path, student_name: str) -> None:
         diff_marks["leo_assignments"] = leo_assignments
 
     if events:
-        _add_log_metadata(diff_marks, events, stu_files, teacher_files=teacher_files)
+        _apply_star_post_pass(diff_marks, events, stu_files, teacher_files=teacher_files)
 
     ideal_path = student_dir / "diff_marks_ideal.json"
     ideal_marks = None

@@ -19,6 +19,7 @@ from .grade_merge import merge_manual_columns
 from .lesson_log import load_lesson_log
 from .token_log_mixin import TokenLogMixin, DISABLED_DIFF_MARK_VARIANTS
 from .report_excel import ExcelReportMixin
+from .method_registry import REMARKS_BASES
 
 
 class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
@@ -306,12 +307,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             'inc_sim':   inc_sim,
         }
 
-_REMARKS_BASES = [
-    'ideal', 'minimal',
-    'leo_star', 'leo',
-    'lcs_star', 'lcs',
-    'git_star', 'git',
-]
+_REMARKS_BASES = list(REMARKS_BASES)
 
 
 def _resolve_follow_basis(requested: str, generated: List[str]) -> str:
@@ -319,7 +315,7 @@ def _resolve_follow_basis(requested: str, generated: List[str]) -> str:
         if requested in generated:
             return requested
         print(f'  --follow-basis={requested!r} not available; falling back to auto pick')
-    for preferred in ('ideal', 'minimal', 'leo_star', 'leo'):
+    for preferred in ('ideal', 'minimal', 'leo_star'):
         if preferred in generated:
             return preferred
     return generated[0] if generated else ''
@@ -392,7 +388,7 @@ def main() -> None:
     excels_dir = current_dir / 'excels'
     excels_dir.mkdir(exist_ok=True)
 
-    for _b in DISABLED_DIFF_MARK_VARIANTS:
+    for _b in (DISABLED_DIFF_MARK_VARIANTS | {'leo'}):
         _stale = excels_dir / f'remarks_{_b}.xlsx'
         if _stale.exists():
             try:

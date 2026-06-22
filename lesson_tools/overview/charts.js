@@ -19,6 +19,8 @@ function addStackedShareCard(
 		yMin: 0,
 		yMax: yMax ?? Math.max(...totalCounts, 1) + 1,
 		stacked: true,
+		subLabels: opts.subLabels,
+		unifiedTooltip: true,
 		tooltipCallback:
 			opts.tooltipCallback ??
 			((_label, _val, _si, gi) => [
@@ -51,11 +53,13 @@ function addStackedShareCard(
 function addStackedBarCard(parent, title, labels, series, opts = {}) {
 	const cc = new ChartCard(parent, title, {
 		size: opts.size,
-		legend: opts.legend
-			? series
-					.filter((s) => (s.data || []).some((v) => v > 0))
-					.map((s) => ({ label: s.label, color: s.color }))
-			: null,
+		legend: Array.isArray(opts.legend)
+			? opts.legend
+			: opts.legend
+				? series
+						.filter((s) => (s.data || []).some((v) => v > 0))
+						.map((s) => ({ label: s.label, color: s.color }))
+				: null,
 	});
 	const box = cc.box;
 	const totals = labels.map((_, i) =>
@@ -66,10 +70,11 @@ function addStackedBarCard(parent, title, labels, series, opts = {}) {
 		yMax:
 			opts.yMax != null
 				? opts.yMax
-				: Math.max(...totals, 1) * (opts.yScale ?? 1) + (opts.yPad ?? 0),
+				: Math.max(...totals, 1) * (opts.yScale ?? 1),
 		stacked: true,
 		hideYAxis: opts.hideYAxis,
 		yTickSuffix: opts.yTickSuffix || "",
+		unifiedTooltip: opts.unifiedTooltip,
 		tooltipCallback:
 			opts.tooltipCallback ??
 			((_l, val, si) => [`${series[si].label}: ${Math.round(val)}`]),
@@ -119,11 +124,18 @@ function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
 					...strong.map((s, i) => s + medium[i] + none[i]),
 					1,
 				) + 1,
-			tooltipCallback: (_l, _v, si, gi) => {
-				if (si === 0) return [`Watermarks: ${strong[gi]}`];
-				if (si === 1) return [`Reliable artefacts: ${medium[gi]}`];
-				return [`Clean: ${none[gi]}`];
-			},
+			legend: [
+				{
+					label: "Reliable Artefacts",
+					color: artefactFiredColorFor("medium"),
+				},
+				{ label: "Watermarks", color: artefactFiredColorFor("high") },
+			],
+			unifiedTooltip: true,
+			tooltipCallback: (_l, _v, _si, gi) => [
+				`Reliable artefacts: ${medium[gi]} / ${totals[gi]} (${pct(medium[gi], gi)}%)`,
+				`Watermarks: ${strong[gi]} / ${totals[gi]} (${pct(strong[gi], gi)}%)`,
+			],
 			barLabel: (gi, si) => {
 				if (!totals[gi]) return null;
 				if (si === 0) return strong[gi] ? pct(strong[gi], gi) + "%" : null;
@@ -169,8 +181,7 @@ function addAiBandCard(parent, title, labels, strong, medium, none, totals) {
 			yMax: 100,
 			hideYAxis: true,
 			tooltipCallback: (_l, _v, _si, gi) => [
-				`Reliable artefacts: ${medium[gi]} / ${totals[gi]}`,
-				`Bounds: ${pct(strong[gi], gi)}%–${pct(strong[gi] + medium[gi], gi)}%`,
+				`Reliable Artefacts: ${medium[gi]} / ${totals[gi]}`,
 			],
 		},
 	);
@@ -193,6 +204,7 @@ function addBarCard(
 		yMin: 0,
 		yMax,
 		yTickSuffix: tooltipFmt === "pct" ? "%" : "",
+		subLabels: opts.subLabels,
 		tooltipCallback:
 			tooltipFn ??
 			((_label, val) => [

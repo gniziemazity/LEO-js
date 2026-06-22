@@ -600,14 +600,6 @@ function _curatedRerender() {
 	_updateTitleScore();
 }
 
-function _curatedGroupKey(m) {
-	return _curatedSel.groupKey(m);
-}
-
-function _curatedMakeGroup(side, file, m) {
-	return _curatedSel.makeGroup(side, file, m);
-}
-
 function _curatedGroupMarks() {
 	return _curatedSel.groupMarks();
 }

@@ -4,13 +4,10 @@ import sys
 from pathlib import Path
 
 from utils.cli_common import add_grading_flags, forward_grading_flags
-from utils.folder_utils import resolve_course
+from utils.folder_utils import PROJECT_GROUPS, resolve_course
 
 ROOT_DIR = Path(__file__).resolve().parent
 MAIN_PY = ROOT_DIR / "main.py"
-
-
-_PROJECT_GROUPS = ("lessons", "assignments")
 
 
 def _parse_args(argv):
@@ -28,12 +25,12 @@ def _parse_args(argv):
 
 def _project_dirs(course: Path) -> list[Path]:
     found: list[Path] = []
-    for group in _PROJECT_GROUPS:
+    for group in PROJECT_GROUPS:
         root = course / group
         if root.is_dir():
             found.extend(sorted(d for d in root.iterdir() if d.is_dir()))
     if not found:
-        groups = " or ".join(f"'{g}/'" for g in _PROJECT_GROUPS)
+        groups = " or ".join(f"'{g}/'" for g in PROJECT_GROUPS)
         print(f"error: no {groups} folder in {course}")
         sys.exit(1)
     return found

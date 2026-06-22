@@ -1,14 +1,92 @@
 "use strict";
 
-const REMARKS_BASES = [
-	{ key: "ideal", label: "Ideal" },
-	{ key: "minimal", label: "Minimal" },
-	{ key: "leo_star", label: "Leo*" },
-	{ key: "lcs_star", label: "LCS*" },
-	{ key: "lcs", label: "LCS" },
-	{ key: "git_star", label: "Git*" },
-	{ key: "git", label: "Git" },
+const DIFF_METHODS = [
+	{
+		key: "ideal",
+		label: "Ideal",
+		filename: "diff_marks_ideal.json",
+		isCurated: true,
+		isStar: false,
+		baseMethod: null,
+		requiresKeylog: false,
+		selectable: true,
+	},
+	{
+		key: "minimal",
+		label: "Minimal",
+		filename: "diff_marks_minimal.json",
+		isCurated: true,
+		isStar: false,
+		baseMethod: null,
+		requiresKeylog: false,
+		selectable: true,
+	},
+	{
+		key: "leo_star",
+		label: "Leo*",
+		filename: "diff_marks_leo_star.json",
+		isCurated: false,
+		isStar: true,
+		baseMethod: "leo",
+		requiresKeylog: true,
+		selectable: true,
+	},
+	{
+		key: "lcs_star",
+		label: "LCS*",
+		filename: "diff_marks_lcs_star.json",
+		isCurated: false,
+		isStar: true,
+		baseMethod: "lcs",
+		requiresKeylog: true,
+		selectable: true,
+	},
+	{
+		key: "lcs",
+		label: "LCS",
+		filename: "diff_marks_lcs.json",
+		isCurated: false,
+		isStar: false,
+		baseMethod: "lcs",
+		requiresKeylog: false,
+		selectable: true,
+	},
+	{
+		key: "git_star",
+		label: "Git*",
+		filename: "diff_marks_git_star.json",
+		isCurated: false,
+		isStar: true,
+		baseMethod: "git",
+		requiresKeylog: true,
+		selectable: true,
+	},
+	{
+		key: "git",
+		label: "Git",
+		filename: "diff_marks_git.json",
+		isCurated: false,
+		isStar: false,
+		baseMethod: "git",
+		requiresKeylog: false,
+		selectable: true,
+	},
 ];
+
+const DIFF_MARKS_FILES = Object.fromEntries(
+	DIFF_METHODS.map((m) => [m.key, m.filename]),
+);
+
+const REMARKS_BASES = DIFF_METHODS.filter((m) => m.selectable).map((m) => ({
+	key: m.key,
+	label: m.label,
+}));
+
+const CURATED_MODES = new Set(
+	DIFF_METHODS.filter((m) => m.isCurated).map((m) => m.key),
+);
+
+const DIFF_MARKS_PRIORITY = ["ideal", "minimal", "leo_star"];
 
 const INTERACTION_KINDS = {
 	"teacher-question": { icon: "❓", label: "Teacher Question" },
@@ -16,19 +94,9 @@ const INTERACTION_KINDS = {
 	"providing-help": { icon: "🤝", label: "Provided Help" },
 };
 
-const _BASIS_TO_DIFF_MODE = {
-	ideal: "ideal",
-	minimal: "minimal",
-	leo_star: "",
-	lcs_star: "token-lcs-star",
-	lcs: "token-lcs",
-	git_star: "line-git-star",
-	git: "line-git",
-};
-
 function basisToDiffMode(basisKey) {
 	if (!basisKey) return null;
-	return _BASIS_TO_DIFF_MODE[basisKey] ?? null;
+	return basisKey in DIFF_MARKS_FILES ? basisKey : null;
 }
 
 function _cssVar(name) {
@@ -425,21 +493,6 @@ function makeColsPanel({
 	return { render, toggle };
 }
 
-const DIFF_MARKS_FILES = {
-	"": "diff_marks_leo_star.json",
-	leo: "diff_marks_leo.json",
-	"token-lcs": "diff_marks_lcs.json",
-	"token-lcs-star": "diff_marks_lcs_star.json",
-	"line-git": "diff_marks_git.json",
-	"line-git-star": "diff_marks_git_star.json",
-	ideal: "diff_marks_ideal.json",
-	minimal: "diff_marks_minimal.json",
-};
-
-const DIFF_MARKS_PRIORITY = ["ideal", "minimal", "", "leo"];
-
-const CURATED_MODES = new Set(["ideal", "minimal"]);
-
 function diffModeFromFilename(filename) {
 	const lower = String(filename || "").toLowerCase();
 	for (const [mode, name] of Object.entries(DIFF_MARKS_FILES)) {
@@ -453,8 +506,7 @@ function defaultDiffModeKey(allMarks, requestedMode = null) {
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
 	if (has("ideal")) return "ideal";
 	if (has("minimal")) return "minimal";
-	if (has("")) return "";
-	if (has("leo")) return "leo";
+	if (has("leo_star")) return "leo_star";
 	return Object.keys(allMarks)[0] ?? null;
 }
 
@@ -467,6 +519,22 @@ function escHtml(s) {
 
 function escAttr(s) {
 	return escHtml(s).replace(/"/g, "&quot;");
+}
+
+function formatLessonObs(text) {
+	const s = text == null ? "" : String(text);
+	if (!/[<>]/.test(s)) return s;
+	const sub = "₀₁₂₃₄₅₆₇₈₉";
+	return s.replace(
+		/C(\d*)/g,
+		(_m, digits) => "🤥" + digits.replace(/\d/g, (d) => sub[+d]),
+	);
+}
+
+function formatLessonObsHtml(text) {
+	return escHtml(formatLessonObs(text))
+		.replace(/&lt;/g, "<strong>&lt;</strong>")
+		.replace(/&gt;/g, "<strong>&gt;</strong>");
 }
 
 function diffStudentTitle(id, name, pct, opts = {}) {

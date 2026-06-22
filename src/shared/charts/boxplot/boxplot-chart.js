@@ -56,7 +56,7 @@ class BoxPlotChart {
 		const rightAxis = this._options.rightAxis;
 
 		if (leftAxis?.ticks) {
-			ctx.strokeStyle = "#f0f0f0";
+			ctx.strokeStyle = CHART_COLOR.gridFaint;
 			ctx.lineWidth = 1;
 			for (const v of leftAxis.ticks) {
 				const py = this._axisY(v, "left");
@@ -65,8 +65,8 @@ class BoxPlotChart {
 				ctx.lineTo(W - right, py);
 				ctx.stroke();
 			}
-			ctx.fillStyle = leftAxis.color ?? "#595959";
-			ctx.font = "9px sans-serif";
+			ctx.fillStyle = leftAxis.color ?? CHART_COLOR.axisText;
+			ctx.font = CHART_FONT.tick;
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
 			const _ysfx = leftAxis.suffix || "";
@@ -76,8 +76,8 @@ class BoxPlotChart {
 		}
 
 		if (rightAxis?.ticks) {
-			ctx.fillStyle = rightAxis.color ?? "#007acc";
-			ctx.font = "9px sans-serif";
+			ctx.fillStyle = rightAxis.color ?? CHART_COLOR.rightAxis;
+			ctx.font = CHART_FONT.tick;
 			ctx.textAlign = "left";
 			ctx.textBaseline = "middle";
 			for (const v of rightAxis.ticks) {
@@ -86,7 +86,7 @@ class BoxPlotChart {
 		}
 
 		if (n > 1) {
-			ctx.strokeStyle = "#e8e8e8";
+			ctx.strokeStyle = CHART_COLOR.grid;
 			ctx.lineWidth = 1;
 			for (let gi = 1; gi < n; gi++) {
 				const x = left + gi * (plotW / n);
@@ -102,11 +102,11 @@ class BoxPlotChart {
 		for (let gi = 0; gi < n; gi++) {
 			const gx = left + (gi + 0.5) * (plotW / n);
 			const parts = String(xLabels[gi] ?? "").split("\n");
-			ctx.fillStyle = "#595959";
-			ctx.font = "10px sans-serif";
+			ctx.fillStyle = CHART_COLOR.axisText;
+			ctx.font = CHART_FONT.label;
 			ctx.fillText(parts[0], gx, H - bottom + 5);
 			if (parts[1]) {
-				ctx.font = "bold 9px sans-serif";
+				ctx.font = CHART_FONT.subBold;
 				ctx.fillText(parts[1], gx, H - bottom + 17);
 			}
 		}
@@ -137,7 +137,7 @@ class BoxPlotChart {
 
 				ctx.fillStyle = ds.color ?? "rgba(100,100,100,0.4)";
 				ctx.fillRect(bx, yQ3, boxW, yQ1 - yQ3);
-				ctx.strokeStyle = ds.borderColor ?? "#999";
+				ctx.strokeStyle = ds.borderColor ?? CHART_COLOR.barBorder;
 				ctx.lineWidth = 1.5;
 				ctx.strokeRect(bx, yQ3, boxW, yQ1 - yQ3);
 
@@ -178,16 +178,17 @@ class BoxPlotChart {
 					const mr = Math.max(2.5, Math.min(4, boxW * 0.18));
 					ctx.beginPath();
 					ctx.arc(bxMid, yMean, mr, 0, Math.PI * 2);
-					ctx.fillStyle = ds.meanColor ?? ds.borderColor ?? "#333";
+					ctx.fillStyle =
+						ds.meanColor ?? ds.borderColor ?? CHART_COLOR.text;
 					ctx.fill();
 					ctx.lineWidth = 1.2;
-					ctx.strokeStyle = ds.meanRingColor ?? "#fff";
+					ctx.strokeStyle = ds.meanRingColor ?? CHART_COLOR.white;
 					ctx.stroke();
 				}
 			}
 		}
 
-		ctx.strokeStyle = "#ccc";
+		ctx.strokeStyle = CHART_COLOR.axisLine;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(left, top);

@@ -63,7 +63,7 @@ from .token_log_curated import (
 )
 
 from .token_log_starpass import (
-    _add_log_metadata,
+    _apply_star_post_pass,
     _add_seconds_to_hms,
     _apply_ghost_extra_promotion,
     _apply_insert_at_to_unpaired_missings,

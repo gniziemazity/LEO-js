@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 from utils.folder_utils import resolve_course
-from build_manifest import _build_manifest
+from build_manifest import _build_manifest, _PII_FILES
 import json
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -115,7 +115,6 @@ def _build_plans_zip(course: Path) -> Path | None:
 
 
 _ALWAYS_BLOCK_DIRS = {"students", "curated"}
-_PII_FILES = {"students.csv", "name_map.csv"}
 
 
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):

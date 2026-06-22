@@ -171,7 +171,7 @@ function _buildStudentProgressCard(s, labels) {
 			).filter((v) => v != null);
 			if (!vals.length) return null;
 			return {
-				text,
+				text: formatLessonObs(text),
 				belowVal: Math.min(...vals),
 				aboveVal: Math.max(...vals),
 				axis: "left",
@@ -181,7 +181,7 @@ function _buildStudentProgressCard(s, labels) {
 		const v = l.hasFollowCol ? l.follow : null;
 		if (v == null) return null;
 		return {
-			text,
+			text: formatLessonObs(text),
 			belowVal: v,
 			aboveVal: v,
 			axis: "left",
@@ -215,7 +215,6 @@ function _buildStudentProgressCard(s, labels) {
 				),
 				color: c,
 				pointFillColor: c,
-				pointColors: redObs.map((r) => (r ? THEME.red : c)),
 				lineWidth: 1.0,
 				pointRadius: 2.5,
 				yAxis: "left",

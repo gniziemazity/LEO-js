@@ -16,14 +16,14 @@ class CursorManager {
 		this.onEnterMoveToBlock = null;
 		this._moveToWindowOpen = false;
 
-		this._questionWindowOpen = false;
-		this._imageWindowOpen = false;
-		this._webWindowOpen = false;
+		this._isQuestionWindowOpen = false;
+		this._isImageWindowOpen = false;
+		this._isWebWindowOpen = false;
 
-		this._activeQuestionIndex = null;
-		this._activeImageIndex = null;
-		this._activeWebIndex = null;
-		this._activeCodeInsertIndex = null;
+		this._currentQuestionStepIndex = null;
+		this._currentImageStepIndex = null;
+		this._currentWebStepIndex = null;
+		this._currentCodeInsertStepIndex = null;
 		this._activeMoveToIndex = null;
 
 		this._onAutoStepComplete = (event, stepIndex) => {
@@ -77,9 +77,9 @@ class CursorManager {
 	}
 
 	_enterQuestionBlock(element, globalIndex) {
-		if (this._activeQuestionIndex === globalIndex) return;
-		this._activeQuestionIndex = globalIndex;
-		this._questionWindowOpen = true;
+		if (this._currentQuestionStepIndex === globalIndex) return;
+		this._currentQuestionStepIndex = globalIndex;
+		this._isQuestionWindowOpen = true;
 		const question = element.innerText.replace(/^❓ ?/, "");
 		const timestamp = Date.now();
 		if (this.onEnterQuestionBlock)
@@ -87,17 +87,17 @@ class CursorManager {
 	}
 
 	_leaveQuestionBlock() {
-		if (!this._questionWindowOpen) return;
-		this._questionWindowOpen = false;
-		this._activeQuestionIndex = null;
+		if (!this._isQuestionWindowOpen) return;
+		this._isQuestionWindowOpen = false;
+		this._currentQuestionStepIndex = null;
 		ipcRenderer.send("close-question-window");
 		if (this.onLeaveQuestionBlock) this.onLeaveQuestionBlock();
 	}
 
 	_enterImageBlock(element, globalIndex) {
-		if (this._activeImageIndex === globalIndex) return;
-		this._activeImageIndex = globalIndex;
-		this._imageWindowOpen = true;
+		if (this._currentImageStepIndex === globalIndex) return;
+		this._currentImageStepIndex = globalIndex;
+		this._isImageWindowOpen = true;
 
 		const match = element.innerText.trim().match(/^🖼️ ?(.+)$/);
 		if (match) {
@@ -111,16 +111,16 @@ class CursorManager {
 	}
 
 	_leaveImageBlock() {
-		if (!this._imageWindowOpen) return;
-		this._imageWindowOpen = false;
-		this._activeImageIndex = null;
+		if (!this._isImageWindowOpen) return;
+		this._isImageWindowOpen = false;
+		this._currentImageStepIndex = null;
 		ipcRenderer.send("close-image-window");
 	}
 
 	_enterWebBlock(element, globalIndex) {
-		if (this._activeWebIndex === globalIndex) return;
-		this._activeWebIndex = globalIndex;
-		this._webWindowOpen = true;
+		if (this._currentWebStepIndex === globalIndex) return;
+		this._currentWebStepIndex = globalIndex;
+		this._isWebWindowOpen = true;
 
 		const raw = element.innerText.replace(/^🌐 ?/, "");
 		const parts = raw.trim().split(/\s+/);
@@ -130,9 +130,9 @@ class CursorManager {
 	}
 
 	_leaveWebBlock() {
-		if (!this._webWindowOpen) return;
-		this._webWindowOpen = false;
-		this._activeWebIndex = null;
+		if (!this._isWebWindowOpen) return;
+		this._isWebWindowOpen = false;
+		this._currentWebStepIndex = null;
 		ipcRenderer.send("close-web-window");
 	}
 
@@ -142,13 +142,23 @@ class CursorManager {
 		this._moveToWindowOpen = true;
 		this.logManager.addEntry({ move_to: step.target || "MAIN" });
 		if (this.onEnterMoveToBlock) {
-			const target = step.target || "MAIN";
+			const rawTarget = step.target || "MAIN";
 			let mode = "main";
-			if (target === "DEV") mode = "dev";
-			else if (target === "MAIN") mode = "main";
-			else if (target.startsWith("⚓") && target.endsWith("⚓")) {
-				const inner = target.slice(1, -1);
-				mode = /\.[a-z0-9]+$/i.test(inner) ? "file" : "anchor";
+			let target = rawTarget;
+			if (rawTarget === "DEV") {
+				mode = "dev";
+			} else if (rawTarget === "MAIN") {
+				mode = "main";
+			} else {
+				const wrapped =
+					rawTarget.startsWith("⚓") && rawTarget.endsWith("⚓");
+				const inner = wrapped ? rawTarget.slice(1, -1) : rawTarget;
+				if (/\.[a-z0-9]+$/i.test(inner)) {
+					mode = "file";
+					target = inner;
+				} else if (wrapped) {
+					mode = "anchor";
+				}
 			}
 			this.onEnterMoveToBlock({
 				mode,
@@ -166,18 +176,36 @@ class CursorManager {
 	}
 
 	_clearSpecialBlockState() {
-		this._activeCodeInsertIndex = null;
+		this._currentCodeInsertStepIndex = null;
 		this._activeMoveToIndex = null;
+	}
+
+	_leaveSpecialBlocksExcept(type) {
+		if (type !== "question") this._leaveQuestionBlock();
+		if (type !== "image") this._leaveImageBlock();
+		if (type !== "web") this._leaveWebBlock();
+		if (type !== "move-to") this._leaveMoveToBlock();
+	}
+
+	_broadcastProgress() {
+		const progress =
+			(this.currentStepIndex / this.executionSteps.length) * 100 || 0;
+		this.uiManager.updateProgressBar(progress);
+		ipcRenderer.send("update-cursor", this.currentStepIndex);
+		ipcRenderer.send("update-progress", {
+			currentStep: this.currentStepIndex,
+			totalSteps: this.executionSteps.length,
+		});
 	}
 
 	resetProgress() {
 		this._leaveQuestionBlock();
 		this._leaveImageBlock();
 		this._leaveWebBlock();
-		this._activeQuestionIndex = null;
-		this._activeImageIndex = null;
-		this._activeWebIndex = null;
-		this._activeCodeInsertIndex = null;
+		this._currentQuestionStepIndex = null;
+		this._currentImageStepIndex = null;
+		this._currentWebStepIndex = null;
+		this._currentCodeInsertStepIndex = null;
 		this._activeMoveToIndex = null;
 		this.currentStepIndex = 0;
 		this.uiManager.updateProgressBar(0);
@@ -190,10 +218,7 @@ class CursorManager {
 			const step = this.executionSteps[this.currentStepIndex];
 
 			if (step.type === "char") {
-				this._leaveQuestionBlock();
-				this._leaveImageBlock();
-				this._leaveWebBlock();
-				this._leaveMoveToBlock();
+				this._leaveSpecialBlocksExcept();
 				this._clearSpecialBlockState();
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
@@ -201,10 +226,7 @@ class CursorManager {
 					block: "center",
 				});
 			} else if (step.type === "anchor") {
-				this._leaveQuestionBlock();
-				this._leaveImageBlock();
-				this._leaveWebBlock();
-				this._leaveMoveToBlock();
+				this._leaveSpecialBlocksExcept();
 				this._clearSpecialBlockState();
 				step.element.classList.add("cursor");
 				step.element.scrollIntoView({
@@ -223,87 +245,53 @@ class CursorManager {
 				});
 
 				if (step.subtype === "move-to") {
-					this._leaveQuestionBlock();
-					this._leaveImageBlock();
-					this._leaveWebBlock();
-					this._activeCodeInsertIndex = null;
+					this._leaveSpecialBlocksExcept("move-to");
+					this._currentCodeInsertStepIndex = null;
 					this._enterMoveToBlock(step);
-					const progress =
-						(this.currentStepIndex / this.executionSteps.length) * 100 ||
-						0;
-					this.uiManager.updateProgressBar(progress);
-					ipcRenderer.send("broadcast-cursor", this.currentStepIndex);
-					ipcRenderer.send("broadcast-progress", {
-						currentStep: this.currentStepIndex,
-						totalSteps: this.executionSteps.length,
-					});
+					this._broadcastProgress();
 					return;
 				}
 
 				const blockText = step.element.innerText.trim();
 				const subtype = getBlockSubtype(blockText);
 				if (subtype === "question-comment") {
-					this._leaveImageBlock();
-					this._leaveWebBlock();
-					this._leaveMoveToBlock();
+					this._leaveSpecialBlocksExcept("question");
 					this._clearSpecialBlockState();
 					this._enterQuestionBlock(step.element, step.globalIndex);
 				} else if (subtype === "image-comment") {
-					this._leaveQuestionBlock();
-					this._leaveWebBlock();
-					this._leaveMoveToBlock();
+					this._leaveSpecialBlocksExcept("image");
 					this._clearSpecialBlockState();
 					this._enterImageBlock(step.element, step.globalIndex);
 				} else if (subtype === "web-comment") {
-					this._leaveQuestionBlock();
-					this._leaveImageBlock();
-					this._leaveMoveToBlock();
+					this._leaveSpecialBlocksExcept("web");
 					this._clearSpecialBlockState();
 					this._enterWebBlock(step.element, step.globalIndex);
 				} else if (subtype === "code-insert-comment") {
-					this._leaveQuestionBlock();
-					this._leaveImageBlock();
-					this._leaveWebBlock();
-					this._leaveMoveToBlock();
-					if (this._activeCodeInsertIndex !== step.globalIndex) {
-						this._activeCodeInsertIndex = step.globalIndex;
+					this._leaveSpecialBlocksExcept();
+					if (this._currentCodeInsertStepIndex !== step.globalIndex) {
+						this._currentCodeInsertStepIndex = step.globalIndex;
 						const fullText = step.element.title || step.element.innerText;
 						const text = fullText.replace(/^📋 ?/, "");
 						this.logManager.addEntry({ code_insert: text });
 					}
 				} else if (subtype === "move-to-comment") {
-					this._leaveQuestionBlock();
-					this._leaveImageBlock();
-					this._leaveWebBlock();
-					this._activeCodeInsertIndex = null;
+					this._leaveSpecialBlocksExcept("move-to");
+					this._currentCodeInsertStepIndex = null;
 					if (this._activeMoveToIndex !== step.globalIndex) {
 						this._activeMoveToIndex = step.globalIndex;
 						const text = step.element.innerText.replace(/^➡️ ?/, "");
 						this.logManager.addEntry({ move_to: text });
 					}
 				} else {
-					this._leaveQuestionBlock();
-					this._leaveImageBlock();
-					this._leaveWebBlock();
-					this._leaveMoveToBlock();
+					this._leaveSpecialBlocksExcept();
 					this._clearSpecialBlockState();
 				}
 			}
 		} else {
-			this._leaveQuestionBlock();
-			this._leaveImageBlock();
-			this._leaveWebBlock();
-			this._leaveMoveToBlock();
+			this._leaveSpecialBlocksExcept();
 		}
 
-		const progress =
-			(this.currentStepIndex / this.executionSteps.length) * 100 || 0;
-		this.uiManager.updateProgressBar(progress);
-		ipcRenderer.send("broadcast-cursor", this.currentStepIndex);
-		ipcRenderer.send("broadcast-progress", {
-			currentStep: this.currentStepIndex,
-			totalSteps: this.executionSteps.length,
-		});
+		this._broadcastProgress();
 	}
 
 	advanceCursor() {
@@ -371,10 +359,10 @@ class CursorManager {
 	}
 
 	jumpTo(index) {
-		this._activeQuestionIndex = null;
-		this._activeImageIndex = null;
-		this._activeWebIndex = null;
-		this._activeCodeInsertIndex = null;
+		this._currentQuestionStepIndex = null;
+		this._currentImageStepIndex = null;
+		this._currentWebStepIndex = null;
+		this._currentCodeInsertStepIndex = null;
 		this._activeMoveToIndex = null;
 		this.currentStepIndex = index;
 

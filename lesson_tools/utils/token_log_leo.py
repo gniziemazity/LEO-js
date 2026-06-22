@@ -254,6 +254,29 @@ def _prune_color_map(file_map: dict) -> dict:
     return out
 
 
+def _split_real_and_ghost_assignments(
+    assigned_pairs: List[Tuple[int, int]],
+    n_real_teacher: int,
+    similarity_matrix: list,
+) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+    real_assignments: List[Tuple[int, int]] = []
+    ghost_assignments: List[Tuple[int, int]] = []
+    for s_idx, t_idx in assigned_pairs:
+        if t_idx < n_real_teacher:
+            real_assignments.append((s_idx, t_idx))
+            continue
+        ghost_idx = t_idx - n_real_teacher
+        score = (
+            similarity_matrix[s_idx][t_idx]
+            if similarity_matrix
+               and s_idx < len(similarity_matrix)
+               and t_idx < len(similarity_matrix[s_idx])
+            else 0.0
+        )
+        if score >= _CONTEXT_MATCH_THRESHOLD:
+            ghost_assignments.append((s_idx, ghost_idx))
+    return real_assignments, ghost_assignments
+
 def _compute_per_token_matching(
     teacher_files: dict,
     student_files: dict,
@@ -347,22 +370,9 @@ def _compute_per_token_matching(
             t_alt_packs=t_alt_packs,
         )
 
-        real_assignments: List[Tuple[int, int]] = []
-        ghost_assignments: List[Tuple[int, int]] = []
-        for s_idx, t_idx in assigned_pairs:
-            if t_idx < n_real_teacher:
-                real_assignments.append((s_idx, t_idx))
-            else:
-                g_idx = t_idx - n_real_teacher
-                score = (
-                    similarity_matrix[s_idx][t_idx]
-                    if similarity_matrix
-                       and s_idx < len(similarity_matrix)
-                       and t_idx < len(similarity_matrix[s_idx])
-                    else 0.0
-                )
-                if score >= _CONTEXT_MATCH_THRESHOLD:
-                    ghost_assignments.append((s_idx, g_idx))
+        real_assignments, ghost_assignments = _split_real_and_ghost_assignments(
+            assigned_pairs, n_real_teacher, similarity_matrix,
+        )
 
         matched_teacher_idxs = {t_idx for _, t_idx in real_assignments}
         missing_teacher_idxs = {

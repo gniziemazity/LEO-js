@@ -291,7 +291,7 @@ tr.row-ai > td:not(.sticky-l) {
 	opacity: 0.55;
 }
 tr.row-ai > td {
-	color: var(--clr-red) !important;
+	color: var(--clr-pale-red) !important;
 }
 td.st-bg-pass {
 	background: var(--clr-st-pass-bg);
@@ -383,6 +383,19 @@ td.asn-div {
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: 10px;
+}
+.chart-card-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 12px;
+	margin-bottom: 10px;
+}
+.chart-card-header h3 {
+	margin-bottom: 0;
+}
+.chart-card-header .chart-legend {
+	margin-bottom: 0;
 }
 .chart-box {
 	position: relative;

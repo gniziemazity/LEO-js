@@ -33,15 +33,15 @@ class HotkeyManager {
 		const shortcuts = this.settingsManager.get("hotkeys");
 
 		globalShortcut.register(shortcuts.toggleActive, () => {
-			state.mainWindow.webContents.send("global-toggle-active");
+			state.mainWindow.webContents.send("hotkey-toggle-active");
 		});
 
 		globalShortcut.register(shortcuts.stepBackward, () => {
-			state.mainWindow.webContents.send("global-step-backward");
+			state.mainWindow.webContents.send("hotkey-step-backward");
 		});
 
 		globalShortcut.register(shortcuts.stepForward, () => {
-			state.mainWindow.webContents.send("global-step-forward");
+			state.mainWindow.webContents.send("hotkey-step-forward");
 		});
 
 		globalShortcut.register(shortcuts.alwaysOnTop, () => {

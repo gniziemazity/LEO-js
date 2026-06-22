@@ -12,7 +12,7 @@ from languages import lesson_file_extension
 
 from .lv_editor import reconstruct_all_headless
 from .token_log import (
-    _add_log_metadata,
+    _apply_star_post_pass,
     _apply_insert_at_to_unpaired_missings,
     _assemble_diff_marks,
     _build_file_ordered_ts_map,
@@ -38,7 +38,7 @@ from .token_log_lang_stats import (
 )
 
 
-DISABLED_DIFF_MARK_VARIANTS = frozenset({'leo', 'lcs_star', 'git_star'})
+DISABLED_DIFF_MARK_VARIANTS = frozenset({'lcs_star', 'git_star'})
 
 
 def _emit_diff_marks(path: Path, marks: dict, basis: str) -> bool:
@@ -194,7 +194,6 @@ class TokenLogMixin:
 
         teacher_code_files = self._get_teacher_code_files()
 
-        written_leo = 0
         written_leo_star = 0
         for student_dir in sorted(names_dir.iterdir()):
             if not student_dir.is_dir():
@@ -228,16 +227,8 @@ class TokenLogMixin:
             if leo_assignments:
                 diff_marks['leo_assignments'] = leo_assignments
 
-            non_star = copy.deepcopy(diff_marks)
-            non_star['token_matching'] = 'leo'
-            _, ns_score_e, *_ = _build_occ_from_diff_marks(non_star, teacher_entries, None)
-            non_star['score'] = ns_score_e
-            _strip_internal_fields(non_star)
-            written_leo += _emit_diff_marks(
-                anon_dir / 'diff_marks_leo.json', non_star, 'leo')
-
             if all_events:
-                _add_log_metadata(
+                _apply_star_post_pass(
                     diff_marks, all_events, stu_files,
                     teacher_files=teacher_code_files,
                     _ts_map=ts_map_cached or None,
@@ -293,8 +284,6 @@ class TokenLogMixin:
             written_leo_star += _emit_diff_marks(
                 anon_dir / 'diff_marks_leo_star.json', diff_marks, 'leo_star')
 
-        if written_leo:
-            print(f'Written LEO diff marks for {written_leo} student(s) in {names_dir.name}/')
         if written_leo_star:
             print(f'Written Leo* diff marks for {written_leo_star} student(s) in {names_dir.name}/')
 
@@ -379,7 +368,7 @@ class TokenLogMixin:
                 written += _emit_diff_marks(anon_dir / filename, non_star, token_matching)
 
                 diff_marks['token_matching'] = star_token_matching
-                _add_log_metadata(diff_marks, all_events, stu_files,
+                _apply_star_post_pass(diff_marks, all_events, stu_files,
                                   teacher_files=teacher_code_files,
                                   _ts_map=_tm or None)
                 if teacher_total_nc:

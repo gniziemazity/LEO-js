@@ -226,10 +226,6 @@ function _curatedSnapshot() {
 	_curatedSel.snapshot();
 }
 
-function _curatedApplyHistoryState(entry) {
-	_curatedSel.applyHistoryState(entry);
-}
-
 function _curatedUndo() {
 	_curatedSel.undo();
 }

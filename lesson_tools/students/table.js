@@ -694,10 +694,15 @@ function _renderObsCell(el, val) {
 			el.dataset.artefactTipWired = "1";
 		}
 	} else {
-		el.textContent = v;
+		if (_mode === "lesson") {
+			el.innerHTML = formatLessonObsHtml(v);
+			el.style.fontWeight = "";
+		} else {
+			el.textContent = v;
+			el.style.fontWeight = v ? "bold" : "";
+		}
 		delete el.dataset.rawValue;
 		delete el.dataset.artefactTipHtml;
-		el.style.fontWeight = v ? "bold" : "";
 		el.style.color = v.includes("<") ? THEME.red : "";
 		el.title = "";
 	}

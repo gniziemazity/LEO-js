@@ -8,25 +8,46 @@ teacher's reference. The teacher's reference is normally **reconstructed from a
 keylog** (the live-coding event stream); when no keylog is available, the
 teacher's static source files are used directly.
 
-Up to six matching methods can be loaded into the differentiator UI,
-organised in three families with a paired star (`*`) variant for each. The
-browser only shows methods whose `diff_marks_*.json` files are actually
-present.
+Up to five matching methods can be loaded into the differentiator UI: Leo*, LCS, Git, LCS* and Git*. The browser only
+shows methods whose `diff*marks\*\*.json` files are actually present.
 
-| Family | Plain | Star   | Granularity  | Algorithm                                                    |
-| ------ | ----- | ------ | ------------ | ------------------------------------------------------------ |
-| LEO    | `leo` | `leo*` | Token        | Per-token Hungarian matching on cosine-similar contexts      |
-| LCS    | `lcs` | `lcs*` | Token        | Difflib SequenceMatcher (Ratcliff/Obershelp) on token stream |
-| Git    | `git` | `git*` | Line + Token | `git diff --no-index --unified=0 -w`, then per-line          |
+| Family | Methods        | Granularity  | Algorithm                                                                           |
+| ------ | -------------- | ------------ | ----------------------------------------------------------------------------------- |
+| LEO    | `leo*`         | Token        | Per-token Hungarian on cosine-similar contexts; ghosts native to the base Hungarian |
+| LCS    | `lcs` / `lcs*` | Token        | Difflib SequenceMatcher (Ratcliff/Obershelp) on token stream                        |
+| Git    | `git` / `git*` | Line + Token | `git diff --no-index --unified=0 -w`, then per-line                                 |
 
-The star variant of every method is the same algorithm followed by a
-**ghost-token post-processing pass**: per token type, student `extra` marks
-and teacher ghost instances are paired with a Hungarian assignment scored by
-the same cosine-context function used in LEO. Pairs with cosine
+**Leo\*** is proprietary of this toolbase and the default when its
+keylog-derived marks are present. It is **keylog-native**: the live-coding event
+stream is consumed from the start of the build, so _ghosts_ (tokens the teacher
+typed then deleted) enter the per-token Hungarian as additional teacher columns,
+and student↔teacher pairing is decided in that single base pass (§5.1). Leo\*
+therefore needs **no** ghost-promotion post-pass for its ghost handling, and
+there is no separate "plain `leo`" — LEO exists only as `leo*`.
+
+The star (`*`) **post-pass is what the other two families need.** `lcs` and
+`git` are keylog-blind, so the generic ghost-token promotion pass (§7) is bolted
+on to turn `lcs`→`lcs*` and `git`→`git*`, giving them the pairing and ghost
+handling LEO already performs natively. Because that pass consumes the keylog,
+**the star variants require one**; the plain `lcs` and `git` methods need no
+keylog, which makes them the practical choice for follow-along sessions graded
+from a student's final files. **All** methods exclude comments from matching
+(re-emitting them as `comment` marks), so the notes students leave in their own
+comments never count against them — everyone annotates differently.
+
+The generic star pass (§7), per token type, pairs student `extra` marks with
+teacher ghost instances via a Hungarian assignment scored by the same
+cosine-context function used in LEO; pairs with cosine
 `>= _CONTEXT_MATCH_THRESHOLD` are promoted to `ghost_extra` and receive
-`removal_ts` from the matched ghost instance.
+`removal_ts` from the matched ghost instance. For `leo*` the ghost _matching_
+is already decided in the base joint Hungarian, so the post-pass **materializes**
+those matches (relabels `extra`→`ghost_extra`, writes `removal_ts`), stamps the
+teacher `timestamp`s, and attaches `teacher_ghosts`; only its _leftover_
+promotion Hungarian — over extras/ghosts the base left unpaired — is the part
+shared with `lcs*`/`git*`, where that Hungarian is what actually decides the
+matches (the LEO short-circuit, §7.1).
 
-In addition to the six algorithmic methods, the differentiator can load
+In addition to the five algorithmic methods, the differentiator can load
 two hand-curated modes for any student: `ideal` (`diff_marks_ideal.json`,
 the recommended-fix list) and `minimal` (`diff_marks_minimal.json`,
 the minimum-fix list). Both use the same schema and are edited inside
@@ -34,7 +55,7 @@ the differentiator itself via the curated editor
 (`differentiator/curated*.js`); the ideal file
 is also the reference that `compare_methods_to_ideal.py` (`npm run eval`)
 evaluates the algorithmic methods against. Ideal mode is the default
-when present; otherwise minimal, then `leo*`, falling back to `leo`.
+when present; otherwise minimal, then `leo*`.
 See §8.
 
 The output of every method is a JSON document of the same shape — a list of
@@ -256,15 +277,15 @@ overview views follow the same precedence on the rendering side (they infer
 
 ### 3.4 Implementation Mapping
 
-| Concept (algorithm)              | Implementation (Python module)                                                                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Teacher reference reconstruction | `_build_file_timeline()`, `_file_at_ts()` — `utils/token_log.py`                                                                                                                            |
-| Token timeline                   | `_parse_teacher_tokens()` — `utils/token_log.py`; `reconstruct_tokens_from_keylog_full()` — `utils/similarity_measures.py`                                                                  |
-| Ghost stream                     | `_collect_teacher_ghosts()` — `utils/token_log_leo.py`                                                                                                                                      |
-| Per-token matching (LEO core)    | `_compute_per_token_matching()` — `utils/token_log_leo.py`                                                                                                                                  |
-| Mark factories                   | `_missing_mark`, `_extra_mark`, `_comment_pos_mark` — `utils/token_log_marks.py`                                                                                                            |
-| Curated schema                   | `_validate_curated_schema` — `utils/token_log_curated.py`                                                                                                                                   |
-| Star post-processing             | `_add_log_metadata`, `_apply_ghost_extra_promotion`, `_apply_swap_pairing_to_marks`, `_apply_insert_at_to_unpaired_missings`, `_refresh_missing_timestamps` — `utils/token_log_starpass.py` |
+| Concept (algorithm)              | Implementation (Python module)                                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Teacher reference reconstruction | `_build_file_timeline()`, `_file_at_ts()` — `utils/token_log.py`                                                                                                                                |
+| Token timeline                   | `_parse_teacher_tokens()` — `utils/token_log.py`; `reconstruct_tokens_from_keylog_full()` — `utils/similarity_measures.py`                                                                      |
+| Ghost stream                     | `_collect_teacher_ghosts()` — `utils/token_log_leo.py`                                                                                                                                          |
+| Per-token matching (LEO core)    | `_compute_per_token_matching()` — `utils/token_log_leo.py`                                                                                                                                      |
+| Mark factories                   | `_missing_mark`, `_extra_mark`, `_comment_pos_mark` — `utils/token_log_marks.py`                                                                                                                |
+| Curated schema                   | `_validate_curated_schema` — `utils/token_log_curated.py`                                                                                                                                       |
+| Star post-processing             | `_apply_star_post_pass`, `_apply_ghost_extra_promotion`, `_apply_swap_pairing_to_marks`, `_apply_insert_at_to_unpaired_missings`, `_refresh_missing_timestamps` — `utils/token_log_starpass.py` |
 
 `utils/token_log.py` is the public entry point and re-exports every symbol
 from `token_log_leo.py`, `token_log_marks.py`, `token_log_curated.py`, and
@@ -277,22 +298,22 @@ paths still resolve unchanged.
 
 All methods share the helpers re-exported by `utils/token_log.py` (their physical homes are the sibling `token_log_*` modules — see §3.4):
 
-| Helper                          | Purpose                                                                                                                                                                                                         |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `_match_files_by_name_then_ext` | Pair teacher and student files by filename, fallback by extension                                                                                                                                               |
-| `_read_text_normalized`         | utf-8 read with `errors='ignore'`, normalise `\r\n` → `\n`                                                                                                                                                      |
-| `_split_tokens_by_comment`      | Tokenize a file into `(non_comment, comment)` lists of `(pos, token)`                                                                                                                                           |
-| `_build_token_position_index`   | Build `{token: [positions]}` dict + total-token count for bisect lookups                                                                                                                                        |
-| `_missing_mark`                 | `{token, label='missing', start, end, _tok_idx}` — `_tok_idx` (via `bisect.bisect_left` on the position index) is needed by `_add_log_metadata` to map missing marks back to chronological insertion timestamps |
-| `_extra_mark`                   | `{token, label='extra', start, end}`                                                                                                                                                                            |
-| `_comment_pos_mark`             | `{token, label='comment', start, end}`                                                                                                                                                                          |
-| `_line_token_marks`             | All token marks for one line, given an offset and a side (teacher/student)                                                                                                                                      |
-| `_diff_line_pair_tokens`        | Token-level difflib diff between two paired lines                                                                                                                                                               |
-| `_add_unpaired_teacher_line`    | Append `[t_i, None]` to alignment, line + per-token missing marks                                                                                                                                               |
-| `_add_unpaired_student_line`    | Append `[None, s_j]` to alignment, line + per-token extra marks                                                                                                                                                 |
-| `_add_paired_line_block`        | Pair-up `n_paired` lines, run `_diff_line_pair_tokens` on each                                                                                                                                                  |
-| `_add_replace_block`            | Combo of `_add_paired_line_block` + leftover unpaired loops                                                                                                                                                     |
-| `_finalize_per_file_diff`       | Assemble per-file results into the canonical 6-tuple `(t_marks, s_marks, score, alignments, line_marks, n_total)`. LEO's `_build_leo_diff_marks` returns this 6-tuple plus a 7th element, `leo_assignments`.    |
+| Helper                          | Purpose                                                                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_match_files_by_name_then_ext` | Pair teacher and student files by filename, fallback by extension                                                                                                                                                   |
+| `_read_text_normalized`         | utf-8 read with `errors='ignore'`, normalise `\r\n` → `\n`                                                                                                                                                          |
+| `_split_tokens_by_comment`      | Tokenize a file into `(non_comment, comment)` lists of `(pos, token)`                                                                                                                                               |
+| `_build_token_position_index`   | Build `{token: [positions]}` dict + total-token count for bisect lookups                                                                                                                                            |
+| `_missing_mark`                 | `{token, label='missing', start, end, _tok_idx}` — `_tok_idx` (via `bisect.bisect_left` on the position index) is needed by `_apply_star_post_pass` to map missing marks back to chronological insertion timestamps |
+| `_extra_mark`                   | `{token, label='extra', start, end}`                                                                                                                                                                                |
+| `_comment_pos_mark`             | `{token, label='comment', start, end}`                                                                                                                                                                              |
+| `_line_token_marks`             | All token marks for one line, given an offset and a side (teacher/student)                                                                                                                                          |
+| `_diff_line_pair_tokens`        | Token-level difflib diff between two paired lines                                                                                                                                                                   |
+| `_add_unpaired_teacher_line`    | Append `[t_i, None]` to alignment, line + per-token missing marks                                                                                                                                                   |
+| `_add_unpaired_student_line`    | Append `[None, s_j]` to alignment, line + per-token extra marks                                                                                                                                                     |
+| `_add_paired_line_block`        | Pair-up `n_paired` lines, run `_diff_line_pair_tokens` on each                                                                                                                                                      |
+| `_add_replace_block`            | Combo of `_add_paired_line_block` + leftover unpaired loops                                                                                                                                                         |
+| `_finalize_per_file_diff`       | Assemble per-file results into the canonical 6-tuple `(t_marks, s_marks, score, alignments, line_marks, n_total)`. LEO's `_build_leo_diff_marks` returns this 6-tuple plus a 7th element, `leo_assignments`.        |
 
 Every matching method follows the same skeleton:
 
@@ -614,18 +635,25 @@ gets a red background and red letters for every token on it.
 
 ## 7. The Star Variant: Ghost-Token Promotion
 
-For each method, the star variant runs the base algorithm and then promotes
-a subset of `extra` marks to `ghost_extra`. The promotion criterion: the
-student `extra`'s context resembles the context of a token the teacher
-typed and later deleted.
+The star post-pass promotes a subset of `extra` marks to `ghost_extra`. The
+promotion criterion: the student `extra`'s context resembles the context of a
+token the teacher typed and later deleted. This is what upgrades the
+keylog-blind base methods — `lcs`→`lcs*` and `git`→`git*` — giving them the
+ghost handling LEO already performs natively in its base joint Hungarian (§5.1).
+For `leo*` the matching is already done in the base joint Hungarian, so this
+step **materializes** it (relabels the base's ghost matches to `ghost_extra`,
+writes `removal_ts`) and only runs its own Hungarian over the _leftover_
+extras/ghosts the base left unpaired (the LEO short-circuit in §7.1). The
+surrounding post-pass also stamps missing-mark `timestamp`s and attaches
+`teacher_ghosts` for `leo*`.
 
 This is pedagogically important — it identifies cases where the student
 explored or made the same mistake / edit the teacher demonstrated and corrected.
 
-### 7.1 LEO-style cosine Hungarian (used for every star variant)
+### 7.1 LEO-style cosine Hungarian (decides matches for `lcs*`/`git*`; materializes the base's for `leo*`)
 
-Every star variant — `leo*`, `lcs*`, `git*` — runs the same
-post-pass: [`_apply_ghost_extra_promotion`](../lesson_tools/utils/token_log.py)
+The generic post-pass
+[`_apply_ghost_extra_promotion`](../lesson_tools/utils/token_log.py)
 solves a per-token Hungarian assignment between student `extra` marks and
 ghost teacher instances, scoring by the same cosine-context function used in
 the main LEO matching (a uniform ±k Counter, no distance decay — the
@@ -684,7 +712,7 @@ def _apply_ghost_extra_promotion(diff_marks, events):
 ```
 
 Non-LEO base methods (LCS/Git) don't produce `leo_assignments`
-themselves, so [`_add_log_metadata`](../lesson_tools/utils/token_log.py)
+themselves, so [`_apply_star_post_pass`](../lesson_tools/utils/token_log.py)
 calls [`_build_assignments_for_post_pass`](../lesson_tools/utils/token_log.py)
 first to synthesize them from the existing diff_marks: it scans
 teacher_files / student_files for `missing` and `extra` labels and wraps
@@ -805,7 +833,7 @@ partner span when one is clicked.
 
 The post-pass runs once at the end of `_build_leo_diff_marks` (so
 plain LEO has swap pairs even without a keylog) and a second time
-inside `_add_log_metadata` after `_apply_ghost_extra_promotion`
+inside `_apply_star_post_pass` after `_apply_ghost_extra_promotion`
 (so any `extra` promoted to `ghost_extra` drops out of swap pairing
 — ghost explanation supersedes swap explanation, and the second
 pass re-pairs the remaining `extra` marks). Both calls are
@@ -947,10 +975,14 @@ differentiator borrows them from any loaded line-based method via
 view itself can also be toggled off in the differentiator (Padding button), in
 which case both columns render flat without spacers.
 
-`timestamp` is added to `missing` marks **only when a keylog is available**:
-`_add_log_metadata` matches each missing mark to its chronological insertion
-timestamp using `_tok_idx` (the index of this occurrence among all
-same-named tokens in the teacher file, computed via
+`timestamp` is added to `missing` marks by the **star post-pass**
+(`_apply_star_post_pass`), so it appears only on the star variants
+(`leo_star` / `lcs_star` / `git_star`) and on curated files (backfilled on
+save from a co-loaded `leo_star`) — **never on the plain `lcs` / `git`
+marks**, which are deep-copied and written _before_ the star pass runs, even
+though a keylog is available for the lesson. The pass matches each missing mark
+to its chronological insertion timestamp using `_tok_idx` (the index of this
+occurrence among all same-named tokens in the teacher file, computed via
 `bisect.bisect_left(positions, mark.start)`).
 
 `removal_ts` is added to `ghost_extra` marks **only when a keylog is
@@ -991,7 +1023,7 @@ range followed by `e`/`m`/`i`.
 
 `_strip_internal_fields` removes `_tok_idx` and `_native_insert_at`
 before the JSON is written — both are internal handles
-(`_tok_idx` is the bisect index used by `_add_log_metadata`,
+(`_tok_idx` is the bisect index used by `_apply_star_post_pass`,
 `_native_insert_at` is the method-native anchor that the
 insert-at post-pass copies into `insert_at`), not part of the
 public schema.
@@ -1191,18 +1223,14 @@ LEO family (`TokenLogMixin.write_student_token_files`, keylog runs only;
 without a keylog `write_leo_diff_marks` → `_write_alt_diff_marks` emits the
 base LEO result under the `leo_star` key instead — `diff_marks_leo_star.json`
 with no ghost/timestamp post-pass — so assignments get LEO\* like lessons, and
-plain `leo` is never written):
+plain `leo` is never written). There is no separate "plain `leo`" output —
+LEO is only ever written as `leo_star`:
   build result  →  diff_marks dict
-   │
-   ├─► deepcopy → token_matching='leo'
-   │     ├─► _build_occ_from_diff_marks (compute non-star score)
-   │     ├─► _strip_internal_fields
-   │     └─► write diff_marks_leo.json
    │
    └─► if keylog events exist:
         diff_marks (token_matching='leo_star')
           │
-          ▼ _add_log_metadata()
+          ▼ _apply_star_post_pass()
              ├─► _refresh_missing_timestamps  (chronological insertion ts via _tok_idx)
              ├─► _apply_ghost_extra_promotion (LEO short-circuit honours
              │     pre-set ghost match_idx; Hungarian for any leftover)
@@ -1226,7 +1254,7 @@ Other families (`TokenLogMixin._write_alt_diff_marks`, used for LCS/Git):
    └─► if keylog events exist:
         diff_marks (token_matching='<plain>_star')
           │
-          ▼ _add_log_metadata()
+          ▼ _apply_star_post_pass()
              ├─► _refresh_missing_timestamps
              ├─► _build_assignments_for_post_pass  (synthesize leo_assignments
              │     from existing missing/extra labels + ghost stream)
@@ -1251,8 +1279,8 @@ sim_check.py drives all writers:
   · no `tokens.txt` / student token files
   · only the plain diff_marks files are written (no `*_star`) — and only
     for bases not in `DISABLED_DIFF_MARK_VARIANTS`, so by default `lcs`
-    and `git` (plain `leo` generation is disabled)
-  · `_add_log_metadata` is a no-op without events, so `timestamp`,
+    and `git`; LEO is emitted as `leo_star` (there is no plain `leo`)
+  · `_apply_star_post_pass` is a no-op without events, so `timestamp`,
     `removal_ts`, ghost promotion, and `teacher_ghosts` are absent
 
 
@@ -1276,7 +1304,7 @@ navigateToDifferentiator() / openDifferentiatorWindow()
   │
   ├─► load whichever diff_marks files exist into `allMarks`
   ├─► default mode preference (defaultDiffModeKey in diff-utils.js):
-  │     ideal → minimal → '' (=leo_star) → leo → first loaded mode
+  │     ideal → minimal → leo_star → first loaded mode
   ├─► dropdown is populated from DIFF_MODE_OPTIONS, filtered to loaded modes;
   │     any custom `diff_marks_<name>.json` in the student folder is also loaded
   │     (keyed by `<name>`) and listed after Ideal/Minimal, before the methods
@@ -1457,7 +1485,7 @@ phases that live in different functions:
   similarity being the max of the two cosines (see "With-ghosts and
   ghost-stripped contexts" above).
 - **Phase 2** runs inside `_apply_ghost_extra_promotion`, called
-  from `_add_log_metadata` after the base matching is done: Hungarian
+  from `_apply_star_post_pass` after the base matching is done: Hungarian
   over (unmatched-students × ghost-teachers). Pairs with cosine ≥
   `_CONTEXT_MATCH_THRESHOLD` get `ghost_extra` directly out of the matching
   (with `removal_ts` sourced from that ghost's last-character `del_ts`).

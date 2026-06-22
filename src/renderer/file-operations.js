@@ -85,7 +85,7 @@ class FileOperations {
 			this.setInitialStateToInactive();
 
 			const lessonName = path.basename(filePath, path.extname(filePath));
-			ipcRenderer.send("broadcast-lesson", lessonName);
+			ipcRenderer.send("update-lesson-name", lessonName);
 
 			if (this.onLessonLoaded) {
 				this.onLessonLoaded();

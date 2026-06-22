@@ -16,7 +16,7 @@ class TypingController {
 
 		this.uiManager.setTypingActive(isCurrentlyInactive);
 		ipcRenderer.send("set-active", isCurrentlyInactive);
-		ipcRenderer.send("broadcast-active", isCurrentlyInactive);
+		ipcRenderer.send("update-active", isCurrentlyInactive);
 
 		this.lessonRenderer.render();
 

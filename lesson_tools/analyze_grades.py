@@ -2,7 +2,6 @@ import argparse
 import json
 import math
 import os
-import re
 import sys
 from utils.folder_utils import normalize_sid, pick_file
 from utils.anonymize import is_llm_category, load_excluded_student_ids
@@ -1965,6 +1964,19 @@ def main():
                     f"Excluded {n_excluded} student row(s) per "
                     f"students.csv (Category=Excluded)"
                 )
+
+    exc_col = COL.get('excluded')
+    if exc_col is not None:
+        is_excluded = _col_series(st, exc_col, numeric=False).apply(
+            lambda v: str(v or '').strip().upper() == 'EXCLUDED'
+        )
+        n_excluded = int(is_excluded.sum())
+        if n_excluded:
+            st = st[~is_excluded].reset_index(drop=True)
+            print(
+                f"Excluded {n_excluded} student row(s) per "
+                f"Category column (EXCLUDED)"
+            )
 
     st = enrich(st)
     st_full = st

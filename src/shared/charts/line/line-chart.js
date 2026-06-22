@@ -66,7 +66,7 @@ class LineChart {
 		const rightAxis = this._options.rightAxis;
 
 		if (leftAxis?.ticks) {
-			ctx.strokeStyle = "#f0f0f0";
+			ctx.strokeStyle = CHART_COLOR.gridFaint;
 			ctx.lineWidth = 1;
 			for (const v of leftAxis.ticks) {
 				const py = this._axisY(v, "left");
@@ -75,8 +75,8 @@ class LineChart {
 				ctx.lineTo(W - right, py);
 				ctx.stroke();
 			}
-			ctx.fillStyle = leftAxis.color ?? "#595959";
-			ctx.font = "9px sans-serif";
+			ctx.fillStyle = leftAxis.color ?? CHART_COLOR.axisText;
+			ctx.font = CHART_FONT.tick;
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
 			const _ysfx = leftAxis.suffix || "";
@@ -86,8 +86,8 @@ class LineChart {
 		}
 
 		if (rightAxis?.ticks) {
-			ctx.fillStyle = rightAxis.color ?? "#007acc";
-			ctx.font = "9px sans-serif";
+			ctx.fillStyle = rightAxis.color ?? CHART_COLOR.rightAxis;
+			ctx.font = CHART_FONT.tick;
 			ctx.textAlign = "left";
 			ctx.textBaseline = "middle";
 			for (const v of rightAxis.ticks) {
@@ -95,8 +95,8 @@ class LineChart {
 			}
 		}
 
-		ctx.fillStyle = "#595959";
-		ctx.font = "9px sans-serif";
+		ctx.fillStyle = CHART_COLOR.axisText;
+		ctx.font = CHART_FONT.tick;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
 		for (let i = 0; i < xLabels.length; i++) {
@@ -106,7 +106,7 @@ class LineChart {
 		for (let di = 0; di < this._datasets.length; di++) {
 			const ds = this._datasets[di];
 			const axKey = ds.yAxis ?? "left";
-			ctx.strokeStyle = ds.color ?? "#333";
+			ctx.strokeStyle = ds.color ?? CHART_COLOR.text;
 			ctx.lineWidth = ds.lineWidth ?? 1.5;
 			ctx.setLineDash(ds.lineDash ?? []);
 			ctx.beginPath();
@@ -128,7 +128,7 @@ class LineChart {
 			ctx.setLineDash([]);
 
 			const r = ds.pointRadius ?? 4;
-			const defFill = ds.pointFillColor ?? ds.color ?? "#333";
+			const defFill = ds.pointFillColor ?? ds.color ?? CHART_COLOR.text;
 			for (let i = 0; i < ds.data.length; i++) {
 				const v = ds.data[i];
 				if (v == null) continue;
@@ -156,11 +156,11 @@ class LineChart {
 				const px = this._axisX(i);
 				const py = this._axisY(v, axKey);
 				const ty = Math.max(py - 8, top + 10);
-				ctx.font = 'bold 7.5px "Segoe UI", sans-serif';
+				ctx.font = CHART_FONT.pointLabel;
 				ctx.strokeStyle = "rgba(255,255,255,0.85)";
 				ctx.lineWidth = 2.5;
 				ctx.strokeText(lbl, px, ty);
-				ctx.fillStyle = ds.labelColor ?? ds.color ?? "#333";
+				ctx.fillStyle = ds.labelColor ?? ds.color ?? CHART_COLOR.text;
 				ctx.fillText(lbl, px, ty);
 			}
 		}
@@ -169,7 +169,7 @@ class LineChart {
 		if (obsMarks) {
 			const plotTop = top;
 			const plotBottom = H - bottom;
-			ctx.font = 'bold 10px "Segoe UI", sans-serif';
+			ctx.font = CHART_FONT.obsMark;
 			ctx.textBaseline = "middle";
 			ctx.textAlign = "center";
 			const padX = 5;
@@ -190,7 +190,7 @@ class LineChart {
 				const textW = ctx.measureText(m.text).width;
 				const boxW = textW + padX * 2;
 				const bx = px - boxW / 2;
-				const color = m.color ?? "#888";
+				const color = m.color ?? CHART_COLOR.faint;
 				const groupTop = Math.max(plotTop, pyHigh - dotPad);
 				ctx.beginPath();
 				if (ctx.roundRect)
@@ -201,14 +201,14 @@ class LineChart {
 				ctx.stroke();
 				ctx.lineWidth = 6;
 				ctx.lineJoin = "round";
-				ctx.strokeStyle = "#fff";
+				ctx.strokeStyle = CHART_COLOR.white;
 				ctx.strokeText(m.text, px, textCy + 0.5);
 				ctx.fillStyle = color;
 				ctx.fillText(m.text, px, textCy + 0.5);
 			}
 		}
 
-		ctx.strokeStyle = "#ccc";
+		ctx.strokeStyle = CHART_COLOR.axisLine;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(left, top);
@@ -227,7 +227,7 @@ class LineChart {
 				ctx.fill();
 				ctx.beginPath();
 				ctx.arc(px, py, pr + 2, 0, Math.PI * 2);
-				ctx.strokeStyle = ds.color ?? "#333";
+				ctx.strokeStyle = ds.color ?? CHART_COLOR.text;
 				ctx.lineWidth = 2;
 				ctx.stroke();
 			}

@@ -156,7 +156,10 @@
 				} else if (mode === "file") {
 					emojiEl.textContent = "📄";
 					titleEl.textContent = "Switch to file";
-					targetEl.textContent = target;
+					targetEl.textContent =
+						target && target.startsWith("⚓") && target.endsWith("⚓")
+							? target.slice(1, -1)
+							: target || "";
 				} else if (mode === "anchor") {
 					emojiEl.textContent = "⚓";
 					titleEl.textContent = "Move to anchor";

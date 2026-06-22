@@ -132,8 +132,9 @@ function renderStats() {
 				"pct",
 				null,
 				{
-					barLabel: (gi) =>
-						followDists[gi].length ? `n=${followDists[gi].length}` : "",
+					subLabels: followDists.map((d) =>
+						d.length ? `n=${d.length}` : "",
+					),
 				},
 			);
 			_addDurationBoxCard(
@@ -455,7 +456,7 @@ function renderStats() {
 		const aiNone = aiTotal.map((t, i) => Math.max(0, t - aiUpper[i]));
 		addAiUseCard(
 			body,
-			"AI Use (Assignments)",
+			"AI Use",
 			py.assignments.map((a) => a.name),
 			aiStrong,
 			aiMedium,
@@ -464,7 +465,7 @@ function renderStats() {
 		);
 		addAiBandCard(
 			body,
-			"AI Use Bounds (Assignments)",
+			"AI Use Bounds",
 			py.assignments.map((a) => a.name),
 			aiStrong,
 			aiMedium,

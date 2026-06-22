@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from utils.anonymize import is_llm_category, load_student_category_ids
 from utils.folder_utils import (
-    find_working_remarks, normalize_sid as _normalize_sid, pick_folder)
+    find_subdir, find_working_remarks, normalize_sid as _normalize_sid,
+    pick_folder)
 
 try:
     from openpyxl import load_workbook
@@ -111,15 +112,6 @@ def _ordered_topics(lessons_root: Optional[Path],
     known = [k for k in order if k in names]
     extras = sorted(k for k in names if k not in order)
     return known + extras
-
-
-def _find_subdir(parent: Path, name: str) -> Optional[Path]:
-    if not parent.is_dir():
-        return None
-    for entry in parent.iterdir():
-        if entry.is_dir() and entry.name.lower() == name.lower():
-            return entry
-    return None
 
 
 def _read_grades_rows(xlsx_path: Path,
@@ -519,8 +511,8 @@ def main(argv) -> int:
         return 1
     root = root.resolve()
 
-    lessons_root = _find_subdir(root, 'lessons')
-    assignments_root = _find_subdir(root, 'assignments')
+    lessons_root = find_subdir(root, 'lessons')
+    assignments_root = find_subdir(root, 'assignments')
     if lessons_root is None and assignments_root is None:
         print(f'error: no lessons/ or assignments/ folder in {root}',
               file=sys.stderr)
@@ -554,8 +546,14 @@ def main(argv) -> int:
         return 1
 
     for sid, info in student_data.items():
-        if is_llm_category(info.get('category')):
+        cat = info.get('category')
+        if is_llm_category(cat):
             llm_ids.add(sid)
+        elif (cat or '').strip().upper() == 'EXCLUDED':
+            excluded_ids.add(sid)
+    if excluded_ids:
+        print(f'Excluded total: {len(excluded_ids)} student(s) '
+              f'(students.csv + remarks sheets)')
     if llm_ids:
         print(f'LLM/AI total: {len(llm_ids)} row(s) '
               f'(students.csv + remarks sheets)')

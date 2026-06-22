@@ -34,6 +34,38 @@ test("removeBlock removes at index and returns true", () => {
 	assert.equal(lm.getBlock(0).text, "b");
 });
 
+test("_moveToFileName: file (bare or ⚓-wrapped) vs anchor vs special", () => {
+	assert.equal(LessonManager._moveToFileName("index.html"), "index.html");
+	assert.equal(LessonManager._moveToFileName("⚓index.html⚓"), "index.html");
+	assert.equal(LessonManager._moveToFileName("⚓5⚓"), null);
+	assert.equal(LessonManager._moveToFileName("MAIN"), null);
+	assert.equal(LessonManager._moveToFileName("DEV"), null);
+	assert.equal(LessonManager._moveToFileName(null), null);
+});
+
+test("_migrateBlocks: unwraps legacy ⚓file.ext⚓ targets, keeps anchors wrapped", () => {
+	const migrated = LessonManager._migrateBlocks([
+		{ type: "move-to", target: "⚓index.html⚓" },
+		{ type: "move-to", target: "⚓5⚓" },
+		{ type: "move-to", target: "MAIN" },
+		{ type: "comment", text: "➡️ ⚓app.js⚓" },
+	]);
+	assert.equal(migrated[0].target, "index.html");
+	assert.equal(migrated[1].target, "⚓5⚓");
+	assert.equal(migrated[2].target, "MAIN");
+	assert.deepEqual(migrated[3], { type: "move-to", target: "app.js" });
+});
+
+test("getAllMoveToFiles: collects bare + legacy file targets, dedups, ignores anchors/MAIN", () => {
+	const lm = new LessonManager();
+	lm.addBlock("move-to", null, "a.js");
+	lm.addBlock("move-to", null, "⚓b.css⚓");
+	lm.addBlock("move-to", null, "a.js");
+	lm.addBlock("move-to", null, "⚓7⚓");
+	lm.addBlock("move-to", null, "MAIN");
+	assert.deepEqual(lm.getAllMoveToFiles(), ["a.js", "b.css"]);
+});
+
 test("removeBlock on out-of-range index returns false", () => {
 	const lm = new LessonManager();
 	assert.equal(lm.removeBlock(0), false);

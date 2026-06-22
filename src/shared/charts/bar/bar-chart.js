@@ -119,7 +119,7 @@ class BarChart {
 			return gx + offset - barW / 2;
 		};
 
-		ctx.strokeStyle = "#e8e8e8";
+		ctx.strokeStyle = CHART_COLOR.grid;
 		ctx.lineWidth = 1;
 		const step = niceStep(yMax - yMin, 5);
 		for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
@@ -129,8 +129,8 @@ class BarChart {
 			ctx.lineTo(W - right, py);
 			ctx.stroke();
 			if (this._options.hideYAxis) continue;
-			ctx.fillStyle = "#595959";
-			ctx.font = "9px sans-serif";
+			ctx.fillStyle = CHART_COLOR.axisText;
+			ctx.font = CHART_FONT.tick;
 			ctx.textAlign = "right";
 			ctx.textBaseline = "middle";
 			ctx.fillText(
@@ -150,7 +150,7 @@ class BarChart {
 			const slot = setSlot[si];
 			const isOverlap = slot < 0;
 			const bg = ds.backgroundColor ?? "rgba(100,100,100,0.4)";
-			const bd = ds.borderColor ?? "#999";
+			const bd = ds.borderColor ?? CHART_COLOR.barBorder;
 			const bgPerBar = Array.isArray(bg);
 			const bdPerBar = Array.isArray(bd);
 			if (!bgPerBar) ctx.fillStyle = bg;
@@ -174,7 +174,9 @@ class BarChart {
 					const fillColor = bgPerBar
 						? (bg[gi] ?? "rgba(100,100,100,0.4)")
 						: bg;
-					const strokeColor = bdPerBar ? (bd[gi] ?? "#999") : bd;
+					const strokeColor = bdPerBar
+						? (bd[gi] ?? CHART_COLOR.barBorder)
+						: bd;
 					if (striped) {
 						_drawStripedBar(
 							ctx,
@@ -210,6 +212,7 @@ class BarChart {
 							h: bh,
 							gi,
 							si,
+							slot,
 							val,
 						});
 					const labelCb = this._options.barLabel;
@@ -217,38 +220,35 @@ class BarChart {
 						const label = labelCb(gi, si, val, ds);
 						if (label) {
 							ctx.save();
-							ctx.font = "bold 10px sans-serif";
+							ctx.font = CHART_FONT.labelBold;
 							ctx.textAlign = "center";
 							ctx.textBaseline = "bottom";
 							const textW = ctx.measureText(label).width;
-							if (useBarW >= textW + 4) {
-								if (bh >= 14) {
-									ctx.fillStyle = ds.labelColor ?? "#fff";
-									if (this._options.barLabelAtTop) {
-										ctx.textBaseline = "top";
-										ctx.fillText(label, bx + useBarW / 2, by + 2);
-									} else {
-										ctx.fillText(
-											label,
-											bx + useBarW / 2,
-											by + bh - 2,
-										);
-									}
+							if (useBarW >= textW + 4 && bh >= 14) {
+								ctx.fillStyle = ds.labelColor ?? CHART_COLOR.white;
+								if (this._options.barLabelAtTop) {
+									ctx.textBaseline = "top";
+									ctx.fillText(label, bx + useBarW / 2, by + 2);
 								} else {
-									ctx.fillStyle = ds.outsideLabelColor ?? "#555";
-									ctx.fillText(label, bx + useBarW / 2, by - 2);
+									ctx.fillText(label, bx + useBarW / 2, by + bh - 2);
 								}
+							} else {
+								ctx.fillStyle =
+									ds.outsideLabelColor ?? CHART_COLOR.muted;
+								ctx.textBaseline = "bottom";
+								ctx.fillText(label, bx + useBarW / 2, by - 2);
 							}
 							ctx.restore();
 						}
 					}
 					if (ds.edgeLabels) {
 						ctx.save();
-						ctx.font = "bold 10px sans-serif";
+						ctx.font = CHART_FONT.labelBold;
 						ctx.textAlign = "center";
 						const cx = bx + useBarW / 2;
 						const lineH = 12;
-						const white = ds.labelColor ?? "#fff";
+						const white = ds.labelColor ?? CHART_COLOR.white;
+						const outside = ds.outsideLabelColor ?? CHART_COLOR.muted;
 						const topText = ds.edgeLabels.top && ds.edgeLabels.top(gi);
 						const botText =
 							ds.edgeLabels.bottom && ds.edgeLabels.bottom(gi);
@@ -256,7 +256,7 @@ class BarChart {
 						if (bh >= 2 * lineH + 2) {
 							if (botText) {
 								const inside = fitsW(botText);
-								ctx.fillStyle = inside ? white : "#000";
+								ctx.fillStyle = inside ? white : outside;
 								ctx.textBaseline = inside ? "bottom" : "top";
 								ctx.fillText(
 									botText,
@@ -266,7 +266,7 @@ class BarChart {
 							}
 							if (topText) {
 								const inside = fitsW(topText);
-								ctx.fillStyle = inside ? white : "#000";
+								ctx.fillStyle = inside ? white : outside;
 								ctx.textBaseline = inside ? "top" : "bottom";
 								ctx.fillText(topText, cx, inside ? by + 2 : by - 2);
 							}
@@ -282,16 +282,22 @@ class BarChart {
 			}
 		}
 
-		ctx.fillStyle = "#595959";
-		ctx.font = "10px sans-serif";
+		ctx.fillStyle = CHART_COLOR.axisText;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
+		const subLabels = this._options.subLabels;
 		for (let gi = 0; gi < nGroups; gi++) {
 			const gx = left + gi * groupW + groupW / 2;
+			ctx.font = CHART_FONT.label;
 			ctx.fillText(this._labels[gi], gx, H - bottom + 5);
+			const sub = subLabels && subLabels[gi];
+			if (sub) {
+				ctx.font = CHART_FONT.subBold;
+				ctx.fillText(sub, gx, H - bottom + 17);
+			}
 		}
 
-		ctx.strokeStyle = "#ccc";
+		ctx.strokeStyle = CHART_COLOR.axisLine;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		if (!this._options.hideYAxis) {
@@ -311,6 +317,7 @@ class BarChart {
 			const r = c.getBoundingClientRect();
 			const mx = e.clientX - r.left;
 			const my = e.clientY - r.top;
+			this._mouse = { x: mx, y: my };
 			this._hovered =
 				this._hitAreas.find(
 					(h) =>
@@ -320,35 +327,57 @@ class BarChart {
 		});
 		c.addEventListener("mouseleave", () => {
 			this._hovered = null;
+			this._mouse = null;
 			this._draw();
 		});
 	}
 
 	_drawTooltip(ctx, hit, W, H) {
+		let box = hit;
+		let val = hit.val;
+		if (this._options.unifiedTooltip) {
+			const group = this._hitAreas.filter(
+				(h) => h.gi === hit.gi && h.slot === hit.slot,
+			);
+			const minX = Math.min(...group.map((h) => h.x));
+			const maxX = Math.max(...group.map((h) => h.x + h.w));
+			const minY = Math.min(...group.map((h) => h.y));
+			const maxY = Math.max(...group.map((h) => h.y + h.h));
+			box = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+			val = group.reduce((s, h) => s + (h.val || 0), 0);
+		}
 		const cb = this._options.tooltipCallback;
 		const lines = cb
-			? cb(this._labels[hit.gi], hit.val, hit.si, hit.gi)
-			: [this._labels[hit.gi], hit.val.toFixed(1)];
+			? cb(this._labels[hit.gi], val, hit.si, hit.gi)
+			: [this._labels[hit.gi], val.toFixed(1)];
 		const pad = 6,
 			lh = 14;
-		ctx.font = "11px sans-serif";
+		ctx.font = CHART_FONT.tooltip;
 		const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
 		const tw = maxW + pad * 2,
 			th = lines.length * lh + pad * 2;
-		const cx = hit.x + hit.w / 2;
-		let tx = cx - tw / 2;
-		let ty = hit.y - th - 6;
+		const m = this._mouse;
+		let tx, ty;
+		if (m) {
+			tx = m.x;
+			ty = m.y - th;
+		} else {
+			const cx = box.x + box.w / 2;
+			tx = cx - tw / 2;
+			ty = box.y - th - 6;
+			if (ty < 2) ty = box.y + box.h + 6;
+		}
 		if (tx < 2) tx = 2;
 		if (tx + tw > W - 2) tx = W - tw - 2;
-		if (ty < 2) ty = hit.y + hit.h + 6;
-		ctx.fillStyle = "#fff";
-		ctx.strokeStyle = "#ddd";
+		if (ty < 2) ty = 2;
+		ctx.fillStyle = CHART_COLOR.white;
+		ctx.strokeStyle = CHART_COLOR.border;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.roundRect(tx, ty, tw, th, 3);
 		ctx.fill();
 		ctx.stroke();
-		ctx.fillStyle = "#333";
+		ctx.fillStyle = CHART_COLOR.text;
 		ctx.textAlign = "left";
 		ctx.textBaseline = "top";
 		lines.forEach((l, i) => ctx.fillText(l, tx + pad, ty + pad + i * lh));

@@ -43,12 +43,13 @@ function extractAnchorSnippet(
 			} else if (t === "DEV") {
 				if (!editors.dev) editors.dev = new TextState();
 				active = "dev";
-			} else if (t.startsWith("⚓") && t.endsWith("⚓")) {
-				const inner = t.slice(1, -1);
+			} else {
+				const wrapped = t.startsWith("⚓") && t.endsWith("⚓");
+				const inner = wrapped ? t.slice(1, -1) : t;
 				if (/\.[a-z0-9]+$/i.test(inner)) {
 					if (!editors[inner]) editors[inner] = new TextState();
 					active = inner;
-				} else {
+				} else if (wrapped) {
 					for (const [name, st] of Object.entries(editors)) {
 						if (st.anchors[inner] != null) {
 							active = name;

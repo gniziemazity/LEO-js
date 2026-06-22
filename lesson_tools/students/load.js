@@ -12,8 +12,7 @@ async function _loadFromDataSource(ds) {
 	lessonNameEl.classList.add("clickable");
 	document.title = "Students: " + name;
 	const saveBtn = document.getElementById("save-btn");
-	if (saveBtn)
-		saveBtn.style.display = _dirHandle || _serverWritable ? "" : "none";
+	if (saveBtn) saveBtn.style.display = _canEditCells() ? "" : "none";
 	await loadXlsxFiles(files);
 }
 

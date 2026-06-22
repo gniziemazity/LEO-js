@@ -26,15 +26,10 @@ let _diffMissingLangColor =
 	typeof localStorage === "undefined" ||
 	localStorage.getItem("diff-missing-lang-color") !== "off";
 
-const DIFF_MODE_OPTIONS = [
-	{ key: "ideal", label: "Ideal" },
-	{ key: "minimal", label: "Minimal" },
-	{ key: "", label: "Leo*" },
-	{ key: "token-lcs-star", label: "LCS*" },
-	{ key: "token-lcs", label: "LCS" },
-	{ key: "line-git-star", label: "Git*" },
-	{ key: "line-git", label: "Git" },
-];
+const DIFF_MODE_OPTIONS = REMARKS_BASES.map((b) => ({
+	key: b.key,
+	label: b.label,
+}));
 
 const CLEAR_DIFF_KEY = "__clear__";
 
@@ -147,12 +142,11 @@ function _activateFileTab(side, name) {
 }
 
 const _BORROW_ALIGNMENT_ORDER = [
-	"line-git",
-	"line-git-star",
-	"leo",
-	"",
-	"token-lcs",
-	"token-lcs-star",
+	"git",
+	"git_star",
+	"leo_star",
+	"lcs",
+	"lcs_star",
 ];
 
 let _borrowedAlignmentKey = null;
@@ -179,7 +173,7 @@ function _borrowedAlignments() {
 	return null;
 }
 
-const _BORROW_GHOSTS_ORDER = ["", "token-lcs-star", "line-git-star"];
+const _BORROW_GHOSTS_ORDER = ["leo_star", "lcs_star", "git_star"];
 
 function _borrowedTeacherGhosts(fileName) {
 	for (const mode of _BORROW_GHOSTS_ORDER) {
@@ -355,7 +349,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 				t.matches("input, textarea, select, [contenteditable=true]")
 			)
 				return;
-			const SHORTCUTS = { m: "minimal", i: "ideal", l: "" };
+			const SHORTCUTS = { m: "minimal", i: "ideal", l: "leo_star" };
 			const mode = SHORTCUTS[ev.key.toLowerCase()];
 			if (mode === undefined) return;
 			const hasOption = Array.from(modeSelect.options).some(

@@ -127,7 +127,7 @@ class ScatterChart {
 		const b = this._dataBounds();
 		ctx.clearRect(0, 0, b.W, b.H);
 
-		ctx.fillStyle = "#fff";
+		ctx.fillStyle = CHART_COLOR.white;
 		ctx.fillRect(
 			b.left,
 			b.top,
@@ -135,7 +135,7 @@ class ScatterChart {
 			b.H - b.top - b.bottom,
 		);
 
-		ctx.strokeStyle = "#ddd";
+		ctx.strokeStyle = CHART_COLOR.border;
 		ctx.lineWidth = 1;
 		ctx.strokeRect(
 			b.left,
@@ -168,7 +168,7 @@ class ScatterChart {
 			ctx.fill();
 			ctx.beginPath();
 			ctx.arc(px, py, 6, 0, Math.PI * 2);
-			ctx.strokeStyle = ds.color ?? "#333";
+			ctx.strokeStyle = ds.color ?? CHART_COLOR.text;
 			ctx.lineWidth = 2;
 			ctx.stroke();
 		}
@@ -183,8 +183,8 @@ class ScatterChart {
 	}
 
 	_drawAxesLabels(ctx, b) {
-		ctx.fillStyle = "#999";
-		ctx.font = "9px sans-serif";
+		ctx.fillStyle = CHART_COLOR.barBorder;
+		ctx.font = CHART_FONT.tick;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "top";
 		ctx.fillText(b.xMin.toFixed(0), b.left, b.H - b.bottom + 2);
@@ -194,8 +194,8 @@ class ScatterChart {
 		ctx.fillText(b.yMin.toFixed(1), b.left - 2, b.H - b.bottom);
 		ctx.fillText(b.yMax.toFixed(1), b.left - 2, b.top);
 
-		ctx.fillStyle = "#888";
-		ctx.font = "10px sans-serif";
+		ctx.fillStyle = CHART_COLOR.faint;
+		ctx.font = CHART_FONT.label;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "bottom";
 		ctx.fillText(this._xLabel, b.W / 2, b.H - 2);
@@ -210,7 +210,7 @@ class ScatterChart {
 
 	_drawPoints(ctx, ds, b) {
 		const r = ds.pointRadius ?? 4;
-		const color = ds.color ?? "#555";
+		const color = ds.color ?? CHART_COLOR.muted;
 		ctx.fillStyle = color;
 		for (const p of ds.data) {
 			const [px, py] = this._toPixel(p.x, p.y, b);
@@ -226,7 +226,7 @@ class ScatterChart {
 		if (ds.data.length < 2) return;
 		const sorted = [...ds.data].sort((a, z) => a.x - z.x);
 		ctx.beginPath();
-		ctx.strokeStyle = ds.color ?? "#888";
+		ctx.strokeStyle = ds.color ?? CHART_COLOR.faint;
 		ctx.lineWidth = ds.lineWidth ?? 1.5;
 		ctx.setLineDash(ds.lineDash ?? []);
 		let first = true;
@@ -246,7 +246,7 @@ class ScatterChart {
 			lh = 14;
 		const maxW = Math.max(
 			...lines.map((l, i) => {
-				ctx.font = i === 0 ? "bold 11px sans-serif" : "11px sans-serif";
+				ctx.font = i === 0 ? CHART_FONT.tooltipBold : CHART_FONT.tooltip;
 				return ctx.measureText(l).width;
 			}),
 		);
@@ -257,8 +257,8 @@ class ScatterChart {
 		if (tx + tw > b.W - 2) tx = px - tw - 10;
 		if (ty < 2) ty = 2;
 		if (ty + th > b.H - 2) ty = b.H - th - 2;
-		ctx.fillStyle = "#fff";
-		ctx.strokeStyle = "#ddd";
+		ctx.fillStyle = CHART_COLOR.white;
+		ctx.strokeStyle = CHART_COLOR.border;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.roundRect(tx, ty, tw, th, 3);
@@ -267,8 +267,8 @@ class ScatterChart {
 		ctx.textAlign = "left";
 		ctx.textBaseline = "top";
 		lines.forEach((l, i) => {
-			ctx.font = i === 0 ? "bold 11px sans-serif" : "11px sans-serif";
-			ctx.fillStyle = "#333";
+			ctx.font = i === 0 ? CHART_FONT.tooltipBold : CHART_FONT.tooltip;
+			ctx.fillStyle = CHART_COLOR.text;
 			ctx.fillText(l, tx + pad, ty + pad + i * lh);
 		});
 	}

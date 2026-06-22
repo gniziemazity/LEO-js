@@ -1,5 +1,7 @@
 "use strict";
 
+const _DIFF_CONTEXT_K_FALLBACK = 10;
+
 function _contextSlice(inst, side) {
 	const assignments = _currentMarksEntry?.leo_assignments;
 	if (!assignments || !inst) return null;
@@ -13,7 +15,7 @@ function _contextSlice(inst, side) {
 			? assignments.teacher_seq
 			: assignments.student_seq;
 	const idx = useAug ? inst.seq_idx_aug : inst.seq_idx;
-	const k = assignments.k ?? 40;
+	const k = assignments.k ?? _DIFF_CONTEXT_K_FALLBACK;
 	if (!seq || idx == null) return null;
 	const lo = Math.max(0, idx - k);
 	const hi = Math.min(seq.length, idx + k + 1);
@@ -30,7 +32,7 @@ function _instanceHasGhostNeighbours(inst, sideName) {
 	const strippedView = _strippedTeacherView();
 	if (!strippedView) return false;
 	const assignments = _currentMarksEntry?.leo_assignments;
-	const k = assignments?.k ?? 18;
+	const k = assignments?.k ?? _DIFF_CONTEXT_K_FALLBACK;
 	const idx = inst.seq_idx_aug;
 	const lo = Math.max(0, idx - k);
 	const hi = Math.min(strippedView.isGhostAt.length, idx + k + 1);
@@ -45,7 +47,7 @@ function _contextSliceStripped(inst) {
 	const strippedView = _strippedTeacherView();
 	if (!assignments || !strippedView || !Number.isInteger(inst.seq_idx_aug))
 		return null;
-	const k = assignments.k ?? 40;
+	const k = assignments.k ?? _DIFF_CONTEXT_K_FALLBACK;
 	const anchorIdx = strippedView.augToStripped[inst.seq_idx_aug];
 	const anchorIsGhost = strippedView.isGhostAt[inst.seq_idx_aug];
 	const seq = strippedView.strippedSeq;
@@ -87,7 +89,7 @@ function _strippedTeacherView() {
 function _instanceContextVectors(inst, sideName) {
 	const assignments = _currentMarksEntry?.leo_assignments;
 	if (!assignments) return null;
-	const k = assignments.k ?? 10;
+	const k = assignments.k ?? _DIFF_CONTEXT_K_FALLBACK;
 	let seq, idx;
 	if (sideName === "teacher") {
 		const aug = Array.isArray(assignments.teacher_seq_aug)

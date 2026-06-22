@@ -13,10 +13,6 @@ function setupTipHtml(el, html) {
 	_studentsTip.attachHtml(el, html);
 }
 
-function showTip(e, text, noWrap = false) {
-	_studentsTip.show(e, text, { noWrap });
-}
-
 function showTipHtml(e, html) {
 	_studentsTip.show(e, html, { html: true });
 }

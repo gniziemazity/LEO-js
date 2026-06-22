@@ -6,7 +6,7 @@ Two modes:
 
 (1) Multi-lesson mode (default — invoked by `npm run eval`):
         python compare_methods_to_ideal.py
-    A file picker asks for the Grades excel. The script then walks
+    A folder picker asks for the course root. The script then walks
     `<root>/lessons/<lesson>/` for each lesson dir, evaluates every student
     under `<lesson>/anon_ids/`, and writes a combined workbook
     `<root>/Method_Evaluation.xlsx` with:
@@ -70,7 +70,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from utils.folder_utils import TEACHER_SUBDIRS, pick_file
+from utils.folder_utils import TEACHER_SUBDIRS, find_subdir, pick_folder
 from utils.similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from utils.token_log_mixin import (
     _LANG_EXT_LABEL,
@@ -92,7 +92,6 @@ LABELS = ("missing", "extra", "ghost_extra")
 
 METHOD_LABELS = {
     "leo_star":  "LEO*",
-    "leo":       "LEO",
     "lcs_star":  "LCS*",
     "lcs":       "LCS",
     "git_star":  "Git*",
@@ -1088,19 +1087,9 @@ def write_multi_excel(
             ws.freeze_panes = "A2"
 
 
-def _pick_grades_file() -> Path | None:
-    chosen = pick_file(
-        "Select the Grades Excel file",
-        filetypes=[("Excel files", "*.xls *.xlsx"), ("All files", "*.*")],
-    )
+def _pick_root_dir() -> Path | None:
+    chosen = pick_folder("Select the course root folder")
     return Path(chosen) if chosen else None
-
-
-def _find_lessons_root(root_dir: Path) -> Path | None:
-    for entry in root_dir.iterdir():
-        if entry.is_dir() and entry.name.lower() == "lessons":
-            return entry
-    return None
 
 
 def _list_lesson_dirs(lessons_root: Path) -> list[Path]:
@@ -1116,9 +1105,8 @@ def evaluate_lesson(
     return evaluate(teacher_dir=lesson_dir, students_dir=students_dir)
 
 
-def run_multi(grades_path: Path) -> int:
-    root = grades_path.parent
-    lessons_root = _find_lessons_root(root)
+def run_multi(root: Path) -> int:
+    lessons_root = find_subdir(root, 'lessons')
     if not lessons_root:
         print(f"error: no lessons/ folder found in {root}", file=sys.stderr)
         return 1
@@ -1175,11 +1163,14 @@ def main(argv: list[str]) -> int:
         print(f"  {len(per_student)} per-student rows  ·  {len(totals)} totals rows")
         return 0
 
-    grades_path = _pick_grades_file()
-    if grades_path is None:
-        print("No file selected.")
+    root = _pick_root_dir()
+    if root is None:
+        print("No folder selected.")
         return 0
-    return run_multi(grades_path)
+    if not root.is_dir():
+        print(f"error: {root} is not a directory", file=sys.stderr)
+        return 1
+    return run_multi(root)
 
 
 if __name__ == "__main__":

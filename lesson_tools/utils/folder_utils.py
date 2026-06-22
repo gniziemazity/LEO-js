@@ -15,6 +15,18 @@ LANG_EXTS = ('.html', '.css', '.js', '.py')
 
 TEACHER_SUBDIRS = ('reconstructed', 'start', 'correct')
 
+PROJECT_GROUPS = ('lessons', 'assignments')
+
+
+def find_subdir(parent, name):
+    if not parent.is_dir():
+        return None
+    for entry in parent.iterdir():
+        if entry.is_dir() and entry.name.lower() == name.lower():
+            return entry
+    return None
+
+
 def normalize_sid(v) -> str:
     s = '' if v is None else str(v).strip()
     if not s:

@@ -34,11 +34,10 @@ function renderMoveToTargetLabel(target) {
 	if (!target) return "MAIN";
 	if (target === "MAIN") return "Main Editor";
 	if (target === "DEV") return "Dev Tools";
-	if (target.startsWith("⚓") && target.endsWith("⚓")) {
-		const inner = target.slice(1, -1);
-		if (/\.[a-z0-9]+$/i.test(inner)) return `📄 ${inner}`;
-		return `⚓${inner}⚓`;
-	}
+	const wrapped = target.startsWith("⚓") && target.endsWith("⚓");
+	const inner = wrapped ? target.slice(1, -1) : target;
+	if (/\.[a-z0-9]+$/i.test(inner)) return `📄 ${inner}`;
+	if (wrapped) return `⚓${inner}⚓`;
 	return target;
 }
 

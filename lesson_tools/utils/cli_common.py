@@ -9,9 +9,9 @@ def add_grading_flags(parser) -> None:
         '--follow-basis',
         default='auto',
         help='Which method to base remarks_<folder>.xlsx (and grades) on: '
-             'ideal, minimal, leo, leo_star, lcs, lcs_star, git, git_star. '
-             'Default "auto" prefers ideal, then minimal, then leo_star, then '
-             'leo. All available bases get a '
+             'ideal, minimal, leo_star, lcs, lcs_star, git, git_star. '
+             'Default "auto" prefers ideal, then minimal, then leo_star. '
+             'All available bases get a '
              'remarks_<basis>.xlsx regardless of this choice.',
     )
 

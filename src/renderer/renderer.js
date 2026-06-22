@@ -130,7 +130,7 @@ function getColor(key, fallback) {
 }
 
 fileOperations.onStudentsLoaded = (students) => {
-	ipcRenderer.send("broadcast-students", students);
+	ipcRenderer.send("update-students", students);
 };
 
 fileOperations.onLessonLoaded = () => courseUI.refresh();
@@ -217,11 +217,11 @@ function setupEventListeners() {
 }
 
 function setupGlobalIpcListeners() {
-	ipcRenderer.on("global-toggle-active", () =>
+	ipcRenderer.on("hotkey-toggle-active", () =>
 		typingController.toggleActive(),
 	);
-	ipcRenderer.on("global-step-backward", () => cursorManager.stepBackward());
-	ipcRenderer.on("global-step-forward", () => cursorManager.stepForward());
+	ipcRenderer.on("hotkey-step-backward", () => cursorManager.stepBackward());
+	ipcRenderer.on("hotkey-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
 	ipcRenderer.on("settings-loaded", (e, s) => {
 		settingsUI.applySettings(s);

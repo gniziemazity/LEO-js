@@ -117,8 +117,6 @@ function _displayCodeInsert(t) {
 	return (t || "").replace(/⚓[^⚓]*⚓/g, "").replace(/↩/g, "\n");
 }
 
-const _NBSP = " ";
-
 function _clusterMistakes(evs, gap) {
 	if (!evs || !evs.length) return [];
 	const sorted = [...evs].sort((a, b) => a.ts - b.ts);

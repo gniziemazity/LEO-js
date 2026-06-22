@@ -67,30 +67,36 @@ function renderLessonStats(body) {
 		_barCharts.push(chart);
 	}
 
-	const tQ = numFor("teacher_q");
 	const tQun = numFor("teacher_q_unanswered");
-	const sQ = numFor("student_q");
-	const hG = numFor("help");
-	if (anyPos(tQ) || anyPos(sQ) || anyPos(hG)) {
+	const _cohortLessonSum = (lessonName, key) => {
+		let sum = 0;
+		for (const s of _students || []) {
+			if (s.excluded) continue;
+			const e = (s.lessons || []).find((l) => l.name === lessonName);
+			if (e && e[key] != null) sum += e[key];
+		}
+		return sum;
+	};
+	const tQAns = lessonNames.map((n) => _cohortLessonSum(n, "a"));
+	const tQUna = lessonNames.map((_, i) => tQun[i] ?? 0);
+	const sQ = lessonNames.map((n) => _cohortLessonSum(n, "q"));
+	const hG = lessonNames.map((n) => _cohortLessonSum(n, "h"));
+	if (anyPos(tQAns) || anyPos(tQUna) || anyPos(sQ) || anyPos(hG)) {
 		const card = mkCard(body, "Lesson Interactions");
 		const box = el("div", "chart-box");
 		card.appendChild(box);
-		const all = [...tQ, ...sQ, ...hG].filter((v) => v != null);
+		const teacherTot = tQAns.map((v, i) => v + (tQUna[i] ?? 0));
+		const all = [...teacherTot, ...sQ, ...hG];
 		const colors = [THEME.blue, THEME.orange, THEME.green];
-		const tQAns = tQ.map((v, i) => {
-			const t = v ?? 0;
-			const u = tQun[i] ?? 0;
-			return Math.max(0, t - u);
-		});
-		const tQUna = tQ.map((_, i) => tQun[i] ?? 0);
 		const chart = new BarChart(box, {
 			yMin: 0,
 			yMax: Math.max(...all, 1) + 1,
+			unifiedTooltip: true,
 			tooltipCallback: (_l, val, si, gi) => {
 				if (si === 0 || si === 1) {
 					const a = tQAns[gi] ?? 0;
-					const b = tQ[gi] ?? 0;
-					return [`Answered Questions ${a}/${b}`];
+					const b = a + (tQUna[gi] ?? 0);
+					return [`Answered Questions: ${a}/${b}`];
 				}
 				return [
 					["", "", "Student Questions", "Provided Help"][si] +
@@ -132,17 +138,28 @@ function renderLessonStats(body) {
 	const tJs = numFor("tokens_js");
 	const tPy = numFor("tokens_py");
 	if (anyPos(tHtml) || anyPos(tCss) || anyPos(tJs) || anyPos(tPy)) {
+		const tokenLangs = [
+			{ label: "HTML", data: tHtml, color: THEME.red },
+			{ label: "CSS", data: tCss, color: THEME.blue },
+			{ label: "JS", data: tJs, color: THEME.orange },
+			{ label: "Py", data: tPy, color: THEME.black },
+		].filter((l) => anyPos(l.data));
 		addStackedBarCard(
 			body,
 			"Code Tokens",
 			lessonNames,
-			[
-				{ data: tHtml, color: THEME.red, label: "HTML" },
-				{ data: tCss, color: THEME.blue, label: "CSS" },
-				{ data: tJs, color: THEME.orange, label: "JS" },
-				{ data: tPy, color: THEME.black, label: "Py" },
-			],
-			{ yScale: 1.1, legend: true },
+			tokenLangs.map((l) => ({
+				data: l.data,
+				color: l.color,
+				label: l.label,
+			})),
+			{
+				yScale: 1.1,
+				legend: true,
+				unifiedTooltip: true,
+				tooltipCallback: (_l, _v, _si, gi) =>
+					tokenLangs.map((l) => `${l.label}: ${l.data[gi] ?? 0}`),
+			},
 		);
 	}
 
@@ -152,6 +169,7 @@ function renderLessonStats(body) {
 		const durData = duration.map((v) =>
 			v == null ? 0 : Math.round(v * 10) / 10,
 		);
+		const bursts = numFor("bursts");
 		addStackedShareCard(
 			body,
 			"Typing Duration (min)",
@@ -159,6 +177,7 @@ function renderLessonStats(body) {
 			durData,
 			durData.map(() => LESSON_MIN),
 			Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05,
+			{ subLabels: bursts.map((n) => (n != null ? `n=${n}` : "")) },
 		);
 	}
 
@@ -181,6 +200,7 @@ function renderLessonStats(body) {
 	const pauseAvg = numFor("pause_avg_s");
 	if (anyPos(pauseAvg)) {
 		const pauseAvgMin = pauseAvg.map((v) => (v != null ? v / 60 : null));
+		const pauseCount = numFor("pause_count");
 		addBarCard(
 			body,
 			"Avg Pause Duration (min)",
@@ -189,6 +209,8 @@ function renderLessonStats(body) {
 			THEME.label,
 			Math.max(...pauseAvgMin.filter((v) => v != null), 1) * 1.1,
 			"dec1",
+			undefined,
+			{ subLabels: pauseCount.map((n) => (n != null ? `n=${n}` : "")) },
 		);
 	}
 }

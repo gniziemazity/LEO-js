@@ -6,9 +6,8 @@ import re
 import sys
 from pathlib import Path
 
-from utils.folder_utils import resolve_course
+from utils.folder_utils import PROJECT_GROUPS, resolve_course
 
-_GROUPS = ("lessons", "assignments")
 _PII_FILES = {"students.csv", "name_map.csv"}
 _SKIP_DIR_NAMES = {"__pycache__", ".git", ".venv", "node_modules"}
 _SKIP_FILE_NAMES = {".DS_Store", "Thumbs.db"}
@@ -156,7 +155,7 @@ def _build_manifest(course: Path, *, exclude_pii: bool) -> dict:
         "rootFiles": _list_root_files(course, exclude_pii=exclude_pii),
         "groups": {},
     }
-    for g in _GROUPS:
+    for g in PROJECT_GROUPS:
         entries = _build_group(course / g)
         if entries:
             manifest["groups"][g] = entries

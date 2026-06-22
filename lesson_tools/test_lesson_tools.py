@@ -16,12 +16,13 @@ from utils.similarity_measures import (
     reconstruct_tokens_from_keylog_full,
 )
 from utils.token_log import (
-    _add_log_metadata,
+    _apply_star_post_pass,
     _apply_insert_at_to_unpaired_missings,
     _assemble_diff_marks,
     _build_git_diff_marks,
     _build_lcs_token_diff_marks,
     _build_leo_diff_marks,
+    _CONTEXT_MATCH_THRESHOLD,
     _parse_teacher_tokens,
     _read_text_normalized,
     _remap_marks_to_utf16,
@@ -29,8 +30,11 @@ from utils.token_log import (
     _strip_internal_fields,
     _structural_diff_summary,
     _structural_form,
+    _SWAP_TOKEN_SIM_WEIGHT,
     _validate_curated_schema,
 )
+from utils.token_log_leo import _split_real_and_ghost_assignments
+from utils.token_log_starpass import _swap_pair_score
 
 
 def _load_events(log_path: Path) -> list:
@@ -41,6 +45,38 @@ def _load_events(log_path: Path) -> list:
 def _load_json(path: Path):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+
+class TestStarPassHelpers(unittest.TestCase):
+    def test_swap_pair_score_identical_tokens_full_bonus(self):
+        self.assertAlmostEqual(
+            _swap_pair_score('border', 'border', 0.5),
+            0.5 + _SWAP_TOKEN_SIM_WEIGHT,
+        )
+
+    def test_swap_pair_score_disjoint_tokens_no_bonus(self):
+        self.assertAlmostEqual(_swap_pair_score('a', 'b', 0.5), 0.5)
+
+    def test_swap_pair_score_typo_partial_bonus(self):
+        score = _swap_pair_score('border', 'boder', 0.5)
+        self.assertGreater(score, 0.5)
+        self.assertLess(score, 0.5 + _SWAP_TOKEN_SIM_WEIGHT)
+
+    def test_split_assignments_real_vs_ghost(self):
+        pairs = [(0, 0), (1, 2), (2, 3)]
+        sim = [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, _CONTEXT_MATCH_THRESHOLD, 0.0],
+            [0.0, 0.0, 0.0, _CONTEXT_MATCH_THRESHOLD - 0.1],
+        ]
+        real, ghost = _split_real_and_ghost_assignments(pairs, 2, sim)
+        self.assertEqual(real, [(0, 0)])
+        self.assertEqual(ghost, [(1, 0)])
+
+    def test_split_assignments_empty_matrix_drops_ghost(self):
+        real, ghost = _split_real_and_ghost_assignments([(0, 2)], 2, [])
+        self.assertEqual(real, [])
+        self.assertEqual(ghost, [])
 
 
 def _parse_tokens_file(path: Path):
@@ -392,7 +428,7 @@ class TestUtf16OffsetRemap(unittest.TestCase):
 
     def test_leo_already_utf16(self):
         res = _build_leo_diff_marks(self.tf, self.sf)
-        dm = _assemble_diff_marks('leo', res[0], res[1], res[2])
+        dm = _assemble_diff_marks('leo_star', res[0], res[1], res[2])
         _strip_internal_fields(dm)
         self.assertEqual(
             self._count_mis_sliced(dm), 0,
@@ -444,6 +480,65 @@ class TestEffectiveReferenceDir(unittest.TestCase):
             self.assertEqual(self._checker(root)._effective_reference_dir().name, 'correct')
 
 
+class TestAssignmentCommentColumn(unittest.TestCase):
+    def _checker(self):
+        from utils.sim_check import CodeSimilarityChecker
+        c = CodeSimilarityChecker.__new__(CodeSimilarityChecker)
+        c.required_items = []
+        c.not_expected_items = []
+        return c
+
+    def test_assignment_remarks_include_sim_c_columns(self):
+        cols = self._checker()._remarks_columns(is_assignment=True, present_lang_exts=[])
+        by_key = {col.key: col for col in cols}
+        self.assertEqual(by_key['sim_c'].header, 'Sim (C)')
+        self.assertEqual(by_key['sim_c_t'].header, 'Sim (C) Desc')
+        self.assertFalse(by_key['sim_c'].hidden)
+        self.assertTrue(by_key['sim_c_t'].hidden)
+        keys = [col.key for col in cols]
+        self.assertEqual(keys.index('sim_c'), keys.index('sim_t') + 1)
+
+    def test_lesson_remarks_have_no_sim_c(self):
+        keys = [col.key for col in self._checker()._remarks_columns(False, [])]
+        self.assertNotIn('sim_c', keys)
+        self.assertNotIn('sim_c_t', keys)
+
+    def test_per_basis_comment_info_extra_minus_teacher(self):
+        marks = {
+            'teacher_files': {'a.js': [
+                {'label': 'comment', 'token': 'hello'},
+                {'label': 'comment', 'token': 'world'},
+                {'label': 'missing', 'token': 'x'},
+            ]},
+            'student_files': {'a.js': [
+                {'label': 'comment', 'token': 'hello'},
+                {'label': 'comment', 'token': 'mine'},
+                {'label': 'comment', 'token': 'mine'},
+                {'label': 'extra', 'token': 'y'},
+            ]},
+        }
+        pct, desc, items = self._checker()._per_basis_comment_info(marks)
+        self.assertEqual(desc.count('+'), 2)
+        self.assertIn('+mine (00:00:00)', desc)
+        self.assertIn('-world', desc)
+        self.assertEqual(len(items), 3)
+        self.assertEqual(pct, 0.0)
+
+    def test_per_basis_comment_info_blank_pct_when_no_teacher_comments(self):
+        marks = {
+            'teacher_files': {},
+            'student_files': {'a.js': [{'label': 'comment', 'token': 'note'}]},
+        }
+        pct, desc, _items = self._checker()._per_basis_comment_info(marks)
+        self.assertEqual(pct, '')
+        self.assertEqual(desc, '+note (00:00:00)')
+
+    def test_per_basis_comment_info_none_without_marks(self):
+        c = self._checker()
+        self.assertIsNone(c._per_basis_comment_info({}))
+        self.assertIsNone(c._per_basis_comment_info(None))
+
+
 class TestLEOCountForcedBlindSpot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -474,7 +569,7 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
 
     def test_baseline_identical_student_scores_100_for_all_methods(self):
         for builder, name in [
-            (_build_leo_diff_marks,        'leo'),
+            (_build_leo_diff_marks,        'leo_star'),
             (_build_lcs_token_diff_marks,  'lcs'),
             (_build_git_diff_marks,        'git'),
         ]:
@@ -514,7 +609,7 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
         diff = _assemble_diff_marks(
             'leo_star', t, s, score, alignments, line_marks, leo_assignments,
         )
-        _add_log_metadata(
+        _apply_star_post_pass(
             diff, self.events, self.shuffled_files,
             teacher_files=self.teacher_files,
         )

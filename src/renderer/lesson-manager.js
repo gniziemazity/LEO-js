@@ -45,10 +45,21 @@ class LessonManager {
 				b.text.trim().startsWith("➡️")
 			) {
 				const target = b.text.trim().replace(/^➡️\s*/, "");
-				return { type: "move-to", target };
+				return {
+					type: "move-to",
+					target: LessonManager._unwrapFileTarget(target),
+				};
+			}
+			if (b && b.type === "move-to" && typeof b.target === "string") {
+				return { ...b, target: LessonManager._unwrapFileTarget(b.target) };
 			}
 			return b;
 		});
+	}
+
+	static _unwrapFileTarget(target) {
+		const fileName = LessonManager._moveToFileName(target);
+		return fileName !== null ? fileName : target;
 	}
 
 	save(callback) {
@@ -161,6 +172,31 @@ class LessonManager {
 			}
 		}
 		return out;
+	}
+
+	getAllMoveToFiles() {
+		const seen = new Set();
+		const out = [];
+		for (const block of this.data) {
+			if (!block || block.type !== "move-to") continue;
+			const name = LessonManager._moveToFileName(block.target);
+			if (name && !seen.has(name)) {
+				seen.add(name);
+				out.push(name);
+			}
+		}
+		return out;
+	}
+
+	static _moveToFileName(target) {
+		if (typeof target !== "string" || target === "MAIN" || target === "DEV") {
+			return null;
+		}
+		const inner =
+			target.startsWith("⚓") && target.endsWith("⚓")
+				? target.slice(1, -1)
+				: target;
+		return /\.[a-z0-9]+$/i.test(inner) ? inner : null;
 	}
 
 	getBlock(index) {

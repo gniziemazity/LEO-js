@@ -38,6 +38,7 @@ function loadAPI() {
 		return {
 			parseCsv, parseStudentIdNameMap, getFileExt,
 			diffModeFromFilename, defaultDiffModeKey, DIFF_MARKS_FILES,
+			DIFF_METHODS, REMARKS_BASES, CURATED_MODES, basisToDiffMode,
 			_hmsToSeconds, parseFollowEvents, parseFollowLabel,
 		};
 	`)();
@@ -89,21 +90,61 @@ test("getFileExt: lowercased final extension, empty when none", () => {
 
 test("diffModeFromFilename: maps the canonical filenames back to mode keys", () => {
 	assert.equal(api.diffModeFromFilename("diff_marks_ideal.json"), "ideal");
-	assert.equal(api.diffModeFromFilename("diff_marks_leo_star.json"), "");
-	assert.equal(api.diffModeFromFilename("diff_marks_leo.json"), "leo");
+	assert.equal(
+		api.diffModeFromFilename("diff_marks_leo_star.json"),
+		"leo_star",
+	);
+	assert.equal(api.diffModeFromFilename("diff_marks_leo.json"), null);
+	assert.equal(api.diffModeFromFilename("diff_marks_lcs.json"), "lcs");
+	assert.equal(
+		api.diffModeFromFilename("diff_marks_git_star.json"),
+		"git_star",
+	);
 	assert.equal(api.diffModeFromFilename("DIFF_MARKS_MINIMAL.JSON"), "minimal");
 	assert.equal(api.diffModeFromFilename("nope.json"), null);
 });
 
-test("defaultDiffModeKey: ideal > minimal > leo* > leo, honours a present request", () => {
+test("defaultDiffModeKey: ideal > minimal > leo_star > leo, honours a present request", () => {
 	assert.equal(api.defaultDiffModeKey({ ideal: {}, leo: {} }), "ideal");
 	assert.equal(api.defaultDiffModeKey({ minimal: {}, leo: {} }), "minimal");
-	assert.equal(api.defaultDiffModeKey({ "": {}, leo: {} }), ""); // leo*
+	assert.equal(api.defaultDiffModeKey({ leo_star: {}, leo: {} }), "leo_star");
 	assert.equal(api.defaultDiffModeKey({ leo: {} }), "leo");
 	assert.equal(api.defaultDiffModeKey({ ideal: {}, leo: {} }, "leo"), "leo");
 	assert.equal(api.defaultDiffModeKey({ ideal: {} }, "leo"), "ideal");
-	assert.equal(api.defaultDiffModeKey({ "token-lcs": {} }), "token-lcs");
+	assert.equal(api.defaultDiffModeKey({ lcs: {} }), "lcs");
 	assert.equal(api.defaultDiffModeKey({}), null);
+});
+
+test("DIFF_METHODS: single source derives files / bases / curated consistently", () => {
+	const keys = api.DIFF_METHODS.map((m) => m.key);
+	assert.deepEqual(keys, [
+		"ideal",
+		"minimal",
+		"leo_star",
+		"lcs_star",
+		"lcs",
+		"git_star",
+		"git",
+	]);
+	// every method's filename is mirrored into DIFF_MARKS_FILES
+	for (const m of api.DIFF_METHODS) {
+		assert.equal(api.DIFF_MARKS_FILES[m.key], m.filename);
+	}
+	// the dropdown/basis list contains every selectable method
+	assert.deepEqual(
+		api.REMARKS_BASES.map((b) => b.key),
+		["ideal", "minimal", "leo_star", "lcs_star", "lcs", "git_star", "git"],
+	);
+	assert.deepEqual([...api.CURATED_MODES].sort(), ["ideal", "minimal"]);
+});
+
+test("basisToDiffMode: identity for known method keys, null otherwise", () => {
+	assert.equal(api.basisToDiffMode("leo_star"), "leo_star");
+	assert.equal(api.basisToDiffMode("git"), "git");
+	assert.equal(api.basisToDiffMode("ideal"), "ideal");
+	assert.equal(api.basisToDiffMode("nope"), null);
+	assert.equal(api.basisToDiffMode(""), null);
+	assert.equal(api.basisToDiffMode(null), null);
 });
 
 test("_hmsToSeconds: parses HH:MM:SS(.mmm); null on garbage; sessionDate adds a date offset", () => {

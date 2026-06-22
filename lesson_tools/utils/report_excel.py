@@ -181,6 +181,7 @@ class ExcelReportMixin:
                 sid, has_submission, code_not_found
             )
             sim_by_lang: Dict[str, Dict] = {}
+            asgn_comment_items: List[str] = []
 
             vals: Dict[str, object] = {
                 'id': int(sid), 'student': display_name, 'number': display_number,
@@ -207,7 +208,7 @@ class ExcelReportMixin:
                 else:
                     basis_marks = (getattr(self, '_basis_marks_by_sid', None) or {}).get(sid)
                     pb_info = (
-                        self._per_basis_sim_info(sid, basis_marks)
+                        self._per_basis_sim_info(basis_marks)
                         if basis_marks else None
                     )
                     if pb_info is not None:
@@ -217,6 +218,14 @@ class ExcelReportMixin:
                             sid, has_submission, code_not_found)
                     vals['sim'] = sim_pct
                     vals['sim_t'] = sim_desc
+                    pb_comment = (
+                        self._per_basis_comment_info(basis_marks)
+                        if basis_marks else None
+                    )
+                    if pb_comment is not None:
+                        c_pct, c_desc, asgn_comment_items = pb_comment
+                        vals['sim_c'] = c_pct
+                        vals['sim_c_t'] = c_desc
                     sim_by_lang = (
                         self._similarity_info_by_lang_from_marks(
                             sid, has_submission, code_not_found, basis_marks)
@@ -269,6 +278,12 @@ class ExcelReportMixin:
                 c.width = 400
                 c.height = min(200 + 80 * len(_c_items), 6000)
                 sheet.cell(row=cur, column=idx['follow_c']).comment = c
+
+            if is_assignment and asgn_comment_items:
+                c = Comment(', '.join(asgn_comment_items), 'sim_check')
+                c.width = 400
+                c.height = min(200 + 80 * len(asgn_comment_items), 6000)
+                sheet.cell(row=cur, column=idx['sim_c']).comment = c
 
             if not is_assignment and extra_e_text:
                 _e_items = (_ts['extra_e_items'] if _ts and _ts.get('extra_e_items')
@@ -370,6 +385,8 @@ class ExcelReportMixin:
             cols += [
                 _Col('sim', 'Similarity', cf='redlow'),
                 _Col('sim_t', 'Similarity Desc', hidden=True, cf='redlow'),
+                _Col('sim_c', 'Sim (C)', cf='redlow'),
+                _Col('sim_c_t', 'Sim (C) Desc', hidden=True),
             ]
         for ext in present_lang_exts:
             cols.append(_Col(f'lang:{ext}', lang_label[ext], cf='redlow'))
@@ -428,8 +445,6 @@ class ExcelReportMixin:
             inc_vals.append(fd['inc_sim'])
             if ext == '.html':
                 teacher_ext = self.teacher_outside_by_ext.get(ext, Counter())
-            elif ext == '.css':
-                teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
             else:
                 teacher_ext = self.teacher_tokens_by_ext.get(ext, Counter())
             teacher_agg += teacher_ext
@@ -444,7 +459,7 @@ class ExcelReportMixin:
             self.get_code_files(self._effective_reference_dir())
         )
 
-    def _per_basis_sim_info(self, sid: str, basis_marks: dict):
+    def _per_basis_sim_info(self, basis_marks: dict):
         if not basis_marks:
             return None
         miss_marks: List[Tuple[str, int, str]] = []
@@ -488,6 +503,39 @@ class ExcelReportMixin:
             items.append(f'Extra: {tok}')
         desc = ', '.join(parts)
         return (score, desc, items)
+
+    def _per_basis_comment_info(self, basis_marks: dict):
+        if not basis_marks:
+            return None
+        teacher_ctr: Counter = Counter()
+        student_ctr: Counter = Counter()
+        for _fname, marks in (basis_marks.get('teacher_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') == 'comment':
+                    teacher_ctr[m.get('token', '')] += 1
+        for _fname, marks in (basis_marks.get('student_files') or {}).items():
+            for m in marks or []:
+                if m.get('label') == 'comment':
+                    student_ctr[m.get('token', '')] += 1
+        extra_c = student_ctr - teacher_ctr
+        missing_c = teacher_ctr - student_ctr
+        if not extra_c and not missing_c:
+            return ('', '', [])
+        parts: List[str] = []
+        items: List[str] = []
+        for tok in sorted(missing_c.elements()):
+            parts.append(f'-{tok}')
+            items.append(f'Missing: {tok}')
+        for tok in sorted(extra_c.elements()):
+            parts.append(f'+{tok} (00:00:00)')
+            items.append(f'Extra: {tok}')
+        teacher_total = sum(teacher_ctr.values())
+        if teacher_total:
+            deduction = sum(missing_c.values()) + sum(extra_c.values())
+            score = round(max(0.0, (teacher_total - deduction) / teacher_total * 100), 1)
+        else:
+            score = ''
+        return (score, ', '.join(parts), items)
 
     def _similarity_info_by_lang_from_marks(
         self, sid: str, has_submission: bool, code_not_found: bool, basis_marks: dict,

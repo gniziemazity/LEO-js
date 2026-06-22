@@ -179,6 +179,7 @@ function renderTable() {
 			const badges = renderArtefactBadges(entry.obs, schema);
 			if (badges) {
 				td.innerHTML = badges;
+				td.dataset.artefactCell = "1";
 				const tipHtml = buildArtefactSummaryHtml(entry.obs, schema);
 				if (tipHtml) attachHtmlTip(td, tipHtml);
 			} else {
@@ -209,7 +210,8 @@ function renderTable() {
 				return;
 			}
 			td.classList.add("clickable");
-			if (!td.title) td.title = `Open ${entry.name} assignment`;
+			if (!td.title && !td.dataset.artefactCell)
+				td.title = `Open ${entry.name} assignment`;
 			td.addEventListener("click", () => openAssignDiff(s, entry));
 		};
 
@@ -227,10 +229,13 @@ function renderTable() {
 				tr.appendChild(fc);
 
 				const _lo = (entry.lesson_obs || "").trim();
-				const lobs = cell(_lo === "_" ? "" : _lo);
-				if (_lo && _lo !== "_") {
-					lobs.style.fontWeight = "bold";
-					if (_lo.includes("<")) lobs.style.color = THEME.red;
+				const lobs = cell(
+					_lo === "_" ? "" : formatLessonObsHtml(_lo),
+					"",
+					true,
+				);
+				if (_lo && _lo !== "_" && _lo.includes("<")) {
+					lobs.style.color = THEME.red;
 				}
 				makeLessonClickable(lobs, entry);
 				tr.appendChild(lobs);
@@ -285,14 +290,14 @@ function renderTable() {
 	});
 
 	if (rows.length > 0) {
-		_appendOverviewTotalsRow(tbody, rows, topicShow);
+		_appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax);
 	}
 
 	table.appendChild(tbody);
 	requestAnimationFrame(applyStickyColumns);
 }
 
-function _appendOverviewTotalsRow(tbody, rows, topicShow) {
+function _appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax) {
 	const tr = document.createElement("tr");
 	tr.className = "totals-row";
 
@@ -406,7 +411,7 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow) {
 	);
 	tr.appendChild(intTd);
 	tr.appendChild(
-		addCell(fmtAvg(sum(cohort.map((s) => s.total_cdiff)), 0), "num"),
+		cdiffCell(sum(cohort.map((s) => s.total_cdiff)), cdiffMin, cdiffMax),
 	);
 
 	_extraColumns.after.forEach((name, i) => {
@@ -426,7 +431,7 @@ function cdiffCell(v, vmin, vmax) {
 	td.className = "num";
 	if (v == null || isNaN(v)) return td;
 	const n = +v;
-	td.textContent = n > 0 ? "+" + n : String(n);
+	td.textContent = n >= 0 ? "+" + n : String(n);
 	td.style.fontWeight = "700";
 	if (n === 0) {
 		td.style.color = THEME.black;
