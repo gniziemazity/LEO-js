@@ -41,16 +41,17 @@ function renderLessonStats(body) {
 	const kpmActive = numFor("kpm_active");
 	const kpmSession = numFor("kpm_session");
 	if (anyPos(kpmActive) || anyPos(kpmSession)) {
-		const card = mkCard(body, "Typing Rate KPM (Active / Session)");
-		const box = el("div", "chart-box");
-		card.appendChild(box);
+		const cc = new ChartCard(body, "Typing Rate KPM", {
+			legend: [
+				{ label: "Active", color: THEME.label },
+				{ label: "Session", color: _hexToRgba(THEME.label, 0.35) },
+			],
+		});
 		const all = [...kpmActive, ...kpmSession].filter((v) => v != null);
-		const chart = new BarChart(box, {
+		const chart = new BarChart(cc.box, {
 			yMin: 0,
 			yMax: (Math.max(...all, 1) * 1.1) | 0 || 1,
-			tooltipCallback: (_l, val, si) => [
-				(si === 0 ? "Active: " : "Session: ") + val.toFixed(1) + " KPM",
-			],
+			tooltip: false,
 		});
 		chart.setData(lessonNames, [
 			{
@@ -64,7 +65,7 @@ function renderLessonStats(body) {
 				borderColor: _hexToRgba(THEME.label, 0.35),
 			},
 		]);
-		_barCharts.push(chart);
+		cc.register(chart);
 	}
 
 	const tQun = numFor("teacher_q_unanswered");
@@ -82,13 +83,17 @@ function renderLessonStats(body) {
 	const sQ = lessonNames.map((n) => _cohortLessonSum(n, "q"));
 	const hG = lessonNames.map((n) => _cohortLessonSum(n, "h"));
 	if (anyPos(tQAns) || anyPos(tQUna) || anyPos(sQ) || anyPos(hG)) {
-		const card = mkCard(body, "Lesson Interactions");
-		const box = el("div", "chart-box");
-		card.appendChild(box);
+		const cc = new ChartCard(body, "Interactions", {
+			legend: [
+				{ label: "Answered", color: THEME.blue },
+				{ label: "Asked", color: THEME.orange },
+				{ label: "Got Help", color: THEME.green },
+			],
+		});
 		const teacherTot = tQAns.map((v, i) => v + (tQUna[i] ?? 0));
 		const all = [...teacherTot, ...sQ, ...hG];
 		const colors = [THEME.blue, THEME.orange, THEME.green];
-		const chart = new BarChart(box, {
+		const chart = new BarChart(cc.box, {
 			yMin: 0,
 			yMax: Math.max(...all, 1) + 1,
 			unifiedTooltip: true,
@@ -99,7 +104,7 @@ function renderLessonStats(body) {
 					return [`Answered Questions: ${a}/${b}`];
 				}
 				return [
-					["", "", "Student Questions", "Provided Help"][si] +
+					["", "", "Asked Questions", "Provided Help"][si] +
 						": " +
 						Math.round(val),
 				];
@@ -130,7 +135,7 @@ function renderLessonStats(body) {
 				borderColor: colors[2],
 			},
 		]);
-		_barCharts.push(chart);
+		cc.register(chart);
 	}
 
 	const tHtml = numFor("tokens_html");
@@ -156,9 +161,7 @@ function renderLessonStats(body) {
 			{
 				yScale: 1.1,
 				legend: true,
-				unifiedTooltip: true,
-				tooltipCallback: (_l, _v, _si, gi) =>
-					tokenLangs.map((l) => `${l.label}: ${l.data[gi] ?? 0}`),
+				tooltip: false,
 			},
 		);
 	}
@@ -177,40 +180,45 @@ function renderLessonStats(body) {
 			durData,
 			durData.map(() => LESSON_MIN),
 			Math.max(LESSON_MIN, Math.max(...durData, 1)) * 1.05,
-			{ subLabels: bursts.map((n) => (n != null ? `n=${n}` : "")) },
+			{
+				subLabels: bursts.map((n) => (n != null ? `n=${n}` : "")),
+				tooltip: false,
+			},
 		);
 	}
 
 	const segmentsByLesson = orderedRows.map((r) =>
 		_parseSegments(r["segments"]),
 	);
-	if (segmentsByLesson.some((s) => s.length)) {
-		const pauseData = segmentsByLesson.map((segs) =>
-			segs.filter((s) => s.kind === "p").map((s) => s.dur / 60),
-		);
+	// Both pause charts derive from the SAME "p" (pause) segments, so the box
+	// plot, the average bar, and their shared n= can never disagree (and don't
+	// depend on the pause_count / pause_avg_s columns, which may be stale).
+	const pauseData = segmentsByLesson.map((segs) =>
+		segs.filter((s) => s.kind === "p").map((s) => s.dur / 60),
+	);
+	const pauseSubLabels = pauseData.map((d) => `n=${d.length}`);
+	if (pauseData.some((d) => d.length)) {
 		_addDurationBoxCard(
 			body,
 			"Pause Duration (min)",
 			lessonNames,
 			pauseData,
-			{ subLabels: pauseData.map((d) => `n=${d.length}`) },
+			{ subLabels: pauseSubLabels },
 		);
-	}
 
-	const pauseAvg = numFor("pause_avg_s");
-	if (anyPos(pauseAvg)) {
-		const pauseAvgMin = pauseAvg.map((v) => (v != null ? v / 60 : null));
-		const pauseCount = numFor("pause_count");
+		const pauseAvgMin = pauseData.map((d) =>
+			d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0,
+		);
 		addBarCard(
 			body,
 			"Avg Pause Duration (min)",
 			lessonNames,
-			pauseAvgMin.map((v) => v ?? 0),
+			pauseAvgMin,
 			THEME.label,
-			Math.max(...pauseAvgMin.filter((v) => v != null), 1) * 1.1,
+			Math.max(...pauseAvgMin, 1) * 1.1,
 			"dec1",
 			undefined,
-			{ subLabels: pauseCount.map((n) => (n != null ? `n=${n}` : "")) },
+			{ subLabels: pauseSubLabels, tooltip: false },
 		);
 	}
 }

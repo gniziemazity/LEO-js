@@ -20,6 +20,7 @@ function addStackedShareCard(
 		yMax: yMax ?? Math.max(...totalCounts, 1) + 1,
 		stacked: true,
 		subLabels: opts.subLabels,
+		tooltip: opts.tooltip,
 		unifiedTooltip: true,
 		tooltipCallback:
 			opts.tooltipCallback ??
@@ -74,6 +75,7 @@ function addStackedBarCard(parent, title, labels, series, opts = {}) {
 		stacked: true,
 		hideYAxis: opts.hideYAxis,
 		yTickSuffix: opts.yTickSuffix || "",
+		tooltip: opts.tooltip,
 		unifiedTooltip: opts.unifiedTooltip,
 		tooltipCallback:
 			opts.tooltipCallback ??
@@ -131,11 +133,7 @@ function addAiUseCard(parent, title, labels, strong, medium, none, totals) {
 				},
 				{ label: "Watermarks", color: artefactFiredColorFor("high") },
 			],
-			unifiedTooltip: true,
-			tooltipCallback: (_l, _v, _si, gi) => [
-				`Reliable artefacts: ${medium[gi]} / ${totals[gi]} (${pct(medium[gi], gi)}%)`,
-				`Watermarks: ${strong[gi]} / ${totals[gi]} (${pct(strong[gi], gi)}%)`,
-			],
+			tooltip: false,
 			barLabel: (gi, si) => {
 				if (!totals[gi]) return null;
 				if (si === 0) return strong[gi] ? pct(strong[gi], gi) + "%" : null;
@@ -180,9 +178,7 @@ function addAiBandCard(parent, title, labels, strong, medium, none, totals) {
 		{
 			yMax: 100,
 			hideYAxis: true,
-			tooltipCallback: (_l, _v, _si, gi) => [
-				`Reliable Artefacts: ${medium[gi]} / ${totals[gi]}`,
-			],
+			tooltip: false,
 		},
 	);
 }
@@ -205,6 +201,7 @@ function addBarCard(
 		yMax,
 		yTickSuffix: tooltipFmt === "pct" ? "%" : "",
 		subLabels: opts.subLabels,
+		tooltip: opts.tooltip,
 		tooltipCallback:
 			tooltipFn ??
 			((_label, val) => [

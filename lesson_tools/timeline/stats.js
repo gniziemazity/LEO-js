@@ -16,23 +16,17 @@ function formatSegments(segs) {
 	return segs.map(([k, v, t]) => `${k}:${v.toFixed(2)}:${t}`).join(";");
 }
 
-function computePauseStats(charEvents) {
-	const pauses = [];
-	for (let i = 1; i < charEvents.length; i++) {
-		const gap =
-			(charEvents[i].timestamp - charEvents[i - 1].timestamp) / 1000;
-		if (gap >= CFG.BURST_GAP) pauses.push(gap);
-	}
-	if (!pauses.length) return { count: 0, min: 0, max: 0, avg: 0, sum: 0 };
+function computePauseStats(pauseDurs) {
+	if (!pauseDurs.length) return { count: 0, min: 0, max: 0, avg: 0 };
 	let min = Infinity,
 		max = -Infinity,
 		sum = 0;
-	for (const p of pauses) {
+	for (const p of pauseDurs) {
 		if (p < min) min = p;
 		if (p > max) max = p;
 		sum += p;
 	}
-	return { count: pauses.length, min, max, avg: sum / pauses.length, sum };
+	return { count: pauseDurs.length, min, max, avg: sum / pauseDurs.length };
 }
 
 function countDevTokens(p) {
@@ -50,11 +44,10 @@ function countDevTokens(p) {
 }
 
 function buildLessonStatsCsv(p, tokens) {
-	const mainChars = p.events.filter(
-		(e) => e.char != null && e._editor !== "dev" && !DELETE_CHARS.has(e.char),
-	);
-	const pause = computePauseStats(mainChars);
 	const segments = computeSegments(p.bursts, p.sessionStart, p.sessionEnd);
+	const pause = computePauseStats(
+		segments.filter(([k]) => k === "p").map(([, v]) => v),
+	);
 	const duration = (p.sessionEnd - p.sessionStart) / 60;
 	const codingMin = p.bursts.reduce((s, b) => s + (b.dur || 0), 0) / 60;
 	const moves = p.moves.length;

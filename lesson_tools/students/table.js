@@ -497,8 +497,8 @@ function _renderArtefactHighlights() {
 			runs.push({ endIdx: idx, startTh: th, endTh: th, cells });
 		}
 	}
-	const hiCount = rows.length;
-	const denom = _students.length;
+	const hiCount = rows.filter((r) => !r.classList.contains("row-ai")).length;
+	const denom = _students.filter((s) => !s.ai_flagged).length;
 	const hiPct = denom ? Math.round((hiCount / denom) * 100) : 0;
 	runs.forEach((run, ri) => {
 		const lRect = run.startTh.getBoundingClientRect();
@@ -517,7 +517,7 @@ function _renderArtefactHighlights() {
 		box.style.height = height + "px";
 		layer.appendChild(box);
 
-		if (ri !== 0) return;
+		if (ri !== 0 || !hiCount) return;
 		const count = document.createElement("div");
 		count.className = "artefact-highlight-count";
 		const countMain = document.createElement("div");

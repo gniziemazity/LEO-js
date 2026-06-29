@@ -32,6 +32,16 @@ const DIFF_METHODS = [
 		selectable: true,
 	},
 	{
+		key: "leo_star_plus",
+		label: "Leo*+",
+		filename: "diff_marks_leo_star_plus.json",
+		isCurated: false,
+		isStar: true,
+		baseMethod: "leo",
+		requiresKeylog: true,
+		selectable: true,
+	},
+	{
 		key: "lcs_star",
 		label: "LCS*",
 		filename: "diff_marks_lcs_star.json",

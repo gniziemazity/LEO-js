@@ -33,6 +33,7 @@ from .token_log_leo import (
     _locate_token,
     _pairwise_context_sim,
     _prune_color_map,
+    leo_plus_config,
     _scan_file_tokens,
     _stripped_context_vector_pack,
     _stripped_context_vector_split,

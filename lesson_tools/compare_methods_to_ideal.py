@@ -91,11 +91,12 @@ IDEAL_FILE = "diff_marks_ideal.json"
 LABELS = ("missing", "extra", "ghost_extra")
 
 METHOD_LABELS = {
-    "leo_star":  "LEO*",
-    "lcs_star":  "LCS*",
-    "lcs":       "LCS",
-    "git_star":  "Git*",
-    "git":       "Git",
+    "leo_star":      "LEO*",
+    "leo_star_plus": "LEO*+",
+    "lcs_star":      "LCS*",
+    "lcs":           "LCS",
+    "git_star":      "Git*",
+    "git":           "Git",
 }
 
 
@@ -265,10 +266,6 @@ def _pair_signature(mark, ignore_ghost_pairs: bool = False) -> tuple | None:
 
 
 def _pair_distance(ms, ts) -> int | None:
-    """Char distance between method's pair target and ideal's pair target.
-
-    Returns 0 for exact match, positive int for same-kind same-file mismatch,
-    or None if incomparable (different kinds, different files, missing values)."""
     if ms is None or ts is None:
         return None
     if ms[0] != ts[0]:
@@ -285,7 +282,7 @@ def _pair_distance(ms, ts) -> int | None:
 
 
 def _is_star_method(method_key: str) -> bool:
-    return method_key.endswith("_star")
+    return "_star" in method_key
 
 
 def _merge_marks(*by_file_dicts):
@@ -297,7 +294,6 @@ def _merge_marks(*by_file_dicts):
 
 
 def _files_referenced_by_source(named_data: dict) -> tuple[dict, dict]:
-    """Return ({teacher_fname: [sources]}, {student_fname: [sources]})."""
     teacher_src: dict = {}
     student_src: dict = {}
     for source, data in named_data.items():

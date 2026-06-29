@@ -27,6 +27,7 @@ from .token_log import (
     _strip_internal_fields,
     _ttt_pos_index,
     _write_teacher_tokens_file,
+    leo_plus_config,
 )
 from .folder_utils import CODE_EXTS
 from .token_log_lang_stats import (
@@ -412,6 +413,83 @@ class TokenLogMixin:
             'leo_star', 'Leo* diff marks', 'diff_marks_leo_star.json',
             include_line_marks=False,
         )
+
+    def write_leo_plus_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
+        all_events = getattr(self, '_lesson_all_events', None)
+        if not all_events:
+            return
+
+        teacher_code_files = self._get_teacher_code_files()
+        if not teacher_code_files:
+            return
+
+        ts_map_cached = _build_file_ordered_ts_map(all_events)
+        teacher_token_ts = _build_teacher_token_timestamps(all_events)
+
+        teacher_tokens_path = self.reference_dir / 'tokens.txt'
+        teacher_entries = (
+            _parse_teacher_tokens(teacher_tokens_path)
+            if teacher_tokens_path.exists() else []
+        )
+        removal_ts_by_token: Dict[str, List[str]] = {}
+        for tok, _, _, is_rem, removal_ts in teacher_entries:
+            if is_rem and removal_ts:
+                removal_ts_by_token.setdefault(tok, []).append(removal_ts)
+
+        written = 0
+        for student_dir in sorted(names_dir.iterdir()):
+            if not student_dir.is_dir():
+                continue
+            sid = self.name_to_id.get(student_dir.name)
+            if sid is None or sid not in self.results:
+                continue
+
+            anon_dir = self._resolve_anon_dir(student_dir, anon_ids_dir, sid)
+            stu_files = self.get_all_code_files(anon_dir) or self.get_all_code_files(student_dir)
+            if not stu_files:
+                continue
+
+            with leo_plus_config():
+                try:
+                    t_marks, s_marks, _score, alignments, _line_marks, _n_total, leo_assignments = (
+                        _build_leo_diff_marks(
+                            teacher_code_files, stu_files, events=all_events,
+                        )
+                    )
+                except Exception:
+                    t_marks, s_marks, alignments, leo_assignments = {}, {}, None, None
+
+                diff_marks: dict = {
+                    'token_matching': 'leo_star_plus',
+                    'teacher_files':  t_marks,
+                    'student_files':  s_marks,
+                }
+                if alignments:
+                    diff_marks['alignments'] = alignments
+                if leo_assignments:
+                    diff_marks['leo_assignments'] = leo_assignments
+
+                _apply_star_post_pass(
+                    diff_marks, all_events, stu_files,
+                    teacher_files=teacher_code_files,
+                    _ts_map=ts_map_cached or None,
+                )
+
+            if teacher_entries:
+                _all_occ, score_e, *_rest = _build_occ_from_diff_marks(
+                    diff_marks, teacher_entries, removal_ts_by_token or None,
+                )
+                diff_marks['score'] = score_e
+
+            if teacher_token_ts:
+                diff_marks['teacher_token_timestamps'] = teacher_token_ts
+
+            _strip_internal_fields(diff_marks)
+            written += _emit_diff_marks(
+                anon_dir / 'diff_marks_leo_star_plus.json', diff_marks, 'leo_star_plus')
+
+        if written:
+            print(f'Written Leo*+ diff marks for {written} student(s) in {names_dir.name}/')
 
     def write_lcs_diff_marks(self, names_dir: Path, anon_ids_dir: Path = None) -> None:
         all_events = getattr(self, '_lesson_all_events', None)

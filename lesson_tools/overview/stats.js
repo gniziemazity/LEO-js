@@ -104,7 +104,12 @@ function renderStats() {
 				copyVals,
 				lessonTotals,
 				Math.max(...lessonTotals, 1) + 1,
-				{ color: THEME.red, titleColor: THEME.red },
+				{
+					color: THEME.red,
+					titleColor: THEME.red,
+					subLabels: copyVals.map((n) => `n=${n}`),
+					tooltip: false,
+				},
 			);
 		}
 
@@ -135,6 +140,7 @@ function renderStats() {
 					subLabels: followDists.map((d) =>
 						d.length ? `n=${d.length}` : "",
 					),
+					tooltip: false,
 				},
 			);
 			_addDurationBoxCard(

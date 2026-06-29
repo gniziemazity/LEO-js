@@ -122,20 +122,14 @@ def _format_segments(segs):
     return ";".join(f"{k}:{v:.2f}:{t}" for k, v, t in segs)
 
 
-def _pause_stats(char_events):
-    pauses = []
-    for i in range(1, len(char_events)):
-        gap = (char_events[i]["timestamp"]
-               - char_events[i - 1]["timestamp"]) / 1000
-        if gap >= BURST_GAP_S:
-            pauses.append(gap)
-    if not pauses:
+def _pause_stats(pause_durs):
+    if not pause_durs:
         return {"count": 0, "min": 0.0, "max": 0.0, "avg": 0.0}
     return {
-        "count": len(pauses),
-        "min":   min(pauses),
-        "max":   max(pauses),
-        "avg":   sum(pauses) / len(pauses),
+        "count": len(pause_durs),
+        "min":   min(pause_durs),
+        "max":   max(pause_durs),
+        "avg":   sum(pause_durs) / len(pause_durs),
     }
 
 
@@ -278,7 +272,7 @@ def compute_lesson_stats_csv(
     total_s = sum(b["dur"] or 1 for b in raw_bursts)
     kpm_active = (total_c / total_s) * 60 if total_c > 0 else 0.0
 
-    pause = _pause_stats(main_chars)
+    pause = _pause_stats([dur for kind, dur, _ in segments if kind == "p"])
 
     interactions = {
         "teacher-question": 0,

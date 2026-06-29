@@ -121,19 +121,27 @@ test("DIFF_METHODS: single source derives files / bases / curated consistently",
 		"ideal",
 		"minimal",
 		"leo_star",
+		"leo_star_plus",
 		"lcs_star",
 		"lcs",
 		"git_star",
 		"git",
 	]);
-	// every method's filename is mirrored into DIFF_MARKS_FILES
 	for (const m of api.DIFF_METHODS) {
 		assert.equal(api.DIFF_MARKS_FILES[m.key], m.filename);
 	}
-	// the dropdown/basis list contains every selectable method
 	assert.deepEqual(
 		api.REMARKS_BASES.map((b) => b.key),
-		["ideal", "minimal", "leo_star", "lcs_star", "lcs", "git_star", "git"],
+		[
+			"ideal",
+			"minimal",
+			"leo_star",
+			"leo_star_plus",
+			"lcs_star",
+			"lcs",
+			"git_star",
+			"git",
+		],
 	);
 	assert.deepEqual([...api.CURATED_MODES].sort(), ["ideal", "minimal"]);
 });

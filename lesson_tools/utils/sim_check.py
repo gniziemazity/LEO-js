@@ -375,6 +375,7 @@ def main() -> None:
             print(f'  Written: {stats_path.name}')
         checker.write_student_token_files(names_dir, anon_ids_dir,
                                            curated_dir=current_dir / 'curated')
+        checker.write_leo_plus_diff_marks(names_dir, anon_ids_dir)
     else:
         checker.write_leo_diff_marks(names_dir, anon_ids_dir)
     checker.write_lcs_diff_marks(names_dir, anon_ids_dir)

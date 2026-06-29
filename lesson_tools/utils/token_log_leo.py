@@ -1,3 +1,4 @@
+import contextlib
 import math
 from collections import Counter
 from pathlib import Path
@@ -14,6 +15,22 @@ from .token_log_marks import iter_ghost_tokens
 _CONTEXT_K = 10
 _CONTEXT_MATCH_THRESHOLD = 0.8
 _SWAP_TOKEN_SIM_WEIGHT = 0.2
+
+_LEO_PLUS_DECAY = 0.70
+_LEO_PLUS_TAU = 0.65
+_DECAY = 1.0
+_REAL_MATCH_TAU = None
+
+
+@contextlib.contextmanager
+def leo_plus_config():
+    global _DECAY, _REAL_MATCH_TAU
+    prev = (_DECAY, _REAL_MATCH_TAU)
+    _DECAY, _REAL_MATCH_TAU = _LEO_PLUS_DECAY, _LEO_PLUS_TAU
+    try:
+        yield
+    finally:
+        _DECAY, _REAL_MATCH_TAU = prev
 
 
 def _scan_file_tokens(text: str, ext=None) -> Dict[str, List[Tuple[int, bool]]]:
@@ -44,11 +61,17 @@ def _context_vector_split(
     k: int,
 ) -> Tuple[Counter, Counter]:
     left: Counter = Counter()
-    for i in range(max(0, pos - k), pos):
-        left[tokens_seq[i]] += 1
     right: Counter = Counter()
-    for i in range(pos + 1, min(len(tokens_seq), pos + k + 1)):
-        right[tokens_seq[i]] += 1
+    if _DECAY == 1.0:
+        for i in range(max(0, pos - k), pos):
+            left[tokens_seq[i]] += 1
+        for i in range(pos + 1, min(len(tokens_seq), pos + k + 1)):
+            right[tokens_seq[i]] += 1
+    else:
+        for i in range(max(0, pos - k), pos):
+            left[tokens_seq[i]] += _DECAY ** (pos - i - 1)
+        for i in range(pos + 1, min(len(tokens_seq), pos + k + 1)):
+            right[tokens_seq[i]] += _DECAY ** (i - pos - 1)
     return left, right
 
 
@@ -66,17 +89,17 @@ def _stripped_context_vector_split(
             i = anchor_idx - off
             if i < 0:
                 break
-            left[stripped_seq[i]] += 1
+            left[stripped_seq[i]] += 1 if _DECAY == 1.0 else _DECAY ** (off - 1)
         for off in range(1, k + 1):
             i = anchor_idx - 1 + off
             if i >= n:
                 break
-            right[stripped_seq[i]] += 1
+            right[stripped_seq[i]] += 1 if _DECAY == 1.0 else _DECAY ** (off - 1)
     else:
         for i in range(max(0, anchor_idx - k), anchor_idx):
-            left[stripped_seq[i]] += 1
+            left[stripped_seq[i]] += 1 if _DECAY == 1.0 else _DECAY ** (anchor_idx - i - 1)
         for i in range(anchor_idx + 1, min(n, anchor_idx + k + 1)):
-            right[stripped_seq[i]] += 1
+            right[stripped_seq[i]] += 1 if _DECAY == 1.0 else _DECAY ** (i - anchor_idx - 1)
     return left, right
 
 
@@ -263,6 +286,16 @@ def _split_real_and_ghost_assignments(
     ghost_assignments: List[Tuple[int, int]] = []
     for s_idx, t_idx in assigned_pairs:
         if t_idx < n_real_teacher:
+            if _REAL_MATCH_TAU is not None:
+                score = (
+                    similarity_matrix[s_idx][t_idx]
+                    if similarity_matrix
+                       and s_idx < len(similarity_matrix)
+                       and t_idx < len(similarity_matrix[s_idx])
+                    else 0.0
+                )
+                if score < _REAL_MATCH_TAU:
+                    continue
             real_assignments.append((s_idx, t_idx))
             continue
         ghost_idx = t_idx - n_real_teacher
