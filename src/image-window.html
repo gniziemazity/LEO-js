@@ -15,8 +15,7 @@
 		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
 		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
 		<div class="neon-frame">
-			<button id="pinBtn" data-tip="Pin">📌</button>
-			<button class="popup-close-btn" id="closeBtn">✕</button>
+			<button id="pinBtn">📌</button>
 			<img id="imageDisplay" alt="Lesson image" />
 			<div id="errorMsg">Image could not be loaded.</div>
 		</div>
@@ -28,6 +27,10 @@
 			document.addEventListener("keydown", (e) => {
 				if (e.key === "Escape")
 					ipcRenderer.send("force-close-image-window");
+				if (e.ctrlKey && (e.key === "i" || e.key === "I")) {
+					e.preventDefault();
+					ipcRenderer.send("open-image-devtools");
+				}
 			});
 
 			document.querySelectorAll(".resize-handle").forEach((el) => {
@@ -41,58 +44,47 @@
 			);
 
 			const pinBtn = document.getElementById("pinBtn");
-			const closeBtn = document.getElementById("closeBtn");
 
-			closeBtn.addEventListener("click", () => {
-				ipcRenderer.send("force-close-image-window");
-			});
-
-			function applyPin() {
-				pinned = true;
-				pinBtn.classList.add("pinned");
-				pinBtn.setAttribute("data-tip", "Pinned");
-				ipcRenderer.send("pin-image-window", true);
+			function reflectPin() {
+				pinBtn.classList.toggle("pinned", pinned);
 			}
 
-			pinBtn.addEventListener("click", () => {
-				if (pinned) return;
-				applyPin();
-			});
+			function setPin(value) {
+				if (pinned === value) return;
+				pinned = value;
+				reflectPin();
+				ipcRenderer.send("pin-image-window", pinned);
+			}
+
+			pinBtn.addEventListener("click", () => setPin(!pinned));
 
 			document
 				.getElementById("imageDisplay")
 				.addEventListener("click", () => {
-					if (pinned) return;
-					applyPin();
+					if (!pinned) setPin(true);
 				});
 
-			ipcRenderer.on(
-				"set-image",
-				(event, { imagePath, bgColor, shouldPin }) => {
-					if (bgColor)
-						document.documentElement.style.setProperty("--bg", bgColor);
+			ipcRenderer.on("set-image", (event, { imagePath, shouldPin }) => {
+				const img = document.getElementById("imageDisplay");
+				const err = document.getElementById("errorMsg");
+				err.style.display = "none";
+				img.style.display = "none";
 
-					const img = document.getElementById("imageDisplay");
-					const err = document.getElementById("errorMsg");
-					err.style.display = "none";
+				img.onload = () => {
+					img.style.display = "block";
+					ipcRenderer.send("resize-image-window", {
+						width: img.naturalWidth + 64,
+						height: img.naturalHeight + 64,
+					});
+				};
+				img.onerror = () => {
 					img.style.display = "none";
+					err.style.display = "block";
+				};
+				img.src = "file://" + imagePath;
 
-					img.onload = () => {
-						img.style.display = "block";
-						ipcRenderer.send("resize-image-window", {
-							width: img.naturalWidth + 64,
-							height: img.naturalHeight + 64,
-						});
-					};
-					img.onerror = () => {
-						img.style.display = "none";
-						err.style.display = "block";
-					};
-					img.src = "file://" + imagePath;
-
-					if (shouldPin && !pinned) applyPin();
-				},
-			);
+				if (shouldPin) setPin(true);
+			});
 		</script>
 	</body>
 </html>

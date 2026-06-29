@@ -308,7 +308,8 @@ class BarChart {
 		ctx.lineTo(W - right, H - bottom);
 		ctx.stroke();
 
-		if (this._hovered) this._drawTooltip(ctx, this._hovered, W, H);
+		if (this._hovered && this._options.tooltip !== false)
+			this._drawTooltip(ctx, this._hovered, W, H);
 	}
 
 	_addEvents() {

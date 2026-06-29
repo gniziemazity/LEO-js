@@ -209,12 +209,17 @@ class LEOBroadcastServer extends EventEmitter {
 		});
 	}
 
-	broadcastQuestionStarted(question, students, bgColor) {
+	broadcastQuestionStarted(question, students, bgColor, options) {
 		this.currentState.activeQuestion = question;
 		if (students && students.length) this.currentState.students = students;
 		this.broadcast({
 			type: "question-started",
-			data: { question, students: this.currentState.students, bgColor },
+			data: {
+				question,
+				students: this.currentState.students,
+				bgColor,
+				options: options || [],
+			},
 		});
 	}
 
@@ -246,9 +251,7 @@ class LEOBroadcastServer extends EventEmitter {
 	broadcastFloatingWindowOpened() {
 		this.currentState.floatingWindowCount =
 			(this.currentState.floatingWindowCount || 0) + 1;
-		if (this.currentState.floatingWindowCount === 1) {
-			this.broadcast({ type: "floating-window-opened", data: {} });
-		}
+		this.broadcast({ type: "floating-window-opened", data: {} });
 	}
 
 	signalFloatingWindowOpen() {
@@ -350,6 +353,9 @@ class LEOBroadcastServer extends EventEmitter {
 				this.emit("client-timer-adjust", clampNum(data.minutes, 600)),
 			"remote-key-press": () => this.emit("client-remote-key-press"),
 			"dismiss-question": () => this.emit("client-dismiss-question"),
+			"question-randomize": () => this.emit("client-question-randomize"),
+			"question-show-options": () =>
+				this.emit("client-question-show-options"),
 		};
 		const h = handlers[type];
 		if (h) h(data);

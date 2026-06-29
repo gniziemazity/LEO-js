@@ -24,19 +24,48 @@ const broadcastServer = new LEOBroadcastServer(8080);
 const hotkeyManager = new HotkeyManager(settingsManager);
 const keyboardHandler = new KeyboardHandler(hotkeyManager, settingsManager);
 
+const mainPlugin = require("./plugin");
+if (mainPlugin.registerMain) {
+	mainPlugin.registerMain({ ipcMain, broadcastServer });
+}
+
 let tray = null;
 let questionWindow = null;
 let questionWindowIsLesson = false;
 let questionWindowStudentAnswered = null;
 let questionWindowRect = null;
+let questionWindowBgColor = null;
+let questionOptions = [];
+let randomizerWindow = null;
+let optionsWindow = null;
 let imageWindow = null;
 let imageWindowRect = null;
 let webWindow = null;
 let webWindowRect = null;
 let visualizerWindow = null;
+let _activeFloat = null;
+
+const CONTROL_PANEL_WIDTH = 504;
+let controlPanelVisible = false;
+function setPanelVisible(show) {
+	show = !!show;
+	if (show === controlPanelVisible) return;
+	const win = state.mainWindow;
+	if (!win || win.isDestroyed()) return;
+	controlPanelVisible = show;
+	const b = win.getBounds();
+	const width = show
+		? b.width + CONTROL_PANEL_WIDTH
+		: Math.max(WINDOW_CONFIG.width, b.width - CONTROL_PANEL_WIDTH);
+	win.setBounds({ x: b.x, y: b.y, width, height: b.height });
+	win.webContents.send("control-panel-visible", show);
+}
 
 function resolveStudentName(field) {
 	if (field == null) return null;
+	if (field === 0 || field === "0") {
+		return settingsManager.get("teacherName") || "Teacher";
+	}
 	const students = broadcastServer.currentState.students || [];
 	if (typeof field === "number" && Number.isInteger(field)) {
 		return students[field - 1] || null;
@@ -59,6 +88,57 @@ broadcastServer.on("client-toggle-active", () => {
 broadcastServer.on("client-jump-to", (stepIndex) => {
 	state.mainWindow.webContents.send("client-jump-to", stepIndex);
 });
+broadcastServer.on("client-question-randomize", () => {
+	if (!questionWindow || questionWindow.isDestroyed()) return;
+	const names = broadcastServer.currentState.students || [];
+	const style = settingsManager.get("randomizerStyle") || "shuffle";
+	_randomizerFloat.showOrReuse(
+		{ names, style, bgColor: questionWindowBgColor },
+		{},
+	);
+});
+broadcastServer.on("client-question-show-options", () => {
+	if (!questionWindow || questionWindow.isDestroyed()) return;
+	_optionsFloat.showOrReuse(
+		{ options: questionOptions, bgColor: questionWindowBgColor },
+		{},
+	);
+});
+ipcMain.on("randomizer-done", (event, index) => {
+	const names = broadcastServer.currentState.students || [];
+	const name = names[index];
+	if (name != null) {
+		broadcastServer.broadcast({
+			type: "randomizer-result",
+			data: { index, name },
+		});
+	}
+});
+ipcMain.on("open-question-devtools", () => {
+	if (questionWindow && !questionWindow.isDestroyed()) {
+		questionWindow.webContents.openDevTools({ mode: "detach" });
+	}
+});
+ipcMain.on("open-randomizer-devtools", () => {
+	if (randomizerWindow && !randomizerWindow.isDestroyed()) {
+		randomizerWindow.webContents.openDevTools({ mode: "detach" });
+	}
+});
+ipcMain.on("open-options-devtools", () => {
+	if (optionsWindow && !optionsWindow.isDestroyed()) {
+		optionsWindow.webContents.openDevTools({ mode: "detach" });
+	}
+});
+ipcMain.on("open-image-devtools", () => {
+	if (imageWindow && !imageWindow.isDestroyed()) {
+		imageWindow.webContents.openDevTools({ mode: "detach" });
+	}
+});
+ipcMain.on("open-web-devtools", () => {
+	if (webWindow && !webWindow.isDestroyed()) {
+		webWindow.webContents.openDevTools({ mode: "detach" });
+	}
+});
 broadcastServer.on("client-interaction", (interactionType) => {
 	state.mainWindow.webContents.send("log-interaction", interactionType);
 });
@@ -66,13 +146,25 @@ broadcastServer.on("client-student-answered", (studentName) => {
 	state.unpause();
 	const resolved = resolveStudentName(studentName);
 	questionWindowStudentAnswered = resolved;
-	if (state.mainWindow) {
-		state.mainWindow.webContents.send("question-answered", {
-			studentName: resolved,
-		});
-	}
-	if (questionWindow && !questionWindow.isDestroyed()) {
-		questionWindow.webContents.send("set-answered", resolved);
+	const ANSWER_FADE_MS = 300;
+	const reveal = () => {
+		if (state.mainWindow) {
+			state.mainWindow.webContents.send("question-answered", {
+				studentName: resolved,
+			});
+		}
+		if (questionWindow && !questionWindow.isDestroyed()) {
+			questionWindow.webContents.send("set-answered", resolved);
+		}
+	};
+	const fadedRandomizer = _randomizerFloat.fadeOutAndClose(ANSWER_FADE_MS);
+	const fadedOptions = _optionsFloat.fadeOutAndClose(ANSWER_FADE_MS);
+	if (fadedRandomizer || fadedOptions) {
+		setTimeout(() => {
+			if (questionWindow && !questionWindow.isDestroyed()) reveal();
+		}, ANSWER_FADE_MS);
+	} else {
+		reveal();
 	}
 });
 broadcastServer.on(
@@ -166,11 +258,23 @@ broadcastServer.on("client-disconnected", async () => {
 	} catch (e) {}
 });
 
-function getActiveFloatingWindow() {
-	if (questionWindow && !questionWindow.isDestroyed()) return questionWindow;
-	if (imageWindow && !imageWindow.isDestroyed()) return imageWindow;
-	if (webWindow && !webWindow.isDestroyed()) return webWindow;
+function _activeFloatInstance() {
+	if (_activeFloat && _activeFloat.isAlive()) return _activeFloat;
+	for (const f of [
+		_questionFloat,
+		_imageFloat,
+		_webFloat,
+		_randomizerFloat,
+		_optionsFloat,
+	]) {
+		if (f && f.isAlive()) return f;
+	}
 	return null;
+}
+
+function _onFloatShown(f) {
+	if (_activeFloat !== f) stopFloatLerp();
+	_activeFloat = f;
 }
 
 const ANIMATION_FRAME_INTERVAL_MS = 16;
@@ -187,17 +291,13 @@ let floatAnim = {
 function startFloatLerp() {
 	if (floatAnim.timer) return;
 	floatAnim.timer = setInterval(() => {
-		const win = getActiveFloatingWindow();
-		if (!win) {
+		const f = _activeFloatInstance();
+		if (!f) {
 			stopFloatLerp();
 			return;
 		}
-		const rect =
-			win === questionWindow
-				? questionWindowRect
-				: win === imageWindow
-					? imageWindowRect
-					: webWindowRect;
+		const win = f.win;
+		const rect = f.rect;
 		if (!rect || floatAnim.target.x === null) {
 			stopFloatLerp();
 			return;
@@ -244,15 +344,8 @@ function stopFloatLerp() {
 }
 
 function getFloatRect() {
-	const win = getActiveFloatingWindow();
-	if (!win) return null;
-	const rect =
-		win === questionWindow
-			? questionWindowRect
-			: win === imageWindow
-				? imageWindowRect
-				: webWindowRect;
-	return rect || null;
+	const f = _activeFloatInstance();
+	return f ? f.rect : null;
 }
 
 function ensureFloatTargets(rect) {
@@ -348,11 +441,15 @@ async function createWindow() {
 		}
 	});
 	state.mainWindow.on("close", () => {
+		app.isQuitting = true;
 		if (tray) {
 			tray.destroy();
 			tray = null;
 		}
-		app.isQuitting = true;
+		closeAllChildWindows();
+	});
+	state.mainWindow.on("closed", () => {
+		state.mainWindow = null;
 	});
 	state.mainWindow.on("minimize", (event) => {
 		event.preventDefault();
@@ -601,11 +698,20 @@ ipcMain.on("update-students", (event, students) => {
 	broadcastServer.updateStudents(students);
 });
 
-ipcMain.on("enter-question-block", (event, { question, students, bgColor }) => {
-	state.pause();
-	broadcastServer.broadcastQuestionStarted(question, students, bgColor);
-	openQuestionWindow(question, bgColor);
-});
+ipcMain.on(
+	"enter-question-block",
+	(event, { question, options, students, bgColor }) => {
+		state.pause();
+		broadcastServer.broadcastQuestionStarted(
+			question,
+			students,
+			bgColor,
+			options,
+		);
+		openQuestionWindow(question, bgColor);
+		questionOptions = options || [];
+	},
+);
 
 function _makeFloatingWindow({
 	width,
@@ -691,7 +797,15 @@ const _questionFloat = new FloatingWindow({
 		questionWindow = self.win;
 		questionWindowRect = self.rect;
 	},
+	onShow: _onFloatShown,
 	onClosed: () => {
+		_randomizerFloat.close({ force: true });
+		_optionsFloat.close({ force: true });
+		if (app.isQuitting) {
+			questionWindowStudentAnswered = null;
+			return;
+		}
+		setPanelVisible(false);
 		if (questionWindowIsLesson) {
 			broadcastServer.broadcastQuestionEnded();
 			if (state.mainWindow && questionWindowStudentAnswered === null) {
@@ -723,6 +837,7 @@ const _imageFloat = new FloatingWindow({
 		imageWindow = self.win;
 		imageWindowRect = self.rect;
 	},
+	onShow: _onFloatShown,
 });
 
 const _webFloat = new FloatingWindow({
@@ -730,44 +845,144 @@ const _webFloat = new FloatingWindow({
 	floatRect: _floatRect,
 	trackWindowRect: _trackWindowRect,
 	channel: "set-url",
-	make: () =>
-		_makeFloatingWindow({
+	make: () => {
+		const win = _makeFloatingWindow({
 			width: 1100,
 			height: 800,
 			title: "Web",
 			html: "../web-window.html",
 			extraWebPrefs: { webviewTag: true },
-		}),
+		});
+		win.webContents.on("did-attach-webview", (event, guest) => {
+			guest.on("before-input-event", (e, input) => {
+				if (
+					input.type === "keyDown" &&
+					input.control &&
+					(input.key === "i" || input.key === "I")
+				) {
+					if (!win.isDestroyed()) {
+						win.webContents.openDevTools({ mode: "detach" });
+					}
+				}
+			});
+		});
+		return win;
+	},
 	sync: (self) => {
 		webWindow = self.win;
 		webWindowRect = self.rect;
 	},
+	onShow: _onFloatShown,
 });
 
+const _randomizerFloat = new FloatingWindow({
+	broadcastServer,
+	floatRect: _floatRect,
+	trackWindowRect: _trackWindowRect,
+	channel: "set-randomizer",
+	make: () => {
+		const workArea = screen.getPrimaryDisplay().workArea;
+		const winW = 600;
+		const winH = 600;
+		const x = Math.floor(workArea.x + (workArea.width - winW) / 2);
+		const y = Math.floor(workArea.y + (workArea.height - winH) / 2);
+		return _makeFloatingWindow({
+			width: winW,
+			height: winH,
+			x,
+			y,
+			title: "Randomizer",
+			html: "../randomizer-window.html",
+		});
+	},
+	sync: (self) => {
+		randomizerWindow = self.win;
+	},
+	onShow: _onFloatShown,
+});
+
+const _optionsFloat = new FloatingWindow({
+	broadcastServer,
+	floatRect: _floatRect,
+	trackWindowRect: _trackWindowRect,
+	channel: "set-options",
+	make: () => {
+		const workArea = screen.getPrimaryDisplay().workArea;
+		const winW = 700;
+		const winH = 600;
+		const x = Math.floor(workArea.x + (workArea.width - winW) / 2);
+		const y = Math.floor(workArea.y + (workArea.height - winH) / 2);
+		return _makeFloatingWindow({
+			width: winW,
+			height: winH,
+			x,
+			y,
+			title: "Options",
+			html: "../options-window.html",
+		});
+	},
+	sync: (self) => {
+		optionsWindow = self.win;
+	},
+	onShow: _onFloatShown,
+});
+
+function closeAllChildWindows() {
+	_questionFloat.close({ force: true });
+	_imageFloat.close({ force: true });
+	_webFloat.close({ force: true });
+	_randomizerFloat.close({ force: true });
+	_optionsFloat.close({ force: true });
+	if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+		visualizerWindow.destroy();
+	}
+	for (const entry of [...lessonToolWindows.values()]) {
+		if (entry.win && !entry.win.isDestroyed()) entry.win.destroy();
+	}
+}
+
 function openQuestionWindow(question, bgColor, emoji, studentName) {
+	_randomizerFloat.close({ force: true });
+	_optionsFloat.close({ force: true });
 	const payload = { question, bgColor, emoji, studentName };
 	questionWindowIsLesson = !studentName;
+	questionWindowBgColor = bgColor || null;
+	questionOptions = [];
 	questionWindowStudentAnswered = null;
+	setPanelVisible(true);
 	_questionFloat.showOrReuse(payload, {});
 }
 
+function setQuestionWindowSquare() {
+	if (!questionWindow || questionWindow.isDestroyed()) return;
+	const workArea = screen.getPrimaryDisplay().workArea;
+	const side = 700;
+	const x = Math.floor(workArea.x + (workArea.width - side) / 2);
+	const y = questionWindowIsLesson
+		? workArea.y + workArea.height + 40
+		: Math.floor(workArea.y + (workArea.height - side) / 2);
+	questionWindow.setBounds({ x, y, width: side, height: side });
+	if (questionWindowRect) {
+		questionWindowRect.x = x;
+		questionWindowRect.y = y;
+		questionWindowRect.w = side;
+		questionWindowRect.h = side;
+	}
+}
+
+ipcMain.on("question-window-shape", (event, shape) => {
+	if (shape === "circle") setQuestionWindowSquare();
+});
+
 let questionWindowSlideTimer = null;
-function animateQuestionWindowOnScreen() {
+function _animateQuestionWindowTo(target, duration, onDone) {
 	if (!questionWindow || questionWindow.isDestroyed()) return;
 	if (questionWindowSlideTimer) {
 		clearInterval(questionWindowSlideTimer);
 		questionWindowSlideTimer = null;
 	}
-	const display = screen.getPrimaryDisplay();
-	const workArea = display.workArea;
-	const bounds = questionWindow.getBounds();
-	const targetY = Math.floor(
-		workArea.y + (workArea.height - bounds.height) / 2,
-	);
-	const startY = bounds.y;
-	if (startY === targetY) return;
+	const start = questionWindow.getBounds();
 	const startTime = Date.now();
-	const duration = 600;
 	questionWindowSlideTimer = setInterval(() => {
 		if (!questionWindow || questionWindow.isDestroyed()) {
 			clearInterval(questionWindowSlideTimer);
@@ -776,20 +991,38 @@ function animateQuestionWindowOnScreen() {
 		}
 		const t = Math.min(1, (Date.now() - startTime) / duration);
 		const eased = 1 - Math.pow(1 - t, 3);
-		const newY = Math.round(startY + (targetY - startY) * eased);
-		const b = questionWindow.getBounds();
-		questionWindow.setBounds({
-			x: b.x,
-			y: newY,
-			width: b.width,
-			height: b.height,
-		});
-		if (questionWindowRect) questionWindowRect.y = newY;
+		const lerp = (a, z) => Math.round(a + (z - a) * eased);
+		const nb = {
+			x: lerp(start.x, target.x),
+			y: lerp(start.y, target.y),
+			width: lerp(start.width, target.width),
+			height: lerp(start.height, target.height),
+		};
+		questionWindow.setBounds(nb);
+		if (questionWindowRect) {
+			questionWindowRect.x = nb.x;
+			questionWindowRect.y = nb.y;
+			questionWindowRect.w = nb.width;
+			questionWindowRect.h = nb.height;
+		}
 		if (t >= 1) {
 			clearInterval(questionWindowSlideTimer);
 			questionWindowSlideTimer = null;
+			if (onDone) onDone();
 		}
 	}, 16);
+}
+
+function animateQuestionWindowOnScreen() {
+	if (!questionWindow || questionWindow.isDestroyed()) return;
+	const workArea = screen.getPrimaryDisplay().workArea;
+	const b = questionWindow.getBounds();
+	const targetY = Math.floor(workArea.y + (workArea.height - b.height) / 2);
+	if (b.y === targetY) return;
+	_animateQuestionWindowTo(
+		{ x: b.x, y: targetY, width: b.width, height: b.height },
+		600,
+	);
 }
 
 broadcastServer.on("client-show-question", () => {
@@ -805,19 +1038,30 @@ ipcMain.on("close-question-window", () => {
 	broadcastServer.broadcastQuestionEnded();
 });
 
+ipcMain.on("close-randomizer-window", () => {
+	_randomizerFloat.close({ force: true });
+});
+
+ipcMain.on("close-options-window", () => {
+	_optionsFloat.close({ force: true });
+});
+
 ipcMain.on("enter-move-to-block", (event, payload) => {
 	state.pause();
 	broadcastServer.broadcastMoveToStarted(payload);
+	setPanelVisible(true);
 });
 
 ipcMain.on("close-move-to-window", () => {
 	state.unpause();
 	broadcastServer.broadcastMoveToEnded();
+	setPanelVisible(false);
 });
 
 broadcastServer.on("client-move-to-confirmed", () => {
 	state.unpause();
 	broadcastServer.broadcastMoveToEnded();
+	setPanelVisible(false);
 	if (state.mainWindow) {
 		state.mainWindow.webContents.send("move-to-confirmed");
 	}
@@ -839,6 +1083,15 @@ broadcastServer.on("client-interaction-overlay-shown", () => {
 
 broadcastServer.on("client-interaction-overlay-closed", () => {
 	state.unpause();
+	if (!questionWindow || questionWindow.isDestroyed()) setPanelVisible(false);
+});
+
+ipcMain.on("start-interaction", (event, interactionType) => {
+	setPanelVisible(true);
+	broadcastServer.broadcast({
+		type: "open-interaction",
+		data: { interactionType },
+	});
 });
 
 ipcMain.on(
@@ -863,7 +1116,7 @@ ipcMain.on(
 );
 
 ipcMain.on("pin-image-window", (event, pinned) => {
-	_imageFloat.pinned = pinned;
+	_imageFloat.setPinned(pinned);
 });
 
 const IMAGE_WINDOW_DISPLAY_SCALE = 0.95;
@@ -967,7 +1220,7 @@ ipcMain.on("start-resizing", (event, edge) => {
 });
 
 ipcMain.on("pin-web-window", (event, isPinned) => {
-	_webFloat.pinned = isPinned;
+	_webFloat.setPinned(isPinned);
 });
 
 ipcMain.on("set-active", (event, isActive) => {
@@ -1407,6 +1660,11 @@ ipcMain.on("update-active", (e, a) => broadcastServer.updateActiveState(a));
 ipcMain.on("update-lesson-name", (e, n) => broadcastServer.updateLessonName(n));
 
 ipcMain.handle("get-settings", () => settingsManager.getAll());
+ipcMain.handle(
+	"get-control-panel-url",
+	() =>
+		`http://127.0.0.1:${broadcastServer.port}/?t=${broadcastServer.token}&panel=1`,
+);
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());
 
 function reapplySettings() {

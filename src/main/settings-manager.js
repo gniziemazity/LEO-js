@@ -37,6 +37,10 @@ class SettingsManager {
 			autoTypingSpeed: 50,
 			touchpadSensitivity: 3,
 			touchpadSide: "right",
+			floatingTheme: "solid",
+			randomizerStyle: "shuffle",
+			answerEffect: "fireworks",
+			teacherName: "Teacher",
 		};
 
 		this.settings = this.load();

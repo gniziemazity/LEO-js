@@ -50,7 +50,9 @@
 					</div>
 				</div>
 			</div>
-			<div class="progress-bar" id="progressBar"></div>
+			<div class="progress-track">
+				<div class="progress-bar" id="progressBar"></div>
+			</div>
 		</div>
 
 		<div id="lesson-container">
@@ -125,13 +127,21 @@
 					✕
 				</button>
 				<div class="popup-title" id="iTitle">Select student</div>
-				<input
-					type="text"
-					class="i-question-input"
-					id="iQuestionInput"
-					placeholder="Type the question here..."
-					style="display: none"
-				/>
+				<div class="i-question-row" id="iQuestionRow" style="display: none">
+					<input
+						type="text"
+						class="i-question-input"
+						id="iQuestionInput"
+						placeholder="Type the question here..."
+					/>
+					<button
+						class="i-mic-btn"
+						id="iMicBtn"
+						onclick="interactionMic()"
+					>
+						🎤
+					</button>
+				</div>
 				<div class="popup-student-grid" id="iGrid"></div>
 			</div>
 		</div>
@@ -198,10 +208,17 @@
 							data.question,
 							data.students,
 							data.bgColor,
+							data.options,
 						);
 						break;
 					case "question-ended":
 						closeQuestionOverlayUI();
+						break;
+					case "randomizer-result":
+						onRandomizerResult(data.index, data.name);
+						break;
+					case "open-interaction":
+						handleInteractionBtn(data.interactionType);
 						break;
 					case "move-to-started":
 						showMoveToOverlay(data);

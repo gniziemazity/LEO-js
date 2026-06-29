@@ -14,6 +14,7 @@ const SpecialKeys = require("./renderer/special-keys");
 const TypingController = require("./renderer/typing-controller");
 const QRModalManager = require("./renderer/qr-modal");
 const { buildArtificialLogEvents } = require("./renderer/log-event-builder");
+const { parseQuestionOptions } = require("./renderer/question-options");
 const path = require("path");
 const fs = require("fs");
 
@@ -67,10 +68,21 @@ function applyMode(mode) {
 }
 
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
-	pendingQuestion = { question, timestamp, answeredBy: null, entry: null };
+	const { text, options } = parseQuestionOptions(question);
+	pendingQuestion = {
+		question: text,
+		timestamp,
+		answeredBy: null,
+		entry: null,
+	};
 	const students = fileOperations.getStudents();
 	const bgColor = getColor("questionCommentColor", "#facaca");
-	ipcRenderer.send("enter-question-block", { question, students, bgColor });
+	ipcRenderer.send("enter-question-block", {
+		question: text,
+		options,
+		students,
+		bgColor,
+	});
 };
 
 function logTeacherQuestionShown() {
@@ -166,6 +178,22 @@ window.addEventListener("DOMContentLoaded", () => {
 	setupEventListeners();
 	setupGlobalIpcListeners();
 	setupUndoRedoShortcuts();
+
+	ipcRenderer.invoke("get-control-panel-url").then((url) => {
+		const frame = document.getElementById("controlPanel");
+		if (frame && url) frame.src = url;
+	});
+
+	const bq = document.getElementById("btnStudentQuestion");
+	const bh = document.getElementById("btnProvidingHelp");
+	if (bq)
+		bq.addEventListener("click", () =>
+			ipcRenderer.send("start-interaction", "student-question"),
+		);
+	if (bh)
+		bh.addEventListener("click", () =>
+			ipcRenderer.send("start-interaction", "providing-help"),
+		);
 });
 
 function setupEventListeners() {
@@ -245,6 +273,9 @@ function setupGlobalIpcListeners() {
 	);
 	ipcRenderer.on("open-settings", () => settingsUI.open());
 	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
+	ipcRenderer.on("control-panel-visible", (e, show) =>
+		document.body.classList.toggle("panel-open", show),
+	);
 	ipcRenderer.on("log-interaction", (e, type) =>
 		logManager.addInteraction(type),
 	);

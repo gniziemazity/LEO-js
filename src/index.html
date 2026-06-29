@@ -6,6 +6,11 @@
 		<link rel="stylesheet" href="./shared/styles.css" />
 	</head>
 	<body>
+		<iframe
+			id="controlPanel"
+			class="control-panel"
+			title="Control Panel"
+		></iframe>
 		<div id="controls">
 			<button
 				id="toggleBtn"
@@ -14,6 +19,22 @@
 			>
 				▶︎
 			</button>
+			<div id="interaction-controls">
+				<button
+					id="btnStudentQuestion"
+					class="interaction-btn mode-side-btn-question"
+					title="Student Question"
+				>
+					❓
+				</button>
+				<button
+					id="btnProvidingHelp"
+					class="interaction-btn mode-side-btn-help"
+					title="Providing Help"
+				>
+					🤝
+				</button>
+			</div>
 			<div id="editor-toolbar">
 				<button
 					class="add-btn white"
@@ -92,7 +113,9 @@
 			</button>
 		</div>
 
-		<div class="progress-bar" id="progressBar"></div>
+		<div class="progress-track">
+			<div class="progress-bar" id="progressBar"></div>
+		</div>
 		<div id="main-layout">
 			<div id="lesson-container"></div>
 
@@ -252,6 +275,34 @@
 							<label>Font Size:</label>
 							<input type="number" id="fontSize" min="10" max="24" />
 						</div>
+
+						<div class="setting-item">
+							<label>Floating Window Theme:</label>
+							<select id="floatingTheme">
+								<option value="solid">Solid</option>
+							</select>
+						</div>
+
+						<div class="setting-item">
+							<label>Student Randomizer:</label>
+							<select id="randomizerStyle"></select>
+						</div>
+
+						<div class="setting-item">
+							<label>Answer Effect:</label>
+							<select id="answerEffect">
+								<option value="none">None</option>
+							</select>
+						</div>
+
+						<div class="setting-item">
+							<label>Teacher Name:</label>
+							<input
+								type="text"
+								id="teacherName"
+								placeholder="Teacher"
+							/>
+						</div>
 					</div>
 
 					<div class="settings-section">
@@ -378,6 +429,14 @@
 		</div>
 
 		<script src="./shared/code-text.js"></script>
+		<script src="./shared/themes/theme-runtime.js"></script>
+		<script src="./shared/themes/dragonball.js"></script>
+		<script src="./shared/randomizers/randomizer-runtime.js"></script>
+		<script src="./shared/randomizers/shuffle.js"></script>
+		<script src="./shared/randomizers/wheel.js"></script>
+		<script src="./shared/effects/effect-runtime.js"></script>
+		<script src="./shared/effects/fireworks.js"></script>
 		<script src="./renderer/renderer.js"></script>
+		<script src="./renderer/plugin.js"></script>
 	</body>
 </html>

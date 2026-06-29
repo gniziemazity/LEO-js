@@ -1,5 +1,6 @@
 let currentSettings = null;
 let isActive = false;
+let teacherName = "Teacher";
 
 function getBlockSubtype(text) {
 	const t = text.trim();
@@ -52,6 +53,7 @@ function updateActiveState(active) {
 
 function applySettings(settings) {
 	currentSettings = settings;
+	if (settings.teacherName) teacherName = settings.teacherName;
 	const id = "dynamic-settings-styles";
 	let s = document.getElementById(id);
 	if (!s) {

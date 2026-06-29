@@ -133,6 +133,53 @@ class SettingsUI {
 		document.getElementById("touchpadSide").value =
 			settings.touchpadSide || "right";
 
+		const themeSelect = document.getElementById("floatingTheme");
+		if (themeSelect) {
+			const names = typeof listThemes === "function" ? listThemes() : [];
+			for (const name of names) {
+				if (!themeSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					themeSelect.appendChild(opt);
+				}
+			}
+			themeSelect.value = settings.floatingTheme || "solid";
+		}
+
+		const randomizerSelect = document.getElementById("randomizerStyle");
+		if (randomizerSelect) {
+			const rnames =
+				typeof listRandomizers === "function" ? listRandomizers() : [];
+			for (const name of rnames) {
+				if (!randomizerSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					randomizerSelect.appendChild(opt);
+				}
+			}
+			randomizerSelect.value = settings.randomizerStyle || "shuffle";
+		}
+
+		const effectSelect = document.getElementById("answerEffect");
+		if (effectSelect) {
+			const enames = typeof listEffects === "function" ? listEffects() : [];
+			for (const name of enames) {
+				if (!effectSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					effectSelect.appendChild(opt);
+				}
+			}
+			effectSelect.value = settings.answerEffect || "fireworks";
+		}
+
+		const teacherNameInput = document.getElementById("teacherName");
+		if (teacherNameInput)
+			teacherNameInput.value = settings.teacherName || "Teacher";
+
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
 	}
 
@@ -190,6 +237,18 @@ class SettingsUI {
 				document.getElementById("touchpadSensitivity").value,
 			),
 			touchpadSide: document.getElementById("touchpadSide").value,
+			floatingTheme: document.getElementById("floatingTheme")
+				? document.getElementById("floatingTheme").value
+				: "solid",
+			randomizerStyle: document.getElementById("randomizerStyle")
+				? document.getElementById("randomizerStyle").value
+				: "shuffle",
+			answerEffect: document.getElementById("answerEffect")
+				? document.getElementById("answerEffect").value
+				: "fireworks",
+			teacherName: document.getElementById("teacherName")
+				? document.getElementById("teacherName").value.trim() || "Teacher"
+				: "Teacher",
 		};
 
 		ipcRenderer.send("save-settings", settings);

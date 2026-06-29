@@ -14,8 +14,8 @@ const questionOverlay = new QuestionOverlay();
 const interactionOverlay = new InteractionOverlay();
 const moveToOverlay = new MoveToOverlay();
 
-function showQuestionOverlay(question, students, bgColor) {
-	questionOverlay.show(question, students, bgColor);
+function showQuestionOverlay(question, students, bgColor, options) {
+	questionOverlay.show(question, students, bgColor, options);
 }
 
 function showQuestionToTeacher() {
@@ -54,6 +54,10 @@ function closeInteractionOverlay() {
 	interactionOverlay.closeOverlay();
 }
 
+function interactionMic() {
+	interactionOverlay.toggleDictation();
+}
+
 function showMoveToOverlay(payload) {
 	moveToOverlay.show(payload);
 }
@@ -64,4 +68,16 @@ function closeMoveToOverlayUI() {
 
 function closeMoveToOverlay() {
 	moveToOverlay.confirm();
+}
+
+function questionRandomize() {
+	questionOverlay.randomize();
+}
+
+function questionShowOptions() {
+	questionOverlay.showOptions();
+}
+
+function onRandomizerResult(index, name) {
+	questionOverlay.showRandomResult(index, name);
 }
