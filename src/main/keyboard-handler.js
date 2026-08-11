@@ -2,82 +2,6 @@ const { keyboard, Key } = require("@computer-use/nut-js");
 const { NUTJS_KEY_MAPPING } = require("../shared/constants");
 const state = require("./state");
 
-const SHIFTED_CHAR_TO_KEY = {
-	"!": Key.Num1,
-	"@": Key.Num2,
-	"#": Key.Num3,
-	$: Key.Num4,
-	"%": Key.Num5,
-	"^": Key.Num6,
-	"&": Key.Num7,
-	"*": Key.Num8,
-	"(": Key.Num9,
-	")": Key.Num0,
-	_: Key.Minus,
-	"+": Key.Equal,
-	"{": Key.LeftBracket,
-	"}": Key.RightBracket,
-	"|": Key.Backslash,
-	":": Key.Semicolon,
-	'"': Key.Quote,
-	"<": Key.Comma,
-	">": Key.Period,
-	"?": Key.Slash,
-	"~": Key.Grave,
-};
-
-const CHAR_TO_KEY = {
-	a: Key.A,
-	b: Key.B,
-	c: Key.C,
-	d: Key.D,
-	e: Key.E,
-	f: Key.F,
-	g: Key.G,
-	h: Key.H,
-	i: Key.I,
-	j: Key.J,
-	k: Key.K,
-	l: Key.L,
-	m: Key.M,
-	n: Key.N,
-	o: Key.O,
-	p: Key.P,
-	q: Key.Q,
-	r: Key.R,
-	s: Key.S,
-	t: Key.T,
-	u: Key.U,
-	v: Key.V,
-	w: Key.W,
-	x: Key.X,
-	y: Key.Y,
-	z: Key.Z,
-	0: Key.Num0,
-	1: Key.Num1,
-	2: Key.Num2,
-	3: Key.Num3,
-	4: Key.Num4,
-	5: Key.Num5,
-	6: Key.Num6,
-	7: Key.Num7,
-	8: Key.Num8,
-	9: Key.Num9,
-	" ": Key.Space,
-	".": Key.Period,
-	",": Key.Comma,
-	"/": Key.Slash,
-	"\\": Key.Backslash,
-	";": Key.Semicolon,
-	"'": Key.Quote,
-	"[": Key.LeftBracket,
-	"]": Key.RightBracket,
-	"-": Key.Minus,
-	"=": Key.Equal,
-	"`": Key.Grave,
-	"\t": Key.Tab,
-};
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class KeyboardHandler {
@@ -247,33 +171,6 @@ class KeyboardHandler {
 
 		if (char === "\t") {
 			await keyboard.type(Key.Tab);
-			return;
-		}
-
-		if (this.isMacOS()) {
-			await this.typeWithKeyConstants(char);
-		} else {
-			await keyboard.type(char);
-		}
-	}
-
-	async typeWithKeyConstants(char) {
-		const charLower = char.toLowerCase();
-
-		if (CHAR_TO_KEY[charLower]) {
-			const keyToType = CHAR_TO_KEY[charLower];
-			const isUpperCase = char !== charLower && /[A-Z]/.test(char);
-
-			if (isUpperCase) {
-				await keyboard.type(Key.LeftShift, keyToType);
-			} else {
-				await keyboard.type(keyToType);
-			}
-			return;
-		}
-
-		if (SHIFTED_CHAR_TO_KEY[char]) {
-			await keyboard.type(Key.LeftShift, SHIFTED_CHAR_TO_KEY[char]);
 			return;
 		}
 
