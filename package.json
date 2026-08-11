@@ -59,6 +59,7 @@
 		}
 	},
 	"dependencies": {
+		"@computer-use/libnut": "^4.2.0",
 		"@computer-use/nut-js": "^4.2.0",
 		"express": "^5.2.1",
 		"qrcode": "^1.5.4",
