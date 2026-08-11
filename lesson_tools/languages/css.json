@@ -1,0 +1,22 @@
+{
+	"id": "css",
+	"extensions": [".css"],
+	"comments": {
+		"line": null,
+		"block": { "open": "/*", "close": "*/" },
+		"detectRe": "/\\*[\\s\\S]*?\\*/"
+	},
+	"strings": [
+		{ "open": "\"", "close": "\"", "escape": "\\" },
+		{ "open": "'", "close": "'", "escape": "\\" }
+	],
+	"keywords": [],
+	"builtins": [],
+	"identifierRe": "[a-zA-Z-][a-zA-Z0-9-]*",
+	"numberRe": "-?\\d+\\.?\\d*",
+	"indent": {
+		"increaseAfter": "[{(\\[]\\s*$",
+		"decreaseOnLine": "^[})\\]]",
+		"decreaseAfter": ""
+	}
+}

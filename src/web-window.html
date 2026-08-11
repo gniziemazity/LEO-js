@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Web</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="web-view">
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame">
+			<button id="pinBtn">📌</button>
+			<div class="web-bar" id="webBar">
+				<span class="web-url" id="webUrl"></span>
+			</div>
+			<webview
+				id="webview"
+				src="about:blank"
+				webpreferences="contextIsolation=yes,sandbox=yes,nodeIntegration=no"
+			></webview>
+		</div>
+
+		<script>
+			const { ipcRenderer } = require("electron");
+			let pinned = false;
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape") ipcRenderer.send("force-close-web-window");
+				if (e.ctrlKey && (e.key === "i" || e.key === "I")) {
+					e.preventDefault();
+					ipcRenderer.send("open-web-devtools");
+				}
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			const pinBtn = document.getElementById("pinBtn");
+			const webview = document.getElementById("webview");
+			const webUrl = document.getElementById("webUrl");
+
+			function reflectPin() {
+				pinBtn.classList.toggle("pinned", pinned);
+			}
+
+			function setPin(value) {
+				if (pinned === value) return;
+				pinned = value;
+				reflectPin();
+				ipcRenderer.send("pin-web-window", pinned);
+			}
+
+			pinBtn.addEventListener("click", () => setPin(!pinned));
+
+			webview.addEventListener("did-navigate", (e) => {
+				if (e.url && e.url !== "about:blank") webUrl.textContent = e.url;
+			});
+			webview.addEventListener("did-navigate-in-page", (e) => {
+				if (e.isMainFrame && e.url) webUrl.textContent = e.url;
+			});
+
+			ipcRenderer.on("set-url", (event, { url, shouldPin }) => {
+				let safe = "about:blank";
+				try {
+					const u = new URL(url);
+					if (u.protocol === "http:" || u.protocol === "https:")
+						safe = u.href;
+				} catch (e) {}
+				webview.src = safe;
+				webUrl.textContent = safe === "about:blank" ? "" : safe;
+				if (shouldPin) setPin(true);
+			});
+		</script>
+	</body>
+</html>

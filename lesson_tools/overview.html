@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Course Dashboard</title>
+		<link rel="stylesheet" href="shared/shared.css" />
+		<link rel="stylesheet" href="overview/overview.css" />
+		<script>
+			document.documentElement.classList.add("autoload");
+		</script>
+	</head>
+	<body>
+		<div id="toolbar" class="app-toolbar">
+			<button class="active" data-page="students">Students</button>
+			<button data-page="stats">Statistics</button>
+			<button data-page="clusters">Progress</button>
+			<div class="sep"></div>
+			<span id="basis-picker"></span>
+			<span class="tab-controls" data-tab="stats" hidden>
+				<span class="tc-right">
+					<label
+						class="toolbar-check"
+						title="Include copied submissions (lesson Obs contains '<') in the follow-score charts"
+					>
+						<input
+							type="checkbox"
+							id="show-copiers"
+							onchange="onShowCopiersChange(this.checked)"
+						/>
+						Copiers
+					</label>
+					<button id="stats-download-btn">🖼️ Download</button>
+				</span>
+			</span>
+			<span class="tab-controls" data-tab="clusters" hidden>
+				<div class="sep"></div>
+				<span>Clusters:</span>
+				<select id="cluster-mode" class="tb-select">
+					<option value="kmeans">K-means</option>
+					<option value="manualA" selected>Manual</option>
+				</select>
+				<span class="cluster-kmeans-only">K:</span>
+				<input
+					type="number"
+					id="cluster-k"
+					min="1"
+					max="25"
+					step="1"
+					value="1"
+					class="cluster-kmeans-only tb-num"
+				/>
+				<span>Sort:</span>
+				<select id="cluster-sort-select" class="tb-select">
+					<option value="id">ID</option>
+					<option value="total-follow" selected>Follow</option>
+					<option value="artefacts" id="cluster-sort-artefacts-opt">
+						Artefacts
+					</option>
+				</select>
+				<span class="tc-right">
+					<label class="toolbar-check">
+						<input
+							type="checkbox"
+							id="follow-mode-lang-cb"
+							onchange="_onProgressControlChange()"
+						/>
+						Languages
+					</label>
+					<label
+						class="toolbar-check"
+						title="Show assignment artefact rows on the Progress cards (and the LLM Probes group)"
+					>
+						<input
+							type="checkbox"
+							id="show-artefacts"
+							onchange="onShowArtefactsChange(this.checked)"
+						/>
+						Artefacts
+					</label>
+					<button id="progress-download-btn">🖼️ Download</button>
+				</span>
+			</span>
+			<span id="nav-info"></span>
+		</div>
+
+		<div id="page-students" class="page">
+			<div class="table-wrap"><table id="grades-table"></table></div>
+		</div>
+
+		<div id="page-stats" class="page">
+			<div id="stats-no-data" style="display: none">
+				Run <code>npm run overview</code> first to generate statistics.
+			</div>
+			<div class="stats-body" id="stats-body"></div>
+		</div>
+
+		<div id="page-clusters" class="page">
+			<div
+				id="cluster-manual-panel"
+				style="
+					display: none;
+					padding: 8px 12px;
+					border-bottom: 1px solid var(--clr-border);
+				"
+			>
+				<div
+					style="
+						font-size: 11px;
+						color: var(--clr-label);
+						margin-bottom: 4px;
+					"
+				>
+					One cluster per line, IDs comma- or space-separated. Use
+					<code>rest</code> for everyone else.
+				</div>
+				<textarea
+					data-manual-text="A"
+					rows="6"
+					style="
+						width: 100%;
+						font-family: monospace;
+						font-size: 11px;
+						padding: 6px;
+						border: 1px solid var(--clr-border);
+						border-radius: 3px;
+						resize: vertical;
+					"
+				></textarea>
+				<div style="margin-top: 4px">
+					<button id="cluster-manual-apply">Apply</button>
+				</div>
+			</div>
+			<div class="clusters-body" id="clusters-body"></div>
+		</div>
+
+		<div id="loading">Loading…</div>
+
+		<script src="shared/timeline-utils.js"></script>
+		<script src="shared/xlsx.full.min.js"></script>
+		<script src="../src/shared/charts/utils.js"></script>
+		<script src="../src/shared/charts/scatter/scatter-chart.js"></script>
+		<script src="../src/shared/charts/bar/bar-chart.js"></script>
+		<script src="../src/shared/charts/line/line-chart.js"></script>
+		<script src="../src/shared/charts/boxplot/boxplot-chart.js"></script>
+		<script src="shared/tooltip.js"></script>
+		<script src="shared/diff-utils.js"></script>
+		<script src="shared/follow-bar.js"></script>
+		<script src="shared/interactions.js"></script>
+		<script src="shared/artefact.js"></script>
+		<script src="shared/data-source.js"></script>
+		<script src="shared/http-file-like.js"></script>
+		<script src="shared/fs-data-source.js"></script>
+		<script src="shared/scoped-data-source.js"></script>
+		<script src="shared/http-data-source.js"></script>
+		<script src="shared/grades-data-source.js"></script>
+		<script src="shared/mini-zip.js"></script>
+		<script src="overview/state.js"></script>
+		<script src="overview/data.js"></script>
+		<script src="overview/basis.js"></script>
+		<script src="overview/table.js"></script>
+		<script src="overview/chart-legend.js"></script>
+		<script src="overview/stat-table.js"></script>
+		<script src="overview/kv-list.js"></script>
+		<script src="overview/chart-card.js"></script>
+		<script src="overview/charts.js"></script>
+		<script src="overview/stats.js"></script>
+		<script src="overview/clusters.js"></script>
+		<script src="overview/progress.js"></script>
+		<script src="overview/index.js"></script>
+	</body>
+</html>
+
+<script src="overview/llm-stats.js"></script>
+<script src="overview/lesson-stats.js"></script>

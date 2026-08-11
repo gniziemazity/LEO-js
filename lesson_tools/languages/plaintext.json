@@ -1,0 +1,15 @@
+{
+	"id": "plaintext",
+	"extensions": [".txt"],
+	"comments": { "line": null, "block": null },
+	"strings": [],
+	"keywords": [],
+	"builtins": [],
+	"identifierRe": "[A-Za-z_][A-Za-z0-9_]*",
+	"numberRe": "\\d+\\.?\\d*",
+	"indent": {
+		"increaseAfter": "",
+		"decreaseOnLine": "",
+		"decreaseAfter": ""
+	}
+}

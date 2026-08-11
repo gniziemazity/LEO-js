@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Options</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="options-view">
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame" id="neonFrame">
+			<div class="options-area" id="optionsArea"></div>
+		</div>
+
+		<script src="./shared/themes/theme-runtime.js"></script>
+		<script src="./shared/themes/dragonball.js"></script>
+		<script>
+			const { ipcRenderer } = require("electron");
+
+			ipcRenderer.on("fade-out", () => {
+				document.body.style.transition = "opacity 300ms ease";
+				document.body.style.opacity = "0";
+			});
+
+			ipcRenderer.invoke("get-settings").then((s) => {
+				if (s) initBackground(s.floatingTheme);
+			});
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape") ipcRenderer.send("close-options-window");
+				if (e.ctrlKey && (e.key === "i" || e.key === "I")) {
+					e.preventDefault();
+					ipcRenderer.send("open-options-devtools");
+				}
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			ipcRenderer.on("set-options", (event, { options, bgColor }) => {
+				document.body.style.transition = "";
+				document.body.style.opacity = "1";
+				const area = document.getElementById("optionsArea");
+				const solidColor =
+					bgColor ||
+					getComputedStyle(document.body)
+						.getPropertyValue("--clr-question-bg")
+						.trim();
+				setBackgroundColor(solidColor);
+				area.innerHTML = "";
+				(options || []).forEach((opt) => {
+					const row = document.createElement("div");
+					row.className = "option-item";
+					const label = document.createElement("b");
+					label.className = "option-label";
+					label.textContent = opt.label;
+					row.appendChild(label);
+					row.appendChild(document.createTextNode(" " + (opt.text || "")));
+					area.appendChild(row);
+				});
+			});
+		</script>
+	</body>
+</html>

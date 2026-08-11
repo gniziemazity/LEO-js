@@ -1,0 +1,289 @@
+const { ipcRenderer } = require("electron");
+const { buildSettingsCSS } = require("../shared/constants");
+
+class SettingsUI {
+	constructor() {
+		this.currentSettings = null;
+		this.modal = null;
+	}
+
+	initialize() {
+		this.modal = document.getElementById("settingsModal");
+		this.setupEventListeners();
+	}
+
+	setupEventListeners() {
+		const closeSettings = document.getElementById("closeSettings");
+		const saveSettings = document.getElementById("saveSettings");
+		const resetSettings = document.getElementById("resetSettings");
+
+		if (closeSettings) closeSettings.onclick = () => this.close();
+		if (saveSettings) saveSettings.onclick = () => this.save();
+
+		if (resetSettings) {
+			resetSettings.onclick = async () => {
+				if (confirm("Reset all settings to default values?")) {
+					ipcRenderer.send("reset-settings");
+					ipcRenderer.once("settings-loaded", (event, settings) => {
+						this.loadIntoModal(settings);
+					});
+				}
+			};
+		}
+
+		if (this.modal) {
+			this.modal.onclick = (e) => {
+				if (e.target === this.modal) this.close();
+			};
+		}
+
+		const hotkeyModeSelect = document.getElementById("hotkeyMode");
+		if (hotkeyModeSelect) {
+			hotkeyModeSelect.addEventListener("change", (e) => {
+				this.updateSpeedVisibility(e.target.value);
+			});
+		}
+
+		const speedSlider = document.getElementById("autoTypingSpeed");
+		if (speedSlider) {
+			speedSlider.addEventListener("input", (e) => {
+				document.getElementById("speedValue").textContent = e.target.value;
+			});
+		}
+
+		const sensitivitySlider = document.getElementById("touchpadSensitivity");
+		if (sensitivitySlider) {
+			sensitivitySlider.addEventListener("input", (e) => {
+				document.getElementById("sensitivityValue").textContent =
+					parseFloat(e.target.value).toFixed(1);
+			});
+		}
+	}
+
+	async open() {
+		const settings = await ipcRenderer.invoke("get-settings");
+		this.currentSettings = settings;
+		this.loadIntoModal(settings);
+		this.modal.classList.add("active");
+	}
+
+	close() {
+		this.modal.classList.remove("active");
+	}
+
+	loadIntoModal(settings) {
+		document.getElementById("platformSelect").value =
+			settings.platform || "windows";
+
+		document.getElementById("typingHotkeys").value =
+			settings.hotkeys.typing.join("");
+		document.getElementById("toggleActiveKey").value =
+			settings.hotkeys.toggleActive;
+		document.getElementById("stepBackwardKey").value =
+			settings.hotkeys.stepBackward;
+		document.getElementById("stepForwardKey").value =
+			settings.hotkeys.stepForward;
+		document.getElementById("alwaysOnTopKey").value =
+			settings.hotkeys.alwaysOnTop;
+		document.getElementById("toggleTransparencyKey").value =
+			settings.hotkeys.toggleTransparency;
+		document.getElementById("toggleWindowKey").value =
+			settings.hotkeys.toggleWindow;
+
+		document.getElementById("commentNormalColor").value =
+			settings.colors.commentNormal;
+		document.getElementById("codeBlockColor").value =
+			settings.colors.codeBlockColor || "#ffffff";
+		document.getElementById("questionCommentColor").value =
+			settings.colors.questionCommentColor;
+		document.getElementById("imageBlockColor").value =
+			settings.colors.imageBlockColor;
+		document.getElementById("codeInsertBlockColor").value =
+			settings.colors.codeInsertBlockColor || "#f0f0f0";
+		document.getElementById("moveToBlockColor").value =
+			settings.colors.moveToBlockColor || "#424242";
+		document.getElementById("moveToTextColor").value =
+			settings.colors.moveToTextColor || "#ffffff";
+		document.getElementById("commentActiveColor").value =
+			settings.colors.commentActive;
+		document.getElementById("commentSelectedColor").value =
+			settings.colors.commentSelected;
+		document.getElementById("commentActiveTextColor").value =
+			settings.colors.commentActiveText;
+		document.getElementById("cursorColor").value = settings.colors.cursor;
+		document.getElementById("selectedBorderColor").value =
+			settings.colors.selectedBorder;
+		document.getElementById("textColor").value = settings.colors.textColor;
+
+		document.getElementById("fontSize").value = settings.fontSize;
+
+		document.getElementById("hotkeyMode").value =
+			settings.hotkeyMode || "single-key";
+		document.getElementById("autoTypingSpeed").value =
+			settings.autoTypingSpeed;
+		document.getElementById("speedValue").textContent =
+			settings.autoTypingSpeed;
+
+		document.getElementById("touchpadSensitivity").value =
+			settings.touchpadSensitivity || 3;
+		document.getElementById("sensitivityValue").textContent = parseFloat(
+			settings.touchpadSensitivity || 3,
+		).toFixed(1);
+
+		document.getElementById("touchpadSide").value =
+			settings.touchpadSide || "right";
+
+		const themeSelect = document.getElementById("floatingTheme");
+		if (themeSelect) {
+			const names = typeof listThemes === "function" ? listThemes() : [];
+			for (const name of names) {
+				if (!themeSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					themeSelect.appendChild(opt);
+				}
+			}
+			themeSelect.value = settings.floatingTheme || "solid";
+		}
+
+		const randomizerSelect = document.getElementById("randomizerStyle");
+		if (randomizerSelect) {
+			const rnames =
+				typeof listRandomizers === "function" ? listRandomizers() : [];
+			for (const name of rnames) {
+				if (!randomizerSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					randomizerSelect.appendChild(opt);
+				}
+			}
+			randomizerSelect.value = settings.randomizerStyle || "shuffle";
+		}
+
+		const effectSelect = document.getElementById("answerEffect");
+		if (effectSelect) {
+			const enames = typeof listEffects === "function" ? listEffects() : [];
+			for (const name of enames) {
+				if (!effectSelect.querySelector(`option[value="${name}"]`)) {
+					const opt = document.createElement("option");
+					opt.value = name;
+					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+					effectSelect.appendChild(opt);
+				}
+			}
+			effectSelect.value = settings.answerEffect || "fireworks";
+		}
+
+		const teacherNameInput = document.getElementById("teacherName");
+		if (teacherNameInput)
+			teacherNameInput.value = settings.teacherName || "Teacher";
+
+		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
+	}
+
+	updateSpeedVisibility(mode) {
+		const speedContainer = document.getElementById("speedSettingContainer");
+		if (speedContainer) {
+			speedContainer.style.display = mode === "auto-run" ? "block" : "none";
+		}
+	}
+
+	save() {
+		const typingHotkeysStr = document.getElementById("typingHotkeys").value;
+		const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
+
+		const settings = {
+			platform: document.getElementById("platformSelect").value,
+			hotkeys: {
+				typing: typingHotkeys,
+				toggleActive: document.getElementById("toggleActiveKey").value,
+				stepBackward: document.getElementById("stepBackwardKey").value,
+				stepForward: document.getElementById("stepForwardKey").value,
+				alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
+				toggleTransparency: document.getElementById("toggleTransparencyKey")
+					.value,
+				toggleWindow: document.getElementById("toggleWindowKey").value,
+			},
+			colors: {
+				commentNormal: document.getElementById("commentNormalColor").value,
+				codeBlockColor: document.getElementById("codeBlockColor").value,
+				questionCommentColor: document.getElementById(
+					"questionCommentColor",
+				).value,
+				imageBlockColor: document.getElementById("imageBlockColor").value,
+				codeInsertBlockColor: document.getElementById(
+					"codeInsertBlockColor",
+				).value,
+				moveToBlockColor: document.getElementById("moveToBlockColor").value,
+				moveToTextColor: document.getElementById("moveToTextColor").value,
+				commentActive: document.getElementById("commentActiveColor").value,
+				commentSelected: document.getElementById("commentSelectedColor")
+					.value,
+				commentActiveText: document.getElementById("commentActiveTextColor")
+					.value,
+				cursor: document.getElementById("cursorColor").value,
+				selectedBorder: document.getElementById("selectedBorderColor")
+					.value,
+				textColor: document.getElementById("textColor").value,
+			},
+			fontSize: parseInt(document.getElementById("fontSize").value),
+			hotkeyMode: document.getElementById("hotkeyMode").value,
+			autoTypingSpeed: parseInt(
+				document.getElementById("autoTypingSpeed").value,
+			),
+			touchpadSensitivity: parseFloat(
+				document.getElementById("touchpadSensitivity").value,
+			),
+			touchpadSide: document.getElementById("touchpadSide").value,
+			floatingTheme: document.getElementById("floatingTheme")
+				? document.getElementById("floatingTheme").value
+				: "solid",
+			randomizerStyle: document.getElementById("randomizerStyle")
+				? document.getElementById("randomizerStyle").value
+				: "shuffle",
+			answerEffect: document.getElementById("answerEffect")
+				? document.getElementById("answerEffect").value
+				: "fireworks",
+			teacherName: document.getElementById("teacherName")
+				? document.getElementById("teacherName").value.trim() || "Teacher"
+				: "Teacher",
+		};
+
+		ipcRenderer.send("save-settings", settings);
+	}
+
+	applySettings(settings) {
+		if (!settings) return;
+
+		this.currentSettings = settings;
+
+		const styleId = "dynamic-settings-styles";
+		let styleEl = document.getElementById(styleId);
+
+		if (!styleEl) {
+			styleEl = document.createElement("style");
+			styleEl.id = styleId;
+			document.head.appendChild(styleEl);
+		}
+
+		styleEl.textContent =
+			buildSettingsCSS(settings) +
+			`
+         #speedSettingContainer {
+            display: ${settings.hotkeyMode === "auto-run" ? "block" : "none"};
+         }
+         
+         .speed-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+         }
+      `;
+	}
+}
+
+module.exports = SettingsUI;

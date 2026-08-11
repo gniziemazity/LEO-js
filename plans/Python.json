@@ -1,0 +1,38 @@
+[
+  {
+    "type": "comment",
+    "text": "PYTHON LESSON: Greet a list of friends\n\nBefore starting:\n1. Open a terminal and create main.py\n2. Open it in VS Code\n3. Make sure the Python extension is active (auto-indent on `:` and dedent after `return` rely on it)"
+  },
+  {
+    "type": "comment",
+    "text": "Top-level comment describing what we'll build."
+  },
+  {
+    "type": "code",
+    "text": "# Greet a list of friends."
+  },
+  {
+    "type": "comment",
+    "text": "Define a small function that returns a greeting string.\nThe colon at the end of `def greet(name):` triggers auto-indent for the body."
+  },
+  {
+    "type": "code",
+    "text": "\n\ndef greet(name):\nreturn \"Hello, \" + name + \"!\""
+  },
+  {
+    "type": "comment",
+    "text": "TEST: open the Python REPL and try\n  >>> from main import greet\n  >>> greet(\"Anna\")\n  'Hello, Anna!'"
+  },
+  {
+    "type": "comment",
+    "text": "Build a list of friends and loop through it.\nVS Code's Python rules dedent automatically after `return`, so the next line starts at column 0."
+  },
+  {
+    "type": "code",
+    "text": "\n\nfriends = [\"Anna\", \"Bob\", \"Cleo\"]\nfor friend in friends:\nprint(greet(friend))💾"
+  },
+  {
+    "type": "comment",
+    "text": "Run with:\n  python main.py\n\nExpected output:\n  Hello, Anna!\n  Hello, Bob!\n  Hello, Cleo!"
+  }
+]

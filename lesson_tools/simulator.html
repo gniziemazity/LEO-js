@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Simulator</title>
+		<link rel="stylesheet" href="shared/shared.css" />
+		<style>
+			html,
+			body {
+				height: 100%;
+				width: 100%;
+				overflow: hidden;
+				background: var(--clr-toolbar);
+			}
+
+			#vis-root {
+				display: flex;
+				height: 100vh;
+				width: 100%;
+			}
+
+			#vis-left {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 0;
+				min-width: 0;
+			}
+
+			#vis-divider,
+			#vis-dev-divider {
+				flex: 0 0 4px;
+				background: var(--clr-border);
+				user-select: none;
+				touch-action: none;
+				transition: background 0.15s;
+			}
+
+			#vis-divider {
+				cursor: col-resize;
+			}
+
+			#vis-dev-divider {
+				cursor: row-resize;
+			}
+
+			#vis-divider:hover,
+			#vis-dev-divider:hover {
+				background: var(--clr-accent);
+			}
+
+			#vis-right {
+				display: flex;
+				flex-direction: column;
+				flex: 0 0 40%;
+				min-width: 0;
+				background: var(--clr-surface);
+			}
+
+			#vis-right-main {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 0;
+				min-height: 0;
+			}
+
+			#vis-toolbar {
+				gap: 6px;
+				flex-wrap: wrap;
+			}
+
+			#vis-toolbar button {
+				padding: 3px 10px;
+				border: none;
+				border-radius: 3px;
+				cursor: pointer;
+				font-size: 11px;
+				color: var(--clr-white);
+			}
+
+			#btn-play {
+				background: var(--clr-green);
+			}
+			#btn-toggle-log,
+			#btn-toggle-devtools {
+				background: var(--clr-muted);
+				padding: 4px 8px;
+				transition: background 0.15s;
+			}
+			#btn-toggle-log:hover,
+			#btn-toggle-devtools:hover {
+				background: var(--clr-label);
+			}
+
+			#vis-toolbar label {
+				font-size: 11px;
+				color: var(--clr-muted);
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+			#speed-slider {
+				width: 120px;
+			}
+			#speed-label {
+				font-size: 11px;
+				font-weight: bold;
+				color: var(--clr-accent);
+				min-width: 32px;
+			}
+
+			#vis-seekbar {
+				height: 10px;
+				background: var(--clr-muted);
+				cursor: pointer;
+				flex-shrink: 0;
+				position: relative;
+				border-bottom: 1px solid var(--clr-border);
+			}
+			#vis-seekfill {
+				height: 100%;
+				background: var(--clr-accent);
+				opacity: 0.5;
+				width: 0%;
+				pointer-events: none;
+				position: relative;
+				z-index: 2;
+			}
+			.seek-skip {
+				position: absolute;
+				top: 0;
+				height: 100%;
+				background: var(--clr-white);
+				opacity: 0.9;
+				pointer-events: none;
+				z-index: 1;
+			}
+
+			#vis-main {
+				display: flex;
+				flex: 1 1 0;
+				min-height: 0;
+				overflow: hidden;
+			}
+
+			#vis-editor-wrap {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 0;
+				min-width: 0;
+				overflow: hidden;
+				position: relative;
+			}
+
+			pre#vis-editor {
+				flex: 1 1 0;
+				overflow: auto;
+				background: var(--clr-bg);
+				color: var(--clr-text);
+				font-family: Consolas, "Courier New", monospace;
+				font-size: 12px;
+				line-height: 1.5;
+				padding: 6px 8px;
+				white-space: pre-wrap;
+				word-break: break-all;
+				min-height: 0;
+			}
+
+			#vis-event-log-wrap {
+				width: 212px;
+				flex-shrink: 0;
+				display: flex;
+				flex-direction: column;
+				border-left: 1px solid var(--clr-border);
+				background: var(--clr-surface-light);
+				overflow: hidden;
+			}
+
+			#vis-event-log {
+				flex: 1 1 0;
+				overflow-y: auto;
+				font-family: Consolas, monospace;
+				font-size: 10px;
+				padding: 4px 6px;
+				white-space: pre-wrap;
+				word-break: break-all;
+				color: var(--clr-accent);
+			}
+
+			#vis-preview {
+				flex: 5 1 0;
+				min-height: 0;
+				border: none;
+				background: var(--clr-bg);
+			}
+
+			#vis-dev-outer {
+				flex: 1 1 50px;
+				min-height: 0;
+				display: flex;
+				flex-direction: column;
+				background: var(--clr-surface-light);
+			}
+
+			pre#vis-dev-editor {
+				flex: 1 1 0;
+				overflow: auto;
+				background: var(--clr-surface-light);
+				color: var(--clr-purple);
+				font-family: Consolas, "Courier New", monospace;
+				font-size: 11px;
+				line-height: 1.5;
+				padding: 4px 6px;
+				white-space: pre-wrap;
+				word-break: break-all;
+				min-height: 0;
+			}
+
+			pre#vis-dev-editor.vis-int-mode {
+				color: var(--clr-text);
+				font-family: inherit;
+				font-size: 13px;
+				line-height: 1.45;
+				padding: 12px 14px;
+				white-space: normal;
+				word-break: normal;
+			}
+
+			.vis-int-title {
+				font-weight: 700;
+				font-size: 14px;
+				margin-bottom: 8px;
+				color: var(--clr-accent);
+			}
+
+			.vis-int-info {
+				margin-bottom: 10px;
+				white-space: pre-wrap;
+				color: var(--clr-text);
+			}
+
+			.vis-int-line {
+				font-size: 12px;
+				color: var(--clr-text-soft);
+				margin-bottom: 3px;
+			}
+
+			.vis-int-key {
+				color: var(--clr-label);
+				font-weight: 600;
+			}
+
+			#vis-file-tabs {
+				display: flex;
+				flex-wrap: wrap;
+				background: var(--clr-toolbar);
+				border-bottom: 1px solid var(--clr-border);
+				flex-shrink: 0;
+			}
+			#vis-file-tabs:empty {
+				display: none;
+			}
+
+			@keyframes anchor-flash {
+				0% {
+					outline: 2px solid var(--clr-accent);
+				}
+				60% {
+					outline: 2px solid var(--clr-accent);
+				}
+				100% {
+					outline: 2px solid transparent;
+				}
+			}
+			pre#vis-editor.anchor-flash .vis-cursor {
+				background: var(--clr-accent);
+				animation: none;
+			}
+
+			.vis-cursor {
+				display: inline-block;
+				width: 2px;
+				overflow: hidden;
+				background: var(--clr-text);
+				color: transparent;
+				vertical-align: text-bottom;
+				height: 1.2em;
+				animation: blink 1s step-end infinite;
+			}
+			.vis-no-blink .vis-cursor {
+				animation: none;
+			}
+			@keyframes blink {
+				50% {
+					background: transparent;
+				}
+			}
+
+			#vis-hover-tip {
+				position: fixed;
+				display: none;
+				background: var(--clr-text);
+				color: var(--clr-code-light);
+				font-family: Consolas, monospace;
+				font-size: 11px;
+				padding: 3px 7px;
+				border-radius: 3px;
+				pointer-events: none;
+				z-index: 200;
+				white-space: nowrap;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+			}
+
+			#lv-landing {
+				position: fixed;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--clr-toolbar);
+				z-index: 500;
+			}
+			#lv-landing-box {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 18px;
+			}
+			#lv-landing-title {
+				font-size: 22px;
+				font-weight: bold;
+				color: var(--clr-text);
+			}
+		</style>
+	</head>
+	<body>
+		<div id="lv-landing">
+			<div id="lv-landing-box">
+				<div id="lv-landing-buttons" style="display: flex; gap: 12px">
+					<button id="btn-open-log" class="landing-btn">
+						📄 Open Log File
+					</button>
+					<button id="btn-open-folder" class="landing-btn">
+						📁 Open Folder
+					</button>
+				</div>
+			</div>
+		</div>
+		<div id="loading">Loading…</div>
+		<script>
+			(function () {
+				if (new URLSearchParams(location.search).get("lesson")) {
+					const l = document.getElementById("lv-landing");
+					const o = document.getElementById("loading");
+					if (l) l.style.display = "none";
+					if (o) o.style.display = "flex";
+				}
+			})();
+		</script>
+		<div id="vis-root"></div>
+		<script>
+			window.__LOG_DATA__ = window.__LOG_DATA_PRELOAD__ || null;
+			if (!window.__LOG_DATA__) {
+				document.write(
+					"<scr" +
+						'ipt src=".last_vis_data.js" onerror="void 0"><\/scr' +
+						"ipt>",
+				);
+			}
+		</script>
+		<script src="preview.js"></script>
+		<script src="shared/tooltip.js"></script>
+		<script src="shared/diff-utils.js"></script>
+		<script src="shared/data-source.js"></script>
+		<script src="shared/http-file-like.js"></script>
+		<script src="shared/fs-data-source.js"></script>
+		<script src="shared/scoped-data-source.js"></script>
+		<script src="shared/http-data-source.js"></script>
+		<script src="shared/grades-data-source.js"></script>
+		<script src="languages/profiles.js"></script>
+		<script src="shared/text-state.js"></script>
+		<script src="shared/simulator-model.js"></script>
+		<script src="shared/simulator-highlight.js"></script>
+		<script src="shared/drag-divider.js"></script>
+		<script src="shared/file-viewer.js"></script>
+		<script src="simulator/seekbar.js"></script>
+		<script src="simulator/visualizer.js"></script>
+		<script src="simulator/index.js"></script>
+	</body>
+</html>

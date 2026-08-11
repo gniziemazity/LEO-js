@@ -1,0 +1,72 @@
+{
+	"name": "leo",
+	"version": "2.0.0",
+	"description": "Live-coding Assistant for Teachers",
+	"author": "Radu Mariescu-Istodor <gniziemazity@gmail.com>",
+	"main": "src/main/main.js",
+	"scripts": {
+		"start": "electron .",
+		"build": "electron-builder",
+		"main": "python lesson_tools/main.py",
+		"main-anon": "python lesson_tools/main.py --anon",
+		"main-all": "python lesson_tools/main_all.py",
+		"main-all-anon": "python lesson_tools/main_all.py --anon",
+		"web": "python lesson_tools/inspect_dataset.py",
+		"eval": "python lesson_tools/compare_methods_to_ideal.py",
+		"overview": "python lesson_tools/build_overview.py && node lesson_tools/open.js overview.html",
+		"test": "npm run test:py && npm run test:js",
+		"test:py": "cd lesson_tools && python -m unittest discover -v",
+		"test:js": "node --test tests/*.test.js"
+	},
+	"build": {
+		"appId": "com.leo-js.app",
+		"productName": "LEO-js",
+		"icon": "src/shared/icon.ico",
+		"fileAssociations": [
+			{
+				"ext": "leo",
+				"name": "LEO Lesson",
+				"description": "LEO Lesson Plan",
+				"icon": "src/shared/icon.ico",
+				"role": "Editor"
+			},
+			{
+				"ext": "leo-course",
+				"name": "LEO Course",
+				"description": "LEO Course",
+				"icon": "src/shared/icon.ico",
+				"role": "Editor"
+			}
+		],
+		"files": [
+			"**/*",
+			"!node_modules/.cache",
+			"!ideas",
+			"!plans/logs",
+			"!tasks",
+			"!tests",
+			"!.venv",
+			"!**/__pycache__",
+			"!lesson_tools/test",
+			"!lesson_tools/test_lesson_tools.py",
+			"!lesson_tools/regen_test_fixtures.py"
+		],
+		"asarUnpack": [
+			"lesson_tools/**"
+		],
+		"directories": {
+			"output": "dist"
+		}
+	},
+	"dependencies": {
+		"@computer-use/nut-js": "^4.2.0",
+		"express": "^5.2.1",
+		"qrcode": "^1.5.4",
+		"qrcode-terminal": "^0.12.0",
+		"ws": "^8.19.0"
+	},
+	"devDependencies": {
+		"electron": "^40.0.0",
+		"electron-builder": "^26.4.0"
+	}
+}

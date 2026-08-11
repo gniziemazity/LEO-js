@@ -1,0 +1,137 @@
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { LOG_CONFIG } = require("../shared/constants");
+
+class LogManager {
+	constructor() {
+		this.keyPressLog = [];
+		this.sessionStartTime = null;
+		this.logFilePath = null;
+		this.currentLessonPath = null;
+		this.saveInterval = LOG_CONFIG.SAVE_INTERVAL;
+	}
+
+	initialize(lessonFilePath = null) {
+		this.keyPressLog = [];
+		this.sessionStartTime = Date.now();
+		this.currentLessonPath = lessonFilePath;
+
+		const { logsDir, basename } = this.getLogPaths(lessonFilePath);
+		this.ensureLogsDirectory(logsDir);
+
+		const timestamp = this.getTimestamp();
+		this.logFilePath = path.join(
+			logsDir,
+			`${basename}_key_presses_${timestamp}.log`,
+		);
+
+		this.save();
+	}
+
+	getLogPaths(lessonFilePath) {
+		if (lessonFilePath) {
+			const dir = path.dirname(lessonFilePath);
+			return {
+				logsDir: path.join(dir, "logs"),
+				basename: path.basename(
+					lessonFilePath,
+					path.extname(lessonFilePath),
+				),
+			};
+		} else {
+			return {
+				logsDir: path.join(os.tmpdir(), "leo-logs"),
+				basename: "unnamed_lesson",
+			};
+		}
+	}
+
+	ensureLogsDirectory(logsDir) {
+		if (!fs.existsSync(logsDir)) {
+			fs.mkdirSync(logsDir, { recursive: true });
+		}
+	}
+
+	getTimestamp() {
+		return new Date().toISOString().replace(/[:.]/g, "-");
+	}
+
+	addEntry(entry) {
+		if (!this.sessionStartTime) {
+			console.warn("LogManager not initialized. Call initialize() first.");
+			return null;
+		}
+
+		const logEntry = {
+			timestamp: Date.now(),
+			...entry,
+		};
+
+		this.keyPressLog.push(logEntry);
+
+		if (this.keyPressLog.length % this.saveInterval === 0) {
+			this.save();
+		}
+
+		return logEntry;
+	}
+
+	addInteraction(interactionType, extraFields = null) {
+		const entry = { interaction: interactionType };
+		if (extraFields) Object.assign(entry, extraFields);
+		this.addEntry(entry);
+		this.save();
+	}
+
+	saveArtificialLog(events) {
+		if (!this.currentLessonPath && !this.logFilePath) {
+			console.warn("No lesson path set. Cannot save artificial log.");
+			return;
+		}
+
+		const { logsDir, basename } = this.getLogPaths(this.currentLessonPath);
+		this.ensureLogsDirectory(logsDir);
+
+		const timestamp = this.getTimestamp();
+		const artificialPath = path.join(
+			logsDir,
+			`artificial_${basename}_${timestamp}.log`,
+		);
+
+		const logData = {
+			lessonFile: this.currentLessonPath || "No file loaded",
+			sessionStart: events.length > 0 ? events[0].timestamp : Date.now(),
+			artificial: true,
+			events,
+		};
+
+		fs.writeFileSync(artificialPath, JSON.stringify(logData, null, 2));
+		return artificialPath;
+	}
+
+	save() {
+		if (!this.logFilePath) {
+			console.warn("No log file path set. Cannot save.");
+			return;
+		}
+
+		const logData = {
+			lessonFile: this.currentLessonPath || "No file loaded",
+			sessionStart: this.sessionStartTime,
+			events: this.keyPressLog,
+		};
+
+		fs.writeFile(
+			this.logFilePath,
+			JSON.stringify(logData, null, 2),
+			(err) => {
+				if (err) {
+					console.error("Failed to save key press log:", err);
+				}
+			},
+		);
+	}
+}
+
+module.exports = LogManager;

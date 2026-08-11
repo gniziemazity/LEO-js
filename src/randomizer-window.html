@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Randomizer</title>
+		<link rel="stylesheet" href="./shared/styles.css" />
+	</head>
+	<body class="randomizer-view">
+		<div class="resize-handle resize-n" data-edge="top"></div>
+		<div class="resize-handle resize-s" data-edge="bottom"></div>
+		<div class="resize-handle resize-w" data-edge="left"></div>
+		<div class="resize-handle resize-e" data-edge="right"></div>
+		<div class="resize-handle resize-nw" data-edge="top-left"></div>
+		<div class="resize-handle resize-ne" data-edge="top-right"></div>
+		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
+		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
+		<div class="neon-frame" id="neonFrame">
+			<div class="randomizer-area" id="randomizerArea"></div>
+		</div>
+
+		<script src="./shared/themes/theme-runtime.js"></script>
+		<script src="./shared/themes/dragonball.js"></script>
+		<script src="./shared/randomizers/randomizer-runtime.js"></script>
+		<script src="./shared/randomizers/shuffle.js"></script>
+		<script src="./shared/randomizers/wheel.js"></script>
+		<script>
+			const { ipcRenderer } = require("electron");
+
+			ipcRenderer.on("fade-out", () => {
+				document.body.style.transition = "opacity 300ms ease";
+				document.body.style.opacity = "0";
+			});
+
+			ipcRenderer.invoke("get-settings").then((s) => {
+				if (s) initBackground(s.floatingTheme);
+			});
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape") ipcRenderer.send("close-randomizer-window");
+				if (e.ctrlKey && (e.key === "i" || e.key === "I")) {
+					e.preventDefault();
+					ipcRenderer.send("open-randomizer-devtools");
+				}
+			});
+
+			document.querySelectorAll(".resize-handle").forEach((el) => {
+				el.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					ipcRenderer.send("start-resizing", el.dataset.edge);
+				});
+			});
+			window.addEventListener("mouseup", () =>
+				ipcRenderer.send("end-resizing"),
+			);
+
+			ipcRenderer.on(
+				"set-randomizer",
+				(event, { names, style, bgColor }) => {
+					document.body.style.transition = "";
+					document.body.style.opacity = "1";
+					const area = document.getElementById("randomizerArea");
+					const solidColor =
+						bgColor ||
+						getComputedStyle(document.body)
+							.getPropertyValue("--clr-question-bg")
+							.trim();
+					setBackgroundColor(solidColor);
+					runRandomizerStyle(style, area, names || [], (index) => {
+						ipcRenderer.send("randomizer-done", index);
+					});
+				},
+			);
+		</script>
+	</body>
+</html>
