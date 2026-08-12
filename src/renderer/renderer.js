@@ -273,6 +273,7 @@ function setupGlobalIpcListeners() {
 	);
 	ipcRenderer.on("open-settings", () => settingsUI.open());
 	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
+	ipcRenderer.on("client-connected", () => qrModalManager.hideModal());
 	ipcRenderer.on("control-panel-visible", (e, show) =>
 		document.body.classList.toggle("panel-open", show),
 	);

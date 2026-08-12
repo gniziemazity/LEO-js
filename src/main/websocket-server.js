@@ -106,6 +106,7 @@ class LEOBroadcastServer extends EventEmitter {
 		this.wss.on("connection", (ws) => {
 			console.log("Client connected: " + ws._socket.remoteAddress);
 			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
+			this.emit("client-connected");
 			ws.on("message", (message) => {
 				try {
 					const data = JSON.parse(message);

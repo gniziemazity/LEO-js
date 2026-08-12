@@ -217,6 +217,9 @@ broadcastServer.on("client-mouse-drag-end", async () => {
 		await mouse.releaseButton(Button.LEFT);
 	} catch (e) {}
 });
+broadcastServer.on("client-connected", () => {
+	state.send("client-connected");
+});
 broadcastServer.on("client-disconnected", async () => {
 	if (!mouseDragActive) return;
 	try {

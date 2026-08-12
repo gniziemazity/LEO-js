@@ -52,7 +52,7 @@ class QRModalManager {
 					const urlText = document.createElement("div");
 					urlText.className = "qr-url-text";
 					urlText.textContent = info.url;
-					urlText.title = "Click to copy";
+					urlText.title = `${info.url}\nClick to copy`;
 					urlText.style.cursor = "pointer";
 					urlText.addEventListener("click", () => {
 						navigator.clipboard.writeText(info.url).then(() => {
