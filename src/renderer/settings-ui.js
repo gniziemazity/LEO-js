@@ -160,6 +160,9 @@ class SettingsUI {
 				}
 			}
 			randomizerSelect.value = settings.randomizerStyle || "shuffle";
+			if (!randomizerSelect.value && randomizerSelect.options.length) {
+				randomizerSelect.value = randomizerSelect.options[0].value;
+			}
 		}
 
 		const effectSelect = document.getElementById("answerEffect");

@@ -141,21 +141,21 @@ button {
 	font-size: 21px;
 }
 
-button:hover {
+:where(body:not(.mobile-view)) button:hover {
 	background: var(--clr-accent-dark);
 }
 
 .interaction-btn.btn-start {
 	background: var(--clr-green);
 }
-.interaction-btn.btn-start:hover {
+:where(body:not(.mobile-view)) .interaction-btn.btn-start:hover {
 	background: var(--clr-pos);
 }
 
 .interaction-btn.btn-stop {
 	background: var(--clr-red);
 }
-.interaction-btn.btn-stop:hover {
+:where(body:not(.mobile-view)) .interaction-btn.btn-stop:hover {
 	background: var(--clr-danger-darker);
 }
 
@@ -893,7 +893,9 @@ body.mode-record .key-btn[data-char="⚓"] {
 	gap: 4px;
 }
 .mode-side-btn {
-	background: rgba(60, 60, 60, 0.82);
+	--side-bg: rgba(60, 60, 60, 0.82);
+	--side-bg-press: rgba(30, 30, 30, 0.95);
+	background: var(--side-bg);
 	color: var(--clr-white);
 	border: none;
 	outline: none;
@@ -915,8 +917,11 @@ body.mode-record .key-btn[data-char="⚓"] {
 	display: inline-block;
 	transform: rotate(90deg);
 }
+.mode-side-btn:hover {
+	background: var(--side-bg);
+}
 .mode-side-btn:active {
-	background: rgba(30, 30, 30, 0.95);
+	background: var(--side-bg-press);
 }
 #modeBtnMouse.mode-active {
 	background: rgba(52, 152, 219, 0.9);
@@ -924,7 +929,12 @@ body.mode-record .key-btn[data-char="⚓"] {
 #modeBtnKeyboard.mode-active {
 	background: rgba(39, 174, 96, 0.9);
 }
+.mode-side-btn.mode-active {
+	box-shadow: 0 0 0 2px var(--clr-white);
+}
 #modeBtnKeyboard.kb-disabled {
+	background: var(--side-bg);
+	box-shadow: none;
 	opacity: 0.15;
 	pointer-events: none;
 }
@@ -932,20 +942,15 @@ body.mode-record .key-btn[data-char="⚓"] {
 	.mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(
 		.mode-side-btn-help
 	) {
-	opacity: 0.5;
-	pointer-events: none;
+	display: none;
 }
 .mode-side-btn-question {
-	background: rgba(255, 224, 178, 0.85);
-}
-.mode-side-btn-question:active {
-	background: rgba(255, 200, 130, 0.95);
+	--side-bg: rgba(255, 224, 178, 0.85);
+	--side-bg-press: rgba(255, 200, 130, 0.95);
 }
 .mode-side-btn-help {
-	background: rgba(200, 230, 201, 0.85);
-}
-.mode-side-btn-help:active {
-	background: rgba(160, 210, 165, 0.95);
+	--side-bg: rgba(200, 230, 201, 0.85);
+	--side-bg-press: rgba(160, 210, 165, 0.95);
 }
 .mode-side-divider {
 	height: 24px;
@@ -965,7 +970,7 @@ body.side-left .mode-side-btn .side-btn-emoji {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	z-index: 1500;
+	z-index: 2550;
 	background: rgba(52, 152, 219, 0.35);
 	touch-action: none;
 	flex-direction: column;
@@ -1165,7 +1170,7 @@ body.side-left .popup-modal {
 		background 0.13s,
 		border-color 0.13s;
 }
-.popup-show-btn:hover,
+:where(body:not(.mobile-view)) .popup-show-btn:hover,
 .popup-show-btn:active {
 	background: rgba(0, 0, 0, 0.14);
 	border-color: rgba(0, 0, 0, 0.35);
@@ -1184,7 +1189,7 @@ body.side-left .popup-modal {
 		border-color 0.13s;
 	touch-action: manipulation;
 }
-.popup-student-btn:hover,
+:where(body:not(.mobile-view)) .popup-student-btn:hover,
 .popup-student-btn:active {
 	background: rgba(0, 0, 0, 0.14);
 	border-color: rgba(0, 0, 0, 0.35);
@@ -1254,7 +1259,7 @@ body.side-left .popup-modal {
 		color 0.13s;
 	z-index: 1;
 }
-.overlay-close-btn:hover,
+:where(body:not(.mobile-view)) .overlay-close-btn:hover,
 .overlay-close-btn:active {
 	background: rgba(0, 0, 0, 0.12);
 	color: rgba(0, 0, 0, 0.75);
@@ -1337,7 +1342,7 @@ body.side-left .popup-modal {
 	z-index: 2;
 }
 
-.mt-modal-confirm:hover,
+:where(body:not(.mobile-view)) .mt-modal-confirm:hover,
 .mt-modal-confirm:active {
 	background: var(--clr-accent-dark);
 }
@@ -1383,7 +1388,7 @@ body.side-left .popup-modal {
 	color: rgba(0, 0, 0, 0.7);
 	cursor: pointer;
 }
-.i-mic-btn:hover {
+:where(body:not(.mobile-view)) .i-mic-btn:hover {
 	background: rgba(0, 0, 0, 0.12);
 }
 .i-mic-btn.listening,

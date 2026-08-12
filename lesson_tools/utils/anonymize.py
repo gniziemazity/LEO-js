@@ -514,7 +514,6 @@ def main():
             names_folder = _safe_folder_name(student["alter_ego"]) or folder_name
         dest_names = os.path.join(anon_names_dir, names_folder)
         dest_ids = os.path.join(anon_ids_dir, student["id"])
-        os.makedirs(dest_names, exist_ok=True)
         os.makedirs(dest_ids, exist_ok=True)
 
         folder_remarks = []
@@ -581,22 +580,18 @@ def main():
                 anon_fname = anonymize_filename(filename, student)
 
                 if rel_path == ".":
-                    dst_names_path = os.path.join(dest_names, anon_fname)
                     dst_ids_path = os.path.join(dest_ids, anon_fname)
                 else:
-                    sub_names = os.path.join(dest_names, rel_path)
                     sub_ids = os.path.join(dest_ids, rel_path)
-                    os.makedirs(sub_names, exist_ok=True)
                     os.makedirs(sub_ids, exist_ok=True)
-                    dst_names_path = os.path.join(sub_names, anon_fname)
                     dst_ids_path = os.path.join(sub_ids, anon_fname)
 
                 file_remarks = process_file(
-                    src_file, dst_names_path, student, all_student_numbers
+                    src_file, dst_ids_path, student, all_student_numbers
                 )
                 folder_remarks.extend(file_remarks)
 
-                process_file(src_file, dst_ids_path, student, all_student_numbers)
+        shutil.copytree(dest_ids, dest_names, dirs_exist_ok=True)
 
         if not number_locations:
             folder_remarks.insert(0, "Student number not found")
@@ -619,8 +614,8 @@ def main():
     print(f"  Unmatched: {unmatched} student folders")
     if skipped_excluded:
         print(f"  Skipped:   {skipped_excluded} student folder(s) (Category=Excluded)")
-    print(f"  anon_names/ -- folders named by student name, content anonymized")
     print(f"  anon_ids/   -- folders named by student ID, content anonymized")
+    print(f"  anon_names/ -- teaching copy of anon_ids/, folders named by student name")
     print(f"  remarks.csv -- {len(processed_remarks)} entries written")
     print(f"{'=' * 50}")
 

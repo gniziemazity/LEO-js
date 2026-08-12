@@ -22,8 +22,7 @@ comments from matching, so students' own comments never count against them.
   teacher tokens) enter its per-token Hungarian as extra teacher columns, so the
   real/ghost split is decided in one base pass — no ghost-promotion needed.
 - **`leo*+`** is `leo*` with two tuned knobs (§4.1): a distance-decayed context
-  bag and an absolute acceptance threshold on real matches. Off for `leo*`. See
-  [leo-star-plus-findings.md](leo-star-plus-findings.md).
+  bag and an absolute acceptance threshold on real matches. Off for `leo*`.
 - The **`*` (star)** post-pass (§5) adds ghost handling, swap pairing, insert
   anchors, and timestamps. `lcs`/`git` are keylog-blind and gain it via the star
   pass (`lcs`→`lcs*`, `git`→`git*`); `leo*` already does the matching natively,

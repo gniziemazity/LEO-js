@@ -170,6 +170,14 @@ function setAutoTypingActive(active) {
 	autoTypingActive = !!active;
 	const btn = document.getElementById("modeBtnKeyboard");
 	if (btn) btn.classList.toggle("kb-disabled", !autoTypingActive);
+	if (
+		!autoTypingActive &&
+		touchpadActive &&
+		!activeModeHandler &&
+		touchpadMode === "keyboard"
+	) {
+		closeTouchpad();
+	}
 }
 
 function initTouchpad() {
