@@ -564,8 +564,7 @@ ipcMain.on("update-lesson-name", (e, n) => broadcastServer.updateLessonName(n));
 ipcMain.handle("get-settings", () => settingsManager.getAll());
 ipcMain.handle(
 	"get-control-panel-url",
-	() =>
-		`http://127.0.0.1:${broadcastServer.port}/?t=${broadcastServer.token}&panel=1`,
+	() => `${broadcastServer.remoteUrl("127.0.0.1")}&panel=1`,
 );
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());
 
