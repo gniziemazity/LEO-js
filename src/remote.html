@@ -250,7 +250,8 @@
 					showQuestionOverlay(
 						state.activeQuestion,
 						state.students || [],
-						null,
+						state.activeQuestionBgColor,
+						state.activeQuestionOptions,
 					);
 				if (state.activeMoveTo) showMoveToOverlay(state.activeMoveTo);
 				if (state.timeRemaining != null)

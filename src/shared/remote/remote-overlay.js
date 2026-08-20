@@ -13,12 +13,14 @@ class RemoteOverlay {
 		if (bg) overlay.style.background = bg;
 		overlay.classList.add("active");
 		setInteractionBtnsVisible(false);
+		syncKeyInputGate();
 	}
 
 	close() {
 		const overlay = this.el;
 		if (overlay) overlay.classList.remove("active");
 		setInteractionBtnsVisible(true);
+		syncKeyInputGate();
 	}
 
 	makeStudentBtn(label, onClick, cssText) {

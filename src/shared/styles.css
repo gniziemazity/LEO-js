@@ -839,6 +839,10 @@ body.mode-record .key-btn[data-char="⚓"] {
 	pointer-events: none;
 }
 
+#mobile-header.above-pad {
+	z-index: 2555;
+}
+
 .header-main-row {
 	display: flex;
 	justify-content: space-between;

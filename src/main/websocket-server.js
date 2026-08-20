@@ -40,6 +40,8 @@ class LEOBroadcastServer extends EventEmitter {
 			lessonData: null,
 			settings: null,
 			activeQuestion: null,
+			activeQuestionBgColor: null,
+			activeQuestionOptions: [],
 			students: [],
 			timeRemaining: null,
 			floatingWindowCount: 0,
@@ -243,6 +245,8 @@ class LEOBroadcastServer extends EventEmitter {
 
 	broadcastQuestionStarted(question, students, bgColor, options) {
 		this.currentState.activeQuestion = question;
+		this.currentState.activeQuestionBgColor = bgColor || null;
+		this.currentState.activeQuestionOptions = options || [];
 		if (students && students.length) this.currentState.students = students;
 		this.broadcast({
 			type: "question-started",
@@ -257,6 +261,8 @@ class LEOBroadcastServer extends EventEmitter {
 
 	broadcastQuestionEnded() {
 		this.currentState.activeQuestion = null;
+		this.currentState.activeQuestionBgColor = null;
+		this.currentState.activeQuestionOptions = [];
 		this.broadcast({ type: "question-ended", data: {} });
 	}
 

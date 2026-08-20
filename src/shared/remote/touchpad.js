@@ -107,7 +107,7 @@ function deactivateTouchpad() {
 	const header = document.getElementById("mobile-header");
 	touchpadActive = false;
 	overlay.classList.remove("active", "keyboard-mode");
-	header.classList.remove("hidden");
+	header.classList.remove("hidden", "above-pad");
 	stopDragIfActive();
 	if (activeModeHandler) {
 		if (activeModeHandler.deactivate)
@@ -123,7 +123,7 @@ function closeTouchpad() {
 
 async function setTouchpadMode(mode) {
 	const handler = touchpadModeHandlers[mode];
-	if (!handler && mode === "keyboard" && !autoTypingActive) return;
+	if (!handler && mode === "keyboard" && !keyInputAllowed()) return;
 
 	const seq = ++touchpadModeSeq;
 
@@ -145,7 +145,7 @@ async function setTouchpadMode(mode) {
 		activeModeHandler = handler;
 		touchpadActive = true;
 		overlay.classList.add("active");
-		header.classList.add("hidden");
+		header.classList.add("above-pad");
 		if (handler.activate) await handler.activate({ overlay, header });
 		if (seq !== touchpadModeSeq) return;
 	} else {
@@ -153,7 +153,7 @@ async function setTouchpadMode(mode) {
 		touchpadMode = mode;
 		overlay.classList.add("active");
 		overlay.classList.toggle("keyboard-mode", mode === "keyboard");
-		header.classList.add("hidden");
+		header.classList.add("above-pad");
 	}
 
 	updateModeBtns(mode);
@@ -166,18 +166,27 @@ function setTouchpadSensitivity(sensitivity) {
 
 let autoTypingActive = false;
 
-function setAutoTypingActive(active) {
-	autoTypingActive = !!active;
+function keyInputAllowed() {
+	return autoTypingActive && !document.querySelector(".overlay.active");
+}
+
+function syncKeyInputGate() {
+	const allowed = keyInputAllowed();
 	const btn = document.getElementById("modeBtnKeyboard");
-	if (btn) btn.classList.toggle("kb-disabled", !autoTypingActive);
+	if (btn) btn.classList.toggle("kb-disabled", !allowed);
 	if (
-		!autoTypingActive &&
+		!allowed &&
 		touchpadActive &&
 		!activeModeHandler &&
 		touchpadMode === "keyboard"
 	) {
 		closeTouchpad();
 	}
+}
+
+function setAutoTypingActive(active) {
+	autoTypingActive = !!active;
+	syncKeyInputGate();
 }
 
 function initTouchpad() {
@@ -206,7 +215,7 @@ function initTouchpad() {
 			}
 
 			if (touchpadMode === "keyboard") {
-				sendMessage("remote-key-press", {});
+				if (keyInputAllowed()) sendMessage("remote-key-press", {});
 				return;
 			}
 

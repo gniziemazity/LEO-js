@@ -59,6 +59,11 @@ class FloatingWindow {
 		if (gatePin) this.pinned = shouldPin || false;
 		const win = this._make();
 		this.win = win;
+
+		// clicking a floating window makes it the one the remote drags and resizes.
+		win.on("focus", () => {
+			if (this.win === win && !win.isDestroyed()) this._onShow(this);
+		});
 		this._closing = false;
 		this.rect = this._floatRect(win);
 		this._sync(this);

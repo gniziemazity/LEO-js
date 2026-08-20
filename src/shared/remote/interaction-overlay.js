@@ -132,12 +132,30 @@ class InteractionOverlay extends RemoteOverlay {
 		rec.interimResults = true;
 		rec.continuous = true;
 		const base = input.value.trim();
+		// keeping final form of recognized phrase
+		const tidy = (s) =>
+			String(s || "")
+				.replace(/\s+/g, " ")
+				.trim();
+		const continues = (whole, part) =>
+			whole.startsWith(part) &&
+			(whole.length === part.length || whole[part.length] === " ");
+
 		rec.onresult = (e) => {
-			let txt = "";
+			let heard = "";
 			for (let i = 0; i < e.results.length; i++) {
-				txt += e.results[i][0].transcript;
+				const next = tidy(e.results[i][0].transcript);
+				if (!next) continue;
+				if (!heard) {
+					heard = next;
+					continue;
+				}
+				const a = heard.toLowerCase();
+				const b = next.toLowerCase();
+				if (continues(b, a)) heard = next;
+				else if (!continues(a, b) && !a.endsWith(b)) heard += " " + next;
 			}
-			input.value = [base, txt.trim()].filter(Boolean).join(" ");
+			input.value = [base, heard].filter(Boolean).join(" ");
 		};
 		rec.onstart = () => {
 			const micBtn = document.getElementById("iMicBtn");
