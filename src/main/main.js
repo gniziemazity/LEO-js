@@ -45,7 +45,7 @@ const {
 	setCourseMenuState,
 } = require("./lesson-tools");
 
-const { mouse, Button, Point } = require("@computer-use/nut-js");
+const { mouse, Button, Point, keyboard, Key } = require("@computer-use/nut-js");
 const MainProcessTimer = require("./main-timer");
 const { buildWindowTitle } = require("../shared/constants");
 
@@ -156,8 +156,8 @@ broadcastServer.on(
 		});
 	},
 );
-broadcastServer.on("client-show-question", () => {
-	animateQuestionWindowOnScreen();
+broadcastServer.on("client-show-question", (animate) => {
+	if (animate) animateQuestionWindowOnScreen();
 	state.send("question-shown");
 });
 broadcastServer.on("client-move-to-confirmed", () => {
@@ -237,6 +237,25 @@ broadcastServer.on("client-window-resize", (scaleX, scaleY) =>
 );
 broadcastServer.on("client-remote-key-press", () => {
 	hotkeyManager.handleKey("remote");
+});
+const EDIT_KEY_TO_KEY = {
+	copy: Key.C,
+	cut: Key.X,
+	paste: Key.V,
+	undo: Key.Z,
+};
+broadcastServer.on("client-remote-edit-key", async (action) => {
+	try {
+		if (action === "enter") {
+			await keyboard.type(Key.Enter);
+			return;
+		}
+		const modifier =
+			settingsManager.get("platform") === "macos"
+				? Key.LeftCmd
+				: Key.LeftControl;
+		await keyboard.type(modifier, EDIT_KEY_TO_KEY[action] || Key.C);
+	} catch (e) {}
 });
 
 const timer = new MainProcessTimer();

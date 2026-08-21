@@ -16,6 +16,8 @@ function clampNum(v, max) {
 	return Math.max(-max, Math.min(max, n));
 }
 
+const EDIT_KEYS = ["copy", "cut", "paste", "undo", "enter"];
+
 function clampScale(v) {
 	const n = Number(v);
 	if (!Number.isFinite(n) || n <= 0) return 1;
@@ -337,7 +339,8 @@ class LEOBroadcastServer extends EventEmitter {
 					data.openedAt || null,
 				),
 			"move-to-confirmed": () => this.emit("client-move-to-confirmed"),
-			"show-question": () => this.emit("client-show-question"),
+			"show-question": (data) =>
+				this.emit("client-show-question", !data || data.animate !== false),
 			"interaction-overlay-shown": () =>
 				this.emit("client-interaction-overlay-shown"),
 			"interaction-overlay-closed": () =>
@@ -390,6 +393,11 @@ class LEOBroadcastServer extends EventEmitter {
 			"timer-adjust": (data) =>
 				this.emit("client-timer-adjust", clampNum(data.minutes, 600)),
 			"remote-key-press": () => this.emit("client-remote-key-press"),
+			"remote-edit-key": (data) =>
+				this.emit(
+					"client-remote-edit-key",
+					EDIT_KEYS.includes(data && data.action) ? data.action : "copy",
+				),
 			"dismiss-question": () => this.emit("client-dismiss-question"),
 			"question-randomize": () => this.emit("client-question-randomize"),
 			"question-show-options": () =>

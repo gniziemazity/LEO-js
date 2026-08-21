@@ -111,6 +111,7 @@ class MoveToOverlay extends RemoteOverlay {
 		}
 
 		this.open("var(--clr-moveto-bg)");
+		padEnterMoveTo();
 
 		const modal = document.getElementById("mtModal");
 		if (modal) {
@@ -131,8 +132,19 @@ class MoveToOverlay extends RemoteOverlay {
 		}
 	}
 
+	padActions() {
+		return [{ label: "OK", kind: "confirm", onClick: () => this.confirm() }];
+	}
+
+	setPadCovered(covered) {
+		const btn = document.getElementById("mtoConfirm");
+		if (btn) btn.style.display = covered ? "none" : "";
+	}
+
 	closeUI() {
+		this.setPadCovered(false);
 		this.close();
+		padLeaveMoveTo();
 	}
 
 	confirm() {

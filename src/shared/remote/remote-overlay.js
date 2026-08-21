@@ -1,10 +1,30 @@
+const remoteOverlays = [];
+
+function activePadOverlay() {
+	for (const overlay of remoteOverlays) {
+		const el = overlay.el;
+		if (
+			el &&
+			el.classList.contains("active") &&
+			el.classList.contains("overlay-pad-ok")
+		)
+			return overlay;
+	}
+	return null;
+}
+
 class RemoteOverlay {
 	constructor(overlayId) {
 		this.overlayId = overlayId;
+		remoteOverlays.push(this);
 	}
 
 	get el() {
 		return document.getElementById(this.overlayId);
+	}
+
+	padActions() {
+		return [];
 	}
 
 	open(bg) {

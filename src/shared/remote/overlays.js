@@ -18,8 +18,8 @@ function showQuestionOverlay(question, students, bgColor, options) {
 	questionOverlay.show(question, students, bgColor, options);
 }
 
-function showQuestionToTeacher() {
-	questionOverlay.showToTeacher();
+function showQuestionToTeacher(animate) {
+	questionOverlay.showToTeacher(animate);
 }
 
 function onStudentAnswered(idx) {

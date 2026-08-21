@@ -110,6 +110,11 @@ class CursorManager {
 		}
 	}
 
+	markImageWindowOpen() {
+		this._isImageWindowOpen = true;
+		this._currentImageStepIndex = null;
+	}
+
 	_leaveImageBlock() {
 		if (!this._isImageWindowOpen) return;
 		this._isImageWindowOpen = false;

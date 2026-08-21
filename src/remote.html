@@ -59,7 +59,32 @@
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
 
-		<div id="touchpadOverlay" class="touchpad-overlay"></div>
+		<div id="touchpadOverlay" class="touchpad-overlay">
+			<div
+				id="touchpadActionBar"
+				class="touchpad-toolbar touchpad-action-bar"
+			></div>
+			<div id="touchpadSideBar" class="touchpad-toolbar touchpad-side-bar">
+				<div id="touchpadEditKeys" class="pad-key-group">
+					<button class="pad-bar-btn" onclick="remoteEditKey('copy')">
+						<span>Copy</span>
+					</button>
+					<button class="pad-bar-btn" onclick="remoteEditKey('paste')">
+						<span>Paste</span>
+					</button>
+					<button class="pad-bar-btn" onclick="remoteEditKey('cut')">
+						<span>Cut</span>
+					</button>
+					<button class="pad-bar-btn" onclick="remoteEditKey('undo')">
+						<span>Undo</span>
+					</button>
+					<button class="pad-bar-btn" onclick="remoteEditKey('enter')">
+						<span>Enter</span>
+					</button>
+				</div>
+				<div id="touchpadConfirmBar" class="pad-key-group"></div>
+			</div>
+		</div>
 
 		<div id="modeSideBtns" class="mode-side-btns">
 			<button
@@ -95,7 +120,7 @@
 			</button>
 		</div>
 
-		<div id="questionOverlay" class="overlay">
+		<div id="questionOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal">
 				<button class="overlay-close-btn" onclick="closeQuestionOverlay()">
 					✕
@@ -146,7 +171,7 @@
 			</div>
 		</div>
 
-		<div id="moveToOverlay" class="overlay">
+		<div id="moveToOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal" id="mtModal">
 				<button class="overlay-close-btn" onclick="closeMoveToOverlay()">
 					✕

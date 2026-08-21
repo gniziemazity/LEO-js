@@ -90,7 +90,13 @@ function updateModeBtns(activeMode) {
 		if (btn) btn.classList.toggle("mode-active", m === activeMode);
 	}
 	const container = document.getElementById("modeSideBtns");
-	if (container) container.classList.toggle("has-active", !!activeMode);
+	if (container) {
+		container.classList.toggle("has-active", !!activeMode);
+		container.classList.toggle(
+			"has-pad",
+			!!activeMode && !touchpadModeHandlers[activeMode],
+		);
+	}
 }
 
 function stopDragIfActive() {
@@ -114,6 +120,7 @@ function deactivateTouchpad() {
 			activeModeHandler.deactivate({ overlay, header });
 		activeModeHandler = null;
 	}
+	syncTouchpadToolbar();
 }
 
 function closeTouchpad() {
@@ -157,6 +164,7 @@ async function setTouchpadMode(mode) {
 	}
 
 	updateModeBtns(mode);
+	syncTouchpadToolbar();
 }
 
 function setTouchpadSensitivity(sensitivity) {
@@ -167,7 +175,105 @@ function setTouchpadSensitivity(sensitivity) {
 let autoTypingActive = false;
 
 function keyInputAllowed() {
-	return autoTypingActive && !document.querySelector(".overlay.active");
+	return (
+		autoTypingActive &&
+		!document.querySelector(".overlay.active:not(.overlay-pad-ok)")
+	);
+}
+
+function padOverlay() {
+	if (typeof activePadOverlay !== "function") return null;
+	return activePadOverlay();
+}
+
+function padOverlayActions() {
+	const overlay = padOverlay();
+	if (!overlay || !overlay.padActions) return [];
+	return overlay.padActions() || [];
+}
+
+function makePadButton(action, className) {
+	const btn = document.createElement("button");
+	btn.className = className;
+	const label = document.createElement("span");
+	label.textContent = action.label;
+	btn.appendChild(label);
+	btn.onclick = action.onClick;
+	return btn;
+}
+
+function fillBar(bar, actions, className) {
+	if (!bar) return;
+	bar.innerHTML = "";
+	for (const action of actions)
+		bar.appendChild(makePadButton(action, className));
+	bar.classList.toggle("visible", actions.length > 0);
+}
+
+function editKeysWanted() {
+	if (!touchpadActive) return false;
+	if (activeModeHandler)
+		return !!(
+			activeModeHandler.wantsEditKeys && activeModeHandler.wantsEditKeys()
+		);
+	return touchpadMode === "mouse";
+}
+
+function padCoversPopup() {
+	if (!touchpadActive) return false;
+	return !activeModeHandler || editKeysWanted();
+}
+
+function syncTouchpadToolbar() {
+	const padOpen = touchpadActive && !activeModeHandler;
+	const covered = padCoversPopup();
+
+	const keysWanted = editKeysWanted();
+	const keys = document.getElementById("touchpadEditKeys");
+	if (keys) keys.classList.toggle("visible", keysWanted);
+
+	const actions = covered ? padOverlayActions() : [];
+	const confirms = actions.filter((a) => a.kind === "confirm");
+	fillBar(
+		document.getElementById("touchpadConfirmBar"),
+		confirms,
+		"pad-confirm-btn",
+	);
+	fillBar(
+		document.getElementById("touchpadActionBar"),
+		padOpen ? actions.filter((a) => a.kind !== "confirm") : [],
+		"pad-bar-btn",
+	);
+
+	const side = document.getElementById("touchpadSideBar");
+	if (side)
+		side.classList.toggle("visible", keysWanted || confirms.length > 0);
+
+	const overlay = padOverlay();
+	if (overlay && overlay.setPadCovered) overlay.setPadCovered(covered);
+}
+
+function remoteEditKey(action) {
+	sendMessage("remote-edit-key", { action });
+}
+
+let padModeBeforeMoveTo = null;
+
+async function padEnterMoveTo() {
+	if (padModeBeforeMoveTo) return;
+	if (!touchpadActive || activeModeHandler) return;
+	if (touchpadMode !== "keyboard") return;
+	padModeBeforeMoveTo = touchpadMode;
+	await setTouchpadMode("mouse");
+}
+
+async function padLeaveMoveTo() {
+	const back = padModeBeforeMoveTo;
+	padModeBeforeMoveTo = null;
+	if (!back) return;
+	if (!touchpadActive || activeModeHandler) return;
+	if (touchpadMode !== "mouse") return;
+	await setTouchpadMode(back);
 }
 
 function syncKeyInputGate() {
@@ -182,6 +288,7 @@ function syncKeyInputGate() {
 	) {
 		closeTouchpad();
 	}
+	syncTouchpadToolbar();
 }
 
 function setAutoTypingActive(active) {
@@ -256,6 +363,7 @@ function initTouchpad() {
 	overlay.addEventListener(
 		"touchmove",
 		(e) => {
+			if (e.target.closest(".touchpad-toolbar")) return;
 			e.preventDefault();
 
 			if (activeModeHandler) {
@@ -344,7 +452,6 @@ function initTouchpad() {
 				return;
 			}
 
-			if (e.touches.length > 0 && wasTwoFinger) return;
 			if (e.touches.length > 0) return;
 
 			if (wasTwoFinger) {

@@ -68,11 +68,21 @@ class QuestionOverlay extends RemoteOverlay {
 		return btn;
 	}
 
-	showToTeacher() {
-		sendMessage("show-question", {});
+	showToTeacher(animate) {
+		sendMessage("show-question", { animate: animate !== false });
 		const showBtn = document.getElementById("qShowBtn");
 		if (showBtn) showBtn.style.display = "none";
 		document.getElementById("qGrid").style.display = "flex";
+		syncTouchpadToolbar();
+	}
+
+	padActions() {
+		const actions = [];
+		const showBtn = document.getElementById("qShowBtn");
+		if (showBtn && showBtn.style.display !== "none")
+			actions.push({ label: "Show", onClick: () => this.showToTeacher() });
+		actions.push({ label: "✕", onClick: () => this.dismiss() });
+		return actions;
 	}
 
 	randomize() {

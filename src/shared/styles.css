@@ -950,6 +950,10 @@ body.mode-record .key-btn[data-char="⚓"] {
 	) {
 	display: none;
 }
+#modeSideBtns.has-pad #modeBtnMouse,
+#modeSideBtns.has-pad #modeBtnKeyboard {
+	display: flex;
+}
 .mode-side-btn-question {
 	--side-bg: rgba(255, 224, 178, 0.85);
 	--side-bg-press: rgba(255, 200, 130, 0.95);
@@ -970,6 +974,7 @@ body.side-left .mode-side-btn .side-btn-emoji {
 }
 
 .touchpad-overlay {
+	--pad-header-gap: 74px;
 	display: none;
 	position: fixed;
 	top: 0;
@@ -986,6 +991,99 @@ body.side-left .mode-side-btn .side-btn-emoji {
 }
 .touchpad-overlay.keyboard-mode {
 	background: rgba(27, 94, 32, 0.4);
+}
+.touchpad-toolbar {
+	display: none;
+	position: absolute;
+	z-index: 2;
+	gap: 6px;
+	pointer-events: auto;
+}
+.touchpad-toolbar.visible {
+	display: flex;
+}
+.pad-bar-btn {
+	background: rgba(60, 60, 60, 0.88);
+	color: var(--clr-white);
+	border: none;
+	outline: none;
+	border-radius: 8px;
+	padding: 16px 9px;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1;
+	cursor: pointer;
+	touch-action: manipulation;
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	-webkit-tap-highlight-color: transparent;
+}
+.pad-bar-btn:active {
+	background: rgba(20, 20, 20, 0.96);
+}
+body.side-left .pad-bar-btn > span {
+	display: inline-block;
+	transform: rotate(180deg);
+}
+
+body.side-right .touchpad-action-bar {
+	top: var(--pad-header-gap);
+	right: 10px;
+	flex-direction: column;
+}
+body.side-left .touchpad-action-bar {
+	bottom: 10px;
+	left: 10px;
+	flex-direction: column-reverse;
+}
+body.side-right .touchpad-side-bar {
+	bottom: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	flex-direction: row-reverse;
+}
+body.side-left .touchpad-side-bar {
+	top: var(--pad-header-gap);
+	left: 50%;
+	transform: translateX(-50%);
+	flex-direction: row;
+}
+.touchpad-side-bar {
+	display: flex;
+	align-items: flex-start;
+}
+.pad-key-group {
+	display: none;
+	gap: 6px;
+	align-items: flex-start;
+	flex-direction: inherit;
+}
+.pad-key-group.visible {
+	display: flex;
+}
+.pad-confirm-btn {
+	padding: 16px 12px;
+	font-size: 1.05rem;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--clr-white);
+	background: var(--clr-accent);
+	border: none;
+	outline: none;
+	border-radius: 10px;
+	cursor: pointer;
+	touch-action: manipulation;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	-webkit-tap-highlight-color: transparent;
+}
+.pad-confirm-btn:active {
+	background: var(--clr-accent-dark);
+}
+body.side-left .pad-confirm-btn > span {
+	display: inline-block;
+	transform: rotate(180deg);
 }
 
 body.side-right .overlay,
@@ -1800,7 +1898,9 @@ body.panel-mode .overlay {
 	padding: 16px;
 }
 
-body.panel-mode .mode-side-btn {
+body.panel-mode .mode-side-btn,
+body.panel-mode .pad-bar-btn,
+body.panel-mode .pad-confirm-btn {
 	writing-mode: horizontal-tb;
 }
 
