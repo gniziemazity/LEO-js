@@ -253,16 +253,57 @@ test("the edit keys live on the mouse pad, where the pointer that selects text i
 	);
 });
 
-test("the bar carries the five edit keys, in the order a thumb reaches them", () => {
+test("the bar carries the six edit keys, in the order a thumb reaches them", () => {
 	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
 	const bar = /id="touchpadEditKeys"[\s\S]*?<\/div>/.exec(html)[0];
+	const names = [...bar.matchAll(/remoteEditKey\('(\w+)'\)/g)].map(
+		(m) => m[1],
+	);
 	assert.deepEqual(
-		[...bar.matchAll(/remoteEditKey\('(\w+)'\)/g)].map((m) => m[1]),
-		["copy", "paste", "cut", "undo", "enter"],
+		names,
+		["copy", "paste", "cut", "undo", "enter", "save"],
+		"save is appended, so nothing a thumb already knows moves",
 	);
 	assert.match(
 		SRC,
 		/function remoteEditKey\(action\) \{\s*sendMessage\("remote-edit-key", \{ action \}\);/,
+	);
+
+	const server = fs.readFileSync(
+		path.join(BASE, "main/websocket-server.js"),
+		"utf-8",
+	);
+	const allowed = /const EDIT_KEYS = \[([^\]]*)\]/.exec(server)[1];
+	for (const name of names) {
+		assert.match(
+			allowed,
+			new RegExp('"' + name + '"'),
+			name +
+				" is not on the allow-list, so the server would silently turn it into copy",
+		);
+	}
+
+	const main = fs.readFileSync(path.join(BASE, "main/main.js"), "utf-8");
+	const map = /const EDIT_KEY_TO_KEY = \{([^}]*)\}/.exec(main)[1];
+	for (const name of names) {
+		if (name === "enter") {
+			assert.doesNotMatch(
+				map,
+				/enter:/,
+				"enter is the bare key, handled before the map",
+			);
+			continue;
+		}
+		assert.match(
+			map,
+			new RegExp("\\b" + name + ": Key\\."),
+			name + " has no key, so the map's fallback would type Ctrl+C for it",
+		);
+	}
+	assert.match(
+		map,
+		/save: Key\.S/,
+		"and save is the modifier + S, like the other four",
 	);
 });
 

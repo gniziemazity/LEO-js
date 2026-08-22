@@ -16,7 +16,7 @@ function clampNum(v, max) {
 	return Math.max(-max, Math.min(max, n));
 }
 
-const EDIT_KEYS = ["copy", "cut", "paste", "undo", "enter"];
+const EDIT_KEYS = ["copy", "cut", "paste", "undo", "enter", "save"];
 
 function clampScale(v) {
 	const n = Number(v);

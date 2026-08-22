@@ -243,6 +243,7 @@ const EDIT_KEY_TO_KEY = {
 	cut: Key.X,
 	paste: Key.V,
 	undo: Key.Z,
+	save: Key.S,
 };
 broadcastServer.on("client-remote-edit-key", async (action) => {
 	try {
@@ -600,13 +601,14 @@ ipcMain.on("save-settings", (event, settings) => {
 	});
 	settingsManager.save();
 	reapplySettings();
-	broadcastServer.updateSettings(settings);
+	broadcastServer.updateSettings(settingsManager.getAll());
 	createApplicationMenu();
 	event.reply("settings-saved", settingsManager.getAll());
 });
 ipcMain.on("reset-settings", (event) => {
 	settingsManager.reset();
 	reapplySettings();
+	broadcastServer.updateSettings(settingsManager.getAll());
 	event.reply("settings-loaded", settingsManager.getAll());
 });
 
@@ -653,6 +655,7 @@ async function createWindow() {
 	} catch (err) {
 		console.error("[LEO] Remote server failed to start:", err);
 	}
+	broadcastServer.updateSettings(settingsManager.getAll());
 	hotkeyManager.registerSystemShortcuts();
 	state.mainWindow.webContents.on("did-finish-load", () => {
 		state.mainWindow.webContents.send(
