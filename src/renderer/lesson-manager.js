@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { moveToFileName } = require("../shared/move-to-target");
 
 class LessonManager {
 	constructor() {
@@ -189,14 +190,7 @@ class LessonManager {
 	}
 
 	static _moveToFileName(target) {
-		if (typeof target !== "string" || target === "MAIN" || target === "DEV") {
-			return null;
-		}
-		const inner =
-			target.startsWith("⚓") && target.endsWith("⚓")
-				? target.slice(1, -1)
-				: target;
-		return /\.[a-z0-9]+$/i.test(inner) ? inner : null;
+		return moveToFileName(target);
 	}
 
 	getBlock(index) {

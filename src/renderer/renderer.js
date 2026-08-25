@@ -126,10 +126,13 @@ cursorManager.onWebBlock = (url, shouldPin) => {
 };
 
 cursorManager.onEnterMoveToBlock = (payload) => {
-	const wasAutoTyping = cursorManager.autoTypingActive;
-	cursorManager._moveToResumeAuto = wasAutoTyping;
-	if (wasAutoTyping) cursorManager.stopAutoTyping();
+	cursorManager.suspendAutoTypingFor("move-to");
 	ipcRenderer.send("enter-move-to-block", payload);
+};
+
+cursorManager.onEnterCodeInsertBlock = (payload) => {
+	cursorManager.suspendAutoTypingFor("code-insert");
+	ipcRenderer.send("enter-code-insert-block", payload);
 };
 
 function getColor(key, fallback) {
@@ -285,13 +288,13 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("stop-auto-typing", () => cursorManager.stopAutoTyping());
 
 	ipcRenderer.on("move-to-confirmed", () => {
-		cursorManager._moveToWindowOpen = false;
-		cursorManager._activeMoveToIndex = null;
-		const shouldResume = cursorManager._moveToResumeAuto;
-		cursorManager._moveToResumeAuto = false;
-		if (shouldResume) {
+		if (cursorManager.confirmSpecial("move-to"))
 			cursorManager.startAutoTyping();
-		}
+	});
+
+	ipcRenderer.on("code-insert-confirmed", () => {
+		if (cursorManager.confirmSpecial("code-insert"))
+			cursorManager.startAutoTyping();
 	});
 
 	ipcRenderer.on("question-answered", (event, { studentName }) => {

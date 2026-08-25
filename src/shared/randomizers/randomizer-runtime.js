@@ -6,10 +6,6 @@ function registerRandomizer(name, runFn) {
 	if (!_activeRandomizer) _activeRandomizer = name;
 }
 
-function setActiveRandomizer(name) {
-	if (RANDOMIZERS[name]) _activeRandomizer = name;
-}
-
 function listRandomizers() {
 	return Object.keys(RANDOMIZERS);
 }

@@ -44,6 +44,13 @@
 		return segments;
 	}
 
+	function stripAnchors(text) {
+		return splitAnchorSegments(String(text || ""))
+			.filter((seg) => seg.type === "text")
+			.map((seg) => seg.value)
+			.join("");
+	}
+
 	function buildCodeText(text, container, startIndex, onStep) {
 		let stepIndex = startIndex;
 		const segments = splitAnchorSegments(text);
@@ -82,6 +89,7 @@
 		createCharSpan,
 		createAnchorSpan,
 		splitAnchorSegments,
+		stripAnchors,
 		buildCodeText,
 	};
 

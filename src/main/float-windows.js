@@ -7,18 +7,10 @@ const { WINDOW_CONFIG } = require("../shared/constants");
 const { closeToolWindows } = require("./lesson-tools");
 
 const floatState = {
-	questionWindow: null,
 	questionWindowIsLesson: false,
 	questionWindowStudentAnswered: null,
-	questionWindowRect: null,
 	questionWindowBgColor: null,
 	questionOptions: [],
-	randomizerWindow: null,
-	optionsWindow: null,
-	imageWindow: null,
-	imageWindowRect: null,
-	webWindow: null,
-	webWindowRect: null,
 };
 
 const CONTROL_PANEL_WIDTH = 504;
@@ -269,10 +261,6 @@ const _questionFloat = new FloatingWindow({
 			html: "../question-window.html",
 		});
 	},
-	sync: (self) => {
-		floatState.questionWindow = self.activeWin;
-		floatState.questionWindowRect = self.rect;
-	},
 	onShow: _onFloatShown,
 	onClosed: () => {
 		_randomizerFloat.close({ force: true });
@@ -305,10 +293,6 @@ const _imageFloat = new FloatingWindow({
 			title: "Image",
 			html: "../image-window.html",
 		}),
-	sync: (self) => {
-		floatState.imageWindow = self.activeWin;
-		floatState.imageWindowRect = self.rect;
-	},
 	onShow: _onFloatShown,
 });
 
@@ -340,10 +324,6 @@ const _webFloat = new FloatingWindow({
 		});
 		return win;
 	},
-	sync: (self) => {
-		floatState.webWindow = self.activeWin;
-		floatState.webWindowRect = self.rect;
-	},
 	onShow: _onFloatShown,
 });
 
@@ -363,9 +343,6 @@ const _randomizerFloat = new FloatingWindow({
 			html: "../randomizer-window.html",
 		});
 	},
-	sync: (self) => {
-		floatState.randomizerWindow = self.activeWin;
-	},
 	onShow: _onFloatShown,
 });
 
@@ -384,9 +361,6 @@ const _optionsFloat = new FloatingWindow({
 			title: "Options",
 			html: "../options-window.html",
 		});
-	},
-	sync: (self) => {
-		floatState.optionsWindow = self.activeWin;
 	},
 	onShow: _onFloatShown,
 });
@@ -413,8 +387,8 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 }
 
 function setQuestionWindowSquare() {
-	const qw = floatState.questionWindow;
-	if (!qw || qw.isDestroyed()) return;
+	const qw = _questionFloat.activeWin;
+	if (!qw) return;
 	const workArea = screen.getPrimaryDisplay().workArea;
 	const side = QUESTION_WIN_SQUARE_SIDE;
 	const x = Math.floor(workArea.x + (workArea.width - side) / 2);
@@ -422,18 +396,18 @@ function setQuestionWindowSquare() {
 		? workArea.y + workArea.height + QUESTION_WIN_OFFSCREEN_MARGIN
 		: Math.floor(workArea.y + (workArea.height - side) / 2);
 	qw.setBounds({ x, y, width: side, height: side });
-	if (floatState.questionWindowRect) {
-		floatState.questionWindowRect.x = x;
-		floatState.questionWindowRect.y = y;
-		floatState.questionWindowRect.w = side;
-		floatState.questionWindowRect.h = side;
+	if (_questionFloat.rect) {
+		_questionFloat.rect.x = x;
+		_questionFloat.rect.y = y;
+		_questionFloat.rect.w = side;
+		_questionFloat.rect.h = side;
 	}
 }
 
 let questionWindowSlideTimer = null;
 function _animateQuestionWindowTo(target, duration, onDone) {
-	const qw = floatState.questionWindow;
-	if (!qw || qw.isDestroyed()) return;
+	const qw = _questionFloat.activeWin;
+	if (!qw) return;
 	if (questionWindowSlideTimer) {
 		clearInterval(questionWindowSlideTimer);
 		questionWindowSlideTimer = null;
@@ -456,11 +430,11 @@ function _animateQuestionWindowTo(target, duration, onDone) {
 			height: lerp(start.height, target.height),
 		};
 		qw.setBounds(nb);
-		if (floatState.questionWindowRect) {
-			floatState.questionWindowRect.x = nb.x;
-			floatState.questionWindowRect.y = nb.y;
-			floatState.questionWindowRect.w = nb.width;
-			floatState.questionWindowRect.h = nb.height;
+		if (_questionFloat.rect) {
+			_questionFloat.rect.x = nb.x;
+			_questionFloat.rect.y = nb.y;
+			_questionFloat.rect.w = nb.width;
+			_questionFloat.rect.h = nb.height;
 		}
 		if (t >= 1) {
 			clearInterval(questionWindowSlideTimer);
@@ -471,8 +445,8 @@ function _animateQuestionWindowTo(target, duration, onDone) {
 }
 
 function animateQuestionWindowOnScreen() {
-	const qw = floatState.questionWindow;
-	if (!qw || qw.isDestroyed()) return;
+	const qw = _questionFloat.activeWin;
+	if (!qw) return;
 	const workArea = screen.getPrimaryDisplay().workArea;
 	const b = qw.getBounds();
 	const targetY = Math.floor(workArea.y + (workArea.height - b.height) / 2);
@@ -490,9 +464,6 @@ module.exports = {
 	closeAllChildWindows,
 	setQuestionWindowSquare,
 	animateQuestionWindowOnScreen,
-	getFloatRect,
-	ensureFloatTargets,
-	startFloatLerp,
 	stopFloatLerp,
 	applyWindowPinch,
 	applyWindowDrag,

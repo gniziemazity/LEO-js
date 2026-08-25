@@ -32,10 +32,6 @@ class CourseManager {
 		return this.name;
 	}
 
-	getRootPath() {
-		return this.rootPath;
-	}
-
 	plansDir() {
 		return path.join(this.rootPath, "plans");
 	}

@@ -1,6 +1,14 @@
 "use strict";
 
-const _PROFILE_IDS = ["javascript", "css", "html", "plaintext", "python"];
+const _PROFILE_IDS = [
+	"javascript",
+	"typescript",
+	"css",
+	"html",
+	"plaintext",
+	"python",
+	"json",
+];
 const _profiles = {};
 const _extToId = {};
 const _compiledRe = {};

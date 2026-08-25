@@ -1,3 +1,7 @@
+function clone(value) {
+	return JSON.parse(JSON.stringify(value));
+}
+
 class UndoManager {
 	constructor(lessonManager) {
 		this.lessonManager = lessonManager;
@@ -14,7 +18,7 @@ class UndoManager {
 		}
 
 		const state = {
-			data: JSON.parse(JSON.stringify(this.lessonManager.getAllBlocks())),
+			data: clone(this.lessonManager.getAllBlocks()),
 			actionType: actionType,
 			timestamp: Date.now(),
 		};
@@ -29,46 +33,31 @@ class UndoManager {
 	}
 
 	undo() {
-		if (this.undoStack.length === 0) {
-			return false;
-		}
-
-		this.isUndoing = true;
-
-		const currentState = {
-			data: JSON.parse(JSON.stringify(this.lessonManager.getAllBlocks())),
-			timestamp: Date.now(),
-		};
-		this.redoStack.push(currentState);
-
-		const previousState = this.undoStack.pop();
-
-		this.lessonManager.data = JSON.parse(JSON.stringify(previousState.data));
-		this.lessonManager.markAsChanged();
-
-		this.isUndoing = false;
-		return true;
+		return this.step(this.undoStack, this.redoStack, "isUndoing");
 	}
 
 	redo() {
-		if (this.redoStack.length === 0) {
+		return this.step(this.redoStack, this.undoStack, "isRedoing");
+	}
+
+	step(from, to, flag) {
+		if (from.length === 0) {
 			return false;
 		}
 
-		this.isRedoing = true;
+		this[flag] = true;
 
-		const currentState = {
-			data: JSON.parse(JSON.stringify(this.lessonManager.getAllBlocks())),
+		to.push({
+			data: clone(this.lessonManager.getAllBlocks()),
 			timestamp: Date.now(),
-		};
-		this.undoStack.push(currentState);
+		});
 
-		const nextState = this.redoStack.pop();
+		const target = from.pop();
 
-		this.lessonManager.data = JSON.parse(JSON.stringify(nextState.data));
+		this.lessonManager.data = clone(target.data);
 		this.lessonManager.markAsChanged();
 
-		this.isRedoing = false;
+		this[flag] = false;
 		return true;
 	}
 

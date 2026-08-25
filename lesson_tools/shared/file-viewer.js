@@ -111,12 +111,6 @@ class FileViewer {
 				: html || "";
 	}
 
-	setPreviewSrc(url) {
-		if (!this.previewEl) return;
-		this.previewEl.removeAttribute("srcdoc");
-		this.previewEl.src = url;
-	}
-
 	showPreviewLoading() {
 		if (!this.previewEl) return;
 		this.previewEl.removeAttribute("src");

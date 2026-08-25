@@ -131,9 +131,83 @@ test("allExtensions returns all registered", async () => {
 		".htm",
 		".html",
 		".js",
+		".json",
 		".py",
+		".ts",
+		".tsx",
 		".txt",
 	]);
+});
+
+test("typescript is javascript plus the type system", async () => {
+	await initProfiles();
+	const js = getProfile("javascript");
+	const ts = getProfile("typescript");
+
+	for (const w of js.keywords) {
+		assert.ok(ts.keywords.includes(w), `ts must keep the js keyword ${w}`);
+	}
+	for (const w of js.builtins) {
+		assert.ok(ts.builtins.includes(w), `ts must keep the js builtin ${w}`);
+	}
+	for (const key of [
+		"comments",
+		"strings",
+		"identifierRe",
+		"numberRe",
+		"indent",
+	]) {
+		assert.deepEqual(
+			ts[key],
+			js[key],
+			`${key} must not drift from javascript.json`,
+		);
+	}
+});
+
+test("typescript extensions map to the typescript profile", async () => {
+	await initProfiles();
+	assert.equal(extensionToId(".ts"), "typescript");
+	assert.equal(extensionToId(".TS"), "typescript");
+	assert.equal(extensionToId(".tsx"), "typescript");
+	assert.equal(getProfile(".ts"), getProfile("typescript"));
+});
+
+test("highlight: TypeScript type vocabulary", async () => {
+	await initProfiles();
+	const prof = getProfile(".ts");
+	const src = "interface User { name: string; age: number }";
+	const spans = highlight(prof, src);
+	const words = (list) => list.map((s) => src.slice(s.start, s.end));
+
+	assert.deepEqual(words(spans.hl_keyword), ["interface"]);
+	assert.deepEqual(words(spans.hl_builtin), ["string", "number"]);
+});
+
+test("highlight: TypeScript declaration keywords", async () => {
+	await initProfiles();
+	const prof = getProfile(".ts");
+	const src = "export type Id = string;\nclass A { private readonly x = 1 }";
+	const spans = highlight(prof, src);
+	const words = spans.hl_keyword.map((s) => src.slice(s.start, s.end));
+
+	for (const w of ["export", "type", "class", "private", "readonly"]) {
+		assert.ok(words.includes(w), `${w} must read as a keyword`);
+	}
+});
+
+test("highlight: TypeScript keeps the javascript behaviour", async () => {
+	await initProfiles();
+	const prof = getProfile(".ts");
+	const src = "// note\nconst s = `hi ${n}`;\nconsole.log(0x1f);";
+	const spans = highlight(prof, src);
+	const words = (list) => list.map((s) => src.slice(s.start, s.end));
+
+	assert.deepEqual(words(spans.hl_comment), ["// note"]);
+	assert.deepEqual(words(spans.hl_string), ["`hi ${n}`"]);
+	assert.deepEqual(words(spans.hl_builtin), ["console"]);
+	assert.deepEqual(words(spans.hl_func), ["log"]);
+	assert.deepEqual(words(spans.hl_number), ["0x1f"]);
 });
 
 test("html voidTags and embeddedTags declared", async () => {

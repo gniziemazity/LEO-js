@@ -45,7 +45,7 @@ class FloatingWindow {
 		}
 		if (this.isAlive()) {
 			if (gatePin && this._getPinned()) return;
-			this._broadcastServer.signalFloatingWindowOpen();
+			this._broadcastServer.broadcastFloatingWindowReshown();
 			this.win.webContents.send(this._channel, payload);
 			this.win.show();
 			this.win.focus();

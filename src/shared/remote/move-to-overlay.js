@@ -55,27 +55,23 @@ class MoveToOverlay extends RemoteOverlay {
 		const snippetEl = document.getElementById("mtoSnippet");
 		if (!overlay) return;
 
+		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
+
 		if (emojiEl) emojiEl.style.display = "none";
-		if (titleEl) titleEl.textContent = "Go to:";
+		if (titleEl) {
+			titleEl.textContent = switchTo
+				? `Go to (${MoveToTarget.moveToDisplayName(switchTo)}):`
+				: "Go to:";
+		}
 
 		snippetEl.style.display = "none";
 		snippetEl.innerHTML = "";
 		targetEl.style.display = "none";
 		targetEl.textContent = "";
 
-		if (mode === "dev") {
+		if (mode === "dev" || mode === "main" || mode === "file") {
 			targetEl.style.display = "";
-			targetEl.textContent = "Dev Tools";
-		} else if (mode === "main") {
-			targetEl.style.display = "";
-			targetEl.textContent = "Main Editor";
-		} else if (mode === "file") {
-			targetEl.style.display = "";
-			const fname =
-				target && target.startsWith("⚓") && target.endsWith("⚓")
-					? target.slice(1, -1)
-					: target || "";
-			targetEl.textContent = fname;
+			targetEl.textContent = MoveToTarget.moveToDisplayName(target);
 		} else if (mode === "anchor") {
 			if (snippet && snippet.lines && snippet.lines.length) {
 				snippetEl.style.display = "block";

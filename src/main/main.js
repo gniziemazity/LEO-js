@@ -1,4 +1,4 @@
-﻿const {
+const {
 	app,
 	BrowserWindow,
 	ipcMain,
@@ -7,6 +7,7 @@
 	Tray,
 	nativeImage,
 	screen,
+	clipboard,
 } = require("electron");
 
 const path = require("path");
@@ -65,8 +66,7 @@ broadcastServer.on("client-jump-to", (stepIndex) => {
 	state.send("client-jump-to", stepIndex);
 });
 broadcastServer.on("client-question-randomize", () => {
-	if (!floatState.questionWindow || floatState.questionWindow.isDestroyed())
-		return;
+	if (!_questionFloat.isAlive()) return;
 	const names = broadcastServer.currentState.students || [];
 	const style = settingsManager.get("randomizerStyle") || "shuffle";
 	_randomizerFloat.showOrReuse(
@@ -75,8 +75,7 @@ broadcastServer.on("client-question-randomize", () => {
 	);
 });
 broadcastServer.on("client-question-show-options", () => {
-	if (!floatState.questionWindow || floatState.questionWindow.isDestroyed())
-		return;
+	if (!_questionFloat.isAlive()) return;
 	_optionsFloat.showOrReuse(
 		{
 			options: floatState.questionOptions,
@@ -95,22 +94,14 @@ broadcastServer.on("client-student-answered", (studentName) => {
 	const ANSWER_FADE_MS = 300;
 	const reveal = () => {
 		state.send("question-answered", { studentName: resolved });
-		if (
-			floatState.questionWindow &&
-			!floatState.questionWindow.isDestroyed()
-		) {
-			floatState.questionWindow.webContents.send("set-answered", resolved);
-		}
+		const qw = _questionFloat.activeWin;
+		if (qw) qw.webContents.send("set-answered", resolved);
 	};
 	const fadedRandomizer = _randomizerFloat.fadeOutAndClose(ANSWER_FADE_MS);
 	const fadedOptions = _optionsFloat.fadeOutAndClose(ANSWER_FADE_MS);
 	if (fadedRandomizer || fadedOptions) {
 		setTimeout(() => {
-			if (
-				floatState.questionWindow &&
-				!floatState.questionWindow.isDestroyed()
-			)
-				reveal();
+			if (_questionFloat.isAlive()) reveal();
 		}, ANSWER_FADE_MS);
 	} else {
 		reveal();
@@ -160,12 +151,11 @@ broadcastServer.on("client-show-question", (animate) => {
 	if (animate) animateQuestionWindowOnScreen();
 	state.send("question-shown");
 });
-broadcastServer.on("client-move-to-confirmed", () => {
-	state.unpause();
-	broadcastServer.broadcastMoveToEnded();
-	setPanelVisible(false);
-	state.send("move-to-confirmed");
-});
+broadcastServer.on("client-move-to-confirmed", () => confirmPopup("move-to"));
+broadcastServer.on("client-code-insert-confirmed", () =>
+	confirmPopup("code-insert"),
+);
+broadcastServer.on("client-code-insert-paste", () => pasteCodeInsert());
 broadcastServer.on("client-dismiss-question", () => {
 	state.unpause();
 	if (floatState.questionWindowIsLesson) {
@@ -178,9 +168,15 @@ broadcastServer.on("client-interaction-overlay-shown", () => {
 });
 broadcastServer.on("client-interaction-overlay-closed", () => {
 	state.unpause();
-	if (!floatState.questionWindow || floatState.questionWindow.isDestroyed())
-		setPanelVisible(false);
+	if (!_questionFloat.isAlive()) setPanelVisible(false);
 });
+
+const warnedRemoteOps = new Set();
+function warnRemoteInput(op, err) {
+	if (warnedRemoteOps.has(op)) return;
+	warnedRemoteOps.add(op);
+	console.error(`[LEO] remote ${op} failed: ${err && err.message}`);
+}
 
 mouse.config.autoDelayMs = 0;
 mouse.config.mouseSpeed = 2000;
@@ -189,33 +185,43 @@ broadcastServer.on("client-mouse-move", async (dx, dy) => {
 	try {
 		const pos = await mouse.getPosition();
 		await mouse.setPosition(new Point(pos.x + dx, pos.y + dy));
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("pointer move", e);
+	}
 });
 broadcastServer.on("client-mouse-click", async (button) => {
 	try {
 		if (button === "right") await mouse.rightClick();
 		else await mouse.leftClick();
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("click", e);
+	}
 });
 broadcastServer.on("client-mouse-scroll", async (dy) => {
 	try {
 		const amount = Math.abs(Math.round(dy));
 		if (dy > 0) await mouse.scrollDown(amount);
 		else await mouse.scrollUp(amount);
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("scroll", e);
+	}
 });
 let mouseDragActive = false;
 broadcastServer.on("client-mouse-drag-start", async () => {
 	try {
 		mouseDragActive = true;
 		await mouse.pressButton(Button.LEFT);
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("drag start", e);
+	}
 });
 broadcastServer.on("client-mouse-drag-end", async () => {
 	try {
 		mouseDragActive = false;
 		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("drag end", e);
+	}
 });
 broadcastServer.on("client-connected", () => {
 	state.send("client-connected");
@@ -225,7 +231,9 @@ broadcastServer.on("client-disconnected", async () => {
 	try {
 		mouseDragActive = false;
 		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("drag release on disconnect", e);
+	}
 });
 
 broadcastServer.on("client-window-pinch", (scale, dx, dy) =>
@@ -256,7 +264,9 @@ broadcastServer.on("client-remote-edit-key", async (action) => {
 				? Key.LeftCmd
 				: Key.LeftControl;
 		await keyboard.type(modifier, EDIT_KEY_TO_KEY[action] || Key.C);
-	} catch (e) {}
+	} catch (e) {
+		warnRemoteInput("edit key", e);
+	}
 });
 
 const timer = new MainProcessTimer();
@@ -318,34 +328,19 @@ ipcMain.on("randomizer-done", (event, index) => {
 	}
 });
 
-ipcMain.on("open-question-devtools", () => {
-	if (floatState.questionWindow && !floatState.questionWindow.isDestroyed()) {
-		floatState.questionWindow.webContents.openDevTools({ mode: "detach" });
-	}
-});
-ipcMain.on("open-randomizer-devtools", () => {
-	if (
-		floatState.randomizerWindow &&
-		!floatState.randomizerWindow.isDestroyed()
-	) {
-		floatState.randomizerWindow.webContents.openDevTools({ mode: "detach" });
-	}
-});
-ipcMain.on("open-options-devtools", () => {
-	if (floatState.optionsWindow && !floatState.optionsWindow.isDestroyed()) {
-		floatState.optionsWindow.webContents.openDevTools({ mode: "detach" });
-	}
-});
-ipcMain.on("open-image-devtools", () => {
-	if (floatState.imageWindow && !floatState.imageWindow.isDestroyed()) {
-		floatState.imageWindow.webContents.openDevTools({ mode: "detach" });
-	}
-});
-ipcMain.on("open-web-devtools", () => {
-	if (floatState.webWindow && !floatState.webWindow.isDestroyed()) {
-		floatState.webWindow.webContents.openDevTools({ mode: "detach" });
-	}
-});
+const DEVTOOLS_TARGETS = {
+	"open-question-devtools": _questionFloat,
+	"open-randomizer-devtools": _randomizerFloat,
+	"open-options-devtools": _optionsFloat,
+	"open-image-devtools": _imageFloat,
+	"open-web-devtools": _webFloat,
+};
+for (const [channel, float] of Object.entries(DEVTOOLS_TARGETS)) {
+	ipcMain.on(channel, () => {
+		const win = float.activeWin;
+		if (win) win.webContents.openDevTools({ mode: "detach" });
+	});
+}
 
 ipcMain.on("question-window-shape", (event, shape) => {
 	if (shape === "circle") setQuestionWindowSquare();
@@ -363,16 +358,15 @@ ipcMain.on("close-options-window", () => {
 	_optionsFloat.close({ force: true });
 });
 
-ipcMain.on("enter-move-to-block", (event, payload) => {
-	state.pause();
-	broadcastServer.broadcastMoveToStarted(payload);
-	setPanelVisible(true);
-});
-ipcMain.on("close-move-to-window", () => {
-	state.unpause();
-	broadcastServer.broadcastMoveToEnded();
-	setPanelVisible(false);
-});
+ipcMain.on("enter-move-to-block", (event, payload) =>
+	enterPopup("move-to", payload),
+);
+ipcMain.on("close-move-to-window", () => endPopup("move-to"));
+
+ipcMain.on("enter-code-insert-block", (event, payload) =>
+	enterPopup("code-insert", payload),
+);
+ipcMain.on("close-code-insert-window", () => endPopup("code-insert"));
 
 ipcMain.on("start-interaction", (event, interactionType) => {
 	setPanelVisible(true);
@@ -408,7 +402,8 @@ ipcMain.on("pin-image-window", (event, pinned) => {
 const IMAGE_WINDOW_DISPLAY_SCALE = 0.95;
 
 ipcMain.on("resize-image-window", (event, { width, height }) => {
-	if (!floatState.imageWindow || floatState.imageWindow.isDestroyed()) return;
+	const win = _imageFloat.activeWin;
+	if (!win) return;
 	const display = screen.getPrimaryDisplay();
 	const maxW = Math.floor(
 		display.workAreaSize.width * IMAGE_WINDOW_DISPLAY_SCALE,
@@ -419,11 +414,10 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	const scale = Math.min(1, maxW / width, maxH / height);
 	const newW = Math.round(width * scale);
 	const newH = Math.round(height * scale);
-	floatState.imageWindow.setSize(newW, newH);
-	floatState.imageWindow.center();
-	const b = floatState.imageWindow.getBounds();
+	win.setSize(newW, newH);
+	win.center();
+	const b = win.getBounds();
 	_imageFloat.rect = { x: b.x, y: b.y, w: b.width, h: b.height };
-	floatState.imageWindowRect = _imageFloat.rect;
 });
 ipcMain.on("force-close-image-window", () => {
 	_imageFloat.close({ force: true });
@@ -618,6 +612,78 @@ ipcMain.on("open-log-visualizer", (_event, logFilePath) => {
 
 // window functions
 
+const PAUSING_POPUPS = {
+	"move-to": {
+		started: (payload) => broadcastServer.broadcastMoveToStarted(payload),
+		ended: () => broadcastServer.broadcastMoveToEnded(),
+		confirmChannel: "move-to-confirmed",
+	},
+	"code-insert": {
+		started: (payload) => broadcastServer.broadcastCodeInsertStarted(payload),
+		ended: () => broadcastServer.broadcastCodeInsertEnded(),
+		confirmChannel: "code-insert-confirmed",
+		onEnter: (payload) => holdCodeOnClipboard(payload && payload.text),
+		onExit: () => releaseCodeFromClipboard(),
+	},
+};
+
+let openPopup = null;
+
+function enterPopup(kind, payload) {
+	const popup = PAUSING_POPUPS[kind];
+	openPopup = kind;
+	state.pause();
+	if (popup.onEnter) popup.onEnter(payload);
+	popup.started(payload);
+	setPanelVisible(true);
+	hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
+}
+
+function endPopup(kind) {
+	const popup = PAUSING_POPUPS[kind];
+	if (openPopup === kind) openPopup = null;
+	hotkeyManager.unregisterConfirmPopup();
+	state.unpause();
+	if (popup.onExit) popup.onExit();
+	popup.ended();
+	setPanelVisible(false);
+}
+
+function confirmPopup(kind) {
+	endPopup(kind);
+	state.send(PAUSING_POPUPS[kind].confirmChannel);
+}
+
+let heldClipboard = null;
+
+function holdCodeOnClipboard(code) {
+	if (!code) return;
+	heldClipboard = { code, previous: clipboard.readText() };
+	clipboard.writeText(code);
+}
+
+function releaseCodeFromClipboard() {
+	const held = heldClipboard;
+	heldClipboard = null;
+	if (!held) return;
+	if (clipboard.readText() === held.code) clipboard.writeText(held.previous);
+}
+
+async function pasteCodeInsert() {
+	const held = heldClipboard;
+	if (!held) return;
+	try {
+		if (clipboard.readText() !== held.code) clipboard.writeText(held.code);
+		const modifier =
+			settingsManager.get("platform") === "macos"
+				? Key.LeftCmd
+				: Key.LeftControl;
+		await keyboard.type(modifier, Key.V);
+	} catch (e) {
+		warnRemoteInput("code insert paste", e);
+	}
+}
+
 function reapplySettings() {
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
@@ -626,6 +692,10 @@ function reapplySettings() {
 	}
 	if (state.isAutoTyping) {
 		hotkeyManager.registerEscapeForAutoTyping();
+	}
+	if (openPopup) {
+		const kind = openPopup;
+		hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
 	}
 	keyboardHandler.updatePlatformSettings();
 }

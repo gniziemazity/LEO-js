@@ -4,6 +4,7 @@ const state = require("./state");
 class HotkeyManager {
 	constructor(settingsManager) {
 		this.settingsManager = settingsManager;
+		this.confirmPopupKey = null;
 	}
 
 	handleKey(letter) {
@@ -83,6 +84,22 @@ class HotkeyManager {
 				state.mainWindow.webContents.send("stop-auto-typing");
 			});
 		}
+	}
+
+	registerConfirmPopup(callback) {
+		const accelerator = this.settingsManager.get("hotkeys.confirmPopup");
+		if (!accelerator) return;
+		this.confirmPopupKey = accelerator;
+		if (globalShortcut.isRegistered(accelerator)) return;
+		if (!globalShortcut.register(accelerator, callback)) {
+			console.warn(`[LEO] popup confirm hotkey unavailable: ${accelerator}`);
+		}
+	}
+
+	unregisterConfirmPopup() {
+		if (!this.confirmPopupKey) return;
+		globalShortcut.unregister(this.confirmPopupKey);
+		this.confirmPopupKey = null;
 	}
 
 	unregisterEscape() {

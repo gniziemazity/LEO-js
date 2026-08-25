@@ -2,6 +2,16 @@
 
 const PAUSE_CAP_MS = 3000;
 
+const MAIN_FILE = "MAIN";
+
+function visibleFileTabs(files, activeFilename) {
+	return Object.keys(files).filter((name) => {
+		if (name !== MAIN_FILE) return true;
+		if (name === activeFilename) return true;
+		return (files[name].text || "").trim() !== "";
+	});
+}
+
 function computeSkipRegions(cumDelay, cap) {
 	const regions = [];
 	if (!cumDelay) return regions;
@@ -932,7 +942,7 @@ class LogVisualizer {
 	}
 
 	_updateFileTabs() {
-		const keys = Object.keys(this._files);
+		const keys = visibleFileTabs(this._files, this._activeFilename);
 		this.fileViewer.setTabs(keys, this._activeFilename);
 	}
 
@@ -960,19 +970,12 @@ class LogVisualizer {
 	}
 
 	_renderEditors() {
-		const fn = this._activeFilename.toLowerCase();
-		let mainFileType;
-		if (fn.endsWith(".css")) mainFileType = "css";
-		else if (fn.endsWith(".js")) mainFileType = "js";
-		else if (fn.endsWith(".py")) mainFileType = "py";
-		else {
-			const LP = window.LanguageProfiles;
-			const lessonExt = LP ? LP.lessonFileExtension(this._lessonFile) : null;
-			if (lessonExt === ".py") mainFileType = "py";
-			else if (lessonExt === ".css") mainFileType = "css";
-			else if (lessonExt === ".js") mainFileType = "js";
-			else mainFileType = "html";
-		}
+		const LP = window.LanguageProfiles;
+		const lessonExt = LP ? LP.lessonFileExtension(this._lessonFile) : null;
+		const mainFileType =
+			langShortId(this._activeFilename, null) ||
+			langShortId(lessonExt, null) ||
+			"html";
 		this.fileViewer.setEditorHtml(
 			renderEditorHtml(this.main, true, mainFileType),
 		);
@@ -1178,5 +1181,5 @@ class LogVisualizer {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-	module.exports = { computeSkipRegions, PAUSE_CAP_MS };
+	module.exports = { computeSkipRegions, PAUSE_CAP_MS, visibleFileTabs };
 }

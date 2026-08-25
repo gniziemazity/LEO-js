@@ -15,6 +15,7 @@ class SettingsManager {
 				alwaysOnTop: "CommandOrControl+Shift+Space",
 				toggleTransparency: "CommandOrControl+Shift+T",
 				toggleWindow: "CommandOrControl+L",
+				confirmPopup: "CommandOrControl+Enter",
 			},
 			colors: {
 				commentNormal: "#fff9c4",

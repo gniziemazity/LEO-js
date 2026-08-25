@@ -1,5 +1,5 @@
 from .lv_constants import MAX_REAL_DELAY, DELAY_OPS
-from .folder_utils import CODE_EXTS
+from .folder_utils import is_move_to_file
 
 
 def expand_events(events: list) -> list:
@@ -20,7 +20,7 @@ def expand_events(events: list) -> list:
             elif target in ("MAIN", "main"):
                 current_editor = "main"
                 micro.append(("switch_editor", "main", ts, DELAY_OPS))
-            elif any(target.lower().endswith(ext) for ext in CODE_EXTS):
+            elif is_move_to_file(target):
                 current_editor = "main"
                 micro.append(("switch_file", target, ts, DELAY_OPS))
             else:

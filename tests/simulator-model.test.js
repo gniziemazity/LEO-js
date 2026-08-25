@@ -4,7 +4,13 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
 const model = require("../lesson_tools/shared/simulator-model.js");
-const { TextState } = model;
+const { TextState, expandEvents } = model;
+
+function moveToKinds(...targets) {
+	return expandEvents(targets.map((t) => ({ move_to: t, timestamp: 0 }))).map(
+		(m) => [m[0], m[1]],
+	);
+}
 
 function typed(str) {
 	const s = new TextState();
@@ -15,6 +21,33 @@ function typed(str) {
 
 test("VSCodeSettings is no longer exported (smart features removed)", () => {
 	assert.equal("VSCodeSettings" in model, false);
+});
+
+test("expandEvents: any filename.ext move-to becomes a file switch", () => {
+	assert.deepEqual(
+		moveToKinds("index.html", "style.css", "app.js", "data.json", "main.py"),
+		[
+			["switch_file", "index.html"],
+			["switch_file", "style.css"],
+			["switch_file", "app.js"],
+			["switch_file", "data.json"],
+			["switch_file", "main.py"],
+		],
+	);
+});
+
+test("expandEvents: MAIN and DEV stay editor switches", () => {
+	assert.deepEqual(moveToKinds("MAIN", "DEV"), [
+		["switch_editor", "main"],
+		["switch_editor", "dev"],
+	]);
+});
+
+test("expandEvents: extensionless targets stay anchor jumps", () => {
+	assert.deepEqual(moveToKinds("⚓3⚓", "someAnchor"), [
+		["move_anchor", "⚓3⚓"],
+		["move_anchor", "someAnchor"],
+	]);
 });
 
 test("insert: updates text, cursor and per-char timestamps", () => {

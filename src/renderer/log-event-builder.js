@@ -1,4 +1,4 @@
-const { getBlockSubtype } = require("../shared/constants");
+const { getBlockSubtype } = require("../shared/blocks");
 
 function buildArtificialLogEvents(executionSteps) {
 	const KEYS_PER_MINUTE = 70;
@@ -24,6 +24,10 @@ function buildArtificialLogEvents(executionSteps) {
 				if (seenMoveTo !== step.globalIndex) {
 					seenMoveTo = step.globalIndex;
 					seenCodeInsert = null;
+					const switchTo = step.snippet && step.snippet.switchTo;
+					if (switchTo) {
+						events.push({ timestamp: t, move_to: switchTo });
+					}
 					events.push({ timestamp: t, move_to: step.target || "MAIN" });
 				}
 				return;

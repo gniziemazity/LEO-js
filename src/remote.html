@@ -138,7 +138,6 @@
 				</button>
 				<div class="popup-student-grid" id="qGrid"></div>
 				<div class="q-answered-row" id="qAnsweredRow">
-					<span id="qAnsweredText"></span>
 					<div class="q-close-bar">
 						<div class="q-close-bar-fill" id="qCloseBarFill"></div>
 					</div>
@@ -193,7 +192,41 @@
 			</div>
 		</div>
 
+		<div id="codeInsertOverlay" class="overlay overlay-pad-ok">
+			<div class="popup-modal" id="ciModal">
+				<button
+					class="overlay-close-btn"
+					onclick="closeCodeInsertOverlay()"
+				>
+					✕
+				</button>
+				<div class="mt-modal-emoji">📋</div>
+				<div class="popup-title">Insert code:</div>
+				<div class="mt-modal-snippet ci-modal-code" id="ciCode"></div>
+				<div class="ci-modal-actions" id="ciActions">
+					<div class="ci-modal-hint" id="ciHint">
+						Ctrl/⌘+V in your editor
+					</div>
+					<button
+						class="mt-modal-confirm ci-paste-btn"
+						id="ciPaste"
+						onclick="codeInsertPaste()"
+					>
+						📋 Paste
+					</button>
+					<button
+						class="mt-modal-confirm"
+						onclick="closeCodeInsertOverlay()"
+					>
+						OK
+					</button>
+				</div>
+			</div>
+		</div>
+
 		<script src="code-text.js"></script>
+		<script src="move-to-target.js"></script>
+		<script src="blocks.js"></script>
 		<script src="remote/connection.js"></script>
 		<script src="remote/touchpad.js"></script>
 		<script src="remote/timer.js"></script>
@@ -202,6 +235,7 @@
 		<script src="remote/question-overlay.js"></script>
 		<script src="remote/interaction-overlay.js"></script>
 		<script src="remote/move-to-overlay.js"></script>
+		<script src="remote/code-insert-overlay.js"></script>
 		<script src="remote/overlays.js"></script>
 		<script src="remote/plugin.js"></script>
 
@@ -254,6 +288,12 @@
 					case "move-to-ended":
 						closeMoveToOverlayUI();
 						break;
+					case "code-insert-started":
+						showCodeInsertOverlay(data);
+						break;
+					case "code-insert-ended":
+						closeCodeInsertOverlayUI();
+						break;
 					case "timer-tick":
 						showTimerRunning(data.timeRemaining);
 						break;
@@ -282,6 +322,8 @@
 						state.activeQuestionOptions,
 					);
 				if (state.activeMoveTo) showMoveToOverlay(state.activeMoveTo);
+				if (state.activeCodeInsert)
+					showCodeInsertOverlay(state.activeCodeInsert);
 				if (state.timeRemaining != null)
 					showTimerRunning(state.timeRemaining);
 				else showTimerStopped();

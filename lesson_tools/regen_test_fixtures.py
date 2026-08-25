@@ -31,9 +31,18 @@ _CASES = [
 ]
 
 
+def _dir_or(case_dir: Path, name: str) -> Path:
+    nested = case_dir / name
+    return nested if nested.is_dir() else case_dir
+
+
+def _teacher_tokens_path(case_dir: Path) -> Path:
+    return _dir_or(case_dir, "correct") / "tokens.txt"
+
+
 def _student_dirs(case_dir: Path) -> list[Path]:
     result = []
-    for d in sorted(case_dir.iterdir()):
+    for d in sorted(_dir_or(case_dir, "anon_ids").iterdir()):
         if d.is_dir() and d.name.isdigit():
             if any(f.suffix.lower() in CODE_EXTS for f in d.iterdir()):
                 result.append(d)
@@ -55,14 +64,9 @@ def _load_lesson_file(log_path: Path) -> str | None:
 
 def _collect_teacher_files(case_dir: Path) -> dict:
     files = {}
-    for f in sorted(case_dir.iterdir()):
-        if f.suffix.lower() in CODE_EXTS:
+    for f in sorted(_dir_or(case_dir, "reconstructed").iterdir()):
+        if f.is_file() and f.suffix.lower() in CODE_EXTS:
             files[f.name] = f
-    reco_dir = case_dir / "reconstructed"
-    if reco_dir.is_dir():
-        for f in sorted(reco_dir.iterdir()):
-            if f.suffix.lower() in CODE_EXTS:
-                files[f.name] = f
     reco_html = case_dir / "reconstructed.html"
     if reco_html.exists():
         files["reconstructed.html"] = reco_html
@@ -78,8 +82,11 @@ def _collect_student_files(student_dir: Path) -> dict:
 
 
 def _keylog_path(case_dir: Path) -> Path:
-    p = case_dir / "log.log"
-    return p if p.is_file() else case_dir / "log.json"
+    for name in ("keypress.log", "log.log", "log.json"):
+        p = case_dir / name
+        if p.is_file():
+            return p
+    return case_dir / "log.json"
 
 
 def regen_teacher_tokens(case_dir: Path) -> None:
@@ -91,7 +98,7 @@ def regen_teacher_tokens(case_dir: Path) -> None:
     events = _load_events(log_path)
     lesson_file = _load_lesson_file(log_path)
     n_typed, n_removed, n_unique = _write_teacher_tokens_file(
-        events, case_dir / "tokens.txt", lesson_file=lesson_file,
+        events, _teacher_tokens_path(case_dir), lesson_file=lesson_file,
     )
     print(f"  {case_dir.name}/tokens.txt  ({n_typed} occ, {n_removed} removed, {n_unique} unique)")
 
@@ -112,18 +119,18 @@ def regen_reconstructed(case_dir: Path) -> None:
         if tab_key == "MAIN" and not text:
             continue
         name = main_name if tab_key == "MAIN" else tab_key
-        out = case_dir / name
+        out = _dir_or(case_dir, "reconstructed") / name
         out.write_text(text, encoding="utf-8")
         print(f"  {case_dir.name}/{name}  ({len(text)} chars)")
 
 
 def regen_student(case_dir: Path, student_name: str) -> None:
-    teacher_tokens_path = case_dir / "tokens.txt"
+    teacher_tokens_path = _teacher_tokens_path(case_dir)
     if not teacher_tokens_path.exists():
         print(f"  SKIP (no teacher tokens.txt): {case_dir.name}/{student_name}")
         return
 
-    student_dir = case_dir / student_name
+    student_dir = _dir_or(case_dir, "anon_ids") / student_name
     if not student_dir.is_dir():
         print(f"  SKIP (no dir): {case_dir.name}/{student_name}")
         return
@@ -223,6 +230,9 @@ def main():
 
     for dir_name, regen_reco in _CASES:
         case_dir = _TEST / dir_name
+        if not case_dir.is_dir():
+            print(f"[{dir_name}]\n  SKIP (no such lesson)\n")
+            continue
         print(f"[{dir_name}]")
 
         regen_teacher_tokens(case_dir)

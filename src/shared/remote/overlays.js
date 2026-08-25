@@ -13,6 +13,7 @@ function setStudents(students) {
 const questionOverlay = new QuestionOverlay();
 const interactionOverlay = new InteractionOverlay();
 const moveToOverlay = new MoveToOverlay();
+const codeInsertOverlay = new CodeInsertOverlay();
 
 function showQuestionOverlay(question, students, bgColor, options) {
 	questionOverlay.show(question, students, bgColor, options);
@@ -20,10 +21,6 @@ function showQuestionOverlay(question, students, bgColor, options) {
 
 function showQuestionToTeacher(animate) {
 	questionOverlay.showToTeacher(animate);
-}
-
-function onStudentAnswered(idx) {
-	questionOverlay.studentAnswered(idx);
 }
 
 function closeQuestionOverlayUI() {
@@ -34,20 +31,8 @@ function closeQuestionOverlay() {
 	questionOverlay.dismiss();
 }
 
-function clearAutoCloseTimer() {
-	questionOverlay.clearTimer();
-}
-
 function handleInteractionBtn(interactionType) {
 	interactionOverlay.handleBtn(interactionType);
-}
-
-function showInteractionOverlay(title, students, type) {
-	interactionOverlay.show(title, students, type);
-}
-
-function onStudentSelected(idx, type, questionText) {
-	interactionOverlay.studentSelected(idx, type, questionText);
 }
 
 function closeInteractionOverlay() {
@@ -70,12 +55,20 @@ function closeMoveToOverlay() {
 	moveToOverlay.confirm();
 }
 
-function questionRandomize() {
-	questionOverlay.randomize();
+function showCodeInsertOverlay(payload) {
+	codeInsertOverlay.show(payload);
 }
 
-function questionShowOptions() {
-	questionOverlay.showOptions();
+function closeCodeInsertOverlayUI() {
+	codeInsertOverlay.closeUI();
+}
+
+function closeCodeInsertOverlay() {
+	codeInsertOverlay.confirm();
+}
+
+function codeInsertPaste() {
+	codeInsertOverlay.paste();
 }
 
 function onRandomizerResult(index, name) {

@@ -79,7 +79,7 @@ from .token_log_starpass import (
     _upgrade_secprefix,
 )
 
-from .folder_utils import CODE_EXTS
+from .folder_utils import is_move_to_file
 
 
 def _remap_marks_to_utf16(
@@ -155,7 +155,7 @@ def _build_file_timeline(events: list) -> list:
                 pass
             elif target in ("MAIN", "main"):
                 timeline.append((ts, "MAIN"))
-            elif any(target.lower().endswith(ext) for ext in CODE_EXTS):
+            elif is_move_to_file(target):
                 timeline.append((ts, target))
         elif "switch_editor" in event and event["switch_editor"] not in ("dev", "DEV"):
             timeline.append((ts, "MAIN"))

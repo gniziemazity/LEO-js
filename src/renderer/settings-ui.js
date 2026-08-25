@@ -1,5 +1,50 @@
 const { ipcRenderer } = require("electron");
-const { buildSettingsCSS } = require("../shared/constants");
+const { buildSettingsCSS } = require("../shared/blocks");
+
+const COLOR_FIELDS = [
+	["commentNormalColor", "commentNormal"],
+	["codeBlockColor", "codeBlockColor"],
+	["questionCommentColor", "questionCommentColor"],
+	["imageBlockColor", "imageBlockColor"],
+	["codeInsertBlockColor", "codeInsertBlockColor"],
+	["moveToBlockColor", "moveToBlockColor"],
+	["moveToTextColor", "moveToTextColor"],
+	["commentActiveColor", "commentActive"],
+	["commentSelectedColor", "commentSelected"],
+	["commentActiveTextColor", "commentActiveText"],
+	["cursorColor", "cursor"],
+	["selectedBorderColor", "selectedBorder"],
+	["textColor", "textColor"],
+];
+
+const HOTKEY_FIELDS = [
+	["toggleActiveKey", "toggleActive"],
+	["stepBackwardKey", "stepBackward"],
+	["stepForwardKey", "stepForward"],
+	["alwaysOnTopKey", "alwaysOnTop"],
+	["toggleTransparencyKey", "toggleTransparency"],
+	["toggleWindowKey", "toggleWindow"],
+	["confirmPopupKey", "confirmPopup"],
+];
+
+const REGISTRY_SELECTS = [
+	{
+		id: "floatingTheme",
+		fallback: "solid",
+		list: () => (typeof listThemes === "function" ? listThemes() : []),
+	},
+	{
+		id: "randomizerStyle",
+		fallback: "shuffle",
+		list: () =>
+			typeof listRandomizers === "function" ? listRandomizers() : [],
+	},
+	{
+		id: "answerEffect",
+		fallback: "fireworks",
+		list: () => (typeof listEffects === "function" ? listEffects() : []),
+	},
+];
 
 class SettingsUI {
 	constructor() {
@@ -77,43 +122,8 @@ class SettingsUI {
 
 		document.getElementById("typingHotkeys").value =
 			settings.hotkeys.typing.join("");
-		document.getElementById("toggleActiveKey").value =
-			settings.hotkeys.toggleActive;
-		document.getElementById("stepBackwardKey").value =
-			settings.hotkeys.stepBackward;
-		document.getElementById("stepForwardKey").value =
-			settings.hotkeys.stepForward;
-		document.getElementById("alwaysOnTopKey").value =
-			settings.hotkeys.alwaysOnTop;
-		document.getElementById("toggleTransparencyKey").value =
-			settings.hotkeys.toggleTransparency;
-		document.getElementById("toggleWindowKey").value =
-			settings.hotkeys.toggleWindow;
-
-		document.getElementById("commentNormalColor").value =
-			settings.colors.commentNormal;
-		document.getElementById("codeBlockColor").value =
-			settings.colors.codeBlockColor || "#ffffff";
-		document.getElementById("questionCommentColor").value =
-			settings.colors.questionCommentColor;
-		document.getElementById("imageBlockColor").value =
-			settings.colors.imageBlockColor;
-		document.getElementById("codeInsertBlockColor").value =
-			settings.colors.codeInsertBlockColor || "#f0f0f0";
-		document.getElementById("moveToBlockColor").value =
-			settings.colors.moveToBlockColor || "#424242";
-		document.getElementById("moveToTextColor").value =
-			settings.colors.moveToTextColor || "#ffffff";
-		document.getElementById("commentActiveColor").value =
-			settings.colors.commentActive;
-		document.getElementById("commentSelectedColor").value =
-			settings.colors.commentSelected;
-		document.getElementById("commentActiveTextColor").value =
-			settings.colors.commentActiveText;
-		document.getElementById("cursorColor").value = settings.colors.cursor;
-		document.getElementById("selectedBorderColor").value =
-			settings.colors.selectedBorder;
-		document.getElementById("textColor").value = settings.colors.textColor;
+		this._applyFields(HOTKEY_FIELDS, settings.hotkeys);
+		this._applyFields(COLOR_FIELDS, settings.colors);
 
 		document.getElementById("fontSize").value = settings.fontSize;
 
@@ -133,57 +143,59 @@ class SettingsUI {
 		document.getElementById("touchpadSide").value =
 			settings.touchpadSide || "right";
 
-		const themeSelect = document.getElementById("floatingTheme");
-		if (themeSelect) {
-			const names = typeof listThemes === "function" ? listThemes() : [];
-			for (const name of names) {
-				if (!themeSelect.querySelector(`option[value="${name}"]`)) {
-					const opt = document.createElement("option");
-					opt.value = name;
-					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-					themeSelect.appendChild(opt);
-				}
-			}
-			themeSelect.value = settings.floatingTheme || "solid";
-		}
-
-		const randomizerSelect = document.getElementById("randomizerStyle");
-		if (randomizerSelect) {
-			const rnames =
-				typeof listRandomizers === "function" ? listRandomizers() : [];
-			for (const name of rnames) {
-				if (!randomizerSelect.querySelector(`option[value="${name}"]`)) {
-					const opt = document.createElement("option");
-					opt.value = name;
-					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-					randomizerSelect.appendChild(opt);
-				}
-			}
-			randomizerSelect.value = settings.randomizerStyle || "shuffle";
-			if (!randomizerSelect.value && randomizerSelect.options.length) {
-				randomizerSelect.value = randomizerSelect.options[0].value;
-			}
-		}
-
-		const effectSelect = document.getElementById("answerEffect");
-		if (effectSelect) {
-			const enames = typeof listEffects === "function" ? listEffects() : [];
-			for (const name of enames) {
-				if (!effectSelect.querySelector(`option[value="${name}"]`)) {
-					const opt = document.createElement("option");
-					opt.value = name;
-					opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-					effectSelect.appendChild(opt);
-				}
-			}
-			effectSelect.value = settings.answerEffect || "fireworks";
-		}
+		this.applyRegistrySelects(settings);
 
 		const teacherNameInput = document.getElementById("teacherName");
 		if (teacherNameInput)
 			teacherNameInput.value = settings.teacherName || "Teacher";
 
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
+	}
+
+	_applyFields(fields, values) {
+		for (const [id, key] of fields) {
+			const el = document.getElementById(id);
+			if (el) el.value = values[key];
+		}
+	}
+
+	_fieldValues(fields) {
+		const out = {};
+		for (const [id, key] of fields) {
+			const el = document.getElementById(id);
+			if (el) out[key] = el.value;
+		}
+		return out;
+	}
+
+	applyRegistrySelects(settings) {
+		for (const spec of REGISTRY_SELECTS)
+			this.fillRegistrySelect(spec, settings);
+	}
+
+	fillRegistrySelect(spec, settings) {
+		const select = document.getElementById(spec.id);
+		if (!select) return;
+		for (const name of spec.list()) {
+			if (select.querySelector(`option[value="${name}"]`)) continue;
+			const opt = document.createElement("option");
+			opt.value = name;
+			opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+			select.appendChild(opt);
+		}
+		select.value = settings[spec.id] || spec.fallback;
+		if (!select.value && select.options.length) {
+			select.value = select.options[0].value;
+		}
+	}
+
+	registrySelectValues() {
+		const out = {};
+		for (const spec of REGISTRY_SELECTS) {
+			const select = document.getElementById(spec.id);
+			out[spec.id] = select ? select.value : spec.fallback;
+		}
+		return out;
 	}
 
 	updateSpeedVisibility(mode) {
@@ -201,36 +213,9 @@ class SettingsUI {
 			platform: document.getElementById("platformSelect").value,
 			hotkeys: {
 				typing: typingHotkeys,
-				toggleActive: document.getElementById("toggleActiveKey").value,
-				stepBackward: document.getElementById("stepBackwardKey").value,
-				stepForward: document.getElementById("stepForwardKey").value,
-				alwaysOnTop: document.getElementById("alwaysOnTopKey").value,
-				toggleTransparency: document.getElementById("toggleTransparencyKey")
-					.value,
-				toggleWindow: document.getElementById("toggleWindowKey").value,
+				...this._fieldValues(HOTKEY_FIELDS),
 			},
-			colors: {
-				commentNormal: document.getElementById("commentNormalColor").value,
-				codeBlockColor: document.getElementById("codeBlockColor").value,
-				questionCommentColor: document.getElementById(
-					"questionCommentColor",
-				).value,
-				imageBlockColor: document.getElementById("imageBlockColor").value,
-				codeInsertBlockColor: document.getElementById(
-					"codeInsertBlockColor",
-				).value,
-				moveToBlockColor: document.getElementById("moveToBlockColor").value,
-				moveToTextColor: document.getElementById("moveToTextColor").value,
-				commentActive: document.getElementById("commentActiveColor").value,
-				commentSelected: document.getElementById("commentSelectedColor")
-					.value,
-				commentActiveText: document.getElementById("commentActiveTextColor")
-					.value,
-				cursor: document.getElementById("cursorColor").value,
-				selectedBorder: document.getElementById("selectedBorderColor")
-					.value,
-				textColor: document.getElementById("textColor").value,
-			},
+			colors: this._fieldValues(COLOR_FIELDS),
 			fontSize: parseInt(document.getElementById("fontSize").value),
 			hotkeyMode: document.getElementById("hotkeyMode").value,
 			autoTypingSpeed: parseInt(
@@ -240,15 +225,7 @@ class SettingsUI {
 				document.getElementById("touchpadSensitivity").value,
 			),
 			touchpadSide: document.getElementById("touchpadSide").value,
-			floatingTheme: document.getElementById("floatingTheme")
-				? document.getElementById("floatingTheme").value
-				: "solid",
-			randomizerStyle: document.getElementById("randomizerStyle")
-				? document.getElementById("randomizerStyle").value
-				: "shuffle",
-			answerEffect: document.getElementById("answerEffect")
-				? document.getElementById("answerEffect").value
-				: "fireworks",
+			...this.registrySelectValues(),
 			teacherName: document.getElementById("teacherName")
 				? document.getElementById("teacherName").value.trim() || "Teacher"
 				: "Teacher",
@@ -288,5 +265,8 @@ class SettingsUI {
       `;
 	}
 }
+
+SettingsUI.COLOR_FIELDS = COLOR_FIELDS;
+SettingsUI.HOTKEY_FIELDS = HOTKEY_FIELDS;
 
 module.exports = SettingsUI;

@@ -132,6 +132,14 @@ def match_folder_to_student(folder_name, students):
 
     return None
 
+def redacting_names() -> bool:
+    return os.environ.get("STUDENT_ANALYTICS_USE_ALTER_EGO") == "1"
+
+
+def _same_length_x(match) -> str:
+    return "x" * len(match.group())
+
+
 def get_name_patterns(name):
     patterns = []
     skipped_short = []
@@ -146,10 +154,7 @@ def get_name_patterns(name):
         key = part.lower()
         if key in seen:
             continue
-        if len(part) >= 4:
-            patterns.append(re.compile(re.escape(part), re.IGNORECASE))
-            seen.add(key)
-        elif len(part) == 3:
+        if len(part) >= 3:
             patterns.append(re.compile(r"\b" + re.escape(part) + r"\b", re.IGNORECASE))
             seen.add(key)
         else:
@@ -163,11 +168,12 @@ def anonymize_text(text, student_data, all_student_numbers):
 
     text = text.replace(number, "123456")
 
-    patterns, skipped_short = get_name_patterns(student_data["name"])
-    for pattern in patterns:
-        text = pattern.sub("XXX", text)
-    if skipped_short:
-        remarks.append("Short name part(s) not auto-redacted")
+    if redacting_names():
+        patterns, skipped_short = get_name_patterns(student_data["name"])
+        for pattern in patterns:
+            text = pattern.sub(_same_length_x, text)
+        if skipped_short:
+            remarks.append("Short name part(s) not auto-redacted")
 
     found_numbers = re.findall(r"\b(\d{7})\b", text)
     for found in found_numbers:
@@ -185,9 +191,10 @@ def anonymize_filename(filename, student_data):
 
     new_name = new_name.replace(student_data["number"], "123456")
 
-    patterns, _ = get_name_patterns(student_data["name"])
-    for pattern in patterns:
-        new_name = pattern.sub("XXX", new_name)
+    if redacting_names():
+        patterns, _ = get_name_patterns(student_data["name"])
+        for pattern in patterns:
+            new_name = pattern.sub(_same_length_x, new_name)
 
     return new_name
 
@@ -370,9 +377,9 @@ def process_pdf_file(src_path, dst_path, student_data, all_student_numbers):
                 )
 
             name_hits = 0
-            for term in name_terms:
+            for term in name_terms if redacting_names() else []:
                 for inst in page.search_for(term):
-                    page.add_redact_annot(inst, text="XXX")
+                    page.add_redact_annot(inst, text="x" * len(term))
                     name_hits += 1
             if name_hits:
                 remarks.append(

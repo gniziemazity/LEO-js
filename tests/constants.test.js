@@ -4,6 +4,7 @@ const {
 	getBlockSubtype,
 	buildWindowTitle,
 	buildSettingsCSS,
+	NUTJS_KEY_MAPPING,
 } = require("../src/shared/constants");
 
 test("getBlockSubtype identifies question prefix", () => {
@@ -32,6 +33,24 @@ test("getBlockSubtype trims leading whitespace", () => {
 
 test("getBlockSubtype returns null for plain text", () => {
 	assert.equal(getBlockSubtype("just a comment"), null);
+});
+
+test("both backspace glyphs map to Backspace", () => {
+	const { Key } = require("@computer-use/nut-js");
+	assert.deepEqual(NUTJS_KEY_MAPPING["⌫"], { key: Key.Backspace });
+	assert.deepEqual(NUTJS_KEY_MAPPING["↢"], { key: Key.Backspace });
+});
+
+test("formatted blocks emit a mapped backspace glyph", () => {
+	const {
+		formatCodeForAutoTyping,
+	} = require("../src/renderer/code-formatter");
+	const out = formatCodeForAutoTyping("<html>\n</html>");
+	for (const ch of out) {
+		if (ch === "⌫" || ch === "↢") assert.ok(NUTJS_KEY_MAPPING[ch]);
+	}
+	assert.ok(out.includes("⌫"));
+	assert.ok(!out.includes("↢"));
 });
 
 test("buildWindowTitle with empty name returns base", () => {

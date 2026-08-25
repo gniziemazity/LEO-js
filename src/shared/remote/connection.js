@@ -1,6 +1,11 @@
+const WAKE_LOCK_RETRY_MS = 1000;
+const KEEP_ALIVE_FRAME_MS = 1000;
+
 let ws = null;
 let messageHandler = null;
 let wakeLock = null;
+let wakeLockRetry = null;
+let keepAliveVideo = null;
 let reconnectTimer = null;
 
 function setMessageHandler(handler) {
@@ -36,14 +41,61 @@ function sendMessage(type, data) {
 }
 
 async function requestWakeLock() {
+	if (!("wakeLock" in navigator)) {
+		startScreenKeepAlive();
+		return;
+	}
+	if (wakeLock || document.visibilityState !== "visible") return;
 	try {
-		if ("wakeLock" in navigator) {
-			wakeLock = await navigator.wakeLock.request("screen");
-			wakeLock.addEventListener("release", () => {
-				wakeLock = null;
-			});
-		}
-	} catch (e) {}
+		wakeLock = await navigator.wakeLock.request("screen");
+		wakeLock.addEventListener("release", () => {
+			wakeLock = null;
+			scheduleWakeLockRetry();
+		});
+	} catch (e) {
+		wakeLock = null;
+	}
+}
+
+function scheduleWakeLockRetry() {
+	if (wakeLockRetry || document.visibilityState !== "visible") return;
+	wakeLockRetry = setTimeout(() => {
+		wakeLockRetry = null;
+		requestWakeLock();
+	}, WAKE_LOCK_RETRY_MS);
+}
+
+function startScreenKeepAlive() {
+	if (keepAliveVideo) {
+		const resumed = keepAliveVideo.play();
+		if (resumed && resumed.catch) resumed.catch(() => {});
+		return;
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = 2;
+	canvas.height = 2;
+	const ctx = canvas.getContext && canvas.getContext("2d");
+	if (!ctx || !canvas.captureStream) return;
+	let shade = 0;
+	setInterval(() => {
+		shade ^= 1;
+		ctx.fillStyle = shade ? "#000000" : "#010101";
+		ctx.fillRect(0, 0, 2, 2);
+	}, KEEP_ALIVE_FRAME_MS);
+	const video = document.createElement("video");
+	video.muted = true;
+	video.defaultMuted = true;
+	video.loop = true;
+	video.setAttribute("muted", "");
+	video.setAttribute("playsinline", "");
+	video.setAttribute("aria-hidden", "true");
+	video.style.cssText =
+		"position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
+	video.srcObject = canvas.captureStream(1);
+	document.body.appendChild(video);
+	keepAliveVideo = video;
+	const started = video.play();
+	if (started && started.catch) started.catch(() => {});
 }
 
 const IS_CONTROL_PANEL =
@@ -68,3 +120,7 @@ document.addEventListener("visibilitychange", () => {
 		if (!ws || ws.readyState !== WebSocket.OPEN) connect();
 	}
 });
+
+document.addEventListener("pointerdown", () => requestWakeLock());
+document.addEventListener("fullscreenchange", () => requestWakeLock());
+document.addEventListener("webkitfullscreenchange", () => requestWakeLock());

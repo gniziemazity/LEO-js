@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 _DIR = Path(__file__).parent
-_PROFILE_IDS = ("javascript", "css", "html", "plaintext", "python")
+_PROFILE_IDS = ("javascript", "typescript", "css", "html", "plaintext",
+                "python", "json")
 _profiles: dict = {}
 _ext_to_id: dict = {}
 _compiled_re: dict = {}

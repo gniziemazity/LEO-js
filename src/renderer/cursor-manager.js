@@ -1,5 +1,68 @@
 const { ipcRenderer } = require("electron");
-const { getBlockSubtype } = require("../shared/constants");
+const { getBlockSubtype } = require("../shared/blocks");
+const { classifyMoveToTarget } = require("../shared/move-to-target");
+const { buildColoredLines } = require("./anchor-snippet");
+const { stripAnchors } = require("../shared/code-text");
+
+const SPECIAL_BLOCKS = {
+	question: {
+		closeChannel: "close-question-window",
+		afterLeave: (cm) => {
+			if (cm.onLeaveQuestionBlock) cm.onLeaveQuestionBlock();
+		},
+	},
+	image: { closeChannel: "close-image-window" },
+	web: { closeChannel: "close-web-window" },
+	"move-to": { closeChannel: "close-move-to-window", pausesTyping: true },
+	"code-insert": {
+		closeChannel: "close-code-insert-window",
+		pausesTyping: true,
+	},
+};
+
+const SPECIAL_BLOCK_KINDS = Object.keys(SPECIAL_BLOCKS);
+const PAUSING_KINDS = SPECIAL_BLOCK_KINDS.filter(
+	(kind) => SPECIAL_BLOCKS[kind].pausesTyping,
+);
+const TRANSIENT_KINDS = ["code-insert", "move-to"];
+
+const BLOCK_ENTRIES = {
+	"move-to-block": {
+		keep: "move-to",
+		clear: ["code-insert"],
+		enter: (cm, step) => cm._enterMoveToBlock(step),
+	},
+	"question-comment": {
+		keep: "question",
+		clear: TRANSIENT_KINDS,
+		enter: (cm, step) =>
+			cm._enterQuestionBlock(step.element, step.globalIndex),
+	},
+	"image-comment": {
+		keep: "image",
+		clear: TRANSIENT_KINDS,
+		enter: (cm, step) => cm._enterImageBlock(step.element, step.globalIndex),
+	},
+	"web-comment": {
+		keep: "web",
+		clear: TRANSIENT_KINDS,
+		enter: (cm, step) => cm._enterWebBlock(step.element, step.globalIndex),
+	},
+	"code-insert-comment": {
+		keep: "code-insert",
+		clear: [],
+		enter: (cm, step) =>
+			cm._enterCodeInsertBlock(step.element, step.globalIndex),
+	},
+	"move-to-comment": {
+		keep: "move-to",
+		clear: ["code-insert"],
+		enter: (cm, step) =>
+			cm._enterMoveToComment(step.element, step.globalIndex),
+	},
+};
+
+const PLAIN_BLOCK = { clear: TRANSIENT_KINDS };
 
 class CursorManager {
 	constructor(uiManager, logManager) {
@@ -14,17 +77,11 @@ class CursorManager {
 		this.onImageBlock = null;
 		this.onWebBlock = null;
 		this.onEnterMoveToBlock = null;
-		this._moveToWindowOpen = false;
+		this.onEnterCodeInsertBlock = null;
 
-		this._isQuestionWindowOpen = false;
-		this._isImageWindowOpen = false;
-		this._isWebWindowOpen = false;
-
-		this._currentQuestionStepIndex = null;
-		this._currentImageStepIndex = null;
-		this._currentWebStepIndex = null;
-		this._currentCodeInsertStepIndex = null;
-		this._activeMoveToIndex = null;
+		this._openBlock = {};
+		this._blockAt = {};
+		this._resumeAutoFor = {};
 
 		this._onAutoStepComplete = (event, stepIndex) => {
 			if (!this.autoTypingActive) return;
@@ -76,29 +133,42 @@ class CursorManager {
 		return this.currentStepIndex;
 	}
 
+	_arriveAt(kind, globalIndex, opensWindow) {
+		if (this._blockAt[kind] === globalIndex) return false;
+		this._blockAt[kind] = globalIndex;
+		if (opensWindow) this._openBlock[kind] = true;
+		return true;
+	}
+
+	_leaveBlock(kind) {
+		if (!this._openBlock[kind]) return;
+		this._openBlock[kind] = false;
+		this._blockAt[kind] = null;
+		ipcRenderer.send(SPECIAL_BLOCKS[kind].closeChannel);
+		const afterLeave = SPECIAL_BLOCKS[kind].afterLeave;
+		if (afterLeave) afterLeave(this);
+	}
+
+	_leaveSpecialBlocksExcept(kind) {
+		for (const k of SPECIAL_BLOCK_KINDS) {
+			if (k !== kind) this._leaveBlock(k);
+		}
+	}
+
+	_clearBlockIndices(kinds) {
+		for (const kind of kinds) this._blockAt[kind] = null;
+	}
+
 	_enterQuestionBlock(element, globalIndex) {
-		if (this._currentQuestionStepIndex === globalIndex) return;
-		this._currentQuestionStepIndex = globalIndex;
-		this._isQuestionWindowOpen = true;
+		if (!this._arriveAt("question", globalIndex, true)) return;
 		const question = element.innerText.replace(/^❓ ?/, "");
 		const timestamp = Date.now();
 		if (this.onEnterQuestionBlock)
 			this.onEnterQuestionBlock(question, timestamp);
 	}
 
-	_leaveQuestionBlock() {
-		if (!this._isQuestionWindowOpen) return;
-		this._isQuestionWindowOpen = false;
-		this._currentQuestionStepIndex = null;
-		ipcRenderer.send("close-question-window");
-		if (this.onLeaveQuestionBlock) this.onLeaveQuestionBlock();
-	}
-
 	_enterImageBlock(element, globalIndex) {
-		if (this._currentImageStepIndex === globalIndex) return;
-		this._currentImageStepIndex = globalIndex;
-		this._isImageWindowOpen = true;
-
+		if (!this._arriveAt("image", globalIndex, true)) return;
 		const match = element.innerText.trim().match(/^🖼️ ?(.+)$/);
 		if (match) {
 			const parts = match[1].trim().split(/\s+/);
@@ -111,22 +181,12 @@ class CursorManager {
 	}
 
 	markImageWindowOpen() {
-		this._isImageWindowOpen = true;
-		this._currentImageStepIndex = null;
-	}
-
-	_leaveImageBlock() {
-		if (!this._isImageWindowOpen) return;
-		this._isImageWindowOpen = false;
-		this._currentImageStepIndex = null;
-		ipcRenderer.send("close-image-window");
+		this._openBlock.image = true;
+		this._blockAt.image = null;
 	}
 
 	_enterWebBlock(element, globalIndex) {
-		if (this._currentWebStepIndex === globalIndex) return;
-		this._currentWebStepIndex = globalIndex;
-		this._isWebWindowOpen = true;
-
+		if (!this._arriveAt("web", globalIndex, true)) return;
 		const raw = element.innerText.replace(/^🌐 ?/, "");
 		const parts = raw.trim().split(/\s+/);
 		const url = parts[0];
@@ -134,37 +194,13 @@ class CursorManager {
 		if (this.onWebBlock) this.onWebBlock(url, shouldPin);
 	}
 
-	_leaveWebBlock() {
-		if (!this._isWebWindowOpen) return;
-		this._isWebWindowOpen = false;
-		this._currentWebStepIndex = null;
-		ipcRenderer.send("close-web-window");
-	}
-
 	_enterMoveToBlock(step) {
-		if (this._activeMoveToIndex === step.globalIndex) return;
-		this._activeMoveToIndex = step.globalIndex;
-		this._moveToWindowOpen = true;
+		if (!this._arriveAt("move-to", step.globalIndex, true)) return;
+		const switchTo = step.snippet && step.snippet.switchTo;
+		if (switchTo) this.logManager.addEntry({ move_to: switchTo });
 		this.logManager.addEntry({ move_to: step.target || "MAIN" });
 		if (this.onEnterMoveToBlock) {
-			const rawTarget = step.target || "MAIN";
-			let mode = "main";
-			let target = rawTarget;
-			if (rawTarget === "DEV") {
-				mode = "dev";
-			} else if (rawTarget === "MAIN") {
-				mode = "main";
-			} else {
-				const wrapped =
-					rawTarget.startsWith("⚓") && rawTarget.endsWith("⚓");
-				const inner = wrapped ? rawTarget.slice(1, -1) : rawTarget;
-				if (/\.[a-z0-9]+$/i.test(inner)) {
-					mode = "file";
-					target = inner;
-				} else if (wrapped) {
-					mode = "anchor";
-				}
-			}
+			const { mode, target } = classifyMoveToTarget(step.target);
 			this.onEnterMoveToBlock({
 				mode,
 				target,
@@ -173,23 +209,41 @@ class CursorManager {
 		}
 	}
 
-	_leaveMoveToBlock() {
-		if (!this._moveToWindowOpen) return;
-		this._moveToWindowOpen = false;
-		this._activeMoveToIndex = null;
-		ipcRenderer.send("close-move-to-window");
+	_enterMoveToComment(element, globalIndex) {
+		if (!this._arriveAt("move-to", globalIndex, false)) return;
+		const text = element.innerText.replace(/^➡️ ?/, "");
+		this.logManager.addEntry({ move_to: text });
 	}
 
-	_clearSpecialBlockState() {
-		this._currentCodeInsertStepIndex = null;
-		this._activeMoveToIndex = null;
+	_enterCodeInsertBlock(element, globalIndex) {
+		if (!this._arriveAt("code-insert", globalIndex, true)) return;
+		const fullText = element.title || element.innerText;
+		const text = fullText.replace(/^📋 ?/, "");
+		this.logManager.addEntry({ code_insert: text });
+		if (this.onEnterCodeInsertBlock) {
+			const pasted = stripAnchors(text);
+			this.onEnterCodeInsertBlock({
+				text: pasted,
+				colored: buildColoredLines(
+					pasted,
+					0,
+					pasted.split("\n").length - 1,
+				),
+			});
+		}
 	}
 
-	_leaveSpecialBlocksExcept(type) {
-		if (type !== "question") this._leaveQuestionBlock();
-		if (type !== "image") this._leaveImageBlock();
-		if (type !== "web") this._leaveWebBlock();
-		if (type !== "move-to") this._leaveMoveToBlock();
+	suspendAutoTypingFor(kind) {
+		this._resumeAutoFor[kind] = this.autoTypingActive;
+		if (this.autoTypingActive) this.stopAutoTyping();
+	}
+
+	confirmSpecial(kind) {
+		this._openBlock[kind] = false;
+		this._blockAt[kind] = null;
+		const shouldResume = !!this._resumeAutoFor[kind];
+		this._resumeAutoFor[kind] = false;
+		return shouldResume;
 	}
 
 	_broadcastProgress() {
@@ -204,16 +258,32 @@ class CursorManager {
 	}
 
 	resetProgress() {
-		this._leaveQuestionBlock();
-		this._leaveImageBlock();
-		this._leaveWebBlock();
-		this._currentQuestionStepIndex = null;
-		this._currentImageStepIndex = null;
-		this._currentWebStepIndex = null;
-		this._currentCodeInsertStepIndex = null;
-		this._activeMoveToIndex = null;
+		this._leaveSpecialBlocksExcept();
+		this._blockAt = {};
 		this.currentStepIndex = 0;
 		this.uiManager.updateProgressBar(0);
+	}
+
+	_updateBlockCursor(step) {
+		step.element.classList.add("active-comment");
+		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+		const key =
+			step.subtype === "move-to"
+				? "move-to-block"
+				: getBlockSubtype(step.element.innerText.trim());
+		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
+
+		this._leaveSpecialBlocksExcept(entry.keep);
+		this._clearBlockIndices(entry.clear);
+		if (entry.enter) entry.enter(this, step);
+	}
+
+	_updateCharCursor(step) {
+		this._leaveSpecialBlocksExcept();
+		this._clearBlockIndices(TRANSIENT_KINDS);
+		step.element.classList.add("cursor");
+		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
 	}
 
 	updateCursor() {
@@ -223,74 +293,15 @@ class CursorManager {
 			const step = this.executionSteps[this.currentStepIndex];
 
 			if (step.type === "char") {
-				this._leaveSpecialBlocksExcept();
-				this._clearSpecialBlockState();
-				step.element.classList.add("cursor");
-				step.element.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-				});
+				this._updateCharCursor(step);
 			} else if (step.type === "anchor") {
-				this._leaveSpecialBlocksExcept();
-				this._clearSpecialBlockState();
-				step.element.classList.add("cursor");
-				step.element.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-				});
+				this._updateCharCursor(step);
 				if (!step._logged) {
 					step._logged = true;
 					this.logManager.addEntry({ anchor: step.value });
 				}
 			} else if (step.type === "block") {
-				step.element.classList.add("active-comment");
-				step.element.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-				});
-
-				if (step.subtype === "move-to") {
-					this._leaveSpecialBlocksExcept("move-to");
-					this._currentCodeInsertStepIndex = null;
-					this._enterMoveToBlock(step);
-					this._broadcastProgress();
-					return;
-				}
-
-				const blockText = step.element.innerText.trim();
-				const subtype = getBlockSubtype(blockText);
-				if (subtype === "question-comment") {
-					this._leaveSpecialBlocksExcept("question");
-					this._clearSpecialBlockState();
-					this._enterQuestionBlock(step.element, step.globalIndex);
-				} else if (subtype === "image-comment") {
-					this._leaveSpecialBlocksExcept("image");
-					this._clearSpecialBlockState();
-					this._enterImageBlock(step.element, step.globalIndex);
-				} else if (subtype === "web-comment") {
-					this._leaveSpecialBlocksExcept("web");
-					this._clearSpecialBlockState();
-					this._enterWebBlock(step.element, step.globalIndex);
-				} else if (subtype === "code-insert-comment") {
-					this._leaveSpecialBlocksExcept();
-					if (this._currentCodeInsertStepIndex !== step.globalIndex) {
-						this._currentCodeInsertStepIndex = step.globalIndex;
-						const fullText = step.element.title || step.element.innerText;
-						const text = fullText.replace(/^📋 ?/, "");
-						this.logManager.addEntry({ code_insert: text });
-					}
-				} else if (subtype === "move-to-comment") {
-					this._leaveSpecialBlocksExcept("move-to");
-					this._currentCodeInsertStepIndex = null;
-					if (this._activeMoveToIndex !== step.globalIndex) {
-						this._activeMoveToIndex = step.globalIndex;
-						const text = step.element.innerText.replace(/^➡️ ?/, "");
-						this.logManager.addEntry({ move_to: text });
-					}
-				} else {
-					this._leaveSpecialBlocksExcept();
-					this._clearSpecialBlockState();
-				}
+				this._updateBlockCursor(step);
 			}
 		} else {
 			this._leaveSpecialBlocksExcept();
@@ -300,7 +311,10 @@ class CursorManager {
 	}
 
 	advanceCursor() {
-		if (this.currentStepIndex >= this.executionSteps.length) return;
+		if (this.currentStepIndex >= this.executionSteps.length) {
+			ipcRenderer.send("input-complete");
+			return;
+		}
 		const currentStep = this.executionSteps[this.currentStepIndex];
 
 		if (currentStep.type === "char") {
@@ -320,6 +334,9 @@ class CursorManager {
 			currentStep.element.classList.add("consumed");
 			this.currentStepIndex++;
 			ipcRenderer.send("input-complete");
+		} else {
+			this.currentStepIndex++;
+			ipcRenderer.send("input-complete");
 		}
 
 		this.updateCursor();
@@ -327,7 +344,7 @@ class CursorManager {
 
 	async startAutoTyping() {
 		if (this.autoTypingActive) return;
-		if (this._moveToWindowOpen) {
+		if (PAUSING_KINDS.some((kind) => this._openBlock[kind])) {
 			ipcRenderer.send("auto-typing-complete");
 			return;
 		}
@@ -364,11 +381,7 @@ class CursorManager {
 	}
 
 	jumpTo(index) {
-		this._currentQuestionStepIndex = null;
-		this._currentImageStepIndex = null;
-		this._currentWebStepIndex = null;
-		this._currentCodeInsertStepIndex = null;
-		this._activeMoveToIndex = null;
+		this._blockAt = {};
 		this.currentStepIndex = index;
 
 		this.executionSteps.forEach((step, i) => {

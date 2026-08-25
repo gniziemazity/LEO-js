@@ -1,4 +1,5 @@
 const { Key } = require("@computer-use/nut-js");
+const { getBlockSubtype, buildSettingsCSS } = require("./blocks");
 
 const NUTJS_KEY_MAPPING = {
 	"←": { key: Key.Left },
@@ -11,6 +12,7 @@ const NUTJS_KEY_MAPPING = {
 	"▼": { key: Key.PageDown },
 
 	"⌫": { key: Key.Backspace },
+	"↢": { key: Key.Backspace },
 	"―": { key: Key.Tab },
 	"⛔": { modifier: Key.LeftControl, shift: true, key: Key.K },
 	"⌦": { key: Key.Delete },
@@ -56,16 +58,6 @@ const TIMER_CONFIG = {
 	DEFAULT_MINUTES: 90,
 };
 
-function getBlockSubtype(text) {
-	const t = text.trim();
-	if (t.startsWith("❓")) return "question-comment";
-	if (t.startsWith("🖼️")) return "image-comment";
-	if (t.startsWith("🌐")) return "web-comment";
-	if (t.startsWith("📋")) return "code-insert-comment";
-	if (t.startsWith("➡️")) return "move-to-comment";
-	return null;
-}
-
 function buildWindowTitle(fileName, studentCount, hasUnsaved, courseName) {
 	const baseTitle = "LEO";
 	const parts = [];
@@ -78,37 +70,6 @@ function buildWindowTitle(fileName, studentCount, hasUnsaved, courseName) {
 		title += ` [${studentCount} students]`;
 	if (hasUnsaved) title += " *";
 	return title;
-}
-
-function buildSettingsCSS(settings) {
-	return `
-		body { font-size: ${settings.fontSize}px; }
-		.comment-block, .code-block { color: ${settings.colors.textColor}; }
-		.comment-block { background: ${settings.colors.commentNormal}; }
-		.code-block { background: ${settings.colors.codeBlockColor}; }
-		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
-		.comment-block.image-comment { background: ${settings.colors.imageBlockColor}; }
-		.comment-block.web-comment { background: ${settings.colors.imageBlockColor}; }
-		.comment-block.code-insert-comment { background: ${settings.colors.codeInsertBlockColor}; }
-		.comment-block.move-to-comment { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
-		.comment-block.active-comment {
-			background: ${settings.colors.commentActive};
-			color: ${settings.colors.commentActiveText};
-		}
-		.block.selected {
-			background-color: ${settings.colors.commentSelected};
-			border-left-color: ${settings.colors.selectedBorder};
-		}
-		.char.cursor { background: ${settings.colors.cursor}; }
-		.anchor-token.cursor { background: ${settings.colors.cursor}; }
-		#addQuestionCommentBtn { background: ${settings.colors.questionCommentColor}; }
-		#addImageCommentBtn { background: ${settings.colors.imageBlockColor}; }
-		#addWebCommentBtn { background: ${settings.colors.imageBlockColor}; }
-		#addCodeInsertBlockBtn { background: ${settings.colors.codeInsertBlockColor}; }
-		#addMoveToBlockBtn { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
-		#addCommentBtn { background: ${settings.colors.commentNormal}; color: #333; }
-		#addCodeBtn { background: ${settings.colors.codeBlockColor}; color: #333; }
-	`;
 }
 
 module.exports = {

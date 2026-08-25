@@ -45,7 +45,7 @@ function makeHarness({ onClosed } = {}) {
 		sync: (self) => synced.push(self.activeWin),
 		onClosed: onClosed || (() => {}),
 		broadcastServer: {
-			signalFloatingWindowOpen: () => events.opened++,
+			broadcastFloatingWindowReshown: () => events.opened++,
 			broadcastFloatingWindowClosed: () => events.closed++,
 		},
 		floatRect: () => ({ x: 0, y: 0, w: 100, h: 100 }),

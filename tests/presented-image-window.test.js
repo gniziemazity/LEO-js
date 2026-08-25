@@ -2,33 +2,15 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-
-const SRC = fs.readFileSync(
-	path.resolve(__dirname, "..", "src/renderer/cursor-manager.js"),
-	"utf-8",
-);
+const { loadModule, fakeIpcRenderer } = require("./helpers/load-module.js");
 
 function makeCursorManager() {
-	const sent = [];
-	const stubs = {
-		electron: {
-			ipcRenderer: {
-				send: (ch, payload) => sent.push({ ch, payload }),
-				on() {},
-			},
-		},
-		"../shared/constants": { getBlockSubtype: () => null },
-	};
-	const module = { exports: {} };
-	new Function("require", "module", "exports", SRC)(
-		(name) => stubs[name],
-		module,
-		module.exports,
-	);
-
-	const CursorManager = module.exports;
+	const ipc = fakeIpcRenderer();
+	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
+		electron: ipc.stub,
+		"../shared/blocks": { getBlockSubtype: () => null },
+	});
+	const sent = ipc.sent;
 	const cm = new CursorManager(
 		{ updateProgressBar() {}, removeCursorClasses() {} },
 		{ addEntry() {} },

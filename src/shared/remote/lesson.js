@@ -2,44 +2,10 @@ let currentSettings = null;
 let isActive = false;
 let teacherName = "Teacher";
 
-function getBlockSubtype(text) {
-	const t = text.trim();
-	if (t.startsWith("❓")) return "question-comment";
-	if (t.startsWith("🖼️")) return "image-comment";
-	if (t.startsWith("🌐")) return "web-comment";
-	if (t.startsWith("📋")) return "code-insert-comment";
-	if (t.startsWith("➡️")) return "move-to-comment";
-	return null;
-}
-
-function buildSettingsCSS(settings) {
-	return `
-		body { font-size: ${settings.fontSize}px; }
-		.comment-block, .code-block { color: ${settings.colors.textColor}; }
-		.comment-block { background: ${settings.colors.commentNormal}; }
-		.code-block { background: ${settings.colors.codeBlockColor}; }
-		.comment-block.question-comment { background: ${settings.colors.questionCommentColor}; }
-		.comment-block.image-comment,
-		.comment-block.web-comment { background: ${settings.colors.imageBlockColor}; }
-		.comment-block.code-insert-comment { background: ${settings.colors.codeInsertBlockColor}; }
-		.comment-block.move-to-comment { background: ${settings.colors.moveToBlockColor}; color: ${settings.colors.moveToTextColor}; }
-		.comment-block.active-comment {
-			background: ${settings.colors.commentActive};
-			color: ${settings.colors.commentActiveText};
-		}
-		.char.cursor { background: ${settings.colors.cursor}; }
-	`;
-}
+const { getBlockSubtype, buildSettingsCSS } = LeoBlocks;
 
 function renderMoveToTargetLabel(target) {
-	if (!target) return "MAIN";
-	if (target === "MAIN") return "Main Editor";
-	if (target === "DEV") return "Dev Tools";
-	const wrapped = target.startsWith("⚓") && target.endsWith("⚓");
-	const inner = wrapped ? target.slice(1, -1) : target;
-	if (/\.[a-z0-9]+$/i.test(inner)) return `📄 ${inner}`;
-	if (wrapped) return `⚓${inner}⚓`;
-	return target;
+	return MoveToTarget.moveToTargetLabel(target);
 }
 
 function updateActiveState(active) {

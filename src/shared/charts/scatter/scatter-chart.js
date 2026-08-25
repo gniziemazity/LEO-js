@@ -109,16 +109,6 @@ class ScatterChart {
 		return [px, py];
 	}
 
-	_fromPixel(px, py, b) {
-		const x =
-			b.xMin +
-			((px - b.left) / (b.W - b.left - b.right)) * (b.xMax - b.xMin);
-		const y =
-			b.yMin +
-			((b.H - b.bottom - py) / (b.H - b.top - b.bottom)) * (b.yMax - b.yMin);
-		return [x, y];
-	}
-
 	_draw() {
 		const c = this._canvas,
 			ctx = this._ctx;

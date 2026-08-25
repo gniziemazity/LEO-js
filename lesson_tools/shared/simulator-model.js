@@ -102,7 +102,7 @@ const CLR =
 
 const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
 const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
-const _EXPAND_FILE_EXTS = [".js", ".css", ".html", ".htm"];
+const _MOVE_TO_FILE_RE = /\.[a-z0-9]+$/i;
 
 function _splitCodeWithAnchors(code) {
 	const result = [];
@@ -137,9 +137,7 @@ function expandEvents(events) {
 			} else if (target === "MAIN" || target === "main") {
 				currentEditor = "main";
 				micro.push(["switch_editor", "main", ts, DELAY_OPS]);
-			} else if (
-				_EXPAND_FILE_EXTS.some((ext) => target.toLowerCase().endsWith(ext))
-			) {
+			} else if (_MOVE_TO_FILE_RE.test(target)) {
 				currentEditor = "main";
 				micro.push(["switch_file", target, ts, DELAY_OPS]);
 			} else {

@@ -6,7 +6,7 @@ function formatCodeForAutoTyping(code) {
 	const specialClose = new Set(["html", "script"]);
 	for (const tag of tags) {
 		text = text.replace(new RegExp("</" + tag + ">", "g"), "↓►");
-		const prefix = specialClose.has(tag) ? "↢" : "";
+		const prefix = specialClose.has(tag) ? "⌫" : "";
 		text = text.replace(
 			new RegExp("<" + tag + ">", "g"),
 			"<" + tag + ">\n" + prefix + "</" + tag + ">↑►",

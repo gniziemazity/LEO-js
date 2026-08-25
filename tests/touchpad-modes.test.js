@@ -503,13 +503,23 @@ test("the overlay is told whether a pad is covering it", async () => {
 });
 
 test("the toolbars sit outside the gesture surface, or they could not be pressed", () => {
+	const shared = /function padListener\([\s\S]*?\n\t\}/.exec(SRC);
+	assert.ok(shared, "the three touch listeners share one registration helper");
+	assert.match(
+		shared[0],
+		/closest\("\.touchpad-toolbar"\)/,
+		"the shared helper must let a toolbar press through untouched",
+	);
 	for (const handler of ["touchstart", "touchmove", "touchend"]) {
-		const at = SRC.indexOf('"' + handler + '"');
-		assert.ok(at > 0, handler + " listener not found");
 		assert.match(
-			SRC.slice(at, at + 200),
-			/closest\("\.touchpad-toolbar"\)/,
-			handler + " must let a toolbar press through untouched",
+			SRC,
+			new RegExp('padListener\\("' + handler + '"'),
+			handler + " must be registered through the shared helper",
 		);
 	}
+	assert.equal(
+		(SRC.match(/overlay\.addEventListener\(/g) || []).length,
+		1,
+		"nothing may bind the glass directly and skip the toolbar guard",
+	);
 });

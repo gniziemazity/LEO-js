@@ -2,8 +2,11 @@ def add_grading_flags(parser) -> None:
     parser.add_argument(
         '--anon',
         action='store_true',
-        help='Use the "Alter Ego" column from students.csv as the student name '
-             'in all generated Excel files',
+        help='De-identify the run: use the "Alter Ego" column from students.csv '
+             'as the student name in all generated Excel files, and redact student '
+             'names out of submitted code, filenames and PDFs. Without it only the '
+             'student number is replaced. Redaction is length-preserving so byte '
+             'offsets, and therefore curated diff marks, stay valid.',
     )
     parser.add_argument(
         '--follow-basis',

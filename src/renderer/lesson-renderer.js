@@ -1,8 +1,15 @@
 const { ipcRenderer } = require("electron");
 
-const { getBlockSubtype } = require("../shared/constants");
+const { getBlockSubtype } = require("../shared/blocks");
 const { extractAnchorSnippet } = require("./anchor-snippet");
 const { buildCodeText } = require("../shared/code-text");
+const { isFileName, wrapAnchor } = require("../shared/move-to-target");
+
+const BLOCK_RENDERERS = {
+	comment: "renderCommentBlock",
+	code: "renderCodeBlock",
+	"move-to": "renderMoveToBlock",
+};
 
 class LessonRenderer {
 	constructor(lessonManager, uiManager, cursorManager, undoManager = null) {
@@ -79,33 +86,16 @@ class LessonRenderer {
 			blockDiv.onmousedown = (e) =>
 				this.handleBlockClick(e, block, blockIdx);
 
-			if (block.type === "comment") {
-				globalStepCounter = this.renderCommentBlock(
+			const render = BLOCK_RENDERERS[block.type];
+			if (render) {
+				globalStepCounter = this[render]({
 					blockDiv,
 					block,
 					blockIdx,
 					isTypingActive,
-					globalStepCounter,
-					executionSteps,
-				);
-			} else if (block.type === "code") {
-				globalStepCounter = this.renderCodeBlock(
-					blockDiv,
-					block,
-					blockIdx,
-					isTypingActive,
-					globalStepCounter,
-					executionSteps,
-				);
-			} else if (block.type === "move-to") {
-				globalStepCounter = this.renderMoveToBlock(
-					blockDiv,
-					block,
-					blockIdx,
-					isTypingActive,
-					globalStepCounter,
-					executionSteps,
-				);
+					stepIndex: globalStepCounter,
+					steps: executionSteps,
+				});
 			}
 
 			this.uiManager.appendToLessonContainer(blockDiv);
@@ -129,14 +119,9 @@ class LessonRenderer {
 		);
 	}
 
-	renderCommentBlock(
-		blockDiv,
-		block,
-		blockIdx,
-		isTypingActive,
-		globalStepCounter,
-		executionSteps,
-	) {
+	renderCommentBlock(ctx) {
+		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
+			ctx;
 		const subtype = getBlockSubtype(block.text);
 		if (subtype) blockDiv.classList.add(subtype);
 
@@ -176,60 +161,47 @@ class LessonRenderer {
 
 		this.attachEditHandlers(blockDiv);
 
-		executionSteps.push({
+		steps.push({
 			type: "block",
 			element: blockDiv,
 			blockIndex: blockIdx,
-			globalIndex: globalStepCounter,
+			globalIndex: stepIndex,
 		});
 
-		blockDiv.dataset.stepIndex = globalStepCounter;
-		return globalStepCounter + 1;
+		blockDiv.dataset.stepIndex = stepIndex;
+		return stepIndex + 1;
 	}
 
-	renderCodeBlock(
-		blockDiv,
-		block,
-		blockIdx,
-		isTypingActive,
-		globalStepCounter,
-		executionSteps,
-	) {
+	renderCodeBlock(ctx) {
+		const { blockDiv, block, blockIdx, isTypingActive, steps } = ctx;
+		let stepIndex = ctx.stepIndex;
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 
 		if (selectedBlockIndex === blockIdx && !isTypingActive) {
 			this.makeCodeBlockEditable(blockDiv, block, blockIdx);
-			return globalStepCounter;
+			return stepIndex;
 		} else {
 			blockDiv.contentEditable = "false";
 
-			globalStepCounter = buildCodeText(
-				block.text,
-				blockDiv,
-				globalStepCounter,
-				(step) => executionSteps.push({ ...step, blockIndex: blockIdx }),
+			stepIndex = buildCodeText(block.text, blockDiv, stepIndex, (step) =>
+				steps.push({ ...step, blockIndex: blockIdx }),
 			);
 
-			executionSteps.push({
+			steps.push({
 				type: "block",
 				element: blockDiv,
 				blockIndex: blockIdx,
-				globalIndex: globalStepCounter,
+				globalIndex: stepIndex,
 			});
 
-			blockDiv.dataset.stepIndex = globalStepCounter;
-			return globalStepCounter + 1;
+			blockDiv.dataset.stepIndex = stepIndex;
+			return stepIndex + 1;
 		}
 	}
 
-	renderMoveToBlock(
-		blockDiv,
-		block,
-		blockIdx,
-		isTypingActive,
-		globalStepCounter,
-		executionSteps,
-	) {
+	renderMoveToBlock(ctx) {
+		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
+			ctx;
 		blockDiv.classList.add("move-to-comment");
 		blockDiv.contentEditable = "false";
 		const target = block.target || "MAIN";
@@ -260,7 +232,7 @@ class LessonRenderer {
 		});
 		blockDiv.appendChild(select);
 
-		executionSteps.push({
+		steps.push({
 			type: "block",
 			subtype: "move-to",
 			target,
@@ -271,18 +243,17 @@ class LessonRenderer {
 			),
 			element: blockDiv,
 			blockIndex: blockIdx,
-			globalIndex: globalStepCounter,
+			globalIndex: stepIndex,
 		});
 
-		blockDiv.dataset.stepIndex = globalStepCounter;
-		return globalStepCounter + 1;
+		blockDiv.dataset.stepIndex = stepIndex;
+		return stepIndex + 1;
 	}
 
 	_populateMoveToSelect(select, currentTarget) {
-		const fileRe = /\.[a-z0-9]+$/i;
 		const anchorLike = this.lessonManager
 			.getAllAnchorIds()
-			.filter((id) => !fileRe.test(id))
+			.filter((id) => !isFileName(id))
 			.sort((a, b) => {
 				const na = Number(a);
 				const nb = Number(b);
@@ -297,7 +268,7 @@ class LessonRenderer {
 
 		const opts = [];
 		for (const id of anchorLike) {
-			opts.push({ value: `⚓${id}⚓`, label: `⚓${id}⚓` });
+			opts.push({ value: wrapAnchor(id), label: wrapAnchor(id) });
 		}
 		for (const name of fileLike) {
 			opts.push({ value: name, label: `📄 ${name}` });

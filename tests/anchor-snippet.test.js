@@ -35,8 +35,8 @@ test("extractAnchorSnippet: extracts the windowed snippet around the anchor", ()
 		"colored",
 		"arrowIdx",
 		"anchorCol",
+		"switchTo",
 	]);
-	// anchor sits at end of "const b = 2;" (col 12); marker is stripped from the text
 	assert.deepEqual(r.lines, ["const a = 1;", "const b = 2;", "const c = 3;"]);
 	assert.equal(r.arrowIdx, 1);
 	assert.equal(r.anchorCol, 12);
@@ -45,7 +45,6 @@ test("extractAnchorSnippet: extracts the windowed snippet around the anchor", ()
 test("extractAnchorSnippet: before/after clamp at file boundaries", () => {
 	const r = extractAnchorSnippet("⚓5⚓", 1, codeBlocks, 5, 5);
 	assert.ok(r);
-	// only 4 lines exist; window clamps to the whole file
 	assert.deepEqual(r.lines, [
 		"const a = 1;",
 		"const b = 2;",
@@ -83,8 +82,71 @@ test("extractAnchorSnippet: only blocks before currentBlockIdx are replayed", ()
 		{ type: "code", text: "first;" },
 		{ type: "code", text: "second;⚓7⚓" },
 	];
-	// currentBlockIdx 1 means only block 0 is replayed — anchor 7 not yet typed
 	assert.equal(extractAnchorSnippet("⚓7⚓", 1, blocks), null);
-	// currentBlockIdx 2 replays both blocks — anchor 7 is found
 	assert.ok(extractAnchorSnippet("⚓7⚓", 2, blocks));
+});
+
+test("extractAnchorSnippet: an anchor in the current file asks for no switch", () => {
+	const blocks = [
+		{ type: "move-to", target: "a.js" },
+		{ type: "code", text: "here ⚓3⚓ now" },
+	];
+	const r = extractAnchorSnippet("⚓3⚓", 2, blocks, 1, 1);
+	assert.ok(r);
+	assert.equal(r.switchTo, null);
+});
+
+test("extractAnchorSnippet: an anchor in another file names the file to open first", () => {
+	const blocks = [
+		{ type: "code", text: "main line;" },
+		{ type: "move-to", target: "other.js" },
+		{ type: "code", text: "other line ⚓3⚓ here" },
+		{ type: "move-to", target: "style.css" },
+		{ type: "code", text: "body { }" },
+	];
+	const r = extractAnchorSnippet("⚓3⚓", 5, blocks, 1, 1);
+	assert.ok(r);
+	assert.equal(r.switchTo, "other.js");
+	assert.deepEqual(
+		r.lines,
+		["other line  here"],
+		"and the snippet is the other file's text, not the current one's",
+	);
+});
+
+test("extractAnchorSnippet: a jump back to the main editor reads as MAIN", () => {
+	const blocks = [
+		{ type: "code", text: "main line ⚓1⚓ here" },
+		{ type: "move-to", target: "other.js" },
+		{ type: "code", text: "other line;" },
+	];
+	const r = extractAnchorSnippet("⚓1⚓", 3, blocks, 1, 1);
+	assert.ok(r);
+	assert.equal(r.switchTo, "MAIN");
+});
+
+test("extractAnchorSnippet: an anchor in the dev console reads as DEV", () => {
+	const blocks = [
+		{ type: "move-to", target: "DEV" },
+		{ type: "code", text: "console.log(x)⚓4⚓" },
+		{ type: "move-to", target: "MAIN" },
+		{ type: "code", text: "let x = 1;" },
+	];
+	const r = extractAnchorSnippet("⚓4⚓", 4, blocks, 1, 1);
+	assert.ok(r);
+	assert.equal(r.switchTo, "DEV");
+});
+
+test("extractAnchorSnippet: a second file switch back makes the anchor local again", () => {
+	const blocks = [
+		{ type: "move-to", target: "other.js" },
+		{ type: "code", text: "other ⚓2⚓ line" },
+		{ type: "move-to", target: "main.css" },
+		{ type: "code", text: "body{}" },
+		{ type: "move-to", target: "other.js" },
+	];
+	const here = extractAnchorSnippet("⚓2⚓", 5, blocks, 1, 1);
+	assert.equal(here.switchTo, null, "back in other.js, no switch needed");
+	const away = extractAnchorSnippet("⚓2⚓", 4, blocks, 1, 1);
+	assert.equal(away.switchTo, "other.js", "but from main.css it is a switch");
 });

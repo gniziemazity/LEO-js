@@ -32,12 +32,6 @@ class OverlayLayer {
 		}
 	}
 
-	clearRects(className) {
-		for (const el of this.bg.querySelectorAll("." + className)) {
-			el.remove();
-		}
-	}
-
 	clearAll() {
 		this.bg.innerHTML = "";
 	}

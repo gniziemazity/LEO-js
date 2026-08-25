@@ -110,10 +110,6 @@ class KeyboardHandler {
 		this.settingsManager = settingsManager;
 		this.isProcessing = false;
 
-		this.lastTypedChar = null;
-		this.lastTypedTime = 0;
-		this.debounceMs = 30;
-
 		this.updatePlatformSettings();
 	}
 
@@ -132,22 +128,12 @@ class KeyboardHandler {
 
 	async typeCharacter(char) {
 		if (state.isPaused) {
+			state.unlock();
+			state.clearQueue();
 			return;
 		}
-
-		const now = Date.now();
-		if (
-			char === this.lastTypedChar &&
-			now - this.lastTypedTime < this.debounceMs
-		) {
-			console.log("Debounced duplicate char:", char);
-			return;
-		}
-		this.lastTypedChar = char;
-		this.lastTypedTime = now;
 
 		if (this.isProcessing) {
-			console.log("Queueing character:", char);
 			state.queueChar(char);
 			return;
 		}

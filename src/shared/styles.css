@@ -1451,6 +1451,42 @@ body.side-left .popup-modal {
 	background: var(--clr-accent-dark);
 }
 
+.ci-modal-code {
+	display: block;
+	margin-bottom: 14px;
+}
+
+.ci-modal-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 12px;
+	flex: 0 0 auto;
+}
+
+.ci-modal-hint {
+	display: none;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--clr-muted);
+	font-family: Consolas, "Courier New", monospace;
+}
+
+.ci-modal-actions .mt-modal-confirm {
+	position: static;
+	transform: none;
+}
+
+.ci-paste-btn {
+	background: var(--clr-green);
+}
+
+:where(body:not(.mobile-view)) .ci-paste-btn:hover,
+.ci-paste-btn:active {
+	background: var(--clr-green);
+	filter: brightness(0.9);
+}
+
 .i-question-input {
 	width: 100%;
 	padding: 10px 14px;
@@ -1512,34 +1548,6 @@ body.side-left .popup-modal {
 	z-index: 1;
 }
 
-.popup-close-btn {
-	position: absolute;
-	top: 6px;
-	right: 8px;
-	width: 28px;
-	height: 28px;
-	border-radius: 6px;
-	border: none;
-	background: rgba(0, 0, 0, 0.15);
-	color: rgba(0, 0, 0, 0.6);
-	font-size: 14px;
-	line-height: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	padding: 0;
-	-webkit-app-region: no-drag;
-	z-index: 20;
-	transition:
-		background 0.15s,
-		color 0.15s;
-}
-.popup-close-btn:hover {
-	background: rgba(220, 50, 50, 0.75);
-	color: var(--clr-white);
-}
-
 body.image-view {
 	--bg: var(--clr-image-bg);
 	background: transparent;
@@ -1556,16 +1564,6 @@ body.image-view .neon-frame {
 	align-items: center;
 	justify-content: center;
 	padding: 0;
-}
-
-body.image-view .popup-close-btn {
-	background: rgba(255, 255, 255, 0.55);
-	backdrop-filter: blur(4px);
-	color: rgba(0, 0, 0, 0.7);
-}
-body.image-view .popup-close-btn:hover {
-	background: rgba(220, 50, 50, 0.85);
-	color: var(--clr-white);
 }
 
 body.image-view #pinBtn {

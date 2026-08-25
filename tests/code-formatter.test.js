@@ -20,7 +20,7 @@ const cases = [
 </html>`,
 		expected: `<!DOCTYPE html>
 <html>
-↢</html>↑►
+⌫</html>↑►
 <head>
 </head>↑►
 <title>Emordnilap JS</title>↓►
@@ -28,7 +28,7 @@ const cases = [
 </body>↑►
 <canvas id="myCanvas" width="600" height="600"></canvas>
 <script>
-↢</script>↑►
+⌫</script>↑►
 const { width, height } = myCanvas;
 const ctx = myCanvas.getContext("2d");`,
 	},
@@ -144,7 +144,7 @@ setLocation(newLocation);`,
     </head>`,
 		expected: `<!DOCTYPE html>
 <html>
-↢</html>↑►
+⌫</html>↑►
 <head>
 </head>↑►
 <title>Chess 123456</title>

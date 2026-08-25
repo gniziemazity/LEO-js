@@ -13,7 +13,7 @@ from languages import (
     should_decrease_on_line,
     should_increase_after,
 )
-from .folder_utils import CODE_EXTS
+from .folder_utils import is_move_to_file, move_to_file_ext
 
 
 class HeadlessEditor:
@@ -468,16 +468,13 @@ def _replay_headless_multi(
             elif t in ("MAIN", "main"):
                 current_context = "main"
                 active = "MAIN"
-            elif any(t.lower().endswith(ext) for ext in CODE_EXTS):
+            elif is_move_to_file(t):
                 current_context = "main"
                 active = t
                 if active not in editors:
-                    ext_match = next(
-                        (ext for ext in CODE_EXTS if t.lower().endswith(ext)),
-                        None,
-                    )
                     editors[active] = HeadlessEditor(
-                        track_timestamps=track_timestamps, file_ext=ext_match,
+                        track_timestamps=track_timestamps,
+                        file_ext=move_to_file_ext(t),
                     )
             else:
                 editors[active].move_to_anchor(t)

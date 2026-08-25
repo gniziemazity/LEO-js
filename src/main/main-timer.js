@@ -27,7 +27,7 @@ class MainProcessTimer extends EventEmitter {
 	adjust(minutes) {
 		if (!this.endTime) return;
 		this.endTime += minutes * 60 * 1000;
-		if (this.getRemainingSeconds() <= 0) {
+		if (this.getRemainingSeconds() <= 1) {
 			this.stop();
 		} else {
 			this.tick();

@@ -258,7 +258,10 @@ const _SHORT_ID_BY_EXT = {
 	htm: "html",
 	css: "css",
 	js: "js",
+	ts: "ts",
+	tsx: "ts",
 	py: "py",
+	json: "json",
 };
 
 function langShortId(name, fallback = "html") {

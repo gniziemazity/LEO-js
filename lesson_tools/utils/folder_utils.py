@@ -13,6 +13,19 @@ _LESSONS_DIR      = _ROOT / 'lessons'
 CODE_EXTS = ('.html', '.htm', '.css', '.js', '.py')
 LANG_EXTS = ('.html', '.css', '.js', '.py')
 
+MOVE_TO_FILE_RE = re.compile(r'\.[a-z0-9]+$', re.IGNORECASE)
+
+
+def is_move_to_file(target) -> bool:
+    return move_to_file_ext(target) is not None
+
+
+def move_to_file_ext(target):
+    if not isinstance(target, str):
+        return None
+    m = MOVE_TO_FILE_RE.search(target)
+    return m.group(0).lower() if m else None
+
 TEACHER_SUBDIRS = ('reconstructed', 'start', 'correct')
 
 PROJECT_GROUPS = ('lessons', 'assignments')

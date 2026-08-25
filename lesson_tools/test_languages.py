@@ -56,7 +56,9 @@ class TestLanguageProfiles(unittest.TestCase):
         self.assertIs(get_profile("css"), get_profile(".css"))
 
     def test_all_extensions(self):
-        self.assertEqual(set(all_extensions()), {".js", ".css", ".html", ".htm", ".txt", ".py"})
+        self.assertEqual(set(all_extensions()),
+                         {".js", ".ts", ".tsx", ".css", ".html", ".htm", ".txt",
+                          ".py", ".json"})
 
     def test_html_void_tags_match_lv_constants(self):
         from utils.lv_constants import HTML_VOID_TAGS
@@ -223,6 +225,127 @@ class TestPythonProfile(unittest.TestCase):
         self.assertEqual(len(starts), 2)
         self.assertEqual(text[starts[0]:ends[0]], "# top comment")
         self.assertEqual(text[starts[1]:ends[1]], "# bottom")
+
+
+class TestTypeScriptProfile(unittest.TestCase):
+    def test_typescript_profile_loads(self):
+        prof = get_profile("typescript")
+        self.assertIsNotNone(prof)
+        self.assertEqual(prof["id"], "typescript")
+        self.assertEqual(prof["extensions"], [".ts", ".tsx"])
+
+    def test_typescript_extension_lookup(self):
+        self.assertEqual(extension_to_id(".ts"), "typescript")
+        self.assertEqual(extension_to_id(".TS"), "typescript")
+        self.assertEqual(extension_to_id(".tsx"), "typescript")
+        self.assertIs(get_profile(".ts"), get_profile("typescript"))
+
+    def test_typescript_keeps_every_javascript_word(self):
+        js = get_profile("javascript")
+        ts = get_profile("typescript")
+        self.assertTrue(set(js["keywords"]) <= set(ts["keywords"]))
+        self.assertTrue(set(js["builtins"]) <= set(ts["builtins"]))
+
+    def test_typescript_shares_the_javascript_rules(self):
+        js = get_profile("javascript")
+        ts = get_profile("typescript")
+        for key in ("comments", "strings", "identifierRe", "numberRe", "indent"):
+            self.assertEqual(ts[key], js[key], key)
+
+    def test_typescript_keywords_include_the_type_system(self):
+        prof = get_profile("typescript")
+        for kw in ("interface", "type", "enum", "implements", "readonly",
+                   "public", "private", "protected", "abstract", "declare",
+                   "namespace", "as", "satisfies", "keyof", "infer"):
+            self.assertIn(kw, prof["keywords"], kw)
+
+    def test_typescript_builtins_include_the_primitive_types(self):
+        prof = get_profile("typescript")
+        for bi in ("string", "number", "boolean", "any", "unknown", "never",
+                   "Record", "Partial", "Omit"):
+            self.assertIn(bi, prof["builtins"], bi)
+
+    def test_typescript_comment_detection(self):
+        from languages import comment_ranges
+        prof = get_profile(".ts")
+        text = "const x: number = 1;  // the answer"
+        starts, ends = comment_ranges(prof, text)
+        self.assertEqual(len(starts), 1)
+        self.assertEqual(text[starts[0]:ends[0]], "// the answer")
+
+    def test_typescript_comment_detection_via_sm(self):
+        from utils.similarity_measures import _comment_ranges
+        text = "// top\ntype Id = string;\n/* bottom */"
+        starts, ends = _comment_ranges(text, ".ts")
+        self.assertEqual(len(starts), 2)
+        self.assertEqual(text[starts[0]:ends[0]], "// top")
+        self.assertEqual(text[starts[1]:ends[1]], "/* bottom */")
+
+    def test_typescript_brace_indent_rules(self):
+        prof = get_profile(".ts")
+        self.assertTrue(should_increase_after(prof, "interface User {"))
+        self.assertTrue(should_decrease_on_line(prof, "}"))
+        self.assertFalse(should_increase_after(prof, "const x: number = 1;"))
+
+
+class TestJsonProfile(unittest.TestCase):
+
+    def test_json_profile_loads(self):
+        prof = get_profile("json")
+        self.assertIsNotNone(prof)
+        self.assertEqual(prof["id"], "json")
+        self.assertEqual(prof["extensions"], [".json"])
+
+    def test_json_extension_lookup(self):
+        self.assertEqual(extension_to_id(".json"), "json")
+        self.assertEqual(extension_to_id(".JSON"), "json")
+        self.assertIs(get_profile(".json"), get_profile("json"))
+
+    def test_json_has_no_comments(self):
+        from languages import comment_ranges
+        prof = get_profile(".json")
+        text = '{"a": 1} // not a comment\n/* nor this */'
+        starts, ends = comment_ranges(prof, text)
+        self.assertEqual(starts, [])
+        self.assertEqual(ends, [])
+
+    def test_json_brace_indent_rules(self):
+        prof = get_profile(".json")
+        self.assertTrue(should_increase_after(prof, '{'))
+        self.assertTrue(should_increase_after(prof, '"items": ['))
+        self.assertTrue(should_decrease_on_line(prof, '}'))
+        self.assertTrue(should_decrease_on_line(prof, ']'))
+        self.assertFalse(should_increase_after(prof, '"a": 1,'))
+
+    def test_json_literals_are_keywords(self):
+        prof = get_profile("json")
+        for kw in ("true", "false", "null"):
+            self.assertIn(kw, prof["keywords"], kw)
+
+
+class TestMoveToFileClassification(unittest.TestCase):
+
+    def test_any_extension_is_a_file_target(self):
+        from utils.folder_utils import is_move_to_file
+        for target in ("index.html", "style.css", "app.js", "data.json",
+                       "main.py", "notes.md"):
+            self.assertTrue(is_move_to_file(target), target)
+
+    def test_non_files_are_not_file_targets(self):
+        from utils.folder_utils import is_move_to_file
+        for target in ("MAIN", "DEV", "⚓3⚓", "someAnchor", "", None):
+            self.assertFalse(is_move_to_file(target), repr(target))
+
+    def test_ext_is_lowercased(self):
+        from utils.folder_utils import move_to_file_ext
+        self.assertEqual(move_to_file_ext("Data.JSON"), ".json")
+        self.assertIsNone(move_to_file_ext("MAIN"))
+
+    def test_json_target_expands_to_a_file_switch(self):
+        from utils.lv_expand import expand_events
+        micro = expand_events([{"move_to": "data.json", "timestamp": 0}])
+        self.assertEqual([(m[0], m[1]) for m in micro],
+                         [("switch_file", "data.json")])
 
 
 class TestPythonReconstruction(unittest.TestCase):

@@ -9,6 +9,57 @@ from typing import Dict, List, Set, Tuple
 _ROOT = Path(__file__).resolve().parent
 _TEST = _ROOT / 'test' / 'lessons'
 
+def _dir_or(base: Path, name: str) -> Path:
+    nested = base / name
+    return nested if nested.is_dir() else base
+
+
+def _first_existing(*candidates: Path) -> Path:
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
+
+
+def _teacher_tokens(lesson: str) -> Path:
+    return _first_existing(
+        _TEST / lesson / 'correct' / 'tokens.txt',
+        _TEST / lesson / 'tokens.txt',
+    )
+
+
+def _keylog_in(project_dir: Path) -> Path:
+    return _first_existing(
+        project_dir / 'keypress.log',
+        project_dir / 'log.json',
+        project_dir / 'log.log',
+    )
+
+
+def _keylog(lesson: str) -> Path:
+    return _keylog_in(_TEST / lesson)
+
+
+def _reconstructed(lesson: str) -> Path:
+    return _first_existing(
+        _TEST / lesson / 'reconstructed' / 'reconstructed.html',
+        _TEST / lesson / 'reconstructed.html',
+    )
+
+
+def _student_tokens(lesson: str, student_id: str) -> Path:
+    return _first_existing(
+        _TEST / lesson / 'anon_ids' / student_id / 'tokens.txt',
+        _TEST / lesson / student_id / 'tokens.txt',
+    )
+
+
+_HAS_CORPUS = _teacher_tokens('wall').is_file()
+_requires_corpus = unittest.skipUnless(
+    _HAS_CORPUS,
+    'fixture corpus absent (lesson_tools/test is gitignored)',
+)
+
 from utils import similarity_measures as _sm
 from utils.folder_utils import LANG_EXTS
 from utils.lv_editor import reconstruct_html_headless
@@ -142,6 +193,7 @@ def _ts_to_helsinki(ts_ms: int) -> str:
     return dt.strftime('%H:%M:%S') + f'.{dt.microsecond // 1000:03d}'
 
 
+@_requires_corpus
 class _ReconstructionBase:
     log_file:           Path = None
     reconstructed_file: Path = None
@@ -197,9 +249,9 @@ class _ReconstructionBase:
         self.assertEqual(timestamps, sorted(timestamps))
 
 
+@_requires_corpus
 class _StudentBase:
     teacher_tokens_file: Path = None
-    student_html:        Path = None
     tokens_file:         Path = None
 
     @classmethod
@@ -255,87 +307,78 @@ class _StudentBase:
 
 
 class TestWallReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'wall' / 'log.json'
-    reconstructed_file = _TEST / 'wall' / 'reconstructed.html'
-    tokens_file        = _TEST / 'wall' / 'tokens.txt'
+    log_file           = _keylog('wall')
+    reconstructed_file = _reconstructed('wall')
+    tokens_file        = _teacher_tokens('wall')
 
 
 class TestWallStudent78Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / '78' / 'index.html'
-    tokens_file         = _TEST / 'wall' / '78' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('wall')
+    tokens_file         = _student_tokens('wall', '78')
 
 
 class TestWallStudent74Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / '74' / 'index.html'
-    tokens_file         = _TEST / 'wall' / '74' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('wall')
+    tokens_file         = _student_tokens('wall', '74')
 
 
 class TestWallStudent80Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'wall' / 'tokens.txt'
-    student_html        = _TEST / 'wall' / '80' / 'index.html'
-    tokens_file         = _TEST / 'wall' / '80' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('wall')
+    tokens_file         = _student_tokens('wall', '80')
 
 
 class TestChessReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'chess' / 'log.json'
-    reconstructed_file = _TEST / 'chess' / 'reconstructed.html'
-    tokens_file        = _TEST / 'chess' / 'tokens.txt'
+    log_file           = _keylog('chess')
+    reconstructed_file = _reconstructed('chess')
+    tokens_file        = _teacher_tokens('chess')
 
 
 class TestChessStudent23Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / '23' / 'index.html'
-    tokens_file         = _TEST / 'chess' / '23' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('chess')
+    tokens_file         = _student_tokens('chess', '23')
 
 
 class TestChessStudent50Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / '50' / 'index.html'
-    tokens_file         = _TEST / 'chess' / '50' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('chess')
+    tokens_file         = _student_tokens('chess', '50')
 
 
 class TestJSStudent78Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'gallery' / 'tokens.txt'
-    student_html        = _TEST / 'gallery' / '78' / 'index.html'
-    tokens_file         = _TEST / 'gallery' / '78' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('gallery')
+    tokens_file         = _student_tokens('gallery', '78')
 
 
 class TestJSStudent35Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'gallery' / 'tokens.txt'
-    student_html        = _TEST / 'gallery' / '35' / 'index.html'
-    tokens_file         = _TEST / 'gallery' / '35' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('gallery')
+    tokens_file         = _student_tokens('gallery', '35')
 
 
 class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'gallery' / 'log.json'
-    reconstructed_file = _TEST / 'gallery' / 'reconstructed.html'
-    tokens_file        = _TEST / 'gallery' / 'tokens.txt'
+    log_file           = _keylog('gallery')
+    reconstructed_file = _reconstructed('gallery')
+    tokens_file        = _teacher_tokens('gallery')
 
 
 class TestQRReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'qr' / 'log.json'
-    reconstructed_file = _TEST / 'qr' / 'reconstructed.html'
-    tokens_file        = _TEST / 'qr' / 'tokens.txt'
+    log_file           = _keylog('qr')
+    reconstructed_file = _reconstructed('qr')
+    tokens_file        = _teacher_tokens('qr')
 
 
 class TestSortingReconstruction(_ReconstructionBase, unittest.TestCase):
-    log_file           = _TEST / 'sorting' / 'log.json'
-    reconstructed_file = _TEST / 'sorting' / 'reconstructed.html'
-    tokens_file        = _TEST / 'sorting' / 'tokens.txt'
+    log_file           = _keylog('sorting')
+    reconstructed_file = _reconstructed('sorting')
+    tokens_file        = _teacher_tokens('sorting')
 
 
 class TestSortingStudent23Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'sorting' / 'tokens.txt'
-    student_html        = _TEST / 'sorting' / '23' / 'index.html'
-    tokens_file         = _TEST / 'sorting' / '23' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('sorting')
+    tokens_file         = _student_tokens('sorting', '23')
 
 
 class TestChessStudent35Tokens(_StudentBase, unittest.TestCase):
-    teacher_tokens_file = _TEST / 'chess' / 'tokens.txt'
-    student_html        = _TEST / 'chess' / '35' / '123456.index.html'
-    tokens_file         = _TEST / 'chess' / '35' / 'tokens.txt'
+    teacher_tokens_file = _teacher_tokens('chess')
+    tokens_file         = _student_tokens('chess', '35')
 
 
 def _shuffle_non_comment_tokens(text: str, seed: int) -> str:
@@ -539,13 +582,14 @@ class TestAssignmentCommentColumn(unittest.TestCase):
         self.assertIsNone(c._per_basis_comment_info(None))
 
 
+@_requires_corpus
 class TestLEOCountForcedBlindSpot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._tmp = tempfile.TemporaryDirectory()
         tmp_root = Path(cls._tmp.name)
 
-        teacher_path = _TEST / 'wall' / 'reconstructed.html'
+        teacher_path = _reconstructed('wall')
         text = teacher_path.read_text(encoding='utf-8')
 
         identical_path = tmp_root / 'identical.html'
@@ -558,7 +602,7 @@ class TestLEOCountForcedBlindSpot(unittest.TestCase):
         cls.teacher_files  = {teacher_path.name: teacher_path}
         cls.identical_files = {teacher_path.name: identical_path}
         cls.shuffled_files  = {teacher_path.name: shuffled_path}
-        cls.events = _load_events(_TEST / 'wall' / 'log.json')
+        cls.events = _load_events(_keylog('wall'))
 
     @classmethod
     def tearDownClass(cls):
@@ -700,7 +744,7 @@ def _expected_teacher_tokens(t_text: str, *, include_comment_tokens: bool,
 
 
 def _project_code_files(d: Path) -> Dict[str, Path]:
-    return {p.name: p for p in d.iterdir()
+    return {p.name: p for p in _dir_or(d, 'reconstructed').iterdir()
             if p.is_file() and p.suffix.lower() in LANG_EXTS}
 
 
@@ -719,10 +763,6 @@ _NON_STAR_RECONSTRUCT_METHODS = [
 ]
 
 
-# (project, sid, method, file) tuples where applying diff marks doesn't yield
-# the teacher's non-comment token bag under language-aware tokenization. These
-# are pre-existing method limitations exposed by stricter (language-aware)
-# tokenization in the test.
 _CORRECTION_TEXT_EXCEPTIONS: Set[Tuple[str, str, str, str]] = set()
 
 
@@ -730,7 +770,7 @@ _MAX_STUDENTS_PER_PROJECT = 5
 
 
 def _sampled_student_dirs(project_dir):
-    dirs = sorted(d for d in project_dir.iterdir()
+    dirs = sorted(d for d in _dir_or(project_dir, 'anon_ids').iterdir()
                   if d.is_dir() and d.name.isdigit())
     if _MAX_STUDENTS_PER_PROJECT is not None:
         dirs = dirs[:_MAX_STUDENTS_PER_PROJECT]
@@ -1150,6 +1190,8 @@ class TestCorrection(unittest.TestCase):
 
 
 def _attach_correction_tests() -> None:
+    if not _HAS_CORPUS:
+        return
     for project_dir in sorted(_TEST.iterdir()):
         if not project_dir.is_dir():
             continue
@@ -1303,10 +1345,13 @@ class TestCuratedSanity(unittest.TestCase):
 
 
 def _attach_curated_sanity_tests() -> None:
+    if not _HAS_CORPUS:
+        return
     for project_dir in sorted(_TEST.iterdir()):
         if not project_dir.is_dir() or '-' in project_dir.name:
             continue
-        for student_dir in sorted(d for d in project_dir.iterdir()
+        students_root = _dir_or(project_dir, 'anon_ids')
+        for student_dir in sorted(d for d in students_root.iterdir()
                                   if d.is_dir() and d.name.isdigit()):
             base = f'{project_dir.name}_{student_dir.name}'
 
@@ -1392,10 +1437,12 @@ class TestJsPythonParity(unittest.TestCase):
 
 
 def _attach_parity_tests() -> None:
+    if not _HAS_CORPUS:
+        return
     for project_dir in sorted(_TEST.iterdir()):
         if not project_dir.is_dir() or '-' in project_dir.name:
             continue
-        log_path = project_dir / 'log.json'
+        log_path = _keylog_in(project_dir)
         if not log_path.is_file():
             continue
 
@@ -1435,14 +1482,16 @@ class TestJsReplayParity(unittest.TestCase):
 
 
 def _attach_replay_parity_tests() -> None:
+    if not _HAS_CORPUS:
+        return
     for project_dir in sorted(_TEST.iterdir()):
         if not project_dir.is_dir() or '-' in project_dir.name:
             continue
-        log_path = project_dir / 'log.json'
+        log_path = _keylog_in(project_dir)
         if not log_path.is_file():
             continue
         expected = None
-        for cand in sorted(project_dir.iterdir()):
+        for cand in sorted(_dir_or(project_dir, 'reconstructed').iterdir()):
             if cand.is_file() and cand.name.startswith('reconstructed'):
                 expected = cand
                 break

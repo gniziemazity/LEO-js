@@ -6,22 +6,20 @@
 		<link rel="stylesheet" href="./shared/styles.css" />
 	</head>
 	<body class="options-view">
-		<div class="resize-handle resize-n" data-edge="top"></div>
-		<div class="resize-handle resize-s" data-edge="bottom"></div>
-		<div class="resize-handle resize-w" data-edge="left"></div>
-		<div class="resize-handle resize-e" data-edge="right"></div>
-		<div class="resize-handle resize-nw" data-edge="top-left"></div>
-		<div class="resize-handle resize-ne" data-edge="top-right"></div>
-		<div class="resize-handle resize-sw" data-edge="bottom-left"></div>
-		<div class="resize-handle resize-se" data-edge="bottom-right"></div>
-		<div class="neon-frame" id="neonFrame">
+		<div class="neon-frame">
 			<div class="options-area" id="optionsArea"></div>
 		</div>
 
 		<script src="./shared/themes/theme-runtime.js"></script>
 		<script src="./shared/themes/dragonball.js"></script>
+		<script src="./shared/float-window.js"></script>
 		<script>
 			const { ipcRenderer } = require("electron");
+
+			initFloatWindow({
+				close: "close-options-window",
+				devtools: "open-options-devtools",
+			});
 
 			ipcRenderer.on("fade-out", () => {
 				document.body.style.transition = "opacity 300ms ease";
@@ -31,24 +29,6 @@
 			ipcRenderer.invoke("get-settings").then((s) => {
 				if (s) initBackground(s.floatingTheme);
 			});
-
-			document.addEventListener("keydown", (e) => {
-				if (e.key === "Escape") ipcRenderer.send("close-options-window");
-				if (e.ctrlKey && (e.key === "i" || e.key === "I")) {
-					e.preventDefault();
-					ipcRenderer.send("open-options-devtools");
-				}
-			});
-
-			document.querySelectorAll(".resize-handle").forEach((el) => {
-				el.addEventListener("mousedown", (e) => {
-					e.preventDefault();
-					ipcRenderer.send("start-resizing", el.dataset.edge);
-				});
-			});
-			window.addEventListener("mouseup", () =>
-				ipcRenderer.send("end-resizing"),
-			);
 
 			ipcRenderer.on("set-options", (event, { options, bgColor }) => {
 				document.body.style.transition = "";

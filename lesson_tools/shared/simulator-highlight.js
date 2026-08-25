@@ -68,6 +68,14 @@ function _collapseSpans(content, spans) {
 	return result;
 }
 
+const HL_PROFILE_BY_FILETYPE = {
+	js: ".js",
+	ts: ".ts",
+	json: ".json",
+	py: "python",
+	python: "python",
+};
+
 function buildHighlightSpans(content, fileType = "html") {
 	if (fileType === "none") return [];
 
@@ -79,8 +87,8 @@ function buildHighlightSpans(content, fileType = "html") {
 		return _collapseSpans(content, spans);
 	}
 
-	if (fileType === "js" || fileType === "py" || fileType === "python") {
-		const profId = fileType === "js" ? ".js" : "python";
+	const profId = HL_PROFILE_BY_FILETYPE[fileType];
+	if (profId) {
 		const LP = typeof window !== "undefined" ? window.LanguageProfiles : null;
 		const prof = LP ? LP.getProfile(profId) : null;
 		if (prof) LP.highlight(prof, content, 0, spans);

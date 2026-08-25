@@ -4,9 +4,19 @@ const {
 	applyAtomicText,
 } = require("../../lesson_tools/shared/simulator-model");
 const {
+	classifyMoveToTarget,
+	isFileName,
+} = require("../shared/move-to-target");
+const {
 	HL_COLORS,
 	buildHighlightSpans,
 } = require("../../lesson_tools/shared/simulator-highlight");
+
+function editorTarget(name) {
+	if (name === "main") return "MAIN";
+	if (name === "dev") return "DEV";
+	return name;
+}
 
 function extractAnchorSnippet(
 	target,
@@ -15,16 +25,9 @@ function extractAnchorSnippet(
 	before = 5,
 	after = 5,
 ) {
-	if (
-		!target ||
-		!target.startsWith("⚓") ||
-		!target.endsWith("⚓") ||
-		target.length < 3
-	) {
-		return null;
-	}
-	const id = target.slice(1, -1);
-	if (/\.[a-z0-9]+$/i.test(id)) return null;
+	const anchor = classifyMoveToTarget(target);
+	if (anchor.mode !== "anchor") return null;
+	const id = anchor.inner;
 
 	const editors = { main: new TextState() };
 	let active = "main";
@@ -44,9 +47,8 @@ function extractAnchorSnippet(
 				if (!editors.dev) editors.dev = new TextState();
 				active = "dev";
 			} else {
-				const wrapped = t.startsWith("⚓") && t.endsWith("⚓");
-				const inner = wrapped ? t.slice(1, -1) : t;
-				if (/\.[a-z0-9]+$/i.test(inner)) {
+				const { wrapped, inner } = classifyMoveToTarget(t);
+				if (isFileName(inner)) {
 					if (!editors[inner]) editors[inner] = new TextState();
 					active = inner;
 				} else if (wrapped) {
@@ -69,18 +71,19 @@ function extractAnchorSnippet(
 		}
 	}
 
-	let state = null;
+	let found = null;
 	if (editors[active] && editors[active].anchors[id] != null) {
-		state = editors[active];
+		found = active;
 	} else {
-		for (const st of Object.values(editors)) {
+		for (const [name, st] of Object.entries(editors)) {
 			if (st.anchors[id] != null) {
-				state = st;
+				found = name;
 				break;
 			}
 		}
 	}
-	if (!state) return null;
+	if (found === null) return null;
+	const state = editors[found];
 
 	const pos = state.anchors[id];
 	const beforeText = state.text.slice(0, pos);
@@ -98,6 +101,7 @@ function extractAnchorSnippet(
 		colored,
 		arrowIdx: lineIdx - start,
 		anchorCol: col,
+		switchTo: found === active ? null : editorTarget(found),
 	};
 }
 
