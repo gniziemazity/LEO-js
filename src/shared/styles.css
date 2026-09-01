@@ -90,8 +90,6 @@
 
 	--font-mono: "Consolas", "Monaco", "Courier New", monospace;
 	--font-ui: "Segoe UI", system-ui, sans-serif;
-
-	--panel-w: 504px;
 }
 
 html:has(body.question-view),
@@ -315,6 +313,20 @@ button {
 	background: var(--clr-white);
 }
 
+button.move-to-select {
+	cursor: pointer;
+}
+
+button.move-to-select::after {
+	content: " ▾";
+	opacity: 0.7;
+}
+
+button.move-to-select:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+
 #addMoveToBlockBtn {
 	background: var(--clr-move-to-bg);
 	color: var(--clr-white);
@@ -355,6 +367,49 @@ button {
 	font-style: italic;
 }
 
+.include-block {
+	background: var(--clr-surface);
+	color: var(--clr-muted);
+	border-left-color: var(--clr-purple);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: default;
+}
+
+.start-with-label {
+	font-weight: bold;
+	text-transform: uppercase;
+	font-size: 0.75em;
+	letter-spacing: 0.05em;
+}
+
+.block.from-include {
+	opacity: 0.6;
+	border-left-color: var(--clr-purple);
+	cursor: default;
+	user-select: none;
+}
+
+.block.from-include.code-insert-comment {
+	cursor: pointer;
+}
+
+.block.from-include.code-insert-comment::before {
+	content: "▸ ";
+	color: var(--clr-purple);
+}
+
+.block.from-include.code-insert-comment:not(.collapsed) {
+	opacity: 0.85;
+	max-height: 40vh;
+	overflow-y: auto;
+}
+
+.block.from-include.code-insert-comment:not(.collapsed)::before {
+	content: "▾ ";
+}
+
 .char {
 	display: inline-block;
 	position: relative;
@@ -391,9 +446,6 @@ button {
 	z-index: 1001;
 	pointer-events: none;
 }
-body.panel-open .progress-track {
-	right: var(--panel-w);
-}
 .progress-bar {
 	height: 100%;
 	background: var(--clr-red);
@@ -404,6 +456,7 @@ body.panel-open .progress-track {
 .sidebar {
 	width: 55px;
 	min-width: 50px;
+	scrollbar-width: none;
 	background: black;
 	padding: 10px;
 	display: flex;
@@ -416,7 +469,11 @@ body.panel-open .progress-track {
 	align-self: flex-start;
 	max-height: calc(100vh - 40px);
 	height: calc(100vh - 40px);
-	overflow-y: hidden;
+	overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar {
+	display: none;
 }
 
 .sidebar.hidden {
@@ -426,7 +483,7 @@ body.panel-open .progress-track {
 .sidebar-section {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 2px;
 	align-items: center;
 }
 
@@ -488,6 +545,11 @@ body.typing-active #editor-toolbar {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.key-btn {
+	height: 24px;
+	font-size: 14px;
 }
 
 .artificial-log-btn {
@@ -573,10 +635,6 @@ body.mode-record .key-btn[data-char="⚓"] {
 .key-btn {
 	background: var(--clr-muted);
 	color: white;
-}
-
-.key-btn:hover {
-	background: var(--clr-muted);
 }
 
 .modal {
@@ -849,15 +907,6 @@ body.mode-record .key-btn[data-char="⚓"] {
 	align-items: center;
 	padding: 10px 12px;
 	gap: 14px;
-}
-
-#lessonName {
-	font-size: 1.1rem;
-	font-weight: bold;
-	color: var(--clr-page);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .mobile-view .interaction-btn {
@@ -1377,7 +1426,7 @@ body.side-left .popup-modal {
 }
 
 .mt-modal-target {
-	font-family: Consolas, "Courier New", monospace;
+	font-family: var(--font-mono);
 	font-size: 1.05rem;
 	font-weight: 700;
 	background: rgba(0, 0, 0, 0.08);
@@ -1387,28 +1436,30 @@ body.side-left .popup-modal {
 	margin-bottom: 14px;
 }
 
-.mt-modal-snippet {
-	display: none;
+.snippet-view {
 	background: var(--clr-snippet-bg);
 	color: var(--clr-snippet-text);
 	border: 1px solid rgba(0, 0, 0, 0.2);
 	border-radius: 6px;
 	padding: 10px 0;
-	font-family: Consolas, "Courier New", monospace;
+	font-family: var(--font-mono);
 	font-size: 0.92rem;
 	line-height: 1.5;
 	overflow-x: auto;
-	flex: 1;
-	min-height: 0;
 	tab-size: 4;
 	-moz-tab-size: 4;
+}
+
+.mt-modal-snippet {
+	flex: 1;
+	min-height: 0;
 }
 
 .mt-modal-line {
 	display: block;
 	padding: 0 12px;
 	white-space: pre;
-	font-family: Consolas, "Courier New", monospace;
+	font-family: var(--font-mono);
 	font-size: inherit;
 	line-height: 1.5;
 }
@@ -1420,6 +1471,135 @@ body.side-left .popup-modal {
 	animation: blink 1s infinite;
 	padding: 0 1px;
 	border-radius: 2px;
+}
+
+.mt-options {
+	position: fixed;
+	z-index: 1001;
+	min-width: 160px;
+	max-height: 50vh;
+	overflow-y: auto;
+	padding: 4px 0;
+	background: var(--clr-white);
+	color: var(--clr-black);
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+	font-size: 0.9rem;
+}
+
+.mt-option {
+	padding: 3px 12px;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.mt-option.active {
+	background: var(--clr-accent);
+	color: var(--clr-white);
+}
+
+.mt-option.selected {
+	font-weight: bold;
+}
+
+.desk-popup {
+	display: none;
+	position: fixed;
+	z-index: 1100;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: min(760px, calc(100vw - 32px));
+	max-height: calc(100vh - 48px);
+	overflow-y: auto;
+	padding: 16px 18px;
+	background: var(--clr-moveto-bg);
+	color: var(--clr-text);
+	border: 1px solid var(--clr-border);
+	border-radius: 10px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+	font-family: var(--font-ui);
+}
+
+.desk-popup-title {
+	font-size: 1.15rem;
+	font-weight: bold;
+	margin-bottom: 10px;
+	white-space: pre-wrap;
+}
+
+.desk-popup-body {
+	max-height: 45vh;
+}
+
+.desk-popup-body.desk-popup-plain {
+	padding: 10px 12px;
+	font-family: var(--font-ui);
+	font-size: 1.05rem;
+}
+
+.desk-popup-hint {
+	margin-top: 8px;
+	color: var(--clr-label);
+	font-size: 0.9rem;
+}
+
+.desk-popup-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+
+.desk-popup-btn {
+	font-size: 1rem;
+	padding: 8px 20px;
+}
+
+.desk-popup-icon {
+	padding: 8px 14px;
+}
+
+.desk-popup-done {
+	background: var(--clr-danger);
+}
+
+.desk-popup-input {
+	width: 100%;
+	margin-bottom: 10px;
+	padding: 8px 10px;
+	font: inherit;
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+}
+
+.desk-popup-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 12px;
+}
+
+.anchor-preview {
+	display: none;
+	position: fixed;
+	z-index: 1002;
+	max-width: 70vw;
+	max-height: 40vh;
+	overflow: auto;
+	padding: 8px 0;
+	background: var(--clr-snippet-bg);
+	color: var(--clr-snippet-text);
+	border: 1px solid var(--clr-border);
+	border-radius: 6px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	line-height: 1.45;
+	tab-size: 4;
+	-moz-tab-size: 4;
+	pointer-events: none;
 }
 
 .mt-modal-empty {
@@ -1456,6 +1636,23 @@ body.side-left .popup-modal {
 	margin-bottom: 14px;
 }
 
+.mt-modal-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 12px;
+	flex: 0 0 auto;
+}
+
+.mt-modal-actions .mt-modal-confirm {
+	position: static;
+	transform: none;
+}
+
+.mto-name-typed {
+	opacity: 0.55;
+}
+
 .ci-modal-actions {
 	display: flex;
 	align-items: center;
@@ -1469,7 +1666,7 @@ body.side-left .popup-modal {
 	font-size: 0.95rem;
 	font-weight: 600;
 	color: var(--clr-muted);
-	font-family: Consolas, "Courier New", monospace;
+	font-family: var(--font-mono);
 }
 
 .ci-modal-actions .mt-modal-confirm {
@@ -1596,11 +1793,6 @@ body.image-view #pinBtn.pinned:hover {
 	display: none;
 }
 
-#pinBtn {
-	-webkit-app-region: no-drag;
-	cursor: pointer;
-}
-
 webview {
 	-webkit-app-region: no-drag;
 }
@@ -1631,6 +1823,7 @@ webview {
 }
 
 #pinBtn {
+	-webkit-app-region: no-drag;
 	position: absolute;
 	top: 16px;
 	left: 18px;
@@ -1865,7 +2058,7 @@ body.leo-themed .student-banner,
 body.leo-themed .question-emoji,
 body.leo-themed #randomizerArea,
 body.leo-themed #optionsArea {
-	color: #000000;
+	color: var(--clr-black);
 	text-shadow:
 		0 1px 3px rgba(255, 255, 255, 0.9),
 		0 0 14px rgba(255, 255, 255, 0.6);
@@ -1877,60 +2070,6 @@ body.leo-themed .dot {
 
 body.bg-circle .question-text {
 	max-width: 100vmin;
-}
-
-body.panel-mode {
-	overflow-y: hidden;
-}
-
-body.panel-mode .overlay {
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	width: auto;
-	height: auto;
-	transform: none;
-	align-items: center;
-	justify-content: center;
-	padding: 16px;
-}
-
-body.panel-mode .mode-side-btn,
-body.panel-mode .pad-bar-btn,
-body.panel-mode .pad-confirm-btn {
-	writing-mode: horizontal-tb;
-}
-
-body.panel-mode #modeBtnMouse,
-body.panel-mode #modeBtnKeyboard,
-body.panel-mode .mode-side-divider {
-	display: none;
-}
-
-body.panel-mode .mode-side-btn .side-btn-emoji {
-	transform: none;
-}
-
-.control-panel {
-	position: fixed;
-	top: 0;
-	right: 0;
-	width: var(--panel-w);
-	height: 100vh;
-	border: none;
-	border-left: 1px solid var(--clr-border);
-	z-index: 200;
-	background: #141414;
-	display: none;
-}
-
-body.panel-open {
-	width: calc(100% - var(--panel-w));
-}
-
-body.panel-open .control-panel {
-	display: block;
 }
 
 #interaction-controls {

@@ -11,11 +11,11 @@ class InteractionOverlay extends RemoteOverlay {
 	handleBtn(interactionType) {
 		if (currentStudents.length > 0) {
 			this.openedAt = Date.now();
-			const isQuestion = interactionType === "student-question";
-			const title = isQuestion
-				? "❓ Who asked a question?"
-				: "🤝 Who needs help?";
-			this.show(title, currentStudents, interactionType);
+			this.show(
+				InteractionView.interactionTitle(interactionType),
+				currentStudents,
+				interactionType,
+			);
 		} else {
 			sendMessage("interaction", { interactionType });
 		}
@@ -25,16 +25,13 @@ class InteractionOverlay extends RemoteOverlay {
 		const modal = document.getElementById("iModal");
 		modal.className = "popup-modal";
 
-		const bg =
-			type === "student-question"
-				? "var(--clr-ask-bg)"
-				: "var(--clr-help-bg)";
+		const bg = InteractionView.interactionBgVar(type);
 
 		document.getElementById("iTitle").textContent = title;
 
 		const questionInput = document.getElementById("iQuestionInput");
 		const questionRow = document.getElementById("iQuestionRow");
-		if (type === "student-question") {
+		if (InteractionView.isQuestion(type)) {
 			questionRow.style.display = "flex";
 			questionInput.value = "";
 			const micBtn = document.getElementById("iMicBtn");
@@ -42,8 +39,7 @@ class InteractionOverlay extends RemoteOverlay {
 				const hasSR = !!(
 					window.SpeechRecognition || window.webkitSpeechRecognition
 				);
-				const canDictate =
-					hasSR && window.isSecureContext && !IS_CONTROL_PANEL;
+				const canDictate = hasSR && window.isSecureContext;
 				micBtn.style.display = canDictate ? "" : "none";
 			}
 		} else {
@@ -68,10 +64,9 @@ class InteractionOverlay extends RemoteOverlay {
 	studentSelected(idx, type, questionText) {
 		this.stopDictation();
 		const isTeacher = idx === "teacher";
-		const studentId = isTeacher
-			? 0
-			: idx != null && idx >= 0
-				? idx + 1
+		const studentId =
+			isTeacher || (idx != null && idx >= 0)
+				? InteractionView.participantId(idx)
 				: null;
 		const name = isTeacher ? teacherName : (currentStudents[idx] ?? "");
 		const msgData = {
@@ -85,17 +80,15 @@ class InteractionOverlay extends RemoteOverlay {
 		this.waiting = true;
 		this.pendingWaitingData = msgData;
 
-		const isQuestion = type === "student-question";
 		document.getElementById("iQuestionRow").style.display = "none";
-		document.getElementById("iTitle").textContent = isQuestion
-			? `❓ ${name}${questionText ? ": " + questionText : ""}`
-			: `🤝 Helping ${name}`;
+		document.getElementById("iTitle").textContent =
+			InteractionView.waitingTitle(type, name, questionText);
 
 		const grid = document.getElementById("iGrid");
 		grid.innerHTML = "";
 		grid.appendChild(
 			this.makeStudentBtn(
-				"✓ Done — close",
+				InteractionView.DONE_LABEL,
 				() => this.closeOverlay(),
 				"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
 					"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);",

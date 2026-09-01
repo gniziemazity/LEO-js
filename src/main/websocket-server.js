@@ -6,7 +6,6 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
-const qrcode = require("qrcode-terminal");
 const EventEmitter = require("events");
 const plugin = require("./plugin");
 
@@ -24,92 +23,86 @@ function clampScale(v) {
 	return Math.max(0.1, Math.min(10, n));
 }
 
-const CLIENT_MESSAGE_HANDLERS = {
-	"toggle-active": (s) => s.emit("client-toggle-active"),
-	"jump-to": (s, d) =>
-		s.emit(
-			"client-jump-to",
-			Math.max(0, Math.round(clampNum(d.stepIndex, 1e7))),
-		),
-	interaction: (s, d) => s.emit("client-interaction", d.interactionType),
-	"student-answered": (s, d) =>
-		s.emit("client-student-answered", d.studentName),
-	"student-interaction": (s, d) =>
-		s.emit(
-			"client-student-interaction",
-			d.interactionType,
-			d.studentName,
-			d.questionText || null,
-			d.openedAt || null,
-			d.closedAt || null,
-		),
-	"show-student-interaction": (s, d) =>
-		s.emit(
-			"client-show-student-interaction",
-			d.interactionType,
-			d.studentName,
-			d.questionText || null,
-			d.openedAt || null,
-		),
-	"close-student-interaction": (s, d) =>
-		s.emit(
-			"client-close-student-interaction",
-			d.interactionType,
-			d.studentName,
-			d.questionText || null,
-			d.openedAt || null,
-			d.closedAt || null,
-		),
-	"move-to-confirmed": (s) => s.emit("client-move-to-confirmed"),
-	"code-insert-confirmed": (s) => s.emit("client-code-insert-confirmed"),
-	"code-insert-paste": (s) => s.emit("client-code-insert-paste"),
-	"show-question": (s, d) =>
-		s.emit("client-show-question", !d || d.animate !== false),
-	"interaction-overlay-shown": (s) =>
-		s.emit("client-interaction-overlay-shown"),
-	"interaction-overlay-closed": (s) =>
-		s.emit("client-interaction-overlay-closed"),
-	"mouse-move": (s, d) =>
-		s.emit("client-mouse-move", clampNum(d.dx, 5000), clampNum(d.dy, 5000)),
-	"mouse-click": (s, d) =>
-		s.emit("client-mouse-click", d.button === "right" ? "right" : "left"),
-	"mouse-scroll": (s, d) =>
-		s.emit("client-mouse-scroll", clampNum(d.dy, 5000)),
-	"mouse-drag-start": (s) => s.emit("client-mouse-drag-start"),
-	"mouse-drag-end": (s) => s.emit("client-mouse-drag-end"),
-	"window-drag": (s, d) =>
-		s.emit(
-			"client-window-drag",
-			clampNum(d.dx, 10000),
-			clampNum(d.dy, 10000),
-		),
-	"window-resize": (s, d) =>
-		s.emit(
-			"client-window-resize",
-			clampScale(d.scaleX ?? d.scale),
-			clampScale(d.scaleY ?? d.scale),
-		),
-	"window-pinch": (s, d) =>
-		s.emit(
-			"client-window-pinch",
-			clampScale(d.scale),
-			clampNum(d.dx, 10000),
-			clampNum(d.dy, 10000),
-		),
-	"timer-start": (s) => s.emit("client-timer-start"),
-	"timer-stop": (s) => s.emit("client-timer-stop"),
-	"timer-adjust": (s, d) =>
-		s.emit("client-timer-adjust", clampNum(d.minutes, 600)),
-	"remote-key-press": (s) => s.emit("client-remote-key-press"),
-	"remote-edit-key": (s, d) =>
-		s.emit(
-			"client-remote-edit-key",
-			EDIT_KEYS.includes(d && d.action) ? d.action : "copy",
-		),
-	"dismiss-question": (s) => s.emit("client-dismiss-question"),
-	"question-randomize": (s) => s.emit("client-question-randomize"),
-	"question-show-options": (s) => s.emit("client-question-show-options"),
+const BARE_CLIENT_MESSAGES = [
+	"toggle-active",
+	"move-to-confirmed",
+	"code-insert-confirmed",
+	"code-insert-paste",
+	"move-to-type-name",
+	"interaction-overlay-shown",
+	"interaction-overlay-closed",
+	"mouse-drag-start",
+	"mouse-drag-end",
+	"timer-start",
+	"timer-stop",
+	"remote-key-press",
+	"dismiss-question",
+	"question-randomize",
+	"question-show-options",
+];
+
+const FORWARDED_CLIENT_FIELDS = {
+	interaction: ["interactionType"],
+	"student-answered": ["studentName"],
+	"student-interaction": [
+		"interactionType",
+		"studentName",
+		"questionText?",
+		"openedAt?",
+		"closedAt?",
+	],
+	"show-student-interaction": [
+		"interactionType",
+		"studentName",
+		"questionText?",
+		"openedAt?",
+	],
+	"close-student-interaction": [
+		"interactionType",
+		"studentName",
+		"questionText?",
+		"openedAt?",
+		"closedAt?",
+	],
 };
+
+const CLIENT_MESSAGE_SANITIZERS = {
+	"jump-to": (d) => [Math.max(0, Math.round(clampNum(d.stepIndex, 1e7)))],
+	"show-question": (d) => [!d || d.animate !== false],
+	"mouse-move": (d) => [clampNum(d.dx, 5000), clampNum(d.dy, 5000)],
+	"mouse-click": (d) => [d.button === "right" ? "right" : "left"],
+	"mouse-scroll": (d) => [clampNum(d.dy, 5000)],
+	"window-drag": (d) => [clampNum(d.dx, 10000), clampNum(d.dy, 10000)],
+	"window-resize": (d) => [
+		clampScale(d.scaleX ?? d.scale),
+		clampScale(d.scaleY ?? d.scale),
+	],
+	"window-pinch": (d) => [
+		clampScale(d.scale),
+		clampNum(d.dx, 10000),
+		clampNum(d.dy, 10000),
+	],
+	"timer-adjust": (d) => [clampNum(d.minutes, 600)],
+	"remote-edit-key": (d) => [
+		EDIT_KEYS.includes(d && d.action) ? d.action : "copy",
+	],
+};
+
+const CLIENT_MESSAGE_TYPES = new Set([
+	...BARE_CLIENT_MESSAGES,
+	...Object.keys(FORWARDED_CLIENT_FIELDS),
+	...Object.keys(CLIENT_MESSAGE_SANITIZERS),
+]);
+
+function clientMessageArgs(type, data) {
+	const sanitize = CLIENT_MESSAGE_SANITIZERS[type];
+	if (sanitize) return sanitize(data);
+	const fields = FORWARDED_CLIENT_FIELDS[type];
+	if (!fields) return [];
+	return fields.map((f) =>
+		f.endsWith("?") ? data[f.slice(0, -1)] || null : data[f],
+	);
+}
 
 class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
@@ -125,7 +118,6 @@ class LEOBroadcastServer extends EventEmitter {
 			isActive: false,
 			totalSteps: 0,
 			currentStep: 0,
-			lessonName: "No lesson loaded",
 			lessonData: null,
 			settings: null,
 			activeQuestion: null,
@@ -194,10 +186,10 @@ class LEOBroadcastServer extends EventEmitter {
 			verifyClient: (info) => this._verifyClient(info),
 		});
 		this.wss.on("error", (err) => {
-			console.error(`[LEO] WebSocket server error: ${err.message}`);
+			console.error(`[LEO] socket error: ${err.message}`);
 		});
 		this.wss.on("connection", (ws) => {
-			console.log("Client connected: " + ws._socket.remoteAddress);
+			console.log(`Client connected: ${ws._socket.remoteAddress}`);
 			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
 			this.emit("client-connected");
 			ws.on("message", (message) => {
@@ -205,7 +197,7 @@ class LEOBroadcastServer extends EventEmitter {
 					const data = JSON.parse(message);
 					this.handleClientMessage(data);
 				} catch (err) {
-					console.error("Error parsing client message:", err);
+					console.error("[LEO] bad client message:", err);
 				}
 			});
 			ws.on("close", () => {
@@ -222,7 +214,7 @@ class LEOBroadcastServer extends EventEmitter {
 		return new Promise((resolve) => {
 			const onError = (err) => {
 				if (err.code === "EADDRINUSE" && ++attempts < MAX_PORT_ATTEMPTS) {
-					console.log(`[LEO] Port ${this.port} in use, trying next`);
+					console.log(`[LEO] port ${this.port} in use, trying next`);
 					this.port++;
 					this.server.listen(this.port);
 					return;
@@ -230,13 +222,13 @@ class LEOBroadcastServer extends EventEmitter {
 				this.server.removeListener("error", onError);
 				this.server.removeListener("listening", onListening);
 				this.listening = false;
-				console.error(`[LEO] Remote server disabled: ${err.message}`);
+				console.error(`[LEO] remote disabled: ${err.message}`);
 				resolve();
 			};
 			const onListening = () => {
 				this.server.removeListener("error", onError);
 				this.listening = true;
-				console.log("LEO Server Started");
+				console.log("LEO ready");
 				this.printLocalIPs();
 				resolve();
 			};
@@ -271,8 +263,7 @@ class LEOBroadcastServer extends EventEmitter {
 			interfaces[ifname].forEach((iface) => {
 				if (iface.family === "IPv4" && !iface.internal) {
 					const url = this.remoteUrl(iface.address);
-					console.log(`Client Viewer URL: ${url}`);
-					qrcode.generate(url);
+					console.log(`Remote: ${url}`);
 				}
 			});
 		});
@@ -316,11 +307,6 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "active", data: { isActive } });
 	}
 
-	updateLessonName(lessonName) {
-		this.currentState.lessonName = lessonName;
-		this.broadcast({ type: "lesson", data: { lessonName } });
-	}
-
 	updateSettings(settings) {
 		this.currentState.settings = settings;
 		this.broadcast({ type: "settings", data: settings });
@@ -360,6 +346,10 @@ class LEOBroadcastServer extends EventEmitter {
 	broadcastMoveToStarted(payload) {
 		this.currentState.activeMoveTo = payload;
 		this.broadcast({ type: "move-to-started", data: payload });
+	}
+
+	broadcastMoveToTyping(data) {
+		this.broadcast({ type: "move-to-typing", data });
 	}
 
 	broadcastMoveToEnded() {
@@ -409,11 +399,11 @@ class LEOBroadcastServer extends EventEmitter {
 
 	handleClientMessage(message) {
 		const { type, data } = message;
-		const handler = Object.hasOwn(CLIENT_MESSAGE_HANDLERS, type)
-			? CLIENT_MESSAGE_HANDLERS[type]
-			: null;
-		if (handler) handler(this, data || {});
-		else if (plugin.onClientMessage) plugin.onClientMessage(type, data, this);
+		if (CLIENT_MESSAGE_TYPES.has(type)) {
+			this.emit("client-" + type, ...clientMessageArgs(type, data || {}));
+		} else if (plugin.onClientMessage) {
+			plugin.onClientMessage(type, data, this);
+		}
 	}
 
 	async getServerInfo() {
@@ -432,7 +422,7 @@ class LEOBroadcastServer extends EventEmitter {
 						});
 						serverInfos.push({ url, qrCodeDataUrl });
 					} catch (err) {
-						console.error("Error generating QR code:", err);
+						console.error("[LEO] QR failed:", err);
 					}
 				}
 			}
@@ -442,3 +432,4 @@ class LEOBroadcastServer extends EventEmitter {
 }
 
 module.exports = LEOBroadcastServer;
+module.exports.CLIENT_MESSAGE_TYPES = CLIENT_MESSAGE_TYPES;

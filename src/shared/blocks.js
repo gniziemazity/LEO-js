@@ -4,7 +4,6 @@
 		["🖼️", "image-comment"],
 		["🌐", "web-comment"],
 		["📋", "code-insert-comment"],
-		["➡️", "move-to-comment"],
 	];
 
 	function getBlockSubtype(text) {
@@ -13,6 +12,28 @@
 			if (t.startsWith(prefix)) return subtype;
 		}
 		return null;
+	}
+
+	function isMultilineCodeInsert(text) {
+		return (
+			getBlockSubtype(text) === "code-insert-comment" &&
+			String(text).includes("\n")
+		);
+	}
+
+	function collapsedLabel(text) {
+		return String(text).split("\n")[0] + "...";
+	}
+
+	function stripBlockPrefix(text) {
+		const s = String(text == null ? "" : text);
+		for (const [prefix] of BLOCK_SUBTYPES) {
+			const at = s.indexOf(prefix);
+			if (at !== -1 && s.slice(0, at).trim() === "") {
+				return s.slice(at + prefix.length).replace(/^\s/, "");
+			}
+		}
+		return s;
 	}
 
 	function buildSettingsCSS(settings) {
@@ -47,7 +68,14 @@
 		`;
 	}
 
-	const api = { BLOCK_SUBTYPES, getBlockSubtype, buildSettingsCSS };
+	const api = {
+		BLOCK_SUBTYPES,
+		getBlockSubtype,
+		stripBlockPrefix,
+		isMultilineCodeInsert,
+		collapsedLabel,
+		buildSettingsCSS,
+	};
 
 	if (typeof module !== "undefined" && module.exports) {
 		module.exports = api;

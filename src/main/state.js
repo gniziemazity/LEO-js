@@ -3,7 +3,7 @@ class AppState {
 		this.mainWindow = null;
 		this.isLocked = false;
 		this.isActive = false;
-		this.isPaused = false;
+		this.pauseReasons = new Set();
 		this.isAutoTyping = false;
 		this.advanceQueue = [];
 		this.typeQueue = [];
@@ -12,7 +12,7 @@ class AppState {
 	reset() {
 		this.isLocked = false;
 		this.isActive = false;
-		this.isPaused = false;
+		this.pauseReasons.clear();
 		this.isAutoTyping = false;
 		this.clearQueue();
 	}
@@ -31,12 +31,16 @@ class AppState {
 		this.isLocked = false;
 	}
 
-	pause() {
-		this.isPaused = true;
+	pause(reason = "manual") {
+		this.pauseReasons.add(reason);
 	}
 
-	unpause() {
-		this.isPaused = false;
+	unpause(reason = "manual") {
+		this.pauseReasons.delete(reason);
+	}
+
+	get isPaused() {
+		return this.pauseReasons.size > 0;
 	}
 
 	startAutoTyping() {

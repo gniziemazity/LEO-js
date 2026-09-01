@@ -1,5 +1,4 @@
 const { Key } = require("@computer-use/nut-js");
-const { getBlockSubtype, buildSettingsCSS } = require("./blocks");
 
 const NUTJS_KEY_MAPPING = {
 	"←": { key: Key.Left },
@@ -22,13 +21,16 @@ const NUTJS_KEY_MAPPING = {
 	"⇐": { shift: true, key: Key.Home },
 	"⇒": { shift: true, key: Key.End },
 
+	"✂": { modifier: Key.LeftControl, key: Key.X },
+	"⧉": { modifier: Key.LeftControl, key: Key.C },
+	"📥": { modifier: Key.LeftControl, key: Key.V },
+
 	"💾": { modifier: Key.LeftControl, key: Key.S },
 	"🔁": { modifier: Key.LeftAlt, key: Key.Tab },
 	Ö: { modifier: Key.LeftAlt, key: Key.Tab },
 	ö: { modifier: Key.LeftControl, key: Key.F5 },
 	Ș: { modifier: Key.LeftControl, key: Key.Tab },
 	ñ: { modifier: Key.LeftControl, key: Key.N },
-	"🆕": { modifier: Key.LeftControl, key: Key.N },
 	ω: { modifier: Key.LeftControl, key: Key.W },
 	"↩": { key: Key.Enter },
 	é: { key: Key.Escape },
@@ -77,7 +79,5 @@ module.exports = {
 	TIMER_CONFIG,
 	WINDOW_CONFIG,
 	LOG_CONFIG,
-	getBlockSubtype,
 	buildWindowTitle,
-	buildSettingsCSS,
 };

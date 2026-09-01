@@ -87,6 +87,8 @@ function build(opts = {}) {
 		"touchpadEditKeys",
 		"touchpadConfirmBar",
 		"mtoConfirm",
+		"mtoActions",
+		"mtoTypeName",
 		"questionOverlay",
 		"moveToOverlay",
 		"interactionOverlay",
@@ -95,7 +97,6 @@ function build(opts = {}) {
 		"qAnsweredRow",
 		"qShowBtn",
 		"qCloseBarFill",
-		"mtoEmoji",
 		"mtoTitle",
 		"mtoTarget",
 		"mtoSnippet",
@@ -158,7 +159,6 @@ function build(opts = {}) {
 		window: { addEventListener() {}, isSecureContext: false },
 		navigator: { language: "en-US", vibrate() {} },
 		sendMessage: (type, data) => sent.push({ type, data }),
-		IS_CONTROL_PANEL: !!opts.controlPanel,
 		setTimeout: () => 0,
 		clearTimeout() {},
 		setInterval: () => 0,
@@ -171,15 +171,18 @@ function build(opts = {}) {
 		console,
 		LeoBlocks: require(path.join(BASE, "shared/blocks.js")),
 		MoveToTarget: require(path.join(BASE, "shared/move-to-target.js")),
+		InteractionView: require(path.join(BASE, "shared/interaction-view.js")),
 	};
 
-	const src = LOAD_ORDER.map((f) =>
-		fs.readFileSync(path.join(REMOTE, f), "utf-8"),
-	).join("\n;\n");
+	const src = [
+		fs.readFileSync(path.join(BASE, "shared/snippet-view.js"), "utf-8"),
+		"const SnippetView = window.SnippetView;",
+		...LOAD_ORDER.map((f) => fs.readFileSync(path.join(REMOTE, f), "utf-8")),
+	].join("\n;\n");
 
 	const exported =
 		src +
-		"\n;module.exports={setAutoTypingActive,setTouchpadMode," +
+		"\n;module.exports={setSessionActive,setTouchpadMode," +
 		"showQuestionOverlay,closeQuestionOverlayUI,showMoveToOverlay," +
 		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
 		"closeCodeInsertOverlay,codeInsertPaste," +

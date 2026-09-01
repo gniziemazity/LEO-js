@@ -17,7 +17,7 @@ from .similarity_measures import (
 )
 from .grade_merge import merge_manual_columns
 from .lesson_log import load_lesson_log
-from .token_log_mixin import TokenLogMixin, DISABLED_DIFF_MARK_VARIANTS
+from .token_log_mixin import TokenLogMixin
 from .report_excel import ExcelReportMixin
 from .method_registry import REMARKS_BASES
 
@@ -106,7 +106,7 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
             for real_name, alter in name_map.items():
                 sid = self.name_to_id.get(real_name, '')
                 writer.writerow([sid, alter])
-        print(f'Written {out_path.name} ({len(name_map)} student name mappings)')
+        print(f'{out_path.name}: {len(name_map)} name mappings')
 
     def load_remarks_csv(self, csv_path: str) -> None:
         path = Path(csv_path)
@@ -308,13 +308,14 @@ class CodeSimilarityChecker(TokenLogMixin, ExcelReportMixin):
         }
 
 _REMARKS_BASES = list(REMARKS_BASES)
+_RETIRED_BASES = ('leo', 'leo_star_plus', 'lcs_star', 'git_star')
 
 
 def _resolve_follow_basis(requested: str, generated: List[str]) -> str:
     if requested != 'auto':
         if requested in generated:
             return requested
-        print(f'  --follow-basis={requested!r} not available; falling back to auto pick')
+        print(f'  --follow-basis={requested!r} unavailable, auto-picking')
     for preferred in ('ideal', 'minimal', 'leo_star'):
         if preferred in generated:
             return preferred
@@ -346,7 +347,7 @@ def main() -> None:
 
     missing = [p for p in (correct_dir, anon_ids_dir, students_csv) if not p.exists()]
     if missing:
-        print(f'Missing: {", ".join(str(p) for p in missing)}')
+        print(f'missing: {", ".join(str(p) for p in missing)}')
         return
 
     checker = CodeSimilarityChecker(
@@ -364,7 +365,7 @@ def main() -> None:
     checker.load_expected_csv(str(expected_csv))
     checker.load_lesson_json(current_dir)
 
-    print('\nWriting diff mark files...')
+    print('\nDiff marks...')
     if checker._lesson_keypresses:
         checker.write_keyword_log()
         from .lesson_stats import write_lesson_stats_csv
@@ -372,10 +373,9 @@ def main() -> None:
             checker._lesson_all_events, current_dir,
         )
         if stats_path:
-            print(f'  Written: {stats_path.name}')
+            print(f'  {stats_path.name}')
         checker.write_student_token_files(names_dir, anon_ids_dir,
                                            curated_dir=current_dir / 'curated')
-        checker.write_leo_plus_diff_marks(names_dir, anon_ids_dir)
     else:
         checker.write_leo_diff_marks(names_dir, anon_ids_dir)
     checker.write_lcs_diff_marks(names_dir, anon_ids_dir)
@@ -385,11 +385,11 @@ def main() -> None:
     )
     checker.write_name_map(current_dir)
 
-    print('\nGenerating per-basis remarks reports...')
+    print('\nRemarks...')
     excels_dir = current_dir / 'excels'
     excels_dir.mkdir(exist_ok=True)
 
-    for _b in (DISABLED_DIFF_MARK_VARIANTS | {'leo'}):
+    for _b in _RETIRED_BASES:
         _stale = excels_dir / f'remarks_{_b}.xlsx'
         if _stale.exists():
             try:
@@ -414,7 +414,7 @@ def main() -> None:
     if prev_remarks is not None and prev_remarks.exists():
         backup_path = excels_dir / f'bck_{run_ts}.xlsx'
         shutil.copy2(str(prev_remarks), str(backup_path))
-        print(f'Backed up previous remarks -> {backup_path.name}')
+        print(f'Backed up -> {backup_path.name}')
 
     def _merge_obs_into(path: Path) -> None:
         if backup_path is None:
@@ -422,13 +422,10 @@ def main() -> None:
         try:
             merge_manual_columns(backup_path, path)
         except PermissionError:
-            print(f'  Warning: {path.name} is open in Excel; '
-                  f'skipped manual-column merge.')
+            print(f'  {path.name} open in Excel, merge skipped')
 
     generated_bases: List[str] = []
     for basis in _REMARKS_BASES:
-        if basis in DISABLED_DIFF_MARK_VARIANTS:
-            continue
         stats = checker.compute_basis_token_stats(
             f'diff_marks_{basis}.json', names_dir, anon_ids_dir,
         )
@@ -443,7 +440,7 @@ def main() -> None:
     if not checker._lesson_keypresses:
         checker._build_synth_teacher_timestamps()
         for basis in _REMARKS_BASES:
-            if basis in generated_bases or basis in DISABLED_DIFF_MARK_VARIANTS:
+            if basis in generated_bases:
                 continue
             basis_marks_by_sid: Dict[str, dict] = {}
             for sid_dir in anon_ids_dir.iterdir() if anon_ids_dir.is_dir() else []:
@@ -484,14 +481,10 @@ def main() -> None:
                 merge_manual_columns(backup_path, remarks_path)
             break
         except PermissionError:
-            print(f'\n  Could not write {remarks_path.name} — it looks like it '
-                  f'is open in Excel.')
-            resp = input(
-                '  Close the file, then press Enter to retry '
-                '(or type "q" to abort): '
-            ).strip().lower()
+            print(f'\n  {remarks_path.name} is open in Excel.')
+            resp = input('  Close it and press Enter, or q to abort: ').strip().lower()
             if resp == 'q':
-                print('  Aborted; remarks not written.')
+                print('  Aborted.')
                 return
 
     if (prev_remarks is not None and prev_remarks.exists()
@@ -499,14 +492,14 @@ def main() -> None:
         try:
             prev_remarks.unlink()
         except OSError as e:
-            print(f'  Warning: could not remove old {prev_remarks.name}: {e}')
+            print(f'  could not remove {prev_remarks.name}: {e}')
 
     if chosen_basis:
-        print(f'Follow basis: {chosen_basis} -> {remarks_path.name}')
+        print(f'Basis: {chosen_basis} -> {remarks_path.name}')
     else:
-        print(f'Follow basis: (default Leo* re-scored) -> {remarks_path.name}')
+        print(f'Basis: Leo* re-scored -> {remarks_path.name}')
 
-    print(f'Done — {remarks_path.name} generated'
+    print(f'Done: {remarks_path.name}'
           + (f' (backup: {backup_path.name})' if backup_path else '')
           + '.')
 

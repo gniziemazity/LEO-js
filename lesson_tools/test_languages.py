@@ -368,7 +368,7 @@ class TestPythonReconstruction(unittest.TestCase):
 
     def test_python_dedent_on_else(self):
         from utils.lv_editor import _replay_headless_multi
-        events = self._events("if x:↩return↩↣")
+        events = self._events("if x:↩return↩⌦")
         editors = _replay_headless_multi(events)
         self.assertIn("main.py", editors)
 

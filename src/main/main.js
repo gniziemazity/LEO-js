@@ -12,7 +12,8 @@ const {
 
 const path = require("path");
 const fs = require("fs");
-const { WINDOW_CONFIG } = require("../shared/constants");
+const { WINDOW_CONFIG, buildWindowTitle } = require("../shared/constants");
+const { interactionBgColor } = require("../shared/interaction-view");
 const state = require("./state");
 
 const {
@@ -22,10 +23,9 @@ const {
 	keyboardHandler,
 	resolveStudentName,
 } = require("./context");
-const { createApplicationMenu, setMenuMode } = require("./app-menu");
+const { createApplicationMenu } = require("./app-menu");
 const {
 	floatState,
-	setPanelVisible,
 	openQuestionWindow,
 	closeAllChildWindows,
 	setQuestionWindowSquare,
@@ -40,15 +40,22 @@ const {
 	_randomizerFloat,
 	_optionsFloat,
 } = require("./float-windows");
+const { openLogVisualizer, setCourseMenuState } = require("./lesson-tools");
+require("./remote-input");
 const {
-	openLessonTool,
-	openLogVisualizer,
-	setCourseMenuState,
-} = require("./lesson-tools");
+	enterPopup,
+	endPopup,
+	confirmPopup,
+	pasteCodeInsert,
+	armMoveToName,
+	typeNextNameChar,
+	hasPendingName,
+	setNameProgressHandler,
+	openPopupKind,
+} = require("./popups");
 
 const { mouse, Button, Point, keyboard, Key } = require("@computer-use/nut-js");
 const MainProcessTimer = require("./main-timer");
-const { buildWindowTitle } = require("../shared/constants");
 
 const mainPlugin = require("./plugin");
 if (mainPlugin.registerMain) {
@@ -88,7 +95,7 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
-	state.unpause();
+	state.unpause("question");
 	const resolved = resolveStudentName(studentName);
 	floatState.questionWindowStudentAnswered = resolved;
 	const ANSWER_FADE_MS = 300;
@@ -128,7 +135,7 @@ broadcastServer.on(
 			? questionText || "(no question text)"
 			: `Helping`;
 		const emoji = isQuestion ? "❓" : "🤝";
-		const bgColor = isQuestion ? "#ffe0b2" : "#c8e6c9";
+		const bgColor = interactionBgColor(interactionType);
 		openQuestionWindow(displayText, bgColor, emoji, resolved);
 	},
 );
@@ -156,117 +163,28 @@ broadcastServer.on("client-code-insert-confirmed", () =>
 	confirmPopup("code-insert"),
 );
 broadcastServer.on("client-code-insert-paste", () => pasteCodeInsert());
+broadcastServer.on("client-move-to-type-name", () => armMoveToName());
+state.onPopupKey = () => {
+	if (!hasPendingName()) return false;
+	typeNextNameChar();
+	return true;
+};
+setNameProgressHandler((p) => {
+	broadcastServer.broadcastMoveToTyping(p);
+	state.send("move-to-typing", p);
+});
 broadcastServer.on("client-dismiss-question", () => {
-	state.unpause();
+	state.unpause("question");
 	if (floatState.questionWindowIsLesson) {
 		_questionFloat.close({ force: true });
 	}
 });
 broadcastServer.on("client-interaction-overlay-shown", () => {
-	state.pause();
+	state.pause("interaction");
 	state.send("stop-auto-typing");
 });
 broadcastServer.on("client-interaction-overlay-closed", () => {
-	state.unpause();
-	if (!_questionFloat.isAlive()) setPanelVisible(false);
-});
-
-const warnedRemoteOps = new Set();
-function warnRemoteInput(op, err) {
-	if (warnedRemoteOps.has(op)) return;
-	warnedRemoteOps.add(op);
-	console.error(`[LEO] remote ${op} failed: ${err && err.message}`);
-}
-
-mouse.config.autoDelayMs = 0;
-mouse.config.mouseSpeed = 2000;
-
-broadcastServer.on("client-mouse-move", async (dx, dy) => {
-	try {
-		const pos = await mouse.getPosition();
-		await mouse.setPosition(new Point(pos.x + dx, pos.y + dy));
-	} catch (e) {
-		warnRemoteInput("pointer move", e);
-	}
-});
-broadcastServer.on("client-mouse-click", async (button) => {
-	try {
-		if (button === "right") await mouse.rightClick();
-		else await mouse.leftClick();
-	} catch (e) {
-		warnRemoteInput("click", e);
-	}
-});
-broadcastServer.on("client-mouse-scroll", async (dy) => {
-	try {
-		const amount = Math.abs(Math.round(dy));
-		if (dy > 0) await mouse.scrollDown(amount);
-		else await mouse.scrollUp(amount);
-	} catch (e) {
-		warnRemoteInput("scroll", e);
-	}
-});
-let mouseDragActive = false;
-broadcastServer.on("client-mouse-drag-start", async () => {
-	try {
-		mouseDragActive = true;
-		await mouse.pressButton(Button.LEFT);
-	} catch (e) {
-		warnRemoteInput("drag start", e);
-	}
-});
-broadcastServer.on("client-mouse-drag-end", async () => {
-	try {
-		mouseDragActive = false;
-		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {
-		warnRemoteInput("drag end", e);
-	}
-});
-broadcastServer.on("client-connected", () => {
-	state.send("client-connected");
-});
-broadcastServer.on("client-disconnected", async () => {
-	if (!mouseDragActive) return;
-	try {
-		mouseDragActive = false;
-		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {
-		warnRemoteInput("drag release on disconnect", e);
-	}
-});
-
-broadcastServer.on("client-window-pinch", (scale, dx, dy) =>
-	applyWindowPinch(scale, dx, dy),
-);
-broadcastServer.on("client-window-drag", (dx, dy) => applyWindowDrag(dx, dy));
-broadcastServer.on("client-window-resize", (scaleX, scaleY) =>
-	applyWindowResize(scaleX, scaleY),
-);
-broadcastServer.on("client-remote-key-press", () => {
-	hotkeyManager.handleKey("remote");
-});
-const EDIT_KEY_TO_KEY = {
-	copy: Key.C,
-	cut: Key.X,
-	paste: Key.V,
-	undo: Key.Z,
-	save: Key.S,
-};
-broadcastServer.on("client-remote-edit-key", async (action) => {
-	try {
-		if (action === "enter") {
-			await keyboard.type(Key.Enter);
-			return;
-		}
-		const modifier =
-			settingsManager.get("platform") === "macos"
-				? Key.LeftCmd
-				: Key.LeftControl;
-		await keyboard.type(modifier, EDIT_KEY_TO_KEY[action] || Key.C);
-	} catch (e) {
-		warnRemoteInput("edit key", e);
-	}
+	state.unpause("interaction");
 });
 
 const timer = new MainProcessTimer();
@@ -290,7 +208,6 @@ broadcastServer.on("client-timer-adjust", (minutes) => {
 
 // IPC handlers
 
-ipcMain.on("toggle-window", () => toggleMainWindow());
 state.onToggleWindow = toggleMainWindow;
 
 ipcMain.on("set-course-menu", (event, payload) => {
@@ -305,7 +222,7 @@ ipcMain.on("update-students", (event, students) => {
 ipcMain.on(
 	"enter-question-block",
 	(event, { question, options, students, bgColor }) => {
-		state.pause();
+		state.pause("question");
 		broadcastServer.broadcastQuestionStarted(
 			question,
 			students,
@@ -328,18 +245,46 @@ ipcMain.on("randomizer-done", (event, index) => {
 	}
 });
 
-const DEVTOOLS_TARGETS = {
-	"open-question-devtools": _questionFloat,
-	"open-randomizer-devtools": _randomizerFloat,
-	"open-options-devtools": _optionsFloat,
-	"open-image-devtools": _imageFloat,
-	"open-web-devtools": _webFloat,
-};
-for (const [channel, float] of Object.entries(DEVTOOLS_TARGETS)) {
-	ipcMain.on(channel, () => {
-		const win = float.activeWin;
+const FLOAT_WINDOWS = [
+	{ name: "question", float: _questionFloat },
+	{ name: "randomizer", float: _randomizerFloat, close: "force" },
+	{ name: "options", float: _optionsFloat, close: "force" },
+	{
+		name: "image",
+		float: _imageFloat,
+		close: "soft",
+		forceClose: true,
+		pin: true,
+	},
+	{
+		name: "web",
+		float: _webFloat,
+		close: "soft",
+		forceClose: true,
+		pin: true,
+	},
+];
+
+for (const w of FLOAT_WINDOWS) {
+	ipcMain.on(`open-${w.name}-devtools`, () => {
+		const win = w.float.activeWin;
 		if (win) win.webContents.openDevTools({ mode: "detach" });
 	});
+	if (w.close) {
+		ipcMain.on(`close-${w.name}-window`, () =>
+			w.float.close(w.close === "force" ? { force: true } : undefined),
+		);
+	}
+	if (w.forceClose) {
+		ipcMain.on(`force-close-${w.name}-window`, () =>
+			w.float.close({ force: true }),
+		);
+	}
+	if (w.pin) {
+		ipcMain.on(`pin-${w.name}-window`, (event, pinned) =>
+			w.float.setPinned(pinned),
+		);
+	}
 }
 
 ipcMain.on("question-window-shape", (event, shape) => {
@@ -347,15 +292,9 @@ ipcMain.on("question-window-shape", (event, shape) => {
 });
 
 ipcMain.on("close-question-window", () => {
-	state.unpause();
+	state.unpause("question");
 	_questionFloat.close({ force: true });
 	broadcastServer.broadcastQuestionEnded();
-});
-ipcMain.on("close-randomizer-window", () => {
-	_randomizerFloat.close({ force: true });
-});
-ipcMain.on("close-options-window", () => {
-	_optionsFloat.close({ force: true });
 });
 
 ipcMain.on("enter-move-to-block", (event, payload) =>
@@ -369,11 +308,34 @@ ipcMain.on("enter-code-insert-block", (event, payload) =>
 ipcMain.on("close-code-insert-window", () => endPopup("code-insert"));
 
 ipcMain.on("start-interaction", (event, interactionType) => {
-	setPanelVisible(true);
 	broadcastServer.broadcast({
 		type: "open-interaction",
 		data: { interactionType },
 	});
+});
+
+const DESK_ACTIONS = new Set([
+	"client-move-to-confirmed",
+	"client-code-insert-confirmed",
+	"client-code-insert-paste",
+	"client-move-to-type-name",
+	"client-show-question",
+	"client-student-answered",
+	"client-dismiss-question",
+	"client-question-randomize",
+	"client-question-show-options",
+	"client-interaction",
+	"client-interaction-overlay-shown",
+	"client-interaction-overlay-closed",
+	"client-show-student-interaction",
+	"client-close-student-interaction",
+]);
+
+ipcMain.on("desk-action", (event, payload) => {
+	const type = payload && payload.type;
+	if (!DESK_ACTIONS.has(type)) return;
+	const args = Array.isArray(payload.args) ? payload.args : [];
+	broadcastServer.emit(type, ...args);
 });
 
 ipcMain.on(
@@ -386,7 +348,7 @@ ipcMain.on(
 			imageName,
 		);
 		if (!fs.existsSync(imagePath)) {
-			console.log(`[LEO] Image not found: ${imagePath}`);
+			console.log(`[LEO] image not found: ${imagePath}`);
 			return;
 		}
 		_imageFloat.showOrReuse(
@@ -395,9 +357,6 @@ ipcMain.on(
 		);
 	},
 );
-ipcMain.on("pin-image-window", (event, pinned) => {
-	_imageFloat.setPinned(pinned);
-});
 
 const IMAGE_WINDOW_DISPLAY_SCALE = 0.95;
 
@@ -419,27 +378,12 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	const b = win.getBounds();
 	_imageFloat.rect = { x: b.x, y: b.y, w: b.width, h: b.height };
 });
-ipcMain.on("force-close-image-window", () => {
-	_imageFloat.close({ force: true });
-});
-ipcMain.on("close-image-window", () => {
-	_imageFloat.close();
-});
 
 ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
 	_webFloat.showOrReuse(
 		{ url, bgColor, shouldPin },
 		{ shouldPin, gatePin: true },
 	);
-});
-ipcMain.on("close-web-window", () => {
-	_webFloat.close();
-});
-ipcMain.on("force-close-web-window", () => {
-	_webFloat.close({ force: true });
-});
-ipcMain.on("pin-web-window", (event, isPinned) => {
-	_webFloat.setPinned(isPinned);
 });
 
 let activeResize = null;
@@ -495,6 +439,7 @@ ipcMain.on("start-resizing", (event, edge) => {
 
 ipcMain.on("set-active", (event, isActive) => {
 	state.isActive = isActive;
+	broadcastServer.updateActiveState(isActive);
 	if (isActive) {
 		cleanupAutoTyping();
 		state.clearQueue();
@@ -572,14 +517,7 @@ ipcMain.on("update-cursor", (e, s) => broadcastServer.updateCursor(s));
 ipcMain.on("update-progress", (e, d) =>
 	broadcastServer.updateProgress(d.currentStep, d.totalSteps),
 );
-ipcMain.on("update-active", (e, a) => broadcastServer.updateActiveState(a));
-ipcMain.on("update-lesson-name", (e, n) => broadcastServer.updateLessonName(n));
-
 ipcMain.handle("get-settings", () => settingsManager.getAll());
-ipcMain.handle(
-	"get-control-panel-url",
-	() => `${broadcastServer.remoteUrl("127.0.0.1")}&panel=1`,
-);
 ipcMain.handle("get-server-info", async () => broadcastServer.getServerInfo());
 
 ipcMain.on("save-settings", (event, settings) => {
@@ -612,78 +550,6 @@ ipcMain.on("open-log-visualizer", (_event, logFilePath) => {
 
 // window functions
 
-const PAUSING_POPUPS = {
-	"move-to": {
-		started: (payload) => broadcastServer.broadcastMoveToStarted(payload),
-		ended: () => broadcastServer.broadcastMoveToEnded(),
-		confirmChannel: "move-to-confirmed",
-	},
-	"code-insert": {
-		started: (payload) => broadcastServer.broadcastCodeInsertStarted(payload),
-		ended: () => broadcastServer.broadcastCodeInsertEnded(),
-		confirmChannel: "code-insert-confirmed",
-		onEnter: (payload) => holdCodeOnClipboard(payload && payload.text),
-		onExit: () => releaseCodeFromClipboard(),
-	},
-};
-
-let openPopup = null;
-
-function enterPopup(kind, payload) {
-	const popup = PAUSING_POPUPS[kind];
-	openPopup = kind;
-	state.pause();
-	if (popup.onEnter) popup.onEnter(payload);
-	popup.started(payload);
-	setPanelVisible(true);
-	hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
-}
-
-function endPopup(kind) {
-	const popup = PAUSING_POPUPS[kind];
-	if (openPopup === kind) openPopup = null;
-	hotkeyManager.unregisterConfirmPopup();
-	state.unpause();
-	if (popup.onExit) popup.onExit();
-	popup.ended();
-	setPanelVisible(false);
-}
-
-function confirmPopup(kind) {
-	endPopup(kind);
-	state.send(PAUSING_POPUPS[kind].confirmChannel);
-}
-
-let heldClipboard = null;
-
-function holdCodeOnClipboard(code) {
-	if (!code) return;
-	heldClipboard = { code, previous: clipboard.readText() };
-	clipboard.writeText(code);
-}
-
-function releaseCodeFromClipboard() {
-	const held = heldClipboard;
-	heldClipboard = null;
-	if (!held) return;
-	if (clipboard.readText() === held.code) clipboard.writeText(held.previous);
-}
-
-async function pasteCodeInsert() {
-	const held = heldClipboard;
-	if (!held) return;
-	try {
-		if (clipboard.readText() !== held.code) clipboard.writeText(held.code);
-		const modifier =
-			settingsManager.get("platform") === "macos"
-				? Key.LeftCmd
-				: Key.LeftControl;
-		await keyboard.type(modifier, Key.V);
-	} catch (e) {
-		warnRemoteInput("code insert paste", e);
-	}
-}
-
 function reapplySettings() {
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
@@ -693,10 +559,8 @@ function reapplySettings() {
 	if (state.isAutoTyping) {
 		hotkeyManager.registerEscapeForAutoTyping();
 	}
-	if (openPopup) {
-		const kind = openPopup;
-		hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
-	}
+	const kind = openPopupKind();
+	if (kind) hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
 	keyboardHandler.updatePlatformSettings();
 }
 
@@ -723,7 +587,7 @@ async function createWindow() {
 	try {
 		await broadcastServer.start();
 	} catch (err) {
-		console.error("[LEO] Remote server failed to start:", err);
+		console.error("[LEO] server failed to start:", err);
 	}
 	broadcastServer.updateSettings(settingsManager.getAll());
 	hotkeyManager.registerSystemShortcuts();
@@ -824,7 +688,7 @@ if (!app.requestSingleInstanceLock()) {
 	});
 	app.whenReady().then(() => {
 		createWindow().catch((err) => {
-			console.error("[LEO] Failed to create main window:", err);
+			console.error("[LEO] main window failed:", err);
 		});
 		createTray();
 	});

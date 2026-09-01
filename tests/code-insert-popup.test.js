@@ -14,7 +14,6 @@ function element(text) {
 		classList: { add() {}, remove() {} },
 		scrollIntoView() {},
 		innerText: text,
-		title: "",
 		dataset: {},
 	};
 }
@@ -69,7 +68,7 @@ test("the popup carries coloured lines, one per line of code", () => {
 test("a collapsed multi-line block sends the full text, not the preview", () => {
 	const step = codeStep();
 	step.element.innerText = "📋 function greet(name) {...";
-	step.element.title = "📋 " + CODE;
+	step.element.dataset.fullText = "📋 " + CODE;
 	const { cm, logged } = makeCursorManager([step]);
 	let payload = null;
 	cm.onEnterCodeInsertBlock = (p) => (payload = p);
@@ -212,14 +211,14 @@ test("the host ending the block closes the popup without confirming again", () =
 
 test("with the pad over it, the popup lends the pad Paste and OK", async () => {
 	const ctx = buildRemote();
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 	openPopup(ctx);
 
 	const labels = (bar) =>
 		ctx.nodes[bar].children.map((b) => b.children[0].textContent);
 
-	assert.deepEqual(labels("touchpadActionBar"), ["📋 Paste"]);
+	assert.deepEqual(labels("touchpadActionBar"), ["Paste"]);
 	assert.deepEqual(labels("touchpadConfirmBar"), ["OK"]);
 	assert.equal(
 		ctx.nodes.ciActions.style.display,
@@ -241,7 +240,7 @@ test("with the pad over it, the popup lends the pad Paste and OK", async () => {
 
 test("the keyboard pad stays open over a code-insert popup", async () => {
 	const ctx = buildRemote();
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 
 	openPopup(ctx);
@@ -254,7 +253,7 @@ test("the keyboard pad stays open over a code-insert popup", async () => {
 });
 
 test("the code is on the clipboard for exactly as long as the block is open", () => {
-	const src = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
+	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
 
 	const entry = /"code-insert": \{[\s\S]*?\n\t\},/.exec(src)[0];
 	assert.match(entry, /onEnter: \(payload\) => holdCodeOnClipboard\(/);
@@ -279,7 +278,7 @@ test("the code is on the clipboard for exactly as long as the block is open", ()
 });
 
 test("the Paste button re-asserts the code before pressing Ctrl+V", () => {
-	const src = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
+	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
 	const fn = /async function pasteCodeInsert\(\)[\s\S]*?\n\}/.exec(src)[0];
 
 	assert.match(
@@ -293,26 +292,6 @@ test("the Paste button re-asserts the code before pressing Ctrl+V", () => {
 		"the button means paste THIS, even if something else took the clipboard",
 	);
 	assert.match(fn, /keyboard\.type\(modifier, Key\.V\)/);
-});
-
-test("in the control panel the popup points at Ctrl+V instead of a dead button", () => {
-	const ctx = buildRemote({ controlPanel: true });
-	openPopup(ctx);
-
-	assert.equal(
-		ctx.nodes.ciPaste.style.display,
-		"none",
-		"a Paste button in the panel would press Ctrl+V into LEO itself",
-	);
-	assert.equal(ctx.nodes.ciHint.style.display, "");
-	assert.deepEqual(
-		ctx.api
-			.activePadOverlay()
-			.padActions()
-			.map((a) => a.label),
-		["OK"],
-		"and the pad must not offer it either",
-	);
 });
 
 test("on the phone the Paste button is the one that shows", () => {

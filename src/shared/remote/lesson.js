@@ -2,7 +2,12 @@ let currentSettings = null;
 let isActive = false;
 let teacherName = "Teacher";
 
-const { getBlockSubtype, buildSettingsCSS } = LeoBlocks;
+const {
+	getBlockSubtype,
+	buildSettingsCSS,
+	isMultilineCodeInsert,
+	collapsedLabel,
+} = LeoBlocks;
 
 function renderMoveToTargetLabel(target) {
 	return MoveToTarget.moveToTargetLabel(target);
@@ -59,11 +64,10 @@ function updateLessonData(data) {
 		if (block.type === "comment") {
 			const subtype = getBlockSubtype(block.text);
 			if (subtype) div.classList.add(subtype);
-			const isMultilineInsert =
-				subtype === "code-insert-comment" && block.text.includes("\n");
+			const isMultilineInsert = isMultilineCodeInsert(block.text);
 			if (isMultilineInsert) {
-				div.innerText = block.text.split("\n")[0] + "...";
-				div.title = block.text;
+				div.innerText = collapsedLabel(block.text);
+				div.dataset.fullText = block.text;
 				div.classList.add("collapsed");
 			} else {
 				div.innerText = block.text;

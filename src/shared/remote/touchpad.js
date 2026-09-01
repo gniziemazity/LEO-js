@@ -172,11 +172,11 @@ function setTouchpadSensitivity(sensitivity) {
 	SCROLL_SENSITIVITY = sensitivity * 0.67;
 }
 
-let autoTypingActive = false;
+let sessionActive = false;
 
 function keyInputAllowed() {
 	return (
-		autoTypingActive &&
+		sessionActive &&
 		!document.querySelector(".overlay.active:not(.overlay-pad-ok)")
 	);
 }
@@ -291,8 +291,8 @@ function syncKeyInputGate() {
 	syncTouchpadToolbar();
 }
 
-function setAutoTypingActive(active) {
-	autoTypingActive = !!active;
+function setSessionActive(active) {
+	sessionActive = !!active;
 	syncKeyInputGate();
 }
 

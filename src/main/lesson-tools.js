@@ -376,7 +376,7 @@ function openLogVisualizer(logFilePath) {
 			.executeJavaScript(
 				`window.__leoApplyVisData && window.__leoApplyVisData(${JSON.stringify(payload)});`,
 			)
-			.catch((e) => console.error("Visualizer data push failed:", e));
+			.catch((e) => console.error("[LEO] visualizer push failed:", e));
 	});
 	target.loadFile(_VIS_HTML);
 	target.on("closed", () => {

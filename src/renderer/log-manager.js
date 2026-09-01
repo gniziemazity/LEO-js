@@ -59,7 +59,7 @@ class LogManager {
 
 	addEntry(entry) {
 		if (!this.sessionStartTime) {
-			console.warn("LogManager not initialized. Call initialize() first.");
+			console.warn("[LEO] log not initialized");
 			return null;
 		}
 
@@ -86,7 +86,7 @@ class LogManager {
 
 	saveArtificialLog(events) {
 		if (!this.currentLessonPath && !this.logFilePath) {
-			console.warn("No lesson path set. Cannot save artificial log.");
+			console.warn("[LEO] no lesson path, log not saved");
 			return;
 		}
 
@@ -112,7 +112,7 @@ class LogManager {
 
 	save() {
 		if (!this.logFilePath) {
-			console.warn("No log file path set. Cannot save.");
+			console.warn("[LEO] no log path, not saved");
 			return;
 		}
 
@@ -127,7 +127,7 @@ class LogManager {
 			JSON.stringify(logData, null, 2),
 			(err) => {
 				if (err) {
-					console.error("Failed to save key press log:", err);
+					console.error("[LEO] log save failed:", err);
 				}
 			},
 		);

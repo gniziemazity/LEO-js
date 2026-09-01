@@ -1,14 +1,32 @@
 const { ipcRenderer } = require("electron");
 
-const { getBlockSubtype } = require("../shared/blocks");
+const {
+	getBlockSubtype,
+	isMultilineCodeInsert,
+	collapsedLabel,
+} = require("../shared/blocks");
 const { extractAnchorSnippet } = require("./anchor-snippet");
-const { buildCodeText } = require("../shared/code-text");
-const { isFileName, wrapAnchor } = require("../shared/move-to-target");
+const {
+	buildCodeText,
+	readCodeText,
+	writeCodeText,
+} = require("../shared/code-text");
+const {
+	isFileName,
+	wrapAnchor,
+	moveToTargetLabel,
+} = require("../shared/move-to-target");
+const {
+	openDropdown,
+	closeDropdown,
+	isOpen: isDropdownOpen,
+} = require("./move-to-dropdown");
 
 const BLOCK_RENDERERS = {
 	comment: "renderCommentBlock",
 	code: "renderCodeBlock",
 	"move-to": "renderMoveToBlock",
+	include: "renderIncludeBlock",
 };
 
 class LessonRenderer {
@@ -20,6 +38,23 @@ class LessonRenderer {
 		this.editDebounceTimer = null;
 		this.lastEditedBlockIndex = null;
 		this.lastEditedContent = null;
+		this.expandedIncludes = new Set();
+	}
+
+	_isScrollbarClick(e) {
+		const el = e && e.currentTarget;
+		return (
+			!!el && typeof e.offsetX === "number" && e.offsetX > el.clientWidth
+		);
+	}
+
+	toggleIncludeExpanded(blockIdx) {
+		if (this.expandedIncludes.has(blockIdx)) {
+			this.expandedIncludes.delete(blockIdx);
+		} else {
+			this.expandedIncludes.add(blockIdx);
+		}
+		this.render();
 	}
 
 	attachEditHandlers(element) {
@@ -40,10 +75,11 @@ class LessonRenderer {
 
 	makeCodeBlockEditable(element, block, blockIdx) {
 		element.contentEditable = "true";
-		element.textContent = block.text;
+		writeCodeText(element, block.text);
 		element.oninput = () => {
-			this.saveEditState(blockIdx, element.innerText);
-			this.lessonManager.updateBlock(blockIdx, element.innerText);
+			const text = readCodeText(element);
+			this.saveEditState(blockIdx, text);
+			this.lessonManager.updateBlock(blockIdx, text);
 		};
 		this.attachEditHandlers(element);
 	}
@@ -112,11 +148,7 @@ class LessonRenderer {
 
 	isMultilineCodeInsert(blockIdx) {
 		const block = this.lessonManager.getAllBlocks()[blockIdx];
-		return (
-			block &&
-			getBlockSubtype(block.text) === "code-insert-comment" &&
-			block.text.includes("\n")
-		);
+		return !!block && isMultilineCodeInsert(block.text);
 	}
 
 	renderCommentBlock(ctx) {
@@ -126,36 +158,37 @@ class LessonRenderer {
 		if (subtype) blockDiv.classList.add(subtype);
 
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-		const isMultilineInsert =
-			subtype === "code-insert-comment" && block.text.includes("\n");
+		const isMultilineInsert = isMultilineCodeInsert(block.text);
 		const isExpanded =
 			isMultilineInsert &&
-			selectedBlockIndex === blockIdx &&
-			!isTypingActive;
+			!isTypingActive &&
+			(block.fromInclude
+				? this.expandedIncludes.has(blockIdx)
+				: selectedBlockIndex === blockIdx);
 
 		if (isMultilineInsert && !isExpanded) {
 			blockDiv.contentEditable = "false";
-			blockDiv.textContent = block.text.split("\n")[0] + "...";
-			blockDiv.title = block.text;
+			blockDiv.textContent = collapsedLabel(block.text);
+			blockDiv.dataset.fullText = block.text;
 			blockDiv.classList.add("collapsed");
 		} else {
-			blockDiv.contentEditable = !isTypingActive;
+			blockDiv.contentEditable = !isTypingActive && !block.fromInclude;
 			blockDiv.textContent = block.text;
-			blockDiv.title = "";
+			delete blockDiv.dataset.fullText;
 		}
 
 		blockDiv.oninput = () => {
-			this.saveEditState(blockIdx, blockDiv.innerText);
-			this.lessonManager.updateBlock(blockIdx, blockDiv.innerText);
+			const text = readCodeText(blockDiv);
+			this.saveEditState(blockIdx, text);
+			this.lessonManager.updateBlock(blockIdx, text);
 
 			blockDiv.classList.remove(
 				"question-comment",
 				"image-comment",
 				"web-comment",
 				"code-insert-comment",
-				"move-to-comment",
 			);
-			const sub = getBlockSubtype(blockDiv.innerText);
+			const sub = getBlockSubtype(text);
 			if (sub) blockDiv.classList.add(sub);
 		};
 
@@ -163,6 +196,7 @@ class LessonRenderer {
 
 		steps.push({
 			type: "block",
+			fromInclude: !!block.fromInclude,
 			element: blockDiv,
 			blockIndex: blockIdx,
 			globalIndex: stepIndex,
@@ -199,6 +233,48 @@ class LessonRenderer {
 		}
 	}
 
+	renderIncludeBlock(ctx) {
+		const { blockDiv, block, isTypingActive, stepIndex } = ctx;
+		blockDiv.classList.add("include-block");
+		blockDiv.contentEditable = "false";
+
+		const label = document.createElement("span");
+		label.className = "start-with-label";
+		label.textContent = "Start with";
+		blockDiv.appendChild(label);
+
+		const select = document.createElement("select");
+		select.className = "move-to-select";
+		select.disabled = isTypingActive;
+		const opts = [
+			{ value: "", label: "— nothing —" },
+			...this.lessonManager
+				.listSiblingPlans()
+				.map((p) => ({ value: p, label: p.replace(/^\.\//, "") })),
+		];
+		const current = block.path || "";
+		if (current && !opts.some((o) => o.value === current)) {
+			opts.push({ value: current, label: `? ${current}` });
+		}
+		for (const o of opts) {
+			const el = document.createElement("option");
+			el.value = o.value;
+			el.textContent = o.label;
+			if (o.value === current) el.selected = true;
+			select.appendChild(el);
+		}
+		select.addEventListener("mousedown", (e) => e.stopPropagation());
+		select.addEventListener("click", (e) => e.stopPropagation());
+		select.addEventListener("change", () => {
+			this.expandedIncludes.clear();
+			this.lessonManager.setStartWith(select.value);
+			if (this.onStartWithChanged) this.onStartWithChanged();
+		});
+		blockDiv.appendChild(select);
+
+		return stepIndex;
+	}
+
 	renderMoveToBlock(ctx) {
 		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
 			ctx;
@@ -212,29 +288,41 @@ class LessonRenderer {
 		arrow.textContent = "➡️ ";
 		blockDiv.appendChild(arrow);
 
-		const select = document.createElement("select");
-		select.className = "move-to-select";
-		select.disabled = isTypingActive;
-		this._populateMoveToSelect(select, target);
-		select.addEventListener("mousedown", (e) => {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = "move-to-select";
+		btn.textContent = moveToTargetLabel(target);
+		btn.disabled = isTypingActive || !!block.fromInclude;
+		btn.addEventListener("mousedown", (e) => e.stopPropagation());
+		btn.addEventListener("click", (e) => {
 			e.stopPropagation();
-			this._populateMoveToSelect(select, block.target);
-		});
-		select.addEventListener("click", (e) => e.stopPropagation());
-		select.addEventListener("change", () => {
-			const v = select.value;
-			if (v === "__new__") {
-				this._promptNewFile(blockDiv, blockIdx, select);
+			if (btn.disabled) return;
+			if (isDropdownOpen()) {
+				closeDropdown();
 				return;
 			}
-			this.lessonManager.updateMoveToTarget(blockIdx, v);
-			blockDiv.dataset.target = v;
+			openDropdown({
+				anchorEl: btn,
+				blockIdx,
+				options: this._moveToOptions(block.target, blockIdx),
+				value: block.target,
+				onPick: (v) => {
+					if (v === "__new__") {
+						this._promptNewFile(blockDiv, blockIdx, btn);
+						return;
+					}
+					this.lessonManager.updateMoveToTarget(blockIdx, v);
+					blockDiv.dataset.target = v;
+					btn.textContent = moveToTargetLabel(v);
+				},
+			});
 		});
-		blockDiv.appendChild(select);
+		blockDiv.appendChild(btn);
 
 		steps.push({
 			type: "block",
 			subtype: "move-to",
+			fromInclude: !!block.fromInclude,
 			target,
 			snippet: extractAnchorSnippet(
 				target,
@@ -250,9 +338,9 @@ class LessonRenderer {
 		return stepIndex + 1;
 	}
 
-	_populateMoveToSelect(select, currentTarget) {
+	_moveToOptions(currentTarget, blockIdx) {
 		const anchorLike = this.lessonManager
-			.getAllAnchorIds()
+			.anchorIdsBefore(blockIdx)
 			.filter((id) => !isFileName(id))
 			.sort((a, b) => {
 				const na = Number(a);
@@ -267,41 +355,26 @@ class LessonRenderer {
 		const fileLike = this.lessonManager.getAllMoveToFiles();
 
 		const opts = [];
-		for (const id of anchorLike) {
-			opts.push({ value: wrapAnchor(id), label: wrapAnchor(id) });
-		}
-		for (const name of fileLike) {
-			opts.push({ value: name, label: `📄 ${name}` });
-		}
-		opts.push({ value: "MAIN", label: "Main Editor" });
-		opts.push({ value: "DEV", label: "Dev Tools" });
+		const option = (value) => ({ value, label: moveToTargetLabel(value) });
+		for (const id of anchorLike) opts.push(option(wrapAnchor(id)));
+		for (const name of fileLike) opts.push(option(name));
+		opts.push(option("MAIN"));
+		opts.push(option("DEV"));
 		opts.push({ value: "__new__", label: "+ New File" });
 
-		select.innerHTML = "";
-		let hasCurrent = false;
-		for (const o of opts) {
-			const el = document.createElement("option");
-			el.value = o.value;
-			el.textContent = o.label;
-			if (o.value === currentTarget) {
-				el.selected = true;
-				hasCurrent = true;
-			}
-			select.appendChild(el);
-		}
+		const hasCurrent = opts.some((o) => o.value === currentTarget);
 		if (!hasCurrent && currentTarget && currentTarget !== "__new__") {
-			const el = document.createElement("option");
-			el.value = currentTarget;
-			el.textContent = `? ${currentTarget}`;
-			el.selected = true;
-			select.appendChild(el);
+			opts.push({ value: currentTarget, label: `? ${currentTarget}` });
 		}
+		return opts;
 	}
 
-	_promptNewFile(blockDiv, blockIdx, select) {
-		const currentTarget =
-			(this.lessonManager.getBlock(blockIdx) || {}).target || "MAIN";
-		select.style.display = "none";
+	_promptNewFile(blockDiv, blockIdx, trigger) {
+		trigger.style.display = "none";
+		const restore = () => {
+			input.remove();
+			trigger.style.display = "";
+		};
 		const input = document.createElement("input");
 		input.type = "text";
 		input.className = "move-to-new-file-input";
@@ -316,15 +389,11 @@ class LessonRenderer {
 					this.lessonManager.updateMoveToTarget(blockIdx, val);
 					this.render();
 				} else {
-					select.value = currentTarget;
-					input.remove();
-					select.style.display = "";
+					restore();
 				}
 			} else if (e.key === "Escape") {
 				e.preventDefault();
-				select.value = currentTarget;
-				input.remove();
-				select.style.display = "";
+				restore();
 			}
 		});
 		blockDiv.appendChild(input);
@@ -332,6 +401,17 @@ class LessonRenderer {
 	}
 
 	handleBlockClick(e, block, blockIdx) {
+		if (block.type === "include") return;
+		if (block.fromInclude) {
+			if (
+				!this.uiManager.isActive() &&
+				this.isMultilineCodeInsert(blockIdx) &&
+				!this._isScrollbarClick(e)
+			) {
+				this.toggleIncludeExpanded(blockIdx);
+			}
+			return;
+		}
 		if (this.uiManager.isActive()) {
 			this._handleClickWhileTyping(e, block, blockIdx);
 		} else {

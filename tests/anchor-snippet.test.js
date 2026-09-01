@@ -66,17 +66,6 @@ test("extractAnchorSnippet: a bare-filename move-to switches the active editor",
 	assert.equal(r.arrowIdx, 0);
 });
 
-test("extractAnchorSnippet: a legacy ⚓file.ext⚓ move-to switches the editor too", () => {
-	const blocks = [
-		{ type: "code", text: "main line;" },
-		{ type: "move-to", target: "⚓other.js⚓" },
-		{ type: "code", text: "other line ⚓3⚓ here" },
-	];
-	const r = extractAnchorSnippet("⚓3⚓", 3, blocks, 1, 1);
-	assert.ok(r);
-	assert.deepEqual(r.lines, ["other line  here"]);
-});
-
 test("extractAnchorSnippet: only blocks before currentBlockIdx are replayed", () => {
 	const blocks = [
 		{ type: "code", text: "first;" },

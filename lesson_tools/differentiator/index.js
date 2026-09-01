@@ -141,13 +141,7 @@ function _activateFileTab(side, name) {
 	_updateHScrollProxy(side);
 }
 
-const _BORROW_ALIGNMENT_ORDER = [
-	"git",
-	"git_star",
-	"leo_star",
-	"lcs",
-	"lcs_star",
-];
+const _BORROW_ALIGNMENT_ORDER = ["git", "leo_star", "lcs"];
 
 let _borrowedAlignmentKey = null;
 
@@ -173,7 +167,7 @@ function _borrowedAlignments() {
 	return null;
 }
 
-const _BORROW_GHOSTS_ORDER = ["leo_star", "lcs_star", "git_star"];
+const _BORROW_GHOSTS_ORDER = ["leo_star"];
 
 function _borrowedTeacherGhosts(fileName) {
 	for (const mode of _BORROW_GHOSTS_ORDER) {

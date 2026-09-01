@@ -161,14 +161,6 @@ th.grp.clickable:hover {
 th.lhd {
 	color: var(--clr-text-soft);
 }
-th.ahd {
-	color: var(--clr-accent);
-	background-color: var(--clr-surface);
-	background-image: linear-gradient(
-		var(--clr-accent-light),
-		var(--clr-accent-light)
-	);
-}
 td.asn-col {
 	background: transparent;
 }

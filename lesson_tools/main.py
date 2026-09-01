@@ -41,7 +41,7 @@ def run_step(label: str, module: str, project_dir: Path) -> bool:
     result = subprocess.run(cmd, cwd=str(ROOT_DIR))
 
     if result.returncode != 0:
-        print(f"\n** {label} failed (exit code {result.returncode}) **")
+        print(f"\n{label} failed (exit {result.returncode})")
         return False
     return True
 
@@ -72,7 +72,7 @@ def main():
     for label, module in STEPS:
         if module == "extract" and students_dir.is_dir():
             print(f"\n{'=' * 60}")
-            print(f"  Skipping extraction — students/ already exists")
+            print("  students/ exists, extraction skipped")
             print(f"{'=' * 60}")
             continue
 

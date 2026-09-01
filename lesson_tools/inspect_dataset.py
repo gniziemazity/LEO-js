@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http
 import http.server
 import io
@@ -20,8 +21,7 @@ from build_manifest import _build_manifest, _PII_FILES
 import json
 
 ROOT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = ROOT_DIR.parent
-CHARTS_SRC = REPO_ROOT / "src" / "shared" / "charts"
+CHARTS_SRC = ROOT_DIR / "charts"
 
 _TOOL_FILE_EXTS = (".html", ".js", ".css")
 _TOOL_SKIP_FILES = {"server.js", "open.js"}
@@ -47,42 +47,60 @@ def _list_tool_files() -> list[tuple[Path, Path]]:
         for p in sorted(languages_dir.iterdir()):
             if p.is_file() and p.suffix.lower() in _LANGUAGES_KEEP:
                 out.append((p, Path("languages") / p.name))
+    if CHARTS_SRC.is_dir():
+        for p in sorted(CHARTS_SRC.rglob("*")):
+            if p.is_file() and p.suffix.lower() in _CHARTS_KEEP:
+                rel = p.relative_to(CHARTS_SRC)
+                out.append((p, Path("charts") / rel))
     return out
 
 
-def _list_chart_files() -> list[Path]:
-    if not CHARTS_SRC.is_dir():
-        return []
-    return [p for p in sorted(CHARTS_SRC.rglob("*"))
-            if p.is_file() and p.suffix.lower() in _CHARTS_KEEP]
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _copy_if_newer(src: Path, dst: Path) -> bool:
-    if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+def _copy_if_changed(src: Path, dst: Path) -> bool:
+    """Copy unless the destination already holds identical bytes.
+
+    This used to compare mtimes, which meant a git checkout that restored an
+    older timestamp silently skipped a real update.
+    """
+    if dst.exists() and _digest(dst) == _digest(src):
         return False
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
     return True
 
 
-def _sync_tools(course: Path) -> tuple[int, int]:
+def _sync_tools(course: Path) -> tuple[int, int, int]:
+    """Mirror the tool tree into <course>/tools, deleting what no longer exists.
+
+    The copy loop alone never pruned, so every published course accumulated
+    every tool file that had ever shipped - retired shells, the pre-rename
+    curated editor, and a whole flat copy of the suite from before the
+    subfolders - all still downloadable.
+    """
     copied = 0
     skipped = 0
     tools_dir = course / "tools"
+    wanted: set[Path] = set()
     for src, rel_dst in _list_tool_files():
-        dst = tools_dir / rel_dst
-        if _copy_if_newer(src, dst):
+        wanted.add(rel_dst)
+        if _copy_if_changed(src, tools_dir / rel_dst):
             copied += 1
         else:
             skipped += 1
-    for src in _list_chart_files():
-        rel = src.relative_to(REPO_ROOT)
-        dst = course / rel
-        if _copy_if_newer(src, dst):
-            copied += 1
-        else:
-            skipped += 1
-    return copied, skipped
+
+    removed = 0
+    if tools_dir.is_dir():
+        for path in sorted(tools_dir.rglob("*"), reverse=True):
+            if path.is_file():
+                if path.relative_to(tools_dir) not in wanted:
+                    path.unlink()
+                    removed += 1
+            elif path.is_dir() and not any(path.iterdir()):
+                path.rmdir()
+    return copied, skipped, removed
 
 
 def _write_manifest(course: Path, *, exclude_pii: bool) -> Path:
@@ -224,14 +242,15 @@ def main(argv=None) -> int:
     if plans_zip is not None:
         print(f"Wrote {plans_zip.name}")
 
-    copied, skipped = _sync_tools(course)
-    print(f"Tools: {copied} copied/updated, {skipped} already up-to-date in {course / 'tools'}")
+    copied, skipped, removed = _sync_tools(course)
+    print(f"Tools: {copied} copied/updated, {skipped} already up-to-date, "
+          f"{removed} retired file(s) removed in {course / 'tools'}")
 
     try:
         httpd = _serve(course, args.port, exclude_pii=args.exclude_pii)
     except OSError as e:
         print(f"Could not start server on port {args.port}: {e}")
-        print("Try a different port with --port=<n>")
+        print("Use --port=<n> for another port")
         return 1
 
     url = f"http://127.0.0.1:{args.port}/tools/overview.html"

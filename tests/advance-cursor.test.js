@@ -8,7 +8,10 @@ function makeCursorManager(steps) {
 	const ipc = fakeIpcRenderer();
 	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
 		electron: ipc.stub,
-		"../shared/blocks": { getBlockSubtype: () => null },
+		"../shared/blocks": {
+			...require("../src/shared/blocks"),
+			getBlockSubtype: () => null,
+		},
 	});
 	const sent = ipc.sent;
 	const cm = new CursorManager(

@@ -33,7 +33,7 @@ class QRModalManager {
 
 			if (!serverInfos || serverInfos.length === 0) {
 				this.qrContainer.innerHTML =
-					'<p style="color: #e74c3c;">No network interfaces found</p>';
+					'<p style="color: var(--clr-danger);">No network interfaces found</p>';
 			} else {
 				this.qrContainer.innerHTML = "";
 
@@ -72,9 +72,9 @@ class QRModalManager {
 
 			this.modal.classList.add("active");
 		} catch (error) {
-			console.error("Error loading QR codes:", error);
+			console.error("[LEO] QR load failed:", error);
 			this.qrContainer.innerHTML =
-				'<p style="color: #e74c3c;">Error loading QR codes</p>';
+				'<p style="color: var(--clr-danger);">Error loading QR codes</p>';
 			this.modal.classList.add("active");
 		}
 	}

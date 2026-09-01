@@ -172,3 +172,35 @@ test("setAnchor / jumpToAnchor: record and restore the cursor", () => {
 	assert.equal(s.jumpToAnchor("missing"), false);
 	assert.equal(s.cursor, 2); // unchanged on a miss
 });
+
+test("Tab with a shift selection indents every line it touches", () => {
+	const s = new TextState();
+	model.applyTypedText(s, "a↩b↩c↑↑◄⇓⇓―");
+	assert.equal(s.text, "\ta\n\tb\nc");
+});
+
+test("Tab without a selection is still a plain tab", () => {
+	const s = new TextState();
+	model.applyTypedText(s, "a↩b―");
+	assert.equal(s.text, "a\nb\t");
+});
+
+test("a selection reaching the line end indents that line too", () => {
+	const s = new TextState();
+	model.applyTypedText(s, "aa↩bb↑◄⇓⇒―");
+	assert.equal(s.text, "\taa\n\tbb");
+});
+
+test("indenting clears the selection", () => {
+	const s = new TextState();
+	model.resetClipboard();
+	model.applyTypedText(s, "a↩b↑◄⇓―✂");
+	assert.equal(s.text, "\ta\n");
+	assert.equal(model.CLIPBOARD.text, "b");
+});
+
+test("an atomic code insert indents a selection the same way", () => {
+	const s = new TextState();
+	model.applyAtomicText(s, "a↩b↩c↑↑◄⇓⇓―");
+	assert.equal(s.text, "\ta\n\tb\nc");
+});

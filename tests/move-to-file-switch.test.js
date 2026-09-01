@@ -152,11 +152,4 @@ test("plain file, main and dev move-tos are unchanged", () => {
 
 	ctx.api.showMoveToOverlay({ mode: "dev", target: "DEV" });
 	assert.equal(ctx.nodes.mtoTarget.textContent, "Dev Tools");
-
-	ctx.api.showMoveToOverlay({ mode: "file", target: "⚓legacy.css⚓" });
-	assert.equal(
-		ctx.nodes.mtoTarget.textContent,
-		"legacy.css",
-		"a legacy wrapped file target still reads as a bare filename",
-	);
 });

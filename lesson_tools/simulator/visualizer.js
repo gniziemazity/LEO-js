@@ -619,6 +619,7 @@ class LogVisualizer {
 	}
 
 	_resetAllFiles() {
+		resetClipboard();
 		for (const st of Object.values(this._files)) st.reset();
 		this._files = { MAIN: this._files["MAIN"] };
 		this.main = this._files["MAIN"];
@@ -626,229 +627,47 @@ class LogVisualizer {
 		this._updateFileTabs();
 	}
 
+	_replayCtx() {
+		if (this.__ctx) return this.__ctx;
+		const vis = this;
+		this.__ctx = {
+			get main() {
+				return vis.main;
+			},
+			get dev() {
+				return vis.dev;
+			},
+			get selAnchorMain() {
+				return vis._selAnchorMain;
+			},
+			set selAnchorMain(v) {
+				vis._selAnchorMain = v;
+			},
+			get activeFilename() {
+				return vis._activeFilename;
+			},
+			switchToFile: (filename) => vis._switchToFile(filename),
+			opensCloses: () =>
+				replayOpensCloses(vis._activeFilename, vis._lessonFile),
+		};
+		return this.__ctx;
+	}
+
 	_handle(act) {
-		const kind = act[0];
-
-		if (kind === "switch_editor") {
-			const [, target, , delay] = act;
-			const label = target === "dev" ? "Dev Tools" : "Main Editor";
-			this._log(act[2], `→  ${label}`, CLR.move);
-			this._activeEditor = target;
-			if (target === "main") this._switchToFile("MAIN");
-
-			return delay;
-		} else if (kind === "char") {
-			const [, ch, ts, delay, editor] = act;
-			return this._handleChar(ch, ts, delay, editor);
-		} else if (kind === "set_anchor") {
-			const [, name, ts, delay] = act;
-			this.main.setAnchor(name);
-			this._log(ts, `⚓  ${name}`, CLR.accent);
-			return delay;
-		} else if (kind === "move_anchor") {
-			const [, name, ts, delay] = act;
-			const ok = this.main.jumpToAnchor(name);
-			if (ok) {
-				this._log(ts, `→  ${name}`, CLR.move);
-				this._flashAnchor();
-			} else {
-				this._log(ts, `⚠  Unknown anchor: ${name}`, CLR.red);
-			}
-			return delay;
-		} else if (kind === "switch_file") {
-			const [, filename, ts, delay] = act;
-			this._switchToFile(filename);
-			this._log(ts, `→  ${filename}`, CLR.move);
-			return delay;
-		} else if (kind === "code_insert_atomic") {
-			return this._handleCodeInsertAtomic(act);
-		}
-
-		return DELAY_OPS;
-	}
-
-	_handleChar(ch, ts, delay, editor) {
-		const st = editor === "dev" ? this.dev : this.main;
-
-		if (ch in CURSOR_MOVES) {
-			this.main.moveCursor(CURSOR_MOVES[ch]);
-			this._selAnchorMain = null;
-			const lbl = CURSOR_MOVE_LABELS[ch];
-			this._log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""}`, CLR.blue);
-			return delay;
-		}
-		if (ch in SHIFT_CURSOR_MOVES) {
-			if (this._selAnchorMain === null)
-				this._selAnchorMain = this.main.cursor;
-			this.main.moveCursor(SHIFT_CURSOR_MOVES[ch]);
-			const lbl = CURSOR_MOVE_LABELS[ch];
-			this._log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""} (select)`, CLR.blue);
-			return delay;
-		}
-
-		if (ch in CHAR_REPLACEMENTS) {
-			const real = CHAR_REPLACEMENTS[ch];
-			if (
-				real === "\t" &&
-				editor === "main" &&
-				this._selAnchorMain !== null
-			) {
-				this._indentSelection(ts);
-				this._log(ts, "⌨  ― Tab", CLR.blue);
-				return delay;
-			}
-			st.insert(real, ts);
-			if (real === "\n" && editor === "main") this._autoIndent(ts);
-			this._log(ts, `⌨  ${real === "\n" ? "↩ Enter" : "― Tab"}`, CLR.blue);
-			return delay;
-		}
-
-		if (ch === "⌫" || ch === "↢") {
-			if (this._backspaceIsIgnored(st)) {
-				this._log(ts, "⌫  Backspace", CLR.pale_red);
-				return delay;
-			}
-			st.deleteBack(1);
-			this._log(ts, "⌫  Backspace", CLR.red);
-			return delay;
-		}
-
-		if (ch === DELETE_FWRD_CHAR) {
-			st.deleteForward(1);
-			this._log(ts, "⌦  Delete", CLR.blue);
-			return delay;
-		}
-
-		if (ch === DELETE_LINE_CHAR) {
-			st.deleteLine();
-			this._log(ts, "⛔  Delete Line", CLR.red);
-			return delay;
-		}
-
-		if (ch === PAUSE_CHAR) {
-			this._log(ts, "🕛  Pause 500 ms", CLR.dim);
-			return PAUSE_MS;
-		}
-
-		if (IGNORED_CHARS.has(ch)) return DELAY_OPS;
-
-		if (ch === ";" && editor === "dev") {
-			st.insert(ch, ts);
-			this._devSemicolonNewline(ts);
-			this._log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
-			return delay;
-		}
-
-		if (editor === "main") this._autoDedent(ch, ts);
-		st.insert(ch, ts);
-
-		this._log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
-		return delay;
-	}
-
-	_handleCodeInsertAtomic(act) {
-		const [, code, ts, delay, editor] = act;
-		this._log(ts, "⬇  Code Insert", CLR.orange);
-
-		const segments = _splitCodeWithAnchors(code);
-		for (const [segKind, segVal] of segments) {
-			if (segKind === "text") {
-				for (const ch of segVal) {
-					const st = editor === "dev" ? this.dev : this.main;
-					if (ch === DELETE_LINE_CHAR) {
-						st.deleteLine();
-					} else if (
-						Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)
-					) {
-						st.moveCursor(CURSOR_MOVES[ch]);
-					} else if (ch === "↩" || ch === "\n") {
-						st.insert("\n", ts);
-						if (editor === "main") {
-							this._autoIndent(ts);
-						}
-					} else if (ch === "―" || ch === "\t") {
-						st.insert("\t", ts);
-					} else if (_EXPAND_BACKSPACE.has(ch)) {
-						if (!this._backspaceIsIgnored(st)) st.deleteBack(1);
-					} else if (_EXPAND_FWD_DEL.has(ch)) {
-						st.deleteForward(1);
-					} else {
-						if (editor === "main") this._autoDedent(ch, ts);
-						st.insert(ch, ts);
-					}
-				}
-			} else {
-				this.main.setAnchor(segVal);
-			}
-		}
-
-		return delay;
-	}
-
-	_activeProfile() {
-		const LP = window.LanguageProfiles;
-		if (!LP) return null;
-		const fn = (this._activeFilename || "").toLowerCase();
-		const m = fn.match(/\.[^./\\]+$/);
-		if (m) return LP.getProfile(m[0]);
-		const lessonExt = LP.lessonFileExtension(this._lessonFile);
-		if (lessonExt) return LP.getProfile(lessonExt);
-		return LP.getProfile(".html");
-	}
-
-	_autoIndent(ts) {
-		autoIndent(this.main, ts, (prevLine, afterTrimmed) => {
-			const LP = window.LanguageProfiles;
-			const profile = this._activeProfile();
-			if (profile && LP) {
-				return {
-					opens: LP.shouldIncreaseAfter(profile, prevLine),
-					closes: LP.shouldDecreaseOnLine(profile, afterTrimmed),
-					dedentAfter: LP.shouldDecreaseAfter(profile, prevLine),
-				};
-			}
-			return null;
+		return replayStep(this._replayCtx(), act, {
+			log: (ts, text, color) => this._log(ts, text, color),
+			flashAnchor: () => this._flashAnchor(),
+			onEditor: (target) => {
+				this._activeEditor = target;
+			},
 		});
 	}
 
-	_indentSelection(ts) {
-		const selStart = Math.min(this._selAnchorMain, this.main.cursor);
-		const selEnd = Math.max(this._selAnchorMain, this.main.cursor);
-		const text = this.main.text;
-
-		const lineStarts = [];
-		let p = lineStartAt(text, selStart);
-		lineStarts.push(p);
-		while (true) {
-			const nl = text.indexOf("\n", p);
-			if (nl === -1 || nl >= selEnd) break;
-			lineStarts.push(nl + 1);
-			p = nl + 1;
-		}
-		if (lineStarts.length > 1 && lineStarts[lineStarts.length - 1] === selEnd)
-			lineStarts.pop();
-
-		let cursor = this.main.cursor;
-
-		for (let i = lineStarts.length - 1; i >= 0; i--) {
-			const pos = lineStarts[i];
-			this.main.text =
-				this.main.text.slice(0, pos) + "\t" + this.main.text.slice(pos);
-			this.main.charTs.splice(pos, 0, ts);
-			for (const name in this.main.anchors) {
-				if (this.main.anchors[name] > pos) this.main.anchors[name]++;
-			}
-			if (cursor > pos) cursor++;
-		}
-
-		this.main.cursor = cursor;
-		this._selAnchorMain = null;
-	}
-
 	_initHoverTooltip() {
-		this._hoverTip = document.createElement("div");
-		this._hoverTip.id = "vis-hover-tip";
-		document.body.appendChild(this._hoverTip);
+		this._hoverTip = new Tooltip({
+			createId: "vis-hover-tip",
+			offset: { x: 14, y: 18 },
+		});
 
 		const showTip = (e, st) => {
 			const idx = this._charIndexAtPoint(
@@ -856,22 +675,14 @@ class LogVisualizer {
 				e.clientY,
 				e.currentTarget,
 			);
-			if (idx !== null && idx < st.charTs.length) {
-				const ts = st.charTs[idx];
-				if (ts) {
-					const timeStr = fmtTs(ts).split("  ")[1] ?? fmtTs(ts);
-					this._hoverTip.textContent = timeStr;
-					this._hoverTip.style.left = `${e.clientX + 14}px`;
-					this._hoverTip.style.top = `${e.clientY + 18}px`;
-					this._hoverTip.style.display = "block";
-					return;
-				}
+			const ts = idx !== null && idx < st.charTs.length ? st.charTs[idx] : 0;
+			if (!ts) {
+				this._hoverTip.hide();
+				return;
 			}
-			this._hoverTip.style.display = "none";
+			this._hoverTip.show(e, fmtTs(ts).split("  ")[1] ?? fmtTs(ts));
 		};
-		const hideTip = () => {
-			this._hoverTip.style.display = "none";
-		};
+		const hideTip = () => this._hoverTip.hide();
 
 		this.elEditor.addEventListener("mousemove", (e) => showTip(e, this.main));
 		this.elEditor.addEventListener("mouseleave", hideTip);
@@ -953,20 +764,6 @@ class LogVisualizer {
 			this.elEditor.classList.remove("anchor-flash");
 			this._anchorFlashTimer = null;
 		}, 500);
-	}
-
-	_backspaceIsIgnored(st) {
-		return backspaceIsIgnored(st);
-	}
-
-	_autoDedent(ch, ts) {
-		autoDedent(this.main, ch, ts);
-	}
-
-	_devSemicolonNewline(ts) {
-		const indent = currentLineIndent(this.dev.text, this.dev.cursor);
-		this.dev.insert("\n", ts);
-		for (const c of indent) this.dev.insert(c, ts);
 	}
 
 	_renderEditors() {

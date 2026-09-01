@@ -16,7 +16,6 @@ test("each special prefix names its subtype", () => {
 	assert.equal(getBlockSubtype("🖼️ pic.png"), "image-comment");
 	assert.equal(getBlockSubtype("🌐 http://x"), "web-comment");
 	assert.equal(getBlockSubtype("📋 paste me"), "code-insert-comment");
-	assert.equal(getBlockSubtype("➡️ MAIN"), "move-to-comment");
 	assert.equal(getBlockSubtype("plain comment"), null);
 });
 
@@ -55,6 +54,10 @@ test("remote.html loads the shared modules before the scripts that use them", ()
 	const DEPENDENTS = {
 		"blocks.js": ["remote/lesson.js"],
 		"move-to-target.js": ["remote/lesson.js", "remote/move-to-overlay.js"],
+		"snippet-view.js": [
+			"remote/move-to-overlay.js",
+			"remote/code-insert-overlay.js",
+		],
 	};
 
 	for (const [shared, users] of Object.entries(DEPENDENTS)) {
@@ -64,14 +67,14 @@ test("remote.html loads the shared modules before the scripts that use them", ()
 	}
 });
 
-test("the remote no longer carries its own copy of the shared functions", () => {
+test("the remote reads the shared functions rather than defining them", () => {
 	const lesson = fs.readFileSync(
 		path.join(BASE, "shared/remote/lesson.js"),
 		"utf-8",
 	);
 	assert.ok(
 		!/function getBlockSubtype/.test(lesson),
-		"a second getBlockSubtype is how the two copies drifted before",
+		"a second getBlockSubtype is a second rule that can disagree",
 	);
 	assert.ok(!/function buildSettingsCSS/.test(lesson));
 });
@@ -79,5 +82,46 @@ test("the remote no longer carries its own copy of the shared functions", () => 
 test("the subtype table and the classifier agree", () => {
 	for (const [prefix, subtype] of BLOCK_SUBTYPES) {
 		assert.equal(getBlockSubtype(`${prefix} something`), subtype);
+	}
+});
+
+test("the editor-only UI never reaches the remote", () => {
+	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
+	for (const name of ["anchor-preview.js", "move-to-dropdown.js"]) {
+		assert.equal(
+			html.includes(name),
+			false,
+			`${name} is an editing aid; on a phone it would just confuse`,
+		);
+	}
+});
+
+test("every dual-mode module ends with the same export footer", () => {
+	const FOOTER = [
+		'\tif (typeof module !== "undefined" && module.exports) {',
+		"\t\tmodule.exports = api;",
+		"\t}",
+		"\troot.<NAME> = api;",
+		'})(typeof window !== "undefined" ? window : this);',
+	].join("\n");
+
+	const expected = {
+		"code-text.js": "CodeTextRenderer",
+		"blocks.js": "LeoBlocks",
+		"move-to-target.js": "MoveToTarget",
+		"snippet-view.js": "SnippetView",
+	};
+	for (const [file, name] of Object.entries(expected)) {
+		const src = fs
+			.readFileSync(
+				path.resolve(__dirname, "..", "src/shared", file),
+				"utf-8",
+			)
+			.replace(/\r\n/g, "\n")
+			.trimEnd();
+		assert.ok(
+			src.endsWith(FOOTER.replace("<NAME>", name)),
+			`${file} does not end with the shared dual-mode footer`,
+		);
 	}
 });

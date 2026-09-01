@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { buildRemote: build } = require("./helpers/remote-dom.js");
 
 async function openKeyboardPad(ctx) {
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 }
 
@@ -130,7 +130,7 @@ test("a move-to that ends from the host hands the keyboard pad back too", async 
 
 test("a move-to with no pad open leaves the pad closed", async () => {
 	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	ctx.api.showMoveToOverlay({ mode: "main" });
 	assert.equal(ctx.nodes.touchpadOverlay.classList.contains("active"), false);
 
@@ -150,7 +150,7 @@ test("the OK goes to the pad's side stack, and the popup drops its own", async (
 	assert.deepEqual(confirmLabels(ctx.nodes), ["OK"]);
 	assert.deepEqual(barLabels(ctx.nodes), [], "not in the top bar as well");
 	assert.equal(
-		ctx.nodes.mtoConfirm.style.display,
+		ctx.nodes.mtoActions.style.display,
 		"none",
 		"two OKs a thumb apart is one too many",
 	);
@@ -158,7 +158,7 @@ test("the OK goes to the pad's side stack, and the popup drops its own", async (
 	ctx.api.closeMoveToOverlayUI();
 	ctx.api.showMoveToOverlay({ mode: "main" });
 	assert.equal(
-		ctx.nodes.mtoConfirm.style.display,
+		ctx.nodes.mtoActions.style.display,
 		"none",
 		"and it stays hidden for as long as a pad is over it",
 	);
@@ -166,7 +166,7 @@ test("the OK goes to the pad's side stack, and the popup drops its own", async (
 
 test("with no pad open the move-to keeps its own OK", async () => {
 	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	ctx.api.showMoveToOverlay({ mode: "main" });
 
 	assert.deepEqual(
@@ -198,7 +198,7 @@ test("the interaction overlay still takes the pad away: it owns a text input", a
 
 test("with the pad closed the popup keeps its buttons to itself", async () => {
 	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
+	ctx.api.setSessionActive(true);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
 
 	assert.deepEqual(

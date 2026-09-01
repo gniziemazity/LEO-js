@@ -1,31 +1,13 @@
 const { ipcRenderer } = require("electron");
 const { buildSettingsCSS } = require("../shared/blocks");
+const {
+	COLOR_SETTINGS,
+	HOTKEY_SETTINGS,
+	domFieldsFor,
+} = require("../shared/settings-schema");
 
-const COLOR_FIELDS = [
-	["commentNormalColor", "commentNormal"],
-	["codeBlockColor", "codeBlockColor"],
-	["questionCommentColor", "questionCommentColor"],
-	["imageBlockColor", "imageBlockColor"],
-	["codeInsertBlockColor", "codeInsertBlockColor"],
-	["moveToBlockColor", "moveToBlockColor"],
-	["moveToTextColor", "moveToTextColor"],
-	["commentActiveColor", "commentActive"],
-	["commentSelectedColor", "commentSelected"],
-	["commentActiveTextColor", "commentActiveText"],
-	["cursorColor", "cursor"],
-	["selectedBorderColor", "selectedBorder"],
-	["textColor", "textColor"],
-];
-
-const HOTKEY_FIELDS = [
-	["toggleActiveKey", "toggleActive"],
-	["stepBackwardKey", "stepBackward"],
-	["stepForwardKey", "stepForward"],
-	["alwaysOnTopKey", "alwaysOnTop"],
-	["toggleTransparencyKey", "toggleTransparency"],
-	["toggleWindowKey", "toggleWindow"],
-	["confirmPopupKey", "confirmPopup"],
-];
+const COLOR_FIELDS = domFieldsFor(COLOR_SETTINGS);
+const HOTKEY_FIELDS = domFieldsFor(HOTKEY_SETTINGS);
 
 const REGISTRY_SELECTS = [
 	{
@@ -259,7 +241,7 @@ class SettingsUI {
             display: flex;
             justify-content: space-between;
             font-size: 0.8em;
-            color: #666;
+            color: var(--clr-label);
             margin-top: 5px;
          }
       `;

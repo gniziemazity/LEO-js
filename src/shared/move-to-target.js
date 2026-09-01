@@ -25,10 +25,10 @@
 		if (raw === "DEV") {
 			return { mode: "dev", target: raw, inner: raw, wrapped: false };
 		}
-		const { wrapped, inner } = unwrapAnchor(raw);
-		if (isFileName(inner)) {
-			return { mode: "file", target: inner, inner, wrapped };
+		if (isFileName(raw)) {
+			return { mode: "file", target: raw, inner: raw, wrapped: false };
 		}
+		const { wrapped, inner } = unwrapAnchor(raw);
 		if (wrapped) {
 			return { mode: "anchor", target: raw, inner, wrapped };
 		}
@@ -56,9 +56,6 @@
 	}
 
 	const api = {
-		ANCHOR_WRAP,
-		FILE_RE,
-		unwrapAnchor,
 		wrapAnchor,
 		isFileName,
 		classifyMoveToTarget,

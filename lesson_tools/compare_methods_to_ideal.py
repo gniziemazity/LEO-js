@@ -92,10 +92,7 @@ LABELS = ("missing", "extra", "ghost_extra")
 
 METHOD_LABELS = {
     "leo_star":      "LEO*",
-    "leo_star_plus": "LEO*+",
-    "lcs_star":      "LCS*",
     "lcs":           "LCS",
-    "git_star":      "Git*",
     "git":           "Git",
 }
 

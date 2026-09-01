@@ -1,5 +1,6 @@
 const { globalShortcut } = require("electron");
 const state = require("./state");
+const { HOTKEY_SETTINGS } = require("../shared/settings-schema");
 
 class HotkeyManager {
 	constructor(settingsManager) {
@@ -9,6 +10,7 @@ class HotkeyManager {
 
 	handleKey(letter) {
 		if (!state.isActive) return;
+		if (state.onPopupKey && state.onPopupKey()) return;
 		if (state.isPaused) return;
 
 		const hotkeyMode = this.settingsManager.get("hotkeyMode");
@@ -33,17 +35,12 @@ class HotkeyManager {
 	registerSystemShortcuts() {
 		const shortcuts = this.settingsManager.get("hotkeys");
 
-		globalShortcut.register(shortcuts.toggleActive, () => {
-			state.send("hotkey-toggle-active");
-		});
-
-		globalShortcut.register(shortcuts.stepBackward, () => {
-			state.send("hotkey-step-backward");
-		});
-
-		globalShortcut.register(shortcuts.stepForward, () => {
-			state.send("hotkey-step-forward");
-		});
+		for (const h of HOTKEY_SETTINGS) {
+			if (!h.channel) continue;
+			globalShortcut.register(shortcuts[h.key], () => {
+				state.send(h.channel);
+			});
+		}
 
 		globalShortcut.register(shortcuts.alwaysOnTop, () => {
 			if (!state.mainWindow || state.mainWindow.isDestroyed()) return;
@@ -92,7 +89,7 @@ class HotkeyManager {
 		this.confirmPopupKey = accelerator;
 		if (globalShortcut.isRegistered(accelerator)) return;
 		if (!globalShortcut.register(accelerator, callback)) {
-			console.warn(`[LEO] popup confirm hotkey unavailable: ${accelerator}`);
+			console.warn(`[LEO] hotkey unavailable: ${accelerator}`);
 		}
 	}
 

@@ -151,11 +151,9 @@ class KeyboardHandler {
 				isInterceptorKey,
 			);
 
-			state.send("character-typed");
-
 			this.processQueue();
 		} catch (error) {
-			console.error("Error typing character:", error);
+			console.error("[LEO] type failed:", error);
 			this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 			state.unlock();
 			state.clearQueue();
@@ -220,7 +218,7 @@ class KeyboardHandler {
 
 					await new Promise((resolve) => setTimeout(resolve, speed));
 				} catch (error) {
-					console.error("Error typing character during auto-type:", error);
+					console.error("[LEO] auto-type failed:", error);
 					this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 					break;
 				}
@@ -233,9 +231,9 @@ class KeyboardHandler {
 			const mapping = NUTJS_KEY_MAPPING[char];
 
 			if (mapping.pause) {
-				state.pause();
+				state.pause("pause-key");
 				await new Promise((resolve) => setTimeout(resolve, mapping.pause));
-				state.unpause();
+				state.unpause("pause-key");
 				return;
 			}
 			if (mapping.modifier && mapping.shift) {

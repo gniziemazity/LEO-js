@@ -1,4 +1,5 @@
 import json
+import re
 import random
 import tempfile
 import unittest
@@ -59,6 +60,33 @@ _requires_corpus = unittest.skipUnless(
     _HAS_CORPUS,
     'fixture corpus absent (lesson_tools/test is gitignored)',
 )
+
+
+class TestCorpusPresent(unittest.TestCase):
+    """Say out loud when the fixture corpus is missing.
+
+    lesson_tools/test is gitignored, so a fresh clone has no corpus. The
+    reconstruction and token classes are decorated with @_requires_corpus and
+    do report as skipped, but _attach_parity_tests and
+    _attach_replay_parity_tests never *create* their methods without it - so
+    the run used to come back green with a quietly smaller test count and no
+    hint that the two cross-language parity suites had not run at all.
+    """
+
+    @_requires_corpus
+    def test_corpus_is_available(self):
+        self.assertTrue(_HAS_CORPUS)
+
+    def test_parity_suites_were_attached(self):
+        if not _HAS_CORPUS:
+            self.skipTest(
+                'fixture corpus absent, so TestJsPythonParity and '
+                'TestJsReplayParity have NO test methods - the JS/Python '
+                'byte-parity checks did not run'
+            )
+        for cls in (TestJsPythonParity, TestJsReplayParity):
+            methods = [m for m in dir(cls) if m.startswith('test_')]
+            self.assertTrue(methods, cls.__name__ + ' has no test methods')
 
 from utils import similarity_measures as _sm
 from utils.folder_utils import LANG_EXTS
@@ -343,17 +371,17 @@ class TestChessStudent50Tokens(_StudentBase, unittest.TestCase):
     tokens_file         = _student_tokens('chess', '50')
 
 
-class TestJSStudent78Tokens(_StudentBase, unittest.TestCase):
+class TestGalleryStudent78Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _teacher_tokens('gallery')
     tokens_file         = _student_tokens('gallery', '78')
 
 
-class TestJSStudent35Tokens(_StudentBase, unittest.TestCase):
+class TestGalleryStudent35Tokens(_StudentBase, unittest.TestCase):
     teacher_tokens_file = _teacher_tokens('gallery')
     tokens_file         = _student_tokens('gallery', '35')
 
 
-class TestJSReconstruction(_ReconstructionBase, unittest.TestCase):
+class TestGalleryReconstruction(_ReconstructionBase, unittest.TestCase):
     log_file           = _keylog('gallery')
     reconstructed_file = _reconstructed('gallery')
     tokens_file        = _teacher_tokens('gallery')
@@ -1404,6 +1432,129 @@ def _parse_lesson_stats_csv(csv_text: str) -> Dict[str, str]:
 
 @unittest.skipUnless(_PARITY_READY,
                      'node executable or _parity_runner.js not available')
+class TestGlyphTableParity(unittest.TestCase):
+    _NAMES = ('CURSOR_MOVES,SHIFT_CURSOR_MOVES,IGNORED_CHARS,CHAR_REPLACEMENTS,'
+              'BACKSPACE_CHARS,DELETE_FWRD_CHARS,PAGE_LINES,PAUSE_CHAR,PAUSE_MS,'
+              'DELETE_LINE_CHAR')
+
+    def _js(self, expr):
+        import subprocess
+        shared = str(Path(__file__).parent / 'shared').replace(chr(92), '/')
+        runner = (
+            "const fs=require('fs');"
+            "const src=['text-state.js','simulator-model.js']"
+            ".map(f=>fs.readFileSync('%s/'+f,'utf-8')).join(String.fromCharCode(10));"
+            "const m=new Function('window','module',src+';return {%s};')({},undefined);"
+            "console.log(JSON.stringify(%s));"
+        ) % (shared, self._NAMES, expr)
+        out = subprocess.run(['node', '-e', runner], capture_output=True,
+                             text=True, encoding='utf-8')
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def test_cursor_move_glyphs_match(self):
+        from utils.lv_constants import CURSOR_MOVES
+        js = self._js('m.CURSOR_MOVES')
+        self.assertEqual(sorted(js.keys()), sorted(CURSOR_MOVES.keys()))
+
+    def test_shift_cursor_move_glyphs_match(self):
+        from utils.lv_constants import SHIFT_CURSOR_MOVES
+        js = self._js('m.SHIFT_CURSOR_MOVES')
+        self.assertEqual(sorted(js.keys()), sorted(SHIFT_CURSOR_MOVES.keys()))
+
+    def test_ignored_chars_match(self):
+        from utils.lv_constants import IGNORED_CHARS
+        js = self._js('[...m.IGNORED_CHARS]')
+        self.assertEqual(sorted(js), sorted(IGNORED_CHARS))
+
+    def test_char_replacements_match(self):
+        from utils.lv_constants import CHAR_REPLACEMENTS
+        self.assertEqual(self._js('m.CHAR_REPLACEMENTS'), CHAR_REPLACEMENTS)
+
+    def test_backspace_and_forward_delete_match(self):
+        from utils.lv_constants import BACKSPACE_CHARS, DELETE_FWRD_CHARS
+        self.assertEqual(sorted(self._js('[...m.BACKSPACE_CHARS]')),
+                         sorted(BACKSPACE_CHARS))
+        self.assertEqual(sorted(self._js('[...m.DELETE_FWRD_CHARS]')),
+                         sorted(DELETE_FWRD_CHARS))
+
+    def test_page_lines_match(self):
+        from utils.lv_constants import PAGE_LINES
+        self.assertEqual(self._js('m.PAGE_LINES'), PAGE_LINES)
+
+    def test_pause_and_delete_line_match(self):
+        from utils.lv_constants import PAUSE_CHAR, PAUSE_MS, DELETE_LINE_CHAR
+        self.assertEqual(self._js('m.PAUSE_CHAR'), PAUSE_CHAR)
+        self.assertEqual(self._js('m.PAUSE_MS'), PAUSE_MS)
+        self.assertEqual(self._js('m.DELETE_LINE_CHAR'), DELETE_LINE_CHAR)
+
+
+class TestExpandEventsParity(unittest.TestCase):
+    EVENTS = [
+        {"move_to": "DEV", "timestamp": 0},
+        {"char": "a", "timestamp": 10},
+        {"switch_editor": "main", "timestamp": 20},
+        {"char": "b", "timestamp": 30},
+        {"move_to": "style.css", "timestamp": 40},
+        {"char": "c", "timestamp": 55},
+        {"move_to": "notes.md", "timestamp": 60},
+        {"code_insert": "x=1", "timestamp": 70},
+        {"anchor": "3", "timestamp": 80},
+        {"move": "3", "timestamp": 90},
+        {"jump_to": "3", "timestamp": 100},
+        {"move_to": "MAIN", "timestamp": 110},
+        {"move_to": "7", "timestamp": 900000},
+        {"char": "d", "timestamp": 900010},
+    ]
+
+    def _js(self):
+        import subprocess
+        shared = Path(__file__).parent / 'shared'
+        runner = (
+            "const fs=require('fs');"
+            "const src=['text-state.js','simulator-model.js']"
+            ".map(f=>fs.readFileSync(%r+'/'+f,'utf-8')).join(String.fromCharCode(10));"
+            "const m=new Function('window','module',src+';return {expandEvents};')({},undefined);"
+            "console.log(JSON.stringify(m.expandEvents(%s)));"
+        ) % (str(shared).replace(chr(92), '/'), json.dumps(self.EVENTS))
+        out = subprocess.run(['node', '-e', runner], capture_output=True,
+                             text=True, encoding='utf-8')
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def test_same_micro_steps(self):
+        from utils.lv_expand import expand_events
+        py = [list(step) for step in expand_events(self.EVENTS)]
+        self.assertEqual(py, self._js())
+
+
+class TestMethodRegistryParity(unittest.TestCase):
+    def _js_selectable_keys(self):
+        src = (Path(__file__).parent / 'shared' / 'diff-utils.js').read_text(
+            encoding='utf-8')
+        start = src.index('const DIFF_METHODS = [')
+        end = src.index(chr(10) + '];', start)
+        body = src[start:end]
+        keys = re.findall(r'key:\s*"([a-z_]+)"', body)
+        selectable = re.findall(r'selectable:\s*(true|false)', body)
+        self.assertEqual(len(keys), len(selectable),
+                         'every DIFF_METHODS entry needs a selectable flag')
+        return [k for k, sel in zip(keys, selectable) if sel == 'true']
+
+    def test_same_methods_in_both_languages(self):
+        from utils.method_registry import REMARKS_BASES
+        self.assertEqual(sorted(self._js_selectable_keys()),
+                         sorted(REMARKS_BASES))
+
+    def test_retired_bases_are_gone_from_both(self):
+        from utils.method_registry import REMARKS_BASES
+        from utils.sim_check import _RETIRED_BASES
+        js = self._js_selectable_keys()
+        for basis in _RETIRED_BASES:
+            self.assertNotIn(basis, REMARKS_BASES, basis)
+            self.assertNotIn(basis, js, basis)
+
+
 class TestJsPythonParity(unittest.TestCase):
 
     def _run_node(self, log_path: Path) -> str:
@@ -1508,6 +1659,159 @@ def _attach_replay_parity_tests() -> None:
 
 
 _attach_replay_parity_tests()
+
+
+class TestClipboardGlyphs(unittest.TestCase):
+    SCRIPT = 'one↩two↩three↑↑◄⇓⇓✂►↩📥'
+
+    def _typed(self, script: str, ext: str = '.js'):
+        from utils.lv_editor import HeadlessEditor, reset_clipboard, _CLIPBOARD
+        reset_clipboard()
+        ed = HeadlessEditor(file_ext=ext)
+        for ch in script:
+            ed.handle_char(ch)
+        return ed, _CLIPBOARD['text']
+
+    def test_cut_takes_the_shift_selected_range(self):
+        ed, board = self._typed('one↩two↩three↑↑◄⇓⇓✂')
+        self.assertEqual(ed.get_text(), 'three')
+        self.assertEqual(board, 'one\ntwo\n')
+
+    def test_cut_with_no_selection_takes_the_whole_line(self):
+        ed, board = self._typed('one↩two↩three↑►✂')
+        self.assertEqual(ed.get_text(), 'one\nthree')
+        self.assertEqual(board, 'two\n')
+
+    def test_copy_leaves_the_text(self):
+        ed, board = self._typed('one↩two↩three↑↑◄⇓⇓⧉')
+        self.assertEqual(ed.get_text(), 'one\ntwo\nthree')
+        self.assertEqual(board, 'one\ntwo\n')
+
+    def test_paste_is_literal(self):
+        ed, _ = self._typed('a↩b↑◄⇓✂►↩if (x) {↩📥')
+        self.assertEqual(ed.get_text(), 'b\nif (x) {\n\ta\n')
+
+    def test_paste_replaces_the_selection(self):
+        ed, _ = self._typed('keep↩drop↑◄⇓⧉📥')
+        self.assertEqual(ed.get_text(), 'keep\nkeep\ndrop')
+
+    def test_cut_collapses_an_anchor_inside_it(self):
+        from utils.lv_editor import HeadlessEditor, reset_clipboard
+        reset_clipboard()
+        ed = HeadlessEditor(file_ext='.js')
+        for ch in 'a↩':
+            ed.handle_char(ch)
+        ed.set_anchor('7')
+        for ch in 'b↩c↑↑◄⇓⇓✂':
+            ed.handle_char(ch)
+        self.assertEqual(ed.get_text(), 'c')
+        self.assertEqual(ed._anchors['7'], 0)
+
+    def test_glyphs_work_inside_a_code_insert(self):
+        from utils.lv_editor import HeadlessEditor, reset_clipboard
+        reset_clipboard()
+        ed = HeadlessEditor(file_ext='.js')
+        ed.handle_code_insert('one↩two↩three↑↑◄⇓⇓✂►📥')
+        self.assertEqual(ed.get_text(), 'threeone\ntwo\n')
+
+    def test_clipboard_is_reset_between_replays(self):
+        from utils.lv_editor import reconstruct_html_headless
+        events = [{'char': c, 'timestamp': i}
+                  for i, c in enumerate('secret↩◄⇑⧉')]
+        reconstruct_html_headless(events, 'x.js')
+        events = [{'char': c, 'timestamp': i}
+                  for i, c in enumerate('📥done')]
+        self.assertEqual(reconstruct_html_headless(events, 'x.js'), 'done')
+
+    @unittest.skipUnless(_REPLAY_READY,
+                         'node executable or _replay_runner.js not available')
+    def test_js_python_parity(self):
+        from utils.lv_editor import reconstruct_html_headless
+        events = [{'char': c, 'timestamp': i}
+                  for i, c in enumerate(self.SCRIPT)]
+        py_text = reconstruct_html_headless(events, 'lesson.js')
+        with tempfile.TemporaryDirectory() as d:
+            log_path = Path(d) / 'log.json'
+            log_path.write_text(
+                json.dumps({'events': events, 'lessonFile': 'lesson.js'}),
+                encoding='utf-8',
+            )
+            res = subprocess.run(
+                [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],
+                capture_output=True, text=True, encoding='utf-8',
+            )
+        if res.returncode != 0:
+            self.fail(f'JS replay runner failed (rc={res.returncode}):\n'
+                      f'{res.stderr}')
+        self.assertEqual(res.stdout, py_text)
+        self.assertEqual(py_text, 'three\none\ntwo\n')
+
+
+    def test_every_paste_glyph_is_a_clipboard_glyph(self):
+        from utils.lv_constants import (
+            PASTE_CHAR, PASTE_CHARS, CLIPBOARD_CHARS,
+        )
+        self.assertEqual(PASTE_CHAR, '📥')
+        self.assertEqual(PASTE_CHARS, frozenset({'📥'}))
+        self.assertTrue(PASTE_CHARS <= CLIPBOARD_CHARS)
+
+    def test_retired_paste_glyphs_stay_retired(self):
+        from utils.lv_constants import CLIPBOARD_CHARS
+        for glyph in ('📎', '⎘'):
+            self.assertNotIn(glyph, CLIPBOARD_CHARS, glyph)
+
+class TestIndentSelection(unittest.TestCase):
+    SCRIPT = 'a↩b↩c↑↑◄⇓⇓―'
+
+    def _typed(self, script: str, ext: str = '.js'):
+        from utils.lv_editor import HeadlessEditor, reset_clipboard
+        reset_clipboard()
+        ed = HeadlessEditor(file_ext=ext)
+        for ch in script:
+            ed.handle_char(ch)
+        return ed
+
+    def test_indents_every_selected_line(self):
+        self.assertEqual(self._typed(self.SCRIPT).get_text(), '\ta\n\tb\nc')
+
+    def test_selection_reaching_the_line_end_indents_that_line(self):
+        self.assertEqual(self._typed('aa↩bb↑◄⇓⇒―').get_text(), '\taa\n\tbb')
+
+    def test_tab_without_a_selection_is_a_plain_tab(self):
+        self.assertEqual(self._typed('a↩b―').get_text(), 'a\nb\t')
+
+    def test_indenting_clears_the_selection(self):
+        self.assertEqual(self._typed('a↩b↑◄⇓―✂').get_text(), '\ta\n')
+
+    def test_code_insert_indents_a_selection_too(self):
+        from utils.lv_editor import HeadlessEditor, reset_clipboard
+        reset_clipboard()
+        ed = HeadlessEditor(file_ext='.js')
+        ed.handle_code_insert(self.SCRIPT)
+        self.assertEqual(ed.get_text(), '\ta\n\tb\nc')
+
+    @unittest.skipUnless(_REPLAY_READY,
+                         'node executable or _replay_runner.js not available')
+    def test_js_python_parity(self):
+        from utils.lv_editor import reconstruct_html_headless
+        events = [{'char': c, 'timestamp': i}
+                  for i, c in enumerate(self.SCRIPT)]
+        py_text = reconstruct_html_headless(events, 'lesson.js')
+        with tempfile.TemporaryDirectory() as d:
+            log_path = Path(d) / 'log.json'
+            log_path.write_text(
+                json.dumps({'events': events, 'lessonFile': 'lesson.js'}),
+                encoding='utf-8',
+            )
+            res = subprocess.run(
+                [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],
+                capture_output=True, text=True, encoding='utf-8',
+            )
+        if res.returncode != 0:
+            self.fail(f'JS replay runner failed (rc={res.returncode}):\n'
+                      f'{res.stderr}')
+        self.assertEqual(res.stdout, py_text)
+        self.assertEqual(py_text, '\ta\n\tb\nc')
 
 
 if __name__ == '__main__':

@@ -1,19 +1,4 @@
 import re
-try:
-    import tkinter as tk
-    from tkinter import filedialog, ttk, font as tkfont
-    _HAS_TK = True
-except ImportError:
-    _HAS_TK = False
-    class _TkMock:
-        NORMAL = DISABLED = ACTIVE = END = INSERT = W = X = Y = BOTH = \
-        TOP = BOTTOM = LEFT = RIGHT = HORIZONTAL = VERTICAL = WORD = NONE = \
-        FLAT = SOLID = "mock"
-        def __getattr__(self, _): return type("_M", (), {"__getattr__": lambda s, n: None})()
-    class _TkMockMod:
-        def __getattr__(self, _): return None
-    tk = _TkMock()
-    filedialog = ttk = tkfont = _TkMockMod()
 from datetime import datetime
 
 try:
@@ -46,12 +31,18 @@ SHIFT_CURSOR_MOVES: dict = {
 CHAR_REPLACEMENTS: dict = {"↩": "\n", "\n": "\n", "―": "\t", "\t": "\t"}
 
 DELETE_LINE_CHAR   = "⛔"
-BACKSPACE_CHARS    = frozenset({"↢", "⌫"})
-DELETE_FWRD_CHARS  = frozenset({"↣", "⌦"})
+BACKSPACE_CHARS    = frozenset({"⌫", "↢"})
+DELETE_FWRD_CHARS  = frozenset({"⌦"})
 
 IGNORED_CHARS: frozenset = frozenset(
     ["💾", "🔁", "Ö", "ö", "Ș", "ñ", "ω", "Ț", "é", "🅴"]
 )
+
+CUT_CHAR   = "✂"
+COPY_CHAR  = "⧉"
+PASTE_CHAR = "📥"
+PASTE_CHARS: frozenset = frozenset({PASTE_CHAR})
+CLIPBOARD_CHARS: frozenset = frozenset({CUT_CHAR, COPY_CHAR}) | PASTE_CHARS
 
 PAUSE_CHAR = "🕛"
 PAUSE_MS   = 500
@@ -63,7 +54,7 @@ HTML_VOID_TAGS = frozenset({
     "link", "meta", "param", "source", "track", "wbr",
 })
 
-CLR = {
+TK_CLR = {
     "bg":        "#ffffff",  "sidebar":   "#f3f3f3",
     "toolbar":   "#e8e8e8",  "fg":        "#1e1e1e",
     "cursor":    "#000000",  "select":    "#add6ff",

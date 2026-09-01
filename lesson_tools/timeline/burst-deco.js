@@ -25,6 +25,8 @@ function _isInsertableChar(ch) {
 		return false;
 	if (typeof IGNORED_CHARS !== "undefined" && IGNORED_CHARS.has(ch))
 		return false;
+	if (typeof CLIPBOARD_CHARS !== "undefined" && CLIPBOARD_CHARS.has(ch))
+		return false;
 	if (typeof PAUSE_CHAR !== "undefined" && ch === PAUSE_CHAR) return false;
 	return true;
 }

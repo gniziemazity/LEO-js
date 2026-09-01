@@ -113,3 +113,37 @@ test("send forwards channel and args to a live mainWindow", () => {
 		["question-answered", { studentName: "Ann" }],
 	]);
 });
+
+test("a pause is held until every reason that asked for it is gone", () => {
+	state.pause("question");
+	state.pause("popup");
+	assert.equal(state.isPaused, true);
+
+	state.unpause("popup");
+	assert.equal(state.isPaused, true, "the question still wants it paused");
+
+	state.unpause("question");
+	assert.equal(state.isPaused, false);
+});
+
+test("the pause glyph's own sleep cannot resume a question block", () => {
+	state.pause("question");
+
+	state.pause("pause-key");
+	state.unpause("pause-key");
+
+	assert.equal(state.isPaused, true, "the question's pause must survive");
+});
+
+test("unpausing a reason that never paused changes nothing", () => {
+	state.pause("question");
+	state.unpause("interaction");
+	assert.equal(state.isPaused, true);
+});
+
+test("reset clears every pause reason", () => {
+	state.pause("question");
+	state.pause("popup");
+	state.reset();
+	assert.equal(state.isPaused, false);
+});

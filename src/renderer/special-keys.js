@@ -1,3 +1,5 @@
+const { readCodeText } = require("../shared/code-text");
+
 class SpecialKeys {
 	constructor(uiManager, blockEditor, lessonManager) {
 		this.uiManager = uiManager;
@@ -27,8 +29,11 @@ class SpecialKeys {
 			"―": "Tab",
 			"⇑": "Shift + Arrow Up",
 			"⇓": "Shift + Arrow Down",
-			"⇐": "Shift + Arrow Left",
-			"⇒": "Shift + Arrow Right",
+			"⇐": "Shift + Home",
+			"⇒": "Shift + End",
+			"✂": "Cut",
+			"⧉": "Copy",
+			"📥": "Paste",
 		};
 
 		this.uiManager.populateSpecialKeys(keys, (char) => {
@@ -49,7 +54,7 @@ class SpecialKeys {
 				document.querySelectorAll(".block")[selectedBlockIndex];
 			this.blockEditor.updateBlockContent(
 				selectedBlockIndex,
-				activeDiv.innerText,
+				readCodeText(activeDiv),
 			);
 		}
 	}

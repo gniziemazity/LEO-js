@@ -206,9 +206,6 @@ test("the remote URL carries the token, which is how the QR code works", () => {
 	assert.ok(url.endsWith(server.token));
 });
 
-// The dispatch table is built once at module load rather than rebuilt for every
-// inbound message -- a touchpad drag arrives ~33 times a second on the same
-// process that drives nut-js.
 test("a message with no data payload is handled, not thrown", () => {
 	for (const type of [
 		"mouse-move",
@@ -224,6 +221,6 @@ test("a message with no data payload is handled, not thrown", () => {
 	}
 });
 
-test("an unknown message type emits nothing at all", () => {
+test("an unknown message type reaches no window handler either", () => {
 	assert.deepEqual(drive("not-a-real-message", { x: 1 }), []);
 });

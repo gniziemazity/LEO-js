@@ -3,66 +3,25 @@ class MoveToOverlay extends RemoteOverlay {
 		super("moveToOverlay");
 	}
 
-	makeSegSpan(text, color) {
-		const span = document.createElement("span");
-		span.textContent = text;
-		if (color) span.style.color = color;
-		return span;
-	}
-
-	makeCursorSpan() {
-		const cursor = document.createElement("span");
-		cursor.className = "mt-modal-anchor-cursor";
-		cursor.textContent = " ";
-		return cursor;
-	}
-
-	renderLine(row, segs) {
-		for (const seg of segs)
-			row.appendChild(this.makeSegSpan(seg.text, seg.color));
-	}
-
-	renderLineWithArrow(row, segs, col) {
-		let consumed = 0;
-		let inserted = false;
-		for (const seg of segs) {
-			if (!inserted && consumed + seg.text.length >= col) {
-				const cut = col - consumed;
-				if (cut > 0)
-					row.appendChild(
-						this.makeSegSpan(seg.text.slice(0, cut), seg.color),
-					);
-				row.appendChild(this.makeCursorSpan());
-				if (cut < seg.text.length)
-					row.appendChild(
-						this.makeSegSpan(seg.text.slice(cut), seg.color),
-					);
-				inserted = true;
-			} else {
-				row.appendChild(this.makeSegSpan(seg.text, seg.color));
-			}
-			consumed += seg.text.length;
-		}
-		if (!inserted) row.appendChild(this.makeCursorSpan());
-	}
-
 	show(payload) {
 		const { mode, target, snippet } = payload || {};
 		const overlay = this.el;
-		const emojiEl = document.getElementById("mtoEmoji");
 		const titleEl = document.getElementById("mtoTitle");
 		const targetEl = document.getElementById("mtoTarget");
 		const snippetEl = document.getElementById("mtoSnippet");
 		if (!overlay) return;
 
 		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
+		this.canTypeName = mode === "file";
 
-		if (emojiEl) emojiEl.style.display = "none";
 		if (titleEl) {
 			titleEl.textContent = switchTo
 				? `Go to (${MoveToTarget.moveToDisplayName(switchTo)}):`
 				: "Go to:";
 		}
+
+		const typeBtn = document.getElementById("mtoTypeName");
+		if (typeBtn) typeBtn.style.display = mode === "file" ? "" : "none";
 
 		snippetEl.style.display = "none";
 		snippetEl.innerHTML = "";
@@ -71,26 +30,14 @@ class MoveToOverlay extends RemoteOverlay {
 
 		if (mode === "dev" || mode === "main" || mode === "file") {
 			targetEl.style.display = "";
-			targetEl.textContent = MoveToTarget.moveToDisplayName(target);
+			SnippetView.renderTypedName(
+				targetEl,
+				MoveToTarget.moveToDisplayName(target),
+				null,
+			);
 		} else if (mode === "anchor") {
-			if (snippet && snippet.lines && snippet.lines.length) {
+			if (SnippetView.renderSnippet(snippetEl, snippet)) {
 				snippetEl.style.display = "block";
-				const col = Math.max(0, snippet.anchorCol || 0);
-				const colored = snippet.colored || null;
-				snippet.lines.forEach((line, i) => {
-					const row = document.createElement("div");
-					row.className = "mt-modal-line";
-					const segs =
-						colored && colored[i]
-							? colored[i]
-							: [{ text: line || "", color: null }];
-					if (i === snippet.arrowIdx) {
-						this.renderLineWithArrow(row, segs, col);
-					} else {
-						this.renderLine(row, segs);
-					}
-					snippetEl.appendChild(row);
-				});
 			} else {
 				targetEl.style.display = "";
 				targetEl.textContent = target || "";
@@ -129,12 +76,30 @@ class MoveToOverlay extends RemoteOverlay {
 	}
 
 	padActions() {
-		return [{ label: "OK", kind: "confirm", onClick: () => this.confirm() }];
+		const actions = [];
+		if (this.canTypeName)
+			actions.push({ label: "Auto-type", onClick: () => this.typeName() });
+		actions.push({
+			label: "OK",
+			kind: "confirm",
+			onClick: () => this.confirm(),
+		});
+		return actions;
+	}
+
+	typeName() {
+		sendMessage("move-to-type-name", {});
+	}
+
+	setTyped(data) {
+		const targetEl = document.getElementById("mtoTarget");
+		if (!targetEl || !data) return;
+		SnippetView.renderTypedName(targetEl, data.target, data.typed);
 	}
 
 	setPadCovered(covered) {
-		const btn = document.getElementById("mtoConfirm");
-		if (btn) btn.style.display = covered ? "none" : "";
+		const row = document.getElementById("mtoActions");
+		if (row) row.style.display = covered ? "none" : "";
 	}
 
 	closeUI() {

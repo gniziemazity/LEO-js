@@ -103,7 +103,7 @@ def load_students(csv_path):
         sys.exit(1)
 
     if not students:
-        print("ERROR: Could not read students.csv with any encoding.")
+        print("error: cannot decode students.csv")
         sys.exit(1)
 
     return students
@@ -457,12 +457,12 @@ def main():
     remarks_csv = os.path.join(project_dir, "remarks.csv")
 
     if not os.path.exists(students_csv):
-        print("ERROR: students.csv not found! This file is required.")
+        print("error: students.csv not found")
         print(f"  Expected at: {students_csv}")
         sys.exit(1)
 
     if not os.path.exists(students_dir):
-        print("ERROR: students/ folder not found!")
+        print("error: no students/ folder")
         print(f"  Expected at: {students_dir}")
         sys.exit(1)
 
@@ -504,12 +504,12 @@ def main():
         student = match_folder_to_student(folder_name, students)
 
         if student is None:
-            print(f"  WARNING: No CSV match for folder '{folder_name}' -- skipping")
+            print(f"  no CSV match for {folder_name!r}, skipped")
             unmatched += 1
             continue
 
         if not student.get("included", True):
-            print(f"  Skipping '{folder_name}' (Category=Excluded in students.csv)")
+            print(f"  {folder_name!r} excluded")
             skipped_excluded += 1
             continue
 
@@ -617,12 +617,12 @@ def main():
 
     print(f"\n{'=' * 50}")
     print("Done!")
-    print(f"  Matched:   {matched} student folders")
-    print(f"  Unmatched: {unmatched} student folders")
+    print(f"  Matched:   {matched}")
+    print(f"  Unmatched: {unmatched}")
     if skipped_excluded:
-        print(f"  Skipped:   {skipped_excluded} student folder(s) (Category=Excluded)")
-    print(f"  anon_ids/   -- folders named by student ID, content anonymized")
-    print(f"  anon_names/ -- teaching copy of anon_ids/, folders named by student name")
+        print(f"  Excluded:  {skipped_excluded}")
+    print(f"  anon_ids/   -- by student ID, anonymized")
+    print(f"  anon_names/ -- same, by student name")
     print(f"  remarks.csv -- {len(processed_remarks)} entries written")
     print(f"{'=' * 50}")
 

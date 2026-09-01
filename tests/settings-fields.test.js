@@ -2,6 +2,7 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const SettingsUI = require(
@@ -80,4 +81,56 @@ test("a missing input is skipped rather than overwriting the setting", () => {
 	withDom({}, () => {
 		assert.deepEqual(ui._fieldValues(COLOR_FIELDS), {});
 	});
+});
+
+test("the schema, the markup and the stylesheet name the same settings", () => {
+	const {
+		COLOR_SETTINGS,
+		HOTKEY_SETTINGS,
+	} = require("../src/shared/settings-schema");
+	const read = (p) =>
+		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
+
+	const html = read("src/index.html");
+	for (const c of COLOR_SETTINGS) {
+		assert.ok(
+			html.includes(`type="color" id="${c.domId}"`),
+			`index.html has no colour input for ${c.key} (#${c.domId})`,
+		);
+	}
+	for (const h of HOTKEY_SETTINGS) {
+		assert.ok(
+			html.includes(`id="${h.domId}"`),
+			`index.html has no hotkey input for ${h.key} (#${h.domId})`,
+		);
+	}
+
+	const css = read("src/shared/blocks.js");
+	for (const c of COLOR_SETTINGS) {
+		assert.ok(
+			css.includes(`c.${c.key}`),
+			`buildSettingsCSS never uses the ${c.key} colour`,
+		);
+	}
+});
+
+test("defaults come from the schema, not a second transcription", () => {
+	const {
+		COLOR_SETTINGS,
+		HOTKEY_SETTINGS,
+	} = require("../src/shared/settings-schema");
+	const SettingsManager = require("../src/main/settings-manager");
+	const defaults = new SettingsManager().defaultSettings;
+
+	for (const c of COLOR_SETTINGS) {
+		assert.equal(defaults.colors[c.key], c.value, c.key);
+	}
+	for (const h of HOTKEY_SETTINGS) {
+		assert.equal(defaults.hotkeys[h.key], h.value, h.key);
+	}
+	assert.equal(
+		Object.keys(defaults.colors).length,
+		COLOR_SETTINGS.length,
+		"a colour exists in the defaults that the schema does not name",
+	);
 });

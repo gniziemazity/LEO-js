@@ -103,6 +103,10 @@ class UIManager {
 			blockDiv.classList.add("selected");
 		}
 
+		if (block.fromInclude) {
+			blockDiv.classList.add("from-include");
+		}
+
 		return blockDiv;
 	}
 

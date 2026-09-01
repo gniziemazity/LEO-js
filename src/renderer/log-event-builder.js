@@ -1,4 +1,21 @@
-const { getBlockSubtype } = require("../shared/blocks");
+const { getBlockSubtype, stripBlockPrefix } = require("../shared/blocks");
+
+function stepToLogEvents(step) {
+	if (!step) return [];
+	if (step.subtype === "move-to") {
+		const out = [];
+		const switchTo = step.snippet && step.snippet.switchTo;
+		if (switchTo) out.push({ move_to: switchTo });
+		out.push({ move_to: step.target || "MAIN" });
+		return out;
+	}
+	const el = step.element;
+	const raw = el ? el.dataset.fullText || el.innerText || "" : "";
+	if (getBlockSubtype(raw) === "code-insert-comment") {
+		return [{ code_insert: stripBlockPrefix(raw) }];
+	}
+	return [];
+}
 
 function buildArtificialLogEvents(executionSteps) {
 	const KEYS_PER_MINUTE = 70;
@@ -24,34 +41,17 @@ function buildArtificialLogEvents(executionSteps) {
 				if (seenMoveTo !== step.globalIndex) {
 					seenMoveTo = step.globalIndex;
 					seenCodeInsert = null;
-					const switchTo = step.snippet && step.snippet.switchTo;
-					if (switchTo) {
-						events.push({ timestamp: t, move_to: switchTo });
-					}
-					events.push({ timestamp: t, move_to: step.target || "MAIN" });
+					for (const e of stepToLogEvents(step))
+						events.push({ timestamp: t, ...e });
 				}
 				return;
 			}
-			const blockText = step.element ? step.element.innerText.trim() : "";
-			const subtype = getBlockSubtype(blockText);
-			if (subtype === "code-insert-comment") {
+			const entries = stepToLogEvents(step);
+			if (entries.length) {
 				if (seenCodeInsert !== step.globalIndex) {
 					seenCodeInsert = step.globalIndex;
 					seenMoveTo = null;
-					const fullText = step.element
-						? step.element.title || step.element.innerText
-						: "";
-					const text = fullText.replace(/^📋 ?/, "");
-					events.push({ timestamp: t, code_insert: text });
-				}
-			} else if (subtype === "move-to-comment") {
-				if (seenMoveTo !== step.globalIndex) {
-					seenMoveTo = step.globalIndex;
-					seenCodeInsert = null;
-					const text = step.element
-						? step.element.innerText.replace(/^➡️ ?/, "")
-						: "";
-					events.push({ timestamp: t, move_to: text });
+					for (const e of entries) events.push({ timestamp: t, ...e });
 				}
 			} else {
 				seenCodeInsert = null;
@@ -63,4 +63,4 @@ function buildArtificialLogEvents(executionSteps) {
 	return events;
 }
 
-module.exports = { buildArtificialLogEvents };
+module.exports = { buildArtificialLogEvents, stepToLogEvents };

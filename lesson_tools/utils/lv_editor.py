@@ -2,6 +2,7 @@ import re
 from .lv_constants import (
     CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS, PAUSE_CHAR,
+    CUT_CHAR, COPY_CHAR, PASTE_CHARS, CLIPBOARD_CHARS,
     PAGE_LINES, split_code_with_anchors,
     CODE_INSERT_MS_PER_CHAR,
 )
@@ -14,6 +15,13 @@ from languages import (
     should_increase_after,
 )
 from .folder_utils import is_move_to_file, move_to_file_ext
+
+
+_CLIPBOARD = {"text": ""}
+
+
+def reset_clipboard() -> None:
+    _CLIPBOARD["text"] = ""
 
 
 class HeadlessEditor:
@@ -226,6 +234,34 @@ class HeadlessEditor:
             elif self._sel_anchor >= ls: self._sel_anchor = ls
         self._cur = ls; self._clear_sel()
 
+    def _del_range(self, start: int, end: int) -> str:
+        start = max(0, min(len(self._chars), start))
+        end   = max(start, min(len(self._chars), end))
+        cut = "".join(self._chars[start:end])
+        self._cur = end
+        for _ in range(end - start):
+            self._del_before()
+        return cut
+
+    def _clipboard_char(self, ch: str) -> None:
+        sr = self._sel_range()
+        if ch in PASTE_CHARS:
+            if sr is not None:
+                self._del_range(*sr)
+            self._clear_sel()
+            for c in _CLIPBOARD["text"]:
+                self._ins(c)
+            return
+        if sr is None:
+            ls = self._line_start()
+            le = self._line_end(ls)
+            sr = (ls, le + 1 if le < len(self._chars) else le)
+        if ch == CUT_CHAR:
+            _CLIPBOARD["text"] = self._del_range(*sr)
+        else:
+            _CLIPBOARD["text"] = "".join(self._chars[sr[0]:sr[1]])
+        self._clear_sel()
+
     @staticmethod
     def _dedent_one(indent: str) -> str:
         if indent.startswith("\t"):    return indent[1:]
@@ -404,6 +440,9 @@ class HeadlessEditor:
             elif m == "insert linestart": self._cur = self._line_first_char()
             elif m == "insert lineend":   self._cur = self._line_end()
             return False
+        if ch in CLIPBOARD_CHARS:
+            self._clipboard_char(ch)
+            return False
         if ch in CHAR_REPLACEMENTS:
             real = CHAR_REPLACEMENTS[ch]
             if real == "\n":
@@ -451,6 +490,7 @@ def _replay_headless_multi(
     track_timestamps: bool = False,
     lesson_file: str | None = None,
 ) -> dict:
+    reset_clipboard()
     main_ext = lesson_file_extension(lesson_file) or ".html"
     editors: dict = {
         "MAIN": HeadlessEditor(
@@ -551,6 +591,7 @@ def replay_with_timestamps_all(events: list):
 
 
 def find_ignored_backspace_timestamps(events: list) -> set:
+    reset_clipboard()
     ignored: set = set()
     ed: HeadlessEditor = HeadlessEditor(file_ext=".html")
     current_editor = "main"

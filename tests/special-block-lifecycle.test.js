@@ -146,16 +146,20 @@ test("a first-class move-to block is not mistaken for a legacy arrow comment", (
 	assert.equal(seen[0].target, "index.html");
 });
 
-test("a legacy arrow comment still logs, and opens no overlay", () => {
+test("a legacy arrow comment is now an ordinary comment", () => {
 	const logged = [];
 	const { cm } = makeCursorManager([
 		{ type: "block", element: element("➡️ somewhere"), globalIndex: 0 },
 	]);
 	cm.logManager = { addEntry: (e) => logged.push(e) };
-	cm.onEnterMoveToBlock = () => assert.fail("legacy form opens no overlay");
+	cm.onEnterMoveToBlock = () => assert.fail("it must open no overlay");
 
 	cm.updateCursor();
-	assert.deepEqual(logged, [{ move_to: "somewhere" }]);
+	assert.deepEqual(
+		logged,
+		[],
+		"no plan authored this form; move-to is a first-class block",
+	);
 });
 
 for (const kind of ["move-to", "code-insert"]) {

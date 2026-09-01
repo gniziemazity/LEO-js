@@ -178,3 +178,45 @@ test("advanceCursor answers on every path, including past the end", () => {
 		"one reply per branch: past-the-end, char, anchor, block, unknown",
 	);
 });
+
+test("whether the lesson is running travels on exactly one channel", () => {
+	const read = (p) =>
+		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
+
+	const main = read("src/main/main.js");
+	assert.equal(
+		main.includes('ipcMain.on("update-active"'),
+		false,
+		"one fact, one channel",
+	);
+	const handler = /ipcMain\.on\("set-active"[\s\S]*?\n\}\);/.exec(main)[0];
+	assert.match(
+		handler,
+		/broadcastServer\.updateActiveState\(isActive\)/,
+		"the one handler must both register hotkeys and tell the remote",
+	);
+
+	for (const f of [
+		"src/renderer/typing-controller.js",
+		"src/renderer/file-operations.js",
+	]) {
+		assert.equal(
+			read(f).includes("update-active"),
+			false,
+			`${f} sends a channel nothing listens on`,
+		);
+	}
+});
+
+test("the touchpad's session flag is named for what feeds it", () => {
+	const read = (p) =>
+		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
+	const pad = read("src/shared/remote/touchpad.js");
+	assert.equal(
+		pad.includes("autoTypingActive"),
+		false,
+		"it is fed from data.isActive, not from auto-typing",
+	);
+	assert.match(pad, /let sessionActive = false;/);
+	assert.match(read("src/remote.html"), /setSessionActive\(data\.isActive\)/);
+});

@@ -65,12 +65,8 @@ async function loadXlsxFiles(files) {
 	for (const f of xlsxFiles) {
 		const n = f.name.toLowerCase();
 		for (const key of _basisKeysByLength) {
-			const re = new RegExp(
-				`^remarks_${key}(?:_(\\d{8}-\\d{6}|\\d{10,}))?\\.xlsx$`,
-			);
-			const m = n.match(re);
-			if (!m) continue;
-			const stamp = m[1] || "";
+			if (!remarksFileRe(key).test(n)) continue;
+			const stamp = remarksStampOf(n);
 			const arr = _basisCandidates.get(key) || [];
 			arr.push({ f, stamp });
 			_basisCandidates.set(key, arr);
@@ -119,7 +115,7 @@ async function loadXlsxFiles(files) {
 	if (!_desiredBasis && _paperMode) _desiredBasis = "ideal";
 	if (!_desiredBasis || !_basisFiles.has(_desiredBasis)) {
 		_desiredBasis = null;
-		for (const key of ["ideal", "leo_star"]) {
+		for (const key of DIFF_MARKS_PRIORITY) {
 			if (_basisFiles.has(key)) {
 				_desiredBasis = key;
 				break;
@@ -278,10 +274,7 @@ function _renderBasisPicker() {
 		container.appendChild(label);
 		select.addEventListener("change", async () => {
 			_activeBasis = select.value;
-			select.classList.toggle(
-				"is-curated",
-				_activeBasis === "ideal" || _activeBasis === "minimal",
-			);
+			select.classList.toggle("is-curated", CURATED_MODES.has(_activeBasis));
 			try {
 				const f = _basisFiles.get(_activeBasis);
 				if (!f) return;
@@ -308,8 +301,5 @@ function _renderBasisPicker() {
 	} else {
 		_activeBasis = select.value;
 	}
-	select.classList.toggle(
-		"is-curated",
-		select.value === "ideal" || select.value === "minimal",
-	);
+	select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
 }

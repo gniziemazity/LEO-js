@@ -2,9 +2,6 @@ class FloatingWindow {
 	constructor({
 		make,
 		channel,
-		sync,
-		getPinned,
-		onCreate,
 		onClosed,
 		onShow,
 		broadcastServer,
@@ -19,9 +16,6 @@ class FloatingWindow {
 		this._fadeTimer = null;
 		this._make = make;
 		this._channel = channel;
-		this._sync = sync || (() => {});
-		this._getPinned = getPinned || (() => this.pinned);
-		this._onCreate = onCreate || (() => {});
 		this._onClosed = onClosed || (() => {});
 		this._onShow = onShow || (() => {});
 		this._broadcastServer = broadcastServer;
@@ -44,15 +38,12 @@ class FloatingWindow {
 			this._fadeTimer = null;
 		}
 		if (this.isAlive()) {
-			if (gatePin && this._getPinned()) return;
+			if (gatePin && this.pinned) return;
 			this._broadcastServer.broadcastFloatingWindowReshown();
 			this.win.webContents.send(this._channel, payload);
 			this.win.show();
 			this.win.focus();
-			if (gatePin && shouldPin) {
-				this.pinned = true;
-				this._sync(this);
-			}
+			if (gatePin && shouldPin) this.pinned = true;
 			this._onShow(this);
 			return;
 		}
@@ -66,8 +57,6 @@ class FloatingWindow {
 		});
 		this._closing = false;
 		this.rect = this._floatRect(win);
-		this._sync(this);
-		this._onCreate(this);
 		this._onShow(this);
 		win.webContents.on("did-finish-load", () => {
 			if (!win.isDestroyed()) win.webContents.send(this._channel, payload);
@@ -86,14 +75,12 @@ class FloatingWindow {
 			this.pinned = false;
 			this.closePending = false;
 			this._closing = false;
-			this._sync(this);
 		});
 		this._trackWindowRect(win, () => this.rect);
 	}
 
 	setPinned(value) {
 		this.pinned = !!value;
-		this._sync(this);
 		if (!this.pinned && this.closePending) {
 			this.closePending = false;
 			this.close();
@@ -101,14 +88,13 @@ class FloatingWindow {
 	}
 
 	close({ force } = {}) {
-		if (!force && this._getPinned()) {
+		if (!force && this.pinned) {
 			this.closePending = true;
 			return;
 		}
 		if (this.isAlive()) {
 			this._closing = true;
 			this.win.close();
-			this._sync(this);
 		}
 	}
 

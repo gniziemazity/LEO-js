@@ -12,21 +12,19 @@ it, student didn't), **`extra`** (student typed it, teacher didn't),
 **`comment`** (token inside a comment; never matched). All methods exclude
 comments from matching, so students' own comments never count against them.
 
-| Family | Methods          | Granularity  | Core                                                               |
-| ------ | ---------------- | ------------ | ------------------------------------------------------------------ |
-| LEO    | `leo*` / `leo*+` | Token        | Per-token Hungarian on cosine-similar contexts; ghosts in the base |
-| LCS    | `lcs` / `lcs*`   | Token        | `difflib.SequenceMatcher` (Ratcliff/Obershelp) on the token stream |
-| Git    | `git` / `git*`   | Line + Token | `git diff --no-index --unified=0 -w`, then per-line token diff     |
+| Family | Method | Granularity  | Core                                                               |
+| ------ | ------ | ------------ | ------------------------------------------------------------------ |
+| LEO    | `leo*` | Token        | Per-token Hungarian on cosine-similar contexts; ghosts in the base |
+| LCS    | `lcs`  | Token        | `difflib.SequenceMatcher` (Ratcliff/Obershelp) on the token stream |
+| Git    | `git`  | Line + Token | `git diff --no-index --unified=0 -w`, then per-line token diff     |
 
 - **`leo*`** is keylog-native and the default basis. Ghosts (typed-then-deleted
   teacher tokens) enter its per-token Hungarian as extra teacher columns, so the
   real/ghost split is decided in one base pass — no ghost-promotion needed.
-- **`leo*+`** is `leo*` with two tuned knobs (§4.1): a distance-decayed context
-  bag and an absolute acceptance threshold on real matches. Off for `leo*`.
 - The **`*` (star)** post-pass (§5) adds ghost handling, swap pairing, insert
-  anchors, and timestamps. `lcs`/`git` are keylog-blind and gain it via the star
-  pass (`lcs`→`lcs*`, `git`→`git*`); `leo*` already does the matching natively,
-  so its star pass only _materializes_ and timestamps the base's decisions.
+  anchors, and timestamps. `leo*` already does the matching natively, so its star
+  pass only _materializes_ and timestamps the base's decisions. `lcs` and `git` are
+  keylog-blind and are written without it.
 - **`ideal`** / **`minimal`** are hand-curated mark files (recommended-fix /
   minimum-fix), edited in the differentiator's curated editor and used as the
   ground truth by `compare_methods_to_ideal.py` (§7).
@@ -58,13 +56,11 @@ DIFF-MARK GENERATION (per student, per method)
 
 WRITING (TokenLogMixin)
   LEO   : write_student_token_files → diff_marks_leo_star.json   (+ star post-pass)
-          write_leo_plus_diff_marks → diff_marks_leo_star_plus.json
-                                      (same flow inside leo_plus_config())
   LCS   : _write_alt_diff_marks → diff_marks_lcs.json   then  *_star  (+ star post-pass)
   Git   : _write_alt_diff_marks → diff_marks_git.json   then  *_star  (+ star post-pass)
-  Every write goes through _emit_diff_marks, which skips bases in
-  DISABLED_DIFF_MARK_VARIANTS = {lcs_star, git_star}; so by default the files
-  written are: leo_star, leo_star_plus, lcs, git (+ curated ideal/minimal copied in).
+  Every write goes through _emit_diff_marks. The files written are:
+  leo_star, lcs, git (+ curated ideal/minimal copied in). A course carrying a
+  diff_marks file for a basis in sim_check._RETIRED_BASES is pruned on the next run.
 
 THE STAR POST-PASS (_apply_star_post_pass, only when a keylog exists)
   ├─ _refresh_missing_timestamps          (insertion ts onto missing marks via _tok_idx)
@@ -239,14 +235,6 @@ combined_score(s, sp, t, tp, k) = 0.3·min(cos_left, cos_right) + 0.7·max(cos_l
 - **Ghost matches are decided here.** A student row may be assigned to a ghost
   column (`match_idx` points at a `ghost: true` teacher entry); the star post-pass
   treats that as authoritative and relabels it `ghost_extra` without re-matching.
-- **`leo*+` knobs** (active only inside `leo_plus_config()`, default off so `leo*`
-  is byte-identical):
-   - `_DECAY = 0.70` — a context neighbour at window-distance `d` contributes
-     `_DECAY**(d-1)` instead of `1`, so nearer neighbours dominate the cosine.
-   - `_REAL_MATCH_TAU = 0.65` — a **real** match is dropped when its cosine is
-     below this floor; the orphaned occurrences become `missing`+`extra`, which the
-     swap pass (§5.2) re-pairs. Surfaces force-matched wrong-token-in-right-slot
-     mistakes.
 
 LEO does not embed `alignments`/`line_marks`; the differentiator borrows those
 from any loaded line-based method (`_borrowedAlignments()`) for the aligned view.
@@ -308,8 +296,8 @@ teacher ghost. It works over `leo_assignments` (synthesised by
    `removal_ts` from that ghost's `del_ts`.
 2. **Hungarian for the rest** — over (remaining extras × remaining ghosts) of the
    same token type, scored by the with-ghosts context cosine; pairs with cosine
-   `≥ _CONTEXT_MATCH_THRESHOLD (0.8)` are promoted. For `lcs*`/`git*` no extras
-   carry a pre-set ghost `match_idx`, so this Hungarian decides every match.
+   `≥ _CONTEXT_MATCH_THRESHOLD (0.8)` are promoted. Where the base carries no
+   pre-set ghost `match_idx` on its extras, this Hungarian decides every match.
 
 ### 5.2 Swap pairing
 
@@ -457,16 +445,13 @@ highlights derive from the same `--clr-mark-*` palette (read once into
 
 ## 9. Parameters
 
-| Parameter                  | Default    | Where                                   | Notes                                                                                    |
-| -------------------------- | ---------- | --------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `_CONTEXT_K`               | 10         | LEO context window half-width           | larger = more disambiguation for repeated tokens, less precision when neighbours are far |
-| `_CONTEXT_MATCH_THRESHOLD` | 0.8        | ghost promotion + swap pairing cutoff   | one knob, three sites (Phase-1 ghost keep, Phase-2 promotion, swap pairing)              |
-| `_SWAP_TOKEN_SIM_WEIGHT`   | 0.2        | swap-pair token-text bonus              | additive boost so typo pairs clear the threshold                                         |
-| `_DECAY`                   | 1.0 (off)  | LEO context decay; `leo*+` uses 0.70    | per-neighbour weight `_DECAY**(d-1)`                                                     |
-| `_REAL_MATCH_TAU`          | None (off) | LEO real-match floor; `leo*+` uses 0.65 | drop real matches below this cosine                                                      |
+| Parameter                  | Default | Where                                 | Notes                                                                                    |
+| -------------------------- | ------- | ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `_CONTEXT_K`               | 10      | LEO context window half-width         | larger = more disambiguation for repeated tokens, less precision when neighbours are far |
+| `_CONTEXT_MATCH_THRESHOLD` | 0.8     | ghost promotion + swap pairing cutoff | one knob, three sites (Phase-1 ghost keep, Phase-2 promotion, swap pairing)              |
+| `_SWAP_TOKEN_SIM_WEIGHT`   | 0.2     | swap-pair token-text bonus            | additive boost so typo pairs clear the threshold                                         |
 
 Context vectors are uniform unigram count bags (no IDF). Constants live at the top
-of `token_log_leo.py`; the `leo*+` knobs are flipped per student by
-`leo_plus_config()`. `regen_test_fixtures.py` + `python -m unittest
+of `token_log_leo.py`. `regen_test_fixtures.py` + `python -m unittest
 test_lesson_tools` is the fastest way to detect a parameter change that breaks a
 fixture.

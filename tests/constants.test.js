@@ -1,11 +1,12 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
-	getBlockSubtype,
 	buildWindowTitle,
-	buildSettingsCSS,
 	NUTJS_KEY_MAPPING,
 } = require("../src/shared/constants");
+const { getBlockSubtype, buildSettingsCSS } = require("../src/shared/blocks");
 
 test("getBlockSubtype identifies question prefix", () => {
 	assert.equal(getBlockSubtype("❓ What is X?"), "question-comment");
@@ -23,8 +24,12 @@ test("getBlockSubtype identifies code-insert prefix", () => {
 	assert.equal(getBlockSubtype("📋 snippet"), "code-insert-comment");
 });
 
-test("getBlockSubtype identifies move-to prefix", () => {
-	assert.equal(getBlockSubtype("➡️ location"), "move-to-comment");
+test("only the listed prefixes name a subtype", () => {
+	assert.equal(
+		getBlockSubtype("➡️ location"),
+		null,
+		"move-to is a first-class block, not a comment prefix",
+	);
 });
 
 test("getBlockSubtype trims leading whitespace", () => {
@@ -38,7 +43,11 @@ test("getBlockSubtype returns null for plain text", () => {
 test("both backspace glyphs map to Backspace", () => {
 	const { Key } = require("@computer-use/nut-js");
 	assert.deepEqual(NUTJS_KEY_MAPPING["⌫"], { key: Key.Backspace });
-	assert.deepEqual(NUTJS_KEY_MAPPING["↢"], { key: Key.Backspace });
+	assert.deepEqual(
+		NUTJS_KEY_MAPPING["↢"],
+		{ key: Key.Backspace },
+		"recorded keylogs still carry ↢; a recording cannot be migrated",
+	);
 });
 
 test("formatted blocks emit a mapped backspace glyph", () => {
@@ -105,4 +114,15 @@ test("buildSettingsCSS includes fontSize and colors", () => {
 	assert.match(css, /font-size:\s*18px/);
 	assert.match(css, /#111/);
 	assert.match(css, /#eee/);
+});
+
+test("an alias presses the same key as the glyph it stands in for", () => {
+	const ALIASES = { "↢": "⌫", Ö: "🔁", é: "🅴" };
+	for (const [alias, canonical] of Object.entries(ALIASES)) {
+		assert.deepEqual(
+			NUTJS_KEY_MAPPING[alias],
+			NUTJS_KEY_MAPPING[canonical],
+			`${alias} stands in for ${canonical} but presses a different key`,
+		);
+	}
 });

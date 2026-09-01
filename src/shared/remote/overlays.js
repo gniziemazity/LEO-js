@@ -71,6 +71,10 @@ function codeInsertPaste() {
 	codeInsertOverlay.paste();
 }
 
+function moveToTypeName() {
+	moveToOverlay.typeName();
+}
+
 function onRandomizerResult(index, name) {
 	questionOverlay.showRandomResult(index, name);
 }

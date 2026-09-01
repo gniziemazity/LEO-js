@@ -7,6 +7,7 @@ const {
 	classifyMoveToTarget,
 	isFileName,
 } = require("../shared/move-to-target");
+const { stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,
 	buildHighlightSpans,
@@ -16,6 +17,66 @@ function editorTarget(name) {
 	if (name === "main") return "MAIN";
 	if (name === "dev") return "DEV";
 	return name;
+}
+
+function replayPlan(blocks, stopAt = Infinity) {
+	const editors = { main: new TextState() };
+	const order = ["main"];
+	let active = "main";
+	const open = (name) => {
+		if (!editors[name]) {
+			editors[name] = new TextState();
+			order.push(name);
+		}
+	};
+	const stop = Math.min(stopAt, blocks.length);
+	for (let i = 0; i < stop; i++) {
+		const b = blocks[i];
+		if (!b) continue;
+		if (b.type === "code") {
+			open(active);
+			applyTypedText(editors[active], b.text || "");
+		} else if (b.type === "move-to") {
+			const t = classifyMoveToTarget(b.target || "");
+			if (t.mode === "main") {
+				open("main");
+				active = "main";
+			} else if (t.mode === "dev") {
+				open("dev");
+				active = "dev";
+			} else if (t.mode === "file") {
+				open(t.target);
+				active = t.target;
+			} else {
+				for (const [name, st] of Object.entries(editors)) {
+					if (st.anchors[t.inner] != null) {
+						active = name;
+						st.jumpToAnchor(t.inner);
+						break;
+					}
+				}
+			}
+		} else if (b.type === "comment") {
+			const txt = (b.text || "").trim();
+			if (txt.startsWith("📋")) {
+				open(active);
+				const stripped = stripBlockPrefix(b.text || "");
+				applyAtomicText(editors[active], stripped);
+			}
+		}
+	}
+	return { editors, order, active };
+}
+
+function toReplayableText(target) {
+	return target
+		.split("\n")
+		.map((line) => {
+			const lead = (line.match(/^(?:[\t ]|⚓[^⚓]*⚓)*/) || [""])[0];
+			const keptAnchors = (lead.match(/⚓[^⚓]*⚓/g) || []).join("");
+			return keptAnchors + line.slice(lead.length);
+		})
+		.join("\n");
 }
 
 function extractAnchorSnippet(
@@ -29,47 +90,7 @@ function extractAnchorSnippet(
 	if (anchor.mode !== "anchor") return null;
 	const id = anchor.inner;
 
-	const editors = { main: new TextState() };
-	let active = "main";
-	const stop = Math.min(currentBlockIdx, blocks.length);
-	for (let i = 0; i < stop; i++) {
-		const b = blocks[i];
-		if (!b) continue;
-		if (b.type === "code") {
-			if (!editors[active]) editors[active] = new TextState();
-			applyTypedText(editors[active], b.text || "");
-		} else if (b.type === "move-to") {
-			const t = b.target || "";
-			if (t === "MAIN") {
-				if (!editors.main) editors.main = new TextState();
-				active = "main";
-			} else if (t === "DEV") {
-				if (!editors.dev) editors.dev = new TextState();
-				active = "dev";
-			} else {
-				const { wrapped, inner } = classifyMoveToTarget(t);
-				if (isFileName(inner)) {
-					if (!editors[inner]) editors[inner] = new TextState();
-					active = inner;
-				} else if (wrapped) {
-					for (const [name, st] of Object.entries(editors)) {
-						if (st.anchors[inner] != null) {
-							active = name;
-							st.jumpToAnchor(inner);
-							break;
-						}
-					}
-				}
-			}
-		} else if (b.type === "comment") {
-			const txt = (b.text || "").trim();
-			if (txt.startsWith("📋")) {
-				if (!editors[active]) editors[active] = new TextState();
-				const stripped = (b.text || "").replace(/^📋\s?/, "");
-				applyAtomicText(editors[active], stripped);
-			}
-		}
-	}
+	const { editors, active } = replayPlan(blocks, currentBlockIdx);
 
 	let found = null;
 	if (editors[active] && editors[active].anchors[id] != null) {
@@ -150,4 +171,9 @@ function buildColoredLines(fullText, fromLineIdx, toLineIdx) {
 	return result;
 }
 
-module.exports = { extractAnchorSnippet, buildColoredLines };
+module.exports = {
+	extractAnchorSnippet,
+	buildColoredLines,
+	replayPlan,
+	toReplayableText,
+};

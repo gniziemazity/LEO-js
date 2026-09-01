@@ -40,6 +40,7 @@ function loadAPI() {
 			diffModeFromFilename, defaultDiffModeKey, DIFF_MARKS_FILES,
 			DIFF_METHODS, REMARKS_BASES, CURATED_MODES, basisToDiffMode,
 			_hmsToSeconds, parseFollowEvents, parseFollowLabel,
+			DIFF_MARKS_PRIORITY, remarksFileRe, remarksStampOf, remarksBasisOf,
 		};
 	`)();
 }
@@ -98,7 +99,8 @@ test("diffModeFromFilename: maps the canonical filenames back to mode keys", () 
 	assert.equal(api.diffModeFromFilename("diff_marks_lcs.json"), "lcs");
 	assert.equal(
 		api.diffModeFromFilename("diff_marks_git_star.json"),
-		"git_star",
+		null,
+		"a filename maps back only to a method that exists",
 	);
 	assert.equal(api.diffModeFromFilename("DIFF_MARKS_MINIMAL.JSON"), "minimal");
 	assert.equal(api.diffModeFromFilename("nope.json"), null);
@@ -117,31 +119,13 @@ test("defaultDiffModeKey: ideal > minimal > leo_star > leo, honours a present re
 
 test("DIFF_METHODS: single source derives files / bases / curated consistently", () => {
 	const keys = api.DIFF_METHODS.map((m) => m.key);
-	assert.deepEqual(keys, [
-		"ideal",
-		"minimal",
-		"leo_star",
-		"leo_star_plus",
-		"lcs_star",
-		"lcs",
-		"git_star",
-		"git",
-	]);
+	assert.deepEqual(keys, ["ideal", "minimal", "leo_star", "lcs", "git"]);
 	for (const m of api.DIFF_METHODS) {
 		assert.equal(api.DIFF_MARKS_FILES[m.key], m.filename);
 	}
 	assert.deepEqual(
 		api.REMARKS_BASES.map((b) => b.key),
-		[
-			"ideal",
-			"minimal",
-			"leo_star",
-			"leo_star_plus",
-			"lcs_star",
-			"lcs",
-			"git_star",
-			"git",
-		],
+		["ideal", "minimal", "leo_star", "lcs", "git"],
 	);
 	assert.deepEqual([...api.CURATED_MODES].sort(), ["ideal", "minimal"]);
 });
@@ -220,4 +204,44 @@ test("parseFollowEvents: reads optional ~sim suffix on paired missing tokens", (
 	assert.equal(evs[1].kind, "extra");
 	assert.equal(evs[1].token, "color");
 	assert.equal("sim" in evs[1], false);
+});
+
+test("a stamped remarks file is visible to every tool, not just Students", () => {
+	const stamped = "remarks_ideal_20260831-091400.xlsx";
+	assert.equal(api.remarksBasisOf(stamped), "ideal");
+	assert.equal(api.remarksStampOf(stamped), "_20260831-091400");
+	assert.ok(api.remarksFileRe("ideal").test(stamped));
+
+	const plain = "remarks_leo_star.xlsx";
+	assert.equal(api.remarksBasisOf(plain), "leo_star");
+	assert.equal(api.remarksStampOf(plain), "");
+	assert.ok(api.remarksFileRe("leo_star").test(plain));
+
+	assert.equal(api.remarksBasisOf("notes.xlsx"), null);
+	assert.equal(api.remarksFileRe("ideal").test("remarks_minimal.xlsx"), false);
+});
+
+test("no tool hardcodes the remarks filename or the default basis order", () => {
+	const read = (p) =>
+		fs.readFileSync(
+			path.resolve(__dirname, "..", "lesson_tools", p),
+			"utf-8",
+		);
+	for (const f of [
+		"students/load.js",
+		"timeline/students.js",
+		"overview/basis.js",
+	]) {
+		const src = read(f);
+		assert.equal(
+			/\["ideal", ?"leo_star"\]/.test(src),
+			false,
+			`${f} keeps its own default order, which drops "minimal"`,
+		);
+		assert.equal(
+			/remarks_\$\{[a-zA-Z]+\}\.xlsx/.test(src),
+			false,
+			`${f} spells the remarks filename itself instead of using the shared rule`,
+		);
+	}
 });

@@ -198,6 +198,7 @@ LEO includes quick-insert buttons for special characters commonly used in coding
 - **Navigation**: ←, →, ↑, ↓, ◄ (Home), ► (End), ▲ (Page Up), ▼ (Page Down)
 - **Editing**: ⌫ (Backspace), ― (Tab), ↩ (Enter)
 - **Shift Navigation**: ⇑ (Shift+Up), ⇓ (Shift+Down), ⇐ (Shift+Left), ⇒ (Shift+Right)
+- **Clipboard**: ✂ (Cut: Ctrl+X), ⧉ (Copy: Ctrl+C), 📥 (Paste: Ctrl+V)
 - **Shortcuts**: 💾 (Save: Ctrl+S), 🔁 (Alt+Tab)
 - **Timing**: 🕛 (Pause 500ms during typing)
 - **Block Markers**: ❓ (Question block), 🖼️ (Image block), 🌐 (Web block), 📋 (Code insert), ➡️ (Move to)

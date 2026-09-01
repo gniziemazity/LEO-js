@@ -6,11 +6,13 @@ class Tooltip {
 		createId = null,
 		inlineStyle = null,
 		manageWhiteSpace = false,
+		offset = { x: 14, y: -8 },
 	} = {}) {
 		this._el = el;
 		this._createId = createId;
 		this._inlineStyle = inlineStyle;
 		this._manageWhiteSpace = manageWhiteSpace;
+		this._offset = offset;
 	}
 	_ensure() {
 		if (this._el && document.body.contains(this._el)) return this._el;
@@ -41,9 +43,10 @@ class Tooltip {
 		if (!el) return;
 		const tw = el.offsetWidth;
 		const th = el.offsetHeight;
-		let tx = e.clientX + 14;
-		let ty = e.clientY - 8;
-		if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+		const off = this._offset;
+		let tx = e.clientX + off.x;
+		let ty = e.clientY + off.y;
+		if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - off.x;
 		if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 8;
 		el.style.left = tx + "px";
 		el.style.top = ty + "px";

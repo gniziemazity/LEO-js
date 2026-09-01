@@ -79,11 +79,6 @@ function loadConnection(opts) {
 			close() {}
 			send() {}
 		},
-		URLSearchParams: class {
-			get() {
-				return null;
-			}
-		},
 		location: { search: "" },
 		setTimeout: (fn, ms) => {
 			timers.push({ fn, ms });

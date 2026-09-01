@@ -3,7 +3,6 @@ const path = require("path");
 const { broadcastServer } = require("./context");
 const state = require("./state");
 const FloatingWindow = require("./floating-window");
-const { WINDOW_CONFIG } = require("../shared/constants");
 const { closeToolWindows } = require("./lesson-tools");
 
 const floatState = {
@@ -13,25 +12,8 @@ const floatState = {
 	questionOptions: [],
 };
 
-const CONTROL_PANEL_WIDTH = 504;
 const QUESTION_WIN_OFFSCREEN_MARGIN = 40;
 const QUESTION_WIN_SQUARE_SIDE = 700;
-let controlPanelVisible = false;
-
-function setPanelVisible(show) {
-	show = !!show;
-	if (show === controlPanelVisible) return;
-	const win = state.mainWindow;
-	if (!win || win.isDestroyed()) return;
-	controlPanelVisible = show;
-	const b = win.getBounds();
-	const width = show
-		? b.width + CONTROL_PANEL_WIDTH
-		: Math.max(WINDOW_CONFIG.width, b.width - CONTROL_PANEL_WIDTH);
-	win.setBounds({ x: b.x, y: b.y, width, height: b.height });
-	win.webContents.send("control-panel-visible", show);
-}
-
 let _activeFloat = null;
 
 function _activeFloatInstance() {
@@ -238,10 +220,17 @@ function _trackWindowRect(win, getRect) {
 	});
 }
 
-const _questionFloat = new FloatingWindow({
-	broadcastServer,
-	floatRect: _floatRect,
-	trackWindowRect: _trackWindowRect,
+function makeFloat(opts) {
+	return new FloatingWindow({
+		broadcastServer,
+		floatRect: _floatRect,
+		trackWindowRect: _trackWindowRect,
+		onShow: _onFloatShown,
+		...opts,
+	});
+}
+
+const _questionFloat = makeFloat({
 	channel: "set-question",
 	make: () => {
 		const display = screen.getPrimaryDisplay();
@@ -261,7 +250,6 @@ const _questionFloat = new FloatingWindow({
 			html: "../question-window.html",
 		});
 	},
-	onShow: _onFloatShown,
 	onClosed: () => {
 		_randomizerFloat.close({ force: true });
 		_optionsFloat.close({ force: true });
@@ -269,7 +257,6 @@ const _questionFloat = new FloatingWindow({
 			floatState.questionWindowStudentAnswered = null;
 			return;
 		}
-		setPanelVisible(false);
 		if (floatState.questionWindowIsLesson) {
 			broadcastServer.broadcastQuestionEnded();
 			if (floatState.questionWindowStudentAnswered === null) {
@@ -281,10 +268,7 @@ const _questionFloat = new FloatingWindow({
 	},
 });
 
-const _imageFloat = new FloatingWindow({
-	broadcastServer,
-	floatRect: _floatRect,
-	trackWindowRect: _trackWindowRect,
+const _imageFloat = makeFloat({
 	channel: "set-image",
 	make: () =>
 		_makeFloatingWindow({
@@ -293,13 +277,9 @@ const _imageFloat = new FloatingWindow({
 			title: "Image",
 			html: "../image-window.html",
 		}),
-	onShow: _onFloatShown,
 });
 
-const _webFloat = new FloatingWindow({
-	broadcastServer,
-	floatRect: _floatRect,
-	trackWindowRect: _trackWindowRect,
+const _webFloat = makeFloat({
 	channel: "set-url",
 	make: () => {
 		const win = _makeFloatingWindow({
@@ -324,13 +304,9 @@ const _webFloat = new FloatingWindow({
 		});
 		return win;
 	},
-	onShow: _onFloatShown,
 });
 
-const _randomizerFloat = new FloatingWindow({
-	broadcastServer,
-	floatRect: _floatRect,
-	trackWindowRect: _trackWindowRect,
+const _randomizerFloat = makeFloat({
 	channel: "set-randomizer",
 	make: () => {
 		const { x, y } = _centeredPos(600, 600);
@@ -343,13 +319,9 @@ const _randomizerFloat = new FloatingWindow({
 			html: "../randomizer-window.html",
 		});
 	},
-	onShow: _onFloatShown,
 });
 
-const _optionsFloat = new FloatingWindow({
-	broadcastServer,
-	floatRect: _floatRect,
-	trackWindowRect: _trackWindowRect,
+const _optionsFloat = makeFloat({
 	channel: "set-options",
 	make: () => {
 		const { x, y } = _centeredPos(700, 600);
@@ -362,7 +334,6 @@ const _optionsFloat = new FloatingWindow({
 			html: "../options-window.html",
 		});
 	},
-	onShow: _onFloatShown,
 });
 
 function closeAllChildWindows() {
@@ -382,7 +353,6 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 	floatState.questionWindowBgColor = bgColor || null;
 	floatState.questionOptions = [];
 	floatState.questionWindowStudentAnswered = null;
-	setPanelVisible(true);
 	_questionFloat.showOrReuse(payload, {});
 }
 
@@ -459,7 +429,6 @@ function animateQuestionWindowOnScreen() {
 
 module.exports = {
 	floatState,
-	setPanelVisible,
 	openQuestionWindow,
 	closeAllChildWindows,
 	setQuestionWindowSquare,

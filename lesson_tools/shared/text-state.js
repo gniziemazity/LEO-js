@@ -52,6 +52,28 @@ class TextState {
 		this.cursor = start;
 	}
 
+	removeRange(start, end) {
+		start = Math.max(0, Math.min(this.text.length, start));
+		end = Math.max(start, Math.min(this.text.length, end));
+		const cut = this.text.slice(start, end);
+		this.cursor = end;
+		for (let i = end; i > start; i--) this.deleteBack(1);
+		return cut;
+	}
+
+	selectionRange() {
+		if (this.selAnchor === null) return null;
+		const a = Math.min(this.selAnchor, this.cursor);
+		const b = Math.max(this.selAnchor, this.cursor);
+		return a === b ? null : [a, b];
+	}
+
+	currentLineRange() {
+		const ls = lineStartAt(this.text, this.cursor);
+		const raw = this.text.indexOf("\n", this.cursor);
+		return [ls, raw === -1 ? this.text.length : raw + 1];
+	}
+
 	deleteForward(n = 1) {
 		if (this.cursor + n > this.text.length) return;
 		const end = this.cursor + n;

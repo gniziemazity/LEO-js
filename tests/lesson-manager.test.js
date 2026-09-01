@@ -34,32 +34,26 @@ test("removeBlock removes at index and returns true", () => {
 	assert.equal(lm.getBlock(0).text, "b");
 });
 
-test("_moveToFileName: file (bare or ⚓-wrapped) vs anchor vs special", () => {
-	assert.equal(LessonManager._moveToFileName("index.html"), "index.html");
-	assert.equal(LessonManager._moveToFileName("⚓index.html⚓"), "index.html");
-	assert.equal(LessonManager._moveToFileName("⚓5⚓"), null);
-	assert.equal(LessonManager._moveToFileName("MAIN"), null);
-	assert.equal(LessonManager._moveToFileName("DEV"), null);
-	assert.equal(LessonManager._moveToFileName(null), null);
-});
-
-test("_migrateBlocks: unwraps legacy ⚓file.ext⚓ targets, keeps anchors wrapped", () => {
-	const migrated = LessonManager._migrateBlocks([
-		{ type: "move-to", target: "⚓index.html⚓" },
+test("_migrateBlocks touches only code blocks", () => {
+	const blocks = [
 		{ type: "move-to", target: "⚓5⚓" },
 		{ type: "move-to", target: "MAIN" },
 		{ type: "comment", text: "➡️ ⚓app.js⚓" },
-	]);
-	assert.equal(migrated[0].target, "index.html");
-	assert.equal(migrated[1].target, "⚓5⚓");
-	assert.equal(migrated[2].target, "MAIN");
-	assert.deepEqual(migrated[3], { type: "move-to", target: "app.js" });
+	];
+	const migrated = LessonManager._migrateBlocks(blocks);
+	assert.equal(migrated[0].target, "⚓5⚓");
+	assert.equal(migrated[1].target, "MAIN");
+	assert.deepEqual(
+		migrated[2],
+		blocks[2],
+		"a comment is passed through whatever it starts with",
+	);
 });
 
-test("getAllMoveToFiles: collects bare + legacy file targets, dedups, ignores anchors/MAIN", () => {
+test("getAllMoveToFiles: collects file targets, dedups, ignores anchors/MAIN", () => {
 	const lm = new LessonManager();
 	lm.addBlock("move-to", null, "a.js");
-	lm.addBlock("move-to", null, "⚓b.css⚓");
+	lm.addBlock("move-to", null, "b.css");
 	lm.addBlock("move-to", null, "a.js");
 	lm.addBlock("move-to", null, "⚓7⚓");
 	lm.addBlock("move-to", null, "MAIN");
@@ -106,4 +100,35 @@ test("addBlock / removeBlock / updateBlock all trigger markAsChanged", () => {
 	lm.updateBlock(0, "x");
 	lm.removeBlock(0);
 	assert.equal(called, 3);
+});
+
+test("a code block cannot start or end with a bare newline", () => {
+	const lm = new LessonManager();
+	lm.addBlock("code", null, "\nfoo\n");
+	assert.equal(lm.getBlock(0).text, "↩foo↩");
+	lm.updateBlock(0, "\n\nbar");
+	assert.equal(lm.getBlock(0).text, "↩↩bar");
+});
+
+test("comment blocks keep their newlines - a ↩ there would paste literally", () => {
+	const lm = new LessonManager();
+	lm.addBlock("comment", null, "\n📋 code\n");
+	assert.equal(lm.getBlock(0).text, "\n📋 code\n");
+	lm.updateBlock(0, "\nnote\n");
+	assert.equal(lm.getBlock(0).text, "\nnote\n");
+});
+
+test("loading a plan migrates edge newlines in code blocks", () => {
+	const migrated = LessonManager._migrateBlocks([
+		{ type: "code", text: "\nconst x = 1;" },
+		{ type: "comment", text: "\njust a note\n" },
+		{ type: "code", text: "a\nb" },
+		{ type: "move-to", target: "⚓3⚓" },
+	]);
+	assert.deepEqual(migrated, [
+		{ type: "code", text: "↩const x = 1;" },
+		{ type: "comment", text: "\njust a note\n" },
+		{ type: "code", text: "a\nb" },
+		{ type: "move-to", target: "⚓3⚓" },
+	]);
 });

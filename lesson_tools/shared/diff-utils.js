@@ -32,26 +32,6 @@ const DIFF_METHODS = [
 		selectable: true,
 	},
 	{
-		key: "leo_star_plus",
-		label: "Leo*+",
-		filename: "diff_marks_leo_star_plus.json",
-		isCurated: false,
-		isStar: true,
-		baseMethod: "leo",
-		requiresKeylog: true,
-		selectable: true,
-	},
-	{
-		key: "lcs_star",
-		label: "LCS*",
-		filename: "diff_marks_lcs_star.json",
-		isCurated: false,
-		isStar: true,
-		baseMethod: "lcs",
-		requiresKeylog: true,
-		selectable: true,
-	},
-	{
 		key: "lcs",
 		label: "LCS",
 		filename: "diff_marks_lcs.json",
@@ -59,16 +39,6 @@ const DIFF_METHODS = [
 		isStar: false,
 		baseMethod: "lcs",
 		requiresKeylog: false,
-		selectable: true,
-	},
-	{
-		key: "git_star",
-		label: "Git*",
-		filename: "diff_marks_git_star.json",
-		isCurated: false,
-		isStar: true,
-		baseMethod: "git",
-		requiresKeylog: true,
 		selectable: true,
 	},
 	{
@@ -97,6 +67,32 @@ const CURATED_MODES = new Set(
 );
 
 const DIFF_MARKS_PRIORITY = ["ideal", "minimal", "leo_star"];
+
+const REMARKS_STAMP = String.raw`(?:_(?:\d{8}-\d{6}|\d{10,}))?`;
+
+function remarksFileRe(basis) {
+	return new RegExp(String.raw`^remarks_${basis}${REMARKS_STAMP}\.xlsx$`, "i");
+}
+
+function remarksStampOf(name) {
+	const m = String(name).match(
+		new RegExp(
+			String.raw`^remarks_[a-z0-9_]+?(${REMARKS_STAMP})\.xlsx$`,
+			"i",
+		),
+	);
+	return m ? m[1] : "";
+}
+
+function remarksBasisOf(name) {
+	const m = String(name).match(
+		new RegExp(
+			String.raw`^remarks_([a-z0-9_]+?)${REMARKS_STAMP}\.xlsx$`,
+			"i",
+		),
+	);
+	return m ? m[1].toLowerCase() : null;
+}
 
 const INTERACTION_KINDS = {
 	"teacher-question": { icon: "❓", label: "Teacher Question" },

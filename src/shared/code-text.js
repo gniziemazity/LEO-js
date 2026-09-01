@@ -1,11 +1,16 @@
 (function (root) {
 	const ANCHOR_RE = /⚓[^⚓]*⚓/g;
 
-	function createCharSpan(char, stepIndex) {
+	function createCharSpan(char, stepIndex, holdLine) {
 		let el = document.createElement("span");
 		el.className = "char";
 		if (char === "\n") {
-			el = document.createElement("br");
+			if (holdLine) {
+				el.classList.add("trailing-newline");
+				el.textContent = "\u200b";
+			} else {
+				el = document.createElement("br");
+			}
 		} else if (char === " ") {
 			el.innerHTML = "&nbsp;";
 		} else {
@@ -21,6 +26,39 @@
 		span.textContent = value;
 		span.dataset.stepIndex = stepIndex;
 		return span;
+	}
+
+	function isEmptyLineBlock(el) {
+		return el.childNodes.length === 1 && el.childNodes[0].nodeName === "BR";
+	}
+
+	function readCodeText(el) {
+		let text = "";
+		const append = (node) => {
+			for (const child of node.childNodes) {
+				if (child.nodeType === 3) {
+					text += child.data;
+				} else if (child.nodeName === "BR") {
+					text += "\n";
+				} else {
+					text += "\n";
+					if (!isEmptyLineBlock(child)) append(child);
+				}
+			}
+		};
+		append(el);
+		return text;
+	}
+
+	function writeCodeText(el, text) {
+		el.textContent = "";
+		const body = text.replace(/\n+$/, "");
+		if (body) el.appendChild(document.createTextNode(body));
+		for (let i = body.length; i < text.length; i++) {
+			const line = document.createElement("div");
+			line.appendChild(document.createElement("br"));
+			el.appendChild(line);
+		}
 	}
 
 	function splitAnchorSegments(text) {
@@ -44,6 +82,21 @@
 		return segments;
 	}
 
+	// A newline at the very start or end of a code block is a keystroke that
+	// looks like empty space, so it reads as stray formatting and gets typed
+	// anyway. In the middle a newline is the line separator and stays raw.
+	function normalizeEdgeNewlines(text) {
+		const s = String(text == null ? "" : text);
+		const lead = s.length - s.replace(/^\n+/, "").length;
+		const body = s.slice(lead);
+		const trail = body.length - body.replace(/\n+$/, "").length;
+		return (
+			"↩".repeat(lead) +
+			body.slice(0, body.length - trail) +
+			"↩".repeat(trail)
+		);
+	}
+
 	function stripAnchors(text) {
 		return splitAnchorSegments(String(text || ""))
 			.filter((seg) => seg.type === "text")
@@ -54,6 +107,8 @@
 	function buildCodeText(text, container, startIndex, onStep) {
 		let stepIndex = startIndex;
 		const segments = splitAnchorSegments(text);
+		const trailingFrom = text.replace(/\n+$/, "").length;
+		let offset = 0;
 		for (const seg of segments) {
 			if (seg.type === "anchor") {
 				const span = createAnchorSpan(seg.value, stepIndex);
@@ -66,9 +121,14 @@
 						globalIndex: stepIndex,
 					});
 				stepIndex++;
+				offset += seg.value.length;
 			} else {
 				for (const char of seg.value) {
-					const span = createCharSpan(char, stepIndex);
+					const isTrailingNewline =
+						char === "\n" && offset >= trailingFrom;
+					const span = createCharSpan(char, stepIndex, isTrailingNewline);
+					if (isTrailingNewline)
+						container.appendChild(document.createElement("br"));
 					container.appendChild(span);
 					if (onStep)
 						onStep({
@@ -78,6 +138,7 @@
 							globalIndex: stepIndex,
 						});
 					stepIndex++;
+					offset += char.length;
 				}
 			}
 		}
@@ -88,8 +149,11 @@
 		ANCHOR_RE,
 		createCharSpan,
 		createAnchorSpan,
+		readCodeText,
+		writeCodeText,
 		splitAnchorSegments,
 		stripAnchors,
+		normalizeEdgeNewlines,
 		buildCodeText,
 	};
 

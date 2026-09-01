@@ -178,17 +178,25 @@
 				<button class="overlay-close-btn" onclick="closeMoveToOverlay()">
 					✕
 				</button>
-				<div class="mt-modal-emoji" id="mtoEmoji">➡️</div>
 				<div class="popup-title" id="mtoTitle">Move to…</div>
 				<div class="mt-modal-target" id="mtoTarget"></div>
-				<div class="mt-modal-snippet" id="mtoSnippet"></div>
-				<button
-					class="mt-modal-confirm"
-					id="mtoConfirm"
-					onclick="closeMoveToOverlay()"
-				>
-					OK
-				</button>
+				<div class="snippet-view mt-modal-snippet" id="mtoSnippet"></div>
+				<div class="mt-modal-actions" id="mtoActions">
+					<button
+						class="mt-modal-confirm"
+						id="mtoTypeName"
+						onclick="moveToTypeName()"
+					>
+						Auto-type
+					</button>
+					<button
+						class="mt-modal-confirm"
+						id="mtoConfirm"
+						onclick="closeMoveToOverlay()"
+					>
+						OK
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -200,19 +208,21 @@
 				>
 					✕
 				</button>
-				<div class="mt-modal-emoji">📋</div>
-				<div class="popup-title">Insert code:</div>
-				<div class="mt-modal-snippet ci-modal-code" id="ciCode"></div>
+				<div class="popup-title">Code snippet:</div>
+				<div
+					class="snippet-view mt-modal-snippet ci-modal-code"
+					id="ciCode"
+				></div>
 				<div class="ci-modal-actions" id="ciActions">
 					<div class="ci-modal-hint" id="ciHint">
-						Ctrl/⌘+V in your editor
+						(to paste: Ctrl/⌘+V in your editor)
 					</div>
 					<button
 						class="mt-modal-confirm ci-paste-btn"
 						id="ciPaste"
 						onclick="codeInsertPaste()"
 					>
-						📋 Paste
+						Paste
 					</button>
 					<button
 						class="mt-modal-confirm"
@@ -227,6 +237,8 @@
 		<script src="code-text.js"></script>
 		<script src="move-to-target.js"></script>
 		<script src="blocks.js"></script>
+		<script src="snippet-view.js"></script>
+		<script src="interaction-view.js"></script>
 		<script src="remote/connection.js"></script>
 		<script src="remote/touchpad.js"></script>
 		<script src="remote/timer.js"></script>
@@ -260,7 +272,7 @@
 						break;
 					case "active":
 						updateActiveState(data.isActive);
-						setAutoTypingActive(data.isActive);
+						setSessionActive(data.isActive);
 						break;
 					case "students":
 						setStudents(data.students);
@@ -285,6 +297,9 @@
 					case "move-to-started":
 						showMoveToOverlay(data);
 						break;
+					case "move-to-typing":
+						moveToOverlay.setTyped(data);
+						break;
 					case "move-to-ended":
 						closeMoveToOverlayUI();
 						break;
@@ -307,7 +322,7 @@
 				updateProgress(state);
 				if (state.isActive !== undefined) {
 					updateActiveState(state.isActive);
-					setAutoTypingActive(state.isActive);
+					setSessionActive(state.isActive);
 				}
 				if (state.settings) applySettings(state.settings);
 				if (state.lessonData) updateLessonData(state.lessonData);

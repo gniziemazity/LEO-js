@@ -32,7 +32,7 @@ class FileOperations {
 
 		this.lessonManager.create(filePath, async (err) => {
 			if (err) {
-				console.error("Failed to create file:", err);
+				console.error("[LEO] create failed:", err);
 				alert("Failed to create file: " + err);
 				return;
 			}
@@ -65,7 +65,7 @@ class FileOperations {
 
 		this.lessonManager.load(filePath, (err, data) => {
 			if (err) {
-				console.error("Failed to load file:", err);
+				console.error("[LEO] load failed:", err);
 				alert("Failed to load file: " + err);
 				if (localStorage.getItem("lastLessonPath") === filePath) {
 					localStorage.removeItem("lastLessonPath");
@@ -83,9 +83,6 @@ class FileOperations {
 
 			this.lessonRenderer.render();
 			this.setInitialStateToInactive();
-
-			const lessonName = path.basename(filePath, path.extname(filePath));
-			ipcRenderer.send("update-lesson-name", lessonName);
 
 			if (this.onLessonLoaded) {
 				this.onLessonLoaded();
@@ -115,7 +112,7 @@ class FileOperations {
 	saveLesson() {
 		this.lessonManager.save((err) => {
 			if (err) {
-				console.error("Save failed:", err);
+				console.error("[LEO] save failed:", err);
 				alert("Save failed: " + err);
 			} else {
 				this.updateWindowTitleWithUnsavedIndicator();

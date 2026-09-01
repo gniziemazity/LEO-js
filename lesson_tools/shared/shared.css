@@ -287,8 +287,7 @@ body {
 	color: var(--clr-accent);
 }
 
-.follow-pct,
-.lang-pct {
+.follow-pct {
 	display: block;
 	font-weight: 700;
 	line-height: 1.1;

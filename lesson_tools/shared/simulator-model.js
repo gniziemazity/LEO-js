@@ -2,6 +2,14 @@
 
 const DELAY_OPS = 15;
 
+function _newTextState() {
+	const TS =
+		typeof TextState !== "undefined"
+			? TextState
+			: require("./text-state.js").TextState;
+	return new TS();
+}
+
 function lineStartAt(text, pos) {
 	return text.lastIndexOf("\n", pos - 1) + 1;
 }
@@ -19,6 +27,7 @@ function currentLineIndent(text, pos) {
 	return leadingIndent(text.slice(lineStartAt(text, pos), pos));
 }
 
+const PAGE_LINES = 20;
 const CURSOR_MOVES = {
 	"←": [0, -1],
 	"→": [0, +1],
@@ -26,8 +35,8 @@ const CURSOR_MOVES = {
 	"↓": [+1, 0],
 	"◄": "linestart",
 	"►": "lineend",
-	"▲": [-20, 0],
-	"▼": [+20, 0],
+	"▲": [-PAGE_LINES, 0],
+	"▼": [+PAGE_LINES, 0],
 };
 const SHIFT_CURSOR_MOVES = {
 	"⇑": [-1, 0],
@@ -52,7 +61,6 @@ const CURSOR_MOVE_LABELS = {
 
 const CHAR_REPLACEMENTS = { "↩": "\n", "\n": "\n", "―": "\t", "\t": "\t" };
 const DELETE_LINE_CHAR = "⛔";
-const DELETE_FWRD_CHAR = "⌦";
 const IGNORED_CHARS = new Set([
 	"💾",
 	"🔁",
@@ -67,6 +75,22 @@ const IGNORED_CHARS = new Set([
 ]);
 const PAUSE_CHAR = "🕛";
 const PAUSE_MS = 500;
+
+const CUT_CHAR = "✂";
+const COPY_CHAR = "⧉";
+const PASTE_CHAR = "📥";
+const PASTE_CHARS = new Set([PASTE_CHAR]);
+const CLIPBOARD_CHARS = new Set([CUT_CHAR, COPY_CHAR, ...PASTE_CHARS]);
+const CLIPBOARD_LABELS = {
+	"✂": "Cut",
+	"⧉": "Copy",
+	"📥": "Paste",
+};
+const CLIPBOARD = { text: "" };
+
+function resetClipboard() {
+	CLIPBOARD.text = "";
+}
 
 const HTML_VOID_TAGS = new Set([
 	"area",
@@ -100,8 +124,8 @@ const CLR =
 			}
 		: {};
 
-const _EXPAND_BACKSPACE = new Set(["↢", "⌫"]);
-const _EXPAND_FWD_DEL = new Set(["↣", "⌦"]);
+const BACKSPACE_CHARS = new Set(["⌫", "↢"]);
+const DELETE_FWRD_CHARS = new Set(["⌦"]);
 const _MOVE_TO_FILE_RE = /\.[a-z0-9]+$/i;
 
 function _splitCodeWithAnchors(code) {
@@ -301,46 +325,67 @@ function autoIndent(state, ts = 0, getOpensCloses = null) {
 	}
 }
 
+function applyClipboardChar(state, ch, ts = 0) {
+	const sel = state.selectionRange();
+	if (ch === CUT_CHAR) {
+		const [s, e] = sel || state.currentLineRange();
+		CLIPBOARD.text = state.removeRange(s, e);
+	} else if (ch === COPY_CHAR) {
+		const [s, e] = sel || state.currentLineRange();
+		CLIPBOARD.text = state.text.slice(s, e);
+	} else {
+		if (sel) state.removeRange(sel[0], sel[1]);
+		for (const c of CLIPBOARD.text) state.insert(c, ts);
+	}
+	state.selAnchor = null;
+}
+
+function indentSelection(state, ts = 0) {
+	const sel = state.selectionRange();
+	if (!sel) return false;
+	const [selStart, selEnd] = sel;
+
+	const lineStarts = [lineStartAt(state.text, selStart)];
+	let p = lineStarts[0];
+	while (true) {
+		const nl = state.text.indexOf("\n", p);
+		if (nl === -1 || nl >= selEnd) break;
+		lineStarts.push(nl + 1);
+		p = nl + 1;
+	}
+	if (lineStarts.length > 1 && lineStarts[lineStarts.length - 1] === selEnd) {
+		lineStarts.pop();
+	}
+
+	let cursor = state.cursor;
+	for (let i = lineStarts.length - 1; i >= 0; i--) {
+		const pos = lineStarts[i];
+		state.text = state.text.slice(0, pos) + "\t" + state.text.slice(pos);
+		state.charTs.splice(pos, 0, ts);
+		for (const name in state.anchors) {
+			if (state.anchors[name] > pos) state.anchors[name]++;
+		}
+		if (cursor > pos) cursor++;
+	}
+	state.cursor = cursor;
+	state.selAnchor = null;
+	return true;
+}
+
 function applyTypedChar(state, ch, ts = 0, opts = {}) {
 	if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) return;
 	if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
+		state.selAnchor = null;
 		state.moveCursor(CURSOR_MOVES[ch]);
 		return;
 	}
 	if (Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)) {
+		if (state.selAnchor === null) state.selAnchor = state.cursor;
 		state.moveCursor(SHIFT_CURSOR_MOVES[ch]);
 		return;
 	}
-	if (ch === "↩" || ch === "\n") {
-		state.insert("\n", ts);
-		autoIndent(state, ts, opts.getOpensCloses);
-		return;
-	}
-	if (ch === "―" || ch === "\t") {
-		state.insert("\t", ts);
-		return;
-	}
-	if (_EXPAND_BACKSPACE.has(ch)) {
-		if (backspaceIsIgnored(state)) return;
-		state.deleteBack(1);
-		return;
-	}
-	if (_EXPAND_FWD_DEL.has(ch)) {
-		state.deleteForward(1);
-		return;
-	}
-	if (ch === DELETE_LINE_CHAR) {
-		state.deleteLine();
-		return;
-	}
-	autoDedent(state, ch, ts);
-	state.insert(ch, ts);
-}
-
-function applyAtomicChar(state, ch, ts = 0, opts = {}) {
-	if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) return;
-	if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
-		state.moveCursor(CURSOR_MOVES[ch]);
+	if (CLIPBOARD_CHARS.has(ch)) {
+		applyClipboardChar(state, ch, ts);
 		return;
 	}
 	if (ch === "↩" || ch === "\n") {
@@ -349,15 +394,15 @@ function applyAtomicChar(state, ch, ts = 0, opts = {}) {
 		return;
 	}
 	if (ch === "―" || ch === "\t") {
-		state.insert("\t", ts);
+		if (!indentSelection(state, ts)) state.insert("\t", ts);
 		return;
 	}
-	if (_EXPAND_BACKSPACE.has(ch)) {
+	if (BACKSPACE_CHARS.has(ch)) {
 		if (backspaceIsIgnored(state)) return;
 		state.deleteBack(1);
 		return;
 	}
-	if (_EXPAND_FWD_DEL.has(ch)) {
+	if (DELETE_FWRD_CHARS.has(ch)) {
 		state.deleteForward(1);
 		return;
 	}
@@ -385,24 +430,261 @@ function applyTypedText(state, text, ts = 0, opts = {}) {
 }
 
 function applyAtomicText(state, text, ts = 0, opts = {}) {
-	applyTextSegmented(state, text, applyAtomicChar, ts, opts);
+	applyTextSegmented(state, text, applyTypedChar, ts, opts);
+}
+
+function makeReplayContext(lessonFile = null) {
+	const files = new Map([["MAIN", _newTextState()]]);
+	return {
+		files,
+		dev: _newTextState(),
+		activeFilename: "MAIN",
+		selAnchorMain: null,
+		lessonFile,
+		get main() {
+			return this.files.get(this.activeFilename);
+		},
+		switchToFile(filename) {
+			if (!this.files.has(filename))
+				this.files.set(filename, _newTextState());
+			this.activeFilename = filename;
+		},
+		opensCloses() {
+			return replayOpensCloses(this.activeFilename, this.lessonFile);
+		},
+	};
+}
+
+function replayActiveProfile(activeFilename, lessonFile) {
+	const LP = typeof window !== "undefined" ? window.LanguageProfiles : null;
+	if (!LP) return null;
+	const fn = (activeFilename || "").toLowerCase();
+	const dot = fn.lastIndexOf(".");
+	if (dot > 0) {
+		const p = LP.getProfile(fn.slice(dot));
+		if (p) return p;
+	}
+	const lessonExt = LP.lessonFileExtension
+		? LP.lessonFileExtension(lessonFile)
+		: null;
+	if (lessonExt) {
+		const p = LP.getProfile(lessonExt);
+		if (p) return p;
+	}
+	return LP.getProfile(".html");
+}
+
+function replayOpensCloses(activeFilename, lessonFile) {
+	return (prevLine, afterTrimmed) => {
+		const LP = typeof window !== "undefined" ? window.LanguageProfiles : null;
+		if (!LP) return null;
+		const profile = replayActiveProfile(activeFilename, lessonFile);
+		if (!profile) return null;
+		return {
+			opens: LP.shouldIncreaseAfter(profile, prevLine),
+			closes: LP.shouldDecreaseOnLine(profile, afterTrimmed),
+			dedentAfter: LP.shouldDecreaseAfter(profile, prevLine),
+		};
+	};
+}
+
+function _devSemicolonNewline(dev, ts) {
+	const indent = currentLineIndent(dev.text, dev.cursor);
+	dev.insert("\n", ts);
+	for (const c of indent) dev.insert(c, ts);
+}
+
+function replayChar(ctx, ch, ts, delay, editor, hooks) {
+	const log = (hooks && hooks.log) || (() => {});
+	const st = editor === "dev" ? ctx.dev : ctx.main;
+
+	if (ch in CURSOR_MOVES) {
+		ctx.main.moveCursor(CURSOR_MOVES[ch]);
+		ctx.selAnchorMain = null;
+		const lbl = CURSOR_MOVE_LABELS[ch];
+		log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""}`, CLR.blue);
+		return delay;
+	}
+	if (ch in SHIFT_CURSOR_MOVES) {
+		if (ctx.selAnchorMain === null) ctx.selAnchorMain = ctx.main.cursor;
+		ctx.main.moveCursor(SHIFT_CURSOR_MOVES[ch]);
+		const lbl = CURSOR_MOVE_LABELS[ch];
+		log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""} (select)`, CLR.blue);
+		return delay;
+	}
+	if (CLIPBOARD_CHARS.has(ch)) {
+		st.selAnchor = editor === "dev" ? null : ctx.selAnchorMain;
+		applyClipboardChar(st, ch, ts);
+		if (editor !== "dev") ctx.selAnchorMain = null;
+		log(ts, `⌨  ${ch} ${CLIPBOARD_LABELS[ch]}`, CLR.blue);
+		return delay;
+	}
+	if (ch in CHAR_REPLACEMENTS) {
+		const real = CHAR_REPLACEMENTS[ch];
+		if (real === "\t" && editor === "main" && ctx.selAnchorMain !== null) {
+			ctx.main.selAnchor = ctx.selAnchorMain;
+			indentSelection(ctx.main, ts);
+			ctx.selAnchorMain = null;
+			log(ts, "⌨  ― Tab", CLR.blue);
+			return delay;
+		}
+		st.insert(real, ts);
+		if (real === "\n" && editor === "main") {
+			autoIndent(ctx.main, ts, ctx.opensCloses());
+		}
+		log(ts, `⌨  ${real === "\n" ? "↩ Enter" : "― Tab"}`, CLR.blue);
+		return delay;
+	}
+	if (BACKSPACE_CHARS.has(ch)) {
+		if (backspaceIsIgnored(st)) {
+			log(ts, "⌫  Backspace", CLR.pale_red);
+			return delay;
+		}
+		st.deleteBack(1);
+		log(ts, "⌫  Backspace", CLR.red);
+		return delay;
+	}
+	if (DELETE_FWRD_CHARS.has(ch)) {
+		st.deleteForward(1);
+		log(ts, "⌦  Delete", CLR.blue);
+		return delay;
+	}
+	if (ch === DELETE_LINE_CHAR) {
+		st.deleteLine();
+		log(ts, "⛔  Delete Line", CLR.red);
+		return delay;
+	}
+	if (ch === PAUSE_CHAR) {
+		log(ts, "🕛  Pause 500 ms", CLR.dim);
+		return PAUSE_MS;
+	}
+	if (IGNORED_CHARS.has(ch)) return DELAY_OPS;
+
+	if (ch === ";" && editor === "dev") {
+		st.insert(ch, ts);
+		_devSemicolonNewline(ctx.dev, ts);
+		log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
+		return delay;
+	}
+
+	if (editor === "main") autoDedent(ctx.main, ch, ts);
+	st.insert(ch, ts);
+	log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
+	return delay;
+}
+
+function replayCodeInsert(ctx, code, ts, delay, editor, hooks) {
+	const log = (hooks && hooks.log) || (() => {});
+	log(ts, "⬇  Code Insert", CLR.orange);
+
+	for (const [segKind, segVal] of _splitCodeWithAnchors(code)) {
+		if (segKind !== "text") {
+			ctx.main.setAnchor(segVal);
+			continue;
+		}
+		for (const ch of segVal) {
+			const st = editor === "dev" ? ctx.dev : ctx.main;
+			if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) continue;
+			if (ch === DELETE_LINE_CHAR) {
+				st.deleteLine();
+			} else if (Object.prototype.hasOwnProperty.call(CURSOR_MOVES, ch)) {
+				st.selAnchor = null;
+				st.moveCursor(CURSOR_MOVES[ch]);
+			} else if (
+				Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)
+			) {
+				if (st.selAnchor === null) st.selAnchor = st.cursor;
+				st.moveCursor(SHIFT_CURSOR_MOVES[ch]);
+			} else if (CLIPBOARD_CHARS.has(ch)) {
+				applyClipboardChar(st, ch, ts);
+			} else if (ch === "↩" || ch === "\n") {
+				st.insert("\n", ts);
+				if (editor === "main") autoIndent(ctx.main, ts, ctx.opensCloses());
+			} else if (ch === "―" || ch === "\t") {
+				if (!indentSelection(st, ts)) st.insert("\t", ts);
+			} else if (BACKSPACE_CHARS.has(ch)) {
+				if (!backspaceIsIgnored(st)) st.deleteBack(1);
+			} else if (DELETE_FWRD_CHARS.has(ch)) {
+				st.deleteForward(1);
+			} else {
+				if (editor === "main") autoDedent(ctx.main, ch, ts);
+				st.insert(ch, ts);
+			}
+		}
+	}
+	return delay;
+}
+
+function replayStep(ctx, act, hooks = {}) {
+	const log = hooks.log || (() => {});
+	const kind = act[0];
+
+	if (kind === "switch_editor") {
+		const [, target, ts, delay] = act;
+		log(ts, `→  ${target === "dev" ? "Dev Tools" : "Main Editor"}`, CLR.move);
+		if (hooks.onEditor) hooks.onEditor(target);
+		if (target === "main") ctx.switchToFile("MAIN");
+		return delay;
+	}
+	if (kind === "char") {
+		const [, ch, ts, delay, editor] = act;
+		return replayChar(ctx, ch, ts, delay, editor, hooks);
+	}
+	if (kind === "set_anchor") {
+		const [, name, ts, delay] = act;
+		ctx.main.setAnchor(name);
+		log(ts, `⚓  ${name}`, CLR.accent);
+		return delay;
+	}
+	if (kind === "move_anchor") {
+		const [, name, ts, delay] = act;
+		if (ctx.main.jumpToAnchor(name)) {
+			log(ts, `→  ${name}`, CLR.move);
+			if (hooks.flashAnchor) hooks.flashAnchor();
+		} else {
+			log(ts, `⚠  Unknown anchor: ${name}`, CLR.red);
+		}
+		return delay;
+	}
+	if (kind === "switch_file") {
+		const [, filename, ts, delay] = act;
+		ctx.switchToFile(filename);
+		log(ts, `→  ${filename}`, CLR.move);
+		return delay;
+	}
+	if (kind === "code_insert_atomic") {
+		const [, code, ts, delay, editor] = act;
+		return replayCodeInsert(ctx, code, ts, delay, editor, hooks);
+	}
+	return DELAY_OPS;
 }
 
 if (typeof module !== "undefined" && module.exports) {
 	globalThis.lineStartAt = lineStartAt;
 	globalThis.lineEndAt = lineEndAt;
 	globalThis._moveByLines = _moveByLines;
-	const { TextState } = require("./text-state.js");
 	module.exports = {
-		TextState,
+		TextState: require("./text-state.js").TextState,
+		PAGE_LINES,
 		CURSOR_MOVES,
 		SHIFT_CURSOR_MOVES,
 		CURSOR_MOVE_LABELS,
 		CHAR_REPLACEMENTS,
 		DELETE_LINE_CHAR,
-		DELETE_FWRD_CHAR,
+		BACKSPACE_CHARS,
+		DELETE_FWRD_CHARS,
 		IGNORED_CHARS,
 		PAUSE_CHAR,
+		CUT_CHAR,
+		COPY_CHAR,
+		PASTE_CHAR,
+		PASTE_CHARS,
+		CLIPBOARD_CHARS,
+		CLIPBOARD_LABELS,
+		indentSelection,
+		CLIPBOARD,
+		resetClipboard,
+		applyClipboardChar,
 		PAUSE_MS,
 		HTML_VOID_TAGS,
 		CLOSING_TAG_PREFIXES,
@@ -416,8 +698,11 @@ if (typeof module !== "undefined" && module.exports) {
 		autoDedent,
 		autoIndent,
 		applyTypedChar,
-		applyAtomicChar,
 		applyTypedText,
+		makeReplayContext,
+		replayStep,
+		replayChar,
+		replayCodeInsert,
 		applyAtomicText,
 		_splitCodeWithAnchors,
 		expandEvents,

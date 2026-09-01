@@ -81,7 +81,7 @@ async function _overviewDetectBasisFiles() {
 	if (_overviewDs.files) {
 		for (const grp of ["lessons", "assignments"]) {
 			const re = new RegExp(
-				`^${grp}/([^/]+)/(?:excels/)?remarks_([a-z0-9_]+)\\.xlsx$`,
+				String.raw`^${grp}/([^/]+)/(?:excels/)?remarks_([a-z0-9_]+?)${REMARKS_STAMP}\.xlsx$`,
 			);
 			for (const [path, file] of _overviewDs.files) {
 				const m = path.match(re);
@@ -112,17 +112,15 @@ async function _overviewDetectBasisFiles() {
 					}
 					for (const e of files || []) {
 						if (!e || e.kind === "directory" || !e.name) continue;
-						const mm = e.name
-							.toLowerCase()
-							.match(/^remarks_([a-z0-9_]+)\.xlsx$/);
-						if (!mm) continue;
+						const basis = remarksBasisOf(e.name);
+						if (!basis) continue;
 						const url = new URL(
 							`/grades-data/${sub}${e.name}`,
 							location.href,
 						).href;
 						add(
 							t.name.toLowerCase(),
-							mm[1],
+							basis,
 							new HttpFileLike(url, e.name),
 						);
 					}
@@ -245,7 +243,7 @@ async function _overviewRenderBasisPicker() {
 
 function _overviewBuildBasisSelect(container, options) {
 	let chosen = null;
-	for (const k of ["ideal", "leo_star"]) {
+	for (const k of DIFF_MARKS_PRIORITY) {
 		if (_basisFiles.has(k)) {
 			chosen = k;
 			break;
@@ -268,10 +266,7 @@ function _overviewBuildBasisSelect(container, options) {
 	}
 	select.value = chosen;
 	const syncCurated = () =>
-		select.classList.toggle(
-			"is-curated",
-			select.value === "ideal" || select.value === "minimal",
-		);
+		select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
 	syncCurated();
 	select.addEventListener("change", () => {
 		syncCurated();

@@ -81,7 +81,10 @@ test("registering twice does not stack callbacks", () => {
 });
 
 function mainSrc() {
-	return fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
+	return (
+		fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8") +
+		fs.readFileSync(path.join(MAIN, "main.js"), "utf-8")
+	);
 }
 
 test("every pausing popup is torn down in one place, so the key cannot outlive it", () => {
@@ -97,8 +100,7 @@ test("every pausing popup is torn down in one place, so the key cannot outlive i
 
 	const teardown = /function endPopup\(kind\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(teardown, /unregisterConfirmPopup\(\)/);
-	assert.match(teardown, /state\.unpause\(\)/);
-	assert.match(teardown, /setPanelVisible\(false\)/);
+	assert.match(teardown, /state\.unpause\("popup"\)/);
 	assert.match(teardown, /popup\.ended\(\)/);
 	assert.match(
 		teardown,
@@ -135,7 +137,7 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	const enter = /function enterPopup\(kind, payload\)[\s\S]*?\n\}/.exec(
 		src,
 	)[0];
-	assert.match(enter, /state\.pause\(\)/);
+	assert.match(enter, /state\.pause\("popup"\)/);
 	assert.match(enter, /hotkeyManager\.registerConfirmPopup\(/);
 
 	for (const client of [
@@ -152,7 +154,12 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(
 		reapply,
-		/if \(openPopup\)/,
+		/openPopupKind\(\)/,
 		"saving settings with a popup open must not disarm the key",
+	);
+	assert.match(
+		reapply,
+		/registerConfirmPopup\(/,
+		"and it must re-arm the key it just dropped",
 	);
 });

@@ -9,7 +9,6 @@ const {
 	moveToFileName,
 	moveToDisplayName,
 	moveToTargetLabel,
-	unwrapAnchor,
 	isFileName,
 } = require(path.resolve(__dirname, "..", "src/shared/move-to-target.js"));
 
@@ -18,7 +17,6 @@ const CASES = [
 	["DEV", "dev", "DEV"],
 	["index.html", "file", "index.html"],
 	["style.css", "file", "style.css"],
-	["⚓index.html⚓", "file", "index.html"],
 	["⚓7⚓", "anchor", "⚓7⚓"],
 	["⚓setup⚓", "anchor", "⚓setup⚓"],
 ];
@@ -39,8 +37,9 @@ test("a missing target is the main editor", () => {
 });
 
 test("an anchor wrapper with nothing in it is not an anchor", () => {
-	assert.equal(classifyMoveToTarget("⚓⚓").mode, "main");
-	assert.equal(unwrapAnchor("⚓⚓").wrapped, false);
+	const t = classifyMoveToTarget("⚓⚓");
+	assert.equal(t.mode, "main");
+	assert.equal(t.wrapped, false);
 });
 
 test("a bare word is neither a file nor an anchor", () => {
@@ -51,7 +50,11 @@ test("a bare word is neither a file nor an anchor", () => {
 
 test("moveToFileName answers only for files", () => {
 	assert.equal(moveToFileName("index.html"), "index.html");
-	assert.equal(moveToFileName("⚓index.html⚓"), "index.html");
+	assert.equal(
+		moveToFileName("⚓index.html⚓"),
+		null,
+		"the ⚓…⚓ wrapper means anchor and nothing else now",
+	);
 	assert.equal(moveToFileName("⚓7⚓"), null);
 	assert.equal(moveToFileName("MAIN"), null);
 	assert.equal(moveToFileName("DEV"), null);
@@ -62,7 +65,6 @@ test("labels name the destination the way a teacher would read it", () => {
 	assert.equal(moveToTargetLabel("MAIN"), "Main Editor");
 	assert.equal(moveToTargetLabel("DEV"), "Dev Tools");
 	assert.equal(moveToTargetLabel("index.html"), "📄 index.html");
-	assert.equal(moveToTargetLabel("⚓index.html⚓"), "📄 index.html");
 	assert.equal(moveToTargetLabel("⚓7⚓"), "⚓7⚓");
 });
 
@@ -70,7 +72,6 @@ test("the display name is the label without the dropdown's paper clip", () => {
 	assert.equal(moveToDisplayName("MAIN"), "Main Editor");
 	assert.equal(moveToDisplayName("DEV"), "Dev Tools");
 	assert.equal(moveToDisplayName("index.html"), "index.html");
-	assert.equal(moveToDisplayName("⚓index.html⚓"), "index.html");
 	assert.equal(moveToDisplayName("⚓7⚓"), "⚓7⚓");
 	for (const t of ["MAIN", "DEV", "index.html", "⚓7⚓"]) {
 		const label = moveToTargetLabel(t);

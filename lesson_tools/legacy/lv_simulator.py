@@ -29,7 +29,7 @@ from utils.lv_constants import (
     FINLAND_TZ, ANCHOR_RE, DELAY_OPS,
     CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS,
-    PAUSE_CHAR, PAUSE_MS, HTML_VOID_TAGS, CLR,
+    PAUSE_CHAR, PAUSE_MS, HTML_VOID_TAGS, TK_CLR,
     fmt_ts,
 )
 from utils.lv_vscode import VSCodeSettings
@@ -48,7 +48,7 @@ class LogVisualizer:
         self.root = root
         self.root.title("📋 Log Visualizer")
         self.root.geometry("1280x820")
-        self.root.configure(bg=CLR["toolbar"])
+        self.root.configure(bg=TK_CLR["toolbar"])
         self.root.withdraw()
 
         self.vscode    = VSCodeSettings({})
@@ -121,7 +121,7 @@ class LogVisualizer:
         self._setup_text_tags()
 
     def _build_toolbar(self) -> None:
-        bar = tk.Frame(self.root, bg=CLR["toolbar"], pady=7)
+        bar = tk.Frame(self.root, bg=TK_CLR["toolbar"], pady=7)
         bar.pack(fill=tk.X, side=tk.TOP)
 
         def mkbtn(parent, text, cmd, bg, state=tk.NORMAL, width=None):
@@ -149,8 +149,8 @@ class LogVisualizer:
         self.btn_settings = tk.Button(
             bar, text="⚙ VS Code: defaults",
             command=self._show_settings_popup,
-            bg=CLR["settingsbg"], fg=CLR["blue"],
-            activebackground="#2a2a4e", activeforeground=CLR["blue"],
+            bg=TK_CLR["settingsbg"], fg=TK_CLR["blue"],
+            activebackground="#2a2a4e", activeforeground=TK_CLR["blue"],
             relief=tk.FLAT, padx=9, pady=5, bd=0, cursor="hand2",
             font=("Segoe UI", 9),
         )
@@ -158,7 +158,7 @@ class LogVisualizer:
 
         tk.Frame(bar, bg="#bbbbbb", width=1).pack(side=tk.LEFT, fill=tk.Y, pady=2, padx=8)
 
-        tk.Label(bar, text="Speed:", bg=CLR["toolbar"], fg="#aaaaaa",
+        tk.Label(bar, text="Speed:", bg=TK_CLR["toolbar"], fg="#aaaaaa",
                  font=("Segoe UI", 9)).pack(side=tk.LEFT)
 
         self.speed_var = tk.DoubleVar(value=8.0)
@@ -166,8 +166,8 @@ class LogVisualizer:
                        orient=tk.HORIZONTAL, length=180)
         sl.pack(side=tk.LEFT, padx=6)
 
-        self.lbl_speed = tk.Label(bar, text="8×", bg=CLR["toolbar"],
-                                   fg=CLR["blue"], font=("Segoe UI", 9, "bold"), width=5)
+        self.lbl_speed = tk.Label(bar, text="8×", bg=TK_CLR["toolbar"],
+                                   fg=TK_CLR["blue"], font=("Segoe UI", 9, "bold"), width=5)
         self.lbl_speed.pack(side=tk.LEFT)
         self.speed_var.trace_add("write", self._on_speed_changed)
 
@@ -175,24 +175,24 @@ class LogVisualizer:
 
         self.chk_autoscroll = tk.Checkbutton(
             bar, text="Auto-scroll", variable=self.auto_scroll_var,
-            bg=CLR["toolbar"], fg="#aaaaaa", selectcolor=CLR["toolbar"],
-            activebackground=CLR["toolbar"], activeforeground="#ffffff",
+            bg=TK_CLR["toolbar"], fg="#aaaaaa", selectcolor=TK_CLR["toolbar"],
+            activebackground=TK_CLR["toolbar"], activeforeground="#ffffff",
             font=("Segoe UI", 9), bd=0, cursor="hand2",
         )
         self.chk_autoscroll.pack(side=tk.LEFT, padx=4)
 
-        self.lbl_ts = tk.Label(bar, text="", bg=CLR["toolbar"],
-                                fg=CLR["blue"], font=("Consolas", 9))
+        self.lbl_ts = tk.Label(bar, text="", bg=TK_CLR["toolbar"],
+                                fg=TK_CLR["blue"], font=("Consolas", 9))
         self.lbl_ts.pack(side=tk.RIGHT, padx=12)
 
         self.lbl_progress = tk.Label(bar, text="No file loaded",
-                                      bg=CLR["toolbar"], fg=CLR["muted"],
+                                      bg=TK_CLR["toolbar"], fg=TK_CLR["muted"],
                                       font=("Segoe UI", 9))
         self.lbl_progress.pack(side=tk.RIGHT, padx=12)
 
     def _build_progress(self) -> None:
         self._seek_canvas = tk.Canvas(
-            self.root, height=14, bg=CLR["sidebar"],
+            self.root, height=14, bg=TK_CLR["sidebar"],
             highlightthickness=0, cursor="hand2"
         )
         self._seek_canvas.pack(fill=tk.X, side=tk.TOP)
@@ -204,17 +204,17 @@ class LogVisualizer:
     def _build_main(self) -> None:
         paned = tk.PanedWindow(
             self.root, orient=tk.HORIZONTAL,
-            bg=CLR["toolbar"], sashwidth=5, sashrelief=tk.FLAT,
+            bg=TK_CLR["toolbar"], sashwidth=5, sashrelief=tk.FLAT,
         )
         paned.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
 
-        self.editor_frame = tk.Frame(paned, bg=CLR["bg"])
+        self.editor_frame = tk.Frame(paned, bg=TK_CLR["bg"])
         paned.add(self.editor_frame, minsize=650, stretch="always")
 
-        self._tab_bar = tk.Frame(self.editor_frame, bg=CLR["toolbar"])
+        self._tab_bar = tk.Frame(self.editor_frame, bg=TK_CLR["toolbar"])
         self._tab_bar.pack(fill=tk.X)
 
-        txt_wrap = tk.Frame(self.editor_frame, bg=CLR["bg"])
+        txt_wrap = tk.Frame(self.editor_frame, bg=TK_CLR["bg"])
         txt_wrap.pack(fill=tk.BOTH, expand=True)
         self._txt_wrap = txt_wrap
 
@@ -228,7 +228,7 @@ class LogVisualizer:
         self.char_ts = self._file_tabs["MAIN"]["char_ts"]
         self._update_tab_bar()
 
-        dev_outer = tk.Frame(self.editor_frame, bg=CLR["devborder"], bd=0)
+        dev_outer = tk.Frame(self.editor_frame, bg=TK_CLR["devborder"], bd=0)
         dev_outer.place(relx=1.0, rely=1.0, relwidth=0.52, relheight=0.40,
                         anchor="se", x=-18, y=-22)
         self._dev_outer       = dev_outer
@@ -238,33 +238,33 @@ class LogVisualizer:
         dev_title.pack(fill=tk.X, side=tk.TOP)
         tk.Label(
             dev_title, text="  DevTools",
-            bg="#ddeeff", fg=CLR["devborder"],
+            bg="#ddeeff", fg=TK_CLR["devborder"],
             anchor=tk.W, font=("Consolas", 8, "bold"), pady=3,
         ).pack(side=tk.LEFT)
         self.dev_indicator = tk.Label(
-            dev_title, text="●", bg="#ddeeff", fg=CLR["dim"],
+            dev_title, text="●", bg="#ddeeff", fg=TK_CLR["dim"],
             font=("Segoe UI", 8),
         )
         self.dev_indicator.pack(side=tk.RIGHT, padx=6)
         self._dev_toggle_btn = tk.Button(
             dev_title, text="−",
             command=self._toggle_dev_panel,
-            bg="#ddeeff", fg=CLR["devborder"],
-            activebackground="#c8e0ff", activeforeground=CLR["devborder"],
+            bg="#ddeeff", fg=TK_CLR["devborder"],
+            activebackground="#c8e0ff", activeforeground=TK_CLR["devborder"],
             relief=tk.FLAT, padx=6, pady=1, bd=0, cursor="hand2",
             font=("Consolas", 9, "bold"),
         )
         self._dev_toggle_btn.pack(side=tk.RIGHT, padx=2)
 
-        dev_inner = tk.Frame(dev_outer, bg=CLR["devbg"], padx=1, pady=1)
+        dev_inner = tk.Frame(dev_outer, bg=TK_CLR["devbg"], padx=1, pady=1)
         dev_inner.pack(fill=tk.BOTH, expand=True)
 
         dev_vscroll = ttk.Scrollbar(dev_inner, orient=tk.VERTICAL)
         dev_mono = tkfont.Font(family="Consolas", size=9)
         self.dev_text = tk.Text(
             dev_inner,
-            bg=CLR["devbg"], fg="#009900",
-            insertbackground=CLR["devborder"],
+            bg=TK_CLR["devbg"], fg="#009900",
+            insertbackground=TK_CLR["devborder"],
             font=dev_mono, wrap=tk.NONE, undo=False,
             selectbackground="#b3d9ff",
             yscrollcommand=dev_vscroll.set,
@@ -276,21 +276,21 @@ class LogVisualizer:
         self.dev_text.bind("<Motion>", lambda e: self._on_hover(e, self.dev_text, self.dev_ts))
         self.dev_text.bind("<Leave>",  lambda _e: self.tip.withdraw())
 
-        right = tk.Frame(paned, bg=CLR["sidebar"])
+        right = tk.Frame(paned, bg=TK_CLR["sidebar"])
         paned.add(right, minsize=300, stretch="never")
 
         tk.Label(
             right, text="  Event Log",
-            bg=CLR["sidebar"], fg=CLR["fg"],
+            bg=TK_CLR["sidebar"], fg=TK_CLR["fg"],
             anchor=tk.W, font=("Segoe UI", 9, "bold"), pady=4,
         ).pack(fill=tk.X)
 
-        log_wrap = tk.Frame(right, bg=CLR["sidebar"])
+        log_wrap = tk.Frame(right, bg=TK_CLR["sidebar"])
         log_wrap.pack(fill=tk.BOTH, expand=True)
 
         log_scroll = ttk.Scrollbar(log_wrap)
         self.event_log = tk.Text(
-            log_wrap, bg=CLR["sidebar"], fg=CLR["blue"],
+            log_wrap, bg=TK_CLR["sidebar"], fg=TK_CLR["blue"],
             font=("Consolas", 8), wrap=tk.WORD,
             state=tk.NORMAL, width=40,
             yscrollcommand=log_scroll.set,
@@ -312,10 +312,10 @@ class LogVisualizer:
         char_ts: list = []
         w = tk.Text(
             self._txt_wrap,
-            bg=CLR["bg"], fg=CLR["fg"],
-            insertbackground=CLR["cursor"],
+            bg=TK_CLR["bg"], fg=TK_CLR["fg"],
+            insertbackground=TK_CLR["cursor"],
             font=mono, wrap=tk.NONE, undo=False,
-            selectbackground=CLR["select"],
+            selectbackground=TK_CLR["select"],
             spacing1=2, spacing3=2, padx=6, pady=4,
             tabs=mono.measure("    "),
         )
@@ -377,8 +377,8 @@ class LogVisualizer:
             self._tab_bar,
             text=f"  {tab_key}  ",
             command=lambda k=tab_key: self._switch_to_file(k),
-            bg=CLR["sidebar"], fg=CLR["muted"],
-            activebackground=CLR["toolbar"], activeforeground=CLR["fg"],
+            bg=TK_CLR["sidebar"], fg=TK_CLR["muted"],
+            activebackground=TK_CLR["toolbar"], activeforeground=TK_CLR["fg"],
             relief=tk.FLAT, padx=6, pady=3, bd=0, cursor="hand2",
             font=("Segoe UI", 8),
         )
@@ -388,14 +388,14 @@ class LogVisualizer:
     def _update_tab_bar(self) -> None:
         for key, btn in self._tab_buttons.items():
             if key == self._active_file:
-                btn.config(bg=CLR["bg"], fg=CLR["fg"])
+                btn.config(bg=TK_CLR["bg"], fg=TK_CLR["fg"])
             else:
-                btn.config(bg=CLR["sidebar"], fg=CLR["muted"])
+                btn.config(bg=TK_CLR["sidebar"], fg=TK_CLR["muted"])
 
     def _build_statusbar(self) -> None:
         self.lbl_status = tk.Label(
             self.root, text="Ready",
-            bg=CLR["accent"], fg="white",
+            bg=TK_CLR["accent"], fg="white",
             anchor=tk.W, padx=8, pady=3,
             font=("Segoe UI", 9),
         )
@@ -425,7 +425,7 @@ class LogVisualizer:
         tf = tk.Frame(self.tip, bg="#e0e0e0", bd=1, relief=tk.SOLID)
         tf.pack()
         self.tip_lbl = tk.Label(
-            tf, bg="#ffffff", fg=CLR["fg"],
+            tf, bg="#ffffff", fg=TK_CLR["fg"],
             font=("Segoe UI", 9), padx=10, pady=5,
         )
         self.tip_lbl.pack()
@@ -437,7 +437,7 @@ class LogVisualizer:
     def _show_settings_popup(self) -> None:
         pop = tk.Toplevel(self.root)
         pop.title("VS Code Settings")
-        pop.configure(bg=CLR["settingsbg"])
+        pop.configure(bg=TK_CLR["settingsbg"])
         pop.resizable(False, False)
         pop.geometry("520x370")
         pop.grab_set()
@@ -448,12 +448,12 @@ class LogVisualizer:
         )
         tk.Label(
             pop, text="⚙  VS Code Editor Settings",
-            bg=CLR["settingsbg"], fg=CLR["blue"],
+            bg=TK_CLR["settingsbg"], fg=TK_CLR["blue"],
             font=("Segoe UI", 11, "bold"), pady=10,
         ).pack()
         tk.Label(
             pop, text=f"Source: {short_src}",
-            bg=CLR["settingsbg"], fg=CLR["muted"],
+            bg=TK_CLR["settingsbg"], fg=TK_CLR["muted"],
             font=("Consolas", 8), pady=0,
         ).pack()
 
@@ -479,11 +479,11 @@ class LogVisualizer:
         for section_title, keys in sections.items():
             tk.Label(
                 pop, text=f"  {section_title}",
-                bg=CLR["settingsbg"], fg=CLR["yellow"],
+                bg=TK_CLR["settingsbg"], fg=TK_CLR["yellow"],
                 font=("Segoe UI", 9, "bold"), anchor=tk.W,
             ).pack(fill=tk.X, padx=16)
 
-            frame = tk.Frame(pop, bg=CLR["bg"], padx=12, pady=6)
+            frame = tk.Frame(pop, bg=TK_CLR["bg"], padx=12, pady=6)
             frame.pack(fill=tk.X, padx=16, pady=(2, 8))
 
             for key in keys:
@@ -498,24 +498,24 @@ class LogVisualizer:
                     active = str(val).lower() not in ("never", "off", "false", "0")
                     val_str = str(val)
 
-                row = tk.Frame(frame, bg=CLR["bg"])
+                row = tk.Frame(frame, bg=TK_CLR["bg"])
                 row.pack(fill=tk.X, pady=1)
 
-                indicator_color = CLR["green"] if active else CLR["dim"]
-                tk.Label(row, text="●", bg=CLR["bg"], fg=indicator_color,
+                indicator_color = TK_CLR["green"] if active else TK_CLR["dim"]
+                tk.Label(row, text="●", bg=TK_CLR["bg"], fg=indicator_color,
                          font=("Segoe UI", 8), width=2).pack(side=tk.LEFT)
-                tk.Label(row, text=key, bg=CLR["bg"], fg=CLR["fg"],
+                tk.Label(row, text=key, bg=TK_CLR["bg"], fg=TK_CLR["fg"],
                          font=("Consolas", 9), anchor=tk.W).pack(side=tk.LEFT, expand=True, fill=tk.X)
                 tk.Label(row, text=val_str,
-                         bg=CLR["bg"],
-                         fg=CLR["orange"] if active else CLR["muted"],
+                         bg=TK_CLR["bg"],
+                         fg=TK_CLR["orange"] if active else TK_CLR["muted"],
                          font=("Consolas", 9, "bold"), width=18, anchor=tk.E,
                          ).pack(side=tk.RIGHT)
 
         ttk.Separator(pop, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=16, pady=4)
         tk.Button(
             pop, text="Close", command=pop.destroy,
-            bg=CLR["accent"], fg="white",
+            bg=TK_CLR["accent"], fg="white",
             relief=tk.FLAT, padx=16, pady=4, cursor="hand2",
         ).pack(pady=6)
 
@@ -524,7 +524,7 @@ class LogVisualizer:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as exc:
-            self._set_status(f"⚠  Could not load file: {exc}", CLR["red"])
+            self._set_status(f"⚠  Could not load file: {exc}", TK_CLR["red"])
             return
 
         self.vscode = VSCodeSettings.load(path)
@@ -552,11 +552,11 @@ class LogVisualizer:
     def _update_settings_badge(self) -> None:
         src = self.vscode.source
         if src == "defaults":
-            label, fg = "⚙ VS Code: defaults", CLR["blue"]
+            label, fg = "⚙ VS Code: defaults", TK_CLR["blue"]
         elif src.startswith("parse error:"):
-            label, fg = "⚙ VS Code: parse error ⚠", CLR["red"]
+            label, fg = "⚙ VS Code: parse error ⚠", TK_CLR["red"]
         else:
-            label, fg = "⚙ VS Code: settings.json ✓", CLR["green"]
+            label, fg = "⚙ VS Code: settings.json ✓", TK_CLR["green"]
         self.btn_settings.config(text=label, fg=fg)
 
 
@@ -640,7 +640,7 @@ class LogVisualizer:
         if self.micro:
             self.btn_play.config(state=tk.NORMAL)
         self._set_status("  ⏮  Reset — press Play to begin")
-        self.dev_indicator.config(fg=CLR["dim"])
+        self.dev_indicator.config(fg=TK_CLR["dim"])
 
     def _schedule(self, delay_ms: int) -> None:
         if self.playing:
@@ -674,14 +674,14 @@ class LogVisualizer:
             if target == "main":
                 self._switch_to_file("MAIN")
             label = "DevTools" if target == "dev" else "Main Editor"
-            self._log(ts, f"⇄  switch to {label}", CLR["move"])
-            self.dev_indicator.config(fg=CLR["devborder"] if target == "dev" else CLR["dim"])
+            self._log(ts, f"⇄  switch to {label}", TK_CLR["move"])
+            self.dev_indicator.config(fg=TK_CLR["devborder"] if target == "dev" else TK_CLR["dim"])
             return delay
 
         elif kind == "switch_file":
             _, filename, ts, delay = act
             self._switch_to_file(filename)
-            self._log(ts, f"⇄  switch to file: {filename}", CLR["move"])
+            self._log(ts, f"⇄  switch to file: {filename}", TK_CLR["move"])
             return delay
 
         elif kind == "char":
@@ -707,7 +707,7 @@ class LogVisualizer:
                 self._delete_current_line(widget, ts_store)
             except tk.TclError:
                 pass
-            self._log(ts, "⛔  Delete Line (in code_insert)", CLR["red"])
+            self._log(ts, "⛔  Delete Line (in code_insert)", TK_CLR["red"])
             return delay
 
         elif kind == "code_move_up":
@@ -723,7 +723,7 @@ class LogVisualizer:
                 self._scroll_to()
             except tk.TclError:
                 pass
-            self._log(ts, "⬆  Move Up (in code_insert)", CLR["orange"])
+            self._log(ts, "⬆  Move Up (in code_insert)", TK_CLR["orange"])
             return delay
 
         elif kind == "code_move_end":
@@ -738,7 +738,7 @@ class LogVisualizer:
                 self._scroll_to()
             except tk.TclError:
                 pass
-            self._log(ts, "►  Move End (in code_insert)", CLR["orange"])
+            self._log(ts, "►  Move End (in code_insert)", TK_CLR["orange"])
             return delay
 
         elif kind == "code_insert_newline":
@@ -753,7 +753,7 @@ class LogVisualizer:
                 self._scroll_to()
             except tk.TclError:
                 pass
-            self._log(ts, "↩  Insert Newline (in code_insert)", CLR["orange"])
+            self._log(ts, "↩  Insert Newline (in code_insert)", TK_CLR["orange"])
             return delay
 
         elif kind == "code_cursor_move":
@@ -773,7 +773,7 @@ class LogVisualizer:
                     self._ci_base_indent = re.match(r"^(\s*)", line_text).group(1)
             except tk.TclError:
                 pass
-            self._log(ts, f"  {ch} (in code_insert)", CLR["orange"])
+            self._log(ts, f"  {ch} (in code_insert)", TK_CLR["orange"])
             return delay
 
         elif kind == "code_backspace":
@@ -792,7 +792,7 @@ class LogVisualizer:
             if ignored:
                 self._log(ts, "⌫  Backspace (ignored — before closing tag)", "#FFAAAA")
             else:
-                self._log(ts, "⌫  Backspace (in code_insert)", CLR["red"])
+                self._log(ts, "⌫  Backspace (in code_insert)", TK_CLR["red"])
             return delay
 
         elif kind == "code_fwd_delete":
@@ -805,7 +805,7 @@ class LogVisualizer:
                 widget.delete(tk.INSERT, "insert+1c")
             except tk.TclError:
                 pass
-            self._log(ts, "⌦  Delete (in code_insert)", CLR["red"])
+            self._log(ts, "⌦  Delete (in code_insert)", TK_CLR["red"])
             return delay
 
         elif kind == "code_char":
@@ -815,13 +815,13 @@ class LogVisualizer:
                 self._auto_dedent(ch, ts)
             self._insert_char(ch, ts, widget, ts_store)
             if editor == "dev":
-                self.dev_indicator.config(fg=CLR["devborder"])
+                self.dev_indicator.config(fg=TK_CLR["devborder"])
             return delay
 
         elif kind == "log_code_insert":
             _, snippet, ts, delay = act
             clean = ANCHOR_RE.sub("", snippet)
-            self._log(ts, f"⬇  code_insert: {repr(clean[:50])}", CLR["orange"])
+            self._log(ts, f"⬇  code_insert: {repr(clean[:50])}", TK_CLR["orange"])
             return delay
 
         elif kind == "set_anchor":
@@ -830,7 +830,7 @@ class LogVisualizer:
             self.text.mark_set(mark, tk.INSERT)
             self.text.mark_gravity(mark, tk.LEFT)
             pos = self.text.index(mark)
-            self._log(ts, f"⚓  anchor {name} → {pos}", CLR["accent"])
+            self._log(ts, f"⚓  anchor {name} → {pos}", TK_CLR["accent"])
             return delay
 
         elif kind == "move_anchor":
@@ -841,9 +841,9 @@ class LogVisualizer:
                 self.text.mark_set(tk.INSERT, mark)
                 self._scroll_to()
                 self._flash_anchor(self.text, pos)
-                self._log(ts, f"→  move_to {name} (now {pos})", CLR["move"])
+                self._log(ts, f"→  move_to {name} (now {pos})", TK_CLR["move"])
             else:
-                self._log(ts, f"⚠  unknown anchor: {name}", CLR["red"])
+                self._log(ts, f"⚠  unknown anchor: {name}", TK_CLR["red"])
             return delay
 
         return DELAY_OPS
@@ -906,7 +906,7 @@ class LogVisualizer:
                 pass
             self._sel_anchor = None
             self.text.tag_remove("sel", "1.0", "end")
-            self._log(ts, f"⌨  {ch}", CLR["fg"])
+            self._log(ts, f"⌨  {ch}", TK_CLR["fg"])
             return delay
 
         if ch in SHIFT_CURSOR_MOVES:
@@ -924,7 +924,7 @@ class LogVisualizer:
                     self.text.tag_add("sel", new_pos, anchor)
             except tk.TclError:
                 pass
-            self._log(ts, f"⌨  {ch} (select)", CLR["fg"])
+            self._log(ts, f"⌨  {ch} (select)", TK_CLR["fg"])
             return delay
 
         if ch in CHAR_REPLACEMENTS:
@@ -934,16 +934,16 @@ class LogVisualizer:
 
             if is_tab and editor == "main" and self.text.tag_ranges("sel"):
                 self._indent_selection(ts)
-                self._log(ts, "⇥ Tab (indent selection)", CLR["fg"])
+                self._log(ts, "⇥ Tab (indent selection)", TK_CLR["fg"])
                 return delay
 
             self._insert_char(real_ch, ts, widget, ts_store)
             if is_enter and editor == "main":
                 self._auto_indent(ts)
             label = "↩ Enter" if is_enter else "⇥ Tab"
-            self._log(ts, f"⌨  {label}", CLR["fg"])
+            self._log(ts, f"⌨  {label}", TK_CLR["fg"])
             if editor == "dev":
-                self.dev_indicator.config(fg=CLR["devborder"])
+                self.dev_indicator.config(fg=TK_CLR["devborder"])
             return delay
 
         if ch in BACKSPACE_CHARS:
@@ -955,7 +955,7 @@ class LogVisualizer:
                 if flat > 0 and (flat - 1) < len(ts_store):
                     ts_store.pop(flat - 1)
                 widget.delete("insert-1c", tk.INSERT)
-            self._log(ts, "⌫  Backspace", CLR["red"])
+            self._log(ts, "⌫  Backspace", TK_CLR["red"])
             return delay
 
         if ch in DELETE_FWRD_CHARS:
@@ -966,7 +966,7 @@ class LogVisualizer:
                 widget.delete(tk.INSERT, "insert+1c")
             except tk.TclError:
                 pass
-            self._log(ts, "⌦  Delete (forward)", CLR["red"])
+            self._log(ts, "⌦  Delete (forward)", TK_CLR["red"])
             return delay
 
         if ch == DELETE_LINE_CHAR:
@@ -974,11 +974,11 @@ class LogVisualizer:
                 self._delete_current_line(widget, ts_store)
             except tk.TclError:
                 pass
-            self._log(ts, "⛔  Delete Line (Ctrl+Shift+K)", CLR["red"])
+            self._log(ts, "⛔  Delete Line (Ctrl+Shift+K)", TK_CLR["red"])
             return delay
 
         if ch == PAUSE_CHAR:
-            self._log(ts, "🕛  pause 500 ms", CLR["dim"])
+            self._log(ts, "🕛  pause 500 ms", TK_CLR["dim"])
             return PAUSE_MS
 
         if ch in IGNORED_CHARS:
@@ -987,7 +987,7 @@ class LogVisualizer:
         if ch == ";" and editor == "dev":
             self._insert_char(ch, ts, widget, ts_store)
             self._dev_semicolon_newline(ts)
-            self._log(ts, f"⌨  {repr(ch)}", CLR["dim"])
+            self._log(ts, f"⌨  {repr(ch)}", TK_CLR["dim"])
             return delay
 
         if editor == "main":
@@ -998,9 +998,9 @@ class LogVisualizer:
             self._apply_vscode_auto(ch, ts)
 
         if editor == "dev":
-            self.dev_indicator.config(fg=CLR["devborder"])
+            self.dev_indicator.config(fg=TK_CLR["devborder"])
 
-        self._log(ts, f"⌨  {repr(ch)}", CLR["dim"])
+        self._log(ts, f"⌨  {repr(ch)}", TK_CLR["dim"])
         return delay
 
     def _apply_vscode_auto(self, ch: str, ts: int) -> None:
@@ -1011,28 +1011,28 @@ class LogVisualizer:
         if auto:
             self._insert_auto(auto, ts)
             self.text.mark_set(tk.INSERT, "insert-1c")
-            self._log(ts, f"  ↳ auto-quotes: {repr(auto)}", CLR["green"])
+            self._log(ts, f"  ↳ auto-quotes: {repr(auto)}", TK_CLR["green"])
             return
 
         auto = self.vscode.auto_close_html_tag(ch, text_before[:-1])
         if auto:
             self._insert_auto(auto, ts)
             self.text.mark_set(tk.INSERT, f"insert-{len(auto)}c")
-            self._log(ts, f"  ↳ auto-tag: {repr(auto)}", CLR["green"])
+            self._log(ts, f"  ↳ auto-tag: {repr(auto)}", TK_CLR["green"])
             return
 
         auto = self.vscode.auto_close_bracket(ch, text_after)
         if auto:
             self._insert_auto(auto, ts)
             self.text.mark_set(tk.INSERT, f"insert-{len(auto)}c")
-            self._log(ts, f"  ↳ auto-bracket: {repr(auto)}", CLR["green"])
+            self._log(ts, f"  ↳ auto-bracket: {repr(auto)}", TK_CLR["green"])
             return
 
         auto = self.vscode.auto_close_quote(ch, text_before, text_after)
         if auto:
             self._insert_auto(auto, ts)
             self.text.mark_set(tk.INSERT, f"insert-{len(auto)}c")
-            self._log(ts, f"  ↳ auto-quote: {repr(auto)}", CLR["green"])
+            self._log(ts, f"  ↳ auto-quote: {repr(auto)}", TK_CLR["green"])
             return
 
     def _insert_auto(self, chars: str, ts: int) -> None:
@@ -1283,9 +1283,9 @@ class LogVisualizer:
             return
         filled = int(w * max(0.0, min(1.0, frac)))
         c.delete("all")
-        c.create_rectangle(0, 0, w, h, fill=CLR["sidebar"], outline="")
+        c.create_rectangle(0, 0, w, h, fill=TK_CLR["sidebar"], outline="")
         if filled > 0:
-            c.create_rectangle(0, 0, filled, h, fill=CLR["accent"], outline="")
+            c.create_rectangle(0, 0, filled, h, fill=TK_CLR["accent"], outline="")
         c.update_idletasks()
 
     def _seek_fraction_from_x(self, x: int) -> float:
@@ -1340,7 +1340,7 @@ class LogVisualizer:
         if not self.micro:
             return
         target_idx = max(0, min(target_idx, len(self.micro)))
-        self._set_status("  ⏩  Seeking…", CLR["dim"])
+        self._set_status("  ⏩  Seeking…", TK_CLR["dim"])
         self.root.update_idletasks()
 
         self._silent = True
@@ -1386,7 +1386,7 @@ class LogVisualizer:
         self._update_progress()
         self.lbl_progress.config(text=f"{self.micro_idx} / {len(self.micro)}")
         self.dev_indicator.config(
-            fg=CLR["devborder"] if self.dev_text.get("1.0","end-1c") else CLR["dim"])
+            fg=TK_CLR["devborder"] if self.dev_text.get("1.0","end-1c") else TK_CLR["dim"])
 
         if not self._seeking:
             if target_idx >= len(self.micro):
@@ -1394,7 +1394,7 @@ class LogVisualizer:
             else:
                 self._set_status(f"  ⏸  Seeked to {target_idx} / {len(self.micro)}")
 
-    def _set_status(self, msg: str, bg: str = CLR["accent"]) -> None:
+    def _set_status(self, msg: str, bg: str = TK_CLR["accent"]) -> None:
         self.lbl_status.config(text=msg, bg=bg)
 
     def _on_speed_changed(self, *_) -> None:
@@ -1407,13 +1407,13 @@ def main() -> None:
     style = ttk.Style(root)
     style.theme_use("clam")
     style.configure("Vertical.TScrollbar",
-                    background="#c0c0c0", troughcolor=CLR["sidebar"], arrowcolor="#666")
+                    background="#c0c0c0", troughcolor=TK_CLR["sidebar"], arrowcolor="#666")
     style.configure("Horizontal.TScrollbar",
-                    background="#c0c0c0", troughcolor=CLR["sidebar"], arrowcolor="#666")
+                    background="#c0c0c0", troughcolor=TK_CLR["sidebar"], arrowcolor="#666")
     style.configure("TProgressbar",
-                    background=CLR["accent"], troughcolor=CLR["sidebar"], thickness=4)
+                    background=TK_CLR["accent"], troughcolor=TK_CLR["sidebar"], thickness=4)
     style.configure("TScale",
-                    background=CLR["toolbar"], troughcolor="#cccccc")
+                    background=TK_CLR["toolbar"], troughcolor="#cccccc")
 
     app = LogVisualizer(root)
     root.mainloop()

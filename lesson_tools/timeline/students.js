@@ -19,7 +19,7 @@ async function loadXlsxFiles(files) {
 		if (!n.includes("remarks") || !n.endsWith(".xlsx")) continue;
 		let matched = false;
 		for (const { key } of REMARKS_BASES) {
-			if (n === `remarks_${key}.xlsx`) {
+			if (remarksFileRe(key).test(n)) {
 				_basisFiles.set(key, f);
 				matched = true;
 				break;
@@ -34,7 +34,7 @@ async function loadXlsxFiles(files) {
 		chosenKey = _wantBasis;
 	}
 	if (!chosenKey)
-		for (const key of ["ideal", "leo_star"]) {
+		for (const key of DIFF_MARKS_PRIORITY) {
 			if (_basisFiles.has(key)) {
 				chosenKey = key;
 				break;
@@ -103,10 +103,7 @@ function _renderBasisPicker() {
 		container.appendChild(select);
 		select.addEventListener("change", async () => {
 			_activeBasis = select.value;
-			select.classList.toggle(
-				"is-curated",
-				_activeBasis === "ideal" || _activeBasis === "minimal",
-			);
+			select.classList.toggle("is-curated", CURATED_MODES.has(_activeBasis));
 			const f = _basisFiles.get(_activeBasis);
 			if (!f) return;
 			try {
@@ -127,10 +124,7 @@ function _renderBasisPicker() {
 		select.appendChild(opt);
 	}
 	if (_activeBasis) select.value = _activeBasis;
-	select.classList.toggle(
-		"is-curated",
-		select.value === "ideal" || select.value === "minimal",
-	);
+	select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
 }
 
 function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {

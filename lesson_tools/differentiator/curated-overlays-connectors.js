@@ -98,10 +98,6 @@ class PairConnectorSvg {
 const _curatedPairConnector = new PairConnectorSvg();
 let _curatedPairConnectorItems = [];
 
-function _curatedEnsurePairConnectorSvg() {
-	return _curatedPairConnector.ensure();
-}
-
 function _curatedClearPairConnectors() {
 	_curatedPairConnectorItems = [];
 	_curatedPairConnector.clear();

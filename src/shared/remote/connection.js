@@ -98,21 +98,15 @@ function startScreenKeepAlive() {
 	if (started && started.catch) started.catch(() => {});
 }
 
-const IS_CONTROL_PANEL =
-	new URLSearchParams(location.search).get("panel") === "1";
-if (IS_CONTROL_PANEL) document.body.classList.add("panel-mode");
-
-if (!IS_CONTROL_PANEL) {
-	document.addEventListener("click", function goFS() {
-		const el = document.documentElement;
-		const rfs =
-			el.requestFullscreen ||
-			el.webkitRequestFullscreen ||
-			el.msRequestFullscreen;
-		if (rfs) rfs.call(el).catch(() => {});
-		document.removeEventListener("click", goFS);
-	});
-}
+document.addEventListener("click", function goFS() {
+	const el = document.documentElement;
+	const rfs =
+		el.requestFullscreen ||
+		el.webkitRequestFullscreen ||
+		el.msRequestFullscreen;
+	if (rfs) rfs.call(el).catch(() => {});
+	document.removeEventListener("click", goFS);
+});
 
 document.addEventListener("visibilitychange", () => {
 	if (document.visibilityState === "visible") {

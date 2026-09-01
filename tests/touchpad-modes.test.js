@@ -89,7 +89,7 @@ function loadPad(opts) {
 
 	const exported =
 		SRC +
-		"\n;module.exports={setAutoTypingActive,setTouchpadMode,initTouchpad," +
+		"\n;module.exports={setSessionActive,setTouchpadMode,initTouchpad," +
 		"syncTouchpadToolbar,setTouchpadSensitivity,registerTouchpadMode};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));
 
@@ -139,7 +139,7 @@ function loadPad(opts) {
 
 async function openPad(mode, opts) {
 	const pad = loadPad(opts);
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 	await pad.api.setTouchpadMode(mode);
 	pad.sent.length = 0;
 	return pad;
@@ -228,7 +228,7 @@ test("the mouse pad still moves, scrolls and right-clicks", async () => {
 test("the edit keys live on the mouse pad, where the pointer that selects text is", async () => {
 	const pad = loadPad();
 	const keys = pad.els.touchpadEditKeys;
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 
 	await pad.api.setTouchpadMode("keyboard");
 	assert.equal(
@@ -283,7 +283,10 @@ test("the bar carries the six edit keys, in the order a thumb reaches them", () 
 		);
 	}
 
-	const main = fs.readFileSync(path.join(BASE, "main/main.js"), "utf-8");
+	const main = fs.readFileSync(
+		path.join(BASE, "main/remote-input.js"),
+		"utf-8",
+	);
 	const map = /const EDIT_KEY_TO_KEY = \{([^}]*)\}/.exec(main)[1];
 	for (const name of names) {
 		if (name === "enter") {
@@ -315,7 +318,7 @@ test("a mode handler can borrow the edit keys, and only while it asks", async ()
 		modeBtnId: "modeBtnJedi",
 		wantsEditKeys: () => wanted,
 	});
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(
@@ -343,7 +346,7 @@ test("a mode handler can borrow the edit keys, and only while it asks", async ()
 test("a handler with no opinion on the edit keys gets none", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(pad.els.touchpadEditKeys.classList.contains("visible"), false);
@@ -360,7 +363,7 @@ test("the toolbars stay pressable even when a handler stands the glass down", ()
 test("an open pad keeps both mode buttons reachable, so switching is one press", async () => {
 	const pad = loadPad();
 	const side = pad.els.modeSideBtns;
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 
 	await pad.api.setTouchpadMode("keyboard");
 	assert.equal(side.classList.contains("has-pad"), true);
@@ -375,7 +378,7 @@ test("an open pad keeps both mode buttons reachable, so switching is one press",
 test("a mode handler still gets the strip to itself: it brings its own controls", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	const side = pad.els.modeSideBtns;
@@ -465,7 +468,7 @@ test("the confirm reaches a handler mode that has taken the screen", async () =>
 		modeBtnId: "modeBtnJedi",
 		wantsEditKeys: () => wanted,
 	});
-	pad.api.setAutoTypingActive(true);
+	pad.api.setSessionActive(true);
 	await pad.api.setTouchpadMode("jedi");
 
 	assert.equal(

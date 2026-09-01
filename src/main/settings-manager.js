@@ -1,6 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const {
+	COLOR_SETTINGS,
+	HOTKEY_SETTINGS,
+	defaultsFrom,
+} = require("../shared/settings-schema");
 
 class SettingsManager {
 	constructor() {
@@ -9,29 +14,9 @@ class SettingsManager {
 			platform: process.platform === "darwin" ? "macos" : "windows",
 			hotkeys: {
 				typing: "abcdefghijklmnopqrstuvwxyz".split(""),
-				toggleActive: "CommandOrControl+P",
-				stepBackward: "CommandOrControl+Left",
-				stepForward: "CommandOrControl+Right",
-				alwaysOnTop: "CommandOrControl+Shift+Space",
-				toggleTransparency: "CommandOrControl+Shift+T",
-				toggleWindow: "CommandOrControl+L",
-				confirmPopup: "CommandOrControl+Enter",
+				...defaultsFrom(HOTKEY_SETTINGS),
 			},
-			colors: {
-				commentNormal: "#fff9c4",
-				commentActive: "#2c3e50",
-				commentSelected: "#f0f8ff",
-				commentActiveText: "#f1c40f",
-				cursor: "#e74c3c",
-				selectedBorder: "#3498db",
-				textColor: "#333333",
-				questionCommentColor: "#facaca",
-				imageBlockColor: "#bbdefb",
-				codeInsertBlockColor: "#f0f0f0",
-				moveToBlockColor: "#424242",
-				moveToTextColor: "#3498db",
-				codeBlockColor: "#ffffff",
-			},
+			colors: defaultsFrom(COLOR_SETTINGS),
 			fontSize: 14,
 			mode: "record",
 			hotkeyMode: "single-key",
@@ -66,7 +51,7 @@ class SettingsManager {
 				};
 			}
 		} catch (error) {
-			console.error("Failed to load settings:", error);
+			console.error("[LEO] settings load failed:", error);
 		}
 		return { ...this.defaultSettings };
 	}
@@ -79,7 +64,7 @@ class SettingsManager {
 			);
 			return true;
 		} catch (error) {
-			console.error("Failed to save settings:", error);
+			console.error("[LEO] settings save failed:", error);
 			return false;
 		}
 	}

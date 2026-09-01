@@ -14,6 +14,10 @@ const modelSrc = fs.readFileSync(
 	path.join(here, "shared/simulator-model.js"),
 	"utf-8",
 );
+const utilsSrc = fs.readFileSync(
+	path.join(here, "shared/timeline-utils.js"),
+	"utf-8",
+);
 const cfgSrc = fs.readFileSync(path.join(here, "timeline/config.js"), "utf-8");
 const dataSrc = fs.readFileSync(path.join(here, "timeline/data.js"), "utf-8");
 const statsSrc = fs.readFileSync(path.join(here, "timeline/stats.js"), "utf-8");
@@ -22,23 +26,11 @@ const stub = `
 var THEME = { blue: "#000", orange: "#000", green: "#000" };
 function _hexToRgba() { return ""; }
 function _cssVar() { return ""; }
-function lowerBound(a, v, k) {
-	let lo = 0, hi = a.length;
-	while (lo < hi) { const m = (lo + hi) >> 1; if (k(a[m]) < v) lo = m + 1; else hi = m; }
-	return lo;
-}
-function upperBound(a, v, k) {
-	let lo = 0, hi = a.length;
-	while (lo < hi) { const m = (lo + hi) >> 1; if (k(a[m]) <= v) lo = m + 1; else hi = m; }
-	return lo;
-}
-function _singletonToTextPart(e) { return e.char || ""; }
 function alert(msg) { console.error(msg); }
 function newTokenRegex() { return /[a-zA-Z0-9]+|[^\\s]/gu; }
 `;
 
-const bundle =
-	stub + "\n" + modelSrc + "\n" + cfgSrc + "\n" + dataSrc + "\n" + statsSrc;
+const bundle = [stub, modelSrc, utilsSrc, cfgSrc, dataSrc, statsSrc].join("\n");
 
 const api = new Function(`
 	${bundle}

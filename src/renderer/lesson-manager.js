@@ -1,5 +1,8 @@
 const fs = require("fs");
-const { moveToFileName } = require("../shared/move-to-target");
+const path = require("path");
+const { moveToFileName, wrapAnchor } = require("../shared/move-to-target");
+const { normalizeEdgeNewlines } = require("../shared/code-text");
+const { replayPlan, toReplayableText } = require("./anchor-snippet");
 
 class LessonManager {
 	constructor() {
@@ -26,7 +29,11 @@ class LessonManager {
 					);
 					return;
 				}
-				this.data = migrated;
+				this.data = LessonManager._expandIncludes(
+					LessonManager._withStartWith(migrated),
+					path.dirname(filePath),
+					new Set([path.resolve(filePath)]),
+				);
 				this.currentFilePath = filePath;
 				this.hasUnsavedChanges = false;
 				callback(null, this.data);
@@ -39,28 +46,114 @@ class LessonManager {
 	static _migrateBlocks(blocks) {
 		if (!Array.isArray(blocks)) return blocks;
 		return blocks.map((b) => {
-			if (
-				b &&
-				b.type === "comment" &&
-				typeof b.text === "string" &&
-				b.text.trim().startsWith("➡️")
-			) {
-				const target = b.text.trim().replace(/^➡️\s*/, "");
-				return {
-					type: "move-to",
-					target: LessonManager._unwrapFileTarget(target),
-				};
-			}
-			if (b && b.type === "move-to" && typeof b.target === "string") {
-				return { ...b, target: LessonManager._unwrapFileTarget(b.target) };
+			if (b && b.type === "code" && typeof b.text === "string") {
+				return { ...b, text: normalizeEdgeNewlines(b.text) };
 			}
 			return b;
 		});
 	}
 
-	static _unwrapFileTarget(target) {
-		const fileName = LessonManager._moveToFileName(target);
-		return fileName !== null ? fileName : target;
+	static authored(blocks) {
+		return blocks.filter(
+			(b) => b && !b.fromInclude && !(b.type === "include" && !b.path),
+		);
+	}
+
+	static _withStartWith(blocks) {
+		const rest = blocks.filter((b) => !b || b.type !== "include");
+		const first = blocks.find((b) => b && b.type === "include");
+		return [first || { type: "include", path: "" }, ...rest];
+	}
+
+	getStartWith() {
+		const b = this.data[0];
+		return b && b.type === "include" ? b.path || "" : "";
+	}
+
+	setStartWith(planPath) {
+		if (!this.data[0] || this.data[0].type !== "include") {
+			this.data.unshift({ type: "include", path: "" });
+		}
+		this.data[0].path = planPath || "";
+		this.markAsChanged();
+	}
+
+	listSiblingPlans() {
+		if (!this.currentFilePath) return [];
+		const dir = path.dirname(this.currentFilePath);
+		const self = path.basename(this.currentFilePath);
+		try {
+			return fs
+				.readdirSync(dir)
+				.filter((f) => /\.(leo|json)$/i.test(f) && f !== self)
+				.sort((a, b) => a.localeCompare(b))
+				.map((f) => "./" + f);
+		} catch (e) {
+			return [];
+		}
+	}
+
+	static _expandIncludes(blocks, baseDir, seen) {
+		const out = [];
+		for (const block of blocks) {
+			out.push(block);
+			if (!block || block.type !== "include") continue;
+			if (typeof block.path !== "string" || !block.path.trim()) continue;
+			const abs = path.resolve(baseDir, block.path);
+			if (seen.has(abs)) {
+				throw new Error(`Include loops back on itself: ${block.path}`);
+			}
+			let raw;
+			try {
+				raw = fs.readFileSync(abs, "utf8");
+			} catch (e) {
+				throw new Error(`Included plan not found: ${block.path}`);
+			}
+			const inner = LessonManager._migrateBlocks(JSON.parse(raw));
+			if (!Array.isArray(inner)) {
+				throw new Error(
+					`Included plan is not a list of blocks: ${block.path}`,
+				);
+			}
+			const expanded = LessonManager._expandIncludes(
+				inner,
+				path.dirname(abs),
+				new Set(seen).add(abs),
+			);
+			out.push(...LessonManager._startingStateBlocks(expanded));
+		}
+		return out;
+	}
+
+	static _startingStateBlocks(blocks) {
+		const { editors, order } = replayPlan(blocks);
+		const out = [];
+		for (const name of order) {
+			if (name === "main" || name === "dev") continue;
+			const state = editors[name];
+			if (!state || !state.text) continue;
+			out.push({ type: "move-to", target: name, fromInclude: true });
+			out.push({
+				type: "comment",
+				text: `📋 ${LessonManager._textWithAnchors(state)}`,
+				fromInclude: true,
+			});
+		}
+		return out;
+	}
+
+	static _textWithAnchors(state) {
+		const placed = Object.entries(state.anchors || {})
+			.filter(
+				([, pos]) =>
+					Number.isInteger(pos) && pos >= 0 && pos <= state.text.length,
+			)
+			.sort((a, b) => b[1] - a[1]);
+		let text = state.text;
+		for (const [id, pos] of placed) {
+			text = text.slice(0, pos) + wrapAnchor(id) + text.slice(pos);
+		}
+		return toReplayableText(text);
 	}
 
 	save(callback) {
@@ -69,7 +162,11 @@ class LessonManager {
 			return;
 		}
 
-		const jsonData = JSON.stringify(this.data, null, 2);
+		const jsonData = JSON.stringify(
+			LessonManager.authored(this.data),
+			null,
+			2,
+		);
 
 		fs.writeFile(this.currentFilePath, jsonData, (err) => {
 			if (err) {
@@ -90,7 +187,7 @@ class LessonManager {
 
 	create(filePath, callback) {
 		this.currentFilePath = filePath;
-		this.data = LessonManager.defaultBlocks();
+		this.data = LessonManager._withStartWith(LessonManager.defaultBlocks());
 		this.hasUnsavedChanges = true;
 
 		this.save(callback);
@@ -103,13 +200,17 @@ class LessonManager {
 				type,
 				target: typeof initialText === "string" ? initialText : "MAIN",
 			};
+		} else if (type === "include") {
+			this.setStartWith(initialText);
+			return 0;
 		} else {
+			const text =
+				initialText !== null && initialText !== undefined
+					? initialText
+					: "";
 			newBlock = {
 				type,
-				text:
-					initialText !== null && initialText !== undefined
-						? initialText
-						: "",
+				text: type === "code" ? normalizeEdgeNewlines(text) : text,
 			};
 		}
 
@@ -138,7 +239,8 @@ class LessonManager {
 			return false;
 		}
 
-		this.data[index].text = text;
+		const block = this.data[index];
+		block.text = block.type === "code" ? normalizeEdgeNewlines(text) : text;
 		this.markAsChanged();
 		return true;
 	}
@@ -153,22 +255,15 @@ class LessonManager {
 		return true;
 	}
 
-	getAllAnchorIds() {
+	anchorIdsBefore(index) {
+		const { editors } = replayPlan(this.data, index);
 		const seen = new Set();
 		const out = [];
-		const re = /⚓([^⚓]*)⚓/g;
-		for (const block of this.data) {
-			const sources = [];
-			if (typeof block.text === "string") sources.push(block.text);
-			if (typeof block.target === "string") sources.push(block.target);
-			for (const src of sources) {
-				let m;
-				while ((m = re.exec(src)) !== null) {
-					const id = m[1];
-					if (id && !seen.has(id)) {
-						seen.add(id);
-						out.push(id);
-					}
+		for (const state of Object.values(editors)) {
+			for (const id of Object.keys(state.anchors)) {
+				if (id && !seen.has(id)) {
+					seen.add(id);
+					out.push(id);
 				}
 			}
 		}
@@ -180,17 +275,13 @@ class LessonManager {
 		const out = [];
 		for (const block of this.data) {
 			if (!block || block.type !== "move-to") continue;
-			const name = LessonManager._moveToFileName(block.target);
+			const name = moveToFileName(block.target);
 			if (name && !seen.has(name)) {
 				seen.add(name);
 				out.push(name);
 			}
 		}
 		return out;
-	}
-
-	static _moveToFileName(target) {
-		return moveToFileName(target);
 	}
 
 	getBlock(index) {

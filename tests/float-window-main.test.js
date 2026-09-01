@@ -34,7 +34,6 @@ function makeFakeWin() {
 function makeHarness({ onClosed } = {}) {
 	const wins = [];
 	const events = { opened: 0, closed: 0 };
-	const synced = [];
 	const float = new FloatingWindow({
 		make: () => {
 			const win = makeFakeWin();
@@ -42,7 +41,6 @@ function makeHarness({ onClosed } = {}) {
 			return win;
 		},
 		channel: "set-payload",
-		sync: (self) => synced.push(self.activeWin),
 		onClosed: onClosed || (() => {}),
 		broadcastServer: {
 			broadcastFloatingWindowReshown: () => events.opened++,
@@ -51,7 +49,7 @@ function makeHarness({ onClosed } = {}) {
 		floatRect: () => ({ x: 0, y: 0, w: 100, h: 100 }),
 		trackWindowRect: () => {},
 	});
-	return { float, wins, events, synced };
+	return { float, wins, events };
 }
 
 test("close marks the window not alive before closed fires", () => {
@@ -107,7 +105,7 @@ test("onClosed does not fire for a superseded window", () => {
 });
 
 test("closed on the current window clears state and resyncs to null", () => {
-	const { float, wins, synced } = makeHarness();
+	const { float, wins } = makeHarness();
 	float.showOrReuse({}, {});
 	float.close({ force: true });
 	wins[0].emitClosed();
@@ -115,7 +113,6 @@ test("closed on the current window clears state and resyncs to null", () => {
 	assert.equal(float.win, null);
 	assert.equal(float.rect, null);
 	assert.equal(float.isAlive(), false);
-	assert.equal(synced[synced.length - 1], null);
 });
 
 test("a pinned window defers close until unpinned", () => {
