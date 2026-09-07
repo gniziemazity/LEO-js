@@ -12,30 +12,15 @@ class CodeInsertOverlay extends RemoteOverlay {
 		this.canPaste = paste !== false;
 
 		const pasteBtn = document.getElementById("ciPaste");
-		const hint = document.getElementById("ciHint");
 		if (pasteBtn) pasteBtn.style.display = this.canPaste ? "" : "none";
-		if (hint) hint.style.display = this.canPaste ? "none" : "block";
 
 		SnippetView.renderLines(codeEl, text, colored);
 
 		this.open("var(--clr-code-insert-bg)");
 	}
 
-	padActions() {
-		const actions = [];
-		if (this.canPaste)
-			actions.push({ label: "Paste", onClick: () => this.paste() });
-		actions.push({
-			label: "OK",
-			kind: "confirm",
-			onClick: () => this.confirm(),
-		});
-		return actions;
-	}
-
-	setPadCovered(covered) {
-		const actions = document.getElementById("ciActions");
-		if (actions) actions.style.display = covered ? "none" : "";
+	chromeClose() {
+		this.confirm();
 	}
 
 	paste() {
@@ -43,7 +28,6 @@ class CodeInsertOverlay extends RemoteOverlay {
 	}
 
 	closeUI() {
-		this.setPadCovered(false);
 		this.close();
 	}
 

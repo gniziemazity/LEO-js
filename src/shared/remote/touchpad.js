@@ -113,6 +113,7 @@ function deactivateTouchpad() {
 	const header = document.getElementById("mobile-header");
 	touchpadActive = false;
 	overlay.classList.remove("active", "keyboard-mode");
+	delete document.body.dataset.padTint;
 	header.classList.remove("hidden", "above-pad");
 	stopDragIfActive();
 	if (activeModeHandler) {
@@ -160,6 +161,8 @@ async function setTouchpadMode(mode) {
 		touchpadMode = mode;
 		overlay.classList.add("active");
 		overlay.classList.toggle("keyboard-mode", mode === "keyboard");
+		document.body.dataset.padTint =
+			mode === "keyboard" ? "keyboard" : "mouse";
 		header.classList.add("above-pad");
 	}
 
@@ -186,30 +189,6 @@ function padOverlay() {
 	return activePadOverlay();
 }
 
-function padOverlayActions() {
-	const overlay = padOverlay();
-	if (!overlay || !overlay.padActions) return [];
-	return overlay.padActions() || [];
-}
-
-function makePadButton(action, className) {
-	const btn = document.createElement("button");
-	btn.className = className;
-	const label = document.createElement("span");
-	label.textContent = action.label;
-	btn.appendChild(label);
-	btn.onclick = action.onClick;
-	return btn;
-}
-
-function fillBar(bar, actions, className) {
-	if (!bar) return;
-	bar.innerHTML = "";
-	for (const action of actions)
-		bar.appendChild(makePadButton(action, className));
-	bar.classList.toggle("visible", actions.length > 0);
-}
-
 function editKeysWanted() {
 	if (!touchpadActive) return false;
 	if (activeModeHandler)
@@ -225,32 +204,12 @@ function padCoversPopup() {
 }
 
 function syncTouchpadToolbar() {
-	const padOpen = touchpadActive && !activeModeHandler;
-	const covered = padCoversPopup();
-
-	const keysWanted = editKeysWanted();
 	const keys = document.getElementById("touchpadEditKeys");
-	if (keys) keys.classList.toggle("visible", keysWanted);
-
-	const actions = covered ? padOverlayActions() : [];
-	const confirms = actions.filter((a) => a.kind === "confirm");
-	fillBar(
-		document.getElementById("touchpadConfirmBar"),
-		confirms,
-		"pad-confirm-btn",
-	);
-	fillBar(
-		document.getElementById("touchpadActionBar"),
-		padOpen ? actions.filter((a) => a.kind !== "confirm") : [],
-		"pad-bar-btn",
-	);
-
-	const side = document.getElementById("touchpadSideBar");
-	if (side)
-		side.classList.toggle("visible", keysWanted || confirms.length > 0);
+	if (keys) keys.classList.toggle("visible", editKeysWanted());
 
 	const overlay = padOverlay();
-	if (overlay && overlay.setPadCovered) overlay.setPadCovered(covered);
+	if (overlay && overlay.setPadCovered)
+		overlay.setPadCovered(padCoversPopup());
 }
 
 function remoteEditKey(action) {
@@ -265,6 +224,13 @@ async function padEnterMoveTo() {
 	if (touchpadMode !== "keyboard") return;
 	padModeBeforeMoveTo = touchpadMode;
 	await setTouchpadMode("mouse");
+}
+
+async function padTypeName() {
+	if (!touchpadActive || activeModeHandler) return;
+	padModeBeforeMoveTo = null;
+	if (touchpadMode === "keyboard") return;
+	await setTouchpadMode("keyboard");
 }
 
 async function padLeaveMoveTo() {

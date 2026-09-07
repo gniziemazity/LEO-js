@@ -94,7 +94,7 @@ function moveToNameChars() {
 	const target = openPayload && openPayload.target;
 	if (openPopup !== "move-to" || !target) return null;
 	if (!isFileName(target)) return null;
-	return [...target, Key.Enter];
+	return [...target];
 }
 
 function nameProgress() {
@@ -119,20 +119,19 @@ async function typeNextNameChar() {
 	if (!pendingName || pendingName.busy) return !!pendingName;
 	const ch = pendingName.chars[pendingName.index];
 	pendingName.busy = true;
-	const heldTypingKeys = state.isActive;
 	const macOS = settingsManager.get("platform") === "macos";
-	if (heldTypingKeys) {
-		hotkeyManager.unregisterTypingHotkeys();
-		if (macOS) await sleep(20);
-	}
+	const released = state.isActive
+		? hotkeyManager.releaseTypingHotkeysFor(ch)
+		: [];
+	if (released.length && macOS) await sleep(20);
 	try {
 		await keyboard.type(ch);
 	} catch (e) {
 		warnRemoteInput("type file name", e);
 	} finally {
-		if (heldTypingKeys) {
+		if (released.length) {
 			if (macOS) await sleep(20);
-			hotkeyManager.registerTypingHotkeys();
+			hotkeyManager.restoreTypingHotkeys(released);
 		}
 	}
 	if (!pendingName) return true;
@@ -140,6 +139,11 @@ async function typeNextNameChar() {
 	pendingName.busy = false;
 	if (pendingName.index >= pendingName.chars.length) {
 		pendingName = null;
+		try {
+			await keyboard.type(Key.Enter);
+		} catch (e) {
+			warnRemoteInput("type file name", e);
+		}
 		confirmPopup("move-to");
 		return true;
 	}

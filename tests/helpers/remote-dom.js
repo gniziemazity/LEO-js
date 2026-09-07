@@ -20,8 +20,10 @@ const LOAD_ORDER = [
 function classList(el) {
 	const set = new Set();
 	return {
-		add: (c) => c.split(" ").forEach((n) => set.add(n)),
-		remove: (c) => c.split(" ").forEach((n) => set.delete(n)),
+		add: (...cs) =>
+			cs.forEach((c) => c.split(" ").forEach((n) => set.add(n))),
+		remove: (...cs) =>
+			cs.forEach((c) => c.split(" ").forEach((n) => set.delete(n))),
 		toggle: (c, on) => (on ? set.add(c) : set.delete(c)),
 		contains: (c) => set.has(c),
 		_set: set,
@@ -39,6 +41,7 @@ function makeStyle() {
 function el(id) {
 	const node = {
 		id,
+		dataset: {},
 		style: makeStyle(),
 		children: [],
 		onclick: null,
@@ -82,10 +85,7 @@ function build(opts = {}) {
 		"modeBtnKeyboard",
 		"modeBtnMouse",
 		"modeSideBtns",
-		"touchpadActionBar",
-		"touchpadSideBar",
 		"touchpadEditKeys",
-		"touchpadConfirmBar",
 		"mtoConfirm",
 		"mtoActions",
 		"mtoTypeName",
@@ -98,6 +98,7 @@ function build(opts = {}) {
 		"qShowBtn",
 		"qCloseBarFill",
 		"mtoTitle",
+		"mtoNote",
 		"mtoTarget",
 		"mtoSnippet",
 		"mtModal",
@@ -112,7 +113,6 @@ function build(opts = {}) {
 		"ciCode",
 		"ciActions",
 		"ciPaste",
-		"ciHint",
 	];
 	const nodes = {};
 	for (const id of ids) nodes[id] = el(id);
@@ -130,6 +130,7 @@ function build(opts = {}) {
 	];
 
 	const document = {
+		body: el("body"),
 		getElementById: (id) => nodes[id] || null,
 		createElement: () => el(""),
 		createDocumentFragment: () => {
@@ -186,6 +187,8 @@ function build(opts = {}) {
 		"showQuestionOverlay,closeQuestionOverlayUI,showMoveToOverlay," +
 		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
 		"closeCodeInsertOverlay,codeInsertPaste," +
+		"showQuestionToTeacher,closeQuestionOverlay,closeMoveToOverlay," +
+		"moveToTypeName," +
 		"handleInteractionBtn,setStudents,activePadOverlay," +
 		"padMode:()=>(touchpadActive?touchpadMode:null)};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));

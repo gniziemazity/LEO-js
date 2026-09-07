@@ -177,6 +177,18 @@ tbody tr:hover td.sticky-l {
 		var(--clr-accent-light)
 	);
 }
+tbody tr:hover td.st-bg-pass {
+	background: var(--clr-st-pass-bg);
+}
+tbody tr:hover td.st-bg-prime {
+	background: var(--clr-st-prime-bg);
+}
+tbody tr:hover td.st-bg-star {
+	background: var(--clr-st-star-bg);
+}
+tbody tr:hover td.st-bg-fail {
+	background: var(--clr-st-fail-bg);
+}
 tbody tr.selected td {
 	background: var(--clr-row-selected) !important;
 }
@@ -255,6 +267,9 @@ td.follow {
 tr.row-fail > td {
 	color: var(--clr-fail-fade) !important;
 }
+tr.row-fail > td.st-bg-fail {
+	color: var(--clr-st-fail) !important;
+}
 tr.row-excluded:not(.row-ai) > td:not(.sticky-l) {
 	opacity: 0.55;
 }
@@ -269,6 +284,26 @@ tr.row-ai > td:not(.sticky-l) {
 }
 tr.row-ai > td {
 	color: var(--clr-pale-red) !important;
+}
+td.st-bg-pass {
+	background: var(--clr-st-pass-bg);
+	color: var(--clr-st-pass);
+	font-weight: 700;
+}
+td.st-bg-prime {
+	background: var(--clr-st-prime-bg);
+	color: var(--clr-st-prime);
+	font-weight: 700;
+}
+td.st-bg-star {
+	background: var(--clr-st-star-bg);
+	color: var(--clr-st-star);
+	font-weight: 700;
+}
+td.st-bg-fail {
+	background: var(--clr-st-fail-bg);
+	color: var(--clr-st-fail);
+	font-weight: 700;
 }
 td.col-num {
 	color: var(--clr-muted);

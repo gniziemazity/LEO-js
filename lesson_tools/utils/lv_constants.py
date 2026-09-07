@@ -39,6 +39,26 @@ IGNORED_CHARS: frozenset = frozenset(
 )
 
 PAUSE_CHAR = "🕛"
+
+CONTROL_GLYPHS: frozenset = frozenset(
+    c for c in (
+        set(CURSOR_MOVES) | set(SHIFT_CURSOR_MOVES) | set(CHAR_REPLACEMENTS)
+        | set(BACKSPACE_CHARS) | set(DELETE_FWRD_CHARS)
+        | {DELETE_LINE_CHAR, PAUSE_CHAR} | set(IGNORED_CHARS)
+    )
+    if not c.isspace() and not c.isalpha()
+)
+
+
+_OWN_INDENT_RE = re.compile(r"\n[ \t]+\S")
+
+
+def is_literal_code_insert(text: str) -> bool:
+    t = text or ""
+    if any(ch in CONTROL_GLYPHS for ch in t):
+        return False
+    return bool(_OWN_INDENT_RE.search(t))
+
 PAUSE_MS   = 500
 
 CODE_INSERT_MS_PER_CHAR = 10

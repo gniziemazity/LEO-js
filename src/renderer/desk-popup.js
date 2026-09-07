@@ -117,7 +117,7 @@ class DeskPopup {
 		return b;
 	}
 
-	showMoveTo({ mode, target, snippet, typeName }) {
+	showMoveTo({ mode, target, snippet, typeName, note }) {
 		const el = this._open("move-to");
 		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
 		const canTypeName = mode === "file" && !!typeName;
@@ -129,6 +129,12 @@ class DeskPopup {
 					? `Go to (${moveToDisplayName(switchTo)}):`
 					: "Go to:",
 		);
+		if (note) {
+			const n = document.createElement("div");
+			n.className = "mt-modal-note";
+			n.textContent = note;
+			el.appendChild(n);
+		}
 		const body = this._body(el);
 		if (mode === "anchor" && renderSnippet(body, snippet)) {
 		} else {

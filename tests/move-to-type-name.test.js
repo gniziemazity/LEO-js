@@ -26,7 +26,17 @@ test("the host types the name from its own state, never from the message", () =>
 		"it must take no argument, so there is nothing for a client to supply",
 	);
 	assert.match(step, /keyboard\.type\(ch\)/, "one queued character per press");
-	assert.match(chars, /Key\.Enter/, "and Enter closes the New File input");
+	assert.equal(
+		/Key\.Enter/.test(chars),
+		false,
+		"Enter used to be queued as a character, so a finished name still " +
+			"needed one more press before the popup would close",
+	);
+	assert.match(
+		step,
+		/index >= pendingName\.chars\.length\)[\s\S]*?keyboard\.type\(Key\.Enter\)[\s\S]*?confirmPopup\("move-to"\)/,
+		"the last character types Enter and confirms in the same press",
+	);
 });
 
 test("the message carries no payload, and the desk may raise it", () => {
@@ -80,26 +90,25 @@ test("both surfaces gate the button on the payload, not on mode alone", () => {
 	);
 
 	const desk = read("src/renderer/desk-popup.js");
-	const fn =
-		/showMoveTo\(\{ mode, target, snippet, typeName \}\)[\s\S]*?\n\t\}/.exec(
-			desk,
-		)[0];
+	const fn = /showMoveTo\(\{[^}]*\}\)[\s\S]*?\n\t\}/.exec(desk)[0];
 	assert.match(fn, /const canTypeName = mode === "file" && !!typeName/);
 	assert.match(fn, /client-move-to-type-name/);
 });
 
-test("a pad covering the popup takes the whole action row, not just the OK", () => {
+test("a pad covering the popup lifts it instead of hiding its buttons", () => {
 	const phone = read("src/shared/remote/move-to-overlay.js");
-	const fn = /setPadCovered\(covered\)[\s\S]*?\n\t\}/.exec(phone)[0];
+	assert.equal(
+		/setPadCovered/.test(phone),
+		false,
+		"one base implementation, or each popup invents its own rule",
+	);
+
+	const base = read("src/shared/remote/remote-overlay.js");
+	const fn = /setPadCovered\(covered\)[\s\S]*?\n\t\}/.exec(base)[0];
 	assert.match(
 		fn,
-		/mtoActions/,
-		"hiding only mtoConfirm would leave a second Type name under the pad",
-	);
-	assert.equal(
-		/mtoConfirm/.test(fn),
-		false,
-		"the row is what gets hidden now",
+		/pad-lifted/,
+		"the popup is raised above the pad, keeping every button in place",
 	);
 });
 
@@ -146,22 +155,28 @@ test("a logged filename would corrupt the file that happens to be open", () => {
 	);
 });
 
-test("the letter hotkeys are released while the filename is typed", () => {
+test("only the letter being typed is released, not all twenty-six", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
 	const fn = /async function typeNextNameChar\(\)[\s\S]*?\n\}/.exec(src)[0];
 
 	assert.match(
 		fn,
-		/hotkeyManager\.unregisterTypingHotkeys\(\)/,
-		"a-z are global accelerators while a lesson runs, so LEO eats its own keys",
+		/releaseTypingHotkeysFor\(ch\)/,
+		"a-z are all accelerators, so releasing every one per character cost " +
+			"52 OS calls a keystroke and dropped the teacher's key into the editor",
 	);
-	assert.match(fn, /hotkeyManager\.registerTypingHotkeys\(\)/);
+	assert.equal(
+		/unregisterTypingHotkeys\(\)/.test(fn),
+		false,
+		"the blanket release is what left the gap",
+	);
+	assert.match(fn, /restoreTypingHotkeys\(released\)/);
 	assert.ok(
-		fn.indexOf(".unregisterTypingHotkeys") < fn.indexOf("keyboard.type"),
+		fn.indexOf("releaseTypingHotkeysFor") < fn.indexOf("keyboard.type"),
 		"released before typing",
 	);
 	assert.ok(
-		fn.indexOf("keyboard.type") < fn.indexOf(".registerTypingHotkeys"),
+		fn.indexOf("keyboard.type") < fn.indexOf("restoreTypingHotkeys"),
 		"and taken back after",
 	);
 	assert.match(
@@ -169,6 +184,17 @@ test("the letter hotkeys are released while the filename is typed", () => {
 		/\} finally \{/,
 		"a throw mid-type must not leave the lesson without its hotkeys",
 	);
+});
+
+test("a character that is not a hotkey releases nothing at all", () => {
+	const src = fs.readFileSync(path.join(MAIN, "hotkey-manager.js"), "utf-8");
+	const fn = /typingHotkeysFor\(ch\) \{[\s\S]*?\n\t\}/.exec(src)[0];
+	assert.match(
+		fn,
+		/typeof ch !== "string"/,
+		'the last "character" of a name is Key.Enter, which is a number',
+	);
+	assert.match(fn, /toLowerCase\(\)/, "the hotkey table is lower case");
 });
 
 test("keyboard-handler wraps its own typing the same way", () => {

@@ -1715,5 +1715,67 @@ class TestIndentSelection(unittest.TestCase):
         self.assertEqual(py_text, '\ta\n\tb\nc')
 
 
+class TestSelectionDelete(unittest.TestCase):
+    SCRIPT = 'a↩b↩c↑↑◄⇓⇓⌫'
+
+    def _typed(self, script: str, ext: str = '.js'):
+        from utils.lv_editor import HeadlessEditor
+        ed = HeadlessEditor(file_ext=ext)
+        for ch in script:
+            ed.handle_char(ch)
+        return ed
+
+    def test_backspace_deletes_the_whole_selection(self):
+        self.assertEqual(self._typed(self.SCRIPT).get_text(), 'c')
+
+    def test_forward_delete_deletes_the_whole_selection(self):
+        self.assertEqual(self._typed('a↩b↩c↑↑◄⇓⇓⌦').get_text(), 'c')
+
+    def test_typing_replaces_the_selection(self):
+        self.assertEqual(self._typed('a↩b↩c↑↑◄⇓⇓x').get_text(), 'xc')
+
+    def test_enter_replaces_the_selection(self):
+        self.assertEqual(self._typed('a↩b↩c↑↑◄⇓⇓↩').get_text(), '\nc')
+
+    def test_selection_to_line_end_deletes_that_line(self):
+        self.assertEqual(self._typed('aa↩bb↑◄⇒⌫').get_text(), '\nbb')
+
+    def test_backspace_without_a_selection_still_deletes_one_char(self):
+        self.assertEqual(self._typed('a↩b↩c⌫').get_text(), 'a\nb\n')
+
+    def test_deleting_clears_the_selection(self):
+        ed = self._typed(self.SCRIPT)
+        self.assertIsNone(ed._sel_anchor)
+
+    def test_code_insert_deletes_a_selection_too(self):
+        from utils.lv_editor import HeadlessEditor
+        ed = HeadlessEditor(file_ext='.js')
+        ed.handle_code_insert(self.SCRIPT)
+        self.assertEqual(ed.get_text(), 'c')
+
+    @unittest.skipUnless(_REPLAY_READY,
+                         'node executable or _replay_runner.js not available')
+    def test_js_python_parity(self):
+        from utils.lv_editor import reconstruct_html_headless
+        events = [{'char': c, 'timestamp': i}
+                  for i, c in enumerate(self.SCRIPT)]
+        py_text = reconstruct_html_headless(events, 'lesson.js')
+        with tempfile.TemporaryDirectory() as d:
+            log_path = Path(d) / 'log.json'
+            log_path.write_text(
+                json.dumps({'events': events, 'lessonFile': 'lesson.js'}),
+                encoding='utf-8',
+            )
+            res = subprocess.run(
+                [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],
+                capture_output=True, text=True, encoding='utf-8',
+            )
+        if res.returncode != 0:
+            self.fail(f'JS replay runner failed (rc={res.returncode}):\n'
+                      f'{res.stderr}')
+        self.assertEqual(res.stdout, py_text)
+        self.assertEqual(py_text, 'c')
+
+
 if __name__ == '__main__':
     unittest.main()

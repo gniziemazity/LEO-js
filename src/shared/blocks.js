@@ -57,6 +57,9 @@
 			.comment-block.web-comment { background: ${c.imageBlockColor}; }
 			.comment-block.code-insert-comment { background: ${c.codeInsertBlockColor}; }
 			.comment-block.move-to-comment { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
+			.move-to-note,
+			.mt-modal-note { background: ${c.commentNormal}; color: ${c.textColor}; }
+			.move-to-note::placeholder { color: ${c.textColor}; }
 			.comment-block.active-comment {
 				background: ${c.commentActive};
 				color: ${c.commentActiveText};

@@ -58,7 +58,7 @@ class LessonRenderer {
 		this.render();
 	}
 
-	attachEditHandlers(element) {
+	attachEditHandlers(element, allowTab = false) {
 		element.onpaste = (e) => {
 			e.preventDefault();
 			const text = e.clipboardData
@@ -70,6 +70,9 @@ class LessonRenderer {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				document.execCommand("insertText", false, "\n");
+			} else if (allowTab && e.key === "Tab" && !e.shiftKey) {
+				e.preventDefault();
+				document.execCommand("insertText", false, "\t");
 			}
 		};
 	}
@@ -232,7 +235,7 @@ class LessonRenderer {
 			if (sub) blockDiv.classList.add(sub);
 		};
 
-		this.attachEditHandlers(blockDiv);
+		this.attachEditHandlers(blockDiv, subtype === "code-insert-comment");
 
 		steps.push({
 			type: "block",
@@ -362,6 +365,20 @@ class LessonRenderer {
 		});
 		blockDiv.appendChild(btn);
 
+		const note = document.createElement("input");
+		note.type = "text";
+		note.className = "move-to-note";
+		note.value = block.note || "";
+		note.placeholder = "why go here?";
+		note.disabled = isTypingActive || !!block.fromInclude;
+		note.addEventListener("mousedown", (e) => e.stopPropagation());
+		note.addEventListener("click", (e) => e.stopPropagation());
+		note.addEventListener("keydown", (e) => e.stopPropagation());
+		note.addEventListener("input", () => {
+			this.lessonManager.updateMoveToNote(blockIdx, note.value);
+		});
+		blockDiv.appendChild(note);
+
 		const creates =
 			classifyMoveToTarget(target).mode === "file" &&
 			this.lessonManager.isFirstMoveToFile(blockIdx);
@@ -385,6 +402,7 @@ class LessonRenderer {
 			subtype: "move-to",
 			fromInclude: !!block.fromInclude,
 			target,
+			note: block.note || "",
 			typeName: creates && block.typeName !== false,
 			snippet: extractAnchorSnippet(
 				target,

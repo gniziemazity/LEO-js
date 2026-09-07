@@ -25,6 +25,7 @@ function makeClassList() {
 function makeNode() {
 	const node = {
 		className: "",
+		dataset: {},
 		textContent: "",
 		onclick: null,
 		children: [],
@@ -49,6 +50,8 @@ function loadPad(opts) {
 	const listeners = {};
 	const clock = { t: 10000 };
 
+	const docBody = makeNode();
+
 	const els = {
 		touchpadOverlay: Object.assign(makeNode(), {
 			addEventListener: (type, fn) => (listeners[type] = fn),
@@ -66,6 +69,7 @@ function loadPad(opts) {
 	const sandbox = {
 		module: { exports: {} },
 		document: {
+			body: docBody,
 			getElementById: (id) => els[id] || null,
 			querySelector: () => null,
 			querySelectorAll: () => [],
@@ -101,6 +105,7 @@ function loadPad(opts) {
 		sent,
 		els,
 		api,
+		body: docBody,
 		tick: (ms) => (clock.t += ms),
 		fire(type, touches) {
 			listeners[type]({
@@ -239,11 +244,6 @@ test("the edit keys live on the mouse pad, where the pointer that selects text i
 
 	await pad.api.setTouchpadMode("mouse");
 	assert.equal(keys.classList.contains("visible"), true);
-	assert.equal(
-		pad.els.touchpadSideBar.classList.contains("visible"),
-		true,
-		"and the stack they sit in comes with them",
-	);
 
 	await pad.api.setTouchpadMode("mouse");
 	assert.equal(
@@ -398,70 +398,41 @@ test("the css that hides the other buttons lets the two pad buttons back in", ()
 	);
 });
 
-test("the popup's own actions are mirrored onto whichever pad is covering them", async () => {
-	const acted = [];
-	const overlay = {
-		padActions: () => [
-			{ label: "Show", onClick: () => acted.push("show") },
-			{ label: "✕", onClick: () => acted.push("close") },
-		],
-	};
-
+test("either pad lifts the popup it covers rather than emptying it", async () => {
 	for (const mode of ["keyboard", "mouse"]) {
-		const pad = await openPad(mode, { padOverlay: overlay });
+		const covered = [];
+		const pad = await openPad(mode, {
+			padOverlay: { setPadCovered: (v) => covered.push(v) },
+		});
 		pad.api.syncTouchpadToolbar();
-
-		const bar = pad.els.touchpadActionBar;
-		assert.equal(bar.classList.contains("visible"), true, mode + " pad");
-		assert.deepEqual(
-			bar.children.map((b) => b.children[0].textContent),
-			["Show", "✕"],
-			mode + " pad mirrors the popup",
+		assert.equal(
+			covered[covered.length - 1],
+			true,
+			mode + " pad covers the popup, so the popup goes above it",
 		);
 	}
 });
 
-test("with no popup up there is no action bar to get in the way", async () => {
-	const pad = await openPad("keyboard");
-	assert.equal(pad.els.touchpadActionBar.classList.contains("visible"), false);
-	assert.equal(pad.els.touchpadActionBar.children.length, 0);
-});
-
-test("a confirm action lands in the side stack, under the edit keys", async () => {
-	const done = [];
-	const pad = await openPad("mouse", {
-		padOverlay: {
-			padActions: () => [
-				{ label: "OK", kind: "confirm", onClick: () => done.push("ok") },
-			],
-		},
-	});
-	pad.api.syncTouchpadToolbar();
-
-	assert.deepEqual(
-		pad.els.touchpadConfirmBar.children.map((b) => b.children[0].textContent),
-		["OK"],
-	);
+test("the pad renders no buttons of its own for a popup", () => {
+	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
+	for (const id of ["touchpadActionBar", "touchpadConfirmBar"]) {
+		assert.equal(
+			html.includes(id),
+			false,
+			id + " mirrored a popup's buttons; the real ones are used now",
+		);
+	}
 	assert.equal(
-		pad.els.touchpadActionBar.classList.contains("visible"),
+		/padActions/.test(SRC),
 		false,
-		"a confirm never doubles up in the top bar",
+		"nothing may hand the pad a copy of a popup's buttons",
 	);
-	assert.equal(
-		pad.els.touchpadConfirmBar.children[0].className,
-		"pad-confirm-btn",
-		"styled like the popup's own OK, not like an edit key",
-	);
-
-	pad.els.touchpadConfirmBar.children[0].onclick();
-	assert.deepEqual(done, ["ok"]);
 });
 
-test("the confirm reaches a handler mode that has taken the screen", async () => {
+test("a handler mode that covers the screen lifts the popup too", async () => {
+	const covered = [];
 	const pad = loadPad({
-		padOverlay: {
-			padActions: () => [{ label: "OK", kind: "confirm", onClick() {} }],
-		},
+		padOverlay: { setPadCovered: (v) => covered.push(v) },
 	});
 	let wanted = false;
 	pad.api.registerTouchpadMode("jedi", {
@@ -472,27 +443,24 @@ test("the confirm reaches a handler mode that has taken the screen", async () =>
 	await pad.api.setTouchpadMode("jedi");
 
 	assert.equal(
-		pad.els.touchpadConfirmBar.children.length,
-		0,
+		covered[covered.length - 1],
+		false,
 		"a handler that is not typing leaves the popup alone",
 	);
 
 	wanted = true;
 	pad.api.syncTouchpadToolbar();
 	assert.equal(
-		pad.els.touchpadConfirmBar.children.length,
-		1,
-		"but the air keyboard covers the popup, so it needs the OK too",
+		covered[covered.length - 1],
+		true,
+		"but the air keyboard covers the popup, so the buttons must come up",
 	);
 });
 
 test("the overlay is told whether a pad is covering it", async () => {
 	const covered = [];
 	const pad = await openPad("mouse", {
-		padOverlay: {
-			padActions: () => [],
-			setPadCovered: (v) => covered.push(v),
-		},
+		padOverlay: { setPadCovered: (v) => covered.push(v) },
 	});
 	pad.api.syncTouchpadToolbar();
 	assert.equal(covered[covered.length - 1], true, "an open pad covers it");
@@ -524,5 +492,45 @@ test("the toolbars sit outside the gesture surface, or they could not be pressed
 		(SRC.match(/overlay\.addEventListener\(/g) || []).length,
 		1,
 		"nothing may bind the glass directly and skip the toolbar guard",
+	);
+});
+
+test("the pad stamps its tint on the body so a lifted popup can wear it", async () => {
+	const pad = loadPad();
+	pad.api.setSessionActive(true);
+
+	await pad.api.setTouchpadMode("mouse");
+	assert.equal(pad.body.dataset.padTint, "mouse");
+
+	await pad.api.setTouchpadMode("keyboard");
+	assert.equal(pad.body.dataset.padTint, "keyboard");
+
+	await pad.api.setTouchpadMode("keyboard");
+	assert.equal(
+		pad.body.dataset.padTint,
+		undefined,
+		"closing the pad takes the tint with it, or the popup stays coloured",
+	);
+});
+
+test("a handler mode paints no tint: it does not own the glass", async () => {
+	const pad = loadPad();
+	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
+	pad.api.setSessionActive(true);
+	await pad.api.setTouchpadMode("jedi");
+	assert.equal(pad.body.dataset.padTint, undefined);
+});
+
+test("the tint sits over the popup but under the buttons it lends", () => {
+	const after = /\.overlay\.pad-lifted::after \{[\s\S]*?\n\}/.exec(CSS)[0];
+	assert.match(after, /z-index: 1/, "above the popup surface");
+	assert.match(after, /pointer-events: none/, "and never eats a touch");
+
+	const btn = /\.overlay\.pad-lifted button[^{]*\{[\s\S]*?\n\}/.exec(CSS)[0];
+	assert.match(btn, /z-index: 2/, "buttons come back up through the tint");
+	assert.match(
+		btn,
+		/:not\(\.popup-student-btn\)/,
+		"student names stay under the pad: picking one is not a pad gesture",
 	);
 });

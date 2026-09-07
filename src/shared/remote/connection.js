@@ -98,15 +98,32 @@ function startScreenKeepAlive() {
 	if (started && started.catch) started.catch(() => {});
 }
 
-document.addEventListener("click", function goFS() {
+function lockPortrait() {
+	const orientation = window.screen && window.screen.orientation;
+	if (!orientation || typeof orientation.lock !== "function") return;
+	const locking = orientation.lock("portrait");
+	if (locking && locking.catch) locking.catch(() => {});
+}
+
+function goFullscreen() {
+	if (document.fullscreenElement || document.webkitFullscreenElement) {
+		lockPortrait();
+		return;
+	}
 	const el = document.documentElement;
 	const rfs =
 		el.requestFullscreen ||
 		el.webkitRequestFullscreen ||
 		el.msRequestFullscreen;
-	if (rfs) rfs.call(el).catch(() => {});
-	document.removeEventListener("click", goFS);
-});
+	if (!rfs) return;
+	const entering = rfs.call(el);
+	if (entering && entering.then) entering.then(lockPortrait, () => {});
+	else lockPortrait();
+}
+
+for (const gesture of ["pointerdown", "touchend", "click"]) {
+	document.addEventListener(gesture, goFullscreen, { capture: true });
+}
 
 document.addEventListener("visibilitychange", () => {
 	if (document.visibilityState === "visible") {
@@ -116,5 +133,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.addEventListener("pointerdown", () => requestWakeLock());
-document.addEventListener("fullscreenchange", () => requestWakeLock());
+document.addEventListener("fullscreenchange", () => {
+	requestWakeLock();
+	lockPortrait();
+});
 document.addEventListener("webkitfullscreenchange", () => requestWakeLock());

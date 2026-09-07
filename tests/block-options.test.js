@@ -93,10 +93,17 @@ test("a long code line cannot push the option off the right edge", () => {
 		"pre-wrap alone will not break an unbreakable token",
 	);
 	assert.match(
+		/#main-layout \{[\s\S]*?\n\}/.exec(css)[0],
+		/padding-right: var\(--editor-sidebar-w\)/,
+		"the sidebar is position:fixed and reserves no room of its own, so the " +
+			"layout must reserve the gutter; without it every wrapped code line " +
+			"loses its last 55px under the black bar",
+	);
+	assert.match(
 		/\.block-opt \{[\s\S]*?\n\}/.exec(css)[0],
-		/right: var\(--editor-sidebar-w\)/,
-		"the sidebar is position:fixed over the right edge and nothing reserves " +
-			"room for it, so right:0 puts the option underneath it",
+		/right: 0/,
+		"#main-layout reserves the gutter, so the chip sits flush at the " +
+			"block's own right edge rather than dodging the bar itself",
 	);
 	assert.match(
 		/\.sidebar \{[\s\S]*?\n\}/.exec(css)[0],
@@ -278,31 +285,31 @@ test("Auto-type is offered only where the file is created", () => {
 	);
 });
 
-test("the paste hint is shown with a real display value, not an empty string", () => {
-	assert.match(
-		read("shared/styles.css"),
-		/\.ci-modal-hint \{\s*\n\tdisplay: none;/,
-		"the hint is hidden by default in CSS",
-	);
-	const src = read("shared/remote/code-insert-overlay.js");
-	const shows = /hint\.style\.display =\s*[\s\S]{0,80}?;/.exec(src)[0];
+test("the phone never tells a teacher to press Ctrl+V it cannot honour", () => {
 	assert.equal(
-		/\?\s*""|:\s*""/.test(shows),
+		/ci-modal-hint|ciHint/.test(read("remote.html")),
 		false,
-		"clearing the inline style falls back to the stylesheet's display:none, " +
-			"so the hint would never appear",
+		"with paste off the clipboard is never loaded, so the hint promised " +
+			"a paste that would insert whatever the teacher had copied",
 	);
+	assert.equal(
+		/ciHint/.test(read("shared/remote/code-insert-overlay.js")),
+		false,
+	);
+	assert.equal(/ci-modal-hint/.test(read("shared/styles.css")), false);
 });
 
-test("the pad bar offers no OK when the name has to be typed", () => {
-	const pad = /padActions\(\) \{[\s\S]*?\n\t\}/.exec(
-		read("shared/remote/move-to-overlay.js"),
-	)[0];
-	assert.match(pad, /if \(this\.canTypeName\)/);
-	assert.equal(
-		/kind: "confirm"[\s\S]*?canTypeName/.test(pad),
-		false,
-		"a pad covering the popup must not offer the OK the popup itself refuses",
+test("no OK is offered when the name has to be typed", () => {
+	const phone = read("shared/remote/move-to-overlay.js");
+	assert.match(
+		phone,
+		/okBtn\.style\.display = this\.canTypeName \? "none" : ""/,
+		"typing the last character is what confirms, so an OK would race it",
+	);
+	assert.match(
+		phone,
+		/typeBtn\.style\.display = this\.canTypeName \? "" : "none"/,
+		"and Auto-type is offered on exactly the block that creates the file",
 	);
 });
 
@@ -426,4 +433,14 @@ test("authored() keeps the flag through a save round-trip", () => {
 		false,
 		"a field-by-field rebuild would silently drop paste/typeName",
 	);
+});
+
+test("the gutter is given back when the bar goes away for typing", () => {
+	const css = read("shared/styles.css");
+	const rule = /body\.typing-active #main-layout \{[\s\S]*?\n\}/.exec(css);
+	assert.ok(
+		rule,
+		"typing hides the sidebar, so its 55px has to go back to the code",
+	);
+	assert.match(rule[0], /padding-right: 0/);
 });

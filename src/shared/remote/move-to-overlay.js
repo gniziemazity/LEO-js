@@ -4,7 +4,7 @@ class MoveToOverlay extends RemoteOverlay {
 	}
 
 	show(payload) {
-		const { mode, target, snippet, typeName } = payload || {};
+		const { mode, target, snippet, typeName, note } = payload || {};
 		const overlay = this.el;
 		const titleEl = document.getElementById("mtoTitle");
 		const targetEl = document.getElementById("mtoTarget");
@@ -26,6 +26,12 @@ class MoveToOverlay extends RemoteOverlay {
 		if (typeBtn) typeBtn.style.display = this.canTypeName ? "" : "none";
 		const okBtn = document.getElementById("mtoConfirm");
 		if (okBtn) okBtn.style.display = this.canTypeName ? "none" : "";
+
+		const noteEl = document.getElementById("mtoNote");
+		if (noteEl) {
+			noteEl.textContent = note || "";
+			noteEl.style.display = note ? "" : "none";
+		}
 
 		snippetEl.style.display = "none";
 		snippetEl.innerHTML = "";
@@ -79,20 +85,13 @@ class MoveToOverlay extends RemoteOverlay {
 		}
 	}
 
-	padActions() {
-		if (this.canTypeName)
-			return [{ label: "Auto-type", onClick: () => this.typeName() }];
-		return [
-			{
-				label: "OK",
-				kind: "confirm",
-				onClick: () => this.confirm(),
-			},
-		];
+	chromeClose() {
+		this.confirm();
 	}
 
 	typeName() {
 		sendMessage("move-to-type-name", {});
+		padTypeName();
 	}
 
 	setTyped(data) {
@@ -101,13 +100,7 @@ class MoveToOverlay extends RemoteOverlay {
 		SnippetView.renderTypedName(targetEl, data.target, data.typed);
 	}
 
-	setPadCovered(covered) {
-		const row = document.getElementById("mtoActions");
-		if (row) row.style.display = covered ? "none" : "";
-	}
-
 	closeUI() {
-		this.setPadCovered(false);
 		this.close();
 		padLeaveMoveTo();
 	}

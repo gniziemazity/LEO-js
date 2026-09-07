@@ -358,6 +358,7 @@ function applyTypedChar(state, ch, ts = 0, opts = {}) {
 		return;
 	}
 	if (ch === "↩" || ch === "\n") {
+		state.deleteSelection();
 		state.insert("\n", ts);
 		autoIndent(state, ts, opts.getOpensCloses);
 		return;
@@ -367,11 +368,13 @@ function applyTypedChar(state, ch, ts = 0, opts = {}) {
 		return;
 	}
 	if (BACKSPACE_CHARS.has(ch)) {
+		if (state.deleteSelection()) return;
 		if (backspaceIsIgnored(state)) return;
 		state.deleteBack(1);
 		return;
 	}
 	if (DELETE_FWRD_CHARS.has(ch)) {
+		if (state.deleteSelection()) return;
 		state.deleteForward(1);
 		return;
 	}
@@ -379,7 +382,33 @@ function applyTypedChar(state, ch, ts = 0, opts = {}) {
 		state.deleteLine();
 		return;
 	}
+	state.deleteSelection();
 	autoDedent(state, ch, ts);
+	state.insert(ch, ts);
+}
+
+const CONTROL_GLYPHS = new Set(
+	[
+		...Object.keys(CURSOR_MOVES),
+		...Object.keys(SHIFT_CURSOR_MOVES),
+		...Object.keys(CHAR_REPLACEMENTS),
+		...BACKSPACE_CHARS,
+		...DELETE_FWRD_CHARS,
+		DELETE_LINE_CHAR,
+		PAUSE_CHAR,
+		...IGNORED_CHARS,
+	].filter((c) => !/\s/u.test(c) && !/\p{L}/u.test(c)),
+);
+
+const OWN_INDENT_RE = /\n[ \t]+\S/;
+
+function isLiteralCodeInsert(text) {
+	const s = String(text == null ? "" : text);
+	for (const ch of s) if (CONTROL_GLYPHS.has(ch)) return false;
+	return OWN_INDENT_RE.test(s);
+}
+
+function insertLiteralChar(state, ch, ts = 0) {
 	state.insert(ch, ts);
 }
 
@@ -399,7 +428,10 @@ function applyTypedText(state, text, ts = 0, opts = {}) {
 }
 
 function applyAtomicText(state, text, ts = 0, opts = {}) {
-	applyTextSegmented(state, text, applyTypedChar, ts, opts);
+	const handler = isLiteralCodeInsert(text)
+		? insertLiteralChar
+		: applyTypedChar;
+	applyTextSegmented(state, text, handler, ts, opts);
 }
 
 function makeReplayContext(lessonFile = null) {
@@ -466,6 +498,12 @@ function _devSemicolonNewline(dev, ts) {
 function replayChar(ctx, ch, ts, delay, editor, hooks) {
 	const log = (hooks && hooks.log) || (() => {});
 	const st = editor === "dev" ? ctx.dev : ctx.main;
+	const takeSelection = () => {
+		if (editor !== "main" || ctx.selAnchorMain === null) return false;
+		ctx.main.selAnchor = ctx.selAnchorMain;
+		ctx.selAnchorMain = null;
+		return ctx.main.deleteSelection();
+	};
 
 	if (ch in CURSOR_MOVES) {
 		ctx.main.moveCursor(CURSOR_MOVES[ch]);
@@ -490,6 +528,7 @@ function replayChar(ctx, ch, ts, delay, editor, hooks) {
 			log(ts, "⌨  ― Tab", CLR.blue);
 			return delay;
 		}
+		if (real === "\n") takeSelection();
 		st.insert(real, ts);
 		if (real === "\n" && editor === "main") {
 			autoIndent(ctx.main, ts, ctx.opensCloses());
@@ -498,6 +537,10 @@ function replayChar(ctx, ch, ts, delay, editor, hooks) {
 		return delay;
 	}
 	if (BACKSPACE_CHARS.has(ch)) {
+		if (takeSelection()) {
+			log(ts, "⌫  Backspace (selection)", CLR.red);
+			return delay;
+		}
 		if (backspaceIsIgnored(st)) {
 			log(ts, "⌫  Backspace", CLR.pale_red);
 			return delay;
@@ -507,6 +550,10 @@ function replayChar(ctx, ch, ts, delay, editor, hooks) {
 		return delay;
 	}
 	if (DELETE_FWRD_CHARS.has(ch)) {
+		if (takeSelection()) {
+			log(ts, "⌦  Delete (selection)", CLR.blue);
+			return delay;
+		}
 		st.deleteForward(1);
 		log(ts, "⌦  Delete", CLR.blue);
 		return delay;
@@ -529,6 +576,7 @@ function replayChar(ctx, ch, ts, delay, editor, hooks) {
 		return delay;
 	}
 
+	takeSelection();
 	if (editor === "main") autoDedent(ctx.main, ch, ts);
 	st.insert(ch, ts);
 	log(ts, `⌨  ${JSON.stringify(ch)}`, CLR.dim);
@@ -539,6 +587,8 @@ function replayCodeInsert(ctx, code, ts, delay, editor, hooks) {
 	const log = (hooks && hooks.log) || (() => {});
 	log(ts, "⬇  Code Insert", CLR.orange);
 
+	const literal = isLiteralCodeInsert(code);
+
 	for (const [segKind, segVal] of _splitCodeWithAnchors(code)) {
 		if (segKind !== "text") {
 			ctx.main.setAnchor(segVal);
@@ -546,6 +596,10 @@ function replayCodeInsert(ctx, code, ts, delay, editor, hooks) {
 		}
 		for (const ch of segVal) {
 			const st = editor === "dev" ? ctx.dev : ctx.main;
+			if (literal) {
+				st.insert(ch, ts);
+				continue;
+			}
 			if (IGNORED_CHARS.has(ch) || ch === PAUSE_CHAR) continue;
 			if (ch === DELETE_LINE_CHAR) {
 				st.deleteLine();
@@ -656,6 +710,7 @@ if (typeof module !== "undefined" && module.exports) {
 		replayChar,
 		replayCodeInsert,
 		applyAtomicText,
+		isLiteralCodeInsert,
 		_splitCodeWithAnchors,
 		expandEvents,
 	};

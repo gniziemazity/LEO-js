@@ -203,6 +203,7 @@ class CursorManager {
 				mode,
 				target,
 				typeName: !!step.typeName,
+				note: step.note || "",
 				snippet: step.snippet || null,
 			});
 		}

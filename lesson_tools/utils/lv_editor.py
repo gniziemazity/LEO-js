@@ -2,7 +2,7 @@ import re
 from .lv_constants import (
     CURSOR_MOVES, SHIFT_CURSOR_MOVES, CHAR_REPLACEMENTS,
     DELETE_LINE_CHAR, BACKSPACE_CHARS, DELETE_FWRD_CHARS, IGNORED_CHARS, PAUSE_CHAR,
-    PAGE_LINES, split_code_with_anchors,
+    PAGE_LINES, split_code_with_anchors, is_literal_code_insert,
     CODE_INSERT_MS_PER_CHAR,
 )
 from languages import (
@@ -203,6 +203,13 @@ class HeadlessEditor:
     def _ensure_sel_anchor(self) -> None:
         if self._sel_anchor is None:
             self._sel_anchor = self._cur
+
+    def _delete_selection(self) -> bool:
+        rng = self._sel_range()
+        self._clear_sel()
+        if rng is None: return False
+        self._del_range(rng[0], rng[1])
+        return True
 
     def _delete_line(self) -> None:
         ls = self._line_start(); le = self._line_end()
@@ -416,7 +423,7 @@ class HeadlessEditor:
         if ch in CHAR_REPLACEMENTS:
             real = CHAR_REPLACEMENTS[ch]
             if real == "\n":
-                self._clear_sel(); self._ins("\n"); self._auto_indent()
+                self._delete_selection(); self._ins("\n"); self._auto_indent()
             elif real == "\t":
                 if self._sel_range() is not None: self._indent_selection()
                 else: self._clear_sel(); self._ins("\t")
@@ -424,20 +431,33 @@ class HeadlessEditor:
                 self._clear_sel(); self._ins(real)
             return False
         if ch in BACKSPACE_CHARS:
+            if self._delete_selection(): return False
             ignored = self._backspace_is_ignored()
-            if not ignored: self._clear_sel(); self._del_before()
+            if not ignored: self._del_before()
             return ignored
         if ch in DELETE_FWRD_CHARS:
-            self._clear_sel(); self._del_at(); return False
+            if self._delete_selection(): return False
+            self._del_at(); return False
         if ch == DELETE_LINE_CHAR:
             self._delete_line(); return False
         if ch == PAUSE_CHAR or ch in IGNORED_CHARS:
             return False
-        self._clear_sel(); self._auto_dedent(ch); self._ins(ch)
+        self._delete_selection(); self._auto_dedent(ch); self._ins(ch)
         return False
 
     def handle_code_insert(self, code: str) -> None:
         self._clear_sel()
+        if is_literal_code_insert(code):
+            self._ci_indent = ""
+            for kind, val in split_code_with_anchors(code):
+                if kind == "text":
+                    for ch in val:
+                        self._ins(ch)
+                        if self._track_ts:
+                            self._cur_ts += CODE_INSERT_MS_PER_CHAR
+                else:
+                    self.set_anchor(val)
+            return
         ls = self._line_start()
         before = "".join(self._chars[ls: self._cur])
         self._ci_indent = re.match(r"^(\s*)", before).group(1)

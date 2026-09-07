@@ -8,6 +8,10 @@ class InteractionOverlay extends RemoteOverlay {
 		this._starting = false;
 	}
 
+	chromeClose() {
+		this.closeOverlay();
+	}
+
 	handleBtn(interactionType) {
 		if (currentStudents.length > 0) {
 			this.openedAt = Date.now();

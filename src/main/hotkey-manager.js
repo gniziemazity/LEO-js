@@ -70,6 +70,23 @@ class HotkeyManager {
 		hotkeys.forEach((letter) => globalShortcut.unregister(letter));
 	}
 
+	typingHotkeysFor(ch) {
+		if (typeof ch !== "string" || !ch) return [];
+		const hotkeys = this.settingsManager.get("hotkeys.typing") || [];
+		const lower = ch.toLowerCase();
+		return hotkeys.filter((k) => String(k).toLowerCase() === lower);
+	}
+
+	releaseTypingHotkeysFor(ch) {
+		const keys = this.typingHotkeysFor(ch);
+		keys.forEach((letter) => globalShortcut.unregister(letter));
+		return keys;
+	}
+
+	restoreTypingHotkeys(keys) {
+		(keys || []).forEach((letter) => this.registerKey(letter));
+	}
+
 	registerKey(letter) {
 		if (globalShortcut.isRegistered(letter)) return;
 		globalShortcut.register(letter, () => this.handleKey(letter));

@@ -68,6 +68,17 @@ class TextState {
 		return a === b ? null : [a, b];
 	}
 
+	deleteSelection() {
+		const sel = this.selectionRange();
+		if (!sel) {
+			this.selAnchor = null;
+			return false;
+		}
+		this.removeRange(sel[0], sel[1]);
+		this.selAnchor = null;
+		return true;
+	}
+
 	currentLineRange() {
 		const ls = lineStartAt(this.text, this.cursor);
 		const raw = this.text.indexOf("\n", this.cursor);

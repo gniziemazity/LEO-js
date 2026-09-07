@@ -20,7 +20,7 @@ const { parseQuestionOptions } = require("./question-options");
 const path = require("path");
 const fs = require("fs");
 
-const soundPath = path.join(__dirname, "..", "assets", "sounds");
+const soundPath = path.join(__dirname, "..", "..", "assets", "sounds");
 
 const logManager = new LogManager();
 const lessonManager = new LessonManager();

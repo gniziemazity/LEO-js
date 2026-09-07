@@ -27,6 +27,7 @@ class SettingsManager {
 			randomizerStyle: "shuffle",
 			answerEffect: "fireworks",
 			teacherName: "Teacher",
+			editorTipSeen: false,
 		};
 
 		this.settings = this.load();

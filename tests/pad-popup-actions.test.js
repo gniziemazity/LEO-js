@@ -9,16 +9,14 @@ async function openKeyboardPad(ctx) {
 	await ctx.api.setTouchpadMode("keyboard");
 }
 
-function barLabels(nodes) {
-	return nodes.touchpadActionBar.children.map(
-		(btn) => btn.children[0].textContent,
-	);
+function lifted(overlay) {
+	return overlay.classList.contains("pad-lifted");
 }
 
-test("a question opening under the pad hands its buttons to the pad", async () => {
+test("a question opening under the pad is raised above it", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
-	assert.deepEqual(barLabels(ctx.nodes), [], "nothing to mirror yet");
+	assert.equal(lifted(ctx.nodes.questionOverlay), false, "nothing open yet");
 
 	ctx.api.showQuestionOverlay(
 		"What is a closure?",
@@ -32,59 +30,48 @@ test("a question opening under the pad hands its buttons to the pad", async () =
 		true,
 		"the pad stays open over a question",
 	);
-	assert.deepEqual(barLabels(ctx.nodes), ["Show", "✕"]);
 	assert.equal(
-		ctx.nodes.touchpadActionBar.classList.contains("visible"),
+		lifted(ctx.nodes.questionOverlay),
 		true,
+		"so the popup goes above it and keeps its own Show and ✕",
 	);
 });
 
-test("pressing the mirrored Show does the real thing and the bar follows along", async () => {
+test("the popup's own Show is the one that gets pressed", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
 	ctx.sent.length = 0;
 
-	ctx.nodes.touchpadActionBar.children[0].onclick();
+	ctx.api.showQuestionToTeacher();
 
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
 		["show-question"],
-		"the mirror is the same action, not a copy of it",
+		"one button, one handler, wherever the teacher is standing",
 	);
-	assert.deepEqual(
-		barLabels(ctx.nodes),
-		["✕"],
-		"and Show drops off once the question is on screen",
+	assert.equal(
+		ctx.nodes.qShowBtn.style.display,
+		"none",
+		"and it drops off once the question is on screen",
+	);
+	assert.equal(
+		lifted(ctx.nodes.questionOverlay),
+		true,
+		"the rest of the popup stays reachable",
 	);
 });
 
-test("dismissing from the pad closes the popup and clears the bar", async () => {
+test("closing the question drops the lift with it", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
-	ctx.sent.length = 0;
 
-	const close = ctx.nodes.touchpadActionBar.children[1];
-	close.onclick();
+	ctx.api.closeQuestionOverlay();
 
-	assert.equal(
-		ctx.sent.some((m) => m.type === "dismiss-question"),
-		true,
-	);
 	assert.equal(ctx.nodes.questionOverlay.classList.contains("active"), false);
-	assert.deepEqual(barLabels(ctx.nodes), []);
-	assert.equal(
-		ctx.nodes.touchpadActionBar.classList.contains("visible"),
-		false,
-	);
+	assert.equal(lifted(ctx.nodes.questionOverlay), false);
 });
-
-function confirmLabels(nodes) {
-	return nodes.touchpadConfirmBar.children.map(
-		(btn) => btn.children[0].textContent,
-	);
-}
 
 test("a move-to swaps the keyboard pad for the mouse one, and swaps back on OK", async () => {
 	const ctx = build();
@@ -104,7 +91,7 @@ test("a move-to swaps the keyboard pad for the mouse one, and swaps back on OK",
 	);
 
 	ctx.sent.length = 0;
-	ctx.nodes.touchpadConfirmBar.children[0].onclick();
+	ctx.api.closeMoveToOverlay();
 
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
@@ -142,37 +129,41 @@ test("a move-to with no pad open leaves the pad closed", async () => {
 	);
 });
 
-test("the OK goes to the pad's side stack, and the popup drops its own", async () => {
+test("the OK never moves: the pad is what gets out of its way", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
 	ctx.api.showMoveToOverlay({ mode: "main" });
 
-	assert.deepEqual(confirmLabels(ctx.nodes), ["OK"]);
-	assert.deepEqual(barLabels(ctx.nodes), [], "not in the top bar as well");
-	assert.equal(
+	assert.equal(lifted(ctx.nodes.moveToOverlay), true);
+	assert.notEqual(
 		ctx.nodes.mtoActions.style.display,
 		"none",
-		"two OKs a thumb apart is one too many",
+		"the row a thumb already knows must not be taken away",
+	);
+	assert.notEqual(
+		ctx.nodes.mtoConfirm.style.display,
+		"none",
+		"and there is still exactly one OK, the popup's own",
 	);
 
 	ctx.api.closeMoveToOverlayUI();
 	ctx.api.showMoveToOverlay({ mode: "main" });
 	assert.equal(
-		ctx.nodes.mtoActions.style.display,
-		"none",
-		"and it stays hidden for as long as a pad is over it",
+		lifted(ctx.nodes.moveToOverlay),
+		true,
+		"and it is lifted again for as long as a pad is over it",
 	);
 });
 
-test("with no pad open the move-to keeps its own OK", async () => {
+test("with no pad open the move-to is not lifted at all", async () => {
 	const ctx = build();
 	ctx.api.setSessionActive(true);
 	ctx.api.showMoveToOverlay({ mode: "main" });
 
-	assert.deepEqual(
-		confirmLabels(ctx.nodes),
-		[],
-		"no pad, nothing to mirror onto",
+	assert.equal(
+		lifted(ctx.nodes.moveToOverlay),
+		false,
+		"nothing is covering it, so there is nothing to rise above",
 	);
 	assert.notEqual(
 		ctx.nodes.mtoConfirm.style.display,
@@ -193,19 +184,15 @@ test("the interaction overlay still takes the pad away: it owns a text input", a
 		false,
 		"the pad gets out of the way of a popup that needs typing into it",
 	);
-	assert.deepEqual(barLabels(ctx.nodes), []);
+	assert.equal(lifted(ctx.nodes.interactionOverlay), false);
 });
 
-test("with the pad closed the popup keeps its buttons to itself", async () => {
+test("with the pad closed the popup is left exactly as it renders", async () => {
 	const ctx = build();
 	ctx.api.setSessionActive(true);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
 
-	assert.deepEqual(
-		barLabels(ctx.nodes),
-		[],
-		"no pad open means nothing to mirror onto",
-	);
+	assert.equal(lifted(ctx.nodes.questionOverlay), false);
 	assert.equal(
 		ctx.nodes.touchpadEditKeys.classList.contains("visible"),
 		false,
@@ -218,10 +205,37 @@ test("only the overlays that opt in are handed to the pad", () => {
 	assert.equal(
 		ctx.api.activePadOverlay(),
 		null,
-		"an overlay without the opt-in class is never mirrored",
+		"an overlay without the opt-in class is never lifted",
 	);
 
 	ctx.nodes.interactionOverlay.classList.remove("active");
 	ctx.nodes.moveToOverlay.classList.add("active");
 	assert.equal(ctx.api.activePadOverlay().overlayId, "moveToOverlay");
+});
+
+test("Auto-type hands back the keyboard pad, because the name is typed", async () => {
+	const ctx = build();
+	ctx.api.setSessionActive(true);
+	await ctx.api.setTouchpadMode("mouse");
+	ctx.api.showMoveToOverlay({
+		mode: "file",
+		target: "app.js",
+		typeName: true,
+	});
+	assert.equal(ctx.api.padMode(), "mouse");
+
+	ctx.sent.length = 0;
+	ctx.api.moveToTypeName();
+	await new Promise((r) => setTimeout(r, 0));
+
+	assert.equal(
+		ctx.sent.some((m) => m.type === "move-to-type-name"),
+		true,
+		"the host still starts typing the name",
+	);
+	assert.equal(
+		ctx.api.padMode(),
+		"keyboard",
+		"and the pad becomes the tap target that types it",
+	);
 });

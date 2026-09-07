@@ -76,13 +76,8 @@ class QuestionOverlay extends RemoteOverlay {
 		syncTouchpadToolbar();
 	}
 
-	padActions() {
-		const actions = [];
-		const showBtn = document.getElementById("qShowBtn");
-		if (showBtn && showBtn.style.display !== "none")
-			actions.push({ label: "Show", onClick: () => this.showToTeacher() });
-		actions.push({ label: "✕", onClick: () => this.dismiss() });
-		return actions;
+	chromeClose() {
+		this.dismiss();
 	}
 
 	randomize() {

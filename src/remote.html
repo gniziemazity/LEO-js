@@ -3,6 +3,9 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<link rel="manifest" href="/manifest.json" />
 		<title>LEO Remote</title>
 		<link rel="icon" href="icon.ico" type="image/x-icon" />
 		<link rel="stylesheet" href="styles.css" />
@@ -60,34 +63,67 @@
 		</div>
 
 		<div id="touchpadOverlay" class="touchpad-overlay">
-			<div
-				id="touchpadActionBar"
-				class="touchpad-toolbar touchpad-action-bar"
-			></div>
-			<div id="touchpadSideBar" class="touchpad-toolbar touchpad-side-bar">
-				<div id="touchpadEditKeys" class="pad-key-group">
-					<button class="pad-bar-btn" onclick="remoteEditKey('copy')">
-						<span>Copy</span>
-					</button>
-					<button class="pad-bar-btn" onclick="remoteEditKey('paste')">
-						<span>Paste</span>
-					</button>
-					<button class="pad-bar-btn" onclick="remoteEditKey('cut')">
-						<span>Cut</span>
-					</button>
-					<button class="pad-bar-btn" onclick="remoteEditKey('undo')">
-						<span>Undo</span>
-					</button>
-					<button class="pad-bar-btn" onclick="remoteEditKey('enter')">
-						<span>Enter</span>
-					</button>
-					<button class="pad-bar-btn" onclick="remoteEditKey('save')">
-						<span>Save</span>
-					</button>
-				</div>
-				<div id="touchpadConfirmBar" class="pad-key-group"></div>
+			<div id="touchpadEditKeys" class="touchpad-toolbar touchpad-edit-bar">
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('copy')"
+					title="Copy"
+					aria-label="Copy"
+				>
+					<span class="pad-btn-emoji">⧉</span>
+				</button>
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('paste')"
+					title="Paste"
+					aria-label="Paste"
+				>
+					<span class="pad-btn-emoji">📋</span>
+				</button>
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('cut')"
+					title="Cut"
+					aria-label="Cut"
+				>
+					<span class="pad-btn-emoji">✂️</span>
+				</button>
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('undo')"
+					title="Undo"
+					aria-label="Undo"
+				>
+					<span class="pad-btn-emoji">↩️</span>
+				</button>
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('enter')"
+					title="Enter"
+					aria-label="Enter"
+				>
+					<span class="pad-btn-emoji">⏎</span>
+				</button>
+				<button
+					class="pad-bar-btn"
+					onclick="remoteEditKey('save')"
+					title="Save"
+					aria-label="Save"
+				>
+					<span class="pad-btn-emoji">💾</span>
+				</button>
 			</div>
 		</div>
+
+		<button
+			id="overlayCloseBtn"
+			class="mode-side-btn overlay-chrome-close"
+			onclick="closeActiveOverlay()"
+			title="Close"
+			style="display: none"
+		>
+			<span class="side-btn-emoji">✕</span>
+		</button>
 
 		<div id="modeSideBtns" class="mode-side-btns">
 			<button
@@ -125,9 +161,6 @@
 
 		<div id="questionOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal">
-				<button class="overlay-close-btn" onclick="closeQuestionOverlay()">
-					✕
-				</button>
 				<div class="popup-title" id="qText"></div>
 				<button
 					class="popup-show-btn"
@@ -147,12 +180,6 @@
 
 		<div id="interactionOverlay" class="overlay">
 			<div class="popup-modal" id="iModal">
-				<button
-					class="overlay-close-btn"
-					onclick="closeInteractionOverlay()"
-				>
-					✕
-				</button>
 				<div class="popup-title" id="iTitle">Select student</div>
 				<div class="i-question-row" id="iQuestionRow" style="display: none">
 					<input
@@ -175,10 +202,14 @@
 
 		<div id="moveToOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal" id="mtModal">
-				<button class="overlay-close-btn" onclick="closeMoveToOverlay()">
-					✕
-				</button>
-				<div class="popup-title" id="mtoTitle">Move to…</div>
+				<div class="popup-title popup-title-row">
+					<span id="mtoTitle">Move to…</span>
+					<span
+						class="mt-modal-note"
+						id="mtoNote"
+						style="display: none"
+					></span>
+				</div>
 				<div class="mt-modal-target" id="mtoTarget"></div>
 				<div class="snippet-view mt-modal-snippet" id="mtoSnippet"></div>
 				<div class="mt-modal-actions" id="mtoActions">
@@ -202,21 +233,12 @@
 
 		<div id="codeInsertOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal" id="ciModal">
-				<button
-					class="overlay-close-btn"
-					onclick="closeCodeInsertOverlay()"
-				>
-					✕
-				</button>
 				<div class="popup-title">Code snippet:</div>
 				<div
 					class="snippet-view mt-modal-snippet ci-modal-code"
 					id="ciCode"
 				></div>
 				<div class="ci-modal-actions" id="ciActions">
-					<div class="ci-modal-hint" id="ciHint">
-						(to paste: Ctrl/⌘+V in your editor)
-					</div>
 					<button
 						class="mt-modal-confirm ci-paste-btn"
 						id="ciPaste"

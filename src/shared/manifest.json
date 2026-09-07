@@ -1,0 +1,10 @@
+{
+	"name": "LEO Remote",
+	"short_name": "LEO",
+	"start_url": "/",
+	"scope": "/",
+	"display": "fullscreen",
+	"orientation": "portrait",
+	"background_color": "#1e1e1e",
+	"theme_color": "#1e1e1e"
+}

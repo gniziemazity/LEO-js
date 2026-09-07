@@ -2,7 +2,12 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { extractAnchorSnippet } = require("../src/renderer/anchor-snippet");
+const fs = require("node:fs");
+const path = require("node:path");
+const {
+	extractAnchorSnippet,
+	extractCodeInsertPaste,
+} = require("../src/renderer/anchor-snippet");
 
 const codeBlocks = [
 	{

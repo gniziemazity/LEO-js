@@ -103,6 +103,14 @@
 
 	--clr-pos: var(--c-green-2);
 	--clr-neg: var(--c-red-1);
+	--clr-st-pass: var(--c-blue-2);
+	--clr-st-pass-bg: rgba(0, 122, 204, 0.12);
+	--clr-st-prime: var(--c-blue-2);
+	--clr-st-prime-bg: rgba(0, 122, 204, 0.07);
+	--clr-st-star: var(--c-orange-2);
+	--clr-st-star-bg: rgba(224, 112, 32, 0.12);
+	--clr-st-fail: var(--c-red-1);
+	--clr-st-fail-bg: rgba(204, 34, 34, 0.12);
 
 	--clr-tip-bg-blue: rgba(0, 122, 204, 0.1);
 	--clr-tip-bg-orange: rgba(224, 112, 32, 0.1);

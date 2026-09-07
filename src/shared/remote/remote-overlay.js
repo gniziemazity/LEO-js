@@ -1,5 +1,25 @@
 const remoteOverlays = [];
 
+function activeRemoteOverlay() {
+	for (const overlay of remoteOverlays) {
+		const el = overlay.el;
+		if (el && el.classList.contains("active")) return overlay;
+	}
+	return null;
+}
+
+function syncOverlayChrome() {
+	const open = !!activeRemoteOverlay();
+	const btn = document.getElementById("overlayCloseBtn");
+	if (btn) btn.style.display = open ? "" : "none";
+	if (document.body) document.body.classList.toggle("popup-open", open);
+}
+
+function closeActiveOverlay() {
+	const overlay = activeRemoteOverlay();
+	if (overlay) overlay.chromeClose();
+}
+
 function activePadOverlay() {
 	for (const overlay of remoteOverlays) {
 		const el = overlay.el;
@@ -23,8 +43,13 @@ class RemoteOverlay {
 		return document.getElementById(this.overlayId);
 	}
 
-	padActions() {
-		return [];
+	chromeClose() {
+		this.closeUI();
+	}
+
+	setPadCovered(covered) {
+		const overlay = this.el;
+		if (overlay) overlay.classList.toggle("pad-lifted", !!covered);
 	}
 
 	open(bg) {
@@ -33,13 +58,15 @@ class RemoteOverlay {
 		if (bg) overlay.style.background = bg;
 		overlay.classList.add("active");
 		setInteractionBtnsVisible(false);
+		syncOverlayChrome();
 		syncKeyInputGate();
 	}
 
 	close() {
 		const overlay = this.el;
-		if (overlay) overlay.classList.remove("active");
+		if (overlay) overlay.classList.remove("active", "pad-lifted");
 		setInteractionBtnsVisible(true);
+		syncOverlayChrome();
 		syncKeyInputGate();
 	}
 

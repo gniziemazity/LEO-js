@@ -8,6 +8,7 @@ const {
 	nativeImage,
 	screen,
 	clipboard,
+	shell,
 } = require("electron");
 
 const path = require("path");
@@ -575,6 +576,31 @@ function cleanupAutoTyping() {
 	hotkeyManager.unregisterEscape();
 }
 
+const EDITOR_SETTINGS_FILE = path.join(
+	__dirname,
+	"../../settings/vscode_settings.json",
+);
+
+async function showEditorTipOnce() {
+	if (settingsManager.get("editorTipSeen")) return;
+	settingsManager.set("editorTipSeen", true);
+	if (!fs.existsSync(EDITOR_SETTINGS_FILE)) return;
+	const { response } = await dialog.showMessageBox(state.mainWindow, {
+		type: "info",
+		title: "Recommended editor settings",
+		message: "LEO types into your editor as if you were typing.",
+		detail:
+			"Autocomplete, bracket closing and suggestion popups " +
+			"may interfere with your lesson plans. I recommend you switch to the settings provided in:\n" +
+			"settings/vscode_settings.json before you get used to LEO (paste it into your VS Code settings.json)\n\n" +
+			"This message is shown only once.",
+		buttons: ["Show me the settings", "Later"],
+		defaultId: 0,
+		cancelId: 1,
+	});
+	if (response === 0) shell.showItemInFolder(EDITOR_SETTINGS_FILE);
+}
+
 async function createWindow() {
 	const config = {
 		...WINDOW_CONFIG,
@@ -596,6 +622,7 @@ async function createWindow() {
 			"settings-loaded",
 			settingsManager.getAll(),
 		);
+		showEditorTipOnce();
 		if (pendingOpenFile) {
 			state.mainWindow.webContents.send("open-plan-file", pendingOpenFile);
 			pendingOpenFile = null;

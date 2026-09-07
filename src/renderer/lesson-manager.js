@@ -282,6 +282,18 @@ class LessonManager {
 		return true;
 	}
 
+	updateMoveToNote(index, note) {
+		if (index < 0 || index >= this.data.length) {
+			return false;
+		}
+		if (this.data[index].type !== "move-to") return false;
+		const text = String(note == null ? "" : note).trim();
+		if (text) this.data[index].note = text;
+		else delete this.data[index].note;
+		this.markAsChanged();
+		return true;
+	}
+
 	isFirstMoveToFile(index) {
 		const block = this.data[index];
 		if (!block || block.type !== "move-to") return false;

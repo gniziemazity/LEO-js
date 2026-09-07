@@ -214,32 +214,28 @@ test("the host ending the block closes the popup without confirming again", () =
 	);
 });
 
-test("with the pad over it, the popup lends the pad Paste and OK", async () => {
+test("with the pad over it, the popup keeps its own Paste and OK", async () => {
 	const ctx = buildRemote();
 	ctx.api.setSessionActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 	openPopup(ctx);
 
-	const labels = (bar) =>
-		ctx.nodes[bar].children.map((b) => b.children[0].textContent);
-
-	assert.deepEqual(labels("touchpadActionBar"), ["Paste"]);
-	assert.deepEqual(labels("touchpadConfirmBar"), ["OK"]);
 	assert.equal(
+		ctx.nodes.codeInsertOverlay.classList.contains("pad-lifted"),
+		true,
+		"the popup goes above the pad so its own buttons can be pressed",
+	);
+	assert.notEqual(
 		ctx.nodes.ciActions.style.display,
 		"none",
-		"the popup drops its own buttons while the pad covers them",
+		"the buttons stay where the thumb last saw them",
 	);
 
-	ctx.nodes.touchpadConfirmBar.children[0].onclick();
-	assert.deepEqual(
-		ctx.sent.map((m) => m.type),
-		["code-insert-confirmed"],
-	);
+	ctx.api.closeCodeInsertOverlayUI();
 	assert.equal(
-		ctx.nodes.ciActions.style.display,
-		"",
-		"and takes them back when it closes",
+		ctx.nodes.codeInsertOverlay.classList.contains("pad-lifted"),
+		false,
+		"and the lift is dropped with the popup",
 	);
 });
 
@@ -311,7 +307,6 @@ test("on the phone the Paste button is the one that shows", () => {
 	openPopup(ctx);
 
 	assert.equal(ctx.nodes.ciPaste.style.display, "");
-	assert.equal(ctx.nodes.ciHint.style.display, "none");
 });
 
 test("the code never reaches the remote as a keystroke stream", () => {
