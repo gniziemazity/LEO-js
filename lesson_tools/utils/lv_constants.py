@@ -38,12 +38,6 @@ IGNORED_CHARS: frozenset = frozenset(
     ["💾", "🔁", "Ö", "ö", "Ș", "ñ", "ω", "Ț", "é", "🅴"]
 )
 
-CUT_CHAR   = "✂"
-COPY_CHAR  = "⧉"
-PASTE_CHAR = "📥"
-PASTE_CHARS: frozenset = frozenset({PASTE_CHAR})
-CLIPBOARD_CHARS: frozenset = frozenset({CUT_CHAR, COPY_CHAR}) | PASTE_CHARS
-
 PAUSE_CHAR = "🕛"
 PAUSE_MS   = 500
 

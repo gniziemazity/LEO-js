@@ -1,7 +1,12 @@
 const fs = require("fs");
 const path = require("path");
-const { moveToFileName, wrapAnchor } = require("../shared/move-to-target");
+const {
+	moveToFileName,
+	wrapAnchor,
+	isFileName,
+} = require("../shared/move-to-target");
 const { normalizeEdgeNewlines } = require("../shared/code-text");
+const { getBlockSubtype, splitPinToken } = require("../shared/blocks");
 const { replayPlan, toReplayableText } = require("./anchor-snippet");
 
 class LessonManager {
@@ -43,11 +48,22 @@ class LessonManager {
 		});
 	}
 
+	static _pinShorthand(text) {
+		const sub = getBlockSubtype(text);
+		if (sub !== "image-comment" && sub !== "web-comment") return null;
+		const split = splitPinToken(text);
+		return split.pin ? split : null;
+	}
+
 	static _migrateBlocks(blocks) {
 		if (!Array.isArray(blocks)) return blocks;
 		return blocks.map((b) => {
 			if (b && b.type === "code" && typeof b.text === "string") {
 				return { ...b, text: normalizeEdgeNewlines(b.text) };
+			}
+			if (b && b.type === "comment" && typeof b.text === "string") {
+				const shorthand = LessonManager._pinShorthand(b.text);
+				if (shorthand) return { ...b, text: shorthand.text, pin: true };
 			}
 			return b;
 		});
@@ -212,6 +228,11 @@ class LessonManager {
 				type,
 				text: type === "code" ? normalizeEdgeNewlines(text) : text,
 			};
+			const shorthand = LessonManager._pinShorthand(newBlock.text);
+			if (shorthand) {
+				newBlock.text = shorthand.text;
+				newBlock.pin = true;
+			}
 		}
 
 		if (afterIndex === null) {
@@ -240,7 +261,13 @@ class LessonManager {
 		}
 
 		const block = this.data[index];
-		block.text = block.type === "code" ? normalizeEdgeNewlines(text) : text;
+		let next = block.type === "code" ? normalizeEdgeNewlines(text) : text;
+		const shorthand = LessonManager._pinShorthand(next);
+		if (shorthand) {
+			next = shorthand.text;
+			block.pin = true;
+		}
+		block.text = next;
 		this.markAsChanged();
 		return true;
 	}
@@ -251,6 +278,29 @@ class LessonManager {
 		}
 		if (this.data[index].type !== "move-to") return false;
 		this.data[index].target = target;
+		this.markAsChanged();
+		return true;
+	}
+
+	isFirstMoveToFile(index) {
+		const block = this.data[index];
+		if (!block || block.type !== "move-to") return false;
+		const target = block.target;
+		if (!isFileName(target)) return false;
+		for (let i = 0; i < index; i++) {
+			const b = this.data[i];
+			if (b && b.type === "move-to" && b.target === target) return false;
+		}
+		return true;
+	}
+
+	updateBlockOption(index, key, value, defaultValue) {
+		if (index < 0 || index >= this.data.length) {
+			return false;
+		}
+		const block = this.data[index];
+		if (value === defaultValue) delete block[key];
+		else block[key] = value;
 		this.markAsChanged();
 		return true;
 	}

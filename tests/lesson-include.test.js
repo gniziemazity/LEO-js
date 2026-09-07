@@ -310,10 +310,16 @@ test("inherited steps are skipped by the cursor, and logged as it passes", () =>
 		{
 			type: "block",
 			fromInclude: true,
+			text: "📋 const x = 1;",
 			element: el("📋 const x = 1;"),
 			globalIndex: 1,
 		},
-		{ type: "block", element: el("the lesson starts here"), globalIndex: 2 },
+		{
+			type: "block",
+			text: "the lesson starts here",
+			element: el("the lesson starts here"),
+			globalIndex: 2,
+		},
 	]);
 	cm.updateCursor();
 
@@ -352,8 +358,14 @@ test("passing an inherited step twice does not log it twice", () => {
 		dataset: {},
 	});
 	cm.setExecutionSteps([
-		{ type: "block", fromInclude: true, element: el("📋 x"), globalIndex: 0 },
-		{ type: "block", element: el("real"), globalIndex: 1 },
+		{
+			type: "block",
+			fromInclude: true,
+			text: "📋 x",
+			element: el("📋 x"),
+			globalIndex: 0,
+		},
+		{ type: "block", text: "real", element: el("real"), globalIndex: 1 },
 	]);
 
 	cm.updateCursor();

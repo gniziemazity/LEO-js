@@ -71,7 +71,11 @@ test("a 🖼️ block that follows still owns the window", () => {
 
 	let asked = null;
 	cm.onImageBlock = (name, pin) => (asked = { name, pin });
-	cm._enterImageBlock({ innerText: "🖼️ diagram.png pin" }, 7);
+	cm._enterImageBlock({
+		text: "🖼️ diagram.png",
+		pin: true,
+		globalIndex: 7,
+	});
 
 	assert.deepEqual(
 		asked,

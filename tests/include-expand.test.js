@@ -29,13 +29,14 @@ function fakeBlockDiv() {
 }
 
 function makeRenderer({ blocks, selected = null, typing = false }) {
-	const calls = { selected: [], renders: 0 };
+	const calls = { selected: [], renders: 0, appended: [] };
 	const renderer = new LessonRenderer(
 		{ getAllBlocks: () => blocks },
 		{
 			isActive: () => typing,
 			getSelectedBlockIndex: () => selected,
 			selectBlock: (i) => calls.selected.push(i),
+			attachBlockOption: (el, opt) => calls.appended.push(opt),
 		},
 		{},
 	);

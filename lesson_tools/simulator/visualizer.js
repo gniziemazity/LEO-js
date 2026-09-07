@@ -619,7 +619,6 @@ class LogVisualizer {
 	}
 
 	_resetAllFiles() {
-		resetClipboard();
 		for (const st of Object.values(this._files)) st.reset();
 		this._files = { MAIN: this._files["MAIN"] };
 		this.main = this._files["MAIN"];

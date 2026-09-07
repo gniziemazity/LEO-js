@@ -4,7 +4,7 @@ from bisect import bisect_right
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .folder_utils import TEACHER_SUBDIRS
+from .folder_utils import TEACHER_SUBDIRS, is_move_to_file
 from .lv_constants import BACKSPACE_CHARS, DELETE_FWRD_CHARS, DELETE_LINE_CHAR
 from .similarity_measures import _CHAR_TOKEN_RE, _comment_ranges
 from .token_log_mixin import _embedded_lang_ranges_for
@@ -34,6 +34,8 @@ def _annotate_editors(events):
         elif e.get("move_to") == "DEV":
             cur = "dev"
         elif e.get("move_to") == "MAIN":
+            cur = "main"
+        elif is_move_to_file(e.get("move_to")):
             cur = "main"
         e["_editor"] = cur
         out.append(e)

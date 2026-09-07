@@ -36,24 +36,22 @@ const BLOCK_ENTRIES = {
 	"question-comment": {
 		keep: "question",
 		clear: TRANSIENT_KINDS,
-		enter: (cm, step) =>
-			cm._enterQuestionBlock(step.element, step.globalIndex),
+		enter: (cm, step) => cm._enterQuestionBlock(step),
 	},
 	"image-comment": {
 		keep: "image",
 		clear: TRANSIENT_KINDS,
-		enter: (cm, step) => cm._enterImageBlock(step.element, step.globalIndex),
+		enter: (cm, step) => cm._enterImageBlock(step),
 	},
 	"web-comment": {
 		keep: "web",
 		clear: TRANSIENT_KINDS,
-		enter: (cm, step) => cm._enterWebBlock(step.element, step.globalIndex),
+		enter: (cm, step) => cm._enterWebBlock(step),
 	},
 	"code-insert-comment": {
 		keep: "code-insert",
 		clear: [],
-		enter: (cm, step) =>
-			cm._enterCodeInsertBlock(step.element, step.globalIndex),
+		enter: (cm, step) => cm._enterCodeInsertBlock(step),
 	},
 };
 
@@ -165,24 +163,20 @@ class CursorManager {
 		for (const kind of kinds) this._block(kind).at = null;
 	}
 
-	_enterQuestionBlock(element, globalIndex) {
-		if (!this._arriveAt("question", globalIndex, true)) return;
-		const question = stripBlockPrefix(element.innerText);
+	_enterQuestionBlock(step) {
+		if (!this._arriveAt("question", step.globalIndex, true)) return;
+		const question = stripBlockPrefix(step.text);
 		const timestamp = Date.now();
 		if (this.onEnterQuestionBlock)
 			this.onEnterQuestionBlock(question, timestamp);
 	}
 
-	_enterImageBlock(element, globalIndex) {
-		if (!this._arriveAt("image", globalIndex, true)) return;
-		const spec = stripBlockPrefix(element.innerText.trim());
+	_enterImageBlock(step) {
+		if (!this._arriveAt("image", step.globalIndex, true)) return;
+		const spec = stripBlockPrefix(String(step.text || "").trim());
 		if (spec) {
-			const parts = spec.trim().split(/\s+/);
-			const imageName = parts[0];
-			const shouldPin = parts
-				.slice(1)
-				.some((p) => p.toLowerCase() === "pin");
-			if (this.onImageBlock) this.onImageBlock(imageName, shouldPin);
+			const imageName = spec.trim().split(/\s+/)[0];
+			if (this.onImageBlock) this.onImageBlock(imageName, !!step.pin);
 		}
 	}
 
@@ -192,13 +186,12 @@ class CursorManager {
 		b.at = null;
 	}
 
-	_enterWebBlock(element, globalIndex) {
-		if (!this._arriveAt("web", globalIndex, true)) return;
-		const raw = stripBlockPrefix(element.innerText);
-		const parts = raw.trim().split(/\s+/);
-		const url = parts[0];
-		const shouldPin = parts.slice(1).some((p) => p.toLowerCase() === "pin");
-		if (this.onWebBlock) this.onWebBlock(url, shouldPin);
+	_enterWebBlock(step) {
+		if (!this._arriveAt("web", step.globalIndex, true)) return;
+		const url = stripBlockPrefix(String(step.text || ""))
+			.trim()
+			.split(/\s+/)[0];
+		if (this.onWebBlock) this.onWebBlock(url, !!step.pin);
 	}
 
 	_enterMoveToBlock(step) {
@@ -209,20 +202,21 @@ class CursorManager {
 			this.onEnterMoveToBlock({
 				mode,
 				target,
+				typeName: !!step.typeName,
 				snippet: step.snippet || null,
 			});
 		}
 	}
 
-	_enterCodeInsertBlock(element, globalIndex) {
-		if (!this._arriveAt("code-insert", globalIndex, true)) return;
-		const fullText = element.dataset.fullText || element.innerText;
-		const text = stripBlockPrefix(fullText);
+	_enterCodeInsertBlock(step) {
+		if (!this._arriveAt("code-insert", step.globalIndex, true)) return;
+		const text = stripBlockPrefix(step.text);
 		this.logManager.addEntry({ code_insert: text });
 		if (this.onEnterCodeInsertBlock) {
 			const pasted = stripAnchors(text);
 			this.onEnterCodeInsertBlock({
 				text: pasted,
+				paste: step.paste !== false,
 				colored: buildColoredLines(
 					pasted,
 					0,
@@ -271,7 +265,7 @@ class CursorManager {
 		const key =
 			step.subtype === "move-to"
 				? "move-to-block"
-				: getBlockSubtype(step.element.innerText.trim());
+				: getBlockSubtype(String(step.text || "").trim());
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
 
 		this._leaveSpecialBlocksExcept(entry.keep);

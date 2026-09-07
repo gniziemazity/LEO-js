@@ -35,7 +35,6 @@
 	}
 
 	const api = {
-		TEACHER_ID,
 		DONE_LABEL,
 		isQuestion,
 		interactionTitle,

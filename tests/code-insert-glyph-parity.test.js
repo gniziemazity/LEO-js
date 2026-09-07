@@ -11,7 +11,6 @@ const {
 	IGNORED_CHARS,
 	PAUSE_CHAR,
 	SHIFT_CURSOR_MOVES,
-	resetClipboard,
 	expandEvents,
 	applyAtomicText,
 } = model;
@@ -26,7 +25,6 @@ function replayEngine() {
 }
 
 function atomicState(text) {
-	resetClipboard();
 	const s = new TextState();
 	applyAtomicText(s, text);
 	return s;
@@ -49,24 +47,24 @@ test("a shift-arrow inside a code insert selects, it is not typed", () => {
 	}
 });
 
-test("shift-select then cut works inside a code insert", () => {
-	const s = atomicState("one↩two↩three↑↑◄⇓⇓✂");
-	assert.equal(s.text, "three");
+test("shift-select then indent works inside a code insert", () => {
+	const s = atomicState("one↩two↩three↑↑◄⇓⇓―");
+	assert.equal(s.text, "\tone\n\ttwo\nthree");
 });
 
 test("headlessReplay handles a shift-selection inside a code insert", () => {
-	const script = "one↩two↩three↑↑◄⇓⇓✂";
+	const script = "one↩two↩three↑↑◄⇓⇓―";
 	assert.equal(replayCodeInsert(script), atomicState(script).text);
 });
 
 test("a plain cursor move inside a code insert drops the selection", () => {
-	const s = atomicState("one↩two↩three↑↑◄⇓⇓►✂");
+	const s = atomicState("one↩two↩three↑↑◄⇓⇓►―");
 	assert.equal(
-		s.text.includes("one"),
+		s.text.startsWith("one"),
 		true,
-		"► should have collapsed the selection, so ✂ cuts a whole line instead",
+		"► should have collapsed the selection, so ― types a literal tab instead",
 	);
-	assert.equal(replayCodeInsert("one↩two↩three↑↑◄⇓⇓►✂"), s.text);
+	assert.equal(replayCodeInsert("one↩two↩three↑↑◄⇓⇓►―"), s.text);
 });
 
 test("ignored glyphs inside a code insert are dropped, not typed", () => {
@@ -123,7 +121,7 @@ test("the visualizer replays through the shared dispatcher, not its own copy", (
 
 test("a visualizer-shaped context replays identically to the headless one", () => {
 	const { makeReplayContext, replayStep, expandEvents } = model;
-	const script = "one↩two↩three↑↑◄⇓⇓✂►↩📥⌫";
+	const script = "one↩two↩three↑↑◄⛔►↩four⌫";
 	const events = [...script].map((ch, i) => ({ char: ch, timestamp: i }));
 
 	const inner = makeReplayContext();
@@ -147,7 +145,6 @@ test("a visualizer-shaped context replays identically to the headless one", () =
 		switchToFile: (f) => inner.switchToFile(f),
 		opensCloses: () => inner.opensCloses(),
 	};
-	resetClipboard();
 	for (const act of expandEvents(events)) {
 		replayStep(view, act, { log: (ts, text) => logged.push(text) });
 	}

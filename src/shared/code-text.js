@@ -38,6 +38,8 @@
 			for (const child of node.childNodes) {
 				if (child.nodeType === 3) {
 					text += child.data;
+				} else if (child.dataset && child.dataset.blockOpt) {
+					continue;
 				} else if (child.nodeName === "BR") {
 					text += "\n";
 				} else {
@@ -82,9 +84,6 @@
 		return segments;
 	}
 
-	// A newline at the very start or end of a code block is a keystroke that
-	// looks like empty space, so it reads as stray formatting and gets typed
-	// anyway. In the middle a newline is the line separator and stays raw.
 	function normalizeEdgeNewlines(text) {
 		const s = String(text == null ? "" : text);
 		const lead = s.length - s.replace(/^\n+/, "").length;
@@ -146,12 +145,8 @@
 	}
 
 	const api = {
-		ANCHOR_RE,
-		createCharSpan,
-		createAnchorSpan,
 		readCodeText,
 		writeCodeText,
-		splitAnchorSegments,
 		stripAnchors,
 		normalizeEdgeNewlines,
 		buildCodeText,

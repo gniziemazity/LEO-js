@@ -1,7 +1,6 @@
 "use strict";
 
 function headlessReplay(events, lessonFile = null) {
-	resetClipboard();
 	const ctx = makeReplayContext(lessonFile);
 
 	for (const act of expandEvents(events)) replayStep(ctx, act);

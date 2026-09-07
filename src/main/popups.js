@@ -20,7 +20,7 @@ const PAUSING_POPUPS = {
 		started: (payload) => broadcastServer.broadcastCodeInsertStarted(payload),
 		ended: () => broadcastServer.broadcastCodeInsertEnded(),
 		confirmChannel: "code-insert-confirmed",
-		onEnter: (payload) => holdCodeOnClipboard(payload && payload.text),
+		onEnter: (payload) => holdCodeOnClipboard(payload),
 		onExit: () => releaseCodeFromClipboard(),
 	},
 };
@@ -60,7 +60,9 @@ function confirmPopup(kind) {
 
 let heldClipboard = null;
 
-function holdCodeOnClipboard(code) {
+function holdCodeOnClipboard(payload) {
+	if (!payload || payload.paste === false) return;
+	const code = payload.text;
 	if (!code) return;
 	heldClipboard = { code, previous: clipboard.readText() };
 	clipboard.writeText(code);
@@ -136,7 +138,11 @@ async function typeNextNameChar() {
 	if (!pendingName) return true;
 	pendingName.index += 1;
 	pendingName.busy = false;
-	if (pendingName.index >= pendingName.chars.length) pendingName = null;
+	if (pendingName.index >= pendingName.chars.length) {
+		pendingName = null;
+		confirmPopup("move-to");
+		return true;
+	}
 	if (onNameProgress) onNameProgress(nameProgress());
 	return true;
 }

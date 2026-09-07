@@ -35,7 +35,12 @@ function makeCursorManager(steps) {
 const CODE = "function greet(name) {\n\tconsole.log(name);\n}";
 
 function codeStep(text = CODE) {
-	return { type: "block", element: element("📋 " + text), globalIndex: 0 };
+	return {
+		type: "block",
+		text: "📋 " + text,
+		element: element("📋 " + text),
+		globalIndex: 0,
+	};
 }
 
 test("arriving at a code-insert block opens the popup with the code", () => {
@@ -68,7 +73,7 @@ test("the popup carries coloured lines, one per line of code", () => {
 test("a collapsed multi-line block sends the full text, not the preview", () => {
 	const step = codeStep();
 	step.element.innerText = "📋 function greet(name) {...";
-	step.element.dataset.fullText = "📋 " + CODE;
+	step.text = "📋 " + CODE;
 	const { cm, logged } = makeCursorManager([step]);
 	let payload = null;
 	cm.onEnterCodeInsertBlock = (p) => (payload = p);
@@ -259,13 +264,20 @@ test("the code is on the clipboard for exactly as long as the block is open", ()
 	assert.match(entry, /onEnter: \(payload\) => holdCodeOnClipboard\(/);
 	assert.match(entry, /onExit: \(\) => releaseCodeFromClipboard\(\)/);
 
-	const hold = /function holdCodeOnClipboard\(code\)[\s\S]*?\n\}/.exec(src)[0];
+	const hold = /function holdCodeOnClipboard\(payload\)[\s\S]*?\n\}/.exec(
+		src,
+	)[0];
 	assert.match(
 		hold,
 		/previous: clipboard\.readText\(\)/,
 		"what the teacher had copied must be remembered before we take the clipboard",
 	);
 	assert.match(hold, /clipboard\.writeText\(code\)/);
+	assert.match(
+		hold,
+		/payload\.paste === false\) return/,
+		"holding the clipboard exists to enable Ctrl+V; with Paste off it only clobbers",
+	);
 
 	const release = /function releaseCodeFromClipboard\(\)[\s\S]*?\n\}/.exec(
 		src,

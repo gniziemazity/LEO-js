@@ -359,9 +359,15 @@ test("every desk action is a message the server already knows", () => {
 	);
 });
 
-test("Auto-type arms the name and leaves the card open; OK is what closes it", () => {
+test("Auto-type arms the name and leaves the card open, with no OK beside it", () => {
 	const { popup, sent } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css" });
+	popup.showMoveTo({ mode: "file", target: "style.css", typeName: true });
+
+	assert.equal(
+		byLabel(popup, "OK"),
+		undefined,
+		"typing the last character is what confirms; an OK would let it be skipped",
+	);
 
 	byLabel(popup, "Auto-type").click();
 	assert.deepEqual(sent, [["client-move-to-type-name"]]);
@@ -370,9 +376,65 @@ test("Auto-type arms the name and leaves the card open; OK is what closes it", (
 		true,
 		"the card has to stay up: the name is typed one key at a time",
 	);
+});
 
-	byLabel(popup, "OK").click();
-	assert.equal(popup.isOpen(), false);
+test("the card titles a file-creating move-to as such", () => {
+	const creating = build().popup;
+	creating.showMoveTo({ mode: "file", target: "style.css", typeName: true });
+	assert.equal(creating.el.children[0].textContent, "Create file:");
+
+	const plain = build().popup;
+	plain.showMoveTo({ mode: "file", target: "style.css" });
+	assert.equal(plain.el.children[0].textContent, "Go to:");
+});
+
+test("a file move-to without Auto-type is just an OK", () => {
+	const { popup } = build();
+	popup.showMoveTo({ mode: "file", target: "style.css" });
+
+	assert.equal(byLabel(popup, "Auto-type"), undefined);
+	assert.ok(byLabel(popup, "OK"));
+
+	const hints = [];
+	const walk = (el) => {
+		for (const c of el.children || []) {
+			if (c.className === "desk-popup-hint") hints.push(c.textContent);
+			walk(c);
+		}
+	};
+	walk(popup.el);
+	assert.deepEqual(hints, [], "the move-to card carries no hint");
+});
+
+test("a move-to with Auto-type switched off offers no Auto-type button", () => {
+	const { popup } = build();
+	popup.showMoveTo({ mode: "file", target: "style.css", typeName: false });
+
+	assert.equal(byLabel(popup, "Auto-type"), undefined);
+	assert.ok(byLabel(popup, "OK"), "OK is still the way out");
+});
+
+test("a later move-to to the same file offers nothing extra", () => {
+	const { popup } = build();
+	popup.showMoveTo({ mode: "file", target: "style.css" });
+	assert.equal(
+		byLabel(popup, "Auto-type"),
+		undefined,
+		"the payload decides; the surface must not re-derive it from mode alone",
+	);
+	assert.ok(byLabel(popup, "OK"));
+});
+
+test("a code insert with paste switched off drops the Ctrl+V hint", () => {
+	const withPaste = build().popup;
+	withPaste.showCodeInsert({ text: "x", colored: null });
+	const hintOf = (p) =>
+		(p.el.children || []).find((c) => c.className === "desk-popup-hint");
+	assert.ok(hintOf(withPaste), "the hint is the desk's stand-in for Paste");
+
+	const noPaste = build().popup;
+	noPaste.showCodeInsert({ text: "x", colored: null, paste: false });
+	assert.equal(hintOf(noPaste), undefined);
 });
 
 test("only terminating actions close the card", () => {

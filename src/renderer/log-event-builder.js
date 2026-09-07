@@ -9,8 +9,7 @@ function stepToLogEvents(step) {
 		out.push({ move_to: step.target || "MAIN" });
 		return out;
 	}
-	const el = step.element;
-	const raw = el ? el.dataset.fullText || el.innerText || "" : "";
+	const raw = String(step.text || "");
 	if (getBlockSubtype(raw) === "code-insert-comment") {
 		return [{ code_insert: stripBlockPrefix(raw) }];
 	}

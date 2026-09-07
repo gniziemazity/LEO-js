@@ -90,6 +90,8 @@
 
 	--font-mono: "Consolas", "Monaco", "Courier New", monospace;
 	--font-ui: "Segoe UI", system-ui, sans-serif;
+
+	--editor-sidebar-w: 55px;
 }
 
 html:has(body.question-view),
@@ -191,13 +193,6 @@ button {
 	background: var(--clr-muted);
 }
 
-.interaction-btn.btn-help {
-	background: var(--clr-green);
-}
-.interaction-btn.btn-help:hover {
-	background: var(--clr-pos);
-}
-
 .interaction-btn:active {
 	transform: scale(0.95);
 }
@@ -234,6 +229,7 @@ button {
 
 #lesson-container {
 	flex: 1;
+	min-width: 0;
 	background: white;
 }
 
@@ -260,6 +256,7 @@ button {
 	color: var(--clr-comment-text);
 	font-style: italic;
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 	transition: all 0.2s ease;
 }
 
@@ -271,6 +268,38 @@ button {
 	background: var(--clr-code-insert-bg);
 	font-style: normal;
 	opacity: 0.75;
+}
+
+.block-opt {
+	position: absolute;
+	top: 0;
+	right: var(--editor-sidebar-w);
+	padding: 7px 12px;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	font-style: normal;
+	cursor: pointer;
+	user-select: none;
+	background: inherit;
+	border-bottom-left-radius: 4px;
+	box-shadow: -3px 3px 6px rgba(0, 0, 0, 0.15);
+	z-index: 2;
+}
+
+.block-opt input {
+	margin: 0;
+	cursor: pointer;
+}
+
+.block-opt:has(input:disabled) {
+	cursor: default;
+	opacity: 0.5;
+}
+
+.move-to-comment .block-opt {
+	color: var(--clr-white);
 }
 
 #addCodeInsertBlockBtn {
@@ -1416,13 +1445,6 @@ body.side-left .popup-modal {
 .overlay-close-btn:active {
 	background: rgba(0, 0, 0, 0.12);
 	color: rgba(0, 0, 0, 0.75);
-}
-
-.mt-modal-emoji {
-	font-size: 40px;
-	line-height: 1;
-	text-align: center;
-	margin-bottom: 8px;
 }
 
 .mt-modal-target {

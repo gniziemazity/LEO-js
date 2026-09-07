@@ -15,6 +15,7 @@ const {
 	isFileName,
 	wrapAnchor,
 	moveToTargetLabel,
+	classifyMoveToTarget,
 } = require("../shared/move-to-target");
 const {
 	openDropdown,
@@ -151,6 +152,16 @@ class LessonRenderer {
 		return !!block && isMultilineCodeInsert(block.text);
 	}
 
+	_blockOption({ label, checked, disabled, blockIdx, key, byDefault }) {
+		return {
+			label,
+			checked,
+			disabled,
+			onChange: (on) =>
+				this.lessonManager.updateBlockOption(blockIdx, key, on, byDefault),
+		};
+	}
+
 	renderCommentBlock(ctx) {
 		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
 			ctx;
@@ -177,7 +188,36 @@ class LessonRenderer {
 			delete blockDiv.dataset.fullText;
 		}
 
+		if (!block.fromInclude) {
+			if (subtype === "code-insert-comment") {
+				this.uiManager.attachBlockOption(
+					blockDiv,
+					this._blockOption({
+						label: "Show Paste button",
+						checked: block.paste !== false,
+						disabled: isTypingActive,
+						blockIdx,
+						key: "paste",
+						byDefault: true,
+					}),
+				);
+			} else if (subtype === "image-comment" || subtype === "web-comment") {
+				this.uiManager.attachBlockOption(
+					blockDiv,
+					this._blockOption({
+						label: "Pin window",
+						checked: block.pin === true,
+						disabled: isTypingActive,
+						blockIdx,
+						key: "pin",
+						byDefault: false,
+					}),
+				);
+			}
+		}
+
 		blockDiv.oninput = () => {
+			if (blockDiv.contentEditable !== "true") return;
 			const text = readCodeText(blockDiv);
 			this.saveEditState(blockIdx, text);
 			this.lessonManager.updateBlock(blockIdx, text);
@@ -197,6 +237,9 @@ class LessonRenderer {
 		steps.push({
 			type: "block",
 			fromInclude: !!block.fromInclude,
+			text: block.text,
+			paste: block.paste !== false,
+			pin: block.pin === true,
 			element: blockDiv,
 			blockIndex: blockIdx,
 			globalIndex: stepIndex,
@@ -319,11 +362,30 @@ class LessonRenderer {
 		});
 		blockDiv.appendChild(btn);
 
+		const creates =
+			classifyMoveToTarget(target).mode === "file" &&
+			this.lessonManager.isFirstMoveToFile(blockIdx);
+
+		if (creates && !block.fromInclude) {
+			this.uiManager.attachBlockOption(
+				blockDiv,
+				this._blockOption({
+					label: "Auto-type file name",
+					checked: block.typeName !== false,
+					disabled: isTypingActive,
+					blockIdx,
+					key: "typeName",
+					byDefault: true,
+				}),
+			);
+		}
+
 		steps.push({
 			type: "block",
 			subtype: "move-to",
 			fromInclude: !!block.fromInclude,
 			target,
+			typeName: creates && block.typeName !== false,
 			snippet: extractAnchorSnippet(
 				target,
 				blockIdx,

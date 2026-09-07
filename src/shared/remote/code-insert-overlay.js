@@ -4,15 +4,17 @@ class CodeInsertOverlay extends RemoteOverlay {
 	}
 
 	show(payload) {
-		const { text, colored } = payload || {};
+		const { text, colored, paste } = payload || {};
 		const overlay = this.el;
 		const codeEl = document.getElementById("ciCode");
 		if (!overlay || !codeEl) return;
 
+		this.canPaste = paste !== false;
+
 		const pasteBtn = document.getElementById("ciPaste");
 		const hint = document.getElementById("ciHint");
-		if (pasteBtn) pasteBtn.style.display = "";
-		if (hint) hint.style.display = "none";
+		if (pasteBtn) pasteBtn.style.display = this.canPaste ? "" : "none";
+		if (hint) hint.style.display = this.canPaste ? "none" : "block";
 
 		SnippetView.renderLines(codeEl, text, colored);
 
@@ -21,7 +23,8 @@ class CodeInsertOverlay extends RemoteOverlay {
 
 	padActions() {
 		const actions = [];
-		actions.push({ label: "Paste", onClick: () => this.paste() });
+		if (this.canPaste)
+			actions.push({ label: "Paste", onClick: () => this.paste() });
 		actions.push({
 			label: "OK",
 			kind: "confirm",

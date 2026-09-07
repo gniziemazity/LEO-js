@@ -193,10 +193,9 @@ test("a selection reaching the line end indents that line too", () => {
 
 test("indenting clears the selection", () => {
 	const s = new TextState();
-	model.resetClipboard();
-	model.applyTypedText(s, "a↩b↑◄⇓―✂");
-	assert.equal(s.text, "\ta\n");
-	assert.equal(model.CLIPBOARD.text, "b");
+	model.applyTypedText(s, "a↩b↑◄⇓―");
+	assert.equal(s.text, "\ta\nb");
+	assert.equal(s.selAnchor, null);
 });
 
 test("an atomic code insert indents a selection the same way", () => {

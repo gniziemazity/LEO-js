@@ -117,27 +117,17 @@ function _curatedShowControls(sel, x, y) {
 	_curatedCurrentTokens = tokens;
 	_curatedCurrentExisting = existing;
 
-	const nonCommentExisting = existing.filter((m) => m.label !== "comment");
-	const allMissing =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "missing");
-	const allExtra =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "extra");
-	const allGhostExtra =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "ghost_extra");
-	const single = nonCommentExisting.length === 1;
-	const allUnpaired =
-		(allMissing || allExtra || allGhostExtra) &&
-		nonCommentExisting.every((m) => !m.paired_with);
+	const {
+		nonComment: nonCommentExisting,
+		allMissing,
+		allExtra,
+		allGhostExtra,
+		single,
+		allUnpaired,
+		fullyLabeled,
+	} = _curatedClassifyExisting(existing, tokens);
 	const canPair =
 		allMissing || (allExtra && allUnpaired) || (allGhostExtra && allUnpaired);
-
-	const fullyLabeled = (label) =>
-		nonCommentExisting.length === tokens.length &&
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === label);
 
 	const pairActive =
 		_curatedPending &&

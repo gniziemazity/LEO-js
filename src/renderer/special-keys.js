@@ -31,9 +31,6 @@ class SpecialKeys {
 			"⇓": "Shift + Arrow Down",
 			"⇐": "Shift + Home",
 			"⇒": "Shift + End",
-			"✂": "Cut",
-			"⧉": "Copy",
-			"📥": "Paste",
 		};
 
 		this.uiManager.populateSpecialKeys(keys, (char) => {

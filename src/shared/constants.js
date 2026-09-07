@@ -21,10 +21,6 @@ const NUTJS_KEY_MAPPING = {
 	"⇐": { shift: true, key: Key.Home },
 	"⇒": { shift: true, key: Key.End },
 
-	"✂": { modifier: Key.LeftControl, key: Key.X },
-	"⧉": { modifier: Key.LeftControl, key: Key.C },
-	"📥": { modifier: Key.LeftControl, key: Key.V },
-
 	"💾": { modifier: Key.LeftControl, key: Key.S },
 	"🔁": { modifier: Key.LeftAlt, key: Key.Tab },
 	Ö: { modifier: Key.LeftAlt, key: Key.Tab },

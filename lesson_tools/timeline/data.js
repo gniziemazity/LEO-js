@@ -1,10 +1,22 @@
 "use strict";
 
 function _annotateRemovedLengths(events) {
-	const lines = [[]];
+	let lines = [[]];
 	let cursorLine = 0;
 	let cursorCol = 0;
 	let inDev = false;
+	let openFile = "MAIN";
+	const buffers = {};
+
+	const switchFile = (name) => {
+		if (name === openFile) return;
+		buffers[openFile] = { lines, cursorLine, cursorCol };
+		openFile = name;
+		const b = buffers[name] || { lines: [[]], cursorLine: 0, cursorCol: 0 };
+		lines = b.lines;
+		cursorLine = b.cursorLine;
+		cursorCol = b.cursorCol;
+	};
 
 	const insertChar = (ch) => {
 		if (ch === "\n" || ch === "↩") {
@@ -25,6 +37,12 @@ function _annotateRemovedLengths(events) {
 		}
 		if (ev.move_to === "MAIN" || ev.switch_editor === "main") {
 			inDev = false;
+			switchFile("MAIN");
+			continue;
+		}
+		if (isMoveToFile(ev.move_to)) {
+			inDev = false;
+			switchFile(ev.move_to);
 			continue;
 		}
 		if (inDev) continue;
@@ -110,6 +128,7 @@ function processData(raw) {
 		if (ev.switch_editor) editor = ev.switch_editor;
 		else if (ev.move_to === "DEV") editor = "dev";
 		else if (ev.move_to === "MAIN") editor = "main";
+		else if (isMoveToFile(ev.move_to)) editor = "main";
 		if (ev._editor == null) ev._editor = editor;
 	}
 

@@ -64,10 +64,15 @@ test("the popup releases the name when it closes", () => {
 	);
 });
 
-test("both surfaces offer the button only for a file target", () => {
+test("both surfaces gate the button on the payload, not on mode alone", () => {
 	const phone = read("src/shared/remote/move-to-overlay.js");
-	assert.match(phone, /this\.canTypeName = mode === "file"/);
-	assert.match(phone, /typeBtn\.style\.display = mode === "file"/);
+	assert.match(phone, /this\.canTypeName = mode === "file" && !!typeName/);
+	assert.match(phone, /typeBtn\.style\.display = this\.canTypeName/);
+	assert.match(
+		phone,
+		/okBtn\.style\.display = this\.canTypeName \? "none" : ""/,
+		"while the name must be typed there is no OK to skip it with",
+	);
 	assert.match(
 		phone,
 		/sendMessage\("move-to-type-name", \{\}\)/,
@@ -75,10 +80,11 @@ test("both surfaces offer the button only for a file target", () => {
 	);
 
 	const desk = read("src/renderer/desk-popup.js");
-	const fn = /showMoveTo\(\{ mode, target, snippet \}\)[\s\S]*?\n\t\}/.exec(
-		desk,
-	)[0];
-	assert.match(fn, /if \(mode === "file"\)/);
+	const fn =
+		/showMoveTo\(\{ mode, target, snippet, typeName \}\)[\s\S]*?\n\t\}/.exec(
+			desk,
+		)[0];
+	assert.match(fn, /const canTypeName = mode === "file" && !!typeName/);
 	assert.match(fn, /client-move-to-type-name/);
 });
 

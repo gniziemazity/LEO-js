@@ -114,6 +114,27 @@ class UIManager {
 		this.elements.lessonContainer.appendChild(element);
 	}
 
+	createBlockOption({ label, checked, disabled, onChange }) {
+		const wrap = document.createElement("label");
+		wrap.className = "block-opt";
+		wrap.dataset.blockOpt = "1";
+		wrap.contentEditable = "false";
+		const input = document.createElement("input");
+		input.type = "checkbox";
+		input.checked = checked;
+		input.disabled = disabled;
+		wrap.appendChild(input);
+		wrap.appendChild(document.createTextNode(label));
+		for (const type of ["mousedown", "click", "input", "change", "keydown"])
+			wrap.addEventListener(type, (e) => e.stopPropagation());
+		input.addEventListener("change", () => onChange(input.checked));
+		return wrap;
+	}
+
+	attachBlockOption(blockDiv, option) {
+		blockDiv.appendChild(this.createBlockOption(option));
+	}
+
 	removeCursorClasses() {
 		document
 			.querySelectorAll(".cursor")

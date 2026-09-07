@@ -32,7 +32,11 @@ test("titles, ids and labels come from one place", () => {
 	);
 	assert.equal(view.waitingTitle("student-question", "Ana", null), "❓ Ana");
 	assert.equal(view.waitingTitle("student-help", "Ana"), "🤝 Helping Ana");
-	assert.equal(view.participantId("teacher"), view.TEACHER_ID);
+	assert.equal(
+		view.participantId("teacher"),
+		0,
+		"the teacher is 0 in the log",
+	);
 	assert.equal(view.participantId(0), 1, "students are 1-based in the log");
 	assert.equal(view.participantId(4), 5);
 });

@@ -605,3 +605,25 @@ function _curatedGroupMarks() {
 }
 
 window.addEventListener("DOMContentLoaded", _curatedEnsureButtons);
+
+function _curatedClassifyExisting(existing, tokens) {
+	const nonComment = (existing || []).filter((m) => m.label !== "comment");
+	const every = (label) =>
+		nonComment.length > 0 && nonComment.every((m) => m.label === label);
+	const allMissing = every("missing");
+	const allExtra = every("extra");
+	const allGhostExtra = every("ghost_extra");
+	return {
+		nonComment,
+		allMissing,
+		allExtra,
+		allGhostExtra,
+		single: nonComment.length === 1,
+		allUnpaired:
+			(allMissing || allExtra || allGhostExtra) &&
+			nonComment.every((m) => !m.paired_with),
+		hasAnyPaired: nonComment.some((m) => m.paired_with),
+		fullyLabeled: (label) =>
+			nonComment.length === (tokens || []).length && every(label),
+	};
+}

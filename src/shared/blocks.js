@@ -36,6 +36,15 @@
 		return s;
 	}
 
+	function splitPinToken(text) {
+		const s = String(text == null ? "" : text);
+		const body = stripBlockPrefix(s);
+		const prefix = s.slice(0, s.length - body.length);
+		const parts = body.trim().split(/\s+/).filter(Boolean);
+		const kept = parts.filter((p, i) => i === 0 || p.toLowerCase() !== "pin");
+		return { text: prefix + kept.join(" "), pin: kept.length < parts.length };
+	}
+
 	function buildSettingsCSS(settings) {
 		const c = settings.colors;
 		return `
@@ -74,6 +83,7 @@
 		stripBlockPrefix,
 		isMultilineCodeInsert,
 		collapsedLabel,
+		splitPinToken,
 		buildSettingsCSS,
 	};
 

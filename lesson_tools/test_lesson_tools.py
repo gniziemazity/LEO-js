@@ -1661,111 +1661,11 @@ def _attach_replay_parity_tests() -> None:
 _attach_replay_parity_tests()
 
 
-class TestClipboardGlyphs(unittest.TestCase):
-    SCRIPT = 'one↩two↩three↑↑◄⇓⇓✂►↩📥'
-
-    def _typed(self, script: str, ext: str = '.js'):
-        from utils.lv_editor import HeadlessEditor, reset_clipboard, _CLIPBOARD
-        reset_clipboard()
-        ed = HeadlessEditor(file_ext=ext)
-        for ch in script:
-            ed.handle_char(ch)
-        return ed, _CLIPBOARD['text']
-
-    def test_cut_takes_the_shift_selected_range(self):
-        ed, board = self._typed('one↩two↩three↑↑◄⇓⇓✂')
-        self.assertEqual(ed.get_text(), 'three')
-        self.assertEqual(board, 'one\ntwo\n')
-
-    def test_cut_with_no_selection_takes_the_whole_line(self):
-        ed, board = self._typed('one↩two↩three↑►✂')
-        self.assertEqual(ed.get_text(), 'one\nthree')
-        self.assertEqual(board, 'two\n')
-
-    def test_copy_leaves_the_text(self):
-        ed, board = self._typed('one↩two↩three↑↑◄⇓⇓⧉')
-        self.assertEqual(ed.get_text(), 'one\ntwo\nthree')
-        self.assertEqual(board, 'one\ntwo\n')
-
-    def test_paste_is_literal(self):
-        ed, _ = self._typed('a↩b↑◄⇓✂►↩if (x) {↩📥')
-        self.assertEqual(ed.get_text(), 'b\nif (x) {\n\ta\n')
-
-    def test_paste_replaces_the_selection(self):
-        ed, _ = self._typed('keep↩drop↑◄⇓⧉📥')
-        self.assertEqual(ed.get_text(), 'keep\nkeep\ndrop')
-
-    def test_cut_collapses_an_anchor_inside_it(self):
-        from utils.lv_editor import HeadlessEditor, reset_clipboard
-        reset_clipboard()
-        ed = HeadlessEditor(file_ext='.js')
-        for ch in 'a↩':
-            ed.handle_char(ch)
-        ed.set_anchor('7')
-        for ch in 'b↩c↑↑◄⇓⇓✂':
-            ed.handle_char(ch)
-        self.assertEqual(ed.get_text(), 'c')
-        self.assertEqual(ed._anchors['7'], 0)
-
-    def test_glyphs_work_inside_a_code_insert(self):
-        from utils.lv_editor import HeadlessEditor, reset_clipboard
-        reset_clipboard()
-        ed = HeadlessEditor(file_ext='.js')
-        ed.handle_code_insert('one↩two↩three↑↑◄⇓⇓✂►📥')
-        self.assertEqual(ed.get_text(), 'threeone\ntwo\n')
-
-    def test_clipboard_is_reset_between_replays(self):
-        from utils.lv_editor import reconstruct_html_headless
-        events = [{'char': c, 'timestamp': i}
-                  for i, c in enumerate('secret↩◄⇑⧉')]
-        reconstruct_html_headless(events, 'x.js')
-        events = [{'char': c, 'timestamp': i}
-                  for i, c in enumerate('📥done')]
-        self.assertEqual(reconstruct_html_headless(events, 'x.js'), 'done')
-
-    @unittest.skipUnless(_REPLAY_READY,
-                         'node executable or _replay_runner.js not available')
-    def test_js_python_parity(self):
-        from utils.lv_editor import reconstruct_html_headless
-        events = [{'char': c, 'timestamp': i}
-                  for i, c in enumerate(self.SCRIPT)]
-        py_text = reconstruct_html_headless(events, 'lesson.js')
-        with tempfile.TemporaryDirectory() as d:
-            log_path = Path(d) / 'log.json'
-            log_path.write_text(
-                json.dumps({'events': events, 'lessonFile': 'lesson.js'}),
-                encoding='utf-8',
-            )
-            res = subprocess.run(
-                [_NODE_BIN, str(_REPLAY_RUNNER), str(log_path)],
-                capture_output=True, text=True, encoding='utf-8',
-            )
-        if res.returncode != 0:
-            self.fail(f'JS replay runner failed (rc={res.returncode}):\n'
-                      f'{res.stderr}')
-        self.assertEqual(res.stdout, py_text)
-        self.assertEqual(py_text, 'three\none\ntwo\n')
-
-
-    def test_every_paste_glyph_is_a_clipboard_glyph(self):
-        from utils.lv_constants import (
-            PASTE_CHAR, PASTE_CHARS, CLIPBOARD_CHARS,
-        )
-        self.assertEqual(PASTE_CHAR, '📥')
-        self.assertEqual(PASTE_CHARS, frozenset({'📥'}))
-        self.assertTrue(PASTE_CHARS <= CLIPBOARD_CHARS)
-
-    def test_retired_paste_glyphs_stay_retired(self):
-        from utils.lv_constants import CLIPBOARD_CHARS
-        for glyph in ('📎', '⎘'):
-            self.assertNotIn(glyph, CLIPBOARD_CHARS, glyph)
-
 class TestIndentSelection(unittest.TestCase):
     SCRIPT = 'a↩b↩c↑↑◄⇓⇓―'
 
     def _typed(self, script: str, ext: str = '.js'):
-        from utils.lv_editor import HeadlessEditor, reset_clipboard
-        reset_clipboard()
+        from utils.lv_editor import HeadlessEditor
         ed = HeadlessEditor(file_ext=ext)
         for ch in script:
             ed.handle_char(ch)
@@ -1781,11 +1681,12 @@ class TestIndentSelection(unittest.TestCase):
         self.assertEqual(self._typed('a↩b―').get_text(), 'a\nb\t')
 
     def test_indenting_clears_the_selection(self):
-        self.assertEqual(self._typed('a↩b↑◄⇓―✂').get_text(), '\ta\n')
+        ed = self._typed('a↩b↑◄⇓―')
+        self.assertEqual(ed.get_text(), '\ta\nb')
+        self.assertIsNone(ed._sel_anchor)
 
     def test_code_insert_indents_a_selection_too(self):
-        from utils.lv_editor import HeadlessEditor, reset_clipboard
-        reset_clipboard()
+        from utils.lv_editor import HeadlessEditor
         ed = HeadlessEditor(file_ext='.js')
         ed.handle_code_insert(self.SCRIPT)
         self.assertEqual(ed.get_text(), '\ta\n\tb\nc')

@@ -76,22 +76,6 @@ const IGNORED_CHARS = new Set([
 const PAUSE_CHAR = "🕛";
 const PAUSE_MS = 500;
 
-const CUT_CHAR = "✂";
-const COPY_CHAR = "⧉";
-const PASTE_CHAR = "📥";
-const PASTE_CHARS = new Set([PASTE_CHAR]);
-const CLIPBOARD_CHARS = new Set([CUT_CHAR, COPY_CHAR, ...PASTE_CHARS]);
-const CLIPBOARD_LABELS = {
-	"✂": "Cut",
-	"⧉": "Copy",
-	"📥": "Paste",
-};
-const CLIPBOARD = { text: "" };
-
-function resetClipboard() {
-	CLIPBOARD.text = "";
-}
-
 const HTML_VOID_TAGS = new Set([
 	"area",
 	"base",
@@ -128,6 +112,10 @@ const BACKSPACE_CHARS = new Set(["⌫", "↢"]);
 const DELETE_FWRD_CHARS = new Set(["⌦"]);
 const _MOVE_TO_FILE_RE = /\.[a-z0-9]+$/i;
 
+function isMoveToFile(target) {
+	return typeof target === "string" && _MOVE_TO_FILE_RE.test(target);
+}
+
 function _splitCodeWithAnchors(code) {
 	const result = [];
 	let last = 0;
@@ -161,7 +149,7 @@ function expandEvents(events) {
 			} else if (target === "MAIN" || target === "main") {
 				currentEditor = "main";
 				micro.push(["switch_editor", "main", ts, DELAY_OPS]);
-			} else if (_MOVE_TO_FILE_RE.test(target)) {
+			} else if (isMoveToFile(target)) {
 				currentEditor = "main";
 				micro.push(["switch_file", target, ts, DELAY_OPS]);
 			} else {
@@ -325,21 +313,6 @@ function autoIndent(state, ts = 0, getOpensCloses = null) {
 	}
 }
 
-function applyClipboardChar(state, ch, ts = 0) {
-	const sel = state.selectionRange();
-	if (ch === CUT_CHAR) {
-		const [s, e] = sel || state.currentLineRange();
-		CLIPBOARD.text = state.removeRange(s, e);
-	} else if (ch === COPY_CHAR) {
-		const [s, e] = sel || state.currentLineRange();
-		CLIPBOARD.text = state.text.slice(s, e);
-	} else {
-		if (sel) state.removeRange(sel[0], sel[1]);
-		for (const c of CLIPBOARD.text) state.insert(c, ts);
-	}
-	state.selAnchor = null;
-}
-
 function indentSelection(state, ts = 0) {
 	const sel = state.selectionRange();
 	if (!sel) return false;
@@ -382,10 +355,6 @@ function applyTypedChar(state, ch, ts = 0, opts = {}) {
 	if (Object.prototype.hasOwnProperty.call(SHIFT_CURSOR_MOVES, ch)) {
 		if (state.selAnchor === null) state.selAnchor = state.cursor;
 		state.moveCursor(SHIFT_CURSOR_MOVES[ch]);
-		return;
-	}
-	if (CLIPBOARD_CHARS.has(ch)) {
-		applyClipboardChar(state, ch, ts);
 		return;
 	}
 	if (ch === "↩" || ch === "\n") {
@@ -512,13 +481,6 @@ function replayChar(ctx, ch, ts, delay, editor, hooks) {
 		log(ts, `⌨  ${ch}${lbl ? " " + lbl : ""} (select)`, CLR.blue);
 		return delay;
 	}
-	if (CLIPBOARD_CHARS.has(ch)) {
-		st.selAnchor = editor === "dev" ? null : ctx.selAnchorMain;
-		applyClipboardChar(st, ch, ts);
-		if (editor !== "dev") ctx.selAnchorMain = null;
-		log(ts, `⌨  ${ch} ${CLIPBOARD_LABELS[ch]}`, CLR.blue);
-		return delay;
-	}
 	if (ch in CHAR_REPLACEMENTS) {
 		const real = CHAR_REPLACEMENTS[ch];
 		if (real === "\t" && editor === "main" && ctx.selAnchorMain !== null) {
@@ -595,8 +557,6 @@ function replayCodeInsert(ctx, code, ts, delay, editor, hooks) {
 			) {
 				if (st.selAnchor === null) st.selAnchor = st.cursor;
 				st.moveCursor(SHIFT_CURSOR_MOVES[ch]);
-			} else if (CLIPBOARD_CHARS.has(ch)) {
-				applyClipboardChar(st, ch, ts);
 			} else if (ch === "↩" || ch === "\n") {
 				st.insert("\n", ts);
 				if (editor === "main") autoIndent(ctx.main, ts, ctx.opensCloses());
@@ -675,16 +635,8 @@ if (typeof module !== "undefined" && module.exports) {
 		DELETE_FWRD_CHARS,
 		IGNORED_CHARS,
 		PAUSE_CHAR,
-		CUT_CHAR,
-		COPY_CHAR,
-		PASTE_CHAR,
-		PASTE_CHARS,
-		CLIPBOARD_CHARS,
-		CLIPBOARD_LABELS,
+		isMoveToFile,
 		indentSelection,
-		CLIPBOARD,
-		resetClipboard,
-		applyClipboardChar,
 		PAUSE_MS,
 		HTML_VOID_TAGS,
 		CLOSING_TAG_PREFIXES,

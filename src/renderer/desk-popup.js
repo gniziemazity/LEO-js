@@ -117,12 +117,17 @@ class DeskPopup {
 		return b;
 	}
 
-	showMoveTo({ mode, target, snippet }) {
+	showMoveTo({ mode, target, snippet, typeName }) {
 		const el = this._open("move-to");
 		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
+		const canTypeName = mode === "file" && !!typeName;
 		this._title(
 			el,
-			switchTo ? `Go to (${moveToDisplayName(switchTo)}):` : "Go to:",
+			canTypeName
+				? "Create file:"
+				: switchTo
+					? `Go to (${moveToDisplayName(switchTo)}):`
+					: "Go to:",
 		);
 		const body = this._body(el);
 		if (mode === "anchor" && renderSnippet(body, snippet)) {
@@ -132,10 +137,11 @@ class DeskPopup {
 			this.moveToBody = body;
 		}
 		const row = this._actions(el);
-		if (mode === "file") {
+		if (canTypeName) {
 			this._button(row, "Auto-type", () =>
 				this._send("client-move-to-type-name"),
 			);
+			return;
 		}
 		this._button(row, "OK", () => this._act("client-move-to-confirmed"));
 	}
@@ -145,14 +151,16 @@ class DeskPopup {
 		renderTypedName(this.moveToBody, data.target, data.typed);
 	}
 
-	showCodeInsert({ text, colored }) {
+	showCodeInsert({ text, colored, paste }) {
 		const el = this._open("code-insert");
 		this._title(el, "Code snippet:");
 		renderLines(this._body(el), text, colored);
-		const hint = document.createElement("div");
-		hint.className = "desk-popup-hint";
-		hint.textContent = "(to paste: Ctrl/⌘+V in your editor)";
-		el.appendChild(hint);
+		if (paste !== false) {
+			const hint = document.createElement("div");
+			hint.className = "desk-popup-hint";
+			hint.textContent = "(to paste: Ctrl/⌘+V in your editor)";
+			el.appendChild(hint);
+		}
 		this._button(this._actions(el), "OK", () =>
 			this._act("client-code-insert-confirmed"),
 		);

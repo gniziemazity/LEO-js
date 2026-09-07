@@ -4,7 +4,7 @@ class MoveToOverlay extends RemoteOverlay {
 	}
 
 	show(payload) {
-		const { mode, target, snippet } = payload || {};
+		const { mode, target, snippet, typeName } = payload || {};
 		const overlay = this.el;
 		const titleEl = document.getElementById("mtoTitle");
 		const targetEl = document.getElementById("mtoTarget");
@@ -12,16 +12,20 @@ class MoveToOverlay extends RemoteOverlay {
 		if (!overlay) return;
 
 		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
-		this.canTypeName = mode === "file";
+		this.canTypeName = mode === "file" && !!typeName;
 
 		if (titleEl) {
-			titleEl.textContent = switchTo
-				? `Go to (${MoveToTarget.moveToDisplayName(switchTo)}):`
-				: "Go to:";
+			if (this.canTypeName) titleEl.textContent = "Create file:";
+			else
+				titleEl.textContent = switchTo
+					? `Go to (${MoveToTarget.moveToDisplayName(switchTo)}):`
+					: "Go to:";
 		}
 
 		const typeBtn = document.getElementById("mtoTypeName");
-		if (typeBtn) typeBtn.style.display = mode === "file" ? "" : "none";
+		if (typeBtn) typeBtn.style.display = this.canTypeName ? "" : "none";
+		const okBtn = document.getElementById("mtoConfirm");
+		if (okBtn) okBtn.style.display = this.canTypeName ? "none" : "";
 
 		snippetEl.style.display = "none";
 		snippetEl.innerHTML = "";
@@ -76,15 +80,15 @@ class MoveToOverlay extends RemoteOverlay {
 	}
 
 	padActions() {
-		const actions = [];
 		if (this.canTypeName)
-			actions.push({ label: "Auto-type", onClick: () => this.typeName() });
-		actions.push({
-			label: "OK",
-			kind: "confirm",
-			onClick: () => this.confirm(),
-		});
-		return actions;
+			return [{ label: "Auto-type", onClick: () => this.typeName() }];
+		return [
+			{
+				label: "OK",
+				kind: "confirm",
+				onClick: () => this.confirm(),
+			},
+		];
 	}
 
 	typeName() {

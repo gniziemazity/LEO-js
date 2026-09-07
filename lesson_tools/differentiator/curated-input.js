@@ -71,25 +71,15 @@ function _curatedOnKeyDown(ev) {
 	if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
 
 	const k = ev.key.toLowerCase();
-	const nonCommentExisting = existing.filter((m) => m.label !== "comment");
-	const allMissing =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "missing");
-	const allExtra =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "extra");
-	const allGhostExtra =
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === "ghost_extra");
-	const allUnpaired =
-		(allMissing || allExtra || allGhostExtra) &&
-		nonCommentExisting.every((m) => !m.paired_with);
-	const hasAnyPaired = nonCommentExisting.some((m) => m.paired_with);
-
-	const fullyLabeled = (label) =>
-		nonCommentExisting.length === tokens.length &&
-		nonCommentExisting.length > 0 &&
-		nonCommentExisting.every((m) => m.label === label);
+	const {
+		nonComment: nonCommentExisting,
+		allMissing,
+		allExtra,
+		allGhostExtra,
+		allUnpaired,
+		hasAnyPaired,
+		fullyLabeled,
+	} = _curatedClassifyExisting(existing, tokens);
 
 	if (k === "m" && sel.side === "teacher" && !fullyLabeled("missing")) {
 		ev.preventDefault();

@@ -30,44 +30,40 @@ function element(text) {
 	};
 }
 
+function blockStep(text, extra) {
+	return {
+		type: "block",
+		text,
+		element: element(text),
+		globalIndex: 0,
+		...extra,
+	};
+}
+
 const BLOCKS = [
 	{
 		name: "question",
-		step: { type: "block", element: element("❓ Why?"), globalIndex: 0 },
+		step: blockStep("❓ Why?"),
 		closes: "close-question-window",
 	},
 	{
 		name: "image",
-		step: { type: "block", element: element("🖼️ pic.png"), globalIndex: 0 },
+		step: blockStep("🖼️ pic.png"),
 		closes: "close-image-window",
 	},
 	{
 		name: "web",
-		step: {
-			type: "block",
-			element: element("🌐 http://example.com"),
-			globalIndex: 0,
-		},
+		step: blockStep("🌐 http://example.com"),
 		closes: "close-web-window",
 	},
 	{
 		name: "move-to",
-		step: {
-			type: "block",
-			subtype: "move-to",
-			element: element(""),
-			globalIndex: 0,
-			target: "MAIN",
-		},
+		step: blockStep("", { subtype: "move-to", target: "MAIN" }),
 		closes: "close-move-to-window",
 	},
 	{
 		name: "code-insert",
-		step: {
-			type: "block",
-			element: element("📋 const x = 1;"),
-			globalIndex: 0,
-		},
+		step: blockStep("📋 const x = 1;"),
 		closes: "close-code-insert-window",
 	},
 ];
@@ -217,11 +213,7 @@ test("confirming a move-to unblocks auto-typing", async () => {
 });
 
 test("an open code-insert holds auto-typing until it is confirmed", async () => {
-	const step = {
-		type: "block",
-		element: element("📋 const x = 1;"),
-		globalIndex: 0,
-	};
+	const step = blockStep("📋 const x = 1;");
 	const { cm, channels } = makeCursorManager([step]);
 
 	cm.updateCursor();
