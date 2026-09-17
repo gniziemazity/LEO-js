@@ -417,6 +417,7 @@ function _animateQuestionWindowTo(target, duration, onDone) {
 function animateQuestionWindowOnScreen() {
 	const qw = _questionFloat.activeWin;
 	if (!qw) return;
+	_onFloatShown(_questionFloat);
 	const workArea = screen.getPrimaryDisplay().workArea;
 	const b = qw.getBounds();
 	const targetY = Math.floor(workArea.y + (workArea.height - b.height) / 2);

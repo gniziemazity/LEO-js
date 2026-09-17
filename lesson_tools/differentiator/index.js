@@ -84,7 +84,7 @@ function _pairedFileName(fromSide, name) {
 	const otherSide = fromSide === "teacher" ? "student" : "teacher";
 	const otherFiles = otherSide === "teacher" ? _teacherFiles : _studentFiles;
 	if (!otherFiles) return null;
-	const otherNames = Object.keys(otherFiles).filter((n) => CODE_EXT.test(n));
+	const otherNames = Object.keys(otherFiles).filter((n) => isCodeFile(n));
 	if (!otherNames.length) return null;
 	const filePairs = _currentMarksEntry?.file_pairs;
 	if (filePairs) {

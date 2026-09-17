@@ -153,6 +153,7 @@ async function setTouchpadMode(mode) {
 		activeModeHandler = handler;
 		touchpadActive = true;
 		overlay.classList.add("active");
+		if (handler.padTint) document.body.dataset.padTint = handler.padTint;
 		header.classList.add("above-pad");
 		if (handler.activate) await handler.activate({ overlay, header });
 		if (seq !== touchpadModeSeq) return;
@@ -200,10 +201,22 @@ function editKeysWanted() {
 
 function padCoversPopup() {
 	if (!touchpadActive) return false;
-	return !activeModeHandler || editKeysWanted();
+	if (!activeModeHandler) return true;
+	if (typeof activeModeHandler.coversScreen === "function")
+		return !!activeModeHandler.coversScreen();
+	return true;
+}
+
+function publishModesExtent() {
+	const el = document.getElementById("modeSideBtns");
+	if (!el || !document.documentElement) return;
+	const h = el.offsetHeight;
+	if (h)
+		document.documentElement.style.setProperty("--modes-extent", h + "px");
 }
 
 function syncTouchpadToolbar() {
+	publishModesExtent();
 	const keys = document.getElementById("touchpadEditKeys");
 	if (keys) keys.classList.toggle("visible", editKeysWanted());
 

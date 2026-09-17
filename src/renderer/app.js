@@ -14,6 +14,7 @@ const SpecialKeys = require("./special-keys");
 const TypingController = require("./typing-controller");
 const QRModalManager = require("./qr-modal");
 const AnchorPreview = require("./anchor-preview");
+const blockInsertBar = require("./block-insert-bar");
 const DeskPopup = require("./desk-popup");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
@@ -39,6 +40,7 @@ const blockEditor = new BlockEditor(
 	lessonRenderer,
 	undoManager,
 );
+lessonRenderer.blockEditor = blockEditor;
 const anchorPreview = new AnchorPreview(lessonManager, uiManager);
 const deskPopup = new DeskPopup((type, args) =>
 	ipcRenderer.send("desk-action", { type, args }),
@@ -63,15 +65,22 @@ const typingController = new TypingController(
 );
 const qrModalManager = new QRModalManager();
 
+window.leo = { lessonManager, cursorManager };
+
 let pendingQuestion = null;
 
 function applyMode(mode) {
+	const next = `mode-${mode}`;
+	if (document.body.classList.contains(next)) return;
 	document.body.classList.remove(
 		"mode-record",
 		"mode-classroom",
 		"mode-scientific",
 	);
-	document.body.classList.add(`mode-${mode}`);
+	document.body.classList.add(next);
+	if (uiManager.getElement("lessonContainer") && !uiManager.isActive()) {
+		lessonRenderer.render();
+	}
 }
 
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
@@ -186,6 +195,12 @@ function playFireworksSound() {
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	anchorPreview.attach(uiManager.getElement("lessonContainer"));
+	blockInsertBar.attach({
+		container: uiManager.getElement("lessonContainer"),
+		lessonManager,
+		blockEditor,
+		uiManager,
+	});
 	settingsUI.initialize();
 	specialKeys.initialize();
 	const coursePlanLoaded = courseUI.init();
@@ -216,24 +231,6 @@ lessonRenderer.onStartWithChanged = () => {
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
 		typingController.toggleActive();
-	uiManager.getElement("addCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment");
-	uiManager.getElement("addQuestionCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment", "❓ ");
-	uiManager.getElement("addImageCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment", "🖼️ ");
-	uiManager.getElement("addWebCommentBtn").onclick = () =>
-		blockEditor.addBlock("comment", "🌐 ");
-	uiManager.getElement("addCodeInsertBlockBtn").onclick = () =>
-		blockEditor.addBlock("comment", "📋 ");
-	uiManager.getElement("addMoveToBlockBtn").onclick = () =>
-		blockEditor.addBlock("move-to", "MAIN");
-	uiManager.getElement("addCodeBtn").onclick = () =>
-		blockEditor.addBlock("code");
-	uiManager.getElement("removeBlockBtn").onclick = () =>
-		blockEditor.removeBlock();
-	uiManager.getElement("formatBlockBtn").onclick = () =>
-		blockEditor.formatBlock();
 
 	const artBtn = uiManager.getElement("generateArtificialLogBtn");
 	if (artBtn) {

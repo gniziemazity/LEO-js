@@ -5,6 +5,7 @@ import re
 import shutil
 import zipfile
 import tempfile
+from functools import lru_cache
 
 from .folder_utils import CODE_EXTS
 from .similarity_measures import open_csv_encoded
@@ -140,33 +141,69 @@ def _same_length_x(match) -> str:
     return "x" * len(match.group())
 
 
-def get_name_patterns(name):
-    patterns = []
+def redacted_number(number) -> str:
+    n = len(number or "")
+    if not n:
+        return ""
+    return ("123456789" * (n // 9 + 1))[:n]
+
+
+_NAME_SPLIT_RE = re.compile(r"[\s\-_.']+")
+_SEP_L = r"(?<![A-Za-z0-9])"
+_SEP_R = r"(?![A-Za-z0-9])"
+_MIN_PART_LEN = 3
+
+
+def name_parts(name):
+    parts = []
     skipped_short = []
     seen = set()
+    for part in _NAME_SPLIT_RE.split(name or ""):
+        key = part.lower()
+        if not part or key in seen:
+            continue
+        seen.add(key)
+        if len(part) >= _MIN_PART_LEN:
+            parts.append(part)
+        else:
+            skipped_short.append(part)
+    return parts, skipped_short
 
-    full = name.strip()
+
+def _part_patterns(part):
+    camel = re.escape(part[:1].upper() + part[1:])
+    return [
+        re.compile(_SEP_L + re.escape(part) + _SEP_R, re.IGNORECASE),
+        re.compile(_SEP_L + "(?i:" + re.escape(part) + ")" + r"(?=[A-Z])"),
+        re.compile(r"(?<=[a-z0-9])" + camel),
+    ]
+
+
+@lru_cache(maxsize=256)
+def get_name_patterns(name):
+    patterns = []
+    seen = set()
+
+    full = (name or "").strip()
     if full:
         patterns.append(re.compile(re.escape(full), re.IGNORECASE))
         seen.add(full.lower())
 
-    for part in name.split():
-        key = part.lower()
-        if key in seen:
+    parts, skipped_short = name_parts(name)
+    for part in parts:
+        if part.lower() in seen:
             continue
-        if len(part) >= 3:
-            patterns.append(re.compile(r"\b" + re.escape(part) + r"\b", re.IGNORECASE))
-            seen.add(key)
-        else:
-            skipped_short.append(part)
+        seen.add(part.lower())
+        patterns.extend(_part_patterns(part))
 
-    return patterns, skipped_short
+    return tuple(patterns), tuple(skipped_short)
 
 def anonymize_text(text, student_data, all_student_numbers):
     remarks = []
     number = student_data["number"]
 
-    text = text.replace(number, "123456")
+    sentinel = redacted_number(number)
+    text = text.replace(number, sentinel)
 
     if redacting_names():
         patterns, skipped_short = get_name_patterns(student_data["name"])
@@ -177,7 +214,7 @@ def anonymize_text(text, student_data, all_student_numbers):
 
     found_numbers = re.findall(r"\b(\d{7})\b", text)
     for found in found_numbers:
-        if found == "123456":
+        if found == sentinel:
             continue
         if found in all_student_numbers:
             remarks.append(f"Contains another student number: {found}")
@@ -187,16 +224,17 @@ def anonymize_text(text, student_data, all_student_numbers):
     return text, remarks
 
 def anonymize_filename(filename, student_data):
-    new_name = filename
+    stem, ext = os.path.splitext(filename)
 
-    new_name = new_name.replace(student_data["number"], "123456")
+    sentinel = redacted_number(student_data["number"])
+    stem = stem.replace(student_data["number"], sentinel)
 
     if redacting_names():
         patterns, _ = get_name_patterns(student_data["name"])
         for pattern in patterns:
-            new_name = pattern.sub(_same_length_x, new_name)
+            stem = pattern.sub(_same_length_x, stem)
 
-    return new_name
+    return stem + ext
 
 def read_text_file(filepath):
     for enc in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
@@ -349,21 +387,22 @@ def process_pdf_file(src_path, dst_path, student_data, all_student_numbers):
         doc = fitz.open(src_path)
         number = student_data["number"]
         name = student_data["name"]
+        sentinel = redacted_number(number)
 
-        parts = name.split()
+        parts, skipped_short = name_parts(name)
+        word_parts = name.split()
         name_terms = []
         seen_terms = set()
         term_candidates = [name]
-        if len(parts) > 1:
-            term_candidates.append(" ".join(reversed(parts)))
-        term_candidates.extend(p for p in parts if len(p) >= 4)
+        if len(word_parts) > 1:
+            term_candidates.append(" ".join(reversed(word_parts)))
+        term_candidates.extend(parts)
         for term in term_candidates:
             term = term.strip()
             if term and term.lower() not in seen_terms:
                 name_terms.append(term)
                 seen_terms.add(term.lower())
 
-        skipped_short = [p for p in parts if len(p) < 4]
         if skipped_short:
             remarks.append("Short name part(s) not auto-redacted in PDF")
 
@@ -371,7 +410,7 @@ def process_pdf_file(src_path, dst_path, student_data, all_student_numbers):
             num_instances = page.search_for(number)
             if num_instances:
                 for inst in num_instances:
-                    page.add_redact_annot(inst, text="123456")
+                    page.add_redact_annot(inst, text=sentinel)
                 remarks.append(
                     f"PDF p.{page_num}: redacted student number ({len(num_instances)}x)"
                 )
@@ -389,7 +428,7 @@ def process_pdf_file(src_path, dst_path, student_data, all_student_numbers):
             text = page.get_text()
             found_numbers = re.findall(r"\b(\d{7})\b", text)
             for found in found_numbers:
-                if found == number or found == "123456":
+                if found == number or found == sentinel:
                     continue
                 if found in all_student_numbers:
                     remarks.append(

@@ -374,7 +374,7 @@ function renderPanel(side, files, marks) {
 			? (allLineMks?.teacher_files ?? null)
 			: (allLineMks?.student_files ?? null);
 
-	const allNames = Object.keys(files).filter((n) => CODE_EXT.test(n));
+	const allNames = Object.keys(files).filter((n) => isCodeFile(n));
 	const names = sortFileNames(allNames, side === "teacher");
 
 	tabs.innerHTML = "";

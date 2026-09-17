@@ -65,52 +65,52 @@
 		<div id="touchpadOverlay" class="touchpad-overlay">
 			<div id="touchpadEditKeys" class="touchpad-toolbar touchpad-edit-bar">
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('copy')"
 					title="Copy"
 					aria-label="Copy"
 				>
-					<span class="pad-btn-emoji">⧉</span>
+					<span class="side-btn-emoji">⧉</span>
 				</button>
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('paste')"
 					title="Paste"
 					aria-label="Paste"
 				>
-					<span class="pad-btn-emoji">📋</span>
+					<span class="side-btn-emoji">📋</span>
 				</button>
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('cut')"
 					title="Cut"
 					aria-label="Cut"
 				>
-					<span class="pad-btn-emoji">✂️</span>
+					<span class="side-btn-emoji">✂️</span>
 				</button>
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('undo')"
 					title="Undo"
 					aria-label="Undo"
 				>
-					<span class="pad-btn-emoji">↩️</span>
+					<span class="side-btn-emoji">↩️</span>
 				</button>
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('enter')"
 					title="Enter"
 					aria-label="Enter"
 				>
-					<span class="pad-btn-emoji">⏎</span>
+					<span class="side-btn-emoji">⏎</span>
 				</button>
 				<button
-					class="pad-bar-btn"
+					class="mode-side-btn pad-bar-btn"
 					onclick="remoteEditKey('save')"
 					title="Save"
 					aria-label="Save"
 				>
-					<span class="pad-btn-emoji">💾</span>
+					<span class="side-btn-emoji">💾</span>
 				</button>
 			</div>
 		</div>
@@ -142,7 +142,9 @@
 			>
 				<span class="side-btn-emoji">⌨️</span>
 			</button>
-			<div class="mode-side-divider"></div>
+		</div>
+
+		<div id="interactionSideBtns" class="mode-side-btns">
 			<button
 				class="mode-side-btn mode-side-btn-question"
 				onclick="handleInteractionBtn('student-question')"

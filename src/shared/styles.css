@@ -314,13 +314,125 @@ body.typing-active #main-layout {
 	cursor: default;
 }
 
+.block-opt-check {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	cursor: pointer;
+}
+
+.block-tool {
+	border: none;
+	border-radius: 3px;
+	cursor: pointer;
+	font: inherit;
+	font-size: 12px;
+	line-height: 1;
+	padding: 3px 6px;
+	background: rgba(0, 0, 0, 0.08);
+	color: inherit;
+}
+
+:where(body:not(.mobile-view)) .block-tool:hover:not(:disabled) {
+	background: rgba(0, 0, 0, 0.2);
+}
+
+.block-tool:disabled {
+	cursor: default;
+	color: var(--clr-placeholder);
+}
+
+.block-tool-remove {
+	background: var(--clr-red);
+	color: var(--clr-white);
+}
+
+:where(body:not(.mobile-view)) .block-tool-remove:hover:not(:disabled) {
+	background: var(--clr-danger-darker);
+}
+
 .move-to-comment .block-opt {
 	color: var(--clr-white);
 }
 
-#addCodeInsertBlockBtn {
-	background: var(--clr-code-insert-bg);
+.move-to-comment .block-tool {
+	background: rgba(255, 255, 255, 0.18);
+}
+
+.bt-options {
+	position: fixed;
+	z-index: 1001;
+	max-height: 50vh;
+	overflow-y: auto;
+	background: var(--clr-white);
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+	padding: 2px;
+	min-width: 150px;
+}
+
+.bt-option {
+	padding: 5px 10px;
+	cursor: pointer;
+	border-radius: 3px;
+	font-size: 13px;
+	white-space: nowrap;
 	color: var(--clr-comment-text);
+}
+
+.bt-option.active {
+	outline: 2px solid var(--clr-accent);
+	outline-offset: -2px;
+}
+
+.bt-option.selected {
+	font-weight: bold;
+}
+
+.block-insert-bar {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.block-insert-hover {
+	position: fixed;
+	z-index: 999;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.12s ease;
+}
+
+.block-insert-hover.visible {
+	opacity: 1;
+}
+
+.block-insert-hover.visible .block-add-btn {
+	pointer-events: auto;
+}
+
+.block-insert-end {
+	padding: 10px 15px;
+	border-bottom: 1px solid var(--clr-border-light);
+}
+
+.block-add-btn {
+	border: 1px solid var(--clr-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font: inherit;
+	font-size: 12px;
+	line-height: 1;
+	padding: 5px 10px;
+	background: var(--clr-page);
+	color: var(--clr-black);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	white-space: nowrap;
+}
+
+:where(body:not(.mobile-view)) .block-add-btn:hover {
+	filter: brightness(0.92);
 }
 
 .comment-block.move-to-comment {
@@ -373,11 +485,6 @@ button.move-to-select:disabled {
 	cursor: default;
 }
 
-#addMoveToBlockBtn {
-	background: var(--clr-move-to-bg);
-	color: var(--clr-white);
-}
-
 .anchor-token {
 	background: rgba(100, 100, 255, 0.12);
 	border-radius: 3px;
@@ -401,12 +508,14 @@ button.move-to-select:disabled {
 	word-wrap: break-word;
 }
 
-.comment-block:empty::before {
+.comment-block:empty::before,
+.comment-block.is-empty::before {
 	content: attr(data-placeholder);
 	color: var(--clr-placeholder);
 	pointer-events: none;
 }
-.code-block[contenteditable="true"]:empty::before {
+.code-block[contenteditable="true"]:empty::before,
+.code-block[contenteditable="true"].is-empty::before {
 	content: attr(data-placeholder);
 	color: var(--clr-placeholder);
 	pointer-events: none;
@@ -540,47 +649,8 @@ button.move-to-select:disabled {
 	text-align: center;
 }
 
-#editor-toolbar {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	margin: 0 auto;
-}
-
-body.typing-active #editor-toolbar {
-	display: none;
-}
-
-.tb-emoji-btn {
-	width: 35px;
-	height: 30px;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 15px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--clr-emoji-btn);
-	padding: 0;
-}
-
-.tb-emoji-btn:hover {
-	background: var(--clr-emoji-btn-hover);
-}
-
-.tb-sep {
-	width: 1px;
-	height: 22px;
-	background: rgba(255, 255, 255, 0.2);
-	margin: 0 2px;
-}
-
 .timer-btn,
-.add-btn,
-.remove-btn,
 .key-btn,
-.format-btn,
 .qr-btn {
 	width: 35px;
 	height: 30px;
@@ -616,16 +686,6 @@ body.typing-active #editor-toolbar {
 	background: var(--clr-log-btn-hover);
 }
 
-body.mode-classroom #addCodeInsertBlockBtn,
-body.mode-classroom #addMoveToBlockBtn,
-body.mode-record #addCodeInsertBlockBtn,
-body.mode-record #addMoveToBlockBtn,
-body.mode-record #addQuestionCommentBtn,
-body.mode-record #addImageCommentBtn,
-body.mode-record #addWebCommentBtn {
-	display: none;
-}
-
 body.mode-classroom .key-btn[data-char="⚓"],
 body.mode-record .key-btn[data-char="⚓"] {
 	display: none;
@@ -642,42 +702,6 @@ body.mode-record .key-btn[data-char="⚓"] {
 .qr-btn {
 	height: 35px;
 }
-.add-btn.yellow {
-	background: var(--clr-yellow);
-	color: var(--clr-black);
-}
-
-.add-btn.yellow:hover {
-	background: var(--clr-orange);
-}
-
-.add-btn.white {
-	background: var(--clr-page);
-	color: var(--clr-black);
-}
-
-.add-btn.white:hover {
-	background: var(--clr-border);
-}
-
-.remove-btn {
-	background: var(--clr-red);
-	color: var(--clr-white);
-}
-
-.remove-btn:hover {
-	background: var(--clr-danger-darker);
-}
-
-.format-btn {
-	background: var(--clr-format-btn);
-	color: var(--clr-white);
-}
-
-.format-btn:hover {
-	background: var(--clr-format-btn-hover);
-}
-
 .key-btn {
 	background: var(--clr-muted);
 	color: white;
@@ -983,15 +1007,39 @@ body.mode-record .key-btn[data-char="⚓"] {
 	scroll-margin-top: 80px;
 }
 
+:root {
+	--side-band: 35%;
+}
+
 .mode-side-btns {
 	position: fixed;
 	right: 10px;
-	top: 50%;
-	transform: translateY(-50%);
 	z-index: 2560;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+/* modes: stacked up to the band's edge, growing towards the physical left */
+body.side-right #modeSideBtns {
+	bottom: var(--side-band);
+	transform: none;
+}
+body.side-left #modeSideBtns {
+	top: var(--side-band);
+	flex-direction: column-reverse;
+	transform: none;
+}
+
+/* interactions: centred inside the band */
+body.side-right #interactionSideBtns {
+	top: calc(100% - var(--side-band) / 2);
+	transform: translateY(-50%);
+}
+body.side-left #interactionSideBtns {
+	top: calc(var(--side-band) / 2);
+	transform: translateY(-50%);
+	flex-direction: column-reverse;
 }
 .mode-side-btn {
 	--side-bg: rgba(60, 60, 60, 0.82);
@@ -1058,7 +1106,7 @@ body.mode-record .key-btn[data-char="⚓"] {
 	--side-bg-press: rgba(160, 210, 165, 0.95);
 }
 .mode-side-divider {
-	height: 24px;
+	display: none;
 }
 body.side-left .mode-side-btns {
 	right: auto;
@@ -1124,29 +1172,30 @@ body.side-left .pad-bar-btn > span {
 }
 
 .touchpad-edit-bar {
-	gap: 5px;
+	gap: 4px;
 }
+
+/* .pad-bar-btn pins line-height: 1, and in vertical writing-mode the line
+   box is the horizontal size — that is what made these narrower than every
+   other side button */
 .touchpad-edit-bar .pad-bar-btn {
-	padding: 8px;
+	line-height: normal;
+	padding: 10px 8px;
 }
 body.side-right .touchpad-edit-bar {
+	bottom: calc(var(--side-band) + var(--modes-extent, 120px) + 8px);
+	top: auto;
 	right: 10px;
-	bottom: 10px;
-	flex-direction: column;
-}
-body.side-left .touchpad-edit-bar {
-	left: 10px;
-	top: var(--pad-header-gap);
 	flex-direction: column-reverse;
 }
-body.popup-open.side-right .touchpad-edit-bar {
-	bottom: calc(20px + var(--popup-chrome-size));
-}
-body.popup-open.side-left .touchpad-edit-bar {
-	top: calc(var(--pad-header-gap) + 10px + var(--popup-chrome-size));
+body.side-left .touchpad-edit-bar {
+	top: calc(var(--side-band) + var(--modes-extent, 120px) + 8px);
+	bottom: auto;
+	left: 10px;
+	flex-direction: column;
 }
 .pad-btn-emoji {
-	font-size: 18px;
+	font-size: 22px;
 	display: inline-block;
 	transform: rotate(90deg);
 }
@@ -1157,6 +1206,11 @@ body.side-left .pad-btn-emoji {
 .overlay.pad-lifted {
 	z-index: 2555;
 	pointer-events: none;
+}
+
+/* a lifted popup outranks the glass, whatever the glass thinks it is */
+body:has(.overlay.pad-lifted) .touchpad-overlay {
+	z-index: 2540;
 }
 .overlay.pad-lifted::after {
 	content: "";
@@ -1679,10 +1733,6 @@ body.side-left .overlay-chrome-close {
 }
 
 .mt-modal-confirm {
-	position: absolute;
-	top: var(--mt-confirm-top, 50%);
-	right: 48px;
-	transform: translateY(-50%);
 	padding: 14px 24px;
 	font-size: 1.05rem;
 	font-weight: 700;
@@ -1718,11 +1768,6 @@ body.side-left .overlay-chrome-close {
 	z-index: 2;
 }
 
-.mt-modal-actions .mt-modal-confirm {
-	position: static;
-	transform: none;
-}
-
 .mto-name-typed {
 	opacity: 0.55;
 }
@@ -1737,11 +1782,6 @@ body.side-left .overlay-chrome-close {
 	align-items: flex-end;
 	gap: 12px;
 	z-index: 2;
-}
-
-.ci-modal-actions .mt-modal-confirm {
-	position: static;
-	transform: none;
 }
 
 .ci-paste-btn {

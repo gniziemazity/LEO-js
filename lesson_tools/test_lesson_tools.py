@@ -1,8 +1,10 @@
 import json
+import os
 import re
 import random
 import tempfile
 import unittest
+from unittest import mock
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
@@ -121,6 +123,11 @@ def _load_events(log_path: Path) -> list:
         return json.load(f)['events']
 
 
+def _load_lesson_file(log_path: Path):
+    with open(log_path, encoding='utf-8') as f:
+        return json.load(f).get('lessonFile')
+
+
 def _load_json(path: Path):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
@@ -187,9 +194,9 @@ def _parse_student_tokens_file(path: Path):
     return headers, entries
 
 
-def _build_token_occurrences(events: list) -> list:
+def _build_token_occurrences(events: list, lesson_file: str = None) -> list:
     kw_ts, kw_ts_comment, removed_kw_ts, upper_to_display, occ_with_display = (
-        reconstruct_tokens_from_keylog_full(events)
+        reconstruct_tokens_from_keylog_full(events, lesson_file)
     )
 
     occ = []
@@ -230,9 +237,11 @@ class _ReconstructionBase:
     @classmethod
     def setUpClass(cls):
         cls.events = _load_events(cls.log_file)
+        cls.lesson_file = _load_lesson_file(cls.log_file)
         cls.headers, cls.expected = _parse_tokens_file(cls.tokens_file)
-        cls.occ = _build_token_occurrences(cls.events)
-        cls.kw_ts, *_ = reconstruct_tokens_from_keylog_full(cls.events)
+        cls.occ = _build_token_occurrences(cls.events, cls.lesson_file)
+        cls.kw_ts, *_ = reconstruct_tokens_from_keylog_full(
+            cls.events, cls.lesson_file)
 
     @classmethod
     def tearDownClass(cls):
@@ -1555,6 +1564,66 @@ class TestMethodRegistryParity(unittest.TestCase):
             self.assertNotIn(basis, js, basis)
 
 
+class TestCodeFileGate(unittest.TestCase):
+    def test_pipeline_artefacts_are_not_student_code(self):
+        from utils.folder_utils import is_code_file
+        for name in ('diff_marks_leo_star.json', 'diff_marks_ideal.json',
+                     'diff_marks_minimal.json', 'DIFF_MARKS_GIT.JSON'):
+            self.assertFalse(is_code_file(name), name)
+
+    def test_authored_files_are_collected(self):
+        from utils.folder_utils import is_code_file
+        for name in ('index.html', 'page.htm', 'style.css', 'app.js',
+                     'model.ts', 'view.tsx', 'main.py', 'data.json'):
+            self.assertTrue(is_code_file(name), name)
+
+    def test_non_code_is_still_out(self):
+        from utils.folder_utils import is_code_file
+        for name in ('tokens.txt', 'name_map.csv', 'photo.png', 'notes.md'):
+            self.assertFalse(is_code_file(name), name)
+
+    def test_code_files_skips_the_marks_beside_the_submission(self):
+        from utils.folder_utils import code_files
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for name in ('diff_marks_leo_star.json', 'diff_marks_ideal.json',
+                         'tokens.txt', 'index.html', 'data.json', 'app.ts'):
+                (d / name).write_text('x', encoding='utf-8')
+            self.assertEqual(sorted(code_files(d)),
+                             ['app.ts', 'data.json', 'index.html'])
+
+
+class TestCodeExtParity(unittest.TestCase):
+    def _js_source(self) -> str:
+        return (Path(__file__).parent / 'shared' / 'diff-utils.js').read_text(
+            encoding='utf-8')
+
+    def test_the_two_extension_gates_list_the_same_extensions(self):
+        from utils.folder_utils import CODE_EXTS
+        m = re.search(r'const CODE_EXT = /\\\.\(([^)]+)\)\$/i;', self._js_source())
+        self.assertIsNotNone(m, 'CODE_EXT regex not found in diff-utils.js')
+        js_exts = {'.' + e for e in m.group(1).split('|')}
+        self.assertEqual(js_exts, set(CODE_EXTS))
+
+    def test_both_sides_exclude_the_marks_files(self):
+        from utils.folder_utils import ARTEFACT_PREFIXES
+        self.assertEqual(ARTEFACT_PREFIXES, ('diff_marks',))
+        self.assertIn('const ARTEFACT_NAME = /(^|\\/)diff_marks[^/]*$/i;',
+                      self._js_source())
+
+    def test_every_call_site_goes_through_the_gate(self):
+        root = Path(__file__).parent
+        for rel in ('shared/diff-utils.js', 'differentiator/index.js',
+                    'differentiator/render.js', 'differentiator/curated.js',
+                    'students/viewers.js'):
+            stray = [
+                line.strip()
+                for line in (root / rel).read_text(encoding='utf-8').splitlines()
+                if 'CODE_EXT.test' in line and 'ARTEFACT_NAME' not in line
+            ]
+            self.assertEqual(stray, [], rel + ' must ask isCodeFile')
+
+
 class TestJsPythonParity(unittest.TestCase):
 
     def _run_node(self, log_path: Path) -> str:
@@ -1775,6 +1844,99 @@ class TestSelectionDelete(unittest.TestCase):
                       f'{res.stderr}')
         self.assertEqual(res.stdout, py_text)
         self.assertEqual(py_text, 'c')
+
+
+class TestNameRedaction(unittest.TestCase):
+    STUDENT = {'name': 'Radu Mariescu-Istodor', 'number': '2201543', 'id': '7'}
+    FRAGMENTS = ('radu', 'mariescu', 'istodor', '2201543')
+
+    def _redacting(self, on=True):
+        return mock.patch.dict(
+            os.environ, {'STUDENT_ANALYTICS_USE_ALTER_EGO': '1' if on else '0'})
+
+    def _leaks(self, text):
+        low = text.lower()
+        return [f for f in self.FRAGMENTS if f in low]
+
+    def test_filenames_leak_no_name_fragment(self):
+        from utils.anonymize import anonymize_filename
+        names = [
+            'something_radu_mariescu.docx',
+            'something-radu-mariescu.docx',
+            'something radu mariescu.docx',
+            'radu_mariescu.docx',
+            'Radu Mariescu-Istodor.docx',
+            'RaduMariescu.docx',
+            'raduMariescu.docx',
+            'myRaduFile.docx',
+            'mariescu.istodor.pdf',
+            'A5_RADU_MARIESCU.pdf',
+            'assignment_2201543.docx',
+        ]
+        with self._redacting():
+            for name in names:
+                out = anonymize_filename(name, self.STUDENT)
+                self.assertEqual(self._leaks(out), [], f'{name!r} -> {out!r}')
+
+    def test_redaction_preserves_length(self):
+        from utils.anonymize import anonymize_filename, anonymize_text
+        with self._redacting():
+            for name in ('something_radu_mariescu.docx', 'assignment_2201543.docx'):
+                self.assertEqual(len(anonymize_filename(name, self.STUDENT)), len(name))
+            text = 'let radu_score = 1; // Radu Mariescu-Istodor 2201543'
+            out, _ = anonymize_text(text, self.STUDENT, {'2201543'})
+            self.assertEqual(len(out), len(text))
+            self.assertEqual(self._leaks(out), [])
+
+    def test_number_sentinel_is_length_preserving(self):
+        from utils.anonymize import redacted_number
+        for n in range(1, 13):
+            self.assertEqual(len(redacted_number('9' * n)), n)
+        self.assertEqual(redacted_number('123456'), '123456')
+        self.assertEqual(redacted_number(''), '')
+
+    def test_sentinel_not_reported_as_stray_number(self):
+        from utils.anonymize import anonymize_text
+        with self._redacting():
+            _, remarks = anonymize_text('id 2201543', self.STUDENT, {'2201543'})
+        self.assertEqual(remarks, [])
+
+    def test_ordinary_words_are_not_redacted(self):
+        from utils.anonymize import anonymize_text
+        cases = [
+            ('Ana Pop', 'a banana in Anastasia, ANAlyse, popular'),
+            ('Ion Sandu', 'ionic function sandbox, version'),
+        ]
+        with self._redacting():
+            for name, text in cases:
+                out, _ = anonymize_text(
+                    text, {'name': name, 'number': '999999'}, set())
+                self.assertEqual(out, text, name)
+
+    def test_names_kept_without_anon_but_number_redacted(self):
+        from utils.anonymize import anonymize_filename
+        with self._redacting(False):
+            out = anonymize_filename('radu_mariescu_2201543.docx', self.STUDENT)
+        self.assertIn('radu_mariescu', out)
+        self.assertNotIn('2201543', out)
+
+    def test_extension_survives_a_colliding_name(self):
+        from utils.anonymize import anonymize_filename
+        student = {'name': 'Java Popescu', 'number': '999999'}
+        with self._redacting():
+            self.assertEqual(
+                anonymize_filename('Main.java', student), 'Main.java')
+            self.assertEqual(
+                anonymize_filename('java_notes.java', student), 'xxxx_notes.java')
+            self.assertEqual(
+                anonymize_filename('popescu.java', student), 'xxxxxxx.java')
+
+    def test_hyphenated_surname_splits_into_parts(self):
+        from utils.anonymize import name_parts
+        parts, short = name_parts('Radu Mariescu-Istodor')
+        self.assertEqual(parts, ['Radu', 'Mariescu', 'Istodor'])
+        self.assertEqual(short, [])
+        self.assertEqual(name_parts('Li Wu'), ([], ['Li', 'Wu']))
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ _ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(_ROOT))
 
 from languages import lesson_file_extension
-from utils.folder_utils import CODE_EXTS
+from utils.folder_utils import is_code_file
 from utils.lv_editor import reconstruct_all_headless
 from utils.token_log import (
     _parse_teacher_tokens,
@@ -44,7 +44,7 @@ def _student_dirs(case_dir: Path) -> list[Path]:
     result = []
     for d in sorted(_dir_or(case_dir, "anon_ids").iterdir()):
         if d.is_dir() and d.name.isdigit():
-            if any(f.suffix.lower() in CODE_EXTS for f in d.iterdir()):
+            if any(is_code_file(f) for f in d.iterdir()):
                 result.append(d)
     return result
 
@@ -65,7 +65,7 @@ def _load_lesson_file(log_path: Path) -> str | None:
 def _collect_teacher_files(case_dir: Path) -> dict:
     files = {}
     for f in sorted(_dir_or(case_dir, "reconstructed").iterdir()):
-        if f.is_file() and f.suffix.lower() in CODE_EXTS:
+        if f.is_file() and is_code_file(f):
             files[f.name] = f
     reco_html = case_dir / "reconstructed.html"
     if reco_html.exists():
@@ -77,7 +77,7 @@ def _collect_student_files(student_dir: Path) -> dict:
     return {
         f.name: f
         for f in sorted(student_dir.iterdir())
-        if f.suffix.lower() in CODE_EXTS
+        if is_code_file(f)
     }
 
 

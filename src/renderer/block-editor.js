@@ -8,18 +8,23 @@ class BlockEditor {
 		this.undoManager = undoManager;
 	}
 
-	addBlock(type, initialText) {
-		if (this.undoManager) {
-			this.undoManager.saveState(`add-${type}-block`);
-		}
+	_checkpoint(label) {
+		if (this.lessonRenderer.endEditBurst) this.lessonRenderer.endEditBurst();
+		if (this.undoManager) this.undoManager.saveState(label);
+	}
 
-		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-		const newBlockIdx =
-			(selectedBlockIndex === null ? -1 : selectedBlockIndex) + 1;
-		this.lessonManager.addBlock(type, selectedBlockIndex, initialText);
+	addBlock(type, initialText, afterIndex) {
+		this._checkpoint(`add-${type}-block`);
+
+		const after =
+			afterIndex === undefined
+				? this.uiManager.getSelectedBlockIndex()
+				: afterIndex;
+		const newBlockIdx = this.lessonManager.addBlock(type, after, initialText);
 		this.uiManager.selectBlock(newBlockIdx);
 		this.lessonRenderer.render();
 		this.focusNewBlock(newBlockIdx);
+		return newBlockIdx;
 	}
 
 	focusNewBlock(blockIdx) {
@@ -38,36 +43,53 @@ class BlockEditor {
 		}, 0);
 	}
 
-	removeBlock() {
-		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-		if (selectedBlockIndex === null) return;
+	removeBlock(index) {
+		const blockIdx =
+			index === undefined ? this.uiManager.getSelectedBlockIndex() : index;
+		if (blockIdx === null) return;
 
-		if (this.undoManager) {
-			this.undoManager.saveState("remove-block");
-		}
+		this._checkpoint("remove-block");
 
-		this.lessonManager.removeBlock(selectedBlockIndex);
+		this.lessonManager.removeBlock(blockIdx);
 		this.uiManager.deselectBlock();
 		const remaining = this.lessonManager.getAllBlocks().length;
 		if (remaining > 0) {
-			this.uiManager.selectBlock(Math.max(0, selectedBlockIndex - 1));
+			this.uiManager.selectBlock(Math.max(0, blockIdx - 1));
 		}
 		this.lessonRenderer.render();
 	}
 
-	formatBlock() {
-		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-		if (selectedBlockIndex === null) return;
+	moveBlock(index, delta) {
+		if (!this.lessonManager.canMoveBlock(index, delta)) return;
 
-		const block = this.lessonManager.getBlock(selectedBlockIndex);
+		this._checkpoint("move-block");
+
+		this.lessonManager.moveBlock(index, delta);
+		this.uiManager.selectBlock(index + delta);
+		this.lessonRenderer.render();
+	}
+
+	setSubtype(index, subtype) {
+		if (!this.lessonManager.canSetBlockSubtype(index, subtype)) return;
+
+		this._checkpoint("change-block-type");
+
+		this.lessonManager.setBlockSubtype(index, subtype);
+		this.lessonRenderer.render();
+	}
+
+	formatBlock(index) {
+		const blockIdx =
+			index === undefined ? this.uiManager.getSelectedBlockIndex() : index;
+		if (blockIdx === null) return;
+
+		const block = this.lessonManager.getBlock(blockIdx);
 		if (!block || block.type !== "code") return;
 
-		if (this.undoManager) {
-			this.undoManager.saveState("format-block");
-		}
+		this._checkpoint("format-block");
 
 		const formatted = formatCodeForAutoTyping(block.text);
-		this.lessonManager.updateBlock(selectedBlockIndex, formatted);
+		this.lessonManager.updateBlock(blockIdx, formatted);
 		this.lessonRenderer.render();
 	}
 

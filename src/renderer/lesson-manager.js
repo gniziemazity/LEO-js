@@ -6,7 +6,12 @@ const {
 	isFileName,
 } = require("../shared/move-to-target");
 const { normalizeEdgeNewlines } = require("../shared/code-text");
-const { getBlockSubtype, splitPinToken } = require("../shared/blocks");
+const {
+	BLOCK_SUBTYPES,
+	getBlockSubtype,
+	splitPinToken,
+	stripBlockPrefix,
+} = require("../shared/blocks");
 const { replayPlan, toReplayableText } = require("./anchor-snippet");
 
 class LessonManager {
@@ -235,14 +240,65 @@ class LessonManager {
 			}
 		}
 
+		let at;
 		if (afterIndex === null) {
+			at = this.data.length;
 			this.data.push(newBlock);
 		} else {
-			this.data.splice(afterIndex + 1, 0, newBlock);
+			at = afterIndex + 1;
+			this.data.splice(at, 0, newBlock);
 		}
 
 		this.markAsChanged();
-		return this.data.length - 1;
+		return at;
+	}
+
+	firstAuthoredIndex() {
+		let i = 1;
+		while (i < this.data.length && this.data[i] && this.data[i].fromInclude) {
+			i++;
+		}
+		return i;
+	}
+
+	canMoveBlock(index, delta) {
+		const floor = this.firstAuthoredIndex();
+		const to = index + delta;
+		if (index < floor || index >= this.data.length) return false;
+		return to >= floor && to < this.data.length;
+	}
+
+	moveBlock(index, delta) {
+		if (!this.canMoveBlock(index, delta)) return false;
+		const to = index + delta;
+		const [block] = this.data.splice(index, 1);
+		this.data.splice(to, 0, block);
+		this.markAsChanged();
+		return true;
+	}
+
+	canSetBlockSubtype(index, subtype) {
+		if (index < 0 || index >= this.data.length) return false;
+		const block = this.data[index];
+		if (!block || block.type !== "comment" || block.fromInclude) return false;
+		return !subtype || BLOCK_SUBTYPES.some(([, name]) => name === subtype);
+	}
+
+	setBlockSubtype(index, subtype) {
+		if (!this.canSetBlockSubtype(index, subtype)) return false;
+		const block = this.data[index];
+		const entry = BLOCK_SUBTYPES.find(([, name]) => name === subtype);
+
+		const body = stripBlockPrefix(block.text || "");
+		block.text = entry ? `${entry[0]} ${body}` : body;
+
+		if (subtype !== "code-insert-comment") delete block.paste;
+		if (subtype !== "image-comment" && subtype !== "web-comment") {
+			delete block.pin;
+		}
+
+		this.markAsChanged();
+		return true;
 	}
 
 	removeBlock(index) {

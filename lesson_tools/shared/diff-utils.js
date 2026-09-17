@@ -267,11 +267,17 @@ function langShortId(name, fallback = "html") {
 const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|ico|bmp)$/i;
 const MEDIA_EXT =
 	/\.(png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$/i;
-const CODE_EXT = /\.(html|css|js|py)$/i;
+const CODE_EXT = /\.(html|htm|css|js|ts|tsx|py|json)$/i;
+const ARTEFACT_NAME = /(^|\/)diff_marks[^/]*$/i;
 const DOC_EXT = /\.docx$/i;
 
-async function pickFolder() {
-	return window.showDirectoryPicker({ mode: "read" });
+function isCodeFile(nameOrPath) {
+	const s = String(nameOrPath);
+	return CODE_EXT.test(s) && !ARTEFACT_NAME.test(s);
+}
+
+async function pickFolder(mode = "read") {
+	return window.showDirectoryPicker({ mode });
 }
 
 async function pickFiles(opts = {}) {
@@ -768,8 +774,7 @@ function makeDraggable(handle, target) {
 
 async function buildDiffPayloadData(fileMap, studentDir) {
 	const entries = [...fileMap.entries()];
-	const teach = (re) =>
-		entries.filter(([p]) => re.test(p) && CODE_EXT.test(p));
+	const teach = (re) => entries.filter(([p]) => re.test(p) && isCodeFile(p));
 	const recoEntries = teach(/^reconstructed\//i);
 	const startEntries = teach(/^start\//i);
 	const correctEntries = teach(/^correct\//i);
@@ -779,7 +784,7 @@ async function buildDiffPayloadData(fileMap, studentDir) {
 			? startEntries
 			: correctEntries;
 	const studentEntries = entries.filter(
-		([p]) => p.startsWith(studentDir) && CODE_EXT.test(p),
+		([p]) => p.startsWith(studentDir) && isCodeFile(p),
 	);
 
 	const teacherFiles = {};

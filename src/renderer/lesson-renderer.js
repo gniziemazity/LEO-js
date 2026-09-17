@@ -22,6 +22,8 @@ const {
 	closeDropdown,
 	isOpen: isDropdownOpen,
 } = require("./move-to-dropdown");
+const { buildEndBar } = require("./block-insert-bar");
+const { currentMode, subtypeChoices, subtypeGlyph } = require("./block-types");
 
 const BLOCK_RENDERERS = {
 	comment: "renderCommentBlock",
@@ -80,12 +82,30 @@ class LessonRenderer {
 	makeCodeBlockEditable(element, block, blockIdx) {
 		element.contentEditable = "true";
 		writeCodeText(element, block.text);
+		this._syncEmpty(element, block.text);
 		element.oninput = () => {
 			const text = readCodeText(element);
 			this.saveEditState(blockIdx, text);
 			this.lessonManager.updateBlock(blockIdx, text);
+			this._syncEmpty(element, text);
 		};
 		this.attachEditHandlers(element);
+	}
+
+	resetView() {
+		this.endEditBurst();
+		this.expandedIncludes.clear();
+		if (this.uiManager.getSelectedBlockIndex() !== null) {
+			this.uiManager.deselectBlock();
+		}
+	}
+
+	endEditBurst() {
+		if (this.editDebounceTimer) {
+			clearTimeout(this.editDebounceTimer);
+			this.editDebounceTimer = null;
+		}
+		this.lastEditedBlockIndex = null;
 	}
 
 	saveEditState(blockIndex, content) {
@@ -141,6 +161,12 @@ class LessonRenderer {
 			this.uiManager.appendToLessonContainer(blockDiv);
 		});
 
+		if (!isTypingActive && this.blockEditor) {
+			this.uiManager.appendToLessonContainer(
+				buildEndBar(blocks.length - 1, this.blockEditor),
+			);
+		}
+
 		this.cursorManager.setExecutionSteps(executionSteps);
 
 		if (isTypingActive) {
@@ -163,6 +189,141 @@ class LessonRenderer {
 			onChange: (on) =>
 				this.lessonManager.updateBlockOption(blockIdx, key, on, byDefault),
 		};
+	}
+
+	_typeTool(block, blockIdx) {
+		const choices = subtypeChoices(currentMode());
+		if (choices.length < 2) return null;
+		const subtype = getBlockSubtype(block.text) || null;
+		return {
+			glyph: `${subtypeGlyph(subtype)} ▾`,
+			title: "Change block type",
+			className: "block-tool-type",
+			onClick: (btn) =>
+				openDropdown({
+					anchorEl: btn,
+					blockIdx,
+					value: String(subtype),
+					options: choices.map((c) => ({
+						value: String(c.subtype),
+						label: `${c.glyph} ${c.label}`,
+					})),
+					listClass: "bt-options",
+					itemClass: "bt-option",
+					onPick: (v) =>
+						this.blockEditor &&
+						this.blockEditor.setSubtype(
+							blockIdx,
+							v === "null" ? null : v,
+						),
+				}),
+		};
+	}
+
+	_blockTools(block, blockIdx, isTypingActive) {
+		if (isTypingActive || block.fromInclude || block.type === "include") {
+			return [];
+		}
+		if (this.uiManager.getSelectedBlockIndex() !== blockIdx) return [];
+
+		const tools = [];
+		if (block.type === "comment") {
+			const type = this._typeTool(block, blockIdx);
+			if (type) tools.push(type);
+		}
+		if (block.type === "code") {
+			tools.push({
+				glyph: "✨",
+				title: "Format this code for auto-typing",
+				onClick: () =>
+					this.blockEditor && this.blockEditor.formatBlock(blockIdx),
+			});
+		}
+		for (const [glyph, delta, title] of [
+			["▲", -1, "Move this block up"],
+			["▼", 1, "Move this block down"],
+		]) {
+			tools.push({
+				glyph,
+				title,
+				disabled: !this.lessonManager.canMoveBlock(blockIdx, delta),
+				onClick: () =>
+					this.blockEditor && this.blockEditor.moveBlock(blockIdx, delta),
+			});
+		}
+		tools.push({
+			glyph: "✕",
+			title: "Delete this block",
+			className: "block-tool-remove",
+			onClick: () =>
+				this.blockEditor && this.blockEditor.removeBlock(blockIdx),
+		});
+		return tools;
+	}
+
+	_optionFor(block, blockIdx, isTypingActive) {
+		if (block.fromInclude) return null;
+		const option = (label, checked, key, byDefault) =>
+			this._blockOption({
+				label,
+				checked,
+				disabled: isTypingActive,
+				blockIdx,
+				key,
+				byDefault,
+			});
+		if (block.type === "comment") {
+			const subtype = getBlockSubtype(block.text);
+			if (subtype === "code-insert-comment") {
+				return option(
+					"Show Paste button",
+					block.paste !== false,
+					"paste",
+					true,
+				);
+			}
+			if (subtype === "image-comment" || subtype === "web-comment") {
+				return option("Pin window", block.pin === true, "pin", false);
+			}
+		}
+		if (block.type === "move-to" && this._createsFile(block, blockIdx)) {
+			return option(
+				"Auto-type file name",
+				block.typeName !== false,
+				"typeName",
+				true,
+			);
+		}
+		return null;
+	}
+
+	_createsFile(block, blockIdx) {
+		return (
+			classifyMoveToTarget(block.target || "MAIN").mode === "file" &&
+			this.lessonManager.isFirstMoveToFile(blockIdx)
+		);
+	}
+
+	_attachIsland(blockDiv, block, blockIdx, isTypingActive) {
+		return this.uiManager.attachBlockIsland(blockDiv, {
+			option: this._optionFor(block, blockIdx, isTypingActive),
+			tools: this._blockTools(block, blockIdx, isTypingActive),
+		});
+	}
+
+	refreshIsland(blockIdx) {
+		if (blockIdx === null || blockIdx === undefined) return;
+		const el = document.querySelectorAll(".block")[blockIdx];
+		const block = this.lessonManager.getAllBlocks()[blockIdx];
+		if (!el || !block) return;
+		for (const old of el.querySelectorAll(":scope > .block-opt"))
+			old.remove();
+		this._attachIsland(el, block, blockIdx, this.uiManager.isActive());
+	}
+
+	_syncEmpty(el, text) {
+		if (text) el.classList.remove("is-empty");
+		else el.classList.add("is-empty");
 	}
 
 	renderCommentBlock(ctx) {
@@ -191,39 +352,15 @@ class LessonRenderer {
 			delete blockDiv.dataset.fullText;
 		}
 
-		if (!block.fromInclude) {
-			if (subtype === "code-insert-comment") {
-				this.uiManager.attachBlockOption(
-					blockDiv,
-					this._blockOption({
-						label: "Show Paste button",
-						checked: block.paste !== false,
-						disabled: isTypingActive,
-						blockIdx,
-						key: "paste",
-						byDefault: true,
-					}),
-				);
-			} else if (subtype === "image-comment" || subtype === "web-comment") {
-				this.uiManager.attachBlockOption(
-					blockDiv,
-					this._blockOption({
-						label: "Pin window",
-						checked: block.pin === true,
-						disabled: isTypingActive,
-						blockIdx,
-						key: "pin",
-						byDefault: false,
-					}),
-				);
-			}
-		}
+		this._syncEmpty(blockDiv, block.text);
+		this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
 
 		blockDiv.oninput = () => {
 			if (blockDiv.contentEditable !== "true") return;
 			const text = readCodeText(blockDiv);
 			this.saveEditState(blockIdx, text);
 			this.lessonManager.updateBlock(blockIdx, text);
+			this._syncEmpty(blockDiv, text);
 
 			blockDiv.classList.remove(
 				"question-comment",
@@ -259,6 +396,7 @@ class LessonRenderer {
 
 		if (selectedBlockIndex === blockIdx && !isTypingActive) {
 			this.makeCodeBlockEditable(blockDiv, block, blockIdx);
+			this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
 			return stepIndex;
 		} else {
 			blockDiv.contentEditable = "false";
@@ -379,23 +517,8 @@ class LessonRenderer {
 		});
 		blockDiv.appendChild(note);
 
-		const creates =
-			classifyMoveToTarget(target).mode === "file" &&
-			this.lessonManager.isFirstMoveToFile(blockIdx);
-
-		if (creates && !block.fromInclude) {
-			this.uiManager.attachBlockOption(
-				blockDiv,
-				this._blockOption({
-					label: "Auto-type file name",
-					checked: block.typeName !== false,
-					disabled: isTypingActive,
-					blockIdx,
-					key: "typeName",
-					byDefault: true,
-				}),
-			);
-		}
+		const creates = this._createsFile(block, blockIdx);
+		this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
 
 		steps.push({
 			type: "block",
@@ -521,6 +644,7 @@ class LessonRenderer {
 		if (hasSelection) {
 			if (previousSelectedIndex !== null && blocks[previousSelectedIndex]) {
 				blocks[previousSelectedIndex].classList.remove("selected");
+				this.refreshIsland(previousSelectedIndex);
 			}
 			if (blocks[blockIdx]) {
 				blocks[blockIdx].classList.add("selected");
@@ -528,6 +652,7 @@ class LessonRenderer {
 				if (block.type === "code") {
 					this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
 				}
+				this.refreshIsland(blockIdx);
 
 				blocks[blockIdx].focus();
 			}
@@ -554,6 +679,7 @@ class LessonRenderer {
 				this._rerenderAndFocus(blockIdx, clickX, clickY);
 				return;
 			}
+			this.refreshIsland(previousSelectedIndex);
 		}
 
 		if (blocks[blockIdx]) {
@@ -565,6 +691,7 @@ class LessonRenderer {
 				this._rerenderAndFocus(blockIdx, clickX, clickY);
 				return;
 			}
+			this.refreshIsland(blockIdx);
 		}
 
 		this.uiManager.focusBlock(blockIdx, clickX, clickY);

@@ -11,19 +11,6 @@ class UIManager {
 			generateArtificialLogBtn: document.getElementById(
 				"generateArtificialLogBtn",
 			),
-			addCommentBtn: document.getElementById("addCommentBtn"),
-			addQuestionCommentBtn: document.getElementById(
-				"addQuestionCommentBtn",
-			),
-			addImageCommentBtn: document.getElementById("addImageCommentBtn"),
-			addWebCommentBtn: document.getElementById("addWebCommentBtn"),
-			addCodeInsertBlockBtn: document.getElementById(
-				"addCodeInsertBlockBtn",
-			),
-			addMoveToBlockBtn: document.getElementById("addMoveToBlockBtn"),
-			addCodeBtn: document.getElementById("addCodeBtn"),
-			removeBlockBtn: document.getElementById("removeBlockBtn"),
-			formatBlockBtn: document.getElementById("formatBlockBtn"),
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
@@ -114,9 +101,17 @@ class UIManager {
 		this.elements.lessonContainer.appendChild(element);
 	}
 
+	static sealIsland(el) {
+		el.dataset.blockOpt = "1";
+		el.contentEditable = "false";
+		for (const type of ["mousedown", "click", "input", "change", "keydown"])
+			el.addEventListener(type, (e) => e.stopPropagation());
+		return el;
+	}
+
 	createBlockOption({ label, checked, disabled, onChange }) {
 		const wrap = document.createElement("label");
-		wrap.className = "block-opt";
+		wrap.className = "block-opt-check";
 		wrap.dataset.blockOpt = "1";
 		wrap.contentEditable = "false";
 		const input = document.createElement("input");
@@ -131,8 +126,35 @@ class UIManager {
 		return wrap;
 	}
 
+	createBlockTool({ glyph, title, disabled, onClick, className }) {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = className ? `block-tool ${className}` : "block-tool";
+		btn.textContent = glyph;
+		btn.title = title;
+		btn.disabled = !!disabled;
+		UIManager.sealIsland(btn);
+		btn.addEventListener("click", () => {
+			if (!btn.disabled) onClick(btn);
+		});
+		return btn;
+	}
+
+	attachBlockIsland(blockDiv, { option, tools } = {}) {
+		if (!option && (!tools || !tools.length)) return null;
+		const island = document.createElement("div");
+		island.className = "block-opt";
+		UIManager.sealIsland(island);
+		if (option) island.appendChild(this.createBlockOption(option));
+		for (const tool of tools || []) {
+			island.appendChild(this.createBlockTool(tool));
+		}
+		blockDiv.appendChild(island);
+		return island;
+	}
+
 	attachBlockOption(blockDiv, option) {
-		blockDiv.appendChild(this.createBlockOption(option));
+		return this.attachBlockIsland(blockDiv, { option });
 	}
 
 	removeCursorClasses() {

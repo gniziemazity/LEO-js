@@ -158,7 +158,7 @@ function _curatedHideFilePairMenu() {
 function _curatedShowFilePairMenu(anchor, studentFile) {
 	_curatedHideFilePairMenu();
 	const teacherCodeFiles = sortFileNames(
-		Object.keys(_teacherFiles || {}).filter((n) => CODE_EXT.test(n)),
+		Object.keys(_teacherFiles || {}).filter((n) => isCodeFile(n)),
 		true,
 	);
 	const filePairs = _currentMarksEntry?.file_pairs || {};

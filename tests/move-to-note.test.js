@@ -201,11 +201,6 @@ test("the chrome ✕ shows only while a popup is up", () => {
 	const base = read("shared/remote/remote-overlay.js");
 	const fn = /function syncOverlayChrome\(\)[\s\S]*?\n\}/.exec(base)[0];
 	assert.match(fn, /open \? "" : "none"/);
-	assert.match(
-		fn,
-		/classList\.toggle\("popup-open", open\)/,
-		"the edit keys share that corner, so the body has to say a popup is up",
-	);
 	assert.match(base, /open\(bg\) \{[\s\S]*?syncOverlayChrome\(\)/);
 	assert.match(base, /close\(\) \{[\s\S]*?syncOverlayChrome\(\)/);
 });
@@ -252,8 +247,9 @@ test("the ✕ takes the physical top-right, and everything steps aside", () => {
 
 	assert.match(
 		css,
-		/body\.popup-open\.side-right \.touchpad-edit-bar \{[\s\S]*?bottom: calc\(20px \+ var\(--popup-chrome-size\)\)/,
-		"the edit keys own that corner too, so they move while a popup is up",
+		/body\.side-right \.touchpad-edit-bar \{[\s\S]*?top: 10px/,
+		"the edit keys sit at the other end of the top edge now, where the " +
+			"jedi strip goes, so nothing has to step aside for the ✕",
 	);
 });
 
@@ -358,5 +354,43 @@ test("disabled controls are not faded; the active block carries the signal", () 
 			gen.indexOf(".comment-block.move-to-comment"),
 		"the active colour has to come after the subtype colours or a move-to " +
 			"block never shows it: same specificity, so order decides",
+	);
+});
+
+test("the edit keys sit beside the mode buttons, not at the far edge", () => {
+	const css = read("shared/styles.css");
+	const btn = /\.touchpad-edit-bar \.pad-bar-btn \{[\s\S]*?\n\}/.exec(css)[0];
+	assert.match(
+		btn,
+		/line-height: normal/,
+		".pad-bar-btn pins line-height: 1, and in vertical writing-mode the " +
+			"line box is the horizontal size — that is what made these narrower " +
+			"than every other side button, at 38px against 45.6",
+	);
+	const html = fs.readFileSync(path.join(SRC, "remote.html"), "utf-8");
+	assert.match(
+		html,
+		/class="mode-side-btn pad-bar-btn"/,
+		"they wear the same base class as every other side button, so the box " +
+			"is derived the same way instead of pinned to a measured pixel",
+	);
+	assert.equal(/pad-btn-emoji/.test(html), false, "and the same emoji span");
+
+	assert.match(
+		css,
+		/body\.side-right \.touchpad-edit-bar \{[\s\S]*?var\(--modes-extent/,
+		"it starts where the mode column ends, so the two read as one strip",
+	);
+	const pad = read("shared/remote/touchpad.js");
+	assert.match(
+		pad,
+		/setProperty\(\s*"--modes-extent"/,
+		"the column is two buttons or three depending on whether jedi is " +
+			"installed, so its height is measured rather than guessed",
+	);
+	assert.match(
+		pad,
+		/function syncTouchpadToolbar\(\) \{\s*\n\tpublishModesExtent\(\);/,
+		"republished whenever the buttons change",
 	);
 });

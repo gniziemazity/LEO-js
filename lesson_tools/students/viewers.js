@@ -329,8 +329,17 @@ async function _studentPreviewSrcdoc(htmlName) {
 
 function _fileLangRank(name) {
 	const ext = (String(name).match(/\.([^.]+)$/) || ["", ""])[1].toLowerCase();
-	const order = { html: 0, htm: 0, css: 1, js: 2, py: 3 };
-	return ext in order ? order[ext] : 4;
+	const order = {
+		html: 0,
+		htm: 0,
+		css: 1,
+		js: 2,
+		ts: 2,
+		tsx: 2,
+		py: 3,
+		json: 4,
+	};
+	return ext in order ? order[ext] : 5;
 }
 
 function _studentCodeFiles() {
@@ -338,7 +347,7 @@ function _studentCodeFiles() {
 	const dir = `anon_ids/${_selectedStudent.id}/`;
 	const out = [];
 	for (const [p, f] of _allFiles) {
-		if (p.startsWith(dir) && CODE_EXT.test(f.name)) out.push([f.name, f]);
+		if (p.startsWith(dir) && isCodeFile(f.name)) out.push([f.name, f]);
 	}
 	out.sort(
 		(a, b) =>

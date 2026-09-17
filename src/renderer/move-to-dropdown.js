@@ -61,11 +61,19 @@ function place(list, anchorEl) {
 	list.style.left = `${Math.max(GAP, left)}px`;
 }
 
-function openDropdown({ anchorEl, blockIdx, options, value, onPick }) {
+function openDropdown({
+	anchorEl,
+	blockIdx,
+	options,
+	value,
+	onPick,
+	listClass = "mt-options",
+	itemClass = "mt-option",
+}) {
 	closeDropdown();
 
 	const list = document.createElement("div");
-	list.className = "mt-options";
+	list.className = listClass;
 	list.dataset.blockIndex = String(blockIdx);
 
 	const pick = (v) => {
@@ -75,7 +83,7 @@ function openDropdown({ anchorEl, blockIdx, options, value, onPick }) {
 
 	options.forEach((o) => {
 		const item = document.createElement("div");
-		item.className = "mt-option";
+		item.className = itemClass;
 		item.dataset.value = o.value;
 		item.textContent = o.label;
 		if (o.value === value) item.classList.add("selected");

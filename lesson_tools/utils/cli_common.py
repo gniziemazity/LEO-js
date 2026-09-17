@@ -4,9 +4,11 @@ def add_grading_flags(parser) -> None:
         action='store_true',
         help='De-identify the run: use the "Alter Ego" column from students.csv '
              'as the student name in all generated Excel files, and redact student '
-             'names out of submitted code, filenames and PDFs. Without it only the '
-             'student number is replaced. Redaction is length-preserving so byte '
-             'offsets, and therefore curated diff marks, stay valid.',
+             'names out of submitted code, filenames, DOCX and PDF files. Name '
+             'parts are matched across separator, camel-case and underscore '
+             'boundaries. Without it only the student number is replaced. '
+             'Redaction is length-preserving so byte offsets, and therefore '
+             'curated diff marks, stay valid.',
     )
     parser.add_argument(
         '--follow-basis',

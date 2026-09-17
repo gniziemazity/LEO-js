@@ -12,6 +12,42 @@ function visibleFileTabs(files, activeFilename) {
 	});
 }
 
+const WEB_MAIN_EXT = new Set([
+	".html",
+	".htm",
+	".css",
+	".js",
+	".ts",
+	".tsx",
+	".json",
+]);
+
+function mainExportName(ext) {
+	const e = String(ext || ".html").toLowerCase();
+	return (WEB_MAIN_EXT.has(e) ? "index" : "main") + e;
+}
+
+function exportFileEntries(files, mainName) {
+	const entries = [];
+	for (const [key, st] of Object.entries(files || {})) {
+		const text = (st && st.text) || "";
+		if (key === MAIN_FILE && !text) continue;
+		const path = (key === MAIN_FILE ? mainName : key).replace(/\\/g, "/");
+		const parts = path.split("/");
+		if (
+			!path ||
+			path.startsWith("/") ||
+			/^[a-z]:/i.test(path) ||
+			parts.some((s) => s === "" || s === "." || s === "..")
+		) {
+			continue;
+		}
+		entries.push({ path, text });
+	}
+	entries.sort((a, b) => a.path.localeCompare(b.path));
+	return entries;
+}
+
 function computeSkipRegions(cumDelay, cap) {
 	const regions = [];
 	if (!cumDelay) return regions;
@@ -81,6 +117,7 @@ class LogVisualizer {
             <label><input id="chk-skip-pauses" type="checkbox" checked> Skip pauses</label>
             <span id="ts-label" style="margin-left:auto;color:${CLR.accent};font-family:Consolas,monospace;font-size:11px;line-height:1"></span>
             <button id="btn-copy-ts" title="Copy link to this moment" style="margin-left:6px" disabled>🔗</button>
+            <button id="btn-export-code" title="Export the code as it stands at this moment" style="margin-left:6px" disabled>💾 Export code</button>
             <span id="prog-label" style="margin-left:12px;color:${CLR.muted};font-family:Consolas,monospace;font-size:11px;line-height:1">No file loaded</span>
           </div>
           <div id="vis-seekbar"><div id="vis-seekfill"></div></div>
@@ -121,6 +158,7 @@ class LogVisualizer {
 				localStorage.getItem("sim-skip-pauses") !== "off";
 		this.elTsLbl = document.getElementById("ts-label");
 		this.elCopyTs = document.getElementById("btn-copy-ts");
+		this.elExport = document.getElementById("btn-export-code");
 		this.elProgLbl = document.getElementById("prog-label");
 		this.elSeekbar = document.getElementById("vis-seekbar");
 		this.elSeekFill = document.getElementById("vis-seekfill");
@@ -152,6 +190,7 @@ class LogVisualizer {
 
 		this.elPlay.onclick = () => this.togglePlay();
 		this.elCopyTs.onclick = () => this._copyTimestampLink();
+		this.elExport.onclick = () => this._exportCode();
 		const _dlLog = document.getElementById("vis-download-log");
 		if (_dlLog) _dlLog.onclick = () => this._downloadLog();
 		this.elBtnLog.onclick = () => {
@@ -377,6 +416,7 @@ class LogVisualizer {
 		this._seekToMs(targetMs);
 		this.elPlay.disabled = false;
 		if (this.elCopyTs) this.elCopyTs.disabled = !this._tsOrigin;
+		if (this.elExport) this.elExport.disabled = !this.micro.length;
 	}
 
 	seekToStep(n) {
@@ -421,6 +461,100 @@ class LogVisualizer {
 			if (fmtTs(ts).slice(-12) >= want) return this._microCumDelay[i];
 		}
 		return this._totalDelay;
+	}
+
+	_exportEntries() {
+		const LP = window.LanguageProfiles;
+		const ext = (LP && LP.lessonFileExtension(this._lessonFile)) || ".html";
+		return exportFileEntries(this._files, mainExportName(ext));
+	}
+
+	async _existingPaths(dirHandle, entries) {
+		const found = [];
+		for (const entry of entries) {
+			const parts = entry.path.split("/");
+			const base = parts.pop();
+			let dir = dirHandle;
+			let ok = true;
+			for (const seg of parts) {
+				try {
+					dir = await dir.getDirectoryHandle(seg);
+				} catch {
+					ok = false;
+					break;
+				}
+			}
+			if (!ok) continue;
+			try {
+				await dir.getFileHandle(base);
+				found.push(entry.path);
+			} catch {}
+		}
+		return found;
+	}
+
+	async _writeEntry(dirHandle, entry) {
+		const parts = entry.path.split("/");
+		const base = parts.pop();
+		let dir = dirHandle;
+		for (const seg of parts) {
+			dir = await dir.getDirectoryHandle(seg, { create: true });
+		}
+		const fh = await dir.getFileHandle(base, { create: true });
+		const writable = await fh.createWritable();
+		await writable.write(entry.text);
+		await writable.close();
+	}
+
+	_flashExport(label) {
+		if (!this.elExport) return;
+		if (this._exportFlashTimer) clearTimeout(this._exportFlashTimer);
+		else this._exportLabel = this.elExport.textContent;
+		this.elExport.textContent = label;
+		this._exportFlashTimer = setTimeout(() => {
+			this.elExport.textContent = this._exportLabel;
+			this._exportFlashTimer = null;
+		}, 2500);
+	}
+
+	async _exportCode() {
+		const entries = this._exportEntries();
+		if (!entries.length) {
+			alert("No code to export at this moment.");
+			return;
+		}
+		let dirHandle;
+		try {
+			dirHandle = await pickFolder("readwrite");
+		} catch (e) {
+			if (e.name !== "AbortError")
+				alert("Could not open folder: " + e.message);
+			return;
+		}
+		try {
+			const clashes = await this._existingPaths(dirHandle, entries);
+			if (
+				clashes.length &&
+				!confirm(
+					`Overwrite ${clashes.length} existing file(s) in ` +
+						`"${dirHandle.name}"?\n\n${clashes.sort().join(", ")}`,
+				)
+			) {
+				return;
+			}
+			for (const entry of entries) await this._writeEntry(dirHandle, entry);
+			const at = (this.elTsLbl.textContent || "").trim();
+			console.log(
+				`[Simulator] exported ${entries.length} file(s) to ` +
+					`"${dirHandle.name}"${at ? " at " + at : ""}: ` +
+					entries.map((e) => e.path).join(", "),
+			);
+			this._flashExport(
+				`✓ ${entries.length} file${entries.length === 1 ? "" : "s"}`,
+			);
+		} catch (e) {
+			alert("Export failed: " + (e.message || e));
+		}
 	}
 
 	_downloadLog() {
@@ -977,5 +1111,11 @@ class LogVisualizer {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-	module.exports = { computeSkipRegions, PAUSE_CAP_MS, visibleFileTabs };
+	module.exports = {
+		computeSkipRegions,
+		exportFileEntries,
+		mainExportName,
+		PAUSE_CAP_MS,
+		visibleFileTabs,
+	};
 }

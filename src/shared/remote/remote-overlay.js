@@ -12,7 +12,6 @@ function syncOverlayChrome() {
 	const open = !!activeRemoteOverlay();
 	const btn = document.getElementById("overlayCloseBtn");
 	if (btn) btn.style.display = open ? "" : "none";
-	if (document.body) document.body.classList.toggle("popup-open", open);
 }
 
 function closeActiveOverlay() {

@@ -8,12 +8,17 @@ from .token_log import _read_text_normalized, _split_tokens_by_comment, _ttt_pos
 from .similarity_measures import token_edit_similarity
 
 
-_LANG_EXT_LABEL = (('.html', 'HTML'), ('.css', 'CSS'), ('.js', 'JS'), ('.py', 'Py'))
+_LANG_EXT_LABEL = (('.html', 'HTML'), ('.css', 'CSS'), ('.js', 'JS'),
+                   ('.py', 'Py'), ('.ts', 'TS'), ('.json', 'JSON'))
 _EMBEDDED_LANG_TO_EXT = {'javascript': '.js', 'css': '.css'}
+_EXT_ALIAS = (('.htm', '.html'), ('.tsx', '.ts'))
 
 
 def _ext_of(fname: str) -> Optional[str]:
     s = (fname or '').lower()
+    for alias, ext in _EXT_ALIAS:
+        if s.endswith(alias):
+            return ext
     for ext, _ in _LANG_EXT_LABEL:
         if s.endswith(ext):
             return ext

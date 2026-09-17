@@ -429,31 +429,43 @@ test("the pad renders no buttons of its own for a popup", () => {
 	);
 });
 
-test("a handler mode that covers the screen lifts the popup too", async () => {
+test("a handler mode covers the popup unless it says it stood down", async () => {
 	const covered = [];
 	const pad = loadPad({
 		padOverlay: { setPadCovered: (v) => covered.push(v) },
 	});
-	let wanted = false;
-	pad.api.registerTouchpadMode("jedi", {
-		modeBtnId: "modeBtnJedi",
-		wantsEditKeys: () => wanted,
-	});
+	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
 	pad.api.setSessionActive(true);
 	await pad.api.setTouchpadMode("jedi");
 
 	assert.equal(
 		covered[covered.length - 1],
-		false,
-		"a handler that is not typing leaves the popup alone",
+		true,
+		"its glass is over the popup, so the buttons have to come up through " +
+			"it — gating this on wantsEditKeys left them unpressable in jedi",
 	);
+});
 
-	wanted = true;
+test("a handler that stands its glass down leaves the popup alone", async () => {
+	const covered = [];
+	let down = false;
+	const pad = loadPad({
+		padOverlay: { setPadCovered: (v) => covered.push(v) },
+	});
+	pad.api.registerTouchpadMode("jedi", {
+		modeBtnId: "modeBtnJedi",
+		coversScreen: () => !down,
+	});
+	pad.api.setSessionActive(true);
+	await pad.api.setTouchpadMode("jedi");
+	assert.equal(covered[covered.length - 1], true);
+
+	down = true;
 	pad.api.syncTouchpadToolbar();
 	assert.equal(
 		covered[covered.length - 1],
-		true,
-		"but the air keyboard covers the popup, so the buttons must come up",
+		false,
+		"a pad shrunk to a corner control is not covering anything",
 	);
 });
 
@@ -513,12 +525,39 @@ test("the pad stamps its tint on the body so a lifted popup can wear it", async 
 	);
 });
 
-test("a handler mode paints no tint: it does not own the glass", async () => {
+test("a handler mode wears the tint it declares, and only that", async () => {
 	const pad = loadPad();
-	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
+	pad.api.registerTouchpadMode("jedi", {
+		modeBtnId: "modeBtnJedi",
+		padTint: "jedi",
+	});
 	pad.api.setSessionActive(true);
 	await pad.api.setTouchpadMode("jedi");
-	assert.equal(pad.body.dataset.padTint, undefined);
+	assert.equal(
+		pad.body.dataset.padTint,
+		"jedi",
+		"a covered popup buries the glass, so the wash is the only thing left " +
+			"saying a pad is live",
+	);
+
+	await pad.api.setTouchpadMode("jedi");
+	assert.equal(
+		pad.body.dataset.padTint,
+		undefined,
+		"closing takes it with it, the same as a built-in pad",
+	);
+});
+
+test("a handler that names no tint paints none", async () => {
+	const pad = loadPad();
+	pad.api.registerTouchpadMode("mystery", { modeBtnId: "modeBtnJedi" });
+	pad.api.setSessionActive(true);
+	await pad.api.setTouchpadMode("mystery");
+	assert.equal(
+		pad.body.dataset.padTint,
+		undefined,
+		"base names no mode's colour: a tint is the handler's to declare",
+	);
 });
 
 test("the tint sits over the popup but under the buttons it lends", () => {

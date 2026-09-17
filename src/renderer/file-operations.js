@@ -81,6 +81,7 @@ class FileOperations {
 				this.undoManager.clear();
 			}
 
+			this.lessonRenderer.resetView();
 			this.lessonRenderer.render();
 			this.setInitialStateToInactive();
 

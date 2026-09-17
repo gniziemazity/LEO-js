@@ -178,9 +178,9 @@ async function _curatedSaveToFolder(fname, matching) {
 		if (!base) {
 			throw new Error("Could not locate the student folder on the server.");
 		}
-		await _curatedWriteServer(`${base}/anon_ids/${sid}/${fname}`, text);
 		await _curatedWriteServer(`${base}/curated/${sid}/${fname}`, text);
-		return `anon_ids/${sid}/ and curated/${sid}/`;
+		await _curatedWriteServer(`${base}/anon_ids/${sid}/${fname}`, text);
+		return `curated/${sid}/ and anon_ids/${sid}/`;
 	}
 
 	if (ds.rootHandle) {
@@ -196,9 +196,9 @@ async function _curatedSaveToFolder(fname, matching) {
 		} catch (e) {
 			throw new Error("Could not get write permission: " + e.message);
 		}
-		await _curatedWriteFs(ds.rootHandle, ["anon_ids", sid, fname], text);
 		await _curatedWriteFs(ds.rootHandle, ["curated", sid, fname], text);
-		return `anon_ids/${sid}/ and curated/${sid}/`;
+		await _curatedWriteFs(ds.rootHandle, ["anon_ids", sid, fname], text);
+		return `curated/${sid}/ and anon_ids/${sid}/`;
 	}
 
 	throw new Error("This dataset is read-only (no writable location).");

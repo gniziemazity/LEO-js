@@ -70,13 +70,15 @@
 			}
 			.char.cursor { background: ${c.cursor}; }
 			.anchor-token.cursor { background: ${c.cursor}; }
-			#addQuestionCommentBtn { background: ${c.questionCommentColor}; }
-			#addImageCommentBtn { background: ${c.imageBlockColor}; }
-			#addWebCommentBtn { background: ${c.imageBlockColor}; }
-			#addCodeInsertBlockBtn { background: ${c.codeInsertBlockColor}; }
-			#addMoveToBlockBtn { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
-			#addCommentBtn { background: ${c.commentNormal}; color: #333; }
-			#addCodeBtn { background: ${c.codeBlockColor}; color: #333; }
+			.bt-option[data-value="question-comment"] { background: ${c.questionCommentColor}; }
+			.bt-option[data-value="image-comment"],
+			.bt-option[data-value="web-comment"] { background: ${c.imageBlockColor}; }
+			.bt-option[data-value="code-insert-comment"] { background: ${c.codeInsertBlockColor}; }
+			.bt-option[data-value="null"] { background: ${c.commentNormal}; }
+			.bt-option { color: ${c.textColor}; }
+			.block-add-btn[data-add-type="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
+			.block-add-btn[data-add-type="comment"] { background: ${c.commentNormal}; color: #333; }
+			.block-add-btn[data-add-type="code"] { background: ${c.codeBlockColor}; color: #333; }
 		`;
 	}
 

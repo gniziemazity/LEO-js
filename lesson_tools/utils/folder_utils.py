@@ -10,10 +10,18 @@ _LAST_FOLDER_FILE = _ROOT / '.last_folder'
 _LAST_PROJECT_JS  = _ROOT / '.last_project.js'
 _LESSONS_DIR      = _ROOT / 'lessons'
 
-CODE_EXTS = ('.html', '.htm', '.css', '.js', '.py')
-LANG_EXTS = ('.html', '.css', '.js', '.py')
+CODE_EXTS = ('.html', '.htm', '.css', '.js', '.ts', '.tsx', '.py', '.json')
+LANG_EXTS = ('.html', '.css', '.js', '.ts', '.py', '.json')
+
+ARTEFACT_PREFIXES = ('diff_marks',)
 
 MOVE_TO_FILE_RE = re.compile(r'\.[a-z0-9]+$', re.IGNORECASE)
+
+
+def is_code_file(path) -> bool:
+    p = Path(path)
+    return (p.suffix.lower() in CODE_EXTS
+            and not p.name.lower().startswith(ARTEFACT_PREFIXES))
 
 
 def is_move_to_file(target) -> bool:
@@ -75,12 +83,13 @@ def code_files(directory: Path, *, first_only: bool = False) -> dict:
     files: dict = {}
     for ext in LANG_EXTS:
         if first_only:
-            matching = list(directory.glob(f'*{ext}'))
+            matching = [p for p in directory.glob(f'*{ext}') if is_code_file(p)]
             if matching:
                 files[ext] = matching[0]
         else:
             for path in sorted(directory.glob(f'*{ext}')):
-                files[path.name] = path
+                if is_code_file(path):
+                    files[path.name] = path
     return files
 
 

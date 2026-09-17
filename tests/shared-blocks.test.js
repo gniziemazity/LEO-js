@@ -87,7 +87,12 @@ test("the subtype table and the classifier agree", () => {
 
 test("the editor-only UI never reaches the remote", () => {
 	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
-	for (const name of ["anchor-preview.js", "move-to-dropdown.js"]) {
+	for (const name of [
+		"anchor-preview.js",
+		"move-to-dropdown.js",
+		"block-insert-bar.js",
+		"block-types.js",
+	]) {
 		assert.equal(
 			html.includes(name),
 			false,

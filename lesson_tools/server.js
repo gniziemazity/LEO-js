@@ -3,10 +3,20 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { PORT, serverStamp } = require("./server-launch");
 
-const PORT = 7891;
 const ROOT = __dirname;
 const SESSION_FILE = path.join(__dirname, ".grades_session.json");
+const SERVER_INFO = JSON.stringify({ pid: process.pid, stamp: serverStamp() });
+
+const ALLOWED_HOSTS = new Set([
+	`127.0.0.1:${PORT}`,
+	`localhost:${PORT}`,
+	`[::1]:${PORT}`,
+]);
+
+const GRADES_DENY_DIRS = new Set(["students", "anon_names"]);
+const GRADES_READ_DENY_DIRS = new Set([...GRADES_DENY_DIRS, "curated"]);
 
 function getGradesFolder() {
 	try {
@@ -30,6 +40,7 @@ const MIME = {
 	".svg": "image/svg+xml",
 	".ico": "image/x-icon",
 	".txt": "text/plain",
+	".pdf": "application/pdf",
 	".woff": "font/woff",
 	".woff2": "font/woff2",
 };
@@ -122,6 +133,21 @@ http
 			urlPath = decodeURIComponent(urlPath);
 		} catch {}
 
+		if (!ALLOWED_HOSTS.has(String(req.headers.host || "").toLowerCase())) {
+			res.writeHead(403);
+			res.end("Forbidden host");
+			return;
+		}
+
+		if (urlPath === "/__server-info") {
+			res.writeHead(200, {
+				"Content-Type": "application/json",
+				"Cache-Control": "no-cache",
+			});
+			res.end(SERVER_INFO);
+			return;
+		}
+
 		if (urlPath === "/grades-session") {
 			const folder = getGradesFolder();
 			res.writeHead(folder ? 200 : 404, {
@@ -140,7 +166,15 @@ http
 			}
 
 			const rel = urlPath.slice("/grades-data/".length);
-			const fullPath = path.resolve(folder, ...rel.split("/"));
+			const segments = rel.split(/[\\/]/);
+			const denyDirs =
+				req.method === "PUT" ? GRADES_DENY_DIRS : GRADES_READ_DENY_DIRS;
+			if (segments.some((s) => denyDirs.has(s.toLowerCase()))) {
+				res.writeHead(403);
+				res.end("Forbidden");
+				return;
+			}
+			const fullPath = path.resolve(folder, ...segments);
 			if (req.method === "PUT") {
 				writeUnder(res, folder, fullPath, req);
 				return;

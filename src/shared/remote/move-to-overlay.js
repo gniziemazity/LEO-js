@@ -65,24 +65,6 @@ class MoveToOverlay extends RemoteOverlay {
 
 		this.open("var(--clr-moveto-bg)");
 		padEnterMoveTo();
-
-		const modal = document.getElementById("mtModal");
-		if (modal) {
-			const snippetVisible = snippetEl.style.display !== "none";
-			if (snippetVisible) {
-				requestAnimationFrame(() => {
-					if (snippetEl.offsetHeight > 0) {
-						const center =
-							snippetEl.offsetTop + snippetEl.offsetHeight / 2;
-						modal.style.setProperty("--mt-confirm-top", center + "px");
-					} else {
-						modal.style.removeProperty("--mt-confirm-top");
-					}
-				});
-			} else {
-				modal.style.removeProperty("--mt-confirm-top");
-			}
-		}
 	}
 
 	chromeClose() {

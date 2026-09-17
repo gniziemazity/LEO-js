@@ -3,7 +3,6 @@ const { spawn, spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
 const path = require("path");
 const fs = require("fs");
-const http = require("http");
 
 let courseMenuState = { open: false, plans: [], currentPath: "" };
 
@@ -134,11 +133,10 @@ function resolvePython() {
 	return _pythonCmd;
 }
 
-const _LESSON_TOOLS_PORT = 7891;
-const _LESSON_TOOLS_SERVER = path.join(
-	__dirname,
-	"../../lesson_tools/server.js",
-);
+const {
+	PORT: _LESSON_TOOLS_PORT,
+	ensureServer,
+} = require("../../lesson_tools/server-launch");
 const _GRADES_SESSION_FILE = path.join(
 	__dirname,
 	"../../lesson_tools/.grades_session.json",
@@ -227,26 +225,7 @@ function wireLessonToolNav(win, tool) {
 }
 
 function ensureLessonToolsServer(cb) {
-	const onUnreachable = () => {
-		try {
-			spawn(process.execPath, [_LESSON_TOOLS_SERVER], {
-				detached: true,
-				stdio: "ignore",
-				env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
-			}).unref();
-		} catch (_) {}
-		setTimeout(cb, 400);
-	};
-	const req = http
-		.get(`http://127.0.0.1:${_LESSON_TOOLS_PORT}/`, (res) => {
-			res.destroy();
-			cb();
-		})
-		.on("error", onUnreachable);
-	req.setTimeout(500, () => {
-		req.destroy();
-		onUnreachable();
-	});
+	ensureServer({ env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" } }, cb);
 }
 
 function openLessonTool(tool) {

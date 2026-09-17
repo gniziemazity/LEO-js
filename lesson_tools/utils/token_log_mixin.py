@@ -28,7 +28,7 @@ from .token_log import (
     _ttt_pos_index,
     _write_teacher_tokens_file,
 )
-from .folder_utils import CODE_EXTS
+from .folder_utils import CODE_EXTS, is_code_file
 from .token_log_lang_stats import (
     _LANG_EXT_LABEL,
     _effective_ext_at,
@@ -116,7 +116,7 @@ class TokenLogMixin:
         if all_events:
             reco_dir = self.reference_dir.parent / 'reconstructed'
             if reco_dir.is_dir():
-                files = {p.name: p for p in sorted(reco_dir.iterdir()) if p.suffix.lower() in CODE_EXTS}
+                files = {p.name: p for p in sorted(reco_dir.iterdir()) if is_code_file(p)}
                 if files:
                     return files
         return self.get_all_code_files(self._effective_reference_dir())
@@ -151,7 +151,7 @@ class TokenLogMixin:
                 if not (tab_key == 'MAIN' and not reco_text)
             }
             for stale in reco_dir.iterdir():
-                if stale.is_file() and stale.suffix.lower() in CODE_EXTS \
+                if stale.is_file() and is_code_file(stale) \
                         and stale.name not in fresh_names:
                     try:
                         stale.unlink()
@@ -557,7 +557,7 @@ class TokenLogMixin:
             teacher_code_files = self._get_teacher_code_files()
             student_code_files = {
                 p.name: p for p in anon_dir.iterdir()
-                if p.is_file() and p.suffix.lower() in CODE_EXTS
+                if p.is_file() and is_code_file(p)
             }
             stats['follow_e_by_lang'] = _per_language_follow_stats(
                 diff_marks, teacher_code_files, student_code_files,
