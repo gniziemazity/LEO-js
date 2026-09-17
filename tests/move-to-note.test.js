@@ -64,14 +64,14 @@ test("the note reaches the popup from the step", () => {
 	);
 });
 
-test("the note wears the comment colours on both surfaces", () => {
+test("the note wears the note colours on both surfaces", () => {
 	const css = read("shared/styles.css");
 	for (const sel of [".mt-modal-note", ".move-to-note"]) {
 		const rule = new RegExp(
 			sel.replace(".", "\\.") + " \\{[\\s\\S]*?\\n\\}",
 		).exec(css)[0];
-		assert.match(rule, /var\(--clr-comment-bg\)/, sel + " background");
-		assert.match(rule, /var\(--clr-comment-text\)/, sel + " text");
+		assert.match(rule, /var\(--clr-note-bg\)/, sel + " background");
+		assert.match(rule, /var\(--clr-note-text\)/, sel + " text");
 	}
 });
 
@@ -271,22 +271,22 @@ test("a popup keeps its head clear of the mode buttons", () => {
 	);
 });
 
-test("the note follows the comment block theme from Settings", () => {
+test("the note follows the note block theme from Settings", () => {
 	const { buildSettingsCSS } = require("../src/shared/blocks.js");
 	const css = buildSettingsCSS({
 		fontSize: 14,
 		colors: {
 			textColor: "#112233",
-			commentNormal: "#ffe08a",
+			noteColor: "#ffe08a",
 			codeBlockColor: "#fff",
-			questionCommentColor: "#f0f",
+			questionColor: "#f0f",
 			imageBlockColor: "#0ff",
-			codeInsertBlockColor: "#eee",
+			snippetColor: "#eee",
 			moveToBlockColor: "#424242",
 			moveToTextColor: "#fff",
-			commentActive: "#0f0",
-			commentActiveText: "#000",
-			commentSelected: "#ccc",
+			activeBlockColor: "#0f0",
+			activeBlockTextColor: "#000",
+			selectedBlockColor: "#ccc",
 			selectedBorder: "#00f",
 			cursor: "#f00",
 		},
@@ -294,7 +294,7 @@ test("the note follows the comment block theme from Settings", () => {
 	assert.match(
 		css,
 		/\.move-to-note,\s*\n\s*\.mt-modal-note \{ background: #ffe08a; color: #112233; \}/,
-		"a note is a comment, so it wears whatever a comment block wears",
+		"a note on a move-to is still a note, so it wears the note colours",
 	);
 	assert.match(
 		css,
@@ -330,16 +330,16 @@ test("disabled controls are not faded; the active block carries the signal", () 
 		fontSize: 14,
 		colors: {
 			textColor: "#111",
-			commentNormal: "#ffe08a",
+			noteColor: "#ffe08a",
 			codeBlockColor: "#fff",
-			questionCommentColor: "#f0f",
+			questionColor: "#f0f",
 			imageBlockColor: "#0ff",
-			codeInsertBlockColor: "#eee",
+			snippetColor: "#eee",
 			moveToBlockColor: "#424242",
 			moveToTextColor: "#fff",
-			commentActive: "#c8e6c9",
-			commentActiveText: "#1b5e20",
-			commentSelected: "#ccc",
+			activeBlockColor: "#c8e6c9",
+			activeBlockTextColor: "#1b5e20",
+			selectedBlockColor: "#ccc",
 			selectedBorder: "#00f",
 			cursor: "#f00",
 		},
@@ -350,9 +350,9 @@ test("disabled controls are not faded; the active block carries the signal", () 
 		"colouring every block would make the active highlight meaningless",
 	);
 	assert.ok(
-		gen.indexOf(".comment-block.active-comment") >
-			gen.indexOf(".comment-block.move-to-comment"),
-		"the active colour has to come after the subtype colours or a move-to " +
+		gen.indexOf(".move-to-block.active-block") >
+			gen.indexOf(".move-to-block { background"),
+		"the active colour has to come after the per-kind colours or a move-to " +
 			"block never shows it: same specificity, so order decides",
 	);
 });

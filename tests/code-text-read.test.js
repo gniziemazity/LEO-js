@@ -61,3 +61,35 @@ test("nested line blocks each contribute one break", () => {
 test("an empty block reads as empty", () => {
 	assert.equal(readCodeText(root()), "");
 });
+
+test("a lone br is the empty-editable placeholder, not a newline", () => {
+	assert.equal(
+		readCodeText(root(br())),
+		"",
+		"Chromium puts this br in an empty contenteditable to give it a line " +
+			"box; reading it as a newline writes a newline into the lesson",
+	);
+	const island = {
+		nodeName: "DIV",
+		dataset: { blockOpt: "1" },
+		childNodes: [],
+	};
+	assert.equal(
+		readCodeText(root(br(), island)),
+		"",
+		"the island does not stop the br from being the placeholder",
+	);
+	assert.equal(
+		readCodeText(root(island, br())),
+		"",
+		"nor does the order they sit in",
+	);
+});
+
+test("a real newline is a line div, so it still reads as one", () => {
+	assert.equal(
+		readCodeText(root(div(br()))),
+		"\n",
+		"writeCodeText stores a newline as <div><br></div>, never a bare br",
+	);
+});

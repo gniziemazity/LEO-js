@@ -1,8 +1,10 @@
 const { ipcRenderer } = require("electron");
 
 const {
-	getBlockSubtype,
-	isMultilineCodeInsert,
+	getBlockKind,
+	isMultilineSnippet,
+	kindClass,
+	SUPPORT_KINDS,
 	collapsedLabel,
 } = require("../shared/blocks");
 const { extractAnchorSnippet } = require("./anchor-snippet");
@@ -23,10 +25,10 @@ const {
 	isOpen: isDropdownOpen,
 } = require("./move-to-dropdown");
 const { buildEndBar } = require("./block-insert-bar");
-const { currentMode, subtypeChoices, subtypeGlyph } = require("./block-types");
+const { kindChoices, kindGlyph } = require("./block-types");
 
 const BLOCK_RENDERERS = {
-	comment: "renderCommentBlock",
+	comment: "renderKindBlock",
 	code: "renderCodeBlock",
 	"move-to": "renderMoveToBlock",
 	include: "renderIncludeBlock",
@@ -88,6 +90,7 @@ class LessonRenderer {
 			this.saveEditState(blockIdx, text);
 			this.lessonManager.updateBlock(blockIdx, text);
 			this._syncEmpty(element, text);
+			this._keepIsland(element, blockIdx);
 		};
 		this.attachEditHandlers(element);
 	}
@@ -176,9 +179,9 @@ class LessonRenderer {
 		this.broadcastLessonData(executionSteps);
 	}
 
-	isMultilineCodeInsert(blockIdx) {
+	isMultilineSnippet(blockIdx) {
 		const block = this.lessonManager.getAllBlocks()[blockIdx];
-		return !!block && isMultilineCodeInsert(block.text);
+		return !!block && isMultilineSnippet(block.text);
 	}
 
 	_blockOption({ label, checked, disabled, blockIdx, key, byDefault }) {
@@ -192,32 +195,30 @@ class LessonRenderer {
 	}
 
 	_typeTool(block, blockIdx) {
-		const choices = subtypeChoices(currentMode());
-		if (choices.length < 2) return null;
-		const subtype = getBlockSubtype(block.text) || null;
+		const kind = this._kindOf(block);
 		return {
-			glyph: `${subtypeGlyph(subtype)} ▾`,
+			glyph: `${kindGlyph(kind)} ▾`,
 			title: "Change block type",
 			className: "block-tool-type",
 			onClick: (btn) =>
 				openDropdown({
 					anchorEl: btn,
 					blockIdx,
-					value: String(subtype),
-					options: choices.map((c) => ({
-						value: String(c.subtype),
+					value: kind,
+					options: kindChoices().map((c) => ({
+						value: c.kind,
 						label: `${c.glyph} ${c.label}`,
 					})),
 					listClass: "bt-options",
 					itemClass: "bt-option",
 					onPick: (v) =>
-						this.blockEditor &&
-						this.blockEditor.setSubtype(
-							blockIdx,
-							v === "null" ? null : v,
-						),
+						this.blockEditor && this.blockEditor.setKind(blockIdx, v),
 				}),
 		};
+	}
+
+	_kindOf(block) {
+		return block.type === "move-to" ? "move-to" : getBlockKind(block.text);
 	}
 
 	_blockTools(block, blockIdx, isTypingActive) {
@@ -227,7 +228,7 @@ class LessonRenderer {
 		if (this.uiManager.getSelectedBlockIndex() !== blockIdx) return [];
 
 		const tools = [];
-		if (block.type === "comment") {
+		if (block.type === "comment" || block.type === "move-to") {
 			const type = this._typeTool(block, blockIdx);
 			if (type) tools.push(type);
 		}
@@ -273,8 +274,8 @@ class LessonRenderer {
 				byDefault,
 			});
 		if (block.type === "comment") {
-			const subtype = getBlockSubtype(block.text);
-			if (subtype === "code-insert-comment") {
+			const kind = getBlockKind(block.text);
+			if (kind === "snippet") {
 				return option(
 					"Show Paste button",
 					block.paste !== false,
@@ -282,7 +283,7 @@ class LessonRenderer {
 					true,
 				);
 			}
-			if (subtype === "image-comment" || subtype === "web-comment") {
+			if (kind === "image" || kind === "web") {
 				return option("Pin window", block.pin === true, "pin", false);
 			}
 		}
@@ -311,6 +312,11 @@ class LessonRenderer {
 		});
 	}
 
+	_keepIsland(el, blockIdx) {
+		if (el.querySelector(":scope > .block-opt")) return;
+		this.refreshIsland(blockIdx);
+	}
+
 	refreshIsland(blockIdx) {
 		if (blockIdx === null || blockIdx === undefined) return;
 		const el = document.querySelectorAll(".block")[blockIdx];
@@ -326,14 +332,13 @@ class LessonRenderer {
 		else el.classList.add("is-empty");
 	}
 
-	renderCommentBlock(ctx) {
+	renderKindBlock(ctx) {
 		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
 			ctx;
-		const subtype = getBlockSubtype(block.text);
-		if (subtype) blockDiv.classList.add(subtype);
+		const kind = getBlockKind(block.text);
 
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
-		const isMultilineInsert = isMultilineCodeInsert(block.text);
+		const isMultilineInsert = isMultilineSnippet(block.text);
 		const isExpanded =
 			isMultilineInsert &&
 			!isTypingActive &&
@@ -361,18 +366,13 @@ class LessonRenderer {
 			this.saveEditState(blockIdx, text);
 			this.lessonManager.updateBlock(blockIdx, text);
 			this._syncEmpty(blockDiv, text);
+			this._keepIsland(blockDiv, blockIdx);
 
-			blockDiv.classList.remove(
-				"question-comment",
-				"image-comment",
-				"web-comment",
-				"code-insert-comment",
-			);
-			const sub = getBlockSubtype(text);
-			if (sub) blockDiv.classList.add(sub);
+			blockDiv.classList.remove(...SUPPORT_KINDS.map(kindClass));
+			blockDiv.classList.add(kindClass(getBlockKind(text)));
 		};
 
-		this.attachEditHandlers(blockDiv, subtype === "code-insert-comment");
+		this.attachEditHandlers(blockDiv, kind === "snippet");
 
 		steps.push({
 			type: "block",
@@ -462,7 +462,6 @@ class LessonRenderer {
 	renderMoveToBlock(ctx) {
 		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
 			ctx;
-		blockDiv.classList.add("move-to-comment");
 		blockDiv.contentEditable = "false";
 		const target = block.target || "MAIN";
 		blockDiv.dataset.target = target;
@@ -522,7 +521,7 @@ class LessonRenderer {
 
 		steps.push({
 			type: "block",
-			subtype: "move-to",
+			kind: "move-to",
 			fromInclude: !!block.fromInclude,
 			target,
 			note: block.note || "",
@@ -608,7 +607,7 @@ class LessonRenderer {
 		if (block.fromInclude) {
 			if (
 				!this.uiManager.isActive() &&
-				this.isMultilineCodeInsert(blockIdx) &&
+				this.isMultilineSnippet(blockIdx) &&
 				!this._isScrollbarClick(e)
 			) {
 				this.toggleIncludeExpanded(blockIdx);
@@ -675,7 +674,7 @@ class LessonRenderer {
 					this._rerenderAndFocus(blockIdx, clickX, clickY);
 					return;
 				}
-			} else if (this.isMultilineCodeInsert(previousSelectedIndex)) {
+			} else if (this.isMultilineSnippet(previousSelectedIndex)) {
 				this._rerenderAndFocus(blockIdx, clickX, clickY);
 				return;
 			}
@@ -687,7 +686,7 @@ class LessonRenderer {
 
 			if (block.type === "code") {
 				this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
-			} else if (this.isMultilineCodeInsert(blockIdx)) {
+			} else if (this.isMultilineSnippet(blockIdx)) {
 				this._rerenderAndFocus(blockIdx, clickX, clickY);
 				return;
 			}

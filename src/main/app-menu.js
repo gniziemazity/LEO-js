@@ -1,5 +1,4 @@
 const { app, Menu } = require("electron");
-const { settingsManager } = require("./context");
 const state = require("./state");
 const {
 	LESSON_TOOLS,
@@ -11,16 +10,8 @@ const {
 
 const send = (ch, ...args) => state.send(ch, ...args);
 
-function setMenuMode(mode) {
-	settingsManager.set("mode", mode);
-	send("apply-mode", mode);
-	createApplicationMenu();
-}
-
 function createApplicationMenu() {
 	const courseMenuState = getCourseMenuState();
-	const currentMode = settingsManager.get("mode") || "record";
-
 	const template = [
 		{
 			label: "File",
@@ -113,15 +104,6 @@ function createApplicationMenu() {
 			],
 		},
 		{
-			label: "Mode",
-			submenu: ["record", "classroom", "scientific"].map((m) => ({
-				label: m[0].toUpperCase() + m.slice(1),
-				type: "radio",
-				checked: currentMode === m,
-				click: () => setMenuMode(m),
-			})),
-		},
-		{
 			label: "Tools",
 			submenu: [
 				{ label: "VSCode", click: launchVSCode },
@@ -165,4 +147,4 @@ function createApplicationMenu() {
 	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-module.exports = { createApplicationMenu, setMenuMode };
+module.exports = { createApplicationMenu };

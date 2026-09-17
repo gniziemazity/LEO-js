@@ -1,78 +1,54 @@
-const { BLOCK_SUBTYPES } = require("../shared/blocks");
+const { BLOCK_KINDS, NOTE_KIND, MOVE_TO_KIND } = require("../shared/blocks");
 
-const ALL_MODES = ["record", "classroom", "scientific"];
-
-const SUBTYPE_META = {
-	"question-comment": {
-		label: "Question",
-		modes: ["classroom", "scientific"],
-	},
-	"image-comment": { label: "Image", modes: ["classroom", "scientific"] },
-	"web-comment": { label: "Web page", modes: ["classroom", "scientific"] },
-	"code-insert-comment": { label: "Code insert", modes: ["scientific"] },
+const KIND_LABELS = {
+	note: "Note",
+	question: "Question",
+	image: "Image",
+	web: "Web page",
+	snippet: "Code snippet",
+	"move-to": "Move to",
 };
 
-const PLAIN_CHOICE = {
-	subtype: null,
-	glyph: "💬",
-	label: "Comment",
-	modes: ALL_MODES,
-};
-
-const SUBTYPE_CHOICES = [
-	PLAIN_CHOICE,
-	...BLOCK_SUBTYPES.map(([glyph, subtype]) => ({
-		subtype,
+const KIND_CHOICES = [
+	{ kind: NOTE_KIND, glyph: "💬", label: KIND_LABELS[NOTE_KIND] },
+	...BLOCK_KINDS.map(([glyph, kind]) => ({
+		kind,
 		glyph,
-		label: SUBTYPE_META[subtype].label,
-		modes: SUBTYPE_META[subtype].modes,
+		label: KIND_LABELS[kind],
 	})),
+	{ kind: MOVE_TO_KIND, glyph: "➡️", label: KIND_LABELS[MOVE_TO_KIND] },
 ];
 
 const ADD_CHOICES = [
-	{ type: "comment", glyph: "💬", label: "Comment", modes: ALL_MODES },
-	{ type: "code", glyph: "⌨", label: "Code", modes: ALL_MODES },
+	{ kind: NOTE_KIND, type: "comment", glyph: "💬", label: "Note" },
+	{ kind: "code", type: "code", glyph: "⌨", label: "Code" },
 	{
+		kind: MOVE_TO_KIND,
 		type: "move-to",
 		glyph: "➡️",
 		label: "Move to",
-		modes: ["scientific"],
 		initialText: "MAIN",
 	},
 ];
 
-function currentMode(body) {
-	const el = body || (typeof document !== "undefined" ? document.body : null);
-	if (!el || !el.classList) return "scientific";
-	for (const mode of ALL_MODES) {
-		if (el.classList.contains(`mode-${mode}`)) return mode;
-	}
-	return "scientific";
+function kindChoices() {
+	return KIND_CHOICES;
 }
 
-function forMode(choices, mode) {
-	return choices.filter((c) => c.modes.includes(mode));
+function addChoices() {
+	return ADD_CHOICES;
 }
 
-function subtypeChoices(mode) {
-	return forMode(SUBTYPE_CHOICES, mode);
-}
-
-function addChoices(mode) {
-	return forMode(ADD_CHOICES, mode);
-}
-
-function subtypeGlyph(subtype) {
-	const found = SUBTYPE_CHOICES.find((c) => c.subtype === (subtype || null));
-	return (found || PLAIN_CHOICE).glyph;
+function kindGlyph(kind) {
+	const found = KIND_CHOICES.find((c) => c.kind === kind);
+	return (found || KIND_CHOICES[0]).glyph;
 }
 
 module.exports = {
-	ALL_MODES,
-	SUBTYPE_CHOICES,
+	KIND_CHOICES,
 	ADD_CHOICES,
-	currentMode,
-	subtypeChoices,
+	KIND_LABELS,
+	kindChoices,
 	addChoices,
-	subtypeGlyph,
+	kindGlyph,
 };

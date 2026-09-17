@@ -1,8 +1,8 @@
-const { getBlockSubtype, stripBlockPrefix } = require("../shared/blocks");
+const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 
 function stepToLogEvents(step) {
 	if (!step) return [];
-	if (step.subtype === "move-to") {
+	if (step.kind === "move-to") {
 		const out = [];
 		const switchTo = step.snippet && step.snippet.switchTo;
 		if (switchTo) out.push({ move_to: switchTo });
@@ -10,7 +10,7 @@ function stepToLogEvents(step) {
 		return out;
 	}
 	const raw = String(step.text || "");
-	if (getBlockSubtype(raw) === "code-insert-comment") {
+	if (getBlockKind(raw) === "snippet") {
 		return [{ code_insert: stripBlockPrefix(raw) }];
 	}
 	return [];
@@ -36,7 +36,7 @@ function buildArtificialLogEvents(executionSteps) {
 			seenMoveTo = null;
 			events.push({ timestamp: t, anchor: step.value });
 		} else if (step.type === "block") {
-			if (step.subtype === "move-to") {
+			if (step.kind === "move-to") {
 				if (seenMoveTo !== step.globalIndex) {
 					seenMoveTo = step.globalIndex;
 					seenCodeInsert = null;

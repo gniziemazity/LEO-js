@@ -49,7 +49,7 @@ function makeRenderer({ blocks, selected = null, typing = false }) {
 
 function renderComment(renderer, blocks, blockIdx, typing = false) {
 	const blockDiv = fakeBlockDiv();
-	renderer.renderCommentBlock({
+	renderer.renderKindBlock({
 		blockDiv,
 		block: blocks[blockIdx],
 		blockIdx,

@@ -1,5 +1,5 @@
 const { ipcRenderer } = require("electron");
-const { getBlockSubtype, stripBlockPrefix } = require("../shared/blocks");
+const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 const { stepToLogEvents } = require("./log-event-builder");
 const { classifyMoveToTarget } = require("../shared/move-to-target");
 const { buildColoredLines } = require("./anchor-snippet");
@@ -28,27 +28,27 @@ const PAUSING_KINDS = SPECIAL_BLOCK_KINDS.filter(
 const TRANSIENT_KINDS = ["code-insert", "move-to"];
 
 const BLOCK_ENTRIES = {
-	"move-to-block": {
+	"move-to": {
 		keep: "move-to",
 		clear: ["code-insert"],
 		enter: (cm, step) => cm._enterMoveToBlock(step),
 	},
-	"question-comment": {
+	question: {
 		keep: "question",
 		clear: TRANSIENT_KINDS,
 		enter: (cm, step) => cm._enterQuestionBlock(step),
 	},
-	"image-comment": {
+	image: {
 		keep: "image",
 		clear: TRANSIENT_KINDS,
 		enter: (cm, step) => cm._enterImageBlock(step),
 	},
-	"web-comment": {
+	web: {
 		keep: "web",
 		clear: TRANSIENT_KINDS,
 		enter: (cm, step) => cm._enterWebBlock(step),
 	},
-	"code-insert-comment": {
+	snippet: {
 		keep: "code-insert",
 		clear: [],
 		enter: (cm, step) => cm._enterCodeInsertBlock(step),
@@ -260,13 +260,13 @@ class CursorManager {
 	}
 
 	_updateBlockCursor(step) {
-		step.element.classList.add("active-comment");
+		step.element.classList.add("active-block");
 		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
 
 		const key =
-			step.subtype === "move-to"
-				? "move-to-block"
-				: getBlockSubtype(String(step.text || "").trim());
+			step.kind === "move-to"
+				? "move-to"
+				: getBlockKind(String(step.text || "").trim());
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
 
 		this._leaveSpecialBlocksExcept(entry.keep);
@@ -402,7 +402,7 @@ class CursorManager {
 				step._logged = false;
 			}
 			if (step.type === "block")
-				step.element.classList.remove("active-comment", "consumed");
+				step.element.classList.remove("active-block", "consumed");
 			if (i < index) step.element.classList.add("consumed");
 		});
 

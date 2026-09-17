@@ -1,3 +1,11 @@
+const { getBlockKind, kindClass, MOVE_TO_KIND } = require("../shared/blocks");
+
+function blockKindOf(block) {
+	if (block.type === "comment") return getBlockKind(block.text);
+	if (block.type === MOVE_TO_KIND) return MOVE_TO_KIND;
+	return block.type;
+}
+
 class UIManager {
 	constructor() {
 		this.elements = {};
@@ -74,14 +82,10 @@ class UIManager {
 
 	createBlockElement(block, blockIdx) {
 		const blockDiv = document.createElement("div");
-		if (block.type === "move-to") {
-			blockDiv.className = "block comment-block";
-		} else {
-			blockDiv.className = `block ${block.type}-block`;
-		}
+		blockDiv.className = `block ${kindClass(blockKindOf(block))}`;
 
 		if (block.type === "comment") {
-			blockDiv.dataset.placeholder = "Type comment here";
+			blockDiv.dataset.placeholder = "Type note here";
 		} else if (block.type === "code") {
 			blockDiv.dataset.placeholder = "Type code here";
 		}
@@ -142,6 +146,9 @@ class UIManager {
 
 	attachBlockIsland(blockDiv, { option, tools } = {}) {
 		if (!option && (!tools || !tools.length)) return null;
+		if (blockDiv.contentEditable === "true" && !blockDiv.firstChild) {
+			blockDiv.appendChild(document.createElement("br"));
+		}
 		const island = document.createElement("div");
 		island.className = "block-opt";
 		UIManager.sealIsland(island);
@@ -162,8 +169,8 @@ class UIManager {
 			.querySelectorAll(".cursor")
 			.forEach((el) => el.classList.remove("cursor"));
 		document
-			.querySelectorAll(".active-comment")
-			.forEach((el) => el.classList.remove("active-comment"));
+			.querySelectorAll(".active-block")
+			.forEach((el) => el.classList.remove("active-block"));
 	}
 
 	populateSpecialKeys(keys, onKeyClick) {
@@ -180,19 +187,49 @@ class UIManager {
 		});
 	}
 
+	static isIsland(node) {
+		if (!node) return false;
+		const el = node.nodeType === 1 ? node : node.parentElement;
+		return !!(el && el.closest && el.closest("[data-block-opt]"));
+	}
+
+	static caretAtTextEnd(el) {
+		const text = [...el.childNodes].filter((n) => !UIManager.isIsland(n));
+		const last = text[text.length - 1];
+		const range = document.createRange();
+		if (!last) {
+			range.setStart(el, 0);
+		} else if (last.nodeType === 3) {
+			range.setStart(last, last.length);
+		} else {
+			range.selectNodeContents(last);
+			range.collapse(false);
+		}
+		range.collapse(true);
+		return range;
+	}
+
+	static putCaret(el, range) {
+		const selection = window.getSelection();
+		if (!selection) return;
+		const safe =
+			range && !UIManager.isIsland(range.startContainer)
+				? range
+				: UIManager.caretAtTextEnd(el);
+		selection.removeAllRanges();
+		selection.addRange(safe);
+	}
+
 	focusBlock(blockIdx, clickX, clickY) {
 		setTimeout(() => {
 			const blocks = document.querySelectorAll(".block");
 			const targetBlock = blocks[blockIdx];
 			if (targetBlock) {
 				targetBlock.focus();
-
-				const range = document.caretRangeFromPoint(clickX, clickY);
-				if (range) {
-					const selection = window.getSelection();
-					selection.removeAllRanges();
-					selection.addRange(range);
-				}
+				UIManager.putCaret(
+					targetBlock,
+					document.caretRangeFromPoint(clickX, clickY),
+				);
 			}
 		}, 0);
 	}

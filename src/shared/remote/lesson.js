@@ -2,12 +2,8 @@ let currentSettings = null;
 let isActive = false;
 let teacherName = "Teacher";
 
-const {
-	getBlockSubtype,
-	buildSettingsCSS,
-	isMultilineCodeInsert,
-	collapsedLabel,
-} = LeoBlocks;
+const { getBlockKind, buildSettingsCSS, isMultilineSnippet, collapsedLabel } =
+	LeoBlocks;
 
 function renderMoveToTargetLabel(target) {
 	return MoveToTarget.moveToTargetLabel(target);
@@ -53,18 +49,16 @@ function updateLessonData(data) {
 	blocks.forEach((block) => {
 		const div = document.createElement("div");
 		if (block.type === "move-to") {
-			div.className = "block comment-block move-to-comment";
+			div.className = "block move-to-block";
 			div.innerText = `➡️ ${renderMoveToTargetLabel(block.target)}`;
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 			container.appendChild(div);
 			return;
 		}
-		div.className = `block ${block.type}-block`;
 		if (block.type === "comment") {
-			const subtype = getBlockSubtype(block.text);
-			if (subtype) div.classList.add(subtype);
-			const isMultilineInsert = isMultilineCodeInsert(block.text);
+			div.className = `block ${getBlockKind(block.text)}-block`;
+			const isMultilineInsert = isMultilineSnippet(block.text);
 			if (isMultilineInsert) {
 				div.innerText = collapsedLabel(block.text);
 				div.dataset.fullText = block.text;
@@ -75,6 +69,7 @@ function updateLessonData(data) {
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "code") {
+			div.className = "block code-block";
 			ctr = CodeTextRenderer.buildCodeText(block.text, div, ctr);
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleCodeClick;
@@ -86,9 +81,9 @@ function updateLessonData(data) {
 function updateCursor(data) {
 	const { currentStep } = data;
 	document
-		.querySelectorAll(".cursor, .consumed, .active-comment")
+		.querySelectorAll(".cursor, .consumed, .active-block")
 		.forEach((el) => {
-			el.classList.remove("cursor", "consumed", "active-comment");
+			el.classList.remove("cursor", "consumed", "active-block");
 		});
 	document.querySelectorAll("[data-step-index]").forEach((el) => {
 		const idx = parseInt(el.dataset.stepIndex);
@@ -96,7 +91,7 @@ function updateCursor(data) {
 			el.classList.add("consumed");
 		} else if (idx === currentStep) {
 			el.classList.add(
-				el.classList.contains("char") ? "cursor" : "active-comment",
+				el.classList.contains("char") ? "cursor" : "active-block",
 			);
 			el.scrollIntoView({ behavior: "smooth", block: "center" });
 		}

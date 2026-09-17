@@ -74,10 +74,10 @@ test("other blocks keep Tab for focus: ― is what a code block wants", () => {
 	assert.deepEqual(inserted, []);
 });
 
-test("only the code-insert block is handed the tab key", () => {
+test("only the code snippet block is handed the tab key", () => {
 	assert.match(
 		SRC,
-		/attachEditHandlers\(\s*blockDiv,\s*subtype === "code-insert-comment"\s*\)/,
+		/attachEditHandlers\(blockDiv, kind === "snippet"\)/,
 		"a raw tab in a code block would be typed as a character, not pressed",
 	);
 });

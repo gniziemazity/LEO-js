@@ -113,6 +113,7 @@ function build(opts = {}) {
 		"ciCode",
 		"ciActions",
 		"ciPaste",
+		"lesson-container",
 	];
 	const nodes = {};
 	for (const id of ids) nodes[id] = el(id);
@@ -187,6 +188,7 @@ function build(opts = {}) {
 		"showQuestionOverlay,closeQuestionOverlayUI,showMoveToOverlay," +
 		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
 		"closeCodeInsertOverlay,codeInsertPaste," +
+		"updateLessonData,applySettings,updateCursor," +
 		"showQuestionToTeacher,closeQuestionOverlay,closeMoveToOverlay," +
 		"moveToTypeName," +
 		"handleInteractionBtn,setStudents,activePadOverlay," +

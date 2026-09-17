@@ -6,38 +6,38 @@ const {
 	buildWindowTitle,
 	NUTJS_KEY_MAPPING,
 } = require("../src/shared/constants");
-const { getBlockSubtype, buildSettingsCSS } = require("../src/shared/blocks");
+const { getBlockKind, buildSettingsCSS } = require("../src/shared/blocks");
 
-test("getBlockSubtype identifies question prefix", () => {
-	assert.equal(getBlockSubtype("❓ What is X?"), "question-comment");
+test("getBlockKind identifies question prefix", () => {
+	assert.equal(getBlockKind("❓ What is X?"), "question");
 });
 
-test("getBlockSubtype identifies image prefix", () => {
-	assert.equal(getBlockSubtype("🖼️ diagram"), "image-comment");
+test("getBlockKind identifies image prefix", () => {
+	assert.equal(getBlockKind("🖼️ diagram"), "image");
 });
 
-test("getBlockSubtype identifies web prefix", () => {
-	assert.equal(getBlockSubtype("🌐 https://example.com"), "web-comment");
+test("getBlockKind identifies web prefix", () => {
+	assert.equal(getBlockKind("🌐 https://example.com"), "web");
 });
 
-test("getBlockSubtype identifies code-insert prefix", () => {
-	assert.equal(getBlockSubtype("📋 snippet"), "code-insert-comment");
+test("getBlockKind identifies code-insert prefix", () => {
+	assert.equal(getBlockKind("📋 snippet"), "snippet");
 });
 
-test("only the listed prefixes name a subtype", () => {
+test("only the listed prefixes name a kind", () => {
 	assert.equal(
-		getBlockSubtype("➡️ location"),
-		null,
-		"move-to is a first-class block, not a comment prefix",
+		getBlockKind("➡️ location"),
+		"note",
+		"move-to is a first-class block type, not a text prefix",
 	);
 });
 
-test("getBlockSubtype trims leading whitespace", () => {
-	assert.equal(getBlockSubtype("   ❓ q"), "question-comment");
+test("getBlockKind trims leading whitespace", () => {
+	assert.equal(getBlockKind("   ❓ q"), "question");
 });
 
-test("getBlockSubtype returns null for plain text", () => {
-	assert.equal(getBlockSubtype("just a comment"), null);
+test("getBlockKind calls plain text a note", () => {
+	assert.equal(getBlockKind("just a reminder"), "note");
 });
 
 test("both backspace glyphs map to Backspace", () => {
@@ -97,16 +97,16 @@ test("buildSettingsCSS includes fontSize and colors", () => {
 		fontSize: 18,
 		colors: {
 			textColor: "#111",
-			commentNormal: "#eee",
+			noteColor: "#eee",
 			codeBlockColor: "#ddd",
-			questionCommentColor: "#fda",
+			questionColor: "#fda",
 			imageBlockColor: "#fed",
-			codeInsertBlockColor: "#cde",
+			snippetColor: "#cde",
 			moveToBlockColor: "#abc",
 			moveToTextColor: "#fff",
-			commentActive: "#f00",
-			commentActiveText: "#000",
-			commentSelected: "#0f0",
+			activeBlockColor: "#f00",
+			activeBlockTextColor: "#000",
+			selectedBlockColor: "#0f0",
 			selectedBorder: "#00f",
 			cursor: "#ff0",
 		},

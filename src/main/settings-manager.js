@@ -7,6 +7,28 @@ const {
 	defaultsFrom,
 } = require("../shared/settings-schema");
 
+const RENAMED_COLORS = {
+	commentNormal: "noteColor",
+	questionCommentColor: "questionColor",
+	codeInsertBlockColor: "snippetColor",
+	commentActive: "activeBlockColor",
+	commentActiveText: "activeBlockTextColor",
+	commentSelected: "selectedBlockColor",
+};
+
+const RETIRED_SETTINGS = ["mode"];
+
+function migrateColors(colors) {
+	const out = { ...(colors || {}) };
+	for (const [was, now] of Object.entries(RENAMED_COLORS)) {
+		if (was in out) {
+			if (!(now in out)) out[now] = out[was];
+			delete out[was];
+		}
+	}
+	return out;
+}
+
 class SettingsManager {
 	constructor() {
 		this.settingsPath = path.join(os.homedir(), ".leo-settings.json");
@@ -18,7 +40,6 @@ class SettingsManager {
 			},
 			colors: defaultsFrom(COLOR_SETTINGS),
 			fontSize: 14,
-			mode: "record",
 			hotkeyMode: "single-key",
 			autoTypingSpeed: 50,
 			touchpadSensitivity: 3,
@@ -38,12 +59,13 @@ class SettingsManager {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
 				const saved = JSON.parse(data);
+				for (const key of RETIRED_SETTINGS) delete saved[key];
 				return {
 					...this.defaultSettings,
 					...saved,
 					colors: {
 						...this.defaultSettings.colors,
-						...(saved.colors || {}),
+						...migrateColors(saved.colors),
 					},
 					hotkeys: {
 						...this.defaultSettings.hotkeys,
@@ -102,3 +124,5 @@ class SettingsManager {
 }
 
 module.exports = SettingsManager;
+module.exports.migrateColors = migrateColors;
+module.exports.RENAMED_COLORS = RENAMED_COLORS;

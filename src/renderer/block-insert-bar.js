@@ -1,4 +1,4 @@
-const { addChoices, currentMode } = require("./block-types");
+const { addChoices } = require("./block-types");
 const { isOpen: isDropdownOpen } = require("./move-to-dropdown");
 
 const BAND = 8;
@@ -12,11 +12,12 @@ let timer = null;
 function fillBar(el, afterIndex, blockEditor) {
 	el.innerHTML = "";
 	el.dataset.afterIndex = String(afterIndex);
-	for (const choice of addChoices(currentMode())) {
+	for (const choice of addChoices()) {
 		const btn = document.createElement("button");
 		btn.type = "button";
 		btn.className = "block-add-btn";
 		btn.dataset.addType = choice.type;
+		btn.dataset.addKind = choice.kind;
 		btn.textContent = `+ ${choice.glyph} ${choice.label}`;
 		btn.title = `Add a ${choice.label.toLowerCase()} block here`;
 		btn.addEventListener("mousedown", (e) => {

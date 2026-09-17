@@ -1,4 +1,5 @@
 const { formatCodeForAutoTyping } = require("./code-formatter");
+const UIManager = require("./ui-manager");
 
 class BlockEditor {
 	constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
@@ -33,12 +34,7 @@ class BlockEditor {
 			const target = blocks[blockIdx];
 			if (target && target.contentEditable !== "false") {
 				target.focus();
-				const range = document.createRange();
-				const sel = window.getSelection();
-				range.selectNodeContents(target);
-				range.collapse(false);
-				sel.removeAllRanges();
-				sel.addRange(range);
+				UIManager.putCaret(target, null);
 			}
 		}, 0);
 	}
@@ -69,12 +65,12 @@ class BlockEditor {
 		this.lessonRenderer.render();
 	}
 
-	setSubtype(index, subtype) {
-		if (!this.lessonManager.canSetBlockSubtype(index, subtype)) return;
+	setKind(index, kind) {
+		if (!this.lessonManager.canSetBlockKind(index, kind)) return;
 
 		this._checkpoint("change-block-type");
 
-		this.lessonManager.setBlockSubtype(index, subtype);
+		this.lessonManager.setBlockKind(index, kind);
 		this.lessonRenderer.render();
 	}
 

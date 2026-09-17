@@ -88,7 +88,7 @@ test("a long code line cannot push the option off the right edge", () => {
 			"container past #main-layout and takes the option's right:0 with it",
 	);
 	assert.match(
-		/\.comment-block \{[\s\S]*?\n\}/.exec(css)[0],
+		/\.note-block,[\s\S]*?\n\}/.exec(css)[0],
 		/overflow-wrap: anywhere/,
 		"pre-wrap alone will not break an unbreakable token",
 	);

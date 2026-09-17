@@ -1,24 +1,39 @@
 (function (root) {
-	const BLOCK_SUBTYPES = [
-		["❓", "question-comment"],
-		["🖼️", "image-comment"],
-		["🌐", "web-comment"],
-		["📋", "code-insert-comment"],
+	const NOTE_KIND = "note";
+	const MOVE_TO_KIND = "move-to";
+
+	const BLOCK_KINDS = [
+		["❓", "question"],
+		["🖼️", "image"],
+		["🌐", "web"],
+		["📋", "snippet"],
 	];
 
-	function getBlockSubtype(text) {
-		const t = String(text == null ? "" : text).trim();
-		for (const [prefix, subtype] of BLOCK_SUBTYPES) {
-			if (t.startsWith(prefix)) return subtype;
-		}
-		return null;
+	const SUPPORT_KINDS = [
+		NOTE_KIND,
+		...BLOCK_KINDS.map(([, kind]) => kind),
+		MOVE_TO_KIND,
+	];
+
+	function kindClass(kind) {
+		return `${kind}-block`;
 	}
 
-	function isMultilineCodeInsert(text) {
-		return (
-			getBlockSubtype(text) === "code-insert-comment" &&
-			String(text).includes("\n")
-		);
+	function kindPrefix(kind) {
+		const found = BLOCK_KINDS.find(([, name]) => name === kind);
+		return found ? found[0] : "";
+	}
+
+	function getBlockKind(text) {
+		const t = String(text == null ? "" : text).trim();
+		for (const [prefix, kind] of BLOCK_KINDS) {
+			if (t.startsWith(prefix)) return kind;
+		}
+		return NOTE_KIND;
+	}
+
+	function isMultilineSnippet(text) {
+		return getBlockKind(text) === "snippet" && String(text).includes("\n");
 	}
 
 	function collapsedLabel(text) {
@@ -27,7 +42,7 @@
 
 	function stripBlockPrefix(text) {
 		const s = String(text == null ? "" : text);
-		for (const [prefix] of BLOCK_SUBTYPES) {
+		for (const [prefix] of BLOCK_KINDS) {
 			const at = s.indexOf(prefix);
 			if (at !== -1 && s.slice(0, at).trim() === "") {
 				return s.slice(at + prefix.length).replace(/^\s/, "");
@@ -47,46 +62,59 @@
 
 	function buildSettingsCSS(settings) {
 		const c = settings.colors;
+		const all = SUPPORT_KINDS.map((k) => "." + kindClass(k)).join(
+			",\n\t\t\t",
+		);
+		const active = SUPPORT_KINDS.map(
+			(k) => `.${kindClass(k)}.active-block`,
+		).join(",\n\t\t\t");
 		return `
 			body { font-size: ${settings.fontSize}px; }
-			.comment-block, .code-block { color: ${c.textColor}; }
-			.comment-block { background: ${c.commentNormal}; }
+			${all},
+			.code-block { color: ${c.textColor}; }
+			.note-block { background: ${c.noteColor}; }
 			.code-block { background: ${c.codeBlockColor}; }
-			.comment-block.question-comment { background: ${c.questionCommentColor}; }
-			.comment-block.image-comment,
-			.comment-block.web-comment { background: ${c.imageBlockColor}; }
-			.comment-block.code-insert-comment { background: ${c.codeInsertBlockColor}; }
-			.comment-block.move-to-comment { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
+			.question-block { background: ${c.questionColor}; }
+			.image-block,
+			.web-block { background: ${c.imageBlockColor}; }
+			.snippet-block { background: ${c.snippetColor}; }
+			.move-to-block { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
 			.move-to-note,
-			.mt-modal-note { background: ${c.commentNormal}; color: ${c.textColor}; }
+			.mt-modal-note { background: ${c.noteColor}; color: ${c.textColor}; }
 			.move-to-note::placeholder { color: ${c.textColor}; }
-			.comment-block.active-comment {
-				background: ${c.commentActive};
-				color: ${c.commentActiveText};
+			${active} {
+				background: ${c.activeBlockColor};
+				color: ${c.activeBlockTextColor};
 			}
 			.block.selected {
-				background-color: ${c.commentSelected};
+				background-color: ${c.selectedBlockColor};
 				border-left-color: ${c.selectedBorder};
 			}
 			.char.cursor { background: ${c.cursor}; }
 			.anchor-token.cursor { background: ${c.cursor}; }
-			.bt-option[data-value="question-comment"] { background: ${c.questionCommentColor}; }
-			.bt-option[data-value="image-comment"],
-			.bt-option[data-value="web-comment"] { background: ${c.imageBlockColor}; }
-			.bt-option[data-value="code-insert-comment"] { background: ${c.codeInsertBlockColor}; }
-			.bt-option[data-value="null"] { background: ${c.commentNormal}; }
+			.bt-option[data-value="note"] { background: ${c.noteColor}; }
+			.bt-option[data-value="question"] { background: ${c.questionColor}; }
+			.bt-option[data-value="image"],
+			.bt-option[data-value="web"] { background: ${c.imageBlockColor}; }
+			.bt-option[data-value="snippet"] { background: ${c.snippetColor}; }
+			.bt-option[data-value="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
 			.bt-option { color: ${c.textColor}; }
-			.block-add-btn[data-add-type="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
-			.block-add-btn[data-add-type="comment"] { background: ${c.commentNormal}; color: #333; }
-			.block-add-btn[data-add-type="code"] { background: ${c.codeBlockColor}; color: #333; }
+			.block-add-btn[data-add-kind="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
+			.block-add-btn[data-add-kind="note"] { background: ${c.noteColor}; color: #333; }
+			.block-add-btn[data-add-kind="code"] { background: ${c.codeBlockColor}; color: #333; }
 		`;
 	}
 
 	const api = {
-		BLOCK_SUBTYPES,
-		getBlockSubtype,
+		BLOCK_KINDS,
+		SUPPORT_KINDS,
+		NOTE_KIND,
+		MOVE_TO_KIND,
+		kindClass,
+		kindPrefix,
+		getBlockKind,
 		stripBlockPrefix,
-		isMultilineCodeInsert,
+		isMultilineSnippet,
 		collapsedLabel,
 		splitPinToken,
 		buildSettingsCSS,

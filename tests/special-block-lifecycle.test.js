@@ -58,7 +58,7 @@ const BLOCKS = [
 	},
 	{
 		name: "move-to",
-		step: blockStep("", { subtype: "move-to", target: "MAIN" }),
+		step: blockStep("", { kind: "move-to", target: "MAIN" }),
 		closes: "close-move-to-window",
 	},
 	{
@@ -104,7 +104,7 @@ test("resetProgress leaves auto-typing runnable after a move-to block", async ()
 	const { cm, channels } = makeCursorManager([
 		{
 			type: "block",
-			subtype: "move-to",
+			kind: "move-to",
 			element: element(""),
 			globalIndex: 0,
 			target: "MAIN",
@@ -126,7 +126,7 @@ test("a first-class move-to block is not mistaken for a legacy arrow comment", (
 	const { cm } = makeCursorManager([
 		{
 			type: "block",
-			subtype: "move-to",
+			kind: "move-to",
 			element: element("➡️ index.html"),
 			globalIndex: 0,
 			target: "index.html",
@@ -198,7 +198,7 @@ test("confirming a move-to unblocks auto-typing", async () => {
 	const { cm, channels } = makeCursorManager([
 		{
 			type: "block",
-			subtype: "move-to",
+			kind: "move-to",
 			element: element(""),
 			globalIndex: 0,
 			target: "MAIN",

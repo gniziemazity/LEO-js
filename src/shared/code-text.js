@@ -32,7 +32,17 @@
 		return el.childNodes.length === 1 && el.childNodes[0].nodeName === "BR";
 	}
 
+	function isIslandNode(node) {
+		return !!(node.dataset && node.dataset.blockOpt);
+	}
+
+	function isPlaceholderOnly(el) {
+		const kids = [...el.childNodes].filter((n) => !isIslandNode(n));
+		return kids.length === 1 && kids[0].nodeName === "BR";
+	}
+
 	function readCodeText(el) {
+		if (isPlaceholderOnly(el)) return "";
 		let text = "";
 		const append = (node) => {
 			for (const child of node.childNodes) {

@@ -6,26 +6,30 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const BASE = path.resolve(__dirname, "..", "src");
-const { getBlockSubtype, buildSettingsCSS, BLOCK_SUBTYPES } = require(
+const { getBlockKind, buildSettingsCSS, BLOCK_KINDS } = require(
 	path.join(BASE, "shared/blocks.js"),
 );
 const SettingsManager = require(path.join(BASE, "main/settings-manager.js"));
 
-test("each special prefix names its subtype", () => {
-	assert.equal(getBlockSubtype("❓ why"), "question-comment");
-	assert.equal(getBlockSubtype("🖼️ pic.png"), "image-comment");
-	assert.equal(getBlockSubtype("🌐 http://x"), "web-comment");
-	assert.equal(getBlockSubtype("📋 paste me"), "code-insert-comment");
-	assert.equal(getBlockSubtype("plain comment"), null);
+test("each special prefix names its kind", () => {
+	assert.equal(getBlockKind("❓ why"), "question");
+	assert.equal(getBlockKind("🖼️ pic.png"), "image");
+	assert.equal(getBlockKind("🌐 http://x"), "web");
+	assert.equal(getBlockKind("📋 paste me"), "snippet");
+	assert.equal(
+		getBlockKind("plain words"),
+		"note",
+		"a block with no prefix is a note, not a nameless leftover",
+	);
 });
 
 test("leading whitespace does not hide a prefix", () => {
-	assert.equal(getBlockSubtype("   ❓ why"), "question-comment");
+	assert.equal(getBlockKind("   ❓ why"), "question");
 });
 
 test("a missing text is not a crash", () => {
-	assert.equal(getBlockSubtype(null), null);
-	assert.equal(getBlockSubtype(undefined), null);
+	assert.equal(getBlockKind(null), "note");
+	assert.equal(getBlockKind(undefined), "note");
 });
 
 test("every colour the app can set reaches the stylesheet", () => {
@@ -79,9 +83,9 @@ test("the remote reads the shared functions rather than defining them", () => {
 	assert.ok(!/function buildSettingsCSS/.test(lesson));
 });
 
-test("the subtype table and the classifier agree", () => {
-	for (const [prefix, subtype] of BLOCK_SUBTYPES) {
-		assert.equal(getBlockSubtype(`${prefix} something`), subtype);
+test("the kind table and the classifier agree", () => {
+	for (const [prefix, kind] of BLOCK_KINDS) {
+		assert.equal(getBlockKind(`${prefix} something`), kind);
 	}
 });
 
@@ -129,4 +133,56 @@ test("every dual-mode module ends with the same export footer", () => {
 			`${file} does not end with the shared dual-mode footer`,
 		);
 	}
+});
+
+test("the phone gives every block the same kind class the editor does", () => {
+	const { buildRemote } = require("./helpers/remote-dom.js");
+	const ctx = buildRemote();
+	ctx.api.updateLessonData({
+		blocks: [
+			{ type: "comment", text: "a reminder" },
+			{ type: "comment", text: "❓ q" },
+			{ type: "comment", text: "📋 a\nb" },
+			{ type: "comment", text: "🖼️ p.png" },
+			{ type: "comment", text: "🌐 http://x" },
+			{ type: "move-to", target: "index.html" },
+		],
+	});
+	assert.deepEqual(
+		ctx.nodes["lesson-container"].children.map((el) => el.className),
+		[
+			"block note-block",
+			"block question-block",
+			"block snippet-block",
+			"block image-block",
+			"block web-block",
+			"block move-to-block",
+		],
+		"the phone shares buildSettingsCSS, so a class it does not emit is a " +
+			"block that renders unpainted",
+	);
+});
+
+test("the support kinds are the block kinds that are not code", () => {
+	const { SUPPORT_KINDS, BLOCK_KINDS } = require(
+		path.join(BASE, "shared/blocks.js"),
+	);
+	assert.deepEqual(
+		SUPPORT_KINDS,
+		["note", ...BLOCK_KINDS.map(([, kind]) => kind), "move-to"],
+		"a lesson is code blocks and support blocks; this list is the second half",
+	);
+	assert.equal(
+		SUPPORT_KINDS.includes("code"),
+		false,
+		"code is what LEO types, not what supports the typing",
+	);
+	assert.equal(
+		/\.support-block/.test(
+			fs.readFileSync(path.join(BASE, "shared/styles.css"), "utf-8"),
+		),
+		false,
+		"support is a word for the docs, not a class: the per-kind classes and " +
+			"the generated selector lists carry the styling",
+	);
 });

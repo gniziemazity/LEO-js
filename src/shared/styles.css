@@ -67,8 +67,8 @@
 
 	--clr-border-light: #ddd;
 	--clr-selected-bg: #f0f8ff;
-	--clr-comment-bg: #fff9c4;
-	--clr-comment-text: #333;
+	--clr-note-bg: #fff9c4;
+	--clr-note-text: #333;
 	--clr-question-bg: #facaca;
 	--clr-code-insert-bg: #e0e0e0;
 	--clr-move-to-bg: #424242;
@@ -268,20 +268,25 @@ body.typing-active #main-layout {
 	box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
 }
 
-.comment-block {
-	background: var(--clr-comment-bg);
-	color: var(--clr-comment-text);
+.note-block,
+.question-block,
+.image-block,
+.web-block,
+.snippet-block,
+.move-to-block {
+	background: var(--clr-note-bg);
+	color: var(--clr-note-text);
 	font-style: italic;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	transition: all 0.2s ease;
 }
 
-.comment-block.question-comment {
+.question-block {
 	background: var(--clr-question-bg);
 }
 
-.comment-block.code-insert-comment {
+.snippet-block {
 	background: var(--clr-code-insert-bg);
 	font-style: normal;
 	opacity: 0.75;
@@ -351,11 +356,11 @@ body.typing-active #main-layout {
 	background: var(--clr-danger-darker);
 }
 
-.move-to-comment .block-opt {
+.move-to-block .block-opt {
 	color: var(--clr-white);
 }
 
-.move-to-comment .block-tool {
+.move-to-block .block-tool {
 	background: rgba(255, 255, 255, 0.18);
 }
 
@@ -378,7 +383,7 @@ body.typing-active #main-layout {
 	border-radius: 3px;
 	font-size: 13px;
 	white-space: nowrap;
-	color: var(--clr-comment-text);
+	color: var(--clr-note-text);
 }
 
 .bt-option.active {
@@ -435,7 +440,7 @@ body.typing-active #main-layout {
 	filter: brightness(0.92);
 }
 
-.comment-block.move-to-comment {
+.move-to-block {
 	background: var(--clr-move-to-bg);
 	color: var(--clr-white);
 	font-style: normal;
@@ -493,7 +498,12 @@ button.move-to-select:disabled {
 	user-select: none;
 }
 
-.comment-block.active-comment {
+.note-block.active-block,
+.question-block.active-block,
+.image-block.active-block,
+.web-block.active-block,
+.snippet-block.active-block,
+.move-to-block.active-block {
 	background: var(--clr-text);
 	color: var(--clr-yellow);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -508,8 +518,18 @@ button.move-to-select:disabled {
 	word-wrap: break-word;
 }
 
-.comment-block:empty::before,
-.comment-block.is-empty::before {
+.note-block:empty::before,
+.question-block:empty::before,
+.image-block:empty::before,
+.web-block:empty::before,
+.snippet-block:empty::before,
+.move-to-block:empty::before,
+.note-block.is-empty::before,
+.question-block.is-empty::before,
+.image-block.is-empty::before,
+.web-block.is-empty::before,
+.snippet-block.is-empty::before,
+.move-to-block.is-empty::before {
 	content: attr(data-placeholder);
 	color: var(--clr-placeholder);
 	pointer-events: none;
@@ -546,22 +566,22 @@ button.move-to-select:disabled {
 	user-select: none;
 }
 
-.block.from-include.code-insert-comment {
+.block.from-include.snippet-block {
 	cursor: pointer;
 }
 
-.block.from-include.code-insert-comment::before {
+.block.from-include.snippet-block::before {
 	content: "▸ ";
 	color: var(--clr-purple);
 }
 
-.block.from-include.code-insert-comment:not(.collapsed) {
+.block.from-include.snippet-block:not(.collapsed) {
 	opacity: 0.85;
 	max-height: 40vh;
 	overflow-y: auto;
 }
 
-.block.from-include.code-insert-comment:not(.collapsed)::before {
+.block.from-include.snippet-block:not(.collapsed)::before {
 	content: "▾ ";
 }
 
@@ -686,12 +706,7 @@ button.move-to-select:disabled {
 	background: var(--clr-log-btn-hover);
 }
 
-body.mode-classroom .key-btn[data-char="⚓"],
-body.mode-record .key-btn[data-char="⚓"] {
-	display: none;
-}
-
-.comment-block.code-insert-comment.collapsed {
+.snippet-block.collapsed {
 	cursor: pointer;
 	white-space: nowrap;
 	overflow: hidden;
@@ -1002,7 +1017,7 @@ body.mode-record .key-btn[data-char="⚓"] {
 	text-align: right;
 }
 
-.mobile-view .block.active-comment,
+.mobile-view .block.active-block,
 .mobile-view .char.cursor {
 	scroll-margin-top: 80px;
 }
@@ -1266,8 +1281,8 @@ body.side-left .popup-modal {
 	flex: 1;
 }
 
-.comment-block.image-comment,
-.comment-block.web-comment {
+.image-block,
+.web-block {
 	background: var(--clr-image-bg);
 }
 
@@ -1346,8 +1361,8 @@ body.side-left .popup-modal {
 	overflow-x: hidden;
 }
 
-.comment-block.image-comment.active-comment,
-.comment-block.web-comment.active-comment {
+.block.image-block.active-block,
+.block.web-block.active-block {
 	background: var(--clr-image-active);
 }
 
@@ -1515,8 +1530,8 @@ body.side-left .overlay-chrome-close {
 }
 
 .mt-modal-note {
-	background: var(--clr-comment-bg);
-	color: var(--clr-comment-text);
+	background: var(--clr-note-bg);
+	color: var(--clr-note-text);
 	font-style: italic;
 	font-size: 0.9em;
 	font-weight: 400;
@@ -1530,8 +1545,8 @@ body.side-left .overlay-chrome-close {
 	flex: 1 1 0;
 	min-width: 40px;
 	margin-left: 10px;
-	background: var(--clr-comment-bg);
-	color: var(--clr-comment-text);
+	background: var(--clr-note-bg);
+	color: var(--clr-note-text);
 	font-style: italic;
 	font-family: inherit;
 	font-size: inherit;
@@ -1542,7 +1557,7 @@ body.side-left .overlay-chrome-close {
 }
 
 .move-to-note::placeholder {
-	color: var(--clr-comment-text);
+	color: var(--clr-note-text);
 	opacity: 0.45;
 	font-style: italic;
 }

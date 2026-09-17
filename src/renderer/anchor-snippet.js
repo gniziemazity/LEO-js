@@ -7,7 +7,7 @@ const {
 	classifyMoveToTarget,
 	isFileName,
 } = require("../shared/move-to-target");
-const { stripBlockPrefix } = require("../shared/blocks");
+const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,
 	buildHighlightSpans,
@@ -57,8 +57,7 @@ function replayPlan(blocks, stopAt = Infinity) {
 				}
 			}
 		} else if (b.type === "comment") {
-			const txt = (b.text || "").trim();
-			if (txt.startsWith("📋")) {
+			if (getBlockKind(b.text) === "snippet") {
 				open(active);
 				const stripped = stripBlockPrefix(b.text || "");
 				applyAtomicText(editors[active], stripped);

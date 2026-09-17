@@ -7,8 +7,10 @@ const {
 } = require("../shared/move-to-target");
 const { normalizeEdgeNewlines } = require("../shared/code-text");
 const {
-	BLOCK_SUBTYPES,
-	getBlockSubtype,
+	SUPPORT_KINDS,
+	MOVE_TO_KIND,
+	getBlockKind,
+	kindPrefix,
 	splitPinToken,
 	stripBlockPrefix,
 } = require("../shared/blocks");
@@ -54,8 +56,8 @@ class LessonManager {
 	}
 
 	static _pinShorthand(text) {
-		const sub = getBlockSubtype(text);
-		if (sub !== "image-comment" && sub !== "web-comment") return null;
+		const kind = getBlockKind(text);
+		if (kind !== "image" && kind !== "web") return null;
 		const split = splitPinToken(text);
 		return split.pin ? split : null;
 	}
@@ -277,24 +279,44 @@ class LessonManager {
 		return true;
 	}
 
-	canSetBlockSubtype(index, subtype) {
+	canSetBlockKind(index, kind) {
 		if (index < 0 || index >= this.data.length) return false;
 		const block = this.data[index];
-		if (!block || block.type !== "comment" || block.fromInclude) return false;
-		return !subtype || BLOCK_SUBTYPES.some(([, name]) => name === subtype);
+		if (!block || block.fromInclude) return false;
+		if (block.type !== "comment" && block.type !== MOVE_TO_KIND) {
+			return false;
+		}
+		return SUPPORT_KINDS.includes(kind);
 	}
 
-	setBlockSubtype(index, subtype) {
-		if (!this.canSetBlockSubtype(index, subtype)) return false;
+	setBlockKind(index, kind) {
+		if (!this.canSetBlockKind(index, kind)) return false;
 		const block = this.data[index];
-		const entry = BLOCK_SUBTYPES.find(([, name]) => name === subtype);
+		const wasMoveTo = block.type === MOVE_TO_KIND;
+		const words = wasMoveTo
+			? block.note || ""
+			: stripBlockPrefix(block.text || "");
 
-		const body = stripBlockPrefix(block.text || "");
-		block.text = entry ? `${entry[0]} ${body}` : body;
-
-		if (subtype !== "code-insert-comment") delete block.paste;
-		if (subtype !== "image-comment" && subtype !== "web-comment") {
+		if (kind === MOVE_TO_KIND) {
+			const note = words.replace(/\s+/g, " ").trim();
+			delete block.text;
+			delete block.paste;
 			delete block.pin;
+			block.type = MOVE_TO_KIND;
+			if (!wasMoveTo) block.target = "MAIN";
+			if (note) block.note = note;
+			else delete block.note;
+		} else {
+			const prefix = kindPrefix(kind);
+			if (wasMoveTo) {
+				delete block.target;
+				delete block.typeName;
+				delete block.note;
+			}
+			block.type = "comment";
+			block.text = prefix ? `${prefix} ${words}` : words;
+			if (kind !== "snippet") delete block.paste;
+			if (kind !== "image" && kind !== "web") delete block.pin;
 		}
 
 		this.markAsChanged();

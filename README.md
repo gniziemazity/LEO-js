@@ -10,27 +10,33 @@ To understand the main idea behind **LEO**, please check the [Video Tutorial](ht
 
 ### 🎯 Core Features
 
-- **Auto-Typing Blocks**: Press any hotkey to advance through pre-written code character by character
-- **Comment Blocks**: Brief explanations for the teacher
+- **Code Blocks**: Press any hotkey to advance through pre-written code character by character
+- **Support Blocks**: Everything around the typing — reminders, questions, images, snippets
 - **Visual Progress**: Real-time progress bar and cursor highlighting
 - **Timer Integration**: Presentation timer with adjustable duration
 - **Mobile Remote Control**: Control your presentation from your phone via WebSocket
 
-### 💬 Special Block Types
+### 💬 Support Blocks
 
-Comment blocks can be given special roles by starting their text with a specific emoji:
+A lesson is made of **code blocks**, which LEO types out for you, and **support
+blocks**, which are everything around that typing: what to say, what to ask,
+what to show, and where to go next.
 
-| Prefix | Type        | Behavior                    |
-| ------ | ----------- | --------------------------- |
-| ❓     | Question    | Opens a question window     |
-| 🖼️     | Image       | Opens a image window        |
-| 🌐     | Web         | Opens a web viewer window   |
-| 📋     | Code Insert | Logs code from copy paste   |
-| ➡️     | Move To     | Informs a move is necessary |
+Pick a support block's kind from the ▾ picker on the selected block (it sets the
+emoji prefix for you):
+
+| Prefix | Kind         | Behavior                    |
+| ------ | ------------ | --------------------------- |
+| (none) | Note         | Shows text for the teacher  |
+| ❓     | Question     | Opens a question window     |
+| 🖼️     | Image        | Opens an image window       |
+| 🌐     | Web page     | Opens a web viewer window   |
+| 📋     | Code snippet | Holds code ready to paste   |
+| ➡️     | Move to      | Informs a move is necessary |
 
 ### 🪟 Floating Windows
 
-When a special comment block is reached, LEO opens a dedicated window:
+When one of these support blocks is reached, LEO opens a dedicated window:
 
 - **Question**: Displays the question and student who answered
 - **Image**: Shows an image file
@@ -83,11 +89,12 @@ npm start
 ### Creating a Lesson
 
 1. **Launch LEO** and go to File → New Plan (`Ctrl+N`)
-2. **Add blocks**:
-   - **Yellow +** button: Add comment block (for explanations)
-   - **White +** button: Add code block (for auto-typing)
-3. **Remove blocks**: Select a block and press the – button
-4. **Save**: File → Save Plan (`Ctrl+S`)
+2. **Add blocks**: hover the gap between two blocks (or use the bar under the
+   last one) and pick **+ Note**, **+ Code** or **+ Move to**
+3. **Change a block's kind**: select it and use the ▾ picker in its top-right
+   corner
+4. **Remove blocks**: select a block and press ✕ in the same corner
+5. **Save**: File → Save Plan (`Ctrl+S`)
 
 ### Running a Lesson
 
@@ -108,9 +115,9 @@ While **not** in auto-typing mode, you can edit your lesson:
 
 1. **Select blocks**: Click any block to select it
 2. **Edit content**: Edit text directly in the selected block
-3. **Add blocks**: Use + buttons (yellow for comments, white for code)
-4. **Remove blocks**: Select a block and press the – button
-5. **Format code**: Select a code block and press ✨ to auto-format
+3. **Add blocks**: hover a gap between blocks and pick a kind
+4. **Reorder or remove**: select a block and use ▲ ▼ ✕ in its top-right corner
+5. **Format code**: select a code block and press ✨ to auto-format
 6. **Insert special characters**: Use the sidebar buttons to insert navigation keys and shortcuts
 7. **Undo/Redo**: Use `Ctrl+Z` / `Ctrl+Shift+Z` to undo or redo changes
 8. **Save**: `Ctrl+S` (notice the \* indicator disappears when saved)
@@ -200,19 +207,21 @@ LEO includes quick-insert buttons for special characters commonly used in coding
 - **Shift Navigation**: ⇑ (Shift+Up), ⇓ (Shift+Down), ⇐ (Shift+Left), ⇒ (Shift+Right)
 - **Shortcuts**: 💾 (Save: Ctrl+S), 🔁 (Alt+Tab)
 - **Timing**: 🕛 (Pause 500ms during typing)
-- **Block Markers**: ❓ (Question block), 🖼️ (Image block), 🌐 (Web block), 📋 (Code insert), ➡️ (Move to)
+- **Block Markers**: ❓ (Question), 🖼️ (Image), 🌐 (Web page), 📋 (Code snippet), ➡️ (Move to)
 
 These symbols are automatically translated to actual keystrokes during auto-typing mode.
 
 ### Block Types
 
-- **`comment`**: Brief explanations for the teacher (not auto-typed)
-   - Start with ❓ to create a **question block** — logged automatically when reached; shows student buttons
-   - Start with 🖼️ to create an **image block** — opens a floating image window
-   - Start with 🌐 to create a **web block** — opens a floating web viewer
-   - Start with 📋 to create a **code insert block**
-   - Start with ➡️ to create a **move-to block**
-- **`code`**: Text typed character-by-character (for controlled pacing)
+- **Support blocks** — everything LEO does not type. A plain one is a
+  **Note**: brief reminders for the teacher. Give it a prefix, or use the ▾
+  picker, to make it one of:
+   - ❓ **Question** — logged automatically when reached; shows student buttons
+   - 🖼️ **Image** — opens a floating image window
+   - 🌐 **Web page** — opens a floating web viewer
+   - 📋 **Code snippet** — holds code on the clipboard, ready to paste
+   - ➡️ **Move to** — asks you to move the editor cursor somewhere
+- **Code**: text typed character-by-character (for controlled pacing)
    - Use special symbols (←, →, 💾, 🕛, etc.) to insert keystrokes and pauses
 
 ## 👥 Students
@@ -245,8 +254,8 @@ Access settings via File → Settings (`Ctrl+,`).
 
 #### Colors
 
-- Comment block colors (normal, active, selected)
-- Question/Image/Web/Code-Insert block colors
+- Note block colors (normal, active, selected)
+- Question / Image / Web page / Code snippet block colors
 - Active text color
 - Cursor color
 - Border colors

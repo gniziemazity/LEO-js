@@ -22,7 +22,7 @@ const CROSS_FILE_BLOCKS = [
 function moveToStep(target, snippet) {
 	return {
 		type: "block",
-		subtype: "move-to",
+		kind: "move-to",
 		target,
 		snippet,
 		globalIndex: 0,

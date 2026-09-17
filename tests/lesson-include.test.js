@@ -302,7 +302,7 @@ test("inherited steps are skipped by the cursor, and logged as it passes", () =>
 		{
 			type: "block",
 			fromInclude: true,
-			subtype: "move-to",
+			kind: "move-to",
 			target: "a.js",
 			element: el("➡️"),
 			globalIndex: 0,

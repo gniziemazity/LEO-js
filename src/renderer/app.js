@@ -69,20 +69,6 @@ window.leo = { lessonManager, cursorManager };
 
 let pendingQuestion = null;
 
-function applyMode(mode) {
-	const next = `mode-${mode}`;
-	if (document.body.classList.contains(next)) return;
-	document.body.classList.remove(
-		"mode-record",
-		"mode-classroom",
-		"mode-scientific",
-	);
-	document.body.classList.add(next);
-	if (uiManager.getElement("lessonContainer") && !uiManager.isActive()) {
-		lessonRenderer.render();
-	}
-}
-
 cursorManager.onEnterQuestionBlock = (question, timestamp) => {
 	const { text, options } = parseQuestionOptions(question);
 	pendingQuestion = {
@@ -92,7 +78,7 @@ cursorManager.onEnterQuestionBlock = (question, timestamp) => {
 		entry: null,
 	};
 	const students = fileOperations.getStudents();
-	const bgColor = getColor("questionCommentColor", "#facaca");
+	const bgColor = getColor("questionColor", "#facaca");
 	deskPopup.showQuestion({ question: text, options, students, bgColor });
 	ipcRenderer.send("enter-question-block", {
 		question: text,
@@ -269,12 +255,10 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("settings-loaded", (e, s) => {
 		settingsUI.applySettings(s);
 		deskPopup.setTeacherName(s.teacherName);
-		applyMode(s.mode || "record");
 	});
 	ipcRenderer.on("settings-saved", (e, s) => {
 		settingsUI.applySettings(s);
 		deskPopup.setTeacherName(s.teacherName);
-		applyMode(s.mode || "record");
 		settingsUI.close();
 	});
 	ipcRenderer.on("new-plan", () => courseUI.newPlan());
@@ -354,7 +338,6 @@ function setupGlobalIpcListeners() {
 		},
 	);
 
-	ipcRenderer.on("apply-mode", (e, mode) => applyMode(mode));
 	ipcRenderer.on("undo", () => performUndo());
 	ipcRenderer.on("redo", () => performRedo());
 }
