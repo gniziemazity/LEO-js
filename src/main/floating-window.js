@@ -4,6 +4,7 @@ class FloatingWindow {
 		channel,
 		onClosed,
 		onShow,
+		onPinChange,
 		broadcastServer,
 		floatRect,
 		trackWindowRect,
@@ -18,6 +19,7 @@ class FloatingWindow {
 		this._channel = channel;
 		this._onClosed = onClosed || (() => {});
 		this._onShow = onShow || (() => {});
+		this._onPinChange = onPinChange || (() => {});
 		this._broadcastServer = broadcastServer;
 		this._floatRect = floatRect;
 		this._trackWindowRect = trackWindowRect;
@@ -43,11 +45,11 @@ class FloatingWindow {
 			this.win.webContents.send(this._channel, payload);
 			this.win.show();
 			this.win.focus();
-			if (gatePin && shouldPin) this.pinned = true;
+			if (gatePin && shouldPin) this._markPinned(true);
 			this._onShow(this);
 			return;
 		}
-		if (gatePin) this.pinned = shouldPin || false;
+		if (gatePin) this._markPinned(shouldPin);
 		const win = this._make();
 		this.win = win;
 
@@ -72,15 +74,23 @@ class FloatingWindow {
 			if (!isCurrent) return;
 			this.win = null;
 			this.rect = null;
-			this.pinned = false;
+			this._markPinned(false);
 			this.closePending = false;
 			this._closing = false;
 		});
 		this._trackWindowRect(win, () => this.rect);
 	}
 
+	_markPinned(value) {
+		const pinned = !!value;
+		if (pinned === this.pinned) return;
+		this.pinned = pinned;
+		if (this.isAlive()) this.win.webContents.send("pin-state", pinned);
+		this._onPinChange(this);
+	}
+
 	setPinned(value) {
-		this.pinned = !!value;
+		this._markPinned(value);
 		if (!this.pinned && this.closePending) {
 			this.closePending = false;
 			this.close();

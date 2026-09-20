@@ -36,6 +36,9 @@ class SpecialKeys {
 		this.uiManager.populateSpecialKeys(keys, (char) => {
 			this.insertSpecialChar(char);
 		});
+
+		const formatBtn = document.getElementById("formatBtn");
+		if (formatBtn) formatBtn.onclick = () => this.blockEditor.formatBlock();
 	}
 
 	insertSpecialChar(char) {
@@ -49,6 +52,7 @@ class SpecialKeys {
 		if (selectedBlockIndex !== null) {
 			const activeDiv =
 				document.querySelectorAll(".block")[selectedBlockIndex];
+			if (!activeDiv || !activeDiv.contains(document.activeElement)) return;
 			this.blockEditor.updateBlockContent(
 				selectedBlockIndex,
 				readCodeText(activeDiv),

@@ -91,6 +91,10 @@ class CourseUI {
 	async openCourse() {
 		const dir = await ipcRenderer.invoke("show-open-course-dialog");
 		if (!dir) return;
+		this.openCoursePath(dir);
+	}
+
+	openCoursePath(dir) {
 		try {
 			this.courseManager.open(dir);
 		} catch (e) {

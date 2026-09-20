@@ -1,6 +1,8 @@
 const { formatCodeForAutoTyping } = require("./code-formatter");
 const UIManager = require("./ui-manager");
 
+let copiedBlock = null;
+
 class BlockEditor {
 	constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
 		this.lessonManager = lessonManager;
@@ -28,6 +30,30 @@ class BlockEditor {
 		return newBlockIdx;
 	}
 
+	copyBlock(index) {
+		const block = this.lessonManager.getBlock(index);
+		if (!block || block.fromInclude || block.type === "include") return false;
+		copiedBlock = JSON.parse(JSON.stringify(block));
+		if (this.uiManager.setHasCopiedBlock)
+			this.uiManager.setHasCopiedBlock(true);
+		return true;
+	}
+
+	hasCopiedBlock() {
+		return copiedBlock !== null;
+	}
+
+	pasteBlock(afterIndex) {
+		if (!copiedBlock) return null;
+		this._checkpoint("paste-block");
+
+		const at = this.lessonManager.insertBlockCopy(copiedBlock, afterIndex);
+		this.uiManager.selectBlock(at);
+		this.lessonRenderer.render();
+		this.focusNewBlock(at);
+		return at;
+	}
+
 	focusNewBlock(blockIdx) {
 		setTimeout(() => {
 			const blocks = document.querySelectorAll(".block");
@@ -43,6 +69,7 @@ class BlockEditor {
 		const blockIdx =
 			index === undefined ? this.uiManager.getSelectedBlockIndex() : index;
 		if (blockIdx === null) return;
+		if (!this.lessonManager.canRemoveBlock(blockIdx)) return;
 
 		this._checkpoint("remove-block");
 
@@ -90,7 +117,7 @@ class BlockEditor {
 	}
 
 	updateBlockContent(blockIdx, content) {
-		this.lessonManager.updateBlock(blockIdx, content);
+		this.lessonManager.updateBlockBody(blockIdx, content);
 	}
 }
 

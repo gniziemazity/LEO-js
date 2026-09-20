@@ -3,6 +3,7 @@ class AppState {
 		this.mainWindow = null;
 		this.isLocked = false;
 		this.isActive = false;
+		this.autoPilot = false;
 		this.pauseReasons = new Set();
 		this.isAutoTyping = false;
 		this.advanceQueue = [];

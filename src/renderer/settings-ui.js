@@ -131,6 +131,9 @@ class SettingsUI {
 		if (teacherNameInput)
 			teacherNameInput.value = settings.teacherName || "Teacher";
 
+		document.getElementById("typingHotkeysOffWithRemote").checked =
+			settings.typingHotkeysOffWithRemote === true;
+
 		this.updateSpeedVisibility(settings.hotkeyMode || "single-key");
 	}
 
@@ -211,6 +214,9 @@ class SettingsUI {
 			teacherName: document.getElementById("teacherName")
 				? document.getElementById("teacherName").value.trim() || "Teacher"
 				: "Teacher",
+			typingHotkeysOffWithRemote: document.getElementById(
+				"typingHotkeysOffWithRemote",
+			).checked,
 		};
 
 		ipcRenderer.send("save-settings", settings);

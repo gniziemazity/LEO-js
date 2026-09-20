@@ -1,20 +1,24 @@
 const fs = require("fs");
 const path = require("path");
-const {
-	moveToFileName,
-	wrapAnchor,
-	isFileName,
-} = require("../shared/move-to-target");
+const { moveToFileName, isFileName } = require("../shared/move-to-target");
 const { normalizeEdgeNewlines } = require("../shared/code-text");
 const {
-	SUPPORT_KINDS,
+	PICKABLE_KINDS,
 	MOVE_TO_KIND,
+	CODE_KIND,
 	getBlockKind,
-	kindPrefix,
+	withKindPrefix,
 	splitPinToken,
 	stripBlockPrefix,
 } = require("../shared/blocks");
-const { replayPlan, toReplayableText } = require("./anchor-snippet");
+const { replayPlan } = require("./anchor-snippet");
+const {
+	startDirFor,
+	isDirectory,
+	listStartFiles,
+	embedAnchors,
+	readAnchors,
+} = require("./start-folder");
 
 class LessonManager {
 	constructor() {
@@ -41,10 +45,9 @@ class LessonManager {
 					);
 					return;
 				}
-				this.data = LessonManager._expandIncludes(
+				this.data = LessonManager._expandStart(
 					LessonManager._withStartWith(migrated),
-					path.dirname(filePath),
-					new Set([path.resolve(filePath)]),
+					filePath,
 				);
 				this.currentFilePath = filePath;
 				this.hasUnsavedChanges = false;
@@ -77,106 +80,83 @@ class LessonManager {
 	}
 
 	static authored(blocks) {
-		return blocks.filter(
-			(b) => b && !b.fromInclude && !(b.type === "include" && !b.path),
-		);
+		const out = [];
+		for (const b of blocks) {
+			if (!b || b.fromInclude) continue;
+			if (b.type !== "include") {
+				out.push(b);
+				continue;
+			}
+			const anchors = LessonManager._storedAnchors(b.anchors);
+			if (anchors) out.push({ type: "include", anchors });
+		}
+		return out;
+	}
+
+	static _storedAnchors(anchors) {
+		const kept = {};
+		for (const [file, byId] of Object.entries(anchors || {})) {
+			if (byId && Object.keys(byId).length) kept[file] = byId;
+		}
+		return Object.keys(kept).length ? kept : null;
 	}
 
 	static _withStartWith(blocks) {
 		const rest = blocks.filter((b) => !b || b.type !== "include");
 		const first = blocks.find((b) => b && b.type === "include");
-		return [first || { type: "include", path: "" }, ...rest];
+		return [
+			{ type: "include", anchors: (first && first.anchors) || {} },
+			...rest,
+		];
 	}
 
-	getStartWith() {
-		const b = this.data[0];
-		return b && b.type === "include" ? b.path || "" : "";
-	}
-
-	setStartWith(planPath) {
-		if (!this.data[0] || this.data[0].type !== "include") {
-			this.data.unshift({ type: "include", path: "" });
+	static _expandStart(blocks, planPath) {
+		const slot = blocks[0];
+		const dir = startDirFor(planPath);
+		if (!dir || !isDirectory(dir)) {
+			slot.dir = null;
+			return blocks;
 		}
-		this.data[0].path = planPath || "";
-		this.markAsChanged();
-	}
-
-	listSiblingPlans() {
-		if (!this.currentFilePath) return [];
-		const dir = path.dirname(this.currentFilePath);
-		const self = path.basename(this.currentFilePath);
-		try {
-			return fs
-				.readdirSync(dir)
-				.filter((f) => /\.(leo|json)$/i.test(f) && f !== self)
-				.sort((a, b) => a.localeCompare(b))
-				.map((f) => "./" + f);
-		} catch (e) {
-			return [];
-		}
-	}
-
-	static _expandIncludes(blocks, baseDir, seen) {
-		const out = [];
-		for (const block of blocks) {
-			out.push(block);
-			if (!block || block.type !== "include") continue;
-			if (typeof block.path !== "string" || !block.path.trim()) continue;
-			const abs = path.resolve(baseDir, block.path);
-			if (seen.has(abs)) {
-				throw new Error(`Include loops back on itself: ${block.path}`);
-			}
-			let raw;
-			try {
-				raw = fs.readFileSync(abs, "utf8");
-			} catch (e) {
-				throw new Error(`Included plan not found: ${block.path}`);
-			}
-			const inner = LessonManager._migrateBlocks(JSON.parse(raw));
-			if (!Array.isArray(inner)) {
-				throw new Error(
-					`Included plan is not a list of blocks: ${block.path}`,
-				);
-			}
-			const expanded = LessonManager._expandIncludes(
-				inner,
-				path.dirname(abs),
-				new Set(seen).add(abs),
-			);
-			out.push(...LessonManager._startingStateBlocks(expanded));
-		}
-		return out;
-	}
-
-	static _startingStateBlocks(blocks) {
-		const { editors, order } = replayPlan(blocks);
-		const out = [];
-		for (const name of order) {
-			if (name === "main" || name === "dev") continue;
-			const state = editors[name];
-			if (!state || !state.text) continue;
-			out.push({ type: "move-to", target: name, fromInclude: true });
-			out.push({
+		const files = listStartFiles(dir);
+		slot.dir = path.basename(dir);
+		slot.files = files.length;
+		const generated = [];
+		for (const { name, text } of files) {
+			generated.push({ type: "move-to", target: name, fromInclude: true });
+			generated.push({
 				type: "comment",
-				text: `📋 ${LessonManager._textWithAnchors(state)}`,
+				text: `📋 ${embedAnchors(text, (slot.anchors || {})[name])}`,
 				fromInclude: true,
+				startFile: name,
+				startText: text,
 			});
 		}
-		return out;
+		return [slot, ...generated, ...blocks.slice(1)];
 	}
 
-	static _textWithAnchors(state) {
-		const placed = Object.entries(state.anchors || {})
-			.filter(
-				([, pos]) =>
-					Number.isInteger(pos) && pos >= 0 && pos <= state.text.length,
-			)
-			.sort((a, b) => b[1] - a[1]);
-		let text = state.text;
-		for (const [id, pos] of placed) {
-			text = text.slice(0, pos) + wrapAnchor(id) + text.slice(pos);
-		}
-		return toReplayableText(text);
+	_readStartBody(index, body) {
+		const block = this.data[index];
+		if (!block || !block.startFile) return null;
+		const { clean, anchors } = readAnchors(body);
+		return clean === block.startText ? { block, anchors } : null;
+	}
+
+	canSetStartAnchors(index, body) {
+		return this._readStartBody(index, body) !== null;
+	}
+
+	setStartAnchors(index, body) {
+		const read = this._readStartBody(index, body);
+		if (!read) return false;
+		const { block, anchors } = read;
+		const slot = this.data[0];
+		slot.anchors = slot.anchors || {};
+		const before = JSON.stringify(slot.anchors[block.startFile] || {});
+		if (Object.keys(anchors).length) slot.anchors[block.startFile] = anchors;
+		else delete slot.anchors[block.startFile];
+		block.text = `📋 ${embedAnchors(block.startText, anchors)}`;
+		if (JSON.stringify(anchors) !== before) this.markAsChanged();
+		return true;
 	}
 
 	save(callback) {
@@ -223,9 +203,6 @@ class LessonManager {
 				type,
 				target: typeof initialText === "string" ? initialText : "MAIN",
 			};
-		} else if (type === "include") {
-			this.setStartWith(initialText);
-			return 0;
 		} else {
 			const text =
 				initialText !== null && initialText !== undefined
@@ -255,12 +232,33 @@ class LessonManager {
 		return at;
 	}
 
+	insertBlockCopy(block, afterIndex) {
+		const copy = JSON.parse(JSON.stringify(block));
+		for (const key of ["fromInclude", "startFile", "startText"]) {
+			delete copy[key];
+		}
+		if (typeof copy.text === "string") {
+			let next = this.getNextAnchorId();
+			copy.text = copy.text.replace(/⚓\d+⚓/g, () => `⚓${next++}⚓`);
+		}
+		const at = afterIndex + 1;
+		this.data.splice(at, 0, copy);
+		this.markAsChanged();
+		return at;
+	}
+
 	firstAuthoredIndex() {
 		let i = 1;
 		while (i < this.data.length && this.data[i] && this.data[i].fromInclude) {
 			i++;
 		}
 		return i;
+	}
+
+	canRemoveBlock(index) {
+		const floor = this.firstAuthoredIndex();
+		if (index < floor || index >= this.data.length) return false;
+		return this.data.length - floor > 1;
 	}
 
 	canMoveBlock(index, delta) {
@@ -283,10 +281,14 @@ class LessonManager {
 		if (index < 0 || index >= this.data.length) return false;
 		const block = this.data[index];
 		if (!block || block.fromInclude) return false;
-		if (block.type !== "comment" && block.type !== MOVE_TO_KIND) {
+		if (
+			block.type !== "comment" &&
+			block.type !== MOVE_TO_KIND &&
+			block.type !== CODE_KIND
+		) {
 			return false;
 		}
-		return SUPPORT_KINDS.includes(kind);
+		return PICKABLE_KINDS.includes(kind);
 	}
 
 	setBlockKind(index, kind) {
@@ -307,14 +309,16 @@ class LessonManager {
 			if (note) block.note = note;
 			else delete block.note;
 		} else {
-			const prefix = kindPrefix(kind);
 			if (wasMoveTo) {
 				delete block.target;
 				delete block.typeName;
 				delete block.note;
 			}
-			block.type = "comment";
-			block.text = prefix ? `${prefix} ${words}` : words;
+			block.type = kind === CODE_KIND ? CODE_KIND : "comment";
+			block.text =
+				kind === CODE_KIND
+					? normalizeEdgeNewlines(words)
+					: withKindPrefix(kind, words);
 			if (kind !== "snippet") delete block.paste;
 			if (kind !== "image" && kind !== "web") delete block.pin;
 		}
@@ -348,6 +352,16 @@ class LessonManager {
 		block.text = next;
 		this.markAsChanged();
 		return true;
+	}
+
+	updateBlockBody(index, body) {
+		const block = this.data[index];
+		if (!block) return false;
+		if (block.type !== "comment") return this.updateBlock(index, body);
+		return this.updateBlock(
+			index,
+			withKindPrefix(getBlockKind(block.text), body),
+		);
 	}
 
 	updateMoveToTarget(index, target) {

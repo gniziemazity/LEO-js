@@ -3,12 +3,36 @@ const state = require("./state");
 const {
 	LESSON_TOOLS,
 	getCourseMenuState,
+	toolAvailability,
+	openSimulator,
 	openLessonTool,
-	launchExternalApp,
+	launchChrome,
 	launchVSCode,
 } = require("./lesson-tools");
 
 const send = (ch, ...args) => state.send(ch, ...args);
+
+function toolsSubmenu(courseMenuState, availability, actions) {
+	const items = [
+		{ label: "VSCode", click: actions.launchVSCode },
+		{ label: "Chrome", click: actions.launchChrome },
+	];
+	const tools = [];
+	for (const tool of LESSON_TOOLS) {
+		if (tool.needs === null) {
+			if (courseMenuState.currentPath) {
+				tools.push({ label: tool.label, click: actions.openSimulator });
+			}
+		} else if (courseMenuState.open && availability[tool.needs]) {
+			tools.push({
+				label: tool.label,
+				click: () => actions.openLessonTool(tool),
+			});
+		}
+	}
+	if (tools.length) items.push({ type: "separator" }, ...tools);
+	return items;
+}
 
 function createApplicationMenu() {
 	const courseMenuState = getCourseMenuState();
@@ -105,19 +129,12 @@ function createApplicationMenu() {
 		},
 		{
 			label: "Tools",
-			submenu: [
-				{ label: "VSCode", click: launchVSCode },
-				{ label: "Chrome", click: () => launchExternalApp("chrome") },
-				...(courseMenuState.open
-					? [
-							{ type: "separator" },
-							...LESSON_TOOLS.map((t) => ({
-								label: t.label,
-								click: () => openLessonTool(t),
-							})),
-						]
-					: []),
-			],
+			submenu: toolsSubmenu(courseMenuState, toolAvailability(), {
+				launchVSCode,
+				launchChrome,
+				openLessonTool,
+				openSimulator: () => openSimulator(send),
+			}),
 		},
 	];
 
@@ -147,4 +164,4 @@ function createApplicationMenu() {
 	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-module.exports = { createApplicationMenu };
+module.exports = { createApplicationMenu, toolsSubmenu };

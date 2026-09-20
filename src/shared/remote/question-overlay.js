@@ -4,6 +4,10 @@ class QuestionOverlay extends RemoteOverlay {
 		this.autoCloseTimer = null;
 	}
 
+	keepsInteractionBtns() {
+		return false;
+	}
+
 	clearTimer() {
 		if (this.autoCloseTimer) {
 			clearTimeout(this.autoCloseTimer);
@@ -70,6 +74,10 @@ class QuestionOverlay extends RemoteOverlay {
 
 	showToTeacher(animate) {
 		sendMessage("show-question", { animate: animate !== false });
+		this.reveal();
+	}
+
+	reveal() {
 		const showBtn = document.getElementById("qShowBtn");
 		if (showBtn) showBtn.style.display = "none";
 		document.getElementById("qGrid").style.display = "flex";

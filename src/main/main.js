@@ -29,8 +29,8 @@ const {
 	floatState,
 	openQuestionWindow,
 	closeAllChildWindows,
+	unpinWindows,
 	setQuestionWindowSquare,
-	animateQuestionWindowOnScreen,
 	stopFloatLerp,
 	applyWindowPinch,
 	applyWindowDrag,
@@ -47,13 +47,24 @@ const {
 	enterPopup,
 	endPopup,
 	confirmPopup,
-	pasteCodeInsert,
+	endPopupIfOpen,
+	confirmMedia,
+	dismissMedia,
+	confirmKeyFor,
+	pasteAndConfirm,
 	armMoveToName,
 	typeNextNameChar,
 	hasPendingName,
 	setNameProgressHandler,
 	openPopupKind,
 } = require("./popups");
+const {
+	showQuestion,
+	armQuestionShow,
+	rearmQuestionShow,
+	endQuestion,
+} = require("./question-show");
+const { createAutoPilot } = require("./auto-pilot");
 
 const { mouse, Button, Point, keyboard, Key } = require("@computer-use/nut-js");
 const MainProcessTimer = require("./main-timer");
@@ -65,10 +76,18 @@ if (mainPlugin.registerMain) {
 
 let tray = null;
 
+const MEDIA_FLOATS = { image: _imageFloat, web: _webFloat };
+
 // broadcast handlers
 
 broadcastServer.on("client-toggle-active", () => {
 	state.send("hotkey-toggle-active");
+});
+broadcastServer.on("client-step-backward", () => {
+	state.send("hotkey-step-backward");
+});
+broadcastServer.on("client-step-forward", () => {
+	state.send("hotkey-step-forward");
 });
 broadcastServer.on("client-jump-to", (stepIndex) => {
 	state.send("client-jump-to", stepIndex);
@@ -96,7 +115,7 @@ broadcastServer.on("client-interaction", (interactionType) => {
 	state.send("log-interaction", interactionType);
 });
 broadcastServer.on("client-student-answered", (studentName) => {
-	state.unpause("question");
+	endQuestion();
 	const resolved = resolveStudentName(studentName);
 	floatState.questionWindowStudentAnswered = resolved;
 	const ANSWER_FADE_MS = 300;
@@ -155,15 +174,33 @@ broadcastServer.on(
 		});
 	},
 );
-broadcastServer.on("client-show-question", (animate) => {
-	if (animate) animateQuestionWindowOnScreen();
-	state.send("question-shown");
-});
+broadcastServer.on("client-show-question", (animate) => showQuestion(animate));
 broadcastServer.on("client-move-to-confirmed", () => confirmPopup("move-to"));
 broadcastServer.on("client-code-insert-confirmed", () =>
 	confirmPopup("code-insert"),
 );
-broadcastServer.on("client-code-insert-paste", () => pasteCodeInsert());
+broadcastServer.on("client-note-confirmed", () => confirmPopup("note"));
+broadcastServer.on("client-media-confirmed", () => confirmMedia());
+broadcastServer.on("client-pin-window", (pinned) => {
+	const float = MEDIA_FLOATS[openPopupKind()];
+	if (float && float.isAlive()) float.setPinned(pinned);
+});
+broadcastServer.on("client-media-dismissed", () => dismissMedia(MEDIA_FLOATS));
+broadcastServer.on("client-unpin-windows", () => unpinWindows());
+const autoPilot = createAutoPilot({ state, broadcastServer });
+broadcastServer.on("client-set-auto-pilot", (on) => autoPilot.set(on));
+const syncRemoteHotkeys = () =>
+	hotkeyManager.setRemoteConnected(broadcastServer.clientCount() > 0);
+broadcastServer.on("client-connected", () => {
+	autoPilot.onClientConnected();
+	syncRemoteHotkeys();
+});
+broadcastServer.on("client-disconnected", () => {
+	autoPilot.onClientDisconnected();
+	syncRemoteHotkeys();
+});
+ipcMain.on("set-auto-pilot", (event, on) => autoPilot.set(on === true));
+broadcastServer.on("client-code-insert-paste", () => pasteAndConfirm());
 broadcastServer.on("client-move-to-type-name", () => armMoveToName());
 state.onPopupKey = () => {
 	if (!hasPendingName()) return false;
@@ -175,7 +212,7 @@ setNameProgressHandler((p) => {
 	state.send("move-to-typing", p);
 });
 broadcastServer.on("client-dismiss-question", () => {
-	state.unpause("question");
+	endQuestion();
 	if (floatState.questionWindowIsLesson) {
 		_questionFloat.close({ force: true });
 	}
@@ -232,6 +269,7 @@ ipcMain.on(
 		);
 		openQuestionWindow(question, bgColor);
 		floatState.questionOptions = options || [];
+		armQuestionShow();
 	},
 );
 
@@ -256,6 +294,7 @@ const FLOAT_WINDOWS = [
 		close: "soft",
 		forceClose: true,
 		pin: true,
+		popup: true,
 	},
 	{
 		name: "web",
@@ -263,6 +302,7 @@ const FLOAT_WINDOWS = [
 		close: "soft",
 		forceClose: true,
 		pin: true,
+		popup: true,
 	},
 ];
 
@@ -272,9 +312,10 @@ for (const w of FLOAT_WINDOWS) {
 		if (win) win.webContents.openDevTools({ mode: "detach" });
 	});
 	if (w.close) {
-		ipcMain.on(`close-${w.name}-window`, () =>
-			w.float.close(w.close === "force" ? { force: true } : undefined),
-		);
+		ipcMain.on(`close-${w.name}-window`, () => {
+			w.float.close(w.close === "force" ? { force: true } : undefined);
+			if (w.popup) endPopupIfOpen(w.name);
+		});
 	}
 	if (w.forceClose) {
 		ipcMain.on(`force-close-${w.name}-window`, () =>
@@ -293,7 +334,7 @@ ipcMain.on("question-window-shape", (event, shape) => {
 });
 
 ipcMain.on("close-question-window", () => {
-	state.unpause("question");
+	endQuestion();
 	_questionFloat.close({ force: true });
 	broadcastServer.broadcastQuestionEnded();
 });
@@ -308,6 +349,14 @@ ipcMain.on("enter-code-insert-block", (event, payload) =>
 );
 ipcMain.on("close-code-insert-window", () => endPopup("code-insert"));
 
+ipcMain.on("enter-note-block", (event, payload) => enterPopup("note", payload));
+ipcMain.on("close-note-window", () => endPopup("note"));
+
+ipcMain.on("enter-image-block", (event, payload) =>
+	enterPopup("image", payload),
+);
+ipcMain.on("enter-web-block", (event, payload) => enterPopup("web", payload));
+
 ipcMain.on("start-interaction", (event, interactionType) => {
 	broadcastServer.broadcast({
 		type: "open-interaction",
@@ -320,6 +369,8 @@ const DESK_ACTIONS = new Set([
 	"client-code-insert-confirmed",
 	"client-code-insert-paste",
 	"client-move-to-type-name",
+	"client-note-confirmed",
+	"client-media-confirmed",
 	"client-show-question",
 	"client-student-answered",
 	"client-dismiss-question",
@@ -450,6 +501,7 @@ ipcMain.on("set-active", (event, isActive) => {
 		hotkeyManager.unregisterTypingHotkeys();
 	}
 });
+ipcMain.on("set-active", () => autoPilot.onActiveChanged());
 ipcMain.on("type-character", (event, char) =>
 	keyboardHandler.typeCharacter(char),
 );
@@ -561,7 +613,8 @@ function reapplySettings() {
 		hotkeyManager.registerEscapeForAutoTyping();
 	}
 	const kind = openPopupKind();
-	if (kind) hotkeyManager.registerConfirmPopup(() => confirmPopup(kind));
+	if (kind) hotkeyManager.registerConfirmPopup(confirmKeyFor(kind));
+	else rearmQuestionShow();
 	keyboardHandler.updatePlatformSettings();
 }
 
@@ -622,9 +675,10 @@ async function createWindow() {
 			"settings-loaded",
 			settingsManager.getAll(),
 		);
+		autoPilot.sync();
 		showEditorTipOnce();
 		if (pendingOpenFile) {
-			state.mainWindow.webContents.send("open-plan-file", pendingOpenFile);
+			_sendOpenPath(pendingOpenFile);
 			pendingOpenFile = null;
 		}
 	});
@@ -636,6 +690,7 @@ async function createWindow() {
 		}
 		closeAllChildWindows();
 	});
+	state.mainWindow.on("focus", () => createApplicationMenu());
 	state.mainWindow.on("closed", () => {
 		state.mainWindow = null;
 	});
@@ -677,14 +732,28 @@ function toggleMainWindow() {
 	}
 }
 
+const OPENABLE_FILE_RE = /\.(leo|json|leo-course)$/i;
+const COURSE_FILE_RE = /\.leo-course$/i;
+
 let pendingOpenFile = _extractLeoPath(process.argv);
 
 function _extractLeoPath(argv) {
 	for (const arg of argv.slice(1)) {
 		if (typeof arg !== "string") continue;
-		if (/\.(leo|json)$/i.test(arg) && fs.existsSync(arg)) return arg;
+		if (OPENABLE_FILE_RE.test(arg) && fs.existsSync(arg)) return arg;
 	}
 	return null;
+}
+
+function _sendOpenPath(filePath) {
+	if (COURSE_FILE_RE.test(filePath)) {
+		state.mainWindow.webContents.send(
+			"open-course-path",
+			path.dirname(filePath),
+		);
+	} else {
+		state.mainWindow.webContents.send("open-plan-file", filePath);
+	}
 }
 
 function _openPlanInWindow(filePath) {
@@ -692,7 +761,7 @@ function _openPlanInWindow(filePath) {
 	if (state.mainWindow.isMinimized()) state.mainWindow.restore();
 	state.mainWindow.show();
 	state.mainWindow.focus();
-	state.mainWindow.webContents.send("open-plan-file", filePath);
+	_sendOpenPath(filePath);
 }
 
 if (!app.requestSingleInstanceLock()) {

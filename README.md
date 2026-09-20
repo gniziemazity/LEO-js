@@ -22,12 +22,14 @@ A lesson is made of **code blocks**, which LEO types out for you, and **support
 blocks**, which are everything around that typing: what to say, what to ask,
 what to show, and where to go next.
 
-Pick a support block's kind from the ▾ picker on the selected block (it sets the
-emoji prefix for you):
+Every block shows its kind in the ▾ picker on its right, and that picker is how
+you change it — including between code and any support kind, in both directions
+(it adds or removes the emoji prefix for you):
 
 | Prefix | Kind         | Behavior                    |
 | ------ | ------------ | --------------------------- |
-| (none) | Note         | Shows text for the teacher  |
+| (none) | Note         | Pauses and shows the note   |
+| ⌨      | Code         | LEO types it out            |
 | ❓     | Question     | Opens a question window     |
 | 🖼️     | Image        | Opens an image window       |
 | 🌐     | Web page     | Opens a web viewer window   |
@@ -41,6 +43,18 @@ When one of these support blocks is reached, LEO opens a dedicated window:
 - **Question**: Displays the question and student who answered
 - **Image**: Shows an image file
 - **Web**: Displays a URL inside an embedded web viewer
+
+Notes, images and web pages pause the typing the way questions, move-tos and
+code snippets do: a popup shows on your phone and in LEO's window until you press
+**OK** (or `Ctrl+Enter`). A note shows its text. An image or web page shows what is on screen and a **📌 Pin**
+button: a pinned window stays up after you move on, and a 📌 appears next to the
+mouse and keyboard buttons on the phone; tap it to close the pinned window.
+
+`Ctrl+Enter` does a popup's main job. On a code snippet it pastes into the
+editor you are in and carries on (the phone's **Paste** does the same, so the
+snippet popup has no separate OK). On a move-to that creates a file it starts
+typing the file name, as **Auto-type** does. A move-to into a file you have
+already typed in shows that file's code, with the cursor where you left it.
 
 ### 👨‍🎓 Student Management
 
@@ -89,12 +103,37 @@ npm start
 ### Creating a Lesson
 
 1. **Launch LEO** and go to File → New Plan (`Ctrl+N`)
-2. **Add blocks**: hover the gap between two blocks (or use the bar under the
-   last one) and pick **+ Note**, **+ Code** or **+ Move to**
-3. **Change a block's kind**: select it and use the ▾ picker in its top-right
-   corner
-4. **Remove blocks**: select a block and press ✕ in the same corner
+2. **Add blocks**: point at a block. The buttons along its top edge add a note
+   or a code block above it, the ones along its bottom edge add one below it.
+   The bar under the last block adds **+ Note**, **+ Code** or **+ Move to**
+   at the end
+3. **Change a block's kind**: use the ▾ picker on the block's right edge — it is
+   always there, and it turns code into a note (or a snippet, question, …) and
+   back
+4. **Remove blocks**: point at a block and press ✕ at the middle of its right
+   edge
 5. **Save**: File → Save Plan (`Ctrl+S`)
+
+### Starting from Existing Code
+
+A lesson that picks up where another one ended does not type that code again.
+Put the starting code in a folder named after the plan, beside it:
+
+```
+part_3.leo
+part_3/
+  index.html
+  renderer.js
+```
+
+Opening `part_3.leo` then shows a **Start with part_3/** row, followed by
+every file in the folder (subfolders included; `node_modules`, `.git` and
+binary files are left out). Their code cannot be changed from LEO, only their
+anchors: click a file to open it, put the caret where the lesson will need to
+jump to and press the ⚓ key; Backspace over an anchor removes it. The plan
+saves only those anchor positions (line and column per file), never
+the code, so editing the files in the folder updates the start. A plan with no
+folder of its name has no start row.
 
 ### Running a Lesson
 
@@ -115,8 +154,10 @@ While **not** in auto-typing mode, you can edit your lesson:
 
 1. **Select blocks**: Click any block to select it
 2. **Edit content**: Edit text directly in the selected block
-3. **Add blocks**: hover a gap between blocks and pick a kind
-4. **Reorder or remove**: select a block and use ▲ ▼ ✕ in its top-right corner
+3. **Add blocks**: point at a block and use the + buttons on the edge you want
+   the new block on — top adds above, bottom adds below
+4. **Reorder or remove**: ▲ sits on the top edge, ▼ on the bottom, ✕ in between;
+   one click each, with no need to select the block first
 5. **Format code**: select a code block and press ✨ to auto-format
 6. **Insert special characters**: Use the sidebar buttons to insert navigation keys and shortcuts
 7. **Undo/Redo**: Use `Ctrl+Z` / `Ctrl+Shift+Z` to undo or redo changes

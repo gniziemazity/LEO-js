@@ -1,6 +1,17 @@
 class MoveToOverlay extends RemoteOverlay {
 	constructor() {
 		super("moveToOverlay");
+		this.typingName = false;
+	}
+
+	autoPilotPad() {
+		return this.typingName ? "keyboard" : "mouse";
+	}
+
+	beginTypingName() {
+		if (this.typingName) return;
+		this.typingName = true;
+		syncKeyInputGate();
 	}
 
 	show(payload) {
@@ -45,6 +56,9 @@ class MoveToOverlay extends RemoteOverlay {
 				MoveToTarget.moveToDisplayName(target),
 				null,
 			);
+			if (SnippetView.renderSnippet(snippetEl, snippet)) {
+				snippetEl.style.display = "block";
+			}
 		} else if (mode === "anchor") {
 			if (SnippetView.renderSnippet(snippetEl, snippet)) {
 				snippetEl.style.display = "block";
@@ -63,8 +77,8 @@ class MoveToOverlay extends RemoteOverlay {
 			targetEl.textContent = target || "";
 		}
 
+		this.typingName = false;
 		this.open("var(--clr-moveto-bg)");
-		padEnterMoveTo();
 	}
 
 	chromeClose() {
@@ -73,18 +87,19 @@ class MoveToOverlay extends RemoteOverlay {
 
 	typeName() {
 		sendMessage("move-to-type-name", {});
-		padTypeName();
+		this.beginTypingName();
 	}
 
 	setTyped(data) {
 		const targetEl = document.getElementById("mtoTarget");
 		if (!targetEl || !data) return;
 		SnippetView.renderTypedName(targetEl, data.target, data.typed);
+		if (data.typed != null) this.beginTypingName();
 	}
 
 	closeUI() {
+		this.typingName = false;
 		this.close();
-		padLeaveMoveTo();
 	}
 
 	confirm() {

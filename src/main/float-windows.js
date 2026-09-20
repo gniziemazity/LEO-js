@@ -7,6 +7,7 @@ const { closeToolWindows } = require("./lesson-tools");
 
 const floatState = {
 	questionWindowIsLesson: false,
+	questionShown: false,
 	questionWindowStudentAnswered: null,
 	questionWindowBgColor: null,
 	questionOptions: [],
@@ -220,6 +221,19 @@ function _trackWindowRect(win, getRect) {
 	});
 }
 
+function _broadcastPinned() {
+	broadcastServer.updatePinnedWindows({
+		image: _imageFloat.pinned,
+		web: _webFloat.pinned,
+	});
+}
+
+function unpinWindows() {
+	for (const f of [_imageFloat, _webFloat]) {
+		if (f.pinned) f.setPinned(false);
+	}
+}
+
 function makeFloat(opts) {
 	return new FloatingWindow({
 		broadcastServer,
@@ -270,6 +284,7 @@ const _questionFloat = makeFloat({
 
 const _imageFloat = makeFloat({
 	channel: "set-image",
+	onPinChange: _broadcastPinned,
 	make: () =>
 		_makeFloatingWindow({
 			width: 900,
@@ -281,6 +296,7 @@ const _imageFloat = makeFloat({
 
 const _webFloat = makeFloat({
 	channel: "set-url",
+	onPinChange: _broadcastPinned,
 	make: () => {
 		const win = _makeFloatingWindow({
 			width: 1100,
@@ -350,6 +366,7 @@ function openQuestionWindow(question, bgColor, emoji, studentName) {
 	_optionsFloat.close({ force: true });
 	const payload = { question, bgColor, emoji, studentName };
 	floatState.questionWindowIsLesson = !studentName;
+	floatState.questionShown = false;
 	floatState.questionWindowBgColor = bgColor || null;
 	floatState.questionOptions = [];
 	floatState.questionWindowStudentAnswered = null;
@@ -432,6 +449,7 @@ module.exports = {
 	floatState,
 	openQuestionWindow,
 	closeAllChildWindows,
+	unpinWindows,
 	setQuestionWindowSquare,
 	animateQuestionWindowOnScreen,
 	stopFloatLerp,

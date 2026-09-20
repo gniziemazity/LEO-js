@@ -142,7 +142,9 @@ class KeyboardHandler {
 
 		const charLower = char.toLowerCase();
 		const typingHotkeys = this.settingsManager.get("hotkeys.typing");
-		const isInterceptorKey = typingHotkeys.includes(charLower);
+		const isInterceptorKey =
+			this.hotkeyManager.typingHotkeysEnabled() &&
+			typingHotkeys.includes(charLower);
 
 		try {
 			await this.typeCharWithHotkeyManagement(
@@ -205,7 +207,9 @@ class KeyboardHandler {
 			if (steps[i].type === "char") {
 				const char = steps[i].char;
 				const charLower = char.toLowerCase();
-				const isInterceptorKey = typingHotkeys.includes(charLower);
+				const isInterceptorKey =
+					this.hotkeyManager.typingHotkeysEnabled() &&
+					typingHotkeys.includes(charLower);
 
 				try {
 					await this.typeCharWithHotkeyManagement(

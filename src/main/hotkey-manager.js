@@ -6,6 +6,7 @@ class HotkeyManager {
 	constructor(settingsManager) {
 		this.settingsManager = settingsManager;
 		this.confirmPopupKey = null;
+		this.remoteConnected = false;
 	}
 
 	handleKey(letter) {
@@ -70,7 +71,20 @@ class HotkeyManager {
 		hotkeys.forEach((letter) => globalShortcut.unregister(letter));
 	}
 
+	typingHotkeysEnabled() {
+		if (!this.remoteConnected) return true;
+		return this.settingsManager.get("typingHotkeysOffWithRemote") !== true;
+	}
+
+	setRemoteConnected(connected) {
+		this.remoteConnected = !!connected;
+		if (!state.isActive) return;
+		if (this.typingHotkeysEnabled()) this.registerTypingHotkeys();
+		else this.unregisterTypingHotkeys();
+	}
+
 	typingHotkeysFor(ch) {
+		if (!this.typingHotkeysEnabled()) return [];
 		if (typeof ch !== "string" || !ch) return [];
 		const hotkeys = this.settingsManager.get("hotkeys.typing") || [];
 		const lower = ch.toLowerCase();
@@ -88,6 +102,7 @@ class HotkeyManager {
 	}
 
 	registerKey(letter) {
+		if (!this.typingHotkeysEnabled()) return;
 		if (globalShortcut.isRegistered(letter)) return;
 		globalShortcut.register(letter, () => this.handleKey(letter));
 	}

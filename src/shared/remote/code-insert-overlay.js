@@ -13,6 +13,8 @@ class CodeInsertOverlay extends RemoteOverlay {
 
 		const pasteBtn = document.getElementById("ciPaste");
 		if (pasteBtn) pasteBtn.style.display = this.canPaste ? "" : "none";
+		const okBtn = document.getElementById("ciConfirm");
+		if (okBtn) okBtn.style.display = this.canPaste ? "none" : "";
 
 		SnippetView.renderLines(codeEl, text, colored);
 
@@ -25,6 +27,7 @@ class CodeInsertOverlay extends RemoteOverlay {
 
 	paste() {
 		sendMessage("code-insert-paste", {});
+		this.closeUI();
 	}
 
 	closeUI() {

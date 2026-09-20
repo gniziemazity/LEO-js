@@ -7,11 +7,29 @@ const fs = require("fs");
 let courseMenuState = { open: false, plans: [], currentPath: "" };
 
 const LESSON_TOOLS = [
-	{ label: "Timeline", file: "timeline.html", perLesson: true },
-	{ label: "Simulator", file: "simulator.html", perLesson: true },
-	{ label: "Students", file: "students.html", perLesson: true },
-	{ label: "Overview", file: "overview.html", perLesson: false },
+	{
+		label: "Timeline",
+		file: "timeline.html",
+		perLesson: true,
+		needs: "timeline",
+	},
+	{ label: "Simulator", file: "simulator.html", perLesson: true, needs: null },
+	{
+		label: "Students",
+		file: "students.html",
+		perLesson: true,
+		needs: "students",
+	},
+	{
+		label: "Overview",
+		file: "overview.html",
+		perLesson: false,
+		needs: "overview",
+	},
 ];
+
+const SIMULATOR_TOOL = LESSON_TOOLS.find((t) => t.file === "simulator.html");
+const SKIPPED_DIRS = new Set(["students", "anon_names", "curated"]);
 
 const lessonToolWindows = new Map();
 let visualizerWindow = null;
@@ -39,14 +57,99 @@ function currentCourseContext() {
 	};
 }
 
+function lessonDir(ctx) {
+	return path.join(ctx.courseRoot, "lessons", ctx.lesson);
+}
+
 function lessonWorkspaceFolder() {
 	const ctx = currentCourseContext();
 	if (!ctx) return null;
-	const folder = path.join(ctx.courseRoot, "lessons", ctx.lesson, ctx.lesson);
+	const folder = lessonDir(ctx);
 	try {
 		fs.mkdirSync(folder, { recursive: true });
 	} catch (_) {}
 	return folder;
+}
+
+function listDir(dir) {
+	try {
+		return fs.readdirSync(dir, { withFileTypes: true });
+	} catch (_) {
+		return [];
+	}
+}
+
+function isLogFileName(name) {
+	return (
+		/\.log$/i.test(name) ||
+		(/\.json$/i.test(name) && !/^diff_marks/i.test(name))
+	);
+}
+
+function findLogFiles(dir) {
+	const found = [];
+	for (const entry of listDir(dir)) {
+		if (entry.isFile() && isLogFileName(entry.name)) {
+			found.push(path.join(dir, entry.name));
+		}
+	}
+	for (const entry of listDir(path.join(dir, "anon_ids"))) {
+		if (entry.isFile() && /^log\.(json|log)$/i.test(entry.name)) {
+			found.push(path.join(dir, "anon_ids", entry.name));
+		}
+	}
+	return found;
+}
+
+function isRealLog(file) {
+	try {
+		const data = JSON.parse(fs.readFileSync(file, "utf8"));
+		if (Array.isArray(data)) return data.length > 0;
+		if (!data || data.artificial) return false;
+		const events = data.events || data.keyPresses;
+		return Array.isArray(events) && events.length > 0;
+	} catch (_) {
+		return false;
+	}
+}
+
+function hasRealLog(dir) {
+	return findLogFiles(dir).some(isRealLog);
+}
+
+function hasRemarksFile(dir, depth = 0) {
+	for (const entry of listDir(dir)) {
+		if (entry.isFile() && /remarks.*\.xlsx$/i.test(entry.name)) return true;
+		if (
+			entry.isDirectory() &&
+			depth < 3 &&
+			!SKIPPED_DIRS.has(entry.name.toLowerCase()) &&
+			hasRemarksFile(path.join(dir, entry.name), depth + 1)
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function toolAvailability() {
+	const ctx = currentCourseContext();
+	if (!ctx) return { timeline: false, students: false, overview: false };
+	const dir = lessonDir(ctx);
+	return {
+		timeline: findLogFiles(dir).length > 0,
+		students: hasRemarksFile(dir),
+		overview: fs.existsSync(path.join(ctx.courseRoot, "overview.json")),
+	};
+}
+
+function openSimulator(notifyRenderer, openTool = openLessonTool) {
+	const ctx = currentCourseContext();
+	if (ctx && hasRealLog(lessonDir(ctx))) {
+		openTool(SIMULATOR_TOOL);
+		return;
+	}
+	notifyRenderer("open-artificial-simulator");
 }
 
 const EXTERNAL_APPS = {
@@ -115,6 +218,16 @@ function launchExternalApp(key, args = []) {
 function launchVSCode() {
 	const folder = lessonWorkspaceFolder();
 	launchExternalApp("vscode", folder ? [folder] : []);
+}
+
+function folderUrl(folder) {
+	const href = pathToFileURL(folder).href;
+	return href.endsWith("/") ? href : href + "/";
+}
+
+function launchChrome() {
+	const folder = lessonWorkspaceFolder();
+	launchExternalApp("chrome", folder ? [folderUrl(folder)] : []);
 }
 
 let _pythonCmd = null;
@@ -376,9 +489,17 @@ module.exports = {
 	LESSON_TOOLS,
 	getCourseMenuState,
 	setCourseMenuState,
+	toolAvailability,
+	findLogFiles,
+	hasRealLog,
+	hasRemarksFile,
+	lessonWorkspaceFolder,
+	openSimulator,
 	openLessonTool,
 	openLogVisualizer,
 	launchExternalApp,
 	launchVSCode,
+	launchChrome,
+	folderUrl,
 	closeToolWindows,
 };

@@ -67,15 +67,21 @@ function replayPlan(blocks, stopAt = Infinity) {
 	return { editors, order, active };
 }
 
-function toReplayableText(target) {
-	return target
-		.split("\n")
-		.map((line) => {
-			const lead = (line.match(/^(?:[\t ]|⚓[^⚓]*⚓)*/) || [""])[0];
-			const keptAnchors = (lead.match(/⚓[^⚓]*⚓/g) || []).join("");
-			return keptAnchors + line.slice(lead.length);
-		})
-		.join("\n");
+function snippetAt(state, pos, before, after) {
+	const beforeText = state.text.slice(0, pos);
+	const lineIdx = (beforeText.match(/\n/g) || []).length;
+	const lineStart = beforeText.lastIndexOf("\n") + 1;
+	const col = pos - lineStart;
+
+	const lines = state.text.split("\n");
+	const start = Math.max(0, lineIdx - before);
+	const end = Math.min(lines.length - 1, lineIdx + after);
+	return {
+		lines: lines.slice(start, end + 1),
+		colored: buildColoredLines(state.text, start, end),
+		arrowIdx: lineIdx - start,
+		anchorCol: col,
+	};
 }
 
 function extractAnchorSnippet(
@@ -85,12 +91,19 @@ function extractAnchorSnippet(
 	before = 5,
 	after = 5,
 ) {
-	const anchor = classifyMoveToTarget(target);
-	if (anchor.mode !== "anchor") return null;
-	const id = anchor.inner;
-
+	const t = classifyMoveToTarget(target);
 	const { editors, active } = replayPlan(blocks, currentBlockIdx);
 
+	if (t.mode !== "anchor") {
+		const state = editors[t.mode === "file" ? t.target : t.mode];
+		if (!state || !state.text) return null;
+		return {
+			...snippetAt(state, state.cursor, before, after),
+			switchTo: null,
+		};
+	}
+
+	const id = t.inner;
 	let found = null;
 	if (editors[active] && editors[active].anchors[id] != null) {
 		found = active;
@@ -104,23 +117,8 @@ function extractAnchorSnippet(
 	}
 	if (found === null) return null;
 	const state = editors[found];
-
-	const pos = state.anchors[id];
-	const beforeText = state.text.slice(0, pos);
-	const lineIdx = (beforeText.match(/\n/g) || []).length;
-	const lineStart = beforeText.lastIndexOf("\n") + 1;
-	const col = pos - lineStart;
-
-	const lines = state.text.split("\n");
-	const start = Math.max(0, lineIdx - before);
-	const end = Math.min(lines.length - 1, lineIdx + after);
-	const sliceLines = lines.slice(start, end + 1);
-	const colored = buildColoredLines(state.text, start, end);
 	return {
-		lines: sliceLines,
-		colored,
-		arrowIdx: lineIdx - start,
-		anchorCol: col,
+		...snippetAt(state, state.anchors[id], before, after),
 		switchTo: found === active ? null : editorTarget(found),
 	};
 }
@@ -174,5 +172,4 @@ module.exports = {
 	extractAnchorSnippet,
 	buildColoredLines,
 	replayPlan,
-	toReplayableText,
 };

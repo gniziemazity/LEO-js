@@ -1,4 +1,5 @@
 const { getBlockKind, kindClass, MOVE_TO_KIND } = require("../shared/blocks");
+const { KIND_PLACEHOLDERS } = require("./block-types");
 
 function blockKindOf(block) {
 	if (block.type === "comment") return getBlockKind(block.text);
@@ -10,15 +11,16 @@ class UIManager {
 	constructor() {
 		this.elements = {};
 		this.isTypingActive = false;
+		this.autoPilotOn = false;
+		this.remotesConnected = false;
 		this.selectedBlockIndex = null;
+		this.sidebarEnabled = false;
 	}
 
 	cacheElements() {
 		this.elements = {
 			toggleBtn: document.getElementById("toggleBtn"),
-			generateArtificialLogBtn: document.getElementById(
-				"generateArtificialLogBtn",
-			),
+			autoPilotBtn: document.getElementById("autoPilotBtn"),
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
@@ -38,8 +40,6 @@ class UIManager {
 			this.elements.toggleBtn.classList.add("btn-stop");
 			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.add("hidden");
-			if (this.elements.generateArtificialLogBtn)
-				this.elements.generateArtificialLogBtn.classList.add("hidden");
 			document.body.classList.add("typing-active");
 		} else {
 			this.elements.toggleBtn.textContent = "▶︎";
@@ -48,10 +48,25 @@ class UIManager {
 			this.elements.toggleBtn.classList.add("btn-start");
 			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.remove("hidden");
-			if (this.elements.generateArtificialLogBtn)
-				this.elements.generateArtificialLogBtn.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}
+		this.syncAutoPilotBtn();
+	}
+
+	setAutoPilot(on) {
+		this.autoPilotOn = !!on;
+		const btn = this.elements.autoPilotBtn;
+		if (btn) btn.classList.toggle("auto-on", this.autoPilotOn);
+	}
+
+	setRemotesConnected(connected) {
+		this.remotesConnected = !!connected;
+		this.syncAutoPilotBtn();
+	}
+
+	syncAutoPilotBtn() {
+		const btn = this.elements.autoPilotBtn;
+		if (btn) btn.disabled = !(this.remotesConnected && this.isTypingActive);
 	}
 
 	updateProgressBar(percentage) {
@@ -64,12 +79,21 @@ class UIManager {
 
 	selectBlock(index) {
 		this.selectedBlockIndex = index;
-		this.elements.editorSidebar.classList.remove("hidden");
 	}
 
 	deselectBlock() {
 		this.selectedBlockIndex = null;
-		this.elements.editorSidebar.classList.add("hidden");
+	}
+
+	setSidebarEnabled(enabled, formatEnabled = enabled) {
+		this.sidebarEnabled = !!enabled;
+		const sidebar = this.elements.editorSidebar;
+		if (!sidebar) return;
+		sidebar.querySelectorAll("button").forEach((btn) => {
+			btn.disabled = !this.sidebarEnabled;
+		});
+		const format = sidebar.querySelector("#formatBtn");
+		if (format) format.disabled = !formatEnabled;
 	}
 
 	getSelectedBlockIndex() {
@@ -84,11 +108,8 @@ class UIManager {
 		const blockDiv = document.createElement("div");
 		blockDiv.className = `block ${kindClass(blockKindOf(block))}`;
 
-		if (block.type === "comment") {
-			blockDiv.dataset.placeholder = "Type note here";
-		} else if (block.type === "code") {
-			blockDiv.dataset.placeholder = "Type code here";
-		}
+		const placeholder = KIND_PLACEHOLDERS[blockKindOf(block)];
+		if (placeholder) blockDiv.dataset.placeholder = placeholder;
 
 		if (this.selectedBlockIndex === blockIdx) {
 			blockDiv.classList.add("selected");
@@ -130,13 +151,18 @@ class UIManager {
 		return wrap;
 	}
 
-	createBlockTool({ glyph, title, disabled, onClick, className }) {
+	setHasCopiedBlock(has) {
+		document.body.classList.toggle("has-copied-block", !!has);
+	}
+
+	createBlockTool({ glyph, title, disabled, onClick, className, dataset }) {
 		const btn = document.createElement("button");
 		btn.type = "button";
 		btn.className = className ? `block-tool ${className}` : "block-tool";
 		btn.textContent = glyph;
 		btn.title = title;
 		btn.disabled = !!disabled;
+		if (dataset) Object.assign(btn.dataset, dataset);
 		UIManager.sealIsland(btn);
 		btn.addEventListener("click", () => {
 			if (!btn.disabled) onClick(btn);
@@ -144,20 +170,38 @@ class UIManager {
 		return btn;
 	}
 
-	attachBlockIsland(blockDiv, { option, tools } = {}) {
+	attachBlockIsland(blockDiv, { option, tools, className } = {}) {
 		if (!option && (!tools || !tools.length)) return null;
 		if (blockDiv.contentEditable === "true" && !blockDiv.firstChild) {
 			blockDiv.appendChild(document.createElement("br"));
 		}
 		const island = document.createElement("div");
-		island.className = "block-opt";
+		island.className = className ? `block-opt ${className}` : "block-opt";
 		UIManager.sealIsland(island);
 		if (option) island.appendChild(this.createBlockOption(option));
 		for (const tool of tools || []) {
 			island.appendChild(this.createBlockTool(tool));
 		}
-		blockDiv.appendChild(island);
+		const last = blockDiv.lastChild;
+		if (last && last.nodeName === "BR") blockDiv.insertBefore(island, last);
+		else blockDiv.appendChild(island);
 		return island;
+	}
+
+	attachKindPicker(blockDiv, { glyph, title, disabled, onClick }) {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = "block-kind";
+		btn.textContent = glyph;
+		btn.title = title;
+		btn.disabled = !!disabled;
+		UIManager.sealIsland(btn);
+		btn.addEventListener("click", () => {
+			if (!btn.disabled) onClick(btn);
+		});
+		blockDiv.classList.add("has-kind");
+		blockDiv.insertBefore(btn, blockDiv.firstChild);
+		return btn;
 	}
 
 	attachBlockOption(blockDiv, option) {
@@ -182,6 +226,7 @@ class UIManager {
 			btn.textContent = char;
 			btn.title = keys[char];
 			btn.dataset.char = char;
+			btn.disabled = !this.sidebarEnabled;
 			btn.onclick = () => onKeyClick(char);
 			this.elements.specialKeysContainer.appendChild(btn);
 		});

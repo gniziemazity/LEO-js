@@ -80,6 +80,8 @@ function updateLessonData(data) {
 
 function updateCursor(data) {
 	const { currentStep } = data;
+	if (typeof noteLessonAdvanced === "function")
+		noteLessonAdvanced(currentStep);
 	document
 		.querySelectorAll(".cursor, .consumed, .active-block")
 		.forEach((el) => {

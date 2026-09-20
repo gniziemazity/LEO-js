@@ -1,6 +1,7 @@
 (function (root) {
 	const NOTE_KIND = "note";
 	const MOVE_TO_KIND = "move-to";
+	const CODE_KIND = "code";
 
 	const BLOCK_KINDS = [
 		["❓", "question"],
@@ -15,6 +16,14 @@
 		MOVE_TO_KIND,
 	];
 
+	const PICKABLE_KINDS = [NOTE_KIND, CODE_KIND, ...SUPPORT_KINDS.slice(1)];
+
+	const POPUP_TITLES = {
+		note: "Note:",
+		image: "Image:",
+		web: "Web page:",
+	};
+
 	function kindClass(kind) {
 		return `${kind}-block`;
 	}
@@ -22,6 +31,11 @@
 	function kindPrefix(kind) {
 		const found = BLOCK_KINDS.find(([, name]) => name === kind);
 		return found ? found[0] : "";
+	}
+
+	function withKindPrefix(kind, body) {
+		const prefix = kindPrefix(kind);
+		return prefix ? `${prefix} ${body}` : body;
 	}
 
 	function getBlockKind(text) {
@@ -60,6 +74,13 @@
 		return { text: prefix + kept.join(" "), pin: kept.length < parts.length };
 	}
 
+	function addKindRule(kind, background, color) {
+		const own = `.block-tool-add[data-add-kind="${kind}"]`;
+		const text = color ? ` color: ${color};` : "";
+		return `${own},
+			${own}:hover:not(:disabled) { background: ${background};${text} }`;
+	}
+
 	function buildSettingsCSS(settings) {
 		const c = settings.colors;
 		const all = SUPPORT_KINDS.map((k) => "." + kindClass(k)).join(
@@ -81,6 +102,7 @@
 			.move-to-block { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
 			.move-to-note,
 			.mt-modal-note { background: ${c.noteColor}; color: ${c.textColor}; }
+			.media-modal-panel { background: ${c.imageBlockColor}; }
 			.move-to-note::placeholder { color: ${c.textColor}; }
 			${active} {
 				background: ${c.activeBlockColor};
@@ -97,21 +119,30 @@
 			.bt-option[data-value="image"],
 			.bt-option[data-value="web"] { background: ${c.imageBlockColor}; }
 			.bt-option[data-value="snippet"] { background: ${c.snippetColor}; }
+			.bt-option[data-value="code"] { background: ${c.codeBlockColor}; }
 			.bt-option[data-value="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
 			.bt-option { color: ${c.textColor}; }
-			.block-add-btn[data-add-kind="move-to"] { background: ${c.moveToBlockColor}; color: ${c.moveToTextColor}; }
-			.block-add-btn[data-add-kind="note"] { background: ${c.noteColor}; color: #333; }
-			.block-add-btn[data-add-kind="code"] { background: ${c.codeBlockColor}; color: #333; }
+			${addKindRule("note", c.noteColor)}
+			${addKindRule("code", c.codeBlockColor)}
+			${addKindRule("question", c.questionColor)}
+			${addKindRule("image", c.imageBlockColor)}
+			${addKindRule("web", c.imageBlockColor)}
+			${addKindRule("snippet", c.snippetColor)}
+			${addKindRule("move-to", c.moveToBlockColor, c.moveToTextColor)}
 		`;
 	}
 
 	const api = {
 		BLOCK_KINDS,
 		SUPPORT_KINDS,
+		PICKABLE_KINDS,
 		NOTE_KIND,
 		MOVE_TO_KIND,
+		CODE_KIND,
+		POPUP_TITLES,
 		kindClass,
 		kindPrefix,
+		withKindPrefix,
 		getBlockKind,
 		stripBlockPrefix,
 		isMultilineSnippet,

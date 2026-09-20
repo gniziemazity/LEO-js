@@ -25,10 +25,16 @@ function clampScale(v) {
 
 const BARE_CLIENT_MESSAGES = [
 	"toggle-active",
+	"step-backward",
+	"step-forward",
 	"move-to-confirmed",
 	"code-insert-confirmed",
 	"code-insert-paste",
 	"move-to-type-name",
+	"note-confirmed",
+	"media-confirmed",
+	"media-dismissed",
+	"unpin-windows",
 	"interaction-overlay-shown",
 	"interaction-overlay-closed",
 	"mouse-drag-start",
@@ -83,6 +89,8 @@ const CLIENT_MESSAGE_SANITIZERS = {
 		clampNum(d.dy, 10000),
 	],
 	"timer-adjust": (d) => [clampNum(d.minutes, 600)],
+	"pin-window": (d) => [d.pinned === true],
+	"set-auto-pilot": (d) => [!!d && d.autoPilot === true],
 	"remote-edit-key": (d) => [
 		EDIT_KEYS.includes(d && d.action) ? d.action : "copy",
 	],
@@ -116,6 +124,7 @@ class LEOBroadcastServer extends EventEmitter {
 		this.currentState = {
 			progress: 0,
 			isActive: false,
+			autoPilot: false,
 			totalSteps: 0,
 			currentStep: 0,
 			lessonData: null,
@@ -123,10 +132,14 @@ class LEOBroadcastServer extends EventEmitter {
 			activeQuestion: null,
 			activeQuestionBgColor: null,
 			activeQuestionOptions: [],
+			activeQuestionShown: false,
 			students: [],
 			timeRemaining: null,
 			activeMoveTo: null,
 			activeCodeInsert: null,
+			activeNote: null,
+			activeMedia: null,
+			pinnedWindows: { image: false, web: false },
 			floatingWindowCount: 0,
 		};
 	}
@@ -307,6 +320,20 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "active", data: { isActive } });
 	}
 
+	updateAutoPilot(autoPilot) {
+		this.currentState.autoPilot = autoPilot;
+		this.broadcast({ type: "auto-pilot", data: { autoPilot } });
+	}
+
+	clientCount() {
+		if (!this.wss) return 0;
+		let count = 0;
+		this.wss.clients.forEach((client) => {
+			if (client.readyState === WebSocket.OPEN) count++;
+		});
+		return count;
+	}
+
 	updateSettings(settings) {
 		this.currentState.settings = settings;
 		this.broadcast({ type: "settings", data: settings });
@@ -324,6 +351,7 @@ class LEOBroadcastServer extends EventEmitter {
 		this.currentState.activeQuestion = question;
 		this.currentState.activeQuestionBgColor = bgColor || null;
 		this.currentState.activeQuestionOptions = options || [];
+		this.currentState.activeQuestionShown = false;
 		if (students && students.length) this.currentState.students = students;
 		this.broadcast({
 			type: "question-started",
@@ -336,10 +364,16 @@ class LEOBroadcastServer extends EventEmitter {
 		});
 	}
 
+	broadcastQuestionShown() {
+		this.currentState.activeQuestionShown = true;
+		this.broadcast({ type: "question-shown", data: {} });
+	}
+
 	broadcastQuestionEnded() {
 		this.currentState.activeQuestion = null;
 		this.currentState.activeQuestionBgColor = null;
 		this.currentState.activeQuestionOptions = [];
+		this.currentState.activeQuestionShown = false;
 		this.broadcast({ type: "question-ended", data: {} });
 	}
 
@@ -365,6 +399,37 @@ class LEOBroadcastServer extends EventEmitter {
 	broadcastCodeInsertEnded() {
 		this.currentState.activeCodeInsert = null;
 		this.broadcast({ type: "code-insert-ended", data: {} });
+	}
+
+	broadcastNoteStarted(payload) {
+		this.currentState.activeNote = payload;
+		this.broadcast({ type: "note-started", data: payload });
+	}
+
+	broadcastNoteEnded() {
+		this.currentState.activeNote = null;
+		this.broadcast({ type: "note-ended", data: {} });
+	}
+
+	broadcastMediaStarted(payload) {
+		this.currentState.activeMedia = payload;
+		this.broadcast({ type: "media-started", data: payload });
+	}
+
+	broadcastMediaEnded() {
+		this.currentState.activeMedia = null;
+		this.broadcast({ type: "media-ended", data: {} });
+	}
+
+	updatePinnedWindows(pinned) {
+		this.currentState.pinnedWindows = {
+			image: !!pinned.image,
+			web: !!pinned.web,
+		};
+		this.broadcast({
+			type: "pinned-windows",
+			data: this.currentState.pinnedWindows,
+		});
 	}
 
 	updateTimer(timeRemaining) {

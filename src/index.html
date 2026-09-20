@@ -14,6 +14,14 @@
 			>
 				▶︎
 			</button>
+			<button
+				id="autoPilotBtn"
+				title="Auto-pilot (needs a connected remote)"
+				class="interaction-btn btn-auto"
+				disabled
+			>
+				✈️
+			</button>
 			<div id="interaction-controls">
 				<button
 					id="btnStudentQuestion"
@@ -30,14 +38,6 @@
 					🤝
 				</button>
 			</div>
-			<button
-				id="generateArtificialLogBtn"
-				class="artificial-log-btn"
-				title="Generate Artificial Log"
-				style="margin-left: 6px"
-			>
-				🤖
-			</button>
 			<button
 				id="showQrBtn"
 				class="qr-btn"
@@ -56,6 +56,14 @@
 
 			<div id="editor-sidebar" class="sidebar">
 				<div id="special-keys-container" class="sidebar-section"></div>
+				<button
+					id="formatBtn"
+					class="key-btn format-btn"
+					title="Format this code for auto-typing"
+					disabled
+				>
+					✨
+				</button>
 			</div>
 		</div>
 
@@ -77,6 +85,16 @@
 								id="typingHotkeys"
 								placeholder="abcdefghijklmnopqrstuvwxyz"
 							/>
+						</div>
+
+						<div class="setting-item setting-check">
+							<label>
+								<input
+									type="checkbox"
+									id="typingHotkeysOffWithRemote"
+								/>
+								Disable hotkeys while a remote is connected
+							</label>
 						</div>
 
 						<div class="setting-item">

@@ -56,6 +56,10 @@
 			ipcRenderer.send(pinChannel, pinned);
 		}
 		pinBtn.addEventListener("click", () => setPin(!pinned));
+		ipcRenderer.on("pin-state", (event, value) => {
+			pinned = !!value;
+			pinBtn.classList.toggle("pinned", pinned);
+		});
 		return setPin;
 	}
 

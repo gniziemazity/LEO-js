@@ -4,6 +4,7 @@ const {
 	renderTypedName,
 } = require("../shared/snippet-view");
 const { moveToDisplayName } = require("../shared/move-to-target");
+const { POPUP_TITLES } = require("../shared/blocks");
 const {
 	DONE_LABEL,
 	isQuestion,
@@ -19,6 +20,7 @@ class DeskPopup {
 		this.kind = null;
 		this.students = [];
 		this.teacherName = "Teacher";
+		this.confirmKey = "";
 		this.options = null;
 		this.interaction = null;
 		this.moveToBody = null;
@@ -30,6 +32,13 @@ class DeskPopup {
 
 	setTeacherName(name) {
 		this.teacherName = name || "Teacher";
+	}
+
+	setConfirmKey(accelerator) {
+		this.confirmKey = String(accelerator || "").replace(
+			/CommandOrControl|CmdOrCtrl/g,
+			"Ctrl/⌘",
+		);
 	}
 
 	isOpen(kind) {
@@ -135,13 +144,10 @@ class DeskPopup {
 			n.textContent = note;
 			el.appendChild(n);
 		}
-		const body = this._body(el);
-		if (mode === "anchor" && renderSnippet(body, snippet)) {
-		} else {
-			renderTypedName(body, moveToDisplayName(target || "MAIN"), null);
-			body.classList.add("desk-popup-plain");
-			this.moveToBody = body;
-		}
+		const named = mode !== "anchor";
+		if (named) this._moveToName(el, target);
+		if (!this._snippetBody(el, snippet) && !named)
+			this._moveToName(el, target);
 		const row = this._actions(el);
 		if (canTypeName) {
 			this._button(row, "Auto-type", () =>
@@ -150,6 +156,20 @@ class DeskPopup {
 			return;
 		}
 		this._button(row, "OK", () => this._act("client-move-to-confirmed"));
+	}
+
+	_moveToName(el, target) {
+		const body = this._body(el, "desk-popup-plain");
+		renderTypedName(body, moveToDisplayName(target || "MAIN"), null);
+		this.moveToBody = body;
+	}
+
+	_snippetBody(el, snippet) {
+		if (!snippet) return false;
+		const body = this._body(el);
+		if (renderSnippet(body, snippet)) return true;
+		body.remove();
+		return false;
 	}
 
 	setMoveToTyped(data) {
@@ -164,11 +184,39 @@ class DeskPopup {
 		if (paste !== false) {
 			const hint = document.createElement("div");
 			hint.className = "desk-popup-hint";
-			hint.textContent = "(to paste: Ctrl/⌘+V in your editor)";
+			hint.textContent = this.confirmKey
+				? `(to paste: Ctrl/⌘+V in your editor, or ${this.confirmKey} to paste and carry on)`
+				: "(to paste: Ctrl/⌘+V in your editor)";
 			el.appendChild(hint);
 		}
 		this._button(this._actions(el), "OK", () =>
 			this._act("client-code-insert-confirmed"),
+		);
+	}
+
+	_panel(el, className, text) {
+		const p = document.createElement("div");
+		p.className = className;
+		p.textContent = text || "";
+		el.appendChild(p);
+		return p;
+	}
+
+	showNote({ text }) {
+		const el = this._open("note");
+		this._title(el, POPUP_TITLES.note);
+		this._panel(el, "mt-modal-note note-modal-text", text);
+		this._button(this._actions(el), "OK", () =>
+			this._act("client-note-confirmed"),
+		);
+	}
+
+	showMedia({ kind, name }) {
+		const el = this._open(kind);
+		this._title(el, POPUP_TITLES[kind] || "");
+		this._panel(el, "media-modal-panel", name);
+		this._button(this._actions(el), "OK", () =>
+			this._act("client-media-confirmed"),
 		);
 	}
 
@@ -179,8 +227,10 @@ class DeskPopup {
 		this._title(el, question || "");
 
 		const actions = this._actions(el);
-		const show = this._button(actions, "Show", () => {
-			this._send("client-show-question", true);
+		let revealed = false;
+		const reveal = () => {
+			if (revealed) return;
+			revealed = true;
 			show.remove();
 			grid.style.display = "";
 			if (list)
@@ -197,7 +247,12 @@ class DeskPopup {
 					() => this._send("client-question-show-options"),
 					"desk-popup-btn desk-popup-icon",
 				);
+		};
+		const show = this._button(actions, "Show", () => {
+			this._send("client-show-question", true);
+			reveal();
 		});
+		this._revealQuestionUI = reveal;
 		this._button(
 			actions,
 			"✕",
@@ -213,6 +268,12 @@ class DeskPopup {
 			);
 		} else {
 			this._studentBtn(grid, "Answered", () => this._answered(null));
+		}
+	}
+
+	revealQuestion() {
+		if (this.kind === "question" && this._revealQuestionUI) {
+			this._revealQuestionUI();
 		}
 	}
 

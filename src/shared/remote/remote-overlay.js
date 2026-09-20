@@ -46,6 +46,15 @@ class RemoteOverlay {
 		this.closeUI();
 	}
 
+	autoPilotPad() {
+		return null;
+	}
+
+	keepsInteractionBtns() {
+		const overlay = this.el;
+		return !!overlay && overlay.classList.contains("overlay-pad-ok");
+	}
+
 	setPadCovered(covered) {
 		const overlay = this.el;
 		if (overlay) overlay.classList.toggle("pad-lifted", !!covered);
@@ -56,7 +65,7 @@ class RemoteOverlay {
 		if (!overlay) return;
 		if (bg) overlay.style.background = bg;
 		overlay.classList.add("active");
-		setInteractionBtnsVisible(false);
+		if (!this.keepsInteractionBtns()) setInteractionBtnsVisible(false);
 		syncOverlayChrome();
 		syncKeyInputGate();
 	}

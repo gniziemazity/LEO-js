@@ -14,12 +14,13 @@ const SpecialKeys = require("./special-keys");
 const TypingController = require("./typing-controller");
 const QRModalManager = require("./qr-modal");
 const AnchorPreview = require("./anchor-preview");
-const blockInsertBar = require("./block-insert-bar");
 const DeskPopup = require("./desk-popup");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
 const path = require("path");
 const fs = require("fs");
+
+const { PAUSING_KINDS } = CursorManager;
 
 const soundPath = path.join(__dirname, "..", "..", "assets", "sounds");
 
@@ -112,6 +113,19 @@ cursorManager.onLeaveQuestionBlock = () => {
 	finalizeTeacherQuestion();
 };
 
+cursorManager.onEnterNoteBlock = (payload) => {
+	cursorManager.suspendAutoTypingFor("note");
+	deskPopup.showNote(payload);
+	ipcRenderer.send("enter-note-block", payload);
+};
+
+function enterMediaBlock(kind, name) {
+	const payload = { kind, name };
+	cursorManager.suspendAutoTypingFor(kind);
+	deskPopup.showMedia(payload);
+	ipcRenderer.send(`enter-${kind}-block`, payload);
+}
+
 cursorManager.onImageBlock = (imageName, shouldPin) => {
 	const lessonFilePath = lessonManager.getCurrentFilePath();
 	const bgColor = getColor("imageBlockColor", null);
@@ -121,11 +135,13 @@ cursorManager.onImageBlock = (imageName, shouldPin) => {
 		bgColor,
 		shouldPin,
 	});
+	enterMediaBlock("image", imageName);
 };
 
 cursorManager.onWebBlock = (url, shouldPin) => {
 	const bgColor = getColor("imageBlockColor", null);
 	ipcRenderer.send("open-web-window", { url, bgColor, shouldPin });
+	enterMediaBlock("web", url);
 };
 
 cursorManager.onEnterMoveToBlock = (payload) => {
@@ -181,12 +197,6 @@ function playFireworksSound() {
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	anchorPreview.attach(uiManager.getElement("lessonContainer"));
-	blockInsertBar.attach({
-		container: uiManager.getElement("lessonContainer"),
-		lessonManager,
-		blockEditor,
-		uiManager,
-	});
 	settingsUI.initialize();
 	specialKeys.initialize();
 	const coursePlanLoaded = courseUI.init();
@@ -207,40 +217,30 @@ window.addEventListener("DOMContentLoaded", () => {
 	if (bh) bh.addEventListener("click", interaction("providing-help"));
 });
 
-lessonRenderer.onStartWithChanged = () => {
-	const file = lessonManager.getCurrentFilePath();
-	if (!file) return;
-	fileOperations.saveLesson();
-	fileOperations.loadFilePath(file);
-};
-
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
 		typingController.toggleActive();
+	uiManager.getElement("autoPilotBtn").onclick = () =>
+		ipcRenderer.send("set-auto-pilot", !uiManager.autoPilotOn);
+}
 
-	const artBtn = uiManager.getElement("generateArtificialLogBtn");
-	if (artBtn) {
-		artBtn.onclick = () => {
-			const savedSelection = uiManager.getSelectedBlockIndex();
-			if (savedSelection !== null) {
-				uiManager.deselectBlock();
-				lessonRenderer.render();
-			}
+function openArtificialSimulator() {
+	const savedSelection = uiManager.getSelectedBlockIndex();
+	if (savedSelection !== null) {
+		uiManager.deselectBlock();
+		lessonRenderer.render();
+	}
 
-			const events = buildArtificialLogEvents(
-				cursorManager.getExecutionSteps(),
-			);
-			const logPath = logManager.saveArtificialLog(events);
+	const events = buildArtificialLogEvents(cursorManager.getExecutionSteps());
+	const logPath = logManager.saveArtificialLog(events);
 
-			if (savedSelection !== null) {
-				uiManager.selectBlock(savedSelection);
-				lessonRenderer.render();
-			}
+	if (savedSelection !== null) {
+		uiManager.selectBlock(savedSelection);
+		lessonRenderer.render();
+	}
 
-			if (logPath) {
-				ipcRenderer.send("open-log-visualizer", logPath);
-			}
-		};
+	if (logPath) {
+		ipcRenderer.send("open-log-visualizer", logPath);
 	}
 }
 
@@ -252,13 +252,17 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("hotkey-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
 	ipcRenderer.on("move-to-typing", (e, p) => deskPopup.setMoveToTyped(p));
+	const syncDesk = (s) => {
+		deskPopup.setTeacherName(s.teacherName);
+		deskPopup.setConfirmKey(s.hotkeys && s.hotkeys.confirmPopup);
+	};
 	ipcRenderer.on("settings-loaded", (e, s) => {
 		settingsUI.applySettings(s);
-		deskPopup.setTeacherName(s.teacherName);
+		syncDesk(s);
 	});
 	ipcRenderer.on("settings-saved", (e, s) => {
 		settingsUI.applySettings(s);
-		deskPopup.setTeacherName(s.teacherName);
+		syncDesk(s);
 		settingsUI.close();
 	});
 	ipcRenderer.on("new-plan", () => courseUI.newPlan());
@@ -272,9 +276,15 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("open-plan-file", (e, filePath) =>
 		fileOperations.loadFilePath(filePath),
 	);
+	ipcRenderer.on("open-course-path", (e, dir) => courseUI.openCoursePath(dir));
+	ipcRenderer.on("open-artificial-simulator", openArtificialSimulator);
 	ipcRenderer.on("open-settings", () => settingsUI.open());
 	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
 	ipcRenderer.on("client-connected", () => qrModalManager.hideModal());
+	ipcRenderer.on("auto-pilot", (e, on) => uiManager.setAutoPilot(on));
+	ipcRenderer.on("remote-count", (e, count) =>
+		uiManager.setRemotesConnected(count > 0),
+	);
 	ipcRenderer.on("log-interaction", (e, type) =>
 		logManager.addInteraction(type),
 	);
@@ -282,17 +292,13 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("start-auto-typing", () => cursorManager.startAutoTyping());
 	ipcRenderer.on("stop-auto-typing", () => cursorManager.stopAutoTyping());
 
-	ipcRenderer.on("move-to-confirmed", () => {
-		deskPopup.closeIf("move-to");
-		if (cursorManager.confirmSpecial("move-to"))
-			cursorManager.startAutoTyping();
-	});
-
-	ipcRenderer.on("code-insert-confirmed", () => {
-		deskPopup.closeIf("code-insert");
-		if (cursorManager.confirmSpecial("code-insert"))
-			cursorManager.startAutoTyping();
-	});
+	for (const kind of PAUSING_KINDS) {
+		ipcRenderer.on(`${kind}-confirmed`, () => {
+			deskPopup.closeIf(kind);
+			if (cursorManager.confirmSpecial(kind))
+				cursorManager.startAutoTyping();
+		});
+	}
 
 	ipcRenderer.on("question-answered", (event, { studentName }) => {
 		deskPopup.closeIf("question");
@@ -308,7 +314,10 @@ function setupGlobalIpcListeners() {
 		}
 	});
 
-	ipcRenderer.on("question-shown", () => logTeacherQuestionShown());
+	ipcRenderer.on("question-shown", () => {
+		logTeacherQuestionShown();
+		deskPopup.revealQuestion();
+	});
 
 	ipcRenderer.on("question-window-closed", () => {
 		deskPopup.closeIf("question");

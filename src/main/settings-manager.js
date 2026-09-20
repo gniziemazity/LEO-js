@@ -49,6 +49,7 @@ class SettingsManager {
 			answerEffect: "fireworks",
 			teacherName: "Teacher",
 			editorTipSeen: false,
+			typingHotkeysOffWithRemote: false,
 		};
 
 		this.settings = this.load();

@@ -20,6 +20,15 @@
 				>
 					▶︎
 				</button>
+				<button
+					id="autoPilotBtn"
+					class="interaction-btn btn-auto"
+					onclick="requestAutoPilot()"
+					title="Auto-pilot (while auto-typing is on)"
+					disabled
+				>
+					✈️
+				</button>
 				<div id="timerSection">
 					<button
 						id="timerStartBtn"
@@ -94,7 +103,7 @@
 					title="Undo"
 					aria-label="Undo"
 				>
-					<span class="side-btn-emoji">↩️</span>
+					<span class="side-btn-emoji pad-glyph-ccw">↩️</span>
 				</button>
 				<button
 					class="mode-side-btn pad-bar-btn"
@@ -102,7 +111,7 @@
 					title="Enter"
 					aria-label="Enter"
 				>
-					<span class="side-btn-emoji">⏎</span>
+					<span class="side-btn-emoji pad-glyph-ccw">⏎</span>
 				</button>
 				<button
 					class="mode-side-btn pad-bar-btn"
@@ -111,6 +120,24 @@
 					aria-label="Save"
 				>
 					<span class="side-btn-emoji">💾</span>
+				</button>
+			</div>
+			<div id="touchpadStepKeys" class="touchpad-toolbar touchpad-step-bar">
+				<button
+					class="mode-side-btn pad-bar-btn"
+					onclick="remoteStep('back')"
+					title="Step back"
+					aria-label="Step back"
+				>
+					<span class="side-btn-emoji">◀</span>
+				</button>
+				<button
+					class="mode-side-btn pad-bar-btn"
+					onclick="remoteStep('forward')"
+					title="Step forward"
+					aria-label="Step forward"
+				>
+					<span class="side-btn-emoji">▶</span>
 				</button>
 			</div>
 		</div>
@@ -141,6 +168,14 @@
 				title="Keyboard"
 			>
 				<span class="side-btn-emoji">⌨️</span>
+			</button>
+			<button
+				id="modeBtnPin"
+				class="mode-side-btn"
+				onclick="unpinWindows()"
+				title="Unpin the pinned window"
+			>
+				<span class="side-btn-emoji">📌</span>
 			</button>
 		</div>
 
@@ -250,8 +285,41 @@
 					</button>
 					<button
 						class="mt-modal-confirm"
+						id="ciConfirm"
 						onclick="closeCodeInsertOverlay()"
 					>
+						OK
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="noteOverlay" class="overlay overlay-pad-ok">
+			<div class="popup-modal" id="ntModal">
+				<div class="popup-title" id="ntTitle">Note:</div>
+				<div class="mt-modal-note note-modal-text" id="ntText"></div>
+				<div class="mt-modal-actions">
+					<button class="mt-modal-confirm" onclick="closeNoteOverlay()">
+						OK
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="mediaOverlay" class="overlay overlay-pad-ok">
+			<div class="popup-modal" id="mdModal">
+				<div class="popup-title" id="mdTitle"></div>
+				<div class="mt-modal-target media-modal-panel" id="mdName"></div>
+				<div class="mt-modal-actions">
+					<button
+						class="mt-modal-confirm"
+						id="mdPin"
+						onclick="pinMediaWindow()"
+						title="Pin this window"
+					>
+						📌
+					</button>
+					<button class="mt-modal-confirm" onclick="closeMediaOverlay()">
 						OK
 					</button>
 				</div>
@@ -272,6 +340,8 @@
 		<script src="remote/interaction-overlay.js"></script>
 		<script src="remote/move-to-overlay.js"></script>
 		<script src="remote/code-insert-overlay.js"></script>
+		<script src="remote/note-overlay.js"></script>
+		<script src="remote/media-overlay.js"></script>
 		<script src="remote/overlays.js"></script>
 		<script src="remote/plugin.js"></script>
 
@@ -298,6 +368,9 @@
 						updateActiveState(data.isActive);
 						setSessionActive(data.isActive);
 						break;
+					case "auto-pilot":
+						setAutoPilot(data.autoPilot);
+						break;
 					case "students":
 						setStudents(data.students);
 						break;
@@ -308,6 +381,9 @@
 							data.bgColor,
 							data.options,
 						);
+						break;
+					case "question-shown":
+						revealQuestionOverlay();
 						break;
 					case "question-ended":
 						closeQuestionOverlayUI();
@@ -333,6 +409,21 @@
 					case "code-insert-ended":
 						closeCodeInsertOverlayUI();
 						break;
+					case "note-started":
+						showNoteOverlay(data);
+						break;
+					case "note-ended":
+						closeNoteOverlayUI();
+						break;
+					case "media-started":
+						showMediaOverlay(data);
+						break;
+					case "media-ended":
+						closeMediaOverlayUI();
+						break;
+					case "pinned-windows":
+						setPinnedWindows(data);
+						break;
 					case "timer-tick":
 						showTimerRunning(data.timeRemaining);
 						break;
@@ -348,6 +439,7 @@
 					updateActiveState(state.isActive);
 					setSessionActive(state.isActive);
 				}
+				setAutoPilot(state.autoPilot === true);
 				if (state.settings) applySettings(state.settings);
 				if (state.lessonData) updateLessonData(state.lessonData);
 				if (state.currentStep !== undefined)
@@ -360,9 +452,14 @@
 						state.activeQuestionBgColor,
 						state.activeQuestionOptions,
 					);
+				if (state.activeQuestion && state.activeQuestionShown)
+					revealQuestionOverlay();
 				if (state.activeMoveTo) showMoveToOverlay(state.activeMoveTo);
 				if (state.activeCodeInsert)
 					showCodeInsertOverlay(state.activeCodeInsert);
+				setPinnedWindows(state.pinnedWindows);
+				if (state.activeNote) showNoteOverlay(state.activeNote);
+				if (state.activeMedia) showMediaOverlay(state.activeMedia);
 				if (state.timeRemaining != null)
 					showTimerRunning(state.timeRemaining);
 				else showTimerStopped();

@@ -1,6 +1,5 @@
 const { extractAnchorSnippet } = require("./anchor-snippet");
 const { renderSnippet } = require("../shared/snippet-view");
-const { classifyMoveToTarget } = require("../shared/move-to-target");
 
 const SHOW_DELAY_MS = 120;
 const MARGIN = 8;
@@ -63,8 +62,7 @@ class AnchorPreview {
 	_onOver(e) {
 		if (this.uiManager.isActive()) return;
 		const hit = this._hoverTarget(e);
-		if (!hit || classifyMoveToTarget(hit.value).mode !== "anchor") return;
-		if (hit.el === this.target) return;
+		if (!hit || hit.el === this.target) return;
 		this.hide();
 		this.target = hit.el;
 		this.timer = setTimeout(() => this._show(hit), SHOW_DELAY_MS);

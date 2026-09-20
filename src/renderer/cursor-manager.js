@@ -12,8 +12,17 @@ const SPECIAL_BLOCKS = {
 			if (cm.onLeaveQuestionBlock) cm.onLeaveQuestionBlock();
 		},
 	},
-	image: { closeChannel: "close-image-window" },
-	web: { closeChannel: "close-web-window" },
+	note: { closeChannel: "close-note-window", pausesTyping: true },
+	image: {
+		closeChannel: "close-image-window",
+		pausesTyping: true,
+		keepsWindow: true,
+	},
+	web: {
+		closeChannel: "close-web-window",
+		pausesTyping: true,
+		keepsWindow: true,
+	},
 	"move-to": { closeChannel: "close-move-to-window", pausesTyping: true },
 	"code-insert": {
 		closeChannel: "close-code-insert-window",
@@ -25,13 +34,18 @@ const SPECIAL_BLOCK_KINDS = Object.keys(SPECIAL_BLOCKS);
 const PAUSING_KINDS = SPECIAL_BLOCK_KINDS.filter(
 	(kind) => SPECIAL_BLOCKS[kind].pausesTyping,
 );
-const TRANSIENT_KINDS = ["code-insert", "move-to"];
+const TRANSIENT_KINDS = ["code-insert", "move-to", "note"];
 
 const BLOCK_ENTRIES = {
 	"move-to": {
 		keep: "move-to",
-		clear: ["code-insert"],
+		clear: ["code-insert", "note"],
 		enter: (cm, step) => cm._enterMoveToBlock(step),
+	},
+	note: {
+		keep: "note",
+		clear: ["code-insert", "move-to"],
+		enter: (cm, step) => cm._enterNoteBlock(step),
 	},
 	question: {
 		keep: "question",
@@ -50,7 +64,7 @@ const BLOCK_ENTRIES = {
 	},
 	snippet: {
 		keep: "code-insert",
-		clear: [],
+		clear: ["note"],
 		enter: (cm, step) => cm._enterCodeInsertBlock(step),
 	},
 };
@@ -65,6 +79,7 @@ class CursorManager {
 		this.executionSteps = [];
 		this.autoTypingActive = false;
 
+		this.onEnterNoteBlock = null;
 		this.onEnterQuestionBlock = null;
 		this.onLeaveQuestionBlock = null;
 		this.onImageBlock = null;
@@ -128,7 +143,7 @@ class CursorManager {
 	_block(kind) {
 		let b = this._blocks[kind];
 		if (!b) {
-			b = { open: false, at: null, resumeAuto: false };
+			b = { open: false, at: null, resumeAuto: false, waiting: false };
 			this._blocks[kind] = b;
 		}
 		return b;
@@ -139,11 +154,13 @@ class CursorManager {
 		if (b.at === globalIndex) return false;
 		b.at = globalIndex;
 		if (opensWindow) b.open = true;
+		if (SPECIAL_BLOCKS[kind].pausesTyping) b.waiting = true;
 		return true;
 	}
 
 	_leaveBlock(kind) {
 		const b = this._block(kind);
+		b.waiting = false;
 		if (!b.open) return;
 		b.open = false;
 		b.at = null;
@@ -161,6 +178,13 @@ class CursorManager {
 
 	_clearBlockIndices(kinds) {
 		for (const kind of kinds) this._block(kind).at = null;
+	}
+
+	_enterNoteBlock(step) {
+		const text = stripBlockPrefix(String(step.text || "")).trim();
+		if (!text) return;
+		if (!this._arriveAt("note", step.globalIndex, true)) return;
+		if (this.onEnterNoteBlock) this.onEnterNoteBlock({ text });
 	}
 
 	_enterQuestionBlock(step) {
@@ -234,8 +258,11 @@ class CursorManager {
 
 	confirmSpecial(kind) {
 		const b = this._block(kind);
-		b.open = false;
-		b.at = null;
+		b.waiting = false;
+		if (!SPECIAL_BLOCKS[kind].keepsWindow) {
+			b.open = false;
+			b.at = null;
+		}
 		const shouldResume = !!b.resumeAuto;
 		b.resumeAuto = false;
 		return shouldResume;
@@ -263,10 +290,7 @@ class CursorManager {
 		step.element.classList.add("active-block");
 		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
 
-		const key =
-			step.kind === "move-to"
-				? "move-to"
-				: getBlockKind(String(step.text || "").trim());
+		const key = step.kind || getBlockKind(String(step.text || "").trim());
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
 
 		this._leaveSpecialBlocksExcept(entry.keep);
@@ -354,7 +378,7 @@ class CursorManager {
 
 	async startAutoTyping() {
 		if (this.autoTypingActive) return;
-		if (PAUSING_KINDS.some((kind) => this._block(kind).open)) {
+		if (PAUSING_KINDS.some((kind) => this._block(kind).waiting)) {
 			ipcRenderer.send("auto-typing-complete");
 			return;
 		}
@@ -428,5 +452,7 @@ class CursorManager {
 		}, 0);
 	}
 }
+
+CursorManager.PAUSING_KINDS = PAUSING_KINDS;
 
 module.exports = CursorManager;

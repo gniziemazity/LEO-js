@@ -167,11 +167,25 @@ test("hovering does nothing while typing is active", () => {
 	assert.equal(p.target, null);
 });
 
-test("a dropdown item that names a file is not an anchor hover", () => {
+test("a dropdown item that names a file previews that file", () => {
 	const p = build();
 	const { opt } = optionOf(3, "app.js");
 	p._onOver({ target: opt });
-	assert.equal(p.target, null);
+	assert.equal(p.target, opt, "a file is a place to land too");
+	clearTimeout(p.timer);
+	p._show(p._hoverTarget({ target: opt }));
+	assert.equal(p.el.style.display, "block");
+	assert.ok(
+		lines(p).some((l) => l.includes("const d = 4;")),
+		`the last line typed is missing from ${JSON.stringify(lines(p))}`,
+	);
+});
+
+test("a file with nothing in it yet shows no preview", () => {
+	const p = build();
+	const { opt } = optionOf(3, "style.css");
+	p._show(p._hoverTarget({ target: opt }));
+	assert.notEqual(p.el && p.el.style.display, "block");
 });
 
 test("hovering a plain block is not an anchor hover", () => {

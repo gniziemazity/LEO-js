@@ -21,6 +21,10 @@ let scrollAccum = 0;
 const touchpadModeHandlers = {};
 let activeModeHandler = null;
 let touchpadModeSeq = 0;
+let autoPilot = false;
+const PAD_OFF = "off";
+let padOverride = null;
+let lastCursorStep = null;
 
 function registerTouchpadMode(name, handler) {
 	touchpadModeHandlers[name] = handler;
@@ -130,9 +134,23 @@ function closeTouchpad() {
 }
 
 async function setTouchpadMode(mode) {
-	const handler = touchpadModeHandlers[mode];
-	if (!handler && mode === "keyboard" && !keyInputAllowed()) return;
+	if (!touchpadModeHandlers[mode] && mode === "keyboard" && !keyInputAllowed())
+		return;
+	if (!touchpadModeHandlers[mode] && blockingOverlayOpen()) return;
+	if (autoPilot) {
+		if (touchpadModeHandlers[mode] || blockingOverlayOpen()) return;
+		if (touchpadActive && !activeModeHandler && touchpadMode === mode) {
+			padOverride = PAD_OFF;
+			closeTouchpad();
+			return;
+		}
+		padOverride = mode;
+	}
+	await showPad(mode);
+}
 
+async function showPad(mode) {
+	const handler = touchpadModeHandlers[mode];
 	const seq = ++touchpadModeSeq;
 
 	const alreadyActive = handler
@@ -178,11 +196,12 @@ function setTouchpadSensitivity(sensitivity) {
 
 let sessionActive = false;
 
+function blockingOverlayOpen() {
+	return !!document.querySelector(".overlay.active:not(.overlay-pad-ok)");
+}
+
 function keyInputAllowed() {
-	return (
-		sessionActive &&
-		!document.querySelector(".overlay.active:not(.overlay-pad-ok)")
-	);
+	return sessionActive && !blockingOverlayOpen();
 }
 
 function padOverlay() {
@@ -199,6 +218,10 @@ function editKeysWanted() {
 	return touchpadMode === "mouse";
 }
 
+function stepKeysWanted() {
+	return touchpadActive && !activeModeHandler && touchpadMode === "keyboard";
+}
+
 function padCoversPopup() {
 	if (!touchpadActive) return false;
 	if (!activeModeHandler) return true;
@@ -213,12 +236,22 @@ function publishModesExtent() {
 	const h = el.offsetHeight;
 	if (h)
 		document.documentElement.style.setProperty("--modes-extent", h + "px");
+	for (const btn of el.children) {
+		if (!btn.offsetWidth) continue;
+		const box = btn.getBoundingClientRect();
+		const style = document.documentElement.style;
+		style.setProperty("--mode-btn-w", box.width + "px");
+		style.setProperty("--mode-btn-h", box.height + "px");
+		break;
+	}
 }
 
 function syncTouchpadToolbar() {
 	publishModesExtent();
 	const keys = document.getElementById("touchpadEditKeys");
 	if (keys) keys.classList.toggle("visible", editKeysWanted());
+	const stepKeys = document.getElementById("touchpadStepKeys");
+	if (stepKeys) stepKeys.classList.toggle("visible", stepKeysWanted());
 
 	const overlay = padOverlay();
 	if (overlay && overlay.setPadCovered)
@@ -229,41 +262,74 @@ function remoteEditKey(action) {
 	sendMessage("remote-edit-key", { action });
 }
 
-let padModeBeforeMoveTo = null;
-
-async function padEnterMoveTo() {
-	if (padModeBeforeMoveTo) return;
-	if (!touchpadActive || activeModeHandler) return;
-	if (touchpadMode !== "keyboard") return;
-	padModeBeforeMoveTo = touchpadMode;
-	await setTouchpadMode("mouse");
+function remoteStep(direction) {
+	sendMessage(direction === "back" ? "step-backward" : "step-forward", {});
 }
 
-async function padTypeName() {
-	if (!touchpadActive || activeModeHandler) return;
-	padModeBeforeMoveTo = null;
-	if (touchpadMode === "keyboard") return;
-	await setTouchpadMode("keyboard");
+function autoPilotMode() {
+	if (!sessionActive) return "mouse";
+	const overlay = padOverlay();
+	const wanted = overlay && overlay.autoPilotPad && overlay.autoPilotPad();
+	return wanted || "keyboard";
 }
 
-async function padLeaveMoveTo() {
-	const back = padModeBeforeMoveTo;
-	padModeBeforeMoveTo = null;
-	if (!back) return;
-	if (!touchpadActive || activeModeHandler) return;
-	if (touchpadMode !== "mouse") return;
-	await setTouchpadMode(back);
+function noteLessonAdvanced(step) {
+	if (step === lastCursorStep) return;
+	lastCursorStep = step;
+	if (!autoPilot || !padOverride) return;
+	padOverride = null;
+	followAutoPilot();
+}
+
+async function followAutoPilot() {
+	if (blockingOverlayOpen()) {
+		if (touchpadActive) closeTouchpad();
+		return;
+	}
+	if (padOverride === PAD_OFF) {
+		if (touchpadActive) closeTouchpad();
+		return;
+	}
+	const want = padOverride || autoPilotMode();
+	if (touchpadActive && !activeModeHandler && touchpadMode === want) {
+		updateModeBtns(want);
+		return;
+	}
+	await showPad(want);
+}
+
+function setAutoPilot(on) {
+	const next = !!on;
+	if (next === autoPilot) return;
+	autoPilot = next;
+	padOverride = null;
+	const btn = document.getElementById("autoPilotBtn");
+	if (btn) btn.classList.toggle("auto-on", next);
+	if (next) followAutoPilot();
+	else if (touchpadActive) closeTouchpad();
+}
+
+function syncAutoPilotBtn() {
+	const btn = document.getElementById("autoPilotBtn");
+	if (btn) btn.disabled = !sessionActive;
+}
+
+function requestAutoPilot() {
+	if (!sessionActive) return;
+	sendMessage("set-auto-pilot", { autoPilot: !autoPilot });
 }
 
 function syncKeyInputGate() {
 	const allowed = keyInputAllowed();
 	const btn = document.getElementById("modeBtnKeyboard");
 	if (btn) btn.classList.toggle("kb-disabled", !allowed);
-	if (
-		!allowed &&
+	if (autoPilot) {
+		padOverride = null;
+		followAutoPilot();
+	} else if (
 		touchpadActive &&
 		!activeModeHandler &&
-		touchpadMode === "keyboard"
+		(blockingOverlayOpen() || (!allowed && touchpadMode === "keyboard"))
 	) {
 		closeTouchpad();
 	}
@@ -272,6 +338,7 @@ function syncKeyInputGate() {
 
 function setSessionActive(active) {
 	sessionActive = !!active;
+	syncAutoPilotBtn();
 	syncKeyInputGate();
 }
 

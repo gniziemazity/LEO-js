@@ -14,6 +14,8 @@ const questionOverlay = new QuestionOverlay();
 const interactionOverlay = new InteractionOverlay();
 const moveToOverlay = new MoveToOverlay();
 const codeInsertOverlay = new CodeInsertOverlay();
+const noteOverlay = new NoteOverlay();
+const mediaOverlay = new MediaOverlay();
 
 function showQuestionOverlay(question, students, bgColor, options) {
 	questionOverlay.show(question, students, bgColor, options);
@@ -21,6 +23,10 @@ function showQuestionOverlay(question, students, bgColor, options) {
 
 function showQuestionToTeacher(animate) {
 	questionOverlay.showToTeacher(animate);
+}
+
+function revealQuestionOverlay() {
+	questionOverlay.reveal();
 }
 
 function closeQuestionOverlayUI() {
@@ -69,6 +75,49 @@ function closeCodeInsertOverlay() {
 
 function codeInsertPaste() {
 	codeInsertOverlay.paste();
+}
+
+function showNoteOverlay(payload) {
+	noteOverlay.show(payload);
+}
+
+function closeNoteOverlayUI() {
+	noteOverlay.closeUI();
+}
+
+function closeNoteOverlay() {
+	noteOverlay.confirm();
+}
+
+function showMediaOverlay(payload) {
+	mediaOverlay.show(payload);
+}
+
+function closeMediaOverlayUI() {
+	mediaOverlay.closeUI();
+}
+
+function closeMediaOverlay() {
+	mediaOverlay.confirm();
+}
+
+function pinMediaWindow() {
+	mediaOverlay.pin();
+}
+
+function setPinnedWindows(pinned) {
+	mediaOverlay.setPinned(pinned);
+	const btn = document.getElementById("modeBtnPin");
+	if (btn)
+		btn.classList.toggle(
+			"pin-visible",
+			!!(pinned && (pinned.image || pinned.web)),
+		);
+	syncTouchpadToolbar();
+}
+
+function unpinWindows() {
+	sendMessage("unpin-windows", {});
 }
 
 function moveToTypeName() {
