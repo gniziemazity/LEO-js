@@ -42,6 +42,11 @@ function blockStep(text, extra) {
 
 const BLOCKS = [
 	{
+		name: "note",
+		step: blockStep("Remember the semicolon"),
+		closes: "close-note-window",
+	},
+	{
 		name: "question",
 		step: blockStep("❓ Why?"),
 		closes: "close-question-window",

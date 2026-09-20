@@ -111,6 +111,30 @@ test("the move-to card shows the snippet and names the file to open", () => {
 	assert.equal(popup.isOpen(), false, "confirming closes the card");
 });
 
+test("a file move-to names the file above the code it lands in", () => {
+	const { popup } = build();
+	popup.showMoveTo({
+		mode: "file",
+		target: "app.js",
+		snippet: { ...SNIPPET, switchTo: null },
+	});
+	assert.equal(popup.el.children[0].textContent, "Go to:");
+	assert.equal(popup.el.children[1].textContent, "app.js");
+	assert.equal(popup.el.children[2].children.length, 2);
+	assert.equal(popup.el.children[3].className, "desk-popup-actions");
+});
+
+test("an anchor that cannot be found falls back to its name", () => {
+	const { popup } = build();
+	popup.showMoveTo({
+		mode: "anchor",
+		target: "⚓9⚓",
+		snippet: { lines: [] },
+	});
+	assert.equal(popup.el.children.length, 3, "no empty code box is left");
+	assert.equal(popup.el.children[1].textContent, "⚓9⚓");
+});
+
 test("a move-to that is not an anchor just names its target", () => {
 	const { popup } = build();
 	popup.showMoveTo({ mode: "dev", target: "DEV", snippet: null });
@@ -132,6 +156,62 @@ test("the code-insert card points at the clipboard, with no Paste button", () =>
 	);
 	byLabel(popup, "OK").click();
 	assert.deepEqual(sent, [["client-code-insert-confirmed"]]);
+});
+
+test("the note card shows the note and confirms it", () => {
+	const { popup, sent } = build();
+	popup.showNote({ text: "Mind the\nindentation" });
+	assert.equal(popup.isOpen("note"), true);
+	assert.equal(popup.el.children[0].textContent, "Note:");
+	assert.equal(popup.el.children[1].textContent, "Mind the\nindentation");
+	assert.match(
+		popup.el.children[1].className,
+		/mt-modal-note/,
+		"it wears the note colour the Settings theme sets",
+	);
+	byLabel(popup, "OK").click();
+	assert.deepEqual(sent, [["client-note-confirmed"]]);
+	assert.equal(popup.isOpen(), false);
+});
+
+test("the image and web cards name what is shown, under their own kind", () => {
+	for (const [kind, title] of [
+		["image", "Image:"],
+		["web", "Web page:"],
+	]) {
+		const { popup, sent } = build();
+		popup.showMedia({ kind, name: "flex.webp" });
+		assert.equal(popup.isOpen(kind), true, "closeIf(kind) must find it");
+		assert.equal(popup.el.children[0].textContent, title);
+		assert.equal(popup.el.children[1].textContent, "flex.webp");
+		assert.deepEqual(
+			buttons(popup).map((b) => b.textContent),
+			["OK"],
+			"the desk pins from the window's own 📌",
+		);
+		byLabel(popup, "OK").click();
+		assert.deepEqual(sent, [["client-media-confirmed"]]);
+	}
+});
+
+test("the snippet hint names the key that pastes and carries on", () => {
+	const { popup } = build();
+	const hint = () =>
+		popup.el.children.find((c) => c.className === "desk-popup-hint")
+			.textContent;
+	popup.showCodeInsert({ text: "x", colored: null });
+	assert.equal(hint(), "(to paste: Ctrl/⌘+V in your editor)");
+
+	popup.setConfirmKey("CommandOrControl+Enter");
+	popup.showCodeInsert({ text: "x", colored: null });
+	assert.equal(
+		hint(),
+		"(to paste: Ctrl/⌘+V in your editor, or Ctrl/⌘+Enter to paste and carry on)",
+	);
+
+	popup.setConfirmKey("Alt+P");
+	popup.showCodeInsert({ text: "x", colored: null });
+	assert.match(hint(), /or Alt\+P to paste/, "a rebound key is the one named");
 });
 
 test("the question card reveals the students only after Show", () => {
@@ -471,4 +551,37 @@ test("the card shows the typed name as it advances", () => {
 		"the return is shown as part of what gets typed",
 	);
 	assert.equal(body.children[3].className, "mt-modal-anchor-cursor");
+});
+
+test("the question card reveals itself when the confirm key shows the question", () => {
+	const { popup, sent } = build();
+	popup.showQuestion({ question: "q", options: ["a"], students: ["Ada"] });
+	popup.revealQuestion();
+	assert.equal(byLabel(popup, "Show"), undefined, "Show is spent");
+	assert.notEqual(
+		byLabel(popup, "🎲"),
+		undefined,
+		"the students can be picked",
+	);
+	assert.deepEqual(
+		sent,
+		[],
+		"main already showed it; the card must not ask again",
+	);
+	popup.revealQuestion();
+	assert.equal(
+		buttons(popup).filter((b) => b.textContent === "🎲").length,
+		1,
+		"a second reveal changes nothing",
+	);
+});
+
+test("a reveal aimed at a card that is gone does nothing", () => {
+	const { popup } = build();
+	popup.showQuestion({ question: "q", options: null, students: ["Ada"] });
+	popup.close();
+	popup.revealQuestion();
+	popup.showNote({ text: "hi" });
+	popup.revealQuestion();
+	assert.equal(byLabel(popup, "🎲"), undefined);
 });

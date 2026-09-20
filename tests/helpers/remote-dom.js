@@ -14,6 +14,8 @@ const LOAD_ORDER = [
 	"interaction-overlay.js",
 	"move-to-overlay.js",
 	"code-insert-overlay.js",
+	"note-overlay.js",
+	"media-overlay.js",
 	"overlays.js",
 ];
 
@@ -65,6 +67,7 @@ function el(id) {
 	};
 	node.querySelectorAll = () => [];
 	node.addEventListener = () => {};
+	node.blur = () => {};
 	Object.defineProperty(node, "firstChild", {
 		get: () => node.children[0] || null,
 	});
@@ -84,8 +87,10 @@ function build(opts = {}) {
 		"mobile-header",
 		"modeBtnKeyboard",
 		"modeBtnMouse",
+		"autoPilotBtn",
 		"modeSideBtns",
 		"touchpadEditKeys",
+		"touchpadStepKeys",
 		"mtoConfirm",
 		"mtoActions",
 		"mtoTypeName",
@@ -113,6 +118,15 @@ function build(opts = {}) {
 		"ciCode",
 		"ciActions",
 		"ciPaste",
+		"ciConfirm",
+		"noteOverlay",
+		"ntTitle",
+		"ntText",
+		"mediaOverlay",
+		"mdTitle",
+		"mdName",
+		"mdPin",
+		"modeBtnPin",
 		"lesson-container",
 	];
 	const nodes = {};
@@ -121,17 +135,25 @@ function build(opts = {}) {
 	nodes.questionOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.moveToOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.codeInsertOverlay.classList.add("overlay overlay-pad-ok");
+	nodes.noteOverlay.classList.add("overlay overlay-pad-ok");
+	nodes.mediaOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.interactionOverlay.classList.add("overlay");
 
 	const overlayIds = [
 		"questionOverlay",
 		"moveToOverlay",
 		"codeInsertOverlay",
+		"noteOverlay",
+		"mediaOverlay",
 		"interactionOverlay",
 	];
 
+	const interactionBtns = [el("btnQuestion"), el("btnHelp")];
+	const root = el("html");
+
 	const document = {
 		body: el("body"),
+		documentElement: root,
 		getElementById: (id) => nodes[id] || null,
 		createElement: () => el(""),
 		createDocumentFragment: () => {
@@ -151,7 +173,10 @@ function build(opts = {}) {
 			}
 			return null;
 		},
-		querySelectorAll: () => [],
+		querySelectorAll: (sel) =>
+			sel === ".mode-side-btn-question, .mode-side-btn-help"
+				? interactionBtns
+				: [],
 		addEventListener: () => {},
 	};
 
@@ -190,12 +215,16 @@ function build(opts = {}) {
 		"closeCodeInsertOverlay,codeInsertPaste," +
 		"updateLessonData,applySettings,updateCursor," +
 		"showQuestionToTeacher,closeQuestionOverlay,closeMoveToOverlay," +
-		"moveToTypeName," +
-		"handleInteractionBtn,setStudents,activePadOverlay," +
+		"moveToTypeName,setAutoPilot,requestAutoPilot,remoteStep," +
+		"moveToSetTyped:(d)=>moveToOverlay.setTyped(d)," +
+		"showNoteOverlay,closeNoteOverlayUI,closeNoteOverlay," +
+		"showMediaOverlay,closeMediaOverlayUI,closeMediaOverlay," +
+		"pinMediaWindow,setPinnedWindows,unpinWindows,closeActiveOverlay," +
+		"handleInteractionBtn,closeInteractionOverlay,setStudents,activePadOverlay," +
 		"padMode:()=>(touchpadActive?touchpadMode:null)};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));
 
-	return { api: sandbox.module.exports, nodes, sent };
+	return { api: sandbox.module.exports, nodes, sent, interactionBtns, root };
 }
 
 module.exports = { buildRemote: build };

@@ -94,7 +94,6 @@ test("the editor-only UI never reaches the remote", () => {
 	for (const name of [
 		"anchor-preview.js",
 		"move-to-dropdown.js",
-		"block-insert-bar.js",
 		"block-types.js",
 	]) {
 		assert.equal(

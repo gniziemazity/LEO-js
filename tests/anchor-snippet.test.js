@@ -16,11 +16,56 @@ const codeBlocks = [
 	},
 ];
 
-test("extractAnchorSnippet: returns null for non-anchor targets", () => {
-	assert.equal(extractAnchorSnippet("foo", 1, codeBlocks), null);
-	assert.equal(extractAnchorSnippet("", 1, codeBlocks), null);
-	assert.equal(extractAnchorSnippet(null, 1, codeBlocks), null);
+test("extractAnchorSnippet: returns null when nothing was typed where it goes", () => {
+	assert.equal(extractAnchorSnippet("foo", 0, codeBlocks), null);
+	assert.equal(extractAnchorSnippet("", 0, codeBlocks), null);
+	assert.equal(extractAnchorSnippet(null, 0, codeBlocks), null);
 	assert.equal(extractAnchorSnippet("⚓⚓", 1, []), null);
+});
+
+const FILE_PLAN = [
+	{ type: "move-to", target: "app.js" },
+	{ type: "code", text: "let a = 1;\nlet b = 2;\nlet c = 3;↑" },
+	{ type: "move-to", target: "MAIN" },
+	{ type: "code", text: "<p>" },
+	{ type: "move-to", target: "app.js" },
+];
+
+test("a move-to into a file shows the file where typing left it", () => {
+	const r = extractAnchorSnippet("app.js", 4, FILE_PLAN, 1, 1);
+	assert.deepEqual(r.lines, ["let a = 1;", "let b = 2;", "let c = 3;"]);
+	assert.equal(r.arrowIdx, 1, "the ↑ left the caret on the middle line");
+	assert.equal(r.anchorCol, 10);
+	assert.equal(
+		r.switchTo,
+		null,
+		"the target already names the file; a switchTo would log it twice",
+	);
+});
+
+test("the first visit to a file has nothing to show", () => {
+	assert.equal(
+		extractAnchorSnippet("app.js", 0, FILE_PLAN),
+		null,
+		"that is the move-to that offers to type the name, which owns the body",
+	);
+	assert.equal(
+		extractAnchorSnippet("style.css", 4, FILE_PLAN),
+		null,
+		"nor does a file the plan never opened",
+	);
+});
+
+test("MAIN and DEV show their own editor the same way", () => {
+	const r = extractAnchorSnippet("MAIN", 4, FILE_PLAN, 0, 0);
+	assert.deepEqual(r.lines, ["<p>"]);
+	assert.equal(r.anchorCol, 3);
+	assert.equal(extractAnchorSnippet("DEV", 4, FILE_PLAN), null);
+	assert.equal(
+		extractAnchorSnippet("MAIN", 2, FILE_PLAN),
+		null,
+		"the move-to itself sees the plan only up to where it stands",
+	);
 });
 
 test("extractAnchorSnippet: returns null for a file-like anchor id (has extension)", () => {

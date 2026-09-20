@@ -45,7 +45,7 @@ const WINDOWS = [
 ];
 
 function makeDom({ withPin }) {
-	const listeners = { document: {}, window: {} };
+	const listeners = { document: {}, window: {}, ipc: {} };
 	const sent = [];
 
 	function node(tag) {
@@ -114,7 +114,12 @@ function makeDom({ withPin }) {
 	};
 	const requireStub = (name) => {
 		assert.equal(name, "electron");
-		return { ipcRenderer: { send: (...a) => sent.push(a) } };
+		return {
+			ipcRenderer: {
+				send: (...a) => sent.push(a),
+				on: (channel, fn) => (listeners.ipc[channel] = fn),
+			},
+		};
 	};
 
 	new Function("require", "document", "window", SHARED)(

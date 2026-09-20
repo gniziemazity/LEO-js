@@ -90,7 +90,12 @@ function mainSrc() {
 test("every pausing popup is torn down in one place, so the key cannot outlive it", () => {
 	const src = mainSrc();
 
-	for (const call of ["broadcastMoveToEnded", "broadcastCodeInsertEnded"]) {
+	for (const call of [
+		"broadcastMoveToEnded",
+		"broadcastCodeInsertEnded",
+		"broadcastNoteEnded",
+		"broadcastMediaEnded",
+	]) {
 		assert.equal(
 			(src.match(new RegExp(`${call}\\(\\)`, "g")) || []).length,
 			1,
@@ -126,7 +131,13 @@ test("every pausing popup is torn down in one place, so the key cannot outlive i
 test("both popups arm the same key and answer to the same confirm", () => {
 	const src = mainSrc();
 
-	for (const channel of ["enter-move-to-block", "enter-code-insert-block"]) {
+	for (const channel of [
+		"enter-move-to-block",
+		"enter-code-insert-block",
+		"enter-note-block",
+		"enter-image-block",
+		"enter-web-block",
+	]) {
 		assert.match(
 			src,
 			new RegExp(`ipcMain\\.on\\("${channel}"[\\s\\S]{0,120}enterPopup\\(`),
@@ -143,6 +154,7 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	for (const client of [
 		"client-move-to-confirmed",
 		"client-code-insert-confirmed",
+		"client-note-confirmed",
 	]) {
 		assert.match(
 			src,

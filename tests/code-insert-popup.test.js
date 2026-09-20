@@ -174,26 +174,49 @@ test("the remote popup renders every line of the code", () => {
 	assert.equal(ctx.nodes.ciCode.children.length, CODE.split("\n").length);
 });
 
-test("Paste sends paste and leaves the popup open; OK sends the confirm", () => {
+test("Paste is the popup's one action: it pastes and closes", () => {
 	const ctx = buildRemote();
 	openPopup(ctx);
+	assert.equal(ctx.nodes.ciPaste.style.display, "");
+	assert.equal(
+		ctx.nodes.ciConfirm.style.display,
+		"none",
+		"an OK beside Paste would be a second, different way to finish",
+	);
 
 	ctx.api.codeInsertPaste();
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
 		["code-insert-paste"],
-		"Paste must not confirm — you may want to paste twice",
-	);
-	assert.equal(ctx.nodes.codeInsertOverlay.classList.contains("active"), true);
-
-	ctx.api.closeCodeInsertOverlay();
-	assert.deepEqual(
-		ctx.sent.map((m) => m.type),
-		["code-insert-paste", "code-insert-confirmed"],
+		"the host confirms after the paste; a confirm from here would race it",
 	);
 	assert.equal(
 		ctx.nodes.codeInsertOverlay.classList.contains("active"),
 		false,
+	);
+});
+
+test("with Paste off, OK is the way on", () => {
+	const ctx = buildRemote();
+	ctx.api.showCodeInsertOverlay({ text: CODE, colored: null, paste: false });
+	assert.equal(ctx.nodes.ciPaste.style.display, "none");
+	assert.equal(ctx.nodes.ciConfirm.style.display, "");
+
+	ctx.api.closeCodeInsertOverlay();
+	assert.deepEqual(
+		ctx.sent.map((m) => m.type),
+		["code-insert-confirmed"],
+	);
+	assert.equal(
+		ctx.nodes.codeInsertOverlay.classList.contains("active"),
+		false,
+	);
+
+	openPopup(ctx);
+	assert.equal(
+		ctx.nodes.ciConfirm.style.display,
+		"none",
+		"the next popup with Paste on hides OK again",
 	);
 });
 

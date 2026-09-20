@@ -140,7 +140,34 @@ test("the snippet shown is still the anchor's own file", () => {
 	assert.equal(ctx.nodes.mtoTarget.style.display, "none");
 });
 
-test("plain file, main and dev move-tos are unchanged", () => {
+test("a file move-to shows the name and the code where typing left it", () => {
+	const ctx = buildRemote();
+	const snippet = extractAnchorSnippet("other.js", 5, CROSS_FILE_BLOCKS);
+	ctx.api.showMoveToOverlay({ mode: "file", target: "other.js", snippet });
+
+	assert.equal(ctx.nodes.mtoTitle.textContent, "Go to:");
+	assert.equal(ctx.nodes.mtoTarget.textContent, "other.js");
+	assert.notEqual(ctx.nodes.mtoTarget.style.display, "none");
+	assert.equal(ctx.nodes.mtoSnippet.style.display, "block");
+	assert.equal(ctx.nodes.mtoSnippet.children.length, 1);
+
+	ctx.api.showMoveToOverlay({ mode: "file", target: "new.js", snippet: null });
+	assert.equal(
+		ctx.nodes.mtoSnippet.style.display,
+		"none",
+		"a snippet from the last popup must not linger",
+	);
+});
+
+test("a file move-to logs its target once", () => {
+	const snippet = extractAnchorSnippet("other.js", 5, CROSS_FILE_BLOCKS);
+	assert.ok(snippet);
+	const { cm, logged } = cursorManagerOn(moveToStep("other.js", snippet));
+	cm.updateCursor();
+	assert.deepEqual(logged, [{ move_to: "other.js" }]);
+});
+
+test("file, main and dev move-tos with nothing typed just name their target", () => {
 	const ctx = buildRemote();
 
 	ctx.api.showMoveToOverlay({ mode: "file", target: "index.html" });

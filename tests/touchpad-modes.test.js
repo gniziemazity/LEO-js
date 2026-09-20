@@ -63,6 +63,7 @@ function loadPad(opts) {
 		touchpadActionBar: makeNode(),
 		touchpadSideBar: makeNode(),
 		touchpadEditKeys: makeNode(),
+		touchpadStepKeys: makeNode(),
 		touchpadConfirmBar: makeNode(),
 	};
 
@@ -352,6 +353,29 @@ test("a handler with no opinion on the edit keys gets none", async () => {
 	assert.equal(pad.els.touchpadEditKeys.classList.contains("visible"), false);
 });
 
+test("the step keys are the keyboard pad's own, not a handler mode's", async () => {
+	const pad = loadPad();
+	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
+	pad.api.setSessionActive(true);
+
+	await pad.api.setTouchpadMode("jedi");
+	assert.equal(
+		pad.els.touchpadStepKeys.classList.contains("visible"),
+		false,
+		"a registered mode brings its own controls, same as the edit keys",
+	);
+
+	await pad.api.setTouchpadMode("mouse");
+	assert.equal(
+		pad.els.touchpadStepKeys.classList.contains("visible"),
+		false,
+		"the mouse pad has the edit keys; stepping belongs to the keyboard pad",
+	);
+
+	await pad.api.setTouchpadMode("keyboard");
+	assert.equal(pad.els.touchpadStepKeys.classList.contains("visible"), true);
+});
+
 test("the toolbars stay pressable even when a handler stands the glass down", () => {
 	assert.match(
 		CSS,
@@ -572,4 +596,93 @@ test("the tint sits over the popup but under the buttons it lends", () => {
 		/:not\(\.popup-student-btn\)/,
 		"student names stay under the pad: picking one is not a pad gesture",
 	);
+});
+
+test("the pad buttons stay pressable under auto-pilot: nothing switches them off", () => {
+	assert.equal(
+		/auto-driven/.test(CSS),
+		false,
+		"they are an override now, not indicators",
+	);
+	assert.match(
+		CSS,
+		/#modeSideBtns\.has-pad #modeBtnMouse,\n#modeSideBtns\.has-pad #modeBtnKeyboard \{\n\tdisplay: flex;\n\}/,
+		"the two-pad rule stays exactly as other builds match it",
+	);
+	assert.equal(
+		/modeBtnAuto/.test(CSS),
+		false,
+		"the column has no third pad button",
+	);
+});
+
+test("the top bar sits above the pad and every popup, so its buttons stay pressable", () => {
+	const z = (re) => Number(re.exec(CSS)[1]);
+	const bar = z(/\.mobile-view #mobile-header \{[^}]*?z-index: (\d+);/);
+	const raised = z(
+		/\.mobile-view #mobile-header\.above-pad \{\s*z-index: (\d+);/,
+	);
+	assert.equal(raised, bar, "the pad no longer changes where the bar sits");
+	assert.ok(
+		bar > z(/\.touchpad-overlay \{[^}]*?z-index: (\d+);/),
+		"above the pad",
+	);
+	assert.ok(bar > z(/\n\.overlay \{[^}]*?z-index: (\d+);/), "above a popup");
+	assert.ok(
+		bar > z(/\.overlay\.pad-lifted \{\s*z-index: (\d+);/),
+		"and above a popup lifted over the pad",
+	);
+	assert.ok(
+		bar < z(/\.mode-side-btns \{[^}]*?z-index: (\d+);/),
+		"below the side buttons",
+	);
+	assert.equal(
+		/#mobile-header\.above-pad[^{]*\{\s*z-index: 2001/.test(CSS),
+		false,
+		"the guard that tucked the bar under a lifted popup is gone: the bar is now visible, not hidden",
+	);
+});
+
+test("a popup keeps its content clear of the bar, on whichever edge the bar is", () => {
+	assert.match(CSS, /--header-h: 62px;/, "the bar and its 4px progress line");
+	assert.match(
+		CSS,
+		/body\.side-right \.overlay \{[^}]*?padding-left: calc\(14px \+ var\(--header-h\)\);/,
+		"rotated 90deg, the popup's left edge is the top of the page",
+	);
+	assert.match(
+		CSS,
+		/body\.side-left \.overlay \{[^}]*?padding-right: calc\(14px \+ var\(--header-h\)\);/,
+		"rotated the other way it is the popup's right edge",
+	);
+});
+
+test("the header's play and auto-pilot buttons sit together on the phone", () => {
+	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
+	const play = html.indexOf('id="toggleBtn"');
+	const auto = html.indexOf('id="autoPilotBtn"');
+	assert.ok(play > 0 && auto > play, "auto-pilot follows play");
+	assert.ok(
+		auto < html.indexOf('id="timerSection"'),
+		"and comes before the timer, which stays right-aligned",
+	);
+	assert.match(html, /onclick="requestAutoPilot\(\)"/);
+	assert.match(html, /case "auto-pilot":\s*setAutoPilot\(data\.autoPilot\);/);
+	assert.match(html, /setAutoPilot\(state\.autoPilot === true\);/);
+});
+
+test("the pad no longer swaps itself: the implicit move-to logic is gone", () => {
+	for (const name of [
+		"padEnterMoveTo",
+		"padLeaveMoveTo",
+		"padTypeName",
+		"padModeBeforeMoveTo",
+	]) {
+		assert.equal(SRC.includes(name), false, name + " was the clever swap");
+	}
+	const overlay = fs.readFileSync(
+		path.join(BASE, "shared/remote/move-to-overlay.js"),
+		"utf-8",
+	);
+	assert.equal(/pad(Enter|Leave|TypeName)/.test(overlay), false);
 });

@@ -10,6 +10,13 @@ const INHERITED = {
 	text: "📋 <!DOCTYPE html>\n<html>\n</html>",
 	fromInclude: true,
 };
+const START_FILE = {
+	type: "comment",
+	text: "📋 <!DOCTYPE html>\n<html>\n</html>",
+	fromInclude: true,
+	startFile: "index.html",
+	startText: "<!DOCTYPE html>\n<html>\n</html>",
+};
 const AUTHORED = {
 	type: "comment",
 	text: "📋 const a = 1;\nconst b = 2;",
@@ -29,15 +36,23 @@ function fakeBlockDiv() {
 }
 
 function makeRenderer({ blocks, selected = null, typing = false }) {
-	const calls = { selected: [], renders: 0, appended: [] };
+	const calls = { selected: [], renders: 0, appended: [], islands: [] };
 	const renderer = new LessonRenderer(
-		{ getAllBlocks: () => blocks, canMoveBlock: () => true },
+		{
+			getAllBlocks: () => blocks,
+			canMoveBlock: () => true,
+			canRemoveBlock: () => true,
+		},
 		{
 			isActive: () => typing,
 			getSelectedBlockIndex: () => selected,
 			selectBlock: (i) => calls.selected.push(i),
-			attachBlockIsland: (el, { option }) =>
-				option && calls.appended.push(option),
+			setSidebarEnabled: () => {},
+			attachKindPicker: () => {},
+			attachBlockIsland: (el, island) => {
+				calls.islands.push(island);
+				if (island.option) calls.appended.push(island.option);
+			},
 		},
 		{},
 	);
@@ -172,6 +187,58 @@ test("dragging the scrollbar of an expanded paste does not fold it shut", () => 
 	);
 	assert.equal(renderer.expandedIncludes.has(0), false);
 	assert.deepEqual(calls.selected, []);
+});
+
+test("an open start file is editable, so anchors can be placed in it", () => {
+	const blocks = [START_FILE];
+	const { renderer } = makeRenderer({ blocks });
+	renderer.toggleIncludeExpanded(0);
+	const div = renderComment(renderer, blocks, 0);
+	assert.equal(div.contentEditable, true);
+	assert.equal(div.classList.contains("start-file"), true);
+	assert.equal(
+		renderComment(renderer, blocks, 0, true).contentEditable,
+		"false",
+		"but never while typing: it is rendered collapsed and inert then",
+	);
+});
+
+test("a click inside an open start file leaves it open, for the caret", () => {
+	const blocks = [START_FILE];
+	const { renderer, calls } = makeRenderer({ blocks });
+
+	renderer.handleBlockClick({}, blocks[0], 0);
+	assert.equal(renderer.expandedIncludes.has(0), true, "the first opens it");
+	renderer.handleBlockClick({}, blocks[0], 0);
+	assert.equal(
+		renderer.expandedIncludes.has(0),
+		true,
+		"a second click places the caret instead of folding it shut",
+	);
+	assert.deepEqual(calls.selected, [], "and it is still never selected");
+});
+
+test("the ▴ chip on an open start file is what folds it", () => {
+	const blocks = [START_FILE];
+	const { renderer, calls } = makeRenderer({ blocks });
+	renderer.toggleIncludeExpanded(0);
+	renderComment(renderer, blocks, 0);
+	const fold = calls.islands.find((i) => i.className === "block-opt-fold");
+	assert.ok(fold, "an open start file carries a fold chip");
+	assert.deepEqual(
+		fold.tools.map((t) => t.glyph),
+		["▴"],
+	);
+	fold.tools[0].onClick();
+	assert.equal(renderer.expandedIncludes.has(0), false);
+
+	calls.islands.length = 0;
+	renderComment(renderer, blocks, 0);
+	assert.equal(
+		calls.islands.some((i) => i.className === "block-opt-fold"),
+		false,
+		"a folded one needs none: a click opens it",
+	);
 });
 
 test("the include row itself is never expandable", () => {

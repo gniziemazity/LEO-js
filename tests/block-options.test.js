@@ -20,7 +20,7 @@ function elem(name, childNodes, dataset) {
 }
 
 test("readCodeText skips the option island", () => {
-	const island = elem("LABEL", [textNode("Show Paste button")], {
+	const island = elem("LABEL", [textNode("Show Paste")], {
 		blockOpt: "1",
 	});
 	const block = elem("DIV", [textNode("📋 this.ctx.beginPath();"), island]);
@@ -101,9 +101,10 @@ test("a long code line cannot push the option off the right edge", () => {
 	);
 	assert.match(
 		/\.block-opt \{[\s\S]*?\n\}/.exec(css)[0],
-		/right: 0/,
-		"#main-layout reserves the gutter, so the chip sits flush at the " +
-			"block's own right edge rather than dodging the bar itself",
+		/right: 0;/,
+		"#main-layout reserves the sidebar's gutter, so the chip measures from " +
+			"the block's own right edge; it shares the add rows' column, and the " +
+			"rows straddle the seams so the three never overlap",
 	);
 	assert.match(
 		/\.sidebar \{[\s\S]*?\n\}/.exec(css)[0],
@@ -130,9 +131,9 @@ test("every option is the same floating chip, never a column", () => {
 	);
 	assert.match(
 		chip,
-		/background: inherit/,
-		"it overlaps the content, so it must be opaque — and inherit is what makes " +
-			"one rule fit the grey, blue and dark block colours",
+		/background: var\(--clr-white\)/,
+		"it overlaps the content, so it must be opaque — and the same white on " +
+			"the grey, blue and dark block colours alike",
 	);
 	assert.match(chip, /z-index: 2/);
 	assert.match(chip, /box-shadow:/);
@@ -424,15 +425,18 @@ test("updateBlockOption stores only what differs from the default", () => {
 });
 
 test("authored() keeps the flag through a save round-trip", () => {
-	const fn = /static authored\(blocks\) \{[\s\S]*?\n\t\}/.exec(
-		read("renderer/lesson-manager.js"),
-	)[0];
-	assert.match(fn, /blocks\.filter/);
-	assert.equal(
-		/\btext\s*:/.test(fn),
-		false,
+	const blocks = [
+		{ type: "include", anchors: {} },
+		{ type: "comment", text: "📋 x", paste: false },
+		{ type: "move-to", target: "a.js", typeName: false, note: "why" },
+		{ type: "comment", text: "🖼️ a.png", pin: true },
+	];
+	assert.deepEqual(
+		LessonManager.authored(blocks),
+		blocks.slice(1),
 		"a field-by-field rebuild would silently drop paste/typeName",
 	);
+	assert.equal(LessonManager.authored(blocks)[0], blocks[1]);
 });
 
 test("the gutter is given back when the bar goes away for typing", () => {

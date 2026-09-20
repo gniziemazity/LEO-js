@@ -123,7 +123,7 @@ test("a wide snippet scrolls instead of pushing the buttons away", () => {
 	);
 });
 
-test("the target and Start-with dropdowns are dark on solid light", () => {
+test("the target picker is dark on solid light", () => {
 	const css = read("shared/styles.css");
 	const rule =
 		/\.move-to-select,\s*\n\.move-to-new-file-input \{[\s\S]*?\n\}/.exec(
@@ -134,8 +134,8 @@ test("the target and Start-with dropdowns are dark on solid light", () => {
 	assert.equal(
 		/rgba\(255, 255, 255/.test(rule),
 		false,
-		"white on a near-transparent fill is invisible on the light " +
-			".include-block, which shares this rule with the dark move-to block",
+		"white on a near-transparent fill depends on the block behind it; " +
+			"solid white reads the same on every move-to colour",
 	);
 });
 
@@ -205,7 +205,7 @@ test("the chrome ✕ shows only while a popup is up", () => {
 	assert.match(base, /close\(\) \{[\s\S]*?syncOverlayChrome\(\)/);
 });
 
-test("the action buttons are centred, a tenth in from the right", () => {
+test("the action buttons are centred, and flush with the ✕ on the right", () => {
 	const css = read("shared/styles.css");
 	for (const cls of ["mt-modal-actions", "ci-modal-actions"]) {
 		const rule = new RegExp("\\." + cls + " \\{[\\s\\S]*?\\n\\}").exec(
@@ -213,13 +213,57 @@ test("the action buttons are centred, a tenth in from the right", () => {
 		)[0];
 		assert.match(rule, /position: absolute/, cls);
 		assert.match(rule, /top: 50%/, cls);
-		assert.match(rule, /right: 10%/, cls);
+		assert.match(
+			rule,
+			/right: 0;/,
+			cls + ": the popup's edge is the ✕'s edge",
+		);
 		assert.match(rule, /translateY\(-50%\)/, cls);
 	}
 	assert.equal(
 		/--popup-actions-gutter/.test(css),
 		false,
 		"the body runs the full width now; the buttons float over it",
+	);
+});
+
+test("the popup's right edge is the ✕'s right edge, on whichever side the phone is held", () => {
+	const css = read("shared/styles.css");
+	assert.match(
+		css,
+		/body\.side-right \.popup-modal \{\s*width: calc\(100% \+ 4px\);/,
+		"the ✕ is 10px from the physical right, the popup's padding is 14px",
+	);
+	assert.match(
+		css,
+		/body\.side-left \.popup-modal \{\s*width: calc\(100% \+ 2px\);/,
+		"the ✕ is 74px from the physical right, the popup's padding is 14 + 62",
+	);
+	assert.match(
+		css,
+		/:root \{[\s\S]*?--pad-header-gap: 74px;/,
+		"the ✕ sits outside the pad overlay, so it cannot read a variable defined only there: " +
+			"without it `top` was invalid and the ✕ landed mid-screen in side-left",
+	);
+});
+
+test("the ✕ is the size of the other side buttons, with a glyph that does not outweigh them", () => {
+	const css = read("shared/styles.css");
+	const rule = /\.overlay-chrome-close \{[\s\S]*?\n\}/.exec(css)[0];
+	assert.match(rule, /width: var\(--mode-btn-w/);
+	assert.match(rule, /height: var\(--mode-btn-h/);
+	assert.match(
+		css,
+		/\.overlay-chrome-close \.side-btn-emoji \{\s*scale: 0\.8;/,
+		"a text ✕ fills its advance where an emoji does not; scale composes with the rotation",
+	);
+});
+
+test("in side-left the question and help buttons clear the ✕ at the header end", () => {
+	const css = read("shared/styles.css");
+	assert.match(
+		css,
+		/body\.side-left #interactionSideBtns \{\s*top: calc\(var\(--side-band\) \/ 2 \+ var\(--header-h\) \+ 2px\);/,
 	);
 });
 

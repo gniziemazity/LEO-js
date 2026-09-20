@@ -24,10 +24,12 @@ function loadModule(relPath, stubs = {}) {
 	};
 
 	const module = { exports: {} };
-	new Function("require", "module", "exports", src)(
+	new Function("require", "module", "exports", "__dirname", "__filename", src)(
 		resolve,
 		module,
 		module.exports,
+		dir,
+		abs,
 	);
 	return module.exports;
 }
