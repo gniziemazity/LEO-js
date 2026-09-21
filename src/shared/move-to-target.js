@@ -55,6 +55,12 @@
 		return t.mode === "file" ? `📄 ${name}` : name;
 	}
 
+	function moveToPopupTitle({ mode, snippet, typeName }) {
+		if (mode === "file" && !!typeName) return "Create file:";
+		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
+		return switchTo ? `Go to (${moveToDisplayName(switchTo)}):` : "Go to:";
+	}
+
 	const api = {
 		wrapAnchor,
 		isFileName,
@@ -62,6 +68,7 @@
 		moveToFileName,
 		moveToDisplayName,
 		moveToTargetLabel,
+		moveToPopupTitle,
 	};
 
 	if (typeof module !== "undefined" && module.exports) {

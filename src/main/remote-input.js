@@ -5,11 +5,7 @@ const {
 	hotkeyManager,
 } = require("./context");
 const state = require("./state");
-const {
-	applyWindowPinch,
-	applyWindowDrag,
-	applyWindowResize,
-} = require("./float-windows");
+const { applyWindowPinch, applyWindowDrag } = require("./float-windows");
 
 const warnedRemoteOps = new Set();
 function warnRemoteInput(op, err) {
@@ -80,9 +76,6 @@ broadcastServer.on("client-window-pinch", (scale, dx, dy) =>
 	applyWindowPinch(scale, dx, dy),
 );
 broadcastServer.on("client-window-drag", (dx, dy) => applyWindowDrag(dx, dy));
-broadcastServer.on("client-window-resize", (scaleX, scaleY) =>
-	applyWindowResize(scaleX, scaleY),
-);
 broadcastServer.on("client-remote-key-press", () => {
 	hotkeyManager.handleKey("remote");
 });

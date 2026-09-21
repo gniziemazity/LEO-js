@@ -6,23 +6,7 @@ const {
 	buildWindowTitle,
 	NUTJS_KEY_MAPPING,
 } = require("../src/shared/constants");
-const { getBlockKind, buildSettingsCSS } = require("../src/shared/blocks");
-
-test("getBlockKind identifies question prefix", () => {
-	assert.equal(getBlockKind("❓ What is X?"), "question");
-});
-
-test("getBlockKind identifies image prefix", () => {
-	assert.equal(getBlockKind("🖼️ diagram"), "image");
-});
-
-test("getBlockKind identifies web prefix", () => {
-	assert.equal(getBlockKind("🌐 https://example.com"), "web");
-});
-
-test("getBlockKind identifies code-insert prefix", () => {
-	assert.equal(getBlockKind("📋 snippet"), "snippet");
-});
+const { getBlockKind } = require("../src/shared/blocks");
 
 test("only the listed prefixes name a kind", () => {
 	assert.equal(
@@ -30,14 +14,6 @@ test("only the listed prefixes name a kind", () => {
 		"note",
 		"move-to is a first-class block type, not a text prefix",
 	);
-});
-
-test("getBlockKind trims leading whitespace", () => {
-	assert.equal(getBlockKind("   ❓ q"), "question");
-});
-
-test("getBlockKind calls plain text a note", () => {
-	assert.equal(getBlockKind("just a reminder"), "note");
 });
 
 test("both backspace glyphs map to Backspace", () => {
@@ -90,30 +66,6 @@ test("buildWindowTitle combines count and unsaved", () => {
 		buildWindowTitle("lesson1.json", 3, true),
 		"LEO - lesson1 [3 students] *",
 	);
-});
-
-test("buildSettingsCSS includes fontSize and colors", () => {
-	const css = buildSettingsCSS({
-		fontSize: 18,
-		colors: {
-			textColor: "#111",
-			noteColor: "#eee",
-			codeBlockColor: "#ddd",
-			questionColor: "#fda",
-			imageBlockColor: "#fed",
-			snippetColor: "#cde",
-			moveToBlockColor: "#abc",
-			moveToTextColor: "#fff",
-			activeBlockColor: "#f00",
-			activeBlockTextColor: "#000",
-			selectedBlockColor: "#0f0",
-			selectedBorder: "#00f",
-			cursor: "#ff0",
-		},
-	});
-	assert.match(css, /font-size:\s*18px/);
-	assert.match(css, /#111/);
-	assert.match(css, /#eee/);
 });
 
 test("an alias presses the same key as the glyph it stands in for", () => {

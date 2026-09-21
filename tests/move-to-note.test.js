@@ -207,7 +207,7 @@ test("the chrome ✕ shows only while a popup is up", () => {
 
 test("the action buttons are centred, and flush with the ✕ on the right", () => {
 	const css = read("shared/styles.css");
-	for (const cls of ["mt-modal-actions", "ci-modal-actions"]) {
+	for (const cls of ["mt-modal-actions"]) {
 		const rule = new RegExp("\\." + cls + " \\{[\\s\\S]*?\\n\\}").exec(
 			css,
 		)[0];

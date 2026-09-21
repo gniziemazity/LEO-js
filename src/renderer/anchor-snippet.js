@@ -3,10 +3,7 @@ const {
 	applyTypedText,
 	applyAtomicText,
 } = require("../../lesson_tools/shared/simulator-model");
-const {
-	classifyMoveToTarget,
-	isFileName,
-} = require("../shared/move-to-target");
+const { classifyMoveToTarget } = require("../shared/move-to-target");
 const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,

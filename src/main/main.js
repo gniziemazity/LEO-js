@@ -7,7 +7,6 @@ const {
 	Tray,
 	nativeImage,
 	screen,
-	clipboard,
 	shell,
 } = require("electron");
 
@@ -32,9 +31,6 @@ const {
 	unpinWindows,
 	setQuestionWindowSquare,
 	stopFloatLerp,
-	applyWindowPinch,
-	applyWindowDrag,
-	applyWindowResize,
 	_questionFloat,
 	_imageFloat,
 	_webFloat,
@@ -66,7 +62,6 @@ const {
 } = require("./question-show");
 const { createAutoPilot } = require("./auto-pilot");
 
-const { mouse, Button, Point, keyboard, Key } = require("@computer-use/nut-js");
 const MainProcessTimer = require("./main-timer");
 
 const mainPlugin = require("./plugin");
@@ -134,18 +129,6 @@ broadcastServer.on("client-student-answered", (studentName) => {
 		reveal();
 	}
 });
-broadcastServer.on(
-	"client-student-interaction",
-	(interactionType, studentName, questionText, openedAt, closedAt) => {
-		state.send("log-student-interaction", {
-			interactionType,
-			studentName: resolveStudentName(studentName),
-			questionText,
-			openedAt,
-			closedAt,
-		});
-	},
-);
 broadcastServer.on(
 	"client-show-student-interaction",
 	(interactionType, studentName, questionText, openedAt) => {
@@ -367,7 +350,6 @@ ipcMain.on("start-interaction", (event, interactionType) => {
 const DESK_ACTIONS = new Set([
 	"client-move-to-confirmed",
 	"client-code-insert-confirmed",
-	"client-code-insert-paste",
 	"client-move-to-type-name",
 	"client-note-confirmed",
 	"client-media-confirmed",

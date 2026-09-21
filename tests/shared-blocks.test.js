@@ -43,6 +43,12 @@ test("every colour the app can set reaches the stylesheet", () => {
 	}
 });
 
+test("the font size setting reaches the stylesheet", () => {
+	const settings = new SettingsManager().defaultSettings;
+	const css = buildSettingsCSS({ ...settings, fontSize: 18 });
+	assert.match(css, /font-size:\s*18px/);
+});
+
 test("remote.html loads the shared modules before the scripts that use them", () => {
 	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
 	const order = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(

@@ -52,12 +52,13 @@ class InteractionOverlay extends RemoteOverlay {
 
 		const grid = document.getElementById("iGrid");
 		const pick = (idx) => () => {
-			const qText =
-				type === "student-question" ? questionInput.value.trim() : null;
+			const qText = InteractionView.isQuestion(type)
+				? questionInput.value.trim()
+				: null;
 			this.studentSelected(idx, type, qText);
 		};
 		this.fillStudentGrid(grid, students, pick);
-		if (type === "student-question") {
+		if (InteractionView.isQuestion(type)) {
 			grid.appendChild(this.makeStudentBtn(teacherName, pick("teacher")));
 		}
 

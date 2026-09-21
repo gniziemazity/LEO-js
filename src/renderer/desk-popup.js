@@ -3,7 +3,10 @@ const {
 	renderLines,
 	renderTypedName,
 } = require("../shared/snippet-view");
-const { moveToDisplayName } = require("../shared/move-to-target");
+const {
+	moveToDisplayName,
+	moveToPopupTitle,
+} = require("../shared/move-to-target");
 const { POPUP_TITLES } = require("../shared/blocks");
 const {
 	DONE_LABEL,
@@ -109,10 +112,13 @@ class DeskPopup {
 		return b;
 	}
 
-	_grid(el) {
+	_fillStudentGrid(el, students, makeOnClick) {
 		const grid = document.createElement("div");
 		grid.className = "desk-popup-grid";
 		el.appendChild(grid);
+		students.forEach((name, i) =>
+			this._studentBtn(grid, name, makeOnClick(i)),
+		);
 		return grid;
 	}
 
@@ -128,16 +134,8 @@ class DeskPopup {
 
 	showMoveTo({ mode, target, snippet, typeName, note }) {
 		const el = this._open("move-to");
-		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
 		const canTypeName = mode === "file" && !!typeName;
-		this._title(
-			el,
-			canTypeName
-				? "Create file:"
-				: switchTo
-					? `Go to (${moveToDisplayName(switchTo)}):`
-					: "Go to:",
-		);
+		this._title(el, moveToPopupTitle({ mode, snippet, typeName }));
 		if (note) {
 			const n = document.createElement("div");
 			n.className = "mt-modal-note";
@@ -260,15 +258,13 @@ class DeskPopup {
 			"desk-popup-btn desk-popup-icon",
 		);
 
-		const grid = this._grid(el);
+		const grid = this._fillStudentGrid(
+			el,
+			list || [],
+			(i) => () => this._answered(participantId(i)),
+		);
 		grid.style.display = "none";
-		if (list) {
-			list.forEach((name, i) =>
-				this._studentBtn(grid, name, () => this._answered(i + 1)),
-			);
-		} else {
-			this._studentBtn(grid, "Answered", () => this._answered(null));
-		}
+		if (!list) this._studentBtn(grid, "Answered", () => this._answered(null));
 	}
 
 	revealQuestion() {
@@ -305,10 +301,9 @@ class DeskPopup {
 			el.appendChild(input);
 		}
 
-		const grid = this._grid(el);
 		const pick = (idx) => () =>
 			this._interactionPicked(idx, input ? input.value.trim() : null);
-		this.students.forEach((name, i) => this._studentBtn(grid, name, pick(i)));
+		const grid = this._fillStudentGrid(el, this.students, pick);
 		if (asksQuestion)
 			this._studentBtn(grid, this.teacherName, pick("teacher"));
 

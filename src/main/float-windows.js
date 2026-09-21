@@ -149,13 +149,6 @@ function applyWindowDrag(dx, dy) {
 	startFloatLerp();
 }
 
-function applyWindowResize(scaleX, scaleY) {
-	const t = _readyTarget();
-	if (!t) return;
-	_setFloatTargetSize(t, t.w * scaleX, t.h * scaleY);
-	startFloatLerp();
-}
-
 function _centeredPos(w, h) {
 	const wa = screen.getPrimaryDisplay().workArea;
 	return {
@@ -455,7 +448,6 @@ module.exports = {
 	stopFloatLerp,
 	applyWindowPinch,
 	applyWindowDrag,
-	applyWindowResize,
 	_questionFloat,
 	_imageFloat,
 	_webFloat,

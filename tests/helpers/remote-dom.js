@@ -99,9 +99,7 @@ function build(opts = {}) {
 		"interactionOverlay",
 		"qText",
 		"qGrid",
-		"qAnsweredRow",
 		"qShowBtn",
-		"qCloseBarFill",
 		"mtoTitle",
 		"mtoNote",
 		"mtoTarget",
@@ -214,13 +212,15 @@ function build(opts = {}) {
 		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
 		"closeCodeInsertOverlay,codeInsertPaste," +
 		"updateLessonData,applySettings,updateCursor," +
-		"showQuestionToTeacher,closeQuestionOverlay,closeMoveToOverlay," +
+		"showQuestionToTeacher,closeQuestionOverlay:()=>questionOverlay.dismiss()," +
+		"closeMoveToOverlay," +
 		"moveToTypeName,setAutoPilot,requestAutoPilot,remoteStep," +
 		"moveToSetTyped:(d)=>moveToOverlay.setTyped(d)," +
 		"showNoteOverlay,closeNoteOverlayUI,closeNoteOverlay," +
 		"showMediaOverlay,closeMediaOverlayUI,closeMediaOverlay," +
 		"pinMediaWindow,setPinnedWindows,unpinWindows,closeActiveOverlay," +
-		"handleInteractionBtn,closeInteractionOverlay,setStudents,activePadOverlay," +
+		"handleInteractionBtn,closeInteractionOverlay:()=>interactionOverlay.closeOverlay()," +
+		"setStudents,activePadOverlay," +
 		"padMode:()=>(touchpadActive?touchpadMode:null)};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));
 

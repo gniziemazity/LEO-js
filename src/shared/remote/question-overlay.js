@@ -21,15 +21,11 @@ class QuestionOverlay extends RemoteOverlay {
 		document.getElementById("qText").textContent = question;
 
 		const grid = document.getElementById("qGrid");
-		const answered = document.getElementById("qAnsweredRow");
 		const showBtn = document.getElementById("qShowBtn");
 		grid.innerHTML = "";
 		grid.style.display = "none";
-		answered.style.display = "none";
 		if (showBtn) showBtn.style.display = "block";
 		this.options = options && options.length ? options : null;
-		document.getElementById("qCloseBarFill").style.transition = "none";
-		document.getElementById("qCloseBarFill").style.width = "0%";
 
 		const list = students && students.length ? students : null;
 		this.students = list;
@@ -112,7 +108,8 @@ class QuestionOverlay extends RemoteOverlay {
 	}
 
 	studentAnswered(idx) {
-		const studentId = idx != null && idx >= 0 ? idx + 1 : null;
+		const studentId =
+			idx != null && idx >= 0 ? InteractionView.participantId(idx) : null;
 		sendMessage("student-answered", { studentName: studentId });
 		this.close();
 	}

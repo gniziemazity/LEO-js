@@ -9,6 +9,7 @@ const {
 	moveToFileName,
 	moveToDisplayName,
 	moveToTargetLabel,
+	moveToPopupTitle,
 	isFileName,
 } = require(path.resolve(__dirname, "..", "src/shared/move-to-target.js"));
 
@@ -84,6 +85,33 @@ test("the display name is the label without the dropdown's paper clip", () => {
 
 test("a missing target reads the same as an explicit MAIN", () => {
 	assert.equal(moveToTargetLabel(null), moveToTargetLabel("MAIN"));
+});
+
+test("the move-to popup title says what the jump will do", () => {
+	assert.equal(
+		moveToPopupTitle({ mode: "file", typeName: true }),
+		"Create file:",
+	);
+	assert.equal(moveToPopupTitle({ mode: "file", typeName: false }), "Go to:");
+	assert.equal(moveToPopupTitle({ mode: "main" }), "Go to:");
+	assert.equal(
+		moveToPopupTitle({ mode: "anchor", snippet: { switchTo: "app.js" } }),
+		"Go to (app.js):",
+	);
+	assert.equal(
+		moveToPopupTitle({ mode: "anchor", snippet: { switchTo: "MAIN" } }),
+		"Go to (Main Editor):",
+	);
+	assert.equal(
+		moveToPopupTitle({ mode: "anchor", snippet: { switchTo: null } }),
+		"Go to:",
+	);
+	assert.equal(moveToPopupTitle({ mode: "anchor" }), "Go to:");
+	assert.equal(
+		moveToPopupTitle({ mode: "file", snippet: { switchTo: "app.js" } }),
+		"Go to:",
+		"only an anchor jump can cross files",
+	);
 });
 
 test("isFileName is the extension rule, nothing more", () => {

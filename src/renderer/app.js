@@ -17,8 +17,11 @@ const AnchorPreview = require("./anchor-preview");
 const DeskPopup = require("./desk-popup");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
+const { COLOR_SETTINGS, defaultsFrom } = require("../shared/settings-schema");
 const path = require("path");
 const fs = require("fs");
+
+const COLOR_DEFAULTS = defaultsFrom(COLOR_SETTINGS);
 
 const { PAUSING_KINDS } = CursorManager;
 
@@ -79,7 +82,7 @@ cursorManager.onEnterQuestionBlock = (question, timestamp) => {
 		entry: null,
 	};
 	const students = fileOperations.getStudents();
-	const bgColor = getColor("questionColor", "#facaca");
+	const bgColor = getColor("questionColor");
 	deskPopup.showQuestion({ question: text, options, students, bgColor });
 	ipcRenderer.send("enter-question-block", {
 		question: text,
@@ -158,7 +161,7 @@ cursorManager.onEnterCodeInsertBlock = (payload) => {
 
 cursorManager.onLeaveSpecialBlock = (kind) => deskPopup.closeIf(kind);
 
-function getColor(key, fallback) {
+function getColor(key, fallback = COLOR_DEFAULTS[key] ?? null) {
 	return (
 		(settingsUI.currentSettings &&
 			settingsUI.currentSettings.colors &&

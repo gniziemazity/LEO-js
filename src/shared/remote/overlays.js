@@ -33,16 +33,8 @@ function closeQuestionOverlayUI() {
 	questionOverlay.closeUI();
 }
 
-function closeQuestionOverlay() {
-	questionOverlay.dismiss();
-}
-
 function handleInteractionBtn(interactionType) {
 	interactionOverlay.handleBtn(interactionType);
-}
-
-function closeInteractionOverlay() {
-	interactionOverlay.closeOverlay();
 }
 
 function interactionMic() {

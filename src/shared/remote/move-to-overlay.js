@@ -22,16 +22,14 @@ class MoveToOverlay extends RemoteOverlay {
 		const snippetEl = document.getElementById("mtoSnippet");
 		if (!overlay) return;
 
-		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
 		this.canTypeName = mode === "file" && !!typeName;
 
-		if (titleEl) {
-			if (this.canTypeName) titleEl.textContent = "Create file:";
-			else
-				titleEl.textContent = switchTo
-					? `Go to (${MoveToTarget.moveToDisplayName(switchTo)}):`
-					: "Go to:";
-		}
+		if (titleEl)
+			titleEl.textContent = MoveToTarget.moveToPopupTitle({
+				mode,
+				snippet,
+				typeName,
+			});
 
 		const typeBtn = document.getElementById("mtoTypeName");
 		if (typeBtn) typeBtn.style.display = this.canTypeName ? "" : "none";

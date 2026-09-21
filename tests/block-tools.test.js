@@ -1507,3 +1507,16 @@ test("a collapsed snippet clips its text sideways but not its chips vertically",
 	assert.match(rule, /overflow-y:\s*visible/);
 	assert.match(rule, /text-overflow:\s*ellipsis/);
 });
+
+test("the block-tool dropdown marks the live choice with an outline, not a fill", () => {
+	const rule = /\.bt-option\.active \{[\s\S]*?\n\}/.exec(
+		read("shared/styles.css"),
+	)[0];
+	assert.match(rule, /outline: 2px solid var\(--clr-accent\)/);
+	assert.equal(
+		/background/.test(rule),
+		false,
+		"blocks.js generates a per-value .bt-option[data-value] background at runtime; " +
+			"a fill here would paint over the colour the row is naming",
+	);
+});

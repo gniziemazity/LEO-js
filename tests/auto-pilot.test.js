@@ -535,6 +535,29 @@ function fakeUiManager() {
 	return { ui, btn };
 }
 
+test("the auto-pilot button wears the app's one toggled-on class", () => {
+	const css = read("shared/styles.css");
+	assert.match(css, /--toggle-ring: 0 0 0 2px var\(--clr-white\);/);
+	assert.match(
+		css,
+		/\.interaction-btn\.btn-auto\.mode-active \{[^}]*box-shadow: var\(--toggle-ring\)/,
+	);
+	assert.match(
+		css,
+		/\.mode-side-btn\.mode-active \{[^}]*box-shadow: var\(--toggle-ring\)/,
+	);
+	for (const f of ["renderer/ui-manager.js", "shared/remote/touchpad.js"]) {
+		const src = read(f);
+		assert.match(src, /classList\.toggle\("mode-active"/, f);
+		assert.equal(
+			src.includes("auto-on"),
+			false,
+			f + " keeps a second name for one state",
+		);
+	}
+	assert.equal(css.includes("auto-on"), false);
+});
+
 test("the desktop button needs both a remote and auto-typing", () => {
 	const { ui, btn } = fakeUiManager();
 	global.document = { body: { classList: { add() {}, remove() {} } } };

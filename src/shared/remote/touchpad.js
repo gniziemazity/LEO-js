@@ -304,7 +304,7 @@ function setAutoPilot(on) {
 	autoPilot = next;
 	padOverride = null;
 	const btn = document.getElementById("autoPilotBtn");
-	if (btn) btn.classList.toggle("auto-on", next);
+	if (btn) btn.classList.toggle("mode-active", next);
 	if (next) followAutoPilot();
 	else if (touchpadActive) closeTouchpad();
 }

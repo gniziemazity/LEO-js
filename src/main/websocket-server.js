@@ -50,13 +50,6 @@ const BARE_CLIENT_MESSAGES = [
 const FORWARDED_CLIENT_FIELDS = {
 	interaction: ["interactionType"],
 	"student-answered": ["studentName"],
-	"student-interaction": [
-		"interactionType",
-		"studentName",
-		"questionText?",
-		"openedAt?",
-		"closedAt?",
-	],
 	"show-student-interaction": [
 		"interactionType",
 		"studentName",
@@ -79,10 +72,6 @@ const CLIENT_MESSAGE_SANITIZERS = {
 	"mouse-click": (d) => [d.button === "right" ? "right" : "left"],
 	"mouse-scroll": (d) => [clampNum(d.dy, 5000)],
 	"window-drag": (d) => [clampNum(d.dx, 10000), clampNum(d.dy, 10000)],
-	"window-resize": (d) => [
-		clampScale(d.scaleX ?? d.scale),
-		clampScale(d.scaleY ?? d.scale),
-	],
 	"window-pinch": (d) => [
 		clampScale(d.scale),
 		clampNum(d.dx, 10000),

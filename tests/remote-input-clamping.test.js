@@ -77,23 +77,13 @@ test("a numeric string is accepted, because that is what JSON round-trips give",
 });
 
 test("window scale is clamped into a sane band and never zero or negative", () => {
+	assert.deepEqual(argsOf("window-pinch", { scale: HUGE }), [10, 0, 0]);
+	assert.deepEqual(argsOf("window-pinch", { scale: 0 }), [1, 0, 0]);
+	assert.deepEqual(argsOf("window-pinch", { scale: -5 }), [1, 0, 0]);
+	assert.deepEqual(argsOf("window-pinch", { scale: 0.0001 }), [0.1, 0, 0]);
 	assert.deepEqual(
-		argsOf("window-resize", { scaleX: HUGE, scaleY: HUGE }),
-		[10, 10],
-	);
-	assert.deepEqual(argsOf("window-resize", { scaleX: 0, scaleY: -5 }), [1, 1]);
-	assert.deepEqual(
-		argsOf("window-resize", { scaleX: 0.0001, scaleY: 2 }),
-		[0.1, 2],
-	);
-	assert.deepEqual(
-		argsOf("window-resize", { scale: 1.5 }),
-		[1.5, 1.5],
-		"a single scale drives both axes",
-	);
-	assert.deepEqual(
-		argsOf("window-resize", { scaleX: "nope" }),
-		[1, 1],
+		argsOf("window-pinch", { scale: "nope" }),
+		[1, 0, 0],
 		"an unusable scale falls back to no change, not to zero",
 	);
 });
@@ -161,7 +151,6 @@ test("every clamped handler survives a message with no data object", () => {
 		"mouse-scroll",
 		"window-drag",
 		"window-pinch",
-		"window-resize",
 		"mouse-click",
 		"timer-adjust",
 	]) {

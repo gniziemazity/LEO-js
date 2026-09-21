@@ -119,7 +119,7 @@ test("auto-pilot is on the keyboard pad while nothing is open", async () => {
 	await openAutoPilot(ctx);
 
 	assert.equal(ctx.api.padMode(), "keyboard");
-	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("auto-on"), true);
+	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("mode-active"), true);
 	assert.equal(
 		ctx.nodes.modeBtnKeyboard.classList.contains("mode-active"),
 		true,
@@ -142,7 +142,7 @@ test("auto-pilot takes the mouse pad for a move-to, and hands the keyboard back 
 		true,
 		"and the edit keys come with the mouse pad",
 	);
-	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("auto-on"), true);
+	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("mode-active"), true);
 
 	ctx.sent.length = 0;
 	ctx.api.closeMoveToOverlay();
@@ -298,7 +298,7 @@ test("under auto-pilot the pad buttons still work, as a temporary override", asy
 		"the teacher can take the mouse pad",
 	);
 	assert.equal(
-		ctx.nodes.autoPilotBtn.classList.contains("auto-on"),
+		ctx.nodes.autoPilotBtn.classList.contains("mode-active"),
 		true,
 		"and auto-pilot stays on",
 	);
@@ -319,7 +319,7 @@ test("pressing the live pad's button under auto-pilot turns that pad off", async
 		"the same press that closes a manual pad closes this one",
 	);
 	assert.equal(
-		ctx.nodes.autoPilotBtn.classList.contains("auto-on"),
+		ctx.nodes.autoPilotBtn.classList.contains("mode-active"),
 		true,
 		"auto-pilot itself stays on",
 	);
@@ -520,13 +520,13 @@ test("the auto-pilot button asks the host and waits for the answer", () => {
 		{ type: "set-auto-pilot", data: { autoPilot: true } },
 	]);
 	assert.equal(
-		ctx.nodes.autoPilotBtn.classList.contains("auto-on"),
+		ctx.nodes.autoPilotBtn.classList.contains("mode-active"),
 		false,
 		"the host owns the switch, so nothing lights up until it says so",
 	);
 
 	ctx.api.setAutoPilot(true);
-	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("auto-on"), true);
+	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("mode-active"), true);
 
 	ctx.sent.length = 0;
 	ctx.api.requestAutoPilot();
@@ -541,7 +541,7 @@ test("the host turning auto-pilot off closes the pad and gives the buttons back"
 
 	ctx.api.setAutoPilot(false);
 	assert.equal(ctx.api.padMode(), null);
-	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("auto-on"), false);
+	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("mode-active"), false);
 
 	ctx.api.showMoveToOverlay({ mode: "main" });
 	assert.equal(ctx.api.padMode(), null, "a closed pad stays closed");
@@ -567,7 +567,7 @@ test("auto-pilot gives way to a popup that needs typing into, and comes back aft
 	ctx.api.handleInteractionBtn("student-question");
 	assert.equal(ctx.api.padMode(), null);
 	assert.equal(
-		ctx.nodes.autoPilotBtn.classList.contains("auto-on"),
+		ctx.nodes.autoPilotBtn.classList.contains("mode-active"),
 		true,
 		"the switch is the host's, so it stays on",
 	);

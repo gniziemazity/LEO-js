@@ -56,7 +56,7 @@ class UIManager {
 	setAutoPilot(on) {
 		this.autoPilotOn = !!on;
 		const btn = this.elements.autoPilotBtn;
-		if (btn) btn.classList.toggle("auto-on", this.autoPilotOn);
+		if (btn) btn.classList.toggle("mode-active", this.autoPilotOn);
 	}
 
 	setRemotesConnected(connected) {
@@ -202,10 +202,6 @@ class UIManager {
 		blockDiv.classList.add("has-kind");
 		blockDiv.insertBefore(btn, blockDiv.firstChild);
 		return btn;
-	}
-
-	attachBlockOption(blockDiv, option) {
-		return this.attachBlockIsland(blockDiv, { option });
 	}
 
 	removeCursorClasses() {

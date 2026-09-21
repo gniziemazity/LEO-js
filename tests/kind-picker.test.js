@@ -306,7 +306,7 @@ test("the symbol sits in its own gutter and shows a ▾ without moving text", ()
 	);
 	assert.match(
 		css,
-		/\.block:hover > \.block-kind:not\(:disabled\)::after \{\n\tvisibility: visible;/,
+		/:where\(body:not\(\.mobile-view\)\)\n\t\.block:hover\n\t> \.block-kind:not\(:disabled\)::after \{\n\tvisibility: visible;/,
 	);
 	assert.match(
 		css,

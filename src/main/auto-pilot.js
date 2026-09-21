@@ -74,4 +74,4 @@ function createAutoPilot({
 	};
 }
 
-module.exports = { createAutoPilot, DEFAULT_GRACE_MS };
+module.exports = { createAutoPilot };

@@ -64,8 +64,6 @@ function kindGlyph(kind) {
 
 module.exports = {
 	KIND_CHOICES,
-	ADD_CHOICES,
-	KIND_LABELS,
 	KIND_PLACEHOLDERS,
 	kindChoices,
 	addChoices,
