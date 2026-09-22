@@ -78,6 +78,9 @@ class CursorManager {
 		this.currentStepIndex = 0;
 		this.executionSteps = [];
 		this.autoTypingActive = false;
+		this._cursorEl = null;
+		this._activeBlockEl = null;
+		this._scrollPending = null;
 
 		this.onEnterNoteBlock = null;
 		this.onEnterQuestionBlock = null;
@@ -272,6 +275,11 @@ class CursorManager {
 		const progress =
 			(this.currentStepIndex / this.executionSteps.length) * 100 || 0;
 		this.uiManager.updateProgressBar(progress);
+
+		this._sendProgress();
+	}
+
+	_sendProgress() {
 		ipcRenderer.send("update-cursor", this.currentStepIndex);
 		ipcRenderer.send("update-progress", {
 			currentStep: this.currentStepIndex,
@@ -288,7 +296,8 @@ class CursorManager {
 
 	_updateBlockCursor(step) {
 		step.element.classList.add("active-block");
-		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
+		this._activeBlockEl = step.element;
+		this._scrollIntoView(step.element);
 
 		const key = step.kind || getBlockKind(String(step.text || "").trim());
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
@@ -302,7 +311,8 @@ class CursorManager {
 		this._leaveSpecialBlocksExcept();
 		this._clearBlockIndices(TRANSIENT_KINDS);
 		step.element.classList.add("cursor");
-		step.element.scrollIntoView({ behavior: "smooth", block: "center" });
+		this._cursorEl = step.element;
+		this._scrollIntoView(step.element);
 	}
 
 	_skipInheritedSteps() {
@@ -318,8 +328,36 @@ class CursorManager {
 		}
 	}
 
+	_clearCursorMarks() {
+		if (this._cursorEl) {
+			this._cursorEl.classList.remove("cursor");
+			this._cursorEl = null;
+		}
+		if (this._activeBlockEl) {
+			this._activeBlockEl.classList.remove("active-block");
+			this._activeBlockEl = null;
+		}
+	}
+
+	forgetCursorMarks() {
+		this._cursorEl = null;
+		this._activeBlockEl = null;
+	}
+
+	_scrollIntoView(element) {
+		if (typeof requestAnimationFrame !== "function") {
+			element.scrollIntoView({ behavior: "smooth", block: "center" });
+			return;
+		}
+		if (this._scrollPending) cancelAnimationFrame(this._scrollPending);
+		this._scrollPending = requestAnimationFrame(() => {
+			this._scrollPending = null;
+			element.scrollIntoView({ behavior: "smooth", block: "center" });
+		});
+	}
+
 	updateCursor() {
-		this.uiManager.removeCursorClasses();
+		this._clearCursorMarks();
 		this._skipInheritedSteps();
 
 		if (this.currentStepIndex < this.executionSteps.length) {
@@ -416,6 +454,7 @@ class CursorManager {
 
 	jumpTo(index) {
 		for (const b of Object.values(this._blocks)) b.at = null;
+		this.forgetCursorMarks();
 		this.currentStepIndex = index;
 
 		this.executionSteps.forEach((step, i) => {
@@ -433,13 +472,33 @@ class CursorManager {
 		this.updateCursor();
 	}
 
+	_stepOne(delta) {
+		const to = this.currentStepIndex + delta;
+		for (const b of Object.values(this._blocks)) b.at = null;
+
+		const moved =
+			delta > 0
+				? this.executionSteps[this.currentStepIndex]
+				: this.executionSteps[to];
+		if (moved) {
+			if (delta > 0) {
+				moved.element.classList.add("consumed");
+			} else {
+				moved.element.classList.remove("consumed");
+				if (moved.type === "anchor") moved._logged = false;
+			}
+		}
+
+		this.currentStepIndex = to;
+		this.updateCursor();
+	}
+
 	stepBackward() {
-		if (this.currentStepIndex > 0) this.jumpTo(this.currentStepIndex - 1);
+		if (this.currentStepIndex > 0) this._stepOne(-1);
 	}
 
 	stepForward() {
-		if (this.currentStepIndex < this.executionSteps.length)
-			this.jumpTo(this.currentStepIndex + 1);
+		if (this.currentStepIndex < this.executionSteps.length) this._stepOne(1);
 	}
 
 	restoreConsumedSteps() {

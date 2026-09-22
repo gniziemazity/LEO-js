@@ -14,6 +14,7 @@ const {
 	interactionTitle,
 	waitingTitle,
 	participantId,
+	sortedStudentIndexes,
 } = require("../shared/interaction-view");
 
 class DeskPopup {
@@ -116,9 +117,9 @@ class DeskPopup {
 		const grid = document.createElement("div");
 		grid.className = "desk-popup-grid";
 		el.appendChild(grid);
-		students.forEach((name, i) =>
-			this._studentBtn(grid, name, makeOnClick(i)),
-		);
+		for (const i of sortedStudentIndexes(students)) {
+			this._studentBtn(grid, students[i], makeOnClick(i));
+		}
 		return grid;
 	}
 

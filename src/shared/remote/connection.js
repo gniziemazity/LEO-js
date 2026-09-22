@@ -1,5 +1,7 @@
 const WAKE_LOCK_RETRY_MS = 1000;
 const KEEP_ALIVE_FRAME_MS = 1000;
+const RECONNECT_BASE_MS = 2000;
+const RECONNECT_MAX_MS = 15000;
 
 let ws = null;
 let messageHandler = null;
@@ -7,9 +9,40 @@ let wakeLock = null;
 let wakeLockRetry = null;
 let keepAliveVideo = null;
 let reconnectTimer = null;
+let reconnectDelay = RECONNECT_BASE_MS;
+let connectionHandler = null;
 
 function setMessageHandler(handler) {
 	messageHandler = handler;
+}
+
+function setConnectionHandler(handler) {
+	connectionHandler = handler;
+}
+
+function reportConnection(connected) {
+	if (connectionHandler) connectionHandler(connected);
+}
+
+function discard(sock) {
+	if (!sock) return;
+	sock.onopen = null;
+	sock.onmessage = null;
+	sock.onclose = null;
+	sock.onerror = null;
+	try {
+		sock.close();
+	} catch (e) {}
+}
+
+function scheduleReconnect() {
+	if (reconnectTimer) return;
+	const delay = reconnectDelay;
+	reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = null;
+		connect();
+	}, delay);
 }
 
 function connect() {
@@ -19,19 +52,34 @@ function connect() {
 	}
 	const host = window.location.host;
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-	if (ws) {
-		try {
-			ws.close();
-		} catch (e) {}
-	}
-	ws = new WebSocket(`${protocol}//${host}${window.location.search || ""}`);
-	ws.onopen = () => requestWakeLock();
-	ws.onmessage = (event) => {
+
+	discard(ws);
+	ws = null;
+
+	const sock = new WebSocket(
+		`${protocol}//${host}${window.location.search || ""}`,
+	);
+	ws = sock;
+
+	sock.onopen = () => {
+		if (ws !== sock) return;
+		reconnectDelay = RECONNECT_BASE_MS;
+		reportConnection(true);
+		requestWakeLock();
+	};
+	sock.onmessage = (event) => {
+		if (ws !== sock) return;
 		if (messageHandler) messageHandler(JSON.parse(event.data));
 	};
-	ws.onclose = () => {
+	sock.onerror = () => {
+		if (ws !== sock) return;
+		reportConnection(false);
+	};
+	sock.onclose = () => {
+		if (ws !== sock) return;
 		ws = null;
-		reconnectTimer = setTimeout(connect, 2000);
+		reportConnection(false);
+		scheduleReconnect();
 	};
 }
 
@@ -125,10 +173,18 @@ for (const gesture of ["pointerdown", "touchend", "click"]) {
 	document.addEventListener(gesture, goFullscreen, { capture: true });
 }
 
+function socketIsLive() {
+	return (
+		ws &&
+		(ws.readyState === WebSocket.OPEN ||
+			ws.readyState === WebSocket.CONNECTING)
+	);
+}
+
 document.addEventListener("visibilitychange", () => {
 	if (document.visibilityState === "visible") {
 		requestWakeLock();
-		if (!ws || ws.readyState !== WebSocket.OPEN) connect();
+		if (!socketIsLive()) connect();
 	}
 });
 

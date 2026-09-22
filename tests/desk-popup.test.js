@@ -585,3 +585,55 @@ test("a reveal aimed at a card that is gone does nothing", () => {
 	popup.revealQuestion();
 	assert.equal(byLabel(popup, "🎲"), undefined);
 });
+
+const studentButtons = (popup) =>
+	buttons(popup)
+		.filter((b) => b.className.includes("popup-student-btn"))
+		.map((b) => b.textContent);
+
+test("the interaction picker lists students alphabetically, teacher last", () => {
+	const { popup } = build();
+	popup.setStudents(["Zoe", "ada", "Mo"]);
+	popup.setTeacherName("Ms. Lee");
+	popup.showInteraction("student-question");
+
+	assert.deepEqual(studentButtons(popup), ["ada", "Mo", "Zoe", "Ms. Lee"]);
+});
+
+test("help (no question text box) still sorts, with no teacher entry", () => {
+	const { popup } = build();
+	popup.setStudents(["Zoe", "Ada", "Mo"]);
+	popup.showInteraction("providing-help");
+
+	assert.deepEqual(
+		studentButtons(popup),
+		["Ada", "Mo", "Zoe"],
+		"providing-help never offers the teacher as a pick",
+	);
+});
+
+test("picking a sorted student still reports the right roster index", () => {
+	const { popup, sent } = build();
+	popup.setStudents(["Zoe", "Ada", "Mo"]);
+	popup.showInteraction("providing-help");
+
+	byLabel(popup, "Mo").click();
+	const [, interactionSent] = sent;
+	assert.equal(interactionSent[0], "client-show-student-interaction");
+	assert.equal(
+		interactionSent[2],
+		3,
+		"Mo sits at raw index 2, so the 1-based roster id must be 3, " +
+			"regardless of where it is drawn on screen",
+	);
+});
+
+test("the question answer grid is sorted too", () => {
+	const { popup } = build();
+	popup.showQuestion({
+		question: "q",
+		options: null,
+		students: ["Priya", "Ana", "Zed"],
+	});
+	assert.deepEqual(studentButtons(popup), ["Ana", "Priya", "Zed"]);
+});

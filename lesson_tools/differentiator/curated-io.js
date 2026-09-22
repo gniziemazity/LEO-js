@@ -301,8 +301,7 @@ function _curatedOpenSaveDialog() {
 		showStatus("Saving…", true);
 		try {
 			await _curatedSaveToFolder(r.fname, r.matching);
-			showStatus(`✓ Saved ${r.fname}`, true);
-			setTimeout(_curatedCloseSaveDialog, 1000);
+			_curatedCloseSaveDialog();
 		} catch (err) {
 			console.error("[Differentiator] Save failed", err);
 			showStatus("Save failed: " + (err && err.message), false);

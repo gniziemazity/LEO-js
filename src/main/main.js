@@ -37,8 +37,12 @@ const {
 	_randomizerFloat,
 	_optionsFloat,
 } = require("./float-windows");
-const { openLogVisualizer, setCourseMenuState } = require("./lesson-tools");
-require("./remote-input");
+const {
+	openLogVisualizer,
+	setCourseMenuState,
+	refreshToolAvailability,
+} = require("./lesson-tools");
+const { releaseHeldMouseButton } = require("./remote-input");
 const {
 	enterPopup,
 	endPopup,
@@ -53,6 +57,7 @@ const {
 	hasPendingName,
 	setNameProgressHandler,
 	openPopupKind,
+	releaseCodeFromClipboard,
 } = require("./popups");
 const {
 	showQuestion,
@@ -115,7 +120,7 @@ broadcastServer.on("client-student-answered", (studentName) => {
 	floatState.questionWindowStudentAnswered = resolved;
 	const ANSWER_FADE_MS = 300;
 	const reveal = () => {
-		state.send("question-answered", { studentName: resolved });
+		state.send("question-answered", { studentName });
 		const qw = _questionFloat.activeWin;
 		if (qw) qw.webContents.send("set-answered", resolved);
 	};
@@ -150,7 +155,7 @@ broadcastServer.on(
 		broadcastServer.broadcastQuestionEnded();
 		state.send("log-student-interaction", {
 			interactionType,
-			studentName: resolveStudentName(studentName),
+			studentName,
 			questionText,
 			openedAt,
 			closedAt,
@@ -178,7 +183,8 @@ broadcastServer.on("client-connected", () => {
 	autoPilot.onClientConnected();
 	syncRemoteHotkeys();
 });
-broadcastServer.on("client-disconnected", () => {
+broadcastServer.on("client-disconnected", (clientId) => {
+	releaseInteractionHold(clientId);
 	autoPilot.onClientDisconnected();
 	syncRemoteHotkeys();
 });
@@ -200,12 +206,23 @@ broadcastServer.on("client-dismiss-question", () => {
 		_questionFloat.close({ force: true });
 	}
 });
+const interactionHolds = new Map();
+
+function releaseInteractionHold(clientId) {
+	const release = interactionHolds.get(clientId);
+	if (!release) return;
+	interactionHolds.delete(clientId);
+	release();
+}
+
 broadcastServer.on("client-interaction-overlay-shown", () => {
-	state.pause("interaction");
+	const clientId = broadcastServer.currentClientId;
+	if (interactionHolds.has(clientId)) return;
+	interactionHolds.set(clientId, state.pause(`interaction:${clientId}`));
 	state.send("stop-auto-typing");
 });
 broadcastServer.on("client-interaction-overlay-closed", () => {
-	state.unpause("interaction");
+	releaseInteractionHold(broadcastServer.currentClientId);
 });
 
 const timer = new MainProcessTimer();
@@ -231,9 +248,26 @@ broadcastServer.on("client-timer-adjust", (minutes) => {
 
 state.onToggleWindow = toggleMainWindow;
 
+let toolsMenuSync = null;
+function syncToolsMenu() {
+	if (toolsMenuSync) return toolsMenuSync;
+	toolsMenuSync = refreshToolAvailability()
+		.then((changed) => {
+			if (changed) createApplicationMenu();
+		})
+		.catch((err) => {
+			console.error("[LEO] tools menu refresh failed:", err);
+		})
+		.finally(() => {
+			toolsMenuSync = null;
+		});
+	return toolsMenuSync;
+}
+
 ipcMain.on("set-course-menu", (event, payload) => {
 	setCourseMenuState(payload);
 	createApplicationMenu();
+	syncToolsMenu();
 });
 
 ipcMain.on("update-students", (event, students) => {
@@ -514,6 +548,19 @@ ipcMain.handle("show-open-dialog", async (event, opts = {}) => {
 	});
 	return result.filePaths[0];
 });
+ipcMain.handle("show-choice-dialog", async (event, opts = {}) => {
+	const { response } = await dialog.showMessageBox(state.mainWindow, {
+		type: opts.type || "question",
+		title: opts.title || "LEO",
+		message: opts.message || "",
+		detail: opts.detail || undefined,
+		buttons: opts.buttons || ["OK"],
+		defaultId: opts.defaultId || 0,
+		cancelId: opts.cancelId === undefined ? -1 : opts.cancelId,
+		noLink: true,
+	});
+	return response;
+});
 ipcMain.handle("show-open-course-dialog", async () => {
 	const result = await dialog.showOpenDialog(state.mainWindow, {
 		title: "Open Course Folder",
@@ -601,8 +648,22 @@ function reapplySettings() {
 }
 
 function cleanup() {
+	releaseHeldInput();
 	hotkeyManager.unregisterTypingHotkeys();
 	state.reset();
+}
+
+function releaseHeldInput() {
+	try {
+		releaseCodeFromClipboard();
+	} catch (err) {
+		console.error("[LEO] clipboard release failed:", err);
+	}
+	try {
+		releaseHeldMouseButton();
+	} catch (err) {
+		console.error("[LEO] mouse release failed:", err);
+	}
 }
 
 function cleanupAutoTyping() {
@@ -672,7 +733,7 @@ async function createWindow() {
 		}
 		closeAllChildWindows();
 	});
-	state.mainWindow.on("focus", () => createApplicationMenu());
+	state.mainWindow.on("focus", () => syncToolsMenu());
 	state.mainWindow.on("closed", () => {
 		state.mainWindow = null;
 	});
@@ -777,6 +838,7 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
 	if (state.mainWindow === null) createWindow();
 });
+app.on("before-quit", () => releaseHeldInput());
 app.on("will-quit", () => {
 	cleanup();
 	if (tray) tray.destroy();

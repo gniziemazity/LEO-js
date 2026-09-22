@@ -134,3 +134,58 @@ test("defaults come from the schema, not a second transcription", () => {
 		"a colour exists in the defaults that the schema does not name",
 	);
 });
+
+test("reset and getAll never hand out the defaults themselves", () => {
+	const sm = new SettingsManager();
+	sm.save = () => true;
+
+	const key = Object.keys(sm.defaultSettings.colors)[0];
+	const pristine = sm.defaultSettings.colors[key];
+
+	sm.reset();
+	assert.notEqual(
+		sm.settings.colors,
+		sm.defaultSettings.colors,
+		"reset() aliased the defaults instead of copying them",
+	);
+
+	sm.set(`colors.${key}`, "#abcdef");
+	assert.equal(
+		sm.defaultSettings.colors[key],
+		pristine,
+		"set() wrote through into defaultSettings",
+	);
+
+	sm.reset();
+	assert.equal(
+		sm.settings.colors[key],
+		pristine,
+		"reset to defaults did not restore the shipped colour",
+	);
+
+	const copy = sm.getAll();
+	copy.colors[key] = "#000000";
+	assert.equal(
+		sm.settings.colors[key],
+		pristine,
+		"getAll() handed out a live reference to the settings",
+	);
+});
+
+test("a first run with no settings file does not alias the defaults", () => {
+	const sm = new SettingsManager();
+	sm.save = () => true;
+	sm.settings = sm.load.call({
+		settingsPath: path.join(__dirname, "no-such-settings.json"),
+		defaults: () => sm.defaults(),
+		defaultSettings: sm.defaultSettings,
+	});
+
+	assert.notEqual(sm.settings.colors, sm.defaultSettings.colors);
+	assert.notEqual(sm.settings.hotkeys, sm.defaultSettings.hotkeys);
+	assert.notEqual(
+		sm.settings.hotkeys.typing,
+		sm.defaultSettings.hotkeys.typing,
+		"the typing hotkey array is shared with the defaults",
+	);
+});

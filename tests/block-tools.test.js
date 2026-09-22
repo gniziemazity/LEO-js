@@ -469,7 +469,7 @@ test("a comment carries up, down and delete, and its symbol is the type picker",
 		],
 		2,
 	);
-	assert.deepEqual(glyphs(island), ["⧉", "✕"]);
+	assert.deepEqual(glyphs(island), ["⧉", "🗑️"]);
 	assert.equal(
 		island.picker.glyph,
 		"❓",
@@ -489,8 +489,12 @@ test("a comment carries up, down and delete, and its symbol is the type picker",
 
 test("a code block carries the same tools; format lives in the sidebar", () => {
 	const island = renderIsland([{ type: "code", text: "x" }], 1);
-	assert.deepEqual(glyphs(island), ["⧉", "✕"]);
-	assert.equal(island.picker.glyph, "⌨", "code has a symbol so it can be converted");
+	assert.deepEqual(glyphs(island), ["⧉", "🗑️"]);
+	assert.equal(
+		island.picker.glyph,
+		"⌨",
+		"code has a symbol so it can be converted",
+	);
 	assert.deepEqual(rowGlyphs(island), [ABOVE, BELOW]);
 	assert.equal(
 		/✨/.test(read("renderer/lesson-renderer.js")),
@@ -510,7 +514,11 @@ test("copy and delete only appear on hover; the symbol is always there", () => {
 
 test("the last authored block cannot be deleted", () => {
 	const only = renderIsland([{ type: "comment", text: "a" }], 1);
-	assert.equal(only.tools[1].disabled, true, "nothing would be left to add to");
+	assert.equal(
+		only.tools[1].disabled,
+		true,
+		"nothing would be left to add to",
+	);
 	const two = renderIsland(
 		[
 			{ type: "comment", text: "a" },
@@ -540,7 +548,7 @@ test("an unselected block still carries its one-click actions", () => {
 	const island = renderIsland(blocks, 1, { selected: null });
 	assert.deepEqual(
 		[glyphs(island), ...rowGlyphs(island)],
-		[["⧉", "✕"], ABOVE, BELOW],
+		[["⧉", "🗑️"], ABOVE, BELOW],
 		"moving or deleting a block should not cost a selecting click first",
 	);
 	assert.equal(
@@ -723,7 +731,7 @@ test("the controls are revealed by hover, not by a mousemove handler", () => {
 test("the option and the tools share the one island", () => {
 	const island = renderIsland([{ type: "comment", text: "📋 x" }], 1);
 	assert.equal(island.option.label, "Show Paste");
-	assert.deepEqual(glyphs(island), ["⧉", "✕"]);
+	assert.deepEqual(glyphs(island), ["⧉", "🗑️"]);
 	assert.equal(island.picker.glyph, "📋");
 	const unselected = renderIsland([{ type: "comment", text: "📋 x" }], 1, {
 		selected: null,
@@ -735,18 +743,24 @@ test("the option and the tools share the one island", () => {
 	);
 	assert.deepEqual(
 		[glyphs(unselected), ...rowGlyphs(unselected)],
-		[["⧉", "✕"], ABOVE, BELOW],
+		[["⧉", "🗑️"], ABOVE, BELOW],
 		"and the actions come with it",
 	);
 });
 
 function fakeElement(tag) {
 	const listeners = {};
+	const classes = new Set();
 	return {
 		tagName: tag.toUpperCase(),
 		nodeName: tag.toUpperCase(),
 		children: [],
 		dataset: {},
+		classList: {
+			add: (c) => classes.add(c),
+			remove: (...cs) => cs.forEach((c) => classes.delete(c)),
+			contains: (c) => classes.has(c),
+		},
 		appendChild(c) {
 			this.children.push(c);
 			return c;
@@ -947,7 +961,15 @@ test("every kind is offered, always: there are no modes any more", () => {
 	);
 	assert.deepEqual(
 		addChoices().map((c) => c.type),
-		["code", "comment", "comment", "comment", "comment", "comment", "move-to"],
+		[
+			"code",
+			"comment",
+			"comment",
+			"comment",
+			"comment",
+			"comment",
+			"move-to",
+		],
 	);
 	assert.deepEqual(
 		addChoices().map((c) => c.initialText),
@@ -1040,20 +1062,27 @@ test("the new controls wear the Settings colours", () => {
 		"move-to": s.colors.moveToBlockColor,
 	};
 	for (const [kind, color] of Object.entries(expected)) {
-		assert.match(add(kind), new RegExp(color), `${kind} button wears its colour`);
+		assert.match(
+			add(kind),
+			new RegExp(color),
+			`${kind} button wears its colour`,
+		);
 	}
 	assert.match(add("move-to"), new RegExp(s.colors.moveToTextColor));
 	assert.ok(
-		css.includes('.block-tool-add[data-add-kind="note"]:hover:not(:disabled)'),
+		css.includes(
+			'.block-tool-add[data-add-kind="note"]:hover:not(:disabled)',
+		),
 		"the generic hover would replace the colour with translucent black",
 	);
 });
 
 test("the type list is not a move-to list, so the anchor preview ignores it", () => {
 	const src = read("renderer/lesson-renderer.js");
-	const tool = /_kindPicker\(block, blockIdx, isTypingActive\) \{[\s\S]*?\n\t\}/.exec(
-		src,
-	)[0];
+	const tool =
+		/_kindPicker\(block, blockIdx, isTypingActive\) \{[\s\S]*?\n\t\}/.exec(
+			src,
+		)[0];
 	assert.match(tool, /listClass: "bt-options"/);
 	assert.match(
 		tool,
@@ -1081,7 +1110,9 @@ function sidebarFor({ blocks, selected, expanded = [] }) {
 test("the sidebar tools are enabled only while a code block is selected", () => {
 	const code = { type: "code", text: "x" };
 	const note = { type: "comment", text: "n" };
-	assert.deepEqual(sidebarFor({ blocks: [code], selected: 1 }), [[true, true]]);
+	assert.deepEqual(sidebarFor({ blocks: [code], selected: 1 }), [
+		[true, true],
+	]);
 	assert.deepEqual(
 		sidebarFor({ blocks: [note], selected: 1 }),
 		[[false, false]],
@@ -1111,6 +1142,18 @@ test("the sidebar is never hidden by selecting or deselecting", () => {
 	assert.ok(
 		sidebar.indexOf("special-keys-container") < sidebar.indexOf("formatBtn"),
 		"auto-format is the last tool in the sidebar",
+	);
+});
+
+test("backspace, delete and delete-line sit last in the sidebar, right before format", () => {
+	const src = read("renderer/special-keys.js");
+	const keysBlock = /const keys = \{([\s\S]*?)\n\t\t\};/.exec(src)[1];
+	const order = [...keysBlock.matchAll(/"([^"]+)":/g)].map((m) => m[1]);
+	assert.deepEqual(
+		order.slice(-3),
+		["⌫", "⌦", "⛔"],
+		"these three are generated into #special-keys-container in object-key " +
+			"order, and that container sits right before #formatBtn",
 	);
 });
 
@@ -1153,25 +1196,47 @@ test("a structural edit closes the typing burst before saving undo", () => {
 	);
 });
 
-test("ending a burst drops the pending snapshot and the stale block index", () => {
+test("ending a burst drops the stale block index", () => {
 	const renderer = new LessonRenderer({}, {}, {}, { saveState() {} });
-	let fired = false;
-	renderer.editDebounceTimer = setTimeout(() => {
-		fired = true;
-	}, 5);
 	renderer.lastEditedBlockIndex = 4;
+	renderer.lastEditTime = Date.now();
 	renderer.endEditBurst();
-	assert.equal(renderer.editDebounceTimer, null);
 	assert.equal(
 		renderer.lastEditedBlockIndex,
 		null,
 		"after a move, index 4 is a different block",
 	);
+	assert.equal(renderer.lastEditTime, 0);
+});
+
+test("no edit snapshot is ever deferred, so none can land after a move", () => {
+	const saved = [];
+	const renderer = new LessonRenderer(
+		{},
+		{},
+		{},
+		{ saveState: (why) => saved.push(why) },
+	);
+
+	renderer.saveEditState(2);
+	renderer.saveEditState(2);
+	renderer.saveEditState(2);
+
+	assert.equal(
+		saved.length,
+		1,
+		"a typing run in one block is one undo step, taken before the first keystroke",
+	);
+
 	return new Promise((resolve) =>
 		setTimeout(() => {
-			assert.equal(fired, false);
+			assert.equal(
+				saved.length,
+				1,
+				"a snapshot fired on a timer after the burst - undo would need two presses",
+			);
 			resolve();
-		}, 20),
+		}, 30),
 	);
 });
 
@@ -1460,7 +1525,7 @@ test("an unselected code block gets the same one-click actions", () => {
 		});
 		assert.deepEqual(
 			islands.map((i) => i.tools.map((t) => t.glyph)),
-			[ABOVE, ["⧉", "✕"], BELOW],
+			[ABOVE, ["⧉", "🗑️"], BELOW],
 			"a code block is rendered as characters until selected, and that " +
 				"path used to attach no island at all, so hovering it showed nothing",
 		);

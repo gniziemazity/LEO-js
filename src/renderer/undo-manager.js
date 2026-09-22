@@ -1,5 +1,18 @@
-function clone(value) {
-	return JSON.parse(JSON.stringify(value));
+function cloneBlock(block) {
+	if (block === null || typeof block !== "object") return block;
+	const copy = {};
+	for (const key of Object.keys(block)) {
+		const value = block[key];
+		copy[key] =
+			value !== null && typeof value === "object"
+				? JSON.parse(JSON.stringify(value))
+				: value;
+	}
+	return copy;
+}
+
+function clone(blocks) {
+	return Array.isArray(blocks) ? blocks.map(cloneBlock) : blocks;
 }
 
 class UndoManager {

@@ -80,10 +80,7 @@ function listDir(dir) {
 }
 
 function isLogFileName(name) {
-	return (
-		/\.log$/i.test(name) ||
-		(/\.json$/i.test(name) && !/^diff_marks/i.test(name))
-	);
+	return /\.log$/i.test(name);
 }
 
 function findLogFiles(dir) {
@@ -117,14 +114,22 @@ function hasRealLog(dir) {
 	return findLogFiles(dir).some(isRealLog);
 }
 
-function hasRemarksFile(dir, depth = 0) {
-	for (const entry of listDir(dir)) {
+async function listDirAsync(dir) {
+	try {
+		return await fs.promises.readdir(dir, { withFileTypes: true });
+	} catch (_) {
+		return [];
+	}
+}
+
+async function hasRemarksFile(dir, depth = 0) {
+	for (const entry of await listDirAsync(dir)) {
 		if (entry.isFile() && /remarks.*\.xlsx$/i.test(entry.name)) return true;
 		if (
 			entry.isDirectory() &&
 			depth < 3 &&
 			!SKIPPED_DIRS.has(entry.name.toLowerCase()) &&
-			hasRemarksFile(path.join(dir, entry.name), depth + 1)
+			(await hasRemarksFile(path.join(dir, entry.name), depth + 1))
 		) {
 			return true;
 		}
@@ -132,15 +137,36 @@ function hasRemarksFile(dir, depth = 0) {
 	return false;
 }
 
-function toolAvailability() {
+const NO_TOOLS = { timeline: false, students: false, overview: false };
+let availability = { ...NO_TOOLS };
+
+async function toolAvailability() {
 	const ctx = currentCourseContext();
-	if (!ctx) return { timeline: false, students: false, overview: false };
+	if (!ctx) {
+		availability = { ...NO_TOOLS };
+		return availability;
+	}
 	const dir = lessonDir(ctx);
-	return {
+	availability = {
 		timeline: findLogFiles(dir).length > 0,
-		students: hasRemarksFile(dir),
+		students: await hasRemarksFile(dir),
 		overview: fs.existsSync(path.join(ctx.courseRoot, "overview.json")),
 	};
+	return availability;
+}
+
+function cachedToolAvailability() {
+	return availability;
+}
+
+async function refreshToolAvailability() {
+	const was = availability;
+	const now = await toolAvailability();
+	return (
+		was.timeline !== now.timeline ||
+		was.students !== now.students ||
+		was.overview !== now.overview
+	);
 }
 
 function openSimulator(notifyRenderer, openTool = openLessonTool) {
@@ -490,6 +516,8 @@ module.exports = {
 	getCourseMenuState,
 	setCourseMenuState,
 	toolAvailability,
+	cachedToolAvailability,
+	refreshToolAvailability,
 	hasRealLog,
 	lessonWorkspaceFolder,
 	openSimulator,

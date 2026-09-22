@@ -129,6 +129,7 @@ class CourseUI {
 			this.fileOperations.createNewLesson();
 			return;
 		}
+		if (!(await this.fileOperations.confirmDiscard())) return;
 		const target = await ipcRenderer.invoke("show-save-dialog", {
 			defaultPath: this.courseManager.defaultPlanPath("plan.leo"),
 			title: "New Plan",
@@ -150,6 +151,7 @@ class CourseUI {
 			this.fileOperations.loadLesson();
 			return;
 		}
+		if (!(await this.fileOperations.confirmDiscard())) return;
 		const file = await ipcRenderer.invoke("show-open-dialog", {
 			defaultPath: this.courseManager.plansDir(),
 		});

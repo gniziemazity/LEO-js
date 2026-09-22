@@ -3,7 +3,7 @@ const state = require("./state");
 const {
 	LESSON_TOOLS,
 	getCourseMenuState,
-	toolAvailability,
+	cachedToolAvailability,
 	openSimulator,
 	openLessonTool,
 	launchChrome,
@@ -129,7 +129,7 @@ function createApplicationMenu() {
 		},
 		{
 			label: "Tools",
-			submenu: toolsSubmenu(courseMenuState, toolAvailability(), {
+			submenu: toolsSubmenu(courseMenuState, cachedToolAvailability(), {
 				launchVSCode,
 				launchChrome,
 				openLessonTool,

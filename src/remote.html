@@ -67,6 +67,10 @@
 			</div>
 		</div>
 
+		<div id="connectionBanner" class="connection-banner">
+			Reconnecting to LEO...
+		</div>
+
 		<div id="lesson-container">
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
@@ -429,6 +433,7 @@
 			}
 
 			function updateAllState(state) {
+				resyncOverlays(state);
 				updateProgress(state);
 				if (state.isActive !== undefined) {
 					updateActiveState(state.isActive);
@@ -460,6 +465,9 @@
 				else showTimerStopped();
 			}
 
+			setConnectionHandler((connected) => {
+				document.body.classList.toggle("disconnected", !connected);
+			});
 			setMessageHandler(handleMessage);
 			initTouchpad();
 			setTimeout(connect, 500);

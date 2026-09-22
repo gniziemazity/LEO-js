@@ -1,6 +1,8 @@
 "use strict";
 
 let _saveInFlight = false;
+let _autosaveTimer = null;
+const AUTOSAVE_DELAY_MS = 2000;
 
 function _backupTimestamp(d = new Date()) {
 	const pad = (n) => String(n).padStart(2, "0");
@@ -24,6 +26,15 @@ function _setDirty(studentId, colName, value) {
 	const key = `${studentId}::${colName}`;
 	_dirtyEdits.set(key, { studentId, colName, value });
 	_updateSaveButton();
+	_scheduleAutosave();
+}
+
+function _scheduleAutosave() {
+	if (_autosaveTimer) clearTimeout(_autosaveTimer);
+	_autosaveTimer = setTimeout(() => {
+		_autosaveTimer = null;
+		_saveActiveBasis(true);
+	}, AUTOSAVE_DELAY_MS);
 }
 
 function _applyDirtyToStudents() {
@@ -57,6 +68,15 @@ function _updateSaveButton() {
 			? `Save ${_dirtyEdits.size} edit(s) to ${_activeBasisFileName} (previous copy backed up as bck_<timestamp>.xlsx)`
 			: `No edits yet. Saving overwrites ${_activeBasisFileName} after backing it up.`;
 	}
+}
+
+function _flashSaved(editsCount) {
+	const btn = document.getElementById("save-btn");
+	if (!btn) return;
+	btn.textContent = `✓ Saved (${editsCount})`;
+	setTimeout(() => {
+		if (!_saveInFlight) _updateSaveButton();
+	}, 1500);
 }
 
 function _xmlEscape(s) {
@@ -246,32 +266,37 @@ async function _writeBytesToServer(outBytes, newName) {
 	return new HttpFileLike(u.href, newName);
 }
 
-async function _saveActiveBasis() {
+async function _saveActiveBasis(silent = false) {
+	if (_autosaveTimer) {
+		clearTimeout(_autosaveTimer);
+		_autosaveTimer = null;
+	}
 	if (_saveInFlight) return;
 	if (!_dirtyEdits.size) return;
 	if (!_dirHandle && !_serverWritable) {
-		alert("No writable location for this dataset.");
+		if (!silent) alert("No writable location for this dataset.");
 		return;
 	}
 	if (!_activeBasisFile || !_activeBasisFileName) {
-		alert("No active spreadsheet to save.");
+		if (!silent) alert("No active spreadsheet to save.");
 		return;
 	}
 	if (_dirHandle) {
 		try {
 			const perm = await _dirHandle.requestPermission({ mode: "readwrite" });
 			if (perm !== "granted") {
-				alert("Write permission denied for the folder.");
+				if (!silent) alert("Write permission denied for the folder.");
 				return;
 			}
 		} catch (e) {
-			alert("Could not request write permission: " + e.message);
+			if (!silent) alert("Could not request write permission: " + e.message);
 			return;
 		}
 	}
 
 	_saveInFlight = true;
 	_updateSaveButton();
+	let flashed = false;
 	try {
 		const { origBuf, outBytes, editsCount } = await _buildSavedXlsxBytes();
 		const targetName = _activeBasisFileName;
@@ -299,12 +324,19 @@ async function _saveActiveBasis() {
 		document.querySelectorAll("#tbody td.artefact-changed").forEach((el) => {
 			el.classList.remove("artefact-changed");
 		});
-		alert(`Saved ${editsCount} edit(s) to ${targetName} (backup: ${backupName}).`);
+		if (silent) {
+			_flashSaved(editsCount);
+			flashed = true;
+		} else {
+			alert(
+				`Saved ${editsCount} edit(s) to ${targetName} (backup: ${backupName}).`,
+			);
+		}
 	} catch (ex) {
 		console.error("[Students] save failed", ex);
 		alert("Save failed: " + ex.message);
 	} finally {
 		_saveInFlight = false;
-		_updateSaveButton();
+		if (!flashed) _updateSaveButton();
 	}
 }

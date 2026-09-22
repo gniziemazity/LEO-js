@@ -89,8 +89,9 @@ class RemoteOverlay {
 
 	fillStudentGrid(grid, students, makeOnClick) {
 		grid.innerHTML = "";
-		students.forEach((name, idx) => {
+		for (const idx of InteractionView.sortedStudentIndexes(students)) {
+			const name = students[idx];
 			grid.appendChild(this.makeStudentBtn(name, makeOnClick(idx, name)));
-		});
+		}
 	}
 }

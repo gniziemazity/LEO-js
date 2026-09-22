@@ -16,127 +16,76 @@ function editorTarget(name) {
 	return name;
 }
 
+function openEditor(editors, name) {
+	if (!editors[name]) editors[name] = new TextState();
+	return editors[name];
+}
+
+function applyBlock(editors, active, block) {
+	if (!block) return active;
+	if (block.type === "code") {
+		openEditor(editors, active);
+		applyTypedText(editors[active], block.text || "");
+		return active;
+	}
+	if (block.type === "move-to") {
+		const t = classifyMoveToTarget(block.target || "");
+		if (t.mode === "main") {
+			openEditor(editors, "main");
+			return "main";
+		}
+		if (t.mode === "dev") {
+			openEditor(editors, "dev");
+			return "dev";
+		}
+		if (t.mode === "file") {
+			openEditor(editors, t.target);
+			return t.target;
+		}
+		for (const [name, st] of Object.entries(editors)) {
+			if (st.anchors[t.inner] != null) {
+				st.jumpToAnchor(t.inner);
+				return name;
+			}
+		}
+		return active;
+	}
+	if (block.type === "comment" && getBlockKind(block.text) === "snippet") {
+		openEditor(editors, active);
+		applyAtomicText(editors[active], stripBlockPrefix(block.text || ""));
+	}
+	return active;
+}
+
 function replayPlan(blocks, stopAt = Infinity) {
 	const editors = { main: new TextState() };
-	const order = ["main"];
 	let active = "main";
-	const open = (name) => {
-		if (!editors[name]) {
-			editors[name] = new TextState();
-			order.push(name);
-		}
-	};
 	const stop = Math.min(stopAt, blocks.length);
 	for (let i = 0; i < stop; i++) {
-		const b = blocks[i];
-		if (!b) continue;
-		if (b.type === "code") {
-			open(active);
-			applyTypedText(editors[active], b.text || "");
-		} else if (b.type === "move-to") {
-			const t = classifyMoveToTarget(b.target || "");
-			if (t.mode === "main") {
-				open("main");
-				active = "main";
-			} else if (t.mode === "dev") {
-				open("dev");
-				active = "dev";
-			} else if (t.mode === "file") {
-				open(t.target);
-				active = t.target;
-			} else {
-				for (const [name, st] of Object.entries(editors)) {
-					if (st.anchors[t.inner] != null) {
-						active = name;
-						st.jumpToAnchor(t.inner);
-						break;
-					}
-				}
-			}
-		} else if (b.type === "comment") {
-			if (getBlockKind(b.text) === "snippet") {
-				open(active);
-				const stripped = stripBlockPrefix(b.text || "");
-				applyAtomicText(editors[active], stripped);
-			}
-		}
+		active = applyBlock(editors, active, blocks[i]);
 	}
-	return { editors, order, active };
+	return { editors, active };
 }
 
-function snippetAt(state, pos, before, after) {
-	const beforeText = state.text.slice(0, pos);
-	const lineIdx = (beforeText.match(/\n/g) || []).length;
-	const lineStart = beforeText.lastIndexOf("\n") + 1;
-	const col = pos - lineStart;
-
-	const lines = state.text.split("\n");
-	const start = Math.max(0, lineIdx - before);
-	const end = Math.min(lines.length - 1, lineIdx + after);
-	return {
-		lines: lines.slice(start, end + 1),
-		colored: buildColoredLines(state.text, start, end),
-		arrowIdx: lineIdx - start,
-		anchorCol: col,
-	};
-}
-
-function extractAnchorSnippet(
-	target,
-	currentBlockIdx,
-	blocks,
-	before = 5,
-	after = 5,
-) {
-	const t = classifyMoveToTarget(target);
-	const { editors, active } = replayPlan(blocks, currentBlockIdx);
-
-	if (t.mode !== "anchor") {
-		const state = editors[t.mode === "file" ? t.target : t.mode];
-		if (!state || !state.text) return null;
-		return {
-			...snippetAt(state, state.cursor, before, after),
-			switchTo: null,
-		};
+function buildColoredLines(fullText, fromLineIdx, toLineIdx, lines) {
+	const allLines = lines || fullText.split("\n");
+	const lineStarts = [0];
+	for (let i = 0; i < allLines.length; i++) {
+		lineStarts.push(lineStarts[i] + allLines[i].length + 1);
 	}
 
-	const id = t.inner;
-	let found = null;
-	if (editors[active] && editors[active].anchors[id] != null) {
-		found = active;
-	} else {
-		for (const [name, st] of Object.entries(editors)) {
-			if (st.anchors[id] != null) {
-				found = name;
-				break;
-			}
-		}
-	}
-	if (found === null) return null;
-	const state = editors[found];
-	return {
-		...snippetAt(state, state.anchors[id], before, after),
-		switchTo: found === active ? null : editorTarget(found),
-	};
-}
-
-function buildColoredLines(fullText, fromLineIdx, toLineIdx) {
 	let spans = [];
 	try {
 		spans = buildHighlightSpans(fullText, "html");
 	} catch (_) {
 		return null;
 	}
-	const lines = fullText.split("\n");
-	const lineStarts = [0];
-	for (let i = 0; i < lines.length; i++) {
-		lineStarts.push(lineStarts[i] + lines[i].length + 1);
-	}
+
 	const result = [];
 	let spanIdx = 0;
 	for (let li = fromLineIdx; li <= toLineIdx; li++) {
 		const lineStart = lineStarts[li];
-		const lineEnd = lineStart + lines[li].length;
+		const lineEnd = lineStart + allLines[li].length;
 		const segs = [];
 		let cursor = lineStart;
 		while (spanIdx < spans.length && spans[spanIdx].end <= lineStart) {
@@ -165,8 +114,95 @@ function buildColoredLines(fullText, fromLineIdx, toLineIdx) {
 	return result;
 }
 
+function snippetAt(state, pos, before, after) {
+	const beforeText = state.text.slice(0, pos);
+	const lineIdx = (beforeText.match(/\n/g) || []).length;
+	const lineStart = beforeText.lastIndexOf("\n") + 1;
+	const col = pos - lineStart;
+
+	const lines = state.text.split("\n");
+	const start = Math.max(0, lineIdx - before);
+	const end = Math.min(lines.length - 1, lineIdx + after);
+	return {
+		lines: lines.slice(start, end + 1),
+		colored: buildColoredLines(state.text, start, end, lines),
+		arrowIdx: lineIdx - start,
+		anchorCol: col,
+	};
+}
+
+function computeSnippetFor(target, editors, active, before, after) {
+	const t = classifyMoveToTarget(target);
+
+	if (t.mode !== "anchor") {
+		const name = t.mode === "file" ? t.target : t.mode;
+		const state = editors[name];
+		if (!state || !state.text) return null;
+		return {
+			...snippetAt(state, state.cursor, before, after),
+			switchTo: null,
+		};
+	}
+
+	const id = t.inner;
+	let found = null;
+	if (editors[active] && editors[active].anchors[id] != null) {
+		found = active;
+	} else {
+		for (const [name, st] of Object.entries(editors)) {
+			if (st.anchors[id] != null) {
+				found = name;
+				break;
+			}
+		}
+	}
+	if (found === null) return null;
+	const state = editors[found];
+	return {
+		...snippetAt(state, state.anchors[id], before, after),
+		switchTo: found === active ? null : editorTarget(found),
+	};
+}
+
+function extractAnchorSnippet(
+	target,
+	currentBlockIdx,
+	blocks,
+	before = 5,
+	after = 5,
+) {
+	const { editors, active } = replayPlan(blocks, currentBlockIdx);
+	return computeSnippetFor(target, editors, active, before, after);
+}
+
+function computeMoveToSnippets(blocks, before = 5, after = 5) {
+	const editors = { main: new TextState() };
+	let active = "main";
+	const snippets = new Map();
+
+	for (let i = 0; i < blocks.length; i++) {
+		const block = blocks[i];
+		if (!block) continue;
+		if (block.type === "move-to") {
+			snippets.set(
+				i,
+				computeSnippetFor(
+					block.target || "MAIN",
+					editors,
+					active,
+					before,
+					after,
+				),
+			);
+		}
+		active = applyBlock(editors, active, block);
+	}
+	return snippets;
+}
+
 module.exports = {
 	extractAnchorSnippet,
+	computeMoveToSnippets,
 	buildColoredLines,
 	replayPlan,
 };

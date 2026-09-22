@@ -1,6 +1,7 @@
 const { ipcRenderer } = require("electron");
 const path = require("path");
 const { buildWindowTitle } = require("../shared/constants");
+const LessonManager = require("./lesson-manager");
 
 class FileOperations {
 	constructor(
@@ -27,6 +28,8 @@ class FileOperations {
 	}
 
 	async createNewLesson() {
+		if (!(await this.confirmDiscard())) return;
+
 		const filePath = await ipcRenderer.invoke("show-save-dialog");
 		if (!filePath) return;
 
@@ -59,36 +62,99 @@ class FileOperations {
 		this.loadFilePath(filePath);
 	}
 
+	async confirmDiscard() {
+		if (!this.lessonManager.hasChanges()) return true;
+
+		const name =
+			(this.lessonManager.getCurrentFilePath() || "").split(/[\\/]/).pop() ||
+			"This lesson";
+		const choice = await ipcRenderer.invoke("show-choice-dialog", {
+			type: "warning",
+			message: `${name} has unsaved changes.`,
+			detail: "Save them before opening another lesson?",
+			buttons: ["Save", "Discard", "Cancel"],
+			defaultId: 0,
+			cancelId: 2,
+		});
+
+		if (choice === 2 || choice === -1) return false;
+		if (choice === 1) {
+			this.lessonManager.discardChanges();
+			this.updateWindowTitleWithUnsavedIndicator();
+			return true;
+		}
+		return new Promise((resolve) => {
+			this.lessonManager.save((err) => {
+				if (err) {
+					console.error("[LEO] save failed:", err);
+					alert("Save failed: " + err);
+					resolve(false);
+					return;
+				}
+				this.updateWindowTitleWithUnsavedIndicator();
+				resolve(true);
+			});
+		});
+	}
+
+	async _autosaveToRecover(filePath) {
+		const pending = LessonManager.pendingAutosave(filePath);
+		if (!pending) return null;
+
+		const choice = await ipcRenderer.invoke("show-choice-dialog", {
+			type: "warning",
+			message: "LEO closed with unsaved changes to this lesson.",
+			detail: "Recover them, or open the last saved version?",
+			buttons: ["Recover", "Open saved"],
+			defaultId: 0,
+			cancelId: 1,
+		});
+
+		if (choice === 0) return pending;
+		this.lessonManager.currentFilePath = filePath;
+		this.lessonManager.clearAutosave();
+		this.lessonManager.currentFilePath = "";
+		return null;
+	}
+
 	async loadFilePath(filePath) {
+		if (!(await this.confirmDiscard())) return;
+		const from = await this._autosaveToRecover(filePath);
+
 		this._loadStudents();
 		this.updateWindowTitle(filePath.split(/[\\/]/).pop());
 
-		this.lessonManager.load(filePath, (err, data) => {
-			if (err) {
-				console.error("[LEO] load failed:", err);
-				alert("Failed to load file: " + err);
-				if (localStorage.getItem("lastLessonPath") === filePath) {
-					localStorage.removeItem("lastLessonPath");
+		this.lessonManager.load(
+			filePath,
+			(err, data) => {
+				if (err) {
+					console.error("[LEO] load failed:", err);
+					alert("Failed to load file: " + err);
+					if (localStorage.getItem("lastLessonPath") === filePath) {
+						localStorage.removeItem("lastLessonPath");
+					}
+					return;
 				}
-				return;
-			}
 
-			localStorage.setItem("lastLessonPath", filePath);
-			this.cursorManager.resetProgress();
-			this.logManager.initialize(filePath);
+				localStorage.setItem("lastLessonPath", filePath);
+				this.cursorManager.resetProgress();
+				this.logManager.initialize(filePath);
 
-			if (this.undoManager) {
-				this.undoManager.clear();
-			}
+				if (this.undoManager) {
+					this.undoManager.clear();
+				}
 
-			this.lessonRenderer.resetView();
-			this.lessonRenderer.render();
-			this.setInitialStateToInactive();
+				this.lessonRenderer.resetView();
+				this.lessonRenderer.render();
+				this.setInitialStateToInactive();
+				this.updateWindowTitleWithUnsavedIndicator();
 
-			if (this.onLessonLoaded) {
-				this.onLessonLoaded();
-			}
-		});
+				if (this.onLessonLoaded) {
+					this.onLessonLoaded();
+				}
+			},
+			{ from },
+		);
 	}
 
 	_loadStudents() {

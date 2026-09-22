@@ -18,6 +18,10 @@ const RENAMED_COLORS = {
 
 const RETIRED_SETTINGS = ["mode"];
 
+function deepClone(value) {
+	return JSON.parse(JSON.stringify(value));
+}
+
 function migrateColors(colors) {
 	const out = { ...(colors || {}) };
 	for (const [was, now] of Object.entries(RENAMED_COLORS)) {
@@ -55,21 +59,26 @@ class SettingsManager {
 		this.settings = this.load();
 	}
 
+	defaults() {
+		return deepClone(this.defaultSettings);
+	}
+
 	load() {
 		try {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
 				const saved = JSON.parse(data);
 				for (const key of RETIRED_SETTINGS) delete saved[key];
+				const defaults = this.defaults();
 				return {
-					...this.defaultSettings,
+					...defaults,
 					...saved,
 					colors: {
-						...this.defaultSettings.colors,
+						...defaults.colors,
 						...migrateColors(saved.colors),
 					},
 					hotkeys: {
-						...this.defaultSettings.hotkeys,
+						...defaults.hotkeys,
 						...(saved.hotkeys || {}),
 					},
 				};
@@ -77,7 +86,7 @@ class SettingsManager {
 		} catch (error) {
 			console.error("[LEO] settings load failed:", error);
 		}
-		return { ...this.defaultSettings };
+		return this.defaults();
 	}
 
 	save() {
@@ -115,11 +124,11 @@ class SettingsManager {
 	}
 
 	getAll() {
-		return { ...this.settings };
+		return deepClone(this.settings);
 	}
 
 	reset() {
-		this.settings = { ...this.defaultSettings };
+		this.settings = this.defaults();
 		this.save();
 	}
 }

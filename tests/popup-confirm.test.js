@@ -121,10 +121,31 @@ test("every pausing popup is torn down in one place, so the key cannot outlive i
 		"the renderer resumes auto-typing off this message",
 	);
 
+	const popupsSrc = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
 	assert.equal(
-		(src.match(/releaseCodeFromClipboard\(\)/g) || []).length,
+		(popupsSrc.match(/releaseCodeFromClipboard\(\)/g) || []).length,
 		2,
-		"the clipboard is handed back from the one teardown, and nowhere else",
+		"the clipboard is handed back from the one popup teardown, and nowhere else",
+	);
+});
+
+test("quitting hands the clipboard back and releases a held mouse button", () => {
+	const src = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
+
+	const release = /function releaseHeldInput\(\)[\s\S]*?\n\}/.exec(src);
+	assert.ok(release, "there is no single place that drops held OS resources");
+	assert.match(release[0], /releaseCodeFromClipboard\(\)/);
+	assert.match(release[0], /releaseHeldMouseButton\(\)/);
+
+	assert.match(
+		src,
+		/function cleanup\(\)[\s\S]*?releaseHeldInput\(\)/,
+		"will-quit runs cleanup, so it must drop them too",
+	);
+	assert.match(
+		src,
+		/app\.on\("before-quit", \(\) => releaseHeldInput\(\)\)/,
+		"a quit that never reaches will-quit still leaves the clipboard hijacked",
 	);
 });
 

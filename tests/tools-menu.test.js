@@ -41,54 +41,72 @@ test("VS Code opens lessons/<lesson>, not lessons/<lesson>/<lesson>", () => {
 	);
 });
 
-test("with no data, only the Simulator is offered", () => {
+test("with no data, only the Simulator is offered", async () => {
 	const c = makeCourse();
 	fs.mkdirSync(c.lesson, { recursive: true });
-	assert.deepEqual(tools.toolAvailability(), {
+	assert.deepEqual(await tools.toolAvailability(), {
 		timeline: false,
 		students: false,
 		overview: false,
 	});
 });
 
-test("a log in the lesson folder makes Timeline available", () => {
+test("a log in the lesson folder makes Timeline available", async () => {
 	const c = makeCourse();
 	put(path.join(c.lesson, "keys.log"), REAL);
-	assert.equal(tools.toolAvailability().timeline, true);
+	assert.equal((await tools.toolAvailability()).timeline, true);
 	put(path.join(c.lesson, "diff_marks_ideal.json"));
 	const other = makeCourse();
 	put(path.join(other.lesson, "diff_marks_ideal.json"));
 	assert.equal(
-		tools.toolAvailability().timeline,
+		(await tools.toolAvailability()).timeline,
 		false,
 		"the pipeline's own diff_marks files are not a keystroke log",
 	);
 });
 
-test("a remarks spreadsheet makes Students available, wherever it sits", () => {
+test("a stray .json file does not make Timeline available - only a real .log does", async () => {
+	const c = makeCourse();
+	put(path.join(c.lesson, "notes.json"), REAL);
+	assert.equal(
+		(await tools.toolAvailability()).timeline,
+		false,
+		"a json file that happens to look like a log is not a keystroke log",
+	);
+	put(path.join(c.lesson, "session.log"), REAL);
+	assert.equal((await tools.toolAvailability()).timeline, true);
+});
+
+test("an anonymised log.json under anon_ids/ still counts", async () => {
+	const c = makeCourse();
+	put(path.join(c.lesson, "anon_ids", "log.json"), REAL);
+	assert.equal((await tools.toolAvailability()).timeline, true);
+});
+
+test("a remarks spreadsheet makes Students available, wherever it sits", async () => {
 	const c = makeCourse();
 	put(path.join(c.lesson, "excels", "remarks_leo_star.xlsx"));
-	assert.equal(tools.toolAvailability().students, true);
+	assert.equal((await tools.toolAvailability()).students, true);
 	const hidden = makeCourse();
 	put(path.join(hidden.lesson, "students", "remarks_leo.xlsx"));
 	put(path.join(hidden.lesson, "anon_names", "remarks_leo.xlsx"));
 	assert.equal(
-		tools.toolAvailability().students,
+		(await tools.toolAvailability()).students,
 		false,
 		"the student folders are never entered, so a name in one proves nothing",
 	);
 });
 
-test("overview.json at the course root makes Overview available", () => {
+test("overview.json at the course root makes Overview available", async () => {
 	const c = makeCourse();
-	assert.equal(tools.toolAvailability().overview, false);
+	assert.equal((await tools.toolAvailability()).overview, false);
 	put(path.join(c.root, "overview.json"), "{}");
-	assert.equal(tools.toolAvailability().overview, true);
+	assert.equal((await tools.toolAvailability()).overview, true);
 });
 
-test("no course context means nothing is available", () => {
+test("no course context means nothing is available", async () => {
 	tools.setCourseMenuState({ open: false, plans: [], currentPath: "" });
-	assert.deepEqual(tools.toolAvailability(), {
+	assert.deepEqual(await tools.toolAvailability(), {
 		timeline: false,
 		students: false,
 		overview: false,
@@ -263,4 +281,45 @@ test("a folder URL always ends in a slash, so relative links in the listing reso
 		true,
 	);
 	assert.equal(tools.folderUrl(ROOT).endsWith("/"), true);
+});
+
+test("the cached availability is what the menu reads, and refresh reports change", async () => {
+	const c = makeCourse();
+	fs.mkdirSync(c.lesson, { recursive: true });
+	await tools.toolAvailability();
+	assert.deepEqual(tools.cachedToolAvailability(), {
+		timeline: false,
+		students: false,
+		overview: false,
+	});
+
+	put(path.join(c.lesson, "keys.log"), REAL);
+	assert.equal(
+		tools.cachedToolAvailability().timeline,
+		false,
+		"the cache must not hit the disk - that is the whole point",
+	);
+
+	assert.equal(
+		await tools.refreshToolAvailability(),
+		true,
+		"a new log is a change",
+	);
+	assert.equal(tools.cachedToolAvailability().timeline, true);
+	assert.equal(
+		await tools.refreshToolAvailability(),
+		false,
+		"an unchanged folder must not rebuild the menu",
+	);
+});
+
+test("refreshing with no course context is not a change once settled", async () => {
+	tools.setCourseMenuState({ open: false, plans: [], currentPath: "" });
+	await tools.refreshToolAvailability();
+	assert.equal(await tools.refreshToolAvailability(), false);
+	assert.deepEqual(tools.cachedToolAvailability(), {
+		timeline: false,
+		students: false,
+		overview: false,
+	});
 });

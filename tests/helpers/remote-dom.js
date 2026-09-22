@@ -33,6 +33,25 @@ function classList(el) {
 	};
 }
 
+function matchesSimple(node, part) {
+	const notMatch = /^(\.[\w-]+):not\((\.[\w-]+)\)$/.exec(part);
+	if (notMatch) {
+		return (
+			node.classList.contains(notMatch[1].slice(1)) &&
+			!node.classList.contains(notMatch[2].slice(1))
+		);
+	}
+	return part.startsWith(".") && node.classList.contains(part.slice(1));
+}
+
+function matches(node, sel) {
+	if (sel === "[data-step-index]") return node.dataset.stepIndex !== undefined;
+	for (const part of sel.split(",").map((s) => s.trim())) {
+		if (matchesSimple(node, part)) return true;
+	}
+	return false;
+}
+
 function makeStyle() {
 	const style = {};
 	style.setProperty = (k, v) => (style[k] = v);
@@ -49,11 +68,20 @@ function el(id) {
 		onclick: null,
 		textContent: "",
 		value: "",
-		className: "",
 		offsetTop: 0,
 		offsetHeight: 0,
 	};
 	node.classList = classList(node);
+	Object.defineProperty(node, "className", {
+		get: () => [...node.classList._set].join(" "),
+		set: (v) => {
+			node.classList._set.clear();
+			String(v)
+				.split(" ")
+				.filter(Boolean)
+				.forEach((c) => node.classList._set.add(c));
+		},
+	});
 	node.appendChild = (child) => {
 		if (child && child._fragment) node.children.push(...child.children);
 		else node.children.push(child);
@@ -65,9 +93,24 @@ function el(id) {
 		node.children.splice(at < 0 ? 0 : at, 0, ...kids);
 		return child;
 	};
-	node.querySelectorAll = () => [];
-	node.addEventListener = () => {};
+	node.querySelectorAll = (sel) => {
+		const out = [];
+		const walk = (n) => {
+			for (const child of n.children || []) {
+				if (matches(child, sel)) out.push(child);
+				walk(child);
+			}
+		};
+		walk(node);
+		return out;
+	};
+	node._listeners = new Map();
+	node.addEventListener = (type, fn) => {
+		if (!node._listeners.has(type)) node._listeners.set(type, []);
+		node._listeners.get(type).push(fn);
+	};
 	node.blur = () => {};
+	node.scrollIntoView = () => {};
 	Object.defineProperty(node, "firstChild", {
 		get: () => node.children[0] || null,
 	});
@@ -82,6 +125,8 @@ function el(id) {
 
 function build(opts = {}) {
 	const sent = [];
+	const timeouts = new Map();
+	let timeoutSeq = 0;
 	const ids = [
 		"touchpadOverlay",
 		"mobile-header",
@@ -184,8 +229,12 @@ function build(opts = {}) {
 		window: { addEventListener() {}, isSecureContext: false },
 		navigator: { language: "en-US", vibrate() {} },
 		sendMessage: (type, data) => sent.push({ type, data }),
-		setTimeout: () => 0,
-		clearTimeout() {},
+		setTimeout: (fn) => {
+			const id = ++timeoutSeq;
+			timeouts.set(id, fn);
+			return id;
+		},
+		clearTimeout: (id) => timeouts.delete(id),
 		setInterval: () => 0,
 		clearInterval() {},
 		requestAnimationFrame: (fn) => {
@@ -202,14 +251,17 @@ function build(opts = {}) {
 	const src = [
 		fs.readFileSync(path.join(BASE, "shared/snippet-view.js"), "utf-8"),
 		"const SnippetView = window.SnippetView;",
+		fs.readFileSync(path.join(BASE, "shared/code-text.js"), "utf-8"),
+		"const CodeTextRenderer = window.CodeTextRenderer;",
 		...LOAD_ORDER.map((f) => fs.readFileSync(path.join(REMOTE, f), "utf-8")),
 	].join("\n;\n");
 
 	const exported =
 		src +
-		"\n;module.exports={setSessionActive,setTouchpadMode," +
+		"\n;module.exports={setSessionActive,setTouchpadMode,initTouchpad," +
 		"showQuestionOverlay,closeQuestionOverlayUI,showMoveToOverlay," +
 		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
+		"resyncOverlays," +
 		"closeCodeInsertOverlay,codeInsertPaste," +
 		"updateLessonData,applySettings,updateCursor," +
 		"showQuestionToTeacher,closeQuestionOverlay:()=>questionOverlay.dismiss()," +
@@ -220,11 +272,39 @@ function build(opts = {}) {
 		"showMediaOverlay,closeMediaOverlayUI,closeMediaOverlay," +
 		"pinMediaWindow,setPinnedWindows,unpinWindows,closeActiveOverlay," +
 		"handleInteractionBtn,closeInteractionOverlay:()=>interactionOverlay.closeOverlay()," +
-		"setStudents,activePadOverlay," +
+		"setStudents,activePadOverlay,onRandomizerResult," +
 		"padMode:()=>(touchpadActive?touchpadMode:null)};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));
 
-	return { api: sandbox.module.exports, nodes, sent, interactionBtns, root };
+	function fire(node, type, event = {}) {
+		const handlers = node._listeners ? node._listeners.get(type) : null;
+		if (!handlers) return 0;
+		const ev = {
+			touches: [],
+			changedTouches: [],
+			target: { closest: () => null },
+			preventDefault() {},
+			...event,
+		};
+		for (const fn of handlers) fn(ev);
+		return handlers.length;
+	}
+
+	return {
+		api: sandbox.module.exports,
+		nodes,
+		sent,
+		interactionBtns,
+		root,
+		fire,
+		pendingTimeouts: () => timeouts.size,
+		runTimeouts: () => {
+			const fns = [...timeouts.values()];
+			timeouts.clear();
+			for (const fn of fns) fn();
+			return fns.length;
+		},
+	};
 }
 
 module.exports = { buildRemote: build };

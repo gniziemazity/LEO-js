@@ -101,7 +101,7 @@ class QuestionOverlay extends RemoteOverlay {
 			".popup-student-btn:not(.popup-action-btn)",
 		);
 		buttons.forEach((b) => b.classList.remove("popup-student-btn-picked"));
-		const btn = buttons[index];
+		const btn = [...buttons].find((b) => b.textContent === name);
 		if (!btn) return;
 		btn.classList.add("popup-student-btn-picked");
 		btn.scrollIntoView({ behavior: "smooth", block: "center" });

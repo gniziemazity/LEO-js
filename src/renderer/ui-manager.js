@@ -11,7 +11,6 @@ class UIManager {
 	constructor() {
 		this.elements = {};
 		this.isTypingActive = false;
-		this.autoPilotOn = false;
 		this.remotesConnected = false;
 		this.selectedBlockIndex = null;
 		this.sidebarEnabled = false;
@@ -20,7 +19,6 @@ class UIManager {
 	cacheElements() {
 		this.elements = {
 			toggleBtn: document.getElementById("toggleBtn"),
-			autoPilotBtn: document.getElementById("autoPilotBtn"),
 			progressBar: document.getElementById("progressBar"),
 			lessonContainer: document.getElementById("lesson-container"),
 			editorSidebar: document.getElementById("editor-sidebar"),
@@ -50,23 +48,10 @@ class UIManager {
 			this.elements.editorSidebar.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}
-		this.syncAutoPilotBtn();
-	}
-
-	setAutoPilot(on) {
-		this.autoPilotOn = !!on;
-		const btn = this.elements.autoPilotBtn;
-		if (btn) btn.classList.toggle("mode-active", this.autoPilotOn);
 	}
 
 	setRemotesConnected(connected) {
 		this.remotesConnected = !!connected;
-		this.syncAutoPilotBtn();
-	}
-
-	syncAutoPilotBtn() {
-		const btn = this.elements.autoPilotBtn;
-		if (btn) btn.disabled = !(this.remotesConnected && this.isTypingActive);
 	}
 
 	updateProgressBar(percentage) {
@@ -108,7 +93,8 @@ class UIManager {
 		const blockDiv = document.createElement("div");
 		blockDiv.className = `block ${kindClass(blockKindOf(block))}`;
 
-		const placeholder = KIND_PLACEHOLDERS[blockKindOf(block)];
+		const placeholder =
+			block.placeholder || KIND_PLACEHOLDERS[blockKindOf(block)];
 		if (placeholder) blockDiv.dataset.placeholder = placeholder;
 
 		if (this.selectedBlockIndex === blockIdx) {
@@ -259,6 +245,20 @@ class UIManager {
 				: UIManager.caretAtTextEnd(el);
 		selection.removeAllRanges();
 		selection.addRange(safe);
+	}
+
+	refocusBlock(blockIdx) {
+		setTimeout(() => {
+			const block = document.querySelectorAll(".block")[blockIdx];
+			if (!block || block.contentEditable !== "true") return;
+			block.focus();
+			const range = document.createRange();
+			range.selectNodeContents(block);
+			range.collapse(false);
+			const selection = window.getSelection();
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}, 0);
 	}
 
 	focusBlock(blockIdx, clickX, clickY) {

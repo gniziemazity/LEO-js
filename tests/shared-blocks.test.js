@@ -158,7 +158,7 @@ test("the phone gives every block the same kind class the editor does", () => {
 		[
 			"block note-block",
 			"block question-block",
-			"block snippet-block",
+			"block snippet-block collapsed",
 			"block image-block",
 			"block web-block",
 			"block move-to-block",

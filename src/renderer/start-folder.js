@@ -8,7 +8,10 @@ const STRAY_RE = /⚓\d*/g;
 function startDirFor(planPath) {
 	if (!planPath) return null;
 	const ext = path.extname(planPath);
-	return path.join(path.dirname(planPath), path.basename(planPath, ext));
+	return path.join(
+		path.dirname(planPath),
+		`${path.basename(planPath, ext)}_start`,
+	);
 }
 
 function isDirectory(dir) {

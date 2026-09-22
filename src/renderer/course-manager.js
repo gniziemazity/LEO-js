@@ -52,6 +52,7 @@ class CourseManager {
 		for (const dir of COURSE_DIRS) {
 			fs.mkdirSync(path.join(this.rootPath, dir), { recursive: true });
 		}
+		fs.mkdirSync(path.join(this.plansDir(), "images"), { recursive: true });
 	}
 
 	create(rootPath, name) {

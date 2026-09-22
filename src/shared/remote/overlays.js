@@ -108,6 +108,19 @@ function setPinnedWindows(pinned) {
 	syncTouchpadToolbar();
 }
 
+function resyncOverlays(state) {
+	const host = [
+		[questionOverlay, state.activeQuestion],
+		[moveToOverlay, state.activeMoveTo],
+		[codeInsertOverlay, state.activeCodeInsert],
+		[noteOverlay, state.activeNote],
+		[mediaOverlay, state.activeMedia],
+	];
+	for (const [overlay, live] of host) {
+		if (!live) overlay.close();
+	}
+}
+
 function unpinWindows() {
 	sendMessage("unpin-windows", {});
 }

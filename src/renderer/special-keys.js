@@ -22,15 +22,15 @@ class SpecialKeys {
 			"🕛": "Pause",
 			"🅴": "Escape",
 			"↩": "Enter",
-			"⌫": "Backspace",
-			"⛔": "Delete Line",
-			"⌦": "Delete",
 			"⚓": "Anchor",
 			"―": "Tab",
 			"⇑": "Shift + Arrow Up",
 			"⇓": "Shift + Arrow Down",
 			"⇐": "Shift + Home",
 			"⇒": "Shift + End",
+			"⌫": "Backspace",
+			"⌦": "Delete",
+			"⛔": "Delete Line",
 		};
 
 		this.uiManager.populateSpecialKeys(keys, (char) => {

@@ -105,6 +105,8 @@ class LEOBroadcastServer extends EventEmitter {
 	constructor(port = 8080) {
 		super();
 		this.port = port;
+		this._clientSeq = 0;
+		this.currentClientId = null;
 		this.token = this._loadOrCreateDailyToken();
 		this.app = express();
 		this.server = null;
@@ -192,18 +194,19 @@ class LEOBroadcastServer extends EventEmitter {
 		});
 		this.wss.on("connection", (ws) => {
 			console.log(`Client connected: ${ws._socket.remoteAddress}`);
+			ws._leoId = ++this._clientSeq;
 			ws.send(JSON.stringify({ type: "state", data: this.currentState }));
-			this.emit("client-connected");
+			this.emit("client-connected", ws._leoId);
 			ws.on("message", (message) => {
 				try {
 					const data = JSON.parse(message);
-					this.handleClientMessage(data);
+					this.handleClientMessage(data, ws._leoId);
 				} catch (err) {
 					console.error("[LEO] bad client message:", err);
 				}
 			});
 			ws.on("close", () => {
-				this.emit("client-disconnected");
+				this.emit("client-disconnected", ws._leoId);
 			});
 		});
 
@@ -451,12 +454,17 @@ class LEOBroadcastServer extends EventEmitter {
 		}
 	}
 
-	handleClientMessage(message) {
+	handleClientMessage(message, clientId = null) {
 		const { type, data } = message;
-		if (CLIENT_MESSAGE_TYPES.has(type)) {
-			this.emit("client-" + type, ...clientMessageArgs(type, data || {}));
-		} else if (plugin.onClientMessage) {
-			plugin.onClientMessage(type, data, this);
+		this.currentClientId = clientId;
+		try {
+			if (CLIENT_MESSAGE_TYPES.has(type)) {
+				this.emit("client-" + type, ...clientMessageArgs(type, data || {}));
+			} else if (plugin.onClientMessage) {
+				plugin.onClientMessage(type, data, this);
+			}
+		} finally {
+			this.currentClientId = null;
 		}
 	}
 

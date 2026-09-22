@@ -1,4 +1,7 @@
 let currentSettings = null;
+let stepEls = [];
+let appliedStep = null;
+let scrollPending = null;
 let isActive = false;
 let teacherName = "Teacher";
 
@@ -44,6 +47,8 @@ function updateLessonData(data) {
 	const container = document.getElementById("lesson-container");
 	const { blocks } = data;
 	container.innerHTML = "";
+	stepEls = [];
+	appliedStep = null;
 	if (!blocks || !blocks.length) return;
 	let ctr = 0;
 	blocks.forEach((block) => {
@@ -76,28 +81,57 @@ function updateLessonData(data) {
 		}
 		container.appendChild(div);
 	});
+	indexSteps(container);
+}
+
+function indexSteps(container) {
+	stepEls = [];
+	appliedStep = null;
+	for (const el of container.querySelectorAll("[data-step-index]")) {
+		const idx = parseInt(el.dataset.stepIndex);
+		if (!Number.isNaN(idx)) stepEls[idx] = el;
+	}
+}
+
+function applyStepClasses(el, idx, step) {
+	el.classList.remove("cursor", "consumed", "active-block");
+	if (idx < step) {
+		el.classList.add("consumed");
+	} else if (idx === step) {
+		el.classList.add(
+			el.classList.contains("char") ? "cursor" : "active-block",
+		);
+	}
+}
+
+function scrollStepIntoView(el) {
+	if (scrollPending) cancelAnimationFrame(scrollPending);
+	scrollPending = requestAnimationFrame(() => {
+		scrollPending = null;
+		el.scrollIntoView({ behavior: "smooth", block: "center" });
+	});
 }
 
 function updateCursor(data) {
 	const { currentStep } = data;
 	if (typeof noteLessonAdvanced === "function")
 		noteLessonAdvanced(currentStep);
-	document
-		.querySelectorAll(".cursor, .consumed, .active-block")
-		.forEach((el) => {
-			el.classList.remove("cursor", "consumed", "active-block");
-		});
-	document.querySelectorAll("[data-step-index]").forEach((el) => {
-		const idx = parseInt(el.dataset.stepIndex);
-		if (idx < currentStep) {
-			el.classList.add("consumed");
-		} else if (idx === currentStep) {
-			el.classList.add(
-				el.classList.contains("char") ? "cursor" : "active-block",
-			);
-			el.scrollIntoView({ behavior: "smooth", block: "center" });
-		}
-	});
+
+	const last = stepEls.length - 1;
+	let from = 0;
+	let to = last;
+	if (appliedStep !== null) {
+		from = Math.max(0, Math.min(appliedStep, currentStep));
+		to = Math.min(last, Math.max(appliedStep, currentStep));
+	}
+	for (let i = from; i <= to; i++) {
+		const el = stepEls[i];
+		if (el) applyStepClasses(el, i, currentStep);
+	}
+	appliedStep = currentStep;
+
+	const current = stepEls[currentStep];
+	if (current) scrollStepIntoView(current);
 }
 
 function updateProgress(data) {

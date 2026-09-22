@@ -20,16 +20,27 @@ const {
 	readAnchors,
 } = require("./start-folder");
 
+const AUTOSAVE_EXT = ".autosave";
+const AUTOSAVE_DEBOUNCE_MS = 2000;
+
 class LessonManager {
 	constructor() {
 		this.data = [];
 		this.currentFilePath = "";
 		this.hasUnsavedChanges = false;
 		this.onChangeCallback = null;
+		this.autosaveTimer = null;
 	}
 
-	load(filePath, callback) {
-		fs.readFile(filePath, "utf8", (err, data) => {
+	load(filePath, callback, options = {}) {
+		if (this.autosaveTimer) {
+			clearTimeout(this.autosaveTimer);
+			this.autosaveTimer = null;
+		}
+		const readFrom = options.from || filePath;
+		const recovered = readFrom !== filePath;
+
+		fs.readFile(readFrom, "utf8", (err, data) => {
 			if (err) {
 				callback(err, null);
 				return;
@@ -50,7 +61,8 @@ class LessonManager {
 					filePath,
 				);
 				this.currentFilePath = filePath;
-				this.hasUnsavedChanges = false;
+				this.hasUnsavedChanges = recovered;
+				if (!recovered) this.clearAutosave();
 				callback(null, this.data);
 			} catch (e) {
 				callback(e, null);
@@ -171,20 +183,31 @@ class LessonManager {
 			2,
 		);
 
-		fs.writeFile(this.currentFilePath, jsonData, (err) => {
+		const target = this.currentFilePath;
+		const temp = `${target}.saving`;
+
+		fs.writeFile(temp, jsonData, (err) => {
 			if (err) {
 				callback(err);
-			} else {
-				this.hasUnsavedChanges = false;
-				callback(null);
+				return;
 			}
+			fs.rename(temp, target, (renameErr) => {
+				if (renameErr) {
+					fs.unlink(temp, () => {});
+					callback(renameErr);
+					return;
+				}
+				this.hasUnsavedChanges = false;
+				this.clearAutosave();
+				callback(null);
+			});
 		});
 	}
 
 	static defaultBlocks() {
 		return [
-			{ type: "comment", text: "Enter lesson title" },
-			{ type: "code", text: "// Enter first code snippet" },
+			{ type: "comment", text: "", placeholder: "Enter lesson title" },
+			{ type: "code", text: "", placeholder: "Enter first code snippet" },
 		];
 	}
 
@@ -476,8 +499,75 @@ class LessonManager {
 
 	markAsChanged() {
 		this.hasUnsavedChanges = true;
+		this.scheduleAutosave();
 		if (this.onChangeCallback) {
 			this.onChangeCallback();
+		}
+	}
+
+	static autosavePathFor(planPath) {
+		return `${planPath}${AUTOSAVE_EXT}`;
+	}
+
+	autosavePath() {
+		return this.currentFilePath
+			? LessonManager.autosavePathFor(this.currentFilePath)
+			: "";
+	}
+
+	scheduleAutosave() {
+		if (!this.currentFilePath) return;
+		if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+		this.autosaveTimer = setTimeout(() => {
+			this.autosaveTimer = null;
+			this.writeAutosave();
+		}, AUTOSAVE_DEBOUNCE_MS);
+	}
+
+	writeAutosave() {
+		if (!this.currentFilePath || !this.hasUnsavedChanges) return;
+		const target = this.autosavePath();
+		const temp = `${target}.tmp`;
+		try {
+			fs.writeFileSync(
+				temp,
+				JSON.stringify(LessonManager.authored(this.data), null, 2),
+			);
+			fs.renameSync(temp, target);
+		} catch (error) {
+			console.error("[LEO] autosave failed:", error);
+			try {
+				fs.unlinkSync(temp);
+			} catch (_) {}
+		}
+	}
+
+	discardChanges() {
+		this.clearAutosave();
+		this.hasUnsavedChanges = false;
+	}
+
+	clearAutosave() {
+		if (this.autosaveTimer) {
+			clearTimeout(this.autosaveTimer);
+			this.autosaveTimer = null;
+		}
+		const target = this.autosavePath();
+		if (!target) return;
+		try {
+			fs.unlinkSync(target);
+		} catch (_) {}
+	}
+
+	static pendingAutosave(planPath) {
+		const target = LessonManager.autosavePathFor(planPath);
+		try {
+			const saved = fs.statSync(target);
+			const plan = fs.statSync(planPath);
+			if (saved.mtimeMs <= plan.mtimeMs) return null;
+			return target;
+		} catch (_) {
+			return null;
 		}
 	}
 

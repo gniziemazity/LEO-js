@@ -8,7 +8,7 @@ const {
 	collapsedLabel,
 	stripBlockPrefix,
 } = require("../shared/blocks");
-const { extractAnchorSnippet } = require("./anchor-snippet");
+const { computeMoveToSnippets } = require("./anchor-snippet");
 const {
 	buildCodeText,
 	readCodeText,
@@ -27,6 +27,8 @@ const {
 } = require("./move-to-dropdown");
 const { addChoices, kindChoices, kindGlyph } = require("./block-types");
 
+const EDIT_BURST_IDLE_MS = 1000;
+
 const BLOCK_RENDERERS = {
 	comment: "renderKindBlock",
 	code: "renderCodeBlock",
@@ -40,10 +42,10 @@ class LessonRenderer {
 		this.uiManager = uiManager;
 		this.cursorManager = cursorManager;
 		this.undoManager = undoManager;
-		this.editDebounceTimer = null;
 		this.lastEditedBlockIndex = null;
-		this.lastEditedContent = null;
+		this.lastEditTime = 0;
 		this.expandedIncludes = new Set();
+		this._moveToSnippets = new Map();
 	}
 
 	_isScrollbarClick(e) {
@@ -63,6 +65,11 @@ class LessonRenderer {
 	}
 
 	attachEditHandlers(element, allowTab = false) {
+		element.onbeforeinput = (e) => {
+			if (e.inputType === "historyUndo" || e.inputType === "historyRedo") {
+				e.preventDefault();
+			}
+		};
 		element.onpaste = (e) => {
 			e.preventDefault();
 			const text = e.clipboardData
@@ -106,34 +113,22 @@ class LessonRenderer {
 	}
 
 	endEditBurst() {
-		if (this.editDebounceTimer) {
-			clearTimeout(this.editDebounceTimer);
-			this.editDebounceTimer = null;
-		}
 		this.lastEditedBlockIndex = null;
+		this.lastEditTime = 0;
 	}
 
-	saveEditState(blockIndex, content) {
+	saveEditState(blockIndex) {
 		if (!this.undoManager) return;
 
-		if (this.lastEditedBlockIndex !== blockIndex) {
-			if (this.editDebounceTimer) {
-				clearTimeout(this.editDebounceTimer);
-			}
-			this.undoManager.saveState("edit-block");
-			this.lastEditedBlockIndex = blockIndex;
-			this.lastEditedContent = content;
-			return;
-		}
+		const now = Date.now();
+		const startsBurst =
+			this.lastEditedBlockIndex !== blockIndex ||
+			now - this.lastEditTime > EDIT_BURST_IDLE_MS;
 
-		if (this.editDebounceTimer) {
-			clearTimeout(this.editDebounceTimer);
-		}
+		if (startsBurst) this.undoManager.saveState("edit-block");
 
-		this.editDebounceTimer = setTimeout(() => {
-			this.undoManager.saveState("edit-block");
-			this.lastEditedContent = content;
-		}, 1000);
+		this.lastEditedBlockIndex = blockIndex;
+		this.lastEditTime = now;
 	}
 
 	render() {
@@ -144,6 +139,7 @@ class LessonRenderer {
 		let globalStepCounter = 0;
 
 		const blocks = this.lessonManager.getAllBlocks();
+		this._moveToSnippets = computeMoveToSnippets(blocks);
 
 		blocks.forEach((block, blockIdx) => {
 			const blockDiv = this.uiManager.createBlockElement(block, blockIdx);
@@ -250,9 +246,9 @@ class LessonRenderer {
 	}
 
 	_addTools(after, where) {
-		return addChoices().map((c) => ({
+		return addChoices().map((c, i) => ({
 			glyph: `+${c.glyph}`,
-			title: `Add a ${c.label.toLowerCase()} block ${where}`,
+			title: `Add a ${c.label.toLowerCase()} block ${where} (Ctrl+${i + 1})`,
 			className: `block-tool-add block-tool-hover ${where}`,
 			dataset: { addKind: c.kind },
 			onClick: () =>
@@ -264,7 +260,7 @@ class LessonRenderer {
 	_pasteTool(after, where) {
 		return {
 			glyph: "📥",
-			title: `Paste the copied block ${where}`,
+			title: `Paste the copied block ${where} (Ctrl+Shift+V)`,
 			className: `block-tool-paste block-tool-hover ${where}`,
 			onClick: () => this.blockEditor && this.blockEditor.pasteBlock(after),
 		};
@@ -280,7 +276,9 @@ class LessonRenderer {
 			this._pasteTool(after, where),
 			{
 				glyph: above ? "▲" : "▼",
-				title: above ? "Move this block up" : "Move this block down",
+				title: above
+					? "Move this block up (Ctrl+Up)"
+					: "Move this block down (Ctrl+Down)",
 				className: "block-tool-hover",
 				disabled: !this.lessonManager.canMoveBlock(blockIdx, delta),
 				onClick: () =>
@@ -295,14 +293,14 @@ class LessonRenderer {
 		return [
 			{
 				glyph: "⧉",
-				title: "Copy this block",
+				title: "Copy this block (Ctrl+Shift+C)",
 				className: "block-tool-hover",
 				onClick: () =>
 					this.blockEditor && this.blockEditor.copyBlock(blockIdx),
 			},
 			{
-				glyph: "✕",
-				title: "Delete this block",
+				glyph: "🗑️",
+				title: "Delete this block (Ctrl+D)",
 				className: "block-tool-remove block-tool-hover",
 				disabled: !this.lessonManager.canRemoveBlock(blockIdx),
 				onClick: () =>
@@ -567,6 +565,7 @@ class LessonRenderer {
 			stepIndex = buildCodeText(block.text, blockDiv, stepIndex, (step) =>
 				steps.push({ ...step, blockIndex: blockIdx }),
 			);
+			this._syncEmpty(blockDiv, block.text);
 			this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
 
 			steps.push({
@@ -678,11 +677,7 @@ class LessonRenderer {
 			target,
 			note: block.note || "",
 			typeName: creates && block.typeName !== false,
-			snippet: extractAnchorSnippet(
-				target,
-				blockIdx,
-				this.lessonManager.getAllBlocks(),
-			),
+			snippet: this._moveToSnippets.get(blockIdx) || null,
 			element: blockDiv,
 			blockIndex: blockIdx,
 			globalIndex: stepIndex,
@@ -780,10 +775,45 @@ class LessonRenderer {
 		}
 	}
 
+	_offsetAtPoint(el, x, y) {
+		if (typeof document.caretRangeFromPoint !== "function") return null;
+		const range = document.caretRangeFromPoint(x, y);
+		if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) {
+			return null;
+		}
+		const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+		let offset = 0;
+		let node;
+		while ((node = walker.nextNode())) {
+			if (
+				node.parentElement &&
+				node.parentElement.closest("[data-block-opt]")
+			) {
+				continue;
+			}
+			if (node === range.startContainer) return offset + range.startOffset;
+			offset += node.length;
+		}
+		return null;
+	}
+
 	_rerenderAndFocus(blockIdx, clickX, clickY) {
+		const clickedEl = document.elementFromPoint(clickX, clickY);
+		const clickedBlock = clickedEl && clickedEl.closest(".block");
+		const caretOffset = clickedBlock
+			? this._offsetAtPoint(clickedBlock, clickX, clickY)
+			: null;
+
 		this.render();
+
 		setTimeout(() => {
-			this.uiManager.focusBlock(blockIdx, clickX, clickY);
+			const target = document.querySelectorAll(".block")[blockIdx];
+			if (target && caretOffset !== null) {
+				target.focus();
+				this._placeCaret(target, caretOffset);
+			} else {
+				this.uiManager.focusBlock(blockIdx, clickX, clickY);
+			}
 		}, 0);
 	}
 
@@ -872,11 +902,14 @@ class LessonRenderer {
 	}
 
 	broadcastLessonData(executionSteps) {
-		const blocks = this.lessonManager.getAllBlocks();
+		if (executionSteps) this._lastBroadcastSteps = executionSteps;
+		const steps = executionSteps || this._lastBroadcastSteps;
+		if (!steps) return;
+		if (!this.uiManager.remotesConnected) return;
 
 		ipcRenderer.send("update-lesson-data", {
-			blocks: blocks,
-			executionSteps: executionSteps.map((step) => ({
+			blocks: this.lessonManager.getAllBlocks(),
+			executionSteps: steps.map((step) => ({
 				type: step.type,
 				blockIndex: step.blockIndex,
 				globalIndex: step.globalIndex,

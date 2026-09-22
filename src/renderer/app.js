@@ -18,6 +18,7 @@ const DeskPopup = require("./desk-popup");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
 const { COLOR_SETTINGS, defaultsFrom } = require("../shared/settings-schema");
+const { addChoices } = require("./block-types");
 const path = require("path");
 const fs = require("fs");
 
@@ -209,6 +210,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	setupEventListeners();
 	setupGlobalIpcListeners();
 	setupUndoRedoShortcuts();
+	setupBlockShortcuts();
 
 	const bq = document.getElementById("btnStudentQuestion");
 	const bh = document.getElementById("btnProvidingHelp");
@@ -223,8 +225,6 @@ window.addEventListener("DOMContentLoaded", () => {
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
 		typingController.toggleActive();
-	uiManager.getElement("autoPilotBtn").onclick = () =>
-		ipcRenderer.send("set-auto-pilot", !uiManager.autoPilotOn);
 }
 
 function openArtificialSimulator() {
@@ -284,10 +284,11 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("open-settings", () => settingsUI.open());
 	ipcRenderer.on("client-jump-to", (e, idx) => cursorManager.jumpTo(idx));
 	ipcRenderer.on("client-connected", () => qrModalManager.hideModal());
-	ipcRenderer.on("auto-pilot", (e, on) => uiManager.setAutoPilot(on));
-	ipcRenderer.on("remote-count", (e, count) =>
-		uiManager.setRemotesConnected(count > 0),
-	);
+	ipcRenderer.on("remote-count", (e, count) => {
+		const had = uiManager.remotesConnected;
+		uiManager.setRemotesConnected(count > 0);
+		if (!had && count > 0) lessonRenderer.broadcastLessonData();
+	});
 	ipcRenderer.on("log-interaction", (e, type) =>
 		logManager.addInteraction(type),
 	);
@@ -354,42 +355,107 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("redo", () => performRedo());
 }
 
+function rerenderAfterHistory(changed) {
+	if (!changed) return;
+	const editing =
+		document.activeElement &&
+		document.activeElement.classList &&
+		document.activeElement.classList.contains("block");
+	const selected = uiManager.getSelectedBlockIndex();
+	lessonRenderer.endEditBurst();
+	lessonRenderer.render();
+	if (editing && selected !== null) uiManager.refocusBlock(selected);
+}
+
 function performUndo() {
-	if (!uiManager.isActive()) {
-		if (undoManager.undo()) lessonRenderer.render();
-	}
+	if (!uiManager.isActive()) rerenderAfterHistory(undoManager.undo());
 }
 
 function performRedo() {
-	if (!uiManager.isActive()) {
-		if (undoManager.redo()) lessonRenderer.render();
-	}
+	if (!uiManager.isActive()) rerenderAfterHistory(undoManager.redo());
 }
 
 function setupUndoRedoShortcuts() {
 	document.addEventListener("keydown", (e) => {
 		if (uiManager.isActive()) return;
-		const active = document.activeElement;
-		const isEditing =
-			active &&
-			active.contentEditable === "true" &&
-			active.classList.contains("block");
 
 		if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-			if (isEditing) return;
 			e.preventDefault();
 			performUndo();
 		} else if (
 			((e.ctrlKey || e.metaKey) && e.key === "y") ||
 			((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
 		) {
-			if (isEditing) return;
 			e.preventDefault();
 			performRedo();
 		}
 	});
 }
 
+function setupBlockShortcuts() {
+	document.addEventListener("keydown", (e) => {
+		if (uiManager.isActive()) return;
+		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+
+		const blockIdx = uiManager.getSelectedBlockIndex();
+		if (blockIdx === null) return;
+		const block = lessonManager.getAllBlocks()[blockIdx];
+		if (!block) return;
+		const hasControls = !block.fromInclude && block.type !== "include";
+
+		const key = e.key.toLowerCase();
+		if (key === "d" && !e.shiftKey) {
+			if (!lessonManager.canRemoveBlock(blockIdx)) return;
+			e.preventDefault();
+			blockEditor.removeBlock(blockIdx);
+			return;
+		}
+		if (key === "c" && e.shiftKey) {
+			if (!hasControls) return;
+			e.preventDefault();
+			blockEditor.copyBlock(blockIdx);
+			return;
+		}
+		if (key === "v" && e.shiftKey) {
+			if (!hasControls || !blockEditor.hasCopiedBlock()) return;
+			e.preventDefault();
+			blockEditor.pasteBlock(blockIdx);
+			return;
+		}
+		if ((key === "arrowup" || key === "arrowdown") && e.shiftKey) {
+			if (!hasControls) return;
+			const delta = key === "arrowup" ? -1 : 1;
+			if (!lessonManager.canMoveBlock(blockIdx, delta)) return;
+			e.preventDefault();
+			blockEditor.moveBlock(blockIdx, delta);
+			return;
+		}
+		if (key === "arrowup" || key === "arrowdown") {
+			const delta = key === "arrowup" ? -1 : 1;
+			const next = blockIdx + delta;
+			const blocks = lessonManager.getAllBlocks();
+			if (next < lessonManager.firstAuthoredIndex() || next >= blocks.length)
+				return;
+			e.preventDefault();
+			uiManager.selectBlock(next);
+			lessonRenderer.render();
+			return;
+		}
+
+		const digit = Number(e.key);
+		if (hasControls && Number.isInteger(digit) && digit >= 1 && digit <= 7) {
+			const choice = addChoices()[digit - 1];
+			if (!choice) return;
+			e.preventDefault();
+			blockEditor.addBlock(
+				choice.type,
+				choice.initialText || null,
+				blockIdx,
+			);
+		}
+	});
+}
+
 window.addEventListener("beforeunload", () => {
-	logManager.save();
+	logManager.finalize();
 });

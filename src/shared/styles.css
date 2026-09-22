@@ -638,8 +638,8 @@ button.move-to-select:disabled {
 	color: var(--clr-placeholder);
 	pointer-events: none;
 }
-.code-block[contenteditable="true"]:empty::before,
-.code-block[contenteditable="true"].is-empty::before {
+.code-block:empty::before,
+.code-block.is-empty::before {
 	content: attr(data-placeholder);
 	color: var(--clr-placeholder);
 	pointer-events: none;
@@ -1106,6 +1106,25 @@ button.move-to-select:disabled {
 
 .mobile-view #mobile-header.above-pad {
 	z-index: 2558;
+}
+
+.connection-banner {
+	display: none;
+}
+
+body.disconnected .connection-banner {
+	display: block;
+	position: fixed;
+	top: var(--header-h);
+	left: 0;
+	right: 0;
+	z-index: 2559;
+	padding: 6px 12px;
+	text-align: center;
+	font-size: 0.85rem;
+	font-weight: 600;
+	background: var(--clr-danger);
+	color: var(--clr-white);
 }
 
 .header-main-row {
@@ -1748,7 +1767,6 @@ body.side-left .overlay-chrome-close {
 	color: var(--clr-white);
 }
 
-
 .desk-popup {
 	display: none;
 	position: fixed;
@@ -1893,7 +1911,6 @@ body.side-left .overlay-chrome-close {
 .mto-name-typed {
 	opacity: 0.55;
 }
-
 
 .ci-paste-btn {
 	background: var(--clr-green);

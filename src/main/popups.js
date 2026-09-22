@@ -74,25 +74,26 @@ function confirmKeyFor(kind) {
 }
 
 function endPopup(kind) {
+	if (openPopup !== kind) return false;
 	const popup = PAUSING_POPUPS[kind];
-	if (openPopup === kind) {
-		openPopup = null;
-		openPayload = null;
-		pendingName = null;
-	}
+	openPopup = null;
+	openPayload = null;
+	pendingName = null;
 	hotkeyManager.unregisterConfirmPopup();
 	state.unpause("popup");
 	if (popup.onExit) popup.onExit();
 	popup.ended();
+	return true;
 }
 
 function confirmPopup(kind) {
-	endPopup(kind);
+	if (!endPopup(kind)) return false;
 	state.send(PAUSING_POPUPS[kind].confirmChannel);
+	return true;
 }
 
 function endPopupIfOpen(kind) {
-	if (openPopup === kind) endPopup(kind);
+	return endPopup(kind);
 }
 
 function confirmMedia() {
@@ -236,4 +237,5 @@ module.exports = {
 	typeNextNameChar,
 	setNameProgressHandler,
 	openPopupKind,
+	releaseCodeFromClipboard,
 };

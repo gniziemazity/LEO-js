@@ -112,6 +112,23 @@ function stopDragIfActive() {
 	}
 }
 
+function resetGesture() {
+	stopDragIfActive();
+	stopScrollMomentum();
+	if (tapTimeout) {
+		clearTimeout(tapTimeout);
+		tapTimeout = null;
+	}
+	tapTime = 0;
+	wasTwoFinger = false;
+	twoFingerTapStart = 0;
+	twoFingerMoved = false;
+	oneFingerMoved = false;
+	scrollAnchorId = null;
+	scrollAccum = 0;
+	scrollVelocity = 0;
+}
+
 function deactivateTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
@@ -119,7 +136,7 @@ function deactivateTouchpad() {
 	overlay.classList.remove("active", "keyboard-mode");
 	delete document.body.dataset.padTint;
 	header.classList.remove("hidden", "above-pad");
-	stopDragIfActive();
+	resetGesture();
 	if (activeModeHandler) {
 		if (activeModeHandler.deactivate)
 			activeModeHandler.deactivate({ overlay, header });
@@ -505,5 +522,9 @@ function initTouchpad() {
 				tapTimeout = null;
 			}, DOUBLE_TAP_GAP_MS);
 		}
+	});
+
+	padListener("touchcancel", "onTouchCancel", () => {
+		resetGesture();
 	});
 }

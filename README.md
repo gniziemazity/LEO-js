@@ -117,16 +117,17 @@ npm start
 ### Starting from Existing Code
 
 A lesson that picks up where another one ended does not type that code again.
-Put the starting code in a folder named after the plan, beside it:
+Put the starting code in a folder named after the plan with `_start` appended,
+beside it:
 
 ```
 part_3.leo
-part_3/
+part_3_start/
   index.html
   renderer.js
 ```
 
-Opening `part_3.leo` then shows a **Start with part_3/** row, followed by
+Opening `part_3.leo` then shows a **Start with part_3_start/** row, followed by
 every file in the folder (subfolders included; `node_modules`, `.git` and
 binary files are left out). Their code cannot be changed from LEO, only their
 anchors: click a file to open it, put the caret where the lesson will need to

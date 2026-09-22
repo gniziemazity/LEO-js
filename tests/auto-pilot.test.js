@@ -340,7 +340,12 @@ test("main wires the switch from the desktop button, the phone and the connectio
 	);
 	assert.match(
 		main,
-		/"client-disconnected", \(\) => \{\s*autoPilot\.onClientDisconnected\(\);/,
+		/"client-disconnected", \(clientId\) => \{[\s\S]*?autoPilot\.onClientDisconnected\(\);/,
+	);
+	assert.match(
+		main,
+		/"client-disconnected", \(clientId\) => \{\s*releaseInteractionHold\(clientId\);/,
+		"a phone that vanishes with its picker open must not pause typing for good",
 	);
 	assert.match(
 		main,
@@ -359,25 +364,37 @@ test("main wires the switch from the desktop button, the phone and the connectio
 	);
 });
 
-test("the desktop bar has the button, disabled until a remote is there", () => {
+test("the desktop bar has no auto-pilot button - the phone is the only switch", () => {
 	const html = read("index.html");
-	const play = html.indexOf('id="toggleBtn"');
-	const auto = html.indexOf('id="autoPilotBtn"');
-	assert.ok(play > 0 && auto > play, "auto-pilot sits next to play");
-	assert.match(html, /id="autoPilotBtn"[^>]*\bdisabled\b/);
+	assert.ok(
+		!html.includes('id="autoPilotBtn"'),
+		"auto-pilot must be toggled from the remote only",
+	);
 
 	const app = read("renderer/app.js");
-	assert.match(
-		app,
-		/ipcRenderer\.send\("set-auto-pilot", !uiManager\.autoPilotOn\)/,
+	assert.ok(
+		!app.includes("autoPilotOn"),
+		"no leftover desktop auto-pilot state",
+	);
+	assert.ok(
+		!app.includes('ipcRenderer.on("auto-pilot"'),
+		"nothing on the desktop listens for auto-pilot changes any more",
 	);
 	assert.match(
 		app,
-		/ipcRenderer\.on\("auto-pilot", \(e, on\) => uiManager\.setAutoPilot\(on\)\)/,
+		/ipcRenderer\.on\("remote-count", \(e, count\) => \{[\s\S]*?uiManager\.setRemotesConnected\(count > 0\)/,
+		"remote-count tracking must survive - broadcastLessonData still gates on it",
 	);
 	assert.match(
 		app,
-		/ipcRenderer\.on\("remote-count", \(e, count\) =>\s*uiManager\.setRemotesConnected\(count > 0\)/,
+		/if \(!had && count > 0\) lessonRenderer\.broadcastLessonData\(\)/,
+		"a phone that connects after a render must still be sent the lesson",
+	);
+
+	const ui = read("renderer/ui-manager.js");
+	assert.ok(
+		!ui.includes("autoPilotBtn") && !ui.includes("setAutoPilot"),
+		"ui-manager keeps no desktop auto-pilot control",
 	);
 });
 
@@ -519,22 +536,6 @@ test("the setting ships off, in Settings, and is saved with the rest", () => {
 	);
 });
 
-function fakeUiManager() {
-	const UIManager = loadModule("src/renderer/ui-manager.js", {
-		"../shared/blocks": require("../src/shared/blocks"),
-		"./block-types": { KIND_PLACEHOLDERS: {} },
-	});
-	const ui = new UIManager();
-	const btn = { disabled: true, classList: { toggle() {} } };
-	const noop = {
-		classList: { add() {}, remove() {} },
-		textContent: "",
-		title: "",
-	};
-	ui.elements = { autoPilotBtn: btn, toggleBtn: noop, editorSidebar: noop };
-	return { ui, btn };
-}
-
 test("the auto-pilot button wears the app's one toggled-on class", () => {
 	const css = read("shared/styles.css");
 	assert.match(css, /--toggle-ring: 0 0 0 2px var\(--clr-white\);/);
@@ -546,37 +547,12 @@ test("the auto-pilot button wears the app's one toggled-on class", () => {
 		css,
 		/\.mode-side-btn\.mode-active \{[^}]*box-shadow: var\(--toggle-ring\)/,
 	);
-	for (const f of ["renderer/ui-manager.js", "shared/remote/touchpad.js"]) {
-		const src = read(f);
-		assert.match(src, /classList\.toggle\("mode-active"/, f);
-		assert.equal(
-			src.includes("auto-on"),
-			false,
-			f + " keeps a second name for one state",
-		);
-	}
+	const src = read("shared/remote/touchpad.js");
+	assert.match(src, /classList\.toggle\("mode-active"/);
+	assert.equal(
+		src.includes("auto-on"),
+		false,
+		"touchpad.js keeps a second name for one state",
+	);
 	assert.equal(css.includes("auto-on"), false);
-});
-
-test("the desktop button needs both a remote and auto-typing", () => {
-	const { ui, btn } = fakeUiManager();
-	global.document = { body: { classList: { add() {}, remove() {} } } };
-	try {
-		assert.equal(btn.disabled, true);
-
-		ui.setRemotesConnected(true);
-		assert.equal(btn.disabled, true, "a remote alone is not enough");
-
-		ui.setTypingActive(true);
-		assert.equal(btn.disabled, false, "both: it can be pressed");
-
-		ui.setTypingActive(false);
-		assert.equal(btn.disabled, true, "typing stops: it goes dark again");
-
-		ui.setTypingActive(true);
-		ui.setRemotesConnected(false);
-		assert.equal(btn.disabled, true, "the last remote leaves");
-	} finally {
-		delete global.document;
-	}
 });

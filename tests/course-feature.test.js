@@ -12,7 +12,10 @@ test("buildWindowTitle places course name before plan name", () => {
 		buildWindowTitle("intro.leo", null, false, "Web101"),
 		"LEO - Web101 / intro",
 	);
-	assert.equal(buildWindowTitle("intro.leo", null, false, null), "LEO - intro");
+	assert.equal(
+		buildWindowTitle("intro.leo", null, false, null),
+		"LEO - intro",
+	);
 	assert.equal(buildWindowTitle("", null, false, "Web101"), "LEO - Web101");
 	assert.equal(buildWindowTitle("", null, false, null), "LEO");
 	assert.equal(
@@ -59,6 +62,16 @@ test("CourseManager.addPlan refuses a non-plan source file", () => {
 	fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("creating a course generates an empty plans/images folder", () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "leo-course-"));
+	const cm = new CourseManager();
+	cm.create(path.join(root, "C"), "C");
+	const imagesDir = path.join(root, "C", "plans", "images");
+	assert.ok(fs.statSync(imagesDir).isDirectory());
+	assert.deepEqual(fs.readdirSync(imagesDir), []);
+	fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("planToOpen returns first plan when no lastPlan, null when empty", () => {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "leo-course-"));
 	const cm = new CourseManager();
@@ -84,7 +97,9 @@ test("lastPlan persists on save and drives planToOpen after reopen", () => {
 	cm.lastPlan = "zebra";
 	cm.saveCourseMeta();
 
-	const meta = JSON.parse(fs.readFileSync(path.join(dir, ".leo-course"), "utf8"));
+	const meta = JSON.parse(
+		fs.readFileSync(path.join(dir, ".leo-course"), "utf8"),
+	);
 	assert.equal(meta.lastPlan, "zebra", "lastPlan written to .leo-course");
 
 	const cm2 = new CourseManager();

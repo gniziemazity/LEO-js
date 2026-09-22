@@ -38,7 +38,7 @@ function writeFile(dir, rel, content) {
 
 function startFolder(dir, planName, files) {
 	for (const [rel, content] of Object.entries(files)) {
-		writeFile(path.join(dir, planName), rel, content);
+		writeFile(path.join(dir, `${planName}_start`), rel, content);
 	}
 }
 
@@ -94,7 +94,7 @@ test("every file in the folder becomes a move-to and a paste, in order", async (
 
 	const lm = await load(p);
 	const blocks = lm.getAllBlocks();
-	assert.equal(blocks[0].dir, "part_2");
+	assert.equal(blocks[0].dir, "part_2_start");
 	assert.equal(blocks[0].files, 3);
 	assert.deepEqual(
 		blocks.slice(1, 7).map((b) => (b.type === "move-to" ? b.target : b.text)),

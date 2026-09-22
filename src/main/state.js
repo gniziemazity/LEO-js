@@ -34,6 +34,7 @@ class AppState {
 
 	pause(reason = "manual") {
 		this.pauseReasons.add(reason);
+		return () => this.unpause(reason);
 	}
 
 	unpause(reason = "manual") {

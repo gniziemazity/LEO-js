@@ -21,6 +21,16 @@
 		return idx === "teacher" ? TEACHER_ID : idx + 1;
 	}
 
+	function sortedStudentIndexes(students) {
+		return students
+			.map((_, idx) => idx)
+			.sort((a, b) =>
+				String(students[a]).localeCompare(String(students[b]), undefined, {
+					sensitivity: "base",
+				}),
+			);
+	}
+
 	const INTERACTION_BG = {
 		question: "rgb(255, 224, 178)",
 		help: "rgb(200, 230, 201)",
@@ -40,6 +50,7 @@
 		interactionTitle,
 		waitingTitle,
 		participantId,
+		sortedStudentIndexes,
 		INTERACTION_BG,
 		interactionBgVar,
 		interactionBgColor,
