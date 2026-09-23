@@ -945,6 +945,37 @@ function _curatedBuildCorrectionsListEl(blocks) {
 	return list;
 }
 
+const _CURATED_ALIGN_MAX_CELLS = 8e6;
+const _CURATED_PARITY_MAX_ROWS = 200;
+let _curatedParityWin = null;
+
+function _curatedParityFilePairs(teacherNames, outNames) {
+	const tLeft = new Set(teacherNames);
+	const oLeft = new Set(outNames);
+	const pairs = [];
+	const pair = (t, o) => {
+		pairs.push([t, o]);
+		tLeft.delete(t);
+		oLeft.delete(o);
+	};
+	for (const n of outNames) if (tLeft.has(n)) pair(n, n);
+	const byExt = (names) => {
+		const g = new Map();
+		for (const n of names) {
+			const e = getFileExt(n) || "";
+			if (!g.has(e)) g.set(e, []);
+			g.get(e).push(n);
+		}
+		return g;
+	};
+	const og = byExt(oLeft);
+	for (const [e, tl] of byExt(tLeft)) {
+		const ol = og.get(e);
+		if (tl.length === 1 && ol && ol.length === 1) pair(tl[0], ol[0]);
+	}
+	return { pairs, teacherOnly: [...tLeft], outOnly: [...oLeft] };
+}
+
 function _curatedTokenParity(out) {
 	if (typeof _diffNonCommentTokens !== "function") return null;
 	out = out || _curatedApplyToStudent();
@@ -953,63 +984,169 @@ function _curatedTokenParity(out) {
 	const outNames = Object.keys(out);
 	if (!teacherNames.length || !outNames.length) return null;
 
-	// Set check: pool all non-comment tokens on each side. This is independent
-	// of how files are keyed/paired (corrected output may be keyed by student
-	// filename, not teacher's, when files are matched by extension).
-	const tAll = [];
+	const tTok = {};
 	for (const n of teacherNames)
-		for (const t of _diffNonCommentTokens(teacher[n] || "", n)) tAll.push(t);
-	const cAll = [];
+		tTok[n] = _diffNonCommentTokens(teacher[n] || "", n);
+	const oTok = {};
 	for (const n of outNames)
-		for (const t of _diffNonCommentTokens(out[n] != null ? out[n] : "", n))
-			cAll.push(t);
+		oTok[n] = _diffNonCommentTokens(out[n] != null ? out[n] : "", n);
 
 	const freq = new Map();
-	for (const t of tAll) freq.set(t, (freq.get(t) || 0) + 1);
+	for (const n of teacherNames)
+		for (const t of tTok[n]) freq.set(t, (freq.get(t) || 0) + 1);
 	let extra = 0;
-	for (const t of cAll) {
-		const k = freq.get(t) || 0;
-		if (k > 0) freq.set(t, k - 1);
-		else extra++;
-	}
+	for (const n of outNames)
+		for (const t of oTok[n]) {
+			const k = freq.get(t) || 0;
+			if (k > 0) freq.set(t, k - 1);
+			else extra++;
+		}
 	let missing = 0;
 	for (const v of freq.values()) missing += v;
 	const sameSet = extra === 0 && missing === 0;
 
-	// Order check: only meaningful when the sets match. Pair files by extension
-	// (one per ext is the common case); if any ext is ambiguous, don't claim
-	// the order matches.
-	let sameOrder = sameSet;
-	if (sameSet) {
-		const byExt = (names) => {
-			const g = {};
-			for (const n of names) {
-				const e = (getFileExt(n) || "").toLowerCase();
-				(g[e] = g[e] || []).push(n);
-			}
-			return g;
-		};
-		const tg = byExt(teacherNames);
-		const cg = byExt(outNames);
-		for (const e of new Set([...Object.keys(tg), ...Object.keys(cg)])) {
-			const tl = tg[e] || [];
-			const cl = cg[e] || [];
-			if (tl.length !== 1 || cl.length !== 1) {
-				sameOrder = false;
-				break;
-			}
-			const tT = _diffNonCommentTokens(teacher[tl[0]] || "", tl[0]);
-			const cT = _diffNonCommentTokens(
-				out[cl[0]] != null ? out[cl[0]] : "",
-				cl[0],
-			);
-			if (tT.length !== cT.length || !tT.every((x, i) => x === cT[i])) {
-				sameOrder = false;
-				break;
-			}
+	const { pairs, teacherOnly, outOnly } = _curatedParityFilePairs(
+		teacherNames,
+		outNames,
+	);
+	const sameOrder =
+		sameSet &&
+		pairs.every(
+			([t, o]) =>
+				tTok[t].length === oTok[o].length &&
+				tTok[t].every((x, i) => x === oTok[o][i]),
+		) &&
+		teacherOnly.every((n) => !tTok[n].length) &&
+		outOnly.every((n) => !oTok[n].length);
+	return { sameSet, sameOrder, extra, missing };
+}
+
+function _curatedAlignTokens(a, b) {
+	const aToB = new Int32Array(a.length).fill(-1);
+	const bToA = new Int32Array(b.length).fill(-1);
+	const link = (i, j) => {
+		aToB[i] = j;
+		bToA[j] = i;
+	};
+	let lo = 0;
+	while (lo < a.length && lo < b.length && a[lo] === b[lo]) {
+		link(lo, lo);
+		lo++;
+	}
+	let endA = a.length;
+	let endB = b.length;
+	while (endA > lo && endB > lo && a[endA - 1] === b[endB - 1])
+		link(--endA, --endB);
+	const n = endA - lo;
+	const m = endB - lo;
+	const approximate = n > 0 && m > 0 && n * m > _CURATED_ALIGN_MAX_CELLS;
+	if (n > 0 && m > 0 && !approximate) {
+		const w = m + 1;
+		const len = new Uint16Array((n + 1) * w);
+		for (let i = n - 1; i >= 0; i--)
+			for (let j = m - 1; j >= 0; j--)
+				len[i * w + j] =
+					a[lo + i] === b[lo + j]
+						? len[(i + 1) * w + j + 1] + 1
+						: Math.max(len[(i + 1) * w + j], len[i * w + j + 1]);
+		let i = 0;
+		let j = 0;
+		while (i < n && j < m) {
+			if (a[lo + i] === b[lo + j]) {
+				link(lo + i, lo + j);
+				i++;
+				j++;
+			} else if (len[(i + 1) * w + j] >= len[i * w + j + 1]) i++;
+			else j++;
 		}
 	}
-	return { sameSet, sameOrder, extra, missing };
+	return { aToB, bToA, approximate };
+}
+
+function _curatedParityProblems(out) {
+	out = out || _curatedApplyToStudent();
+	const teacherNames = Object.keys(_teacherFiles || {});
+	const outNames = Object.keys(out);
+	const tSpans = {};
+	for (const n of teacherNames)
+		tSpans[n] = _diffNonCommentTokenSpans(_curatedSrcText("teacher", n), n);
+	const oSpans = {};
+	for (const n of outNames)
+		oSpans[n] = _diffNonCommentTokenSpans(out[n] != null ? out[n] : "", n);
+
+	const tLost = [];
+	const oLost = [];
+	let approximate = false;
+	const lose = (list, file, spans, keep) =>
+		spans.forEach((s, idx) => {
+			if (!keep || keep[idx] < 0) list.push({ file, idx, ...s });
+		});
+	const { pairs, teacherOnly, outOnly } = _curatedParityFilePairs(
+		teacherNames,
+		outNames,
+	);
+	for (const [t, o] of pairs) {
+		const al = _curatedAlignTokens(
+			tSpans[t].map((s) => s.token),
+			oSpans[o].map((s) => s.token),
+		);
+		approximate = approximate || al.approximate;
+		lose(tLost, t, tSpans[t], al.aToB);
+		lose(oLost, o, oSpans[o], al.bToA);
+	}
+	for (const t of teacherOnly) lose(tLost, t, tSpans[t]);
+	for (const o of outOnly) lose(oLost, o, oSpans[o]);
+
+	const unplaced = new Map();
+	for (const t of tLost) {
+		if (!unplaced.has(t.token)) unplaced.set(t.token, []);
+		unplaced.get(t.token).push(t);
+	}
+	const moved = [];
+	const extra = [];
+	for (const o of oLost) {
+		const queue = unplaced.get(o.token);
+		if (queue && queue.length)
+			moved.push({ token: o.token, teacher: queue.shift(), out: o });
+		else extra.push({ token: o.token, out: o });
+	}
+	const placed = new Set(moved.map((mv) => mv.teacher));
+	const missing = tLost
+		.filter((t) => !placed.has(t))
+		.map((t) => ({ token: t.token, teacher: t }));
+
+	_curatedParityLocateInStudent(oSpans, [...extra, ...moved]);
+	return { missing, extra, moved, approximate };
+}
+
+function _curatedParityLocateInStudent(oSpans, items) {
+	const filePairs = (_curatedMarks() || {}).file_pairs || {};
+	const studentOf = {};
+	for (const s of Object.keys(_studentFiles || {}))
+		studentOf[filePairs[s] || s] = s;
+	const aligned = {};
+	for (const it of items) {
+		const outFile = it.out.file;
+		const s = studentOf[outFile];
+		if (!s) continue;
+		if (!aligned[outFile]) {
+			const sSpans = _diffNonCommentTokenSpans(
+				_curatedSrcText("student", s),
+				s,
+			);
+			aligned[outFile] = {
+				sSpans,
+				bToA: _curatedAlignTokens(
+					sSpans.map((x) => x.token),
+					oSpans[outFile].map((x) => x.token),
+				).bToA,
+			};
+		}
+		const { sSpans, bToA } = aligned[outFile];
+		const k = bToA[it.out.idx];
+		if (k >= 0)
+			it.student = { file: s, start: sSpans[k].start, end: sSpans[k].end };
+	}
 }
 
 function _curatedParityInfo(p) {
@@ -1055,16 +1192,205 @@ function _curatedApplyParityStyle(el, info) {
 function _curatedUpdateParityIndicator() {
 	const el = document.getElementById("curated-parity-line");
 	if (!el) return;
-	const p =
+	const out =
 		typeof _curatedEditMode !== "undefined" && _curatedEditMode
-			? _curatedTokenParity()
+			? _curatedApplyToStudent()
 			: null;
+	const p = out ? _curatedTokenParity(out) : null;
 	if (!p) {
 		el.style.display = "none";
+		if (_curatedParityWin) _curatedParityWin.win.style.display = "none";
 		return;
 	}
 	el.style.display = "";
-	_curatedApplyParityStyle(el, _curatedParityInfo(p));
+	const info = _curatedParityInfo(p);
+	_curatedApplyParityStyle(el, info);
+	if (!p.sameOrder) el.title = info.title + " Click to see which tokens.";
+	if (_curatedParityWinOpen()) _curatedRenderParityDetails(out, p, info);
+}
+
+function _curatedParityWinOpen() {
+	return !!_curatedParityWin && _curatedParityWin.win.style.display !== "none";
+}
+
+function _curatedShowParityDetails() {
+	if (!_curatedParityWin) {
+		_curatedParityWin = _makeFloatWin({
+			id: "curated-parity-win",
+			className: "curated-float-win float-win",
+			onClose: () => {
+				_curatedParityWin.win.style.display = "none";
+			},
+		});
+		_curatedParityWin.titleEl.textContent = "Token parity";
+	}
+	const win = _curatedParityWin.win;
+	win.style.display = "flex";
+	_curatedUpdateParityIndicator();
+	if (win.style.display === "none" || win.style.left) return;
+	const bar = document.getElementById("bottom-bar");
+	const b = bar.getBoundingClientRect();
+	const r = win.getBoundingClientRect();
+	win.style.left = Math.max(10, b.left - r.width - 10) + "px";
+	win.style.top = Math.max(10, b.bottom - r.height) + "px";
+}
+
+function _curatedRenderParityDetails(out, p, info) {
+	const body = _curatedParityWin.body;
+	const scrollTop = body.scrollTop;
+	const parts = [];
+	if (p.sameOrder) {
+		const summary = document.createElement("div");
+		summary.className = "cp-summary";
+		summary.style.color = info.clr;
+		summary.textContent = info.title;
+		parts.push(summary);
+	} else {
+		const probs = _curatedParityProblems(out);
+		const hint = document.createElement("div");
+		hint.className = "cp-hint";
+		hint.textContent = probs.approximate
+			? "Too many differences to line every token up: the positions below are approximate."
+			: "Click a location to select that token in the code.";
+		parts.push(hint);
+		const textOf = {
+			teacher: (f) => _curatedSrcText("teacher", f),
+			student: (f) => _curatedSrcText("student", f),
+			corrected: (f) => out[f] || "",
+		};
+		const loc = (side, where, jumpable) =>
+			_curatedParityLocEl(
+				side,
+				textOf[side](where.file),
+				where,
+				jumpable
+					? () =>
+							_curatedParityJump(
+								side,
+								where.file,
+								where.start,
+								where.end,
+							)
+					: null,
+			);
+		const teacherLoc = (it) => loc("teacher", it.teacher, true);
+		const studentLoc = (it) =>
+			it.student
+				? loc("student", it.student, true)
+				: loc("corrected", it.out, false);
+		parts.push(
+			_curatedParitySectionEl(
+				"missing",
+				"Missing from the corrected code",
+				probs.missing,
+				(it) => _curatedParityRowEl("−", it.token, [teacherLoc(it)]),
+			),
+			_curatedParitySectionEl(
+				"extra",
+				"Surplus in the corrected code",
+				probs.extra,
+				(it) => _curatedParityRowEl("+", it.token, [studentLoc(it)]),
+			),
+			_curatedParitySectionEl(
+				"moved",
+				"In a different place",
+				probs.moved,
+				(it) =>
+					_curatedParityRowEl("↕", it.token, [
+						teacherLoc(it),
+						studentLoc(it),
+					]),
+			),
+		);
+	}
+	body.replaceChildren(...parts.filter(Boolean));
+	body.scrollTop = scrollTop;
+}
+
+function _curatedParitySectionEl(kind, title, items, rowOf) {
+	if (!items.length) return null;
+	const sec = document.createElement("div");
+	sec.className = "cp-section";
+	sec.dataset.kind = kind;
+	const head = document.createElement("div");
+	head.className = "cp-section-title";
+	head.textContent = `${title} (${items.length})`;
+	sec.appendChild(head);
+	for (const it of items.slice(0, _CURATED_PARITY_MAX_ROWS))
+		sec.appendChild(rowOf(it));
+	if (items.length > _CURATED_PARITY_MAX_ROWS) {
+		const more = document.createElement("div");
+		more.className = "cp-hint";
+		more.textContent = `… and ${items.length - _CURATED_PARITY_MAX_ROWS} more`;
+		sec.appendChild(more);
+	}
+	return sec;
+}
+
+function _curatedParityRowEl(sign, token, locs) {
+	const row = document.createElement("div");
+	row.className = "cp-row";
+	const signEl = document.createElement("span");
+	signEl.className = "cp-sign";
+	signEl.textContent = sign;
+	const tokenEl = document.createElement("code");
+	tokenEl.className = "cp-token";
+	tokenEl.textContent = token;
+	const locsEl = document.createElement("div");
+	locsEl.className = "cp-locs";
+	locsEl.append(...locs);
+	row.append(signEl, tokenEl, locsEl);
+	return row;
+}
+
+function _curatedParityLocEl(side, text, where, jump) {
+	const c = _curatedParityContext(text, where.start, where.end);
+	const loc = document.createElement("div");
+	loc.className = "cp-loc";
+	const chip = document.createElement(jump ? "button" : "span");
+	chip.className = "cp-chip";
+	chip.textContent = `${side} ${where.file}:${c.line}`;
+	if (jump) {
+		chip.type = "button";
+		chip.title = `Select it in the ${side}'s code`;
+		chip.addEventListener("click", jump);
+	} else {
+		chip.title = "Added by a correction: the student's code does not have it";
+	}
+	const ctx = document.createElement("code");
+	ctx.className = "cp-ctx";
+	ctx.innerHTML =
+		escHtml(c.before) +
+		"<mark>" +
+		escHtml(c.token) +
+		"</mark>" +
+		escHtml(c.after);
+	loc.append(chip, ctx);
+	return loc;
+}
+
+function _curatedParityContext(text, start, end) {
+	const max = 40;
+	const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+	const nl = text.indexOf("\n", end);
+	let before = text.slice(lineStart, start).replace(/^\s+/, "");
+	let after = text.slice(end, nl < 0 ? text.length : nl).replace(/\s+$/, "");
+	if (before.length > max) before = "…" + before.slice(-max);
+	if (after.length > max) after = after.slice(0, max) + "…";
+	const line = text.slice(0, start).split("\n").length;
+	return { line, before, token: text.slice(start, end), after };
+}
+
+function _curatedParityJump(side, file, start, end) {
+	const tab = document.querySelector(
+		`#tabs-${side} .file-tab[data-file-name="${CSS.escape(file)}"]`,
+	);
+	if (tab && !tab.classList.contains("file-tab-active")) tab.click();
+	const dom = _curatedSrcPosToDomPoint(side, file, start);
+	const el =
+		dom && (dom.node.nodeType === 1 ? dom.node : dom.node.parentElement);
+	if (el) el.scrollIntoView({ block: "center", inline: "nearest" });
+	_curatedSelectAndShow(side, file, start, end, 0, 0);
 }
 
 function _curatedPreview() {
@@ -1208,6 +1534,7 @@ function _curatedPreview() {
 	left.appendChild(toolbar);
 	left.appendChild(codeView);
 	left.appendChild(stepView);
+	left.appendChild(_curatedBuildSaveControls());
 
 	const right = document.createElement("div");
 	right.className = "tw-preview-render";

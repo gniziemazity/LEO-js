@@ -219,21 +219,14 @@ function _curatedResolveSaveName(basis, custom) {
 	return { fname: `diff_marks_${n}.json`, matching };
 }
 
-function _curatedCloseSaveDialog() {
-	if (typeof _curatedFloatWin !== "undefined" && _curatedFloatWin) {
-		_curatedFloatWin.win.style.display = "none";
-	}
-}
-
-function _curatedOpenSaveDialog() {
-	if (typeof _embedMode !== "undefined" && _embedMode) return;
+function _curatedBuildSaveControls() {
 	const defaultBasis = _diffMode === "minimal" ? "minimal" : "ideal";
 
 	const form = document.createElement("div");
 	form.className = "csm-form";
 	form.innerHTML = `
 		<label>
-			File
+			Diff marks
 			<select id="csm-basis">
 				<option value="ideal">ideal</option>
 				<option value="minimal">minimal</option>
@@ -241,14 +234,13 @@ function _curatedOpenSaveDialog() {
 			</select>
 		</label>
 		<label id="csm-custom-row" style="display:none;">
-			Differentiating part <span class="csm-hint">(diff_marks_&lt;name&gt;.json)</span>
-			<input id="csm-custom" type="text" placeholder="name">
+			<span class="csm-hint">diff_marks_</span><input id="csm-custom" type="text" placeholder="name"><span class="csm-hint">.json</span>
 		</label>
 		<div id="csm-status"></div>
 		<div class="csm-actions">
-			<button id="csm-copy" class="btn-edit">📋 Copy</button>
-			<button id="csm-download" class="btn-edit">⬇ Download</button>
-			<button id="csm-save" class="btn-edit">💾 Save</button>
+			<button id="csm-copy" class="btn-edit" title="Copy the diff marks JSON">📋 Copy</button>
+			<button id="csm-download" class="btn-edit" title="Download the diff marks JSON">⬇ Download</button>
+			<button id="csm-save" class="btn-edit" title="Write the diff marks into the student's folder">💾 Save</button>
 		</div>`;
 
 	const basisSel = form.querySelector("#csm-basis");
@@ -259,14 +251,13 @@ function _curatedOpenSaveDialog() {
 
 	const syncCustom = () => {
 		const isCustom = basisSel.value === "custom";
-		customRow.style.display = isCustom ? "block" : "none";
+		customRow.style.display = isCustom ? "" : "none";
 		if (isCustom) customInp.focus();
 	};
 	basisSel.addEventListener("change", syncCustom);
 	syncCustom();
 
 	const showStatus = (msg, ok) => {
-		statusEl.style.display = "block";
 		statusEl.textContent = msg;
 		statusEl.style.color = ok ? "var(--clr-green)" : "var(--clr-red)";
 	};
@@ -301,7 +292,7 @@ function _curatedOpenSaveDialog() {
 		showStatus("Saving…", true);
 		try {
 			await _curatedSaveToFolder(r.fname, r.matching);
-			_curatedCloseSaveDialog();
+			_curatedFloatWin.win.style.display = "none";
 		} catch (err) {
 			console.error("[Differentiator] Save failed", err);
 			showStatus("Save failed: " + (err && err.message), false);
@@ -309,7 +300,7 @@ function _curatedOpenSaveDialog() {
 		}
 	});
 
-	_curatedShowFloatWin("Save diff marks", form);
+	return form;
 }
 
 function _curatedClearDiff() {

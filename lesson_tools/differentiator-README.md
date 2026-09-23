@@ -41,13 +41,13 @@ view used inside the students tool).
 
 ## 2. The screen
 
-| Area                                 | What it is                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Left panel**                       | The **teacher** reference (labelled _Starter Code_ in embed mode).                                                                                                                                                                                                                                                                                                             |
-| **Right panel**                      | The **student**'s submission, with the follow **%** beside the name.                                                                                                                                                                                                                                                                                                           |
-| **File tabs**                        | One per code file, on each panel header. The active HTML tab drives the preview.                                                                                                                                                                                                                                                                                               |
-| **← A / B →** (student header)       | Previous / next student, with a position counter (current / total).                                                                                                                                                                                                                                                                                                            |
-| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `↕️ Padding`, `🔢 Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **💾 Save** and **🪄 Corrections** buttons. **💾 Save** opens a popup that also holds **📋 Copy** and **⬇ Download** (see §8). Selecting **Clear** (bottom of the Mode dropdown) wipes all marks to start fresh. |
+| Area                                 | What it is                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Left panel**                       | The **teacher** reference (labelled _Starter Code_ in embed mode).                                                                                                                                                                                                                                                                                      |
+| **Right panel**                      | The **student**'s submission, with the follow **%** beside the name.                                                                                                                                                                                                                                                                                    |
+| **File tabs**                        | One per code file, on each panel header. The active HTML tab drives the preview.                                                                                                                                                                                                                                                                        |
+| **← A / B →** (student header)       | Previous / next student, with a position counter (current / total).                                                                                                                                                                                                                                                                                     |
+| **Bottom bar** (fixed, bottom-right) | The **Mode dropdown** (the basis — §4) plus display toggles `↕️ Padding`, `🔢 Line №`, `🎨 Lang color`, `⬜ Preview`. In Ideal/Minimal mode it also grows the **🪄 Corrections** button, whose popup is also where you save (see §8), and the token-parity line (§7). Selecting **Clear** (bottom of the Mode dropdown) wipes all marks to start fresh. |
 
 ---
 
@@ -162,11 +162,19 @@ shows:
   display; turn it off to keep the student's original indentation.
 - **Result After Corrections** — a live render (iframe) of the corrected program,
   so you can confirm it works.
-- A **token-parity line** below the Corrections button, updated live:
-   - **Same tokens** (green) — the corrections reproduce the teacher's
-     non-comment tokens exactly.
-   - **Different order** (orange) — same tokens, different order.
-   - **Δ +N · −M** (red) — the corrections don't reproduce the teacher's tokens (N surplus, M missing).
+- A **Diff marks** row along the bottom, for saving your work (§8).
+
+Below the Corrections button, a **token-parity line** is updated live:
+
+- **Same tokens** (green) — the corrections reproduce the teacher's
+  non-comment tokens exactly.
+- **Different order** (orange) — same tokens, different order.
+- **Δ +N · −M** (red) — the corrections don't reproduce the teacher's tokens (N surplus, M missing).
+
+Click it to list the tokens behind it: **missing** (teacher tokens no correction
+puts back), **surplus** (tokens left in that the teacher doesn't have) and **in a
+different place**. Each entry names its file and line; click that to select the
+token in the code, ready to mark.
 
 Export the corrections as a **📸 Screenshot** or **🌐 HTML**.
 
@@ -174,14 +182,16 @@ Export the corrections as a **📸 Screenshot** or **🌐 HTML**.
 
 ## 8. Saving your work
 
-**💾 Save** opens a popup where you pick the file — **ideal**, **minimal**, or
-**Custom…** (type the differentiating part, saved as `diff_marks_<part>.json`).
-The popup has three actions:
+Saving happens in the **Diff marks** row at the bottom of the **🪄 Corrections**
+popup (§7), so you save after seeing what your marks do. Pick the file —
+**ideal**, **minimal**, or **Custom…** (type the differentiating part, saved as
+`diff_marks_<part>.json`) — then:
 
 - **💾 Save** writes the file straight into the student's `anon_ids/<sid>/`
   **and** `curated/<sid>/` folders (creating `curated/` if needed). Requires a
   writable dataset — the app's **Tools ▸ Differentiator** window or a
-  folder-picker session; the read-only web publish can't save.
+  folder-picker session; the read-only web publish can't save. A successful
+  save closes the popup; a failed one says why in the row.
 - **⬇ Download** downloads the same JSON to your browser's downloads folder.
 - **📋 Copy** copies the JSON to the clipboard.
 
@@ -211,5 +221,5 @@ the editor (undoable with Ctrl+Z; nothing is written until you Save).
 2. Switch the mode to **Minimal** (or **Ideal**).
 3. Select tokens and label them (`m`/`e`/`g`/`c`), pairing substitutions with `p`.
 4. Watch the follow **%** and the parity line until the corrections check out.
-5. **🪄 Corrections** to preview/export, **💾 Download** to save
-   `diff_marks_minimal.json`.
+5. **🪄 Corrections** to preview/export, then **💾 Save** at the bottom of it to
+   write `diff_marks_minimal.json`.

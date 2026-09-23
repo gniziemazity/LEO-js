@@ -36,14 +36,15 @@ function _curatedEnsureButtons() {
 		b.addEventListener("click", onClick);
 		bar.appendChild(b);
 	};
-	make("btn-savefolder-curated", "💾 Save", _curatedOpenSaveDialog);
 	make("btn-preview-curated", "🪄 Corrections", _curatedPreview);
 
 	const parity = document.createElement("div");
 	parity.id = "curated-parity-line";
 	parity.style.cssText =
 		"display:none;font-size:11px;font-weight:600;text-align:center;" +
-		"padding:3px 8px;border-radius:6px;border:1px solid;white-space:nowrap;";
+		"padding:3px 8px;border-radius:6px;border:1px solid;white-space:nowrap;" +
+		"cursor:pointer;";
+	parity.addEventListener("click", _curatedShowParityDetails);
 	bar.appendChild(parity);
 }
 

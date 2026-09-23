@@ -20,7 +20,7 @@ function _diffCommentRanges(text, fileName) {
 let _teacherTokenTotalCache = null;
 let _teacherTokenTotalCacheKey = null;
 
-function _diffNonCommentTokens(text, fileName) {
+function _diffNonCommentTokenSpans(text, fileName) {
 	if (!text) return [];
 	const ranges = _diffCommentRanges(text, fileName);
 	const out = [];
@@ -36,9 +36,14 @@ function _diffNonCommentTokens(text, fileName) {
 			}
 			if (pos < lo) break;
 		}
-		if (!inComment) out.push(m[0]);
+		if (!inComment)
+			out.push({ token: m[0], start: pos, end: pos + m[0].length });
 	}
 	return out;
+}
+
+function _diffNonCommentTokens(text, fileName) {
+	return _diffNonCommentTokenSpans(text, fileName).map((s) => s.token);
 }
 
 function _countNonCommentTokens(text, fileName) {
