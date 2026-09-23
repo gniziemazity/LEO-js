@@ -706,6 +706,7 @@ if (typeof module !== "undefined" && module.exports) {
 		applyTypedChar,
 		applyTypedText,
 		makeReplayContext,
+		replayOpensCloses,
 		replayStep,
 		replayChar,
 		replayCodeInsert,

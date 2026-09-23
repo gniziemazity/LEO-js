@@ -14,30 +14,38 @@ const _extToId = {};
 const _compiledRe = {};
 const _compiledOpenTagRe = {};
 let _readyPromise = null;
+const _LOADED_BY_REQUIRE = typeof module !== "undefined" && !!module.exports;
 
-async function _loadJson(id) {
-	if (typeof window !== "undefined") {
-		const base = new URL("languages/", window.location.href);
-		const r = await fetch(new URL(`${id}.json`, base));
-		if (!r.ok) throw new Error(`Failed to fetch profile ${id}: ${r.status}`);
-		return r.json();
-	}
+function _readJson(id) {
 	const fs = require("node:fs");
 	const path = require("node:path");
 	const p = path.join(__dirname, `${id}.json`);
 	return JSON.parse(fs.readFileSync(p, "utf8"));
 }
 
+async function _fetchJson(id) {
+	const base = new URL("languages/", window.location.href);
+	const r = await fetch(new URL(`${id}.json`, base));
+	if (!r.ok) throw new Error(`Failed to fetch profile ${id}: ${r.status}`);
+	return r.json();
+}
+
+function _storeProfile(pid, data) {
+	_profiles[pid] = data;
+	for (const ext of data.extensions || []) {
+		_extToId[ext.toLowerCase()] = pid;
+	}
+}
+
 function initProfiles() {
 	if (_readyPromise) return _readyPromise;
+	if (_LOADED_BY_REQUIRE) {
+		for (const pid of _PROFILE_IDS) _storeProfile(pid, _readJson(pid));
+		_readyPromise = Promise.resolve();
+		return _readyPromise;
+	}
 	_readyPromise = (async () => {
-		for (const pid of _PROFILE_IDS) {
-			const data = await _loadJson(pid);
-			_profiles[pid] = data;
-			for (const ext of data.extensions || []) {
-				_extToId[ext.toLowerCase()] = pid;
-			}
-		}
+		for (const pid of _PROFILE_IDS) _storeProfile(pid, await _fetchJson(pid));
 	})();
 	return _readyPromise;
 }

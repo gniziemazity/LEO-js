@@ -1737,6 +1737,7 @@ body.side-left .overlay-chrome-close {
 	font-family: var(--font-mono);
 	font-size: inherit;
 	line-height: 1.5;
+	min-height: 1lh;
 }
 
 .mt-modal-anchor-cursor {

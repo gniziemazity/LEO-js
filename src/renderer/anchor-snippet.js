@@ -2,13 +2,26 @@ const {
 	TextState,
 	applyTypedText,
 	applyAtomicText,
+	replayOpensCloses,
 } = require("../../lesson_tools/shared/simulator-model");
+const { initProfiles } = require("../../lesson_tools/languages/profiles");
 const { classifyMoveToTarget } = require("../shared/move-to-target");
 const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,
 	buildHighlightSpans,
 } = require("../../lesson_tools/shared/simulator-highlight");
+
+initProfiles();
+
+function typingOpts(name) {
+	return { getOpensCloses: replayOpensCloses(name, null) };
+}
+
+function highlightType(name) {
+	const m = /\.([^.]+)$/.exec(name || "");
+	return m ? m[1].toLowerCase() : "html";
+}
 
 function editorTarget(name) {
 	if (name === "main") return "MAIN";
@@ -25,7 +38,7 @@ function applyBlock(editors, active, block) {
 	if (!block) return active;
 	if (block.type === "code") {
 		openEditor(editors, active);
-		applyTypedText(editors[active], block.text || "");
+		applyTypedText(editors[active], block.text || "", 0, typingOpts(active));
 		return active;
 	}
 	if (block.type === "move-to") {
@@ -52,7 +65,12 @@ function applyBlock(editors, active, block) {
 	}
 	if (block.type === "comment" && getBlockKind(block.text) === "snippet") {
 		openEditor(editors, active);
-		applyAtomicText(editors[active], stripBlockPrefix(block.text || ""));
+		applyAtomicText(
+			editors[active],
+			stripBlockPrefix(block.text || ""),
+			0,
+			typingOpts(active),
+		);
 	}
 	return active;
 }
@@ -67,7 +85,13 @@ function replayPlan(blocks, stopAt = Infinity) {
 	return { editors, active };
 }
 
-function buildColoredLines(fullText, fromLineIdx, toLineIdx, lines) {
+function buildColoredLines(
+	fullText,
+	fromLineIdx,
+	toLineIdx,
+	lines,
+	fileType = "html",
+) {
 	const allLines = lines || fullText.split("\n");
 	const lineStarts = [0];
 	for (let i = 0; i < allLines.length; i++) {
@@ -76,7 +100,7 @@ function buildColoredLines(fullText, fromLineIdx, toLineIdx, lines) {
 
 	let spans = [];
 	try {
-		spans = buildHighlightSpans(fullText, "html");
+		spans = buildHighlightSpans(fullText, fileType);
 	} catch (_) {
 		return null;
 	}
@@ -114,7 +138,7 @@ function buildColoredLines(fullText, fromLineIdx, toLineIdx, lines) {
 	return result;
 }
 
-function snippetAt(state, pos, before, after) {
+function snippetAt(name, state, pos, before, after) {
 	const beforeText = state.text.slice(0, pos);
 	const lineIdx = (beforeText.match(/\n/g) || []).length;
 	const lineStart = beforeText.lastIndexOf("\n") + 1;
@@ -125,7 +149,13 @@ function snippetAt(state, pos, before, after) {
 	const end = Math.min(lines.length - 1, lineIdx + after);
 	return {
 		lines: lines.slice(start, end + 1),
-		colored: buildColoredLines(state.text, start, end, lines),
+		colored: buildColoredLines(
+			state.text,
+			start,
+			end,
+			lines,
+			highlightType(name),
+		),
 		arrowIdx: lineIdx - start,
 		anchorCol: col,
 	};
@@ -139,7 +169,7 @@ function computeSnippetFor(target, editors, active, before, after) {
 		const state = editors[name];
 		if (!state || !state.text) return null;
 		return {
-			...snippetAt(state, state.cursor, before, after),
+			...snippetAt(name, state, state.cursor, before, after),
 			switchTo: null,
 		};
 	}
@@ -159,7 +189,7 @@ function computeSnippetFor(target, editors, active, before, after) {
 	if (found === null) return null;
 	const state = editors[found];
 	return {
-		...snippetAt(state, state.anchors[id], before, after),
+		...snippetAt(found, state, state.anchors[id], before, after),
 		switchTo: found === active ? null : editorTarget(found),
 	};
 }
