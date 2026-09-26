@@ -14,10 +14,7 @@ function makeCursorManager() {
 		},
 	});
 	const sent = ipc.sent;
-	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
-		{ addEntry() {} },
-	);
+	const cm = new CursorManager({ updateProgressBar() {} }, { addEntry() {} });
 	return { cm, sent, types: () => sent.map((m) => m.ch) };
 }
 

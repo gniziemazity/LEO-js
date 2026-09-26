@@ -40,7 +40,7 @@ function fakeElement() {
 function manager() {
 	const steps = [{ type: "char", char: "a", element: fakeElement() }];
 	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
+		{ updateProgressBar() {} },
 		{ addEntry: () => ({}) },
 	);
 	cm.setExecutionSteps(steps);

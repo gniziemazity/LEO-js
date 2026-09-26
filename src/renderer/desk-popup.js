@@ -87,11 +87,7 @@ class DeskPopup {
 	}
 
 	_title(el, text) {
-		const t = document.createElement("div");
-		t.className = "desk-popup-title";
-		t.textContent = text;
-		el.appendChild(t);
-		return t;
+		return this._panel(el, "desk-popup-title", text);
 	}
 
 	_body(el, className) {
@@ -140,26 +136,15 @@ class DeskPopup {
 		return fillAskerRow(row, choices, onChange);
 	}
 
-	_studentBtn(grid, label, onClick, extraClass) {
-		const b = document.createElement("button");
-		b.type = "button";
-		b.className = `popup-student-btn${extraClass ? " " + extraClass : ""}`;
-		b.textContent = label;
-		b.addEventListener("click", onClick);
-		grid.appendChild(b);
-		return b;
+	_studentBtn(grid, label, onClick) {
+		return this._button(grid, label, onClick, "popup-student-btn");
 	}
 
 	showMoveTo({ mode, target, snippet, typeName, note }) {
 		const el = this._open("move-to");
 		const canTypeName = mode === "file" && !!typeName;
 		this._title(el, moveToPopupTitle({ mode, snippet, typeName }));
-		if (note) {
-			const n = document.createElement("div");
-			n.className = "mt-modal-note";
-			n.textContent = note;
-			el.appendChild(n);
-		}
+		if (note) this._panel(el, "mt-modal-note", note);
 		const named = mode !== "anchor";
 		if (named) this._moveToName(el, target);
 		if (!this._snippetBody(el, snippet) && !named)
@@ -253,7 +238,7 @@ class DeskPopup {
 				this._button(
 					actions,
 					"🎲",
-					() => this._randomize(list),
+					() => this._send("client-question-randomize"),
 					"desk-popup-btn desk-popup-icon",
 				);
 			if (this.options)
@@ -292,11 +277,6 @@ class DeskPopup {
 		if (this.kind === "question" && this._revealQuestionUI) {
 			this._revealQuestionUI();
 		}
-	}
-
-	_randomize(list) {
-		if (!list || !list.length) return;
-		this._send("client-question-randomize");
 	}
 
 	_answered(studentId) {
@@ -390,7 +370,7 @@ class DeskPopup {
 		this._button(
 			actions,
 			"🎲",
-			() => this._randomize(this.students),
+			() => this._send("client-question-randomize"),
 			"desk-popup-btn desk-popup-icon",
 		);
 		this._button(

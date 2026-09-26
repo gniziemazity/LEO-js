@@ -47,7 +47,7 @@ class MoveToOverlay extends RemoteOverlay {
 		targetEl.style.display = "none";
 		targetEl.textContent = "";
 
-		if (mode === "dev" || mode === "main" || mode === "file") {
+		if (mode !== "anchor") {
 			targetEl.style.display = "";
 			SnippetView.renderTypedName(
 				targetEl,
@@ -57,22 +57,17 @@ class MoveToOverlay extends RemoteOverlay {
 			if (SnippetView.renderSnippet(snippetEl, snippet)) {
 				snippetEl.style.display = "block";
 			}
-		} else if (mode === "anchor") {
-			if (SnippetView.renderSnippet(snippetEl, snippet)) {
-				snippetEl.style.display = "block";
-			} else {
-				targetEl.style.display = "";
-				targetEl.textContent = target || "";
-				snippetEl.style.display = "block";
-				const div = document.createElement("div");
-				div.className = "mt-modal-empty";
-				div.textContent =
-					"(Anchor not found in plan — move to the matching position.)";
-				snippetEl.appendChild(div);
-			}
+		} else if (SnippetView.renderSnippet(snippetEl, snippet)) {
+			snippetEl.style.display = "block";
 		} else {
 			targetEl.style.display = "";
 			targetEl.textContent = target || "";
+			snippetEl.style.display = "block";
+			const div = document.createElement("div");
+			div.className = "mt-modal-empty";
+			div.textContent =
+				"(Anchor not found in plan — move to the matching position.)";
+			snippetEl.appendChild(div);
 		}
 
 		this.typingName = false;

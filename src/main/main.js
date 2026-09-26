@@ -12,7 +12,7 @@ const {
 
 const path = require("path");
 const fs = require("fs");
-const { WINDOW_CONFIG, buildWindowTitle } = require("../shared/constants");
+const { WINDOW_CONFIG } = require("../shared/constants");
 const { interactionBgColor, isTeacher } = require("../shared/interaction-view");
 const state = require("./state");
 
@@ -203,7 +203,6 @@ broadcastServer.on("client-disconnected", (clientId) => {
 	autoPilot.onClientDisconnected();
 	syncRemoteHotkeys();
 });
-ipcMain.on("set-auto-pilot", (event, on) => autoPilot.set(on === true));
 broadcastServer.on("client-code-insert-paste", () => pasteAndConfirm());
 broadcastServer.on("client-move-to-type-name", () => armMoveToName());
 state.onPopupKey = () => {
@@ -548,9 +547,11 @@ ipcMain.on(
 	},
 );
 
+const LESSON_FILTERS = [{ name: "LEO Lesson", extensions: ["leo", "json"] }];
+
 ipcMain.handle("show-save-dialog", async (event, opts = {}) => {
 	const result = await dialog.showSaveDialog(state.mainWindow, {
-		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
+		filters: LESSON_FILTERS,
 		defaultPath: opts.defaultPath || "lesson.leo",
 		title: opts.title || undefined,
 	});
@@ -558,7 +559,7 @@ ipcMain.handle("show-save-dialog", async (event, opts = {}) => {
 });
 ipcMain.handle("show-open-dialog", async (event, opts = {}) => {
 	const result = await dialog.showOpenDialog(state.mainWindow, {
-		filters: [{ name: "LEO Lesson", extensions: ["leo", "json"] }],
+		filters: LESSON_FILTERS,
 		properties: ["openFile"],
 		defaultPath: opts.defaultPath || undefined,
 	});
@@ -592,22 +593,6 @@ ipcMain.handle("show-create-course-dialog", async () => {
 		properties: ["createDirectory"],
 	});
 	return result.filePath;
-});
-
-ipcMain.on("update-window-title", (event, titleData) => {
-	if (!state.mainWindow) return;
-	let fileName, studentCount, courseName;
-	if (typeof titleData === "object" && titleData !== null)
-		({ fileName, studentCount, courseName } = titleData);
-	else {
-		fileName = titleData;
-		studentCount = null;
-	}
-	const hasUnsaved = typeof fileName === "string" && fileName.endsWith(" *");
-	const cleanName = hasUnsaved ? fileName.slice(0, -2) : fileName;
-	state.mainWindow.setTitle(
-		buildWindowTitle(cleanName, studentCount, hasUnsaved, courseName),
-	);
 });
 
 ipcMain.on("update-lesson-data", (e, d) => broadcastServer.updateLessonData(d));
@@ -820,11 +805,15 @@ function _sendOpenPath(filePath) {
 	}
 }
 
-function _openPlanInWindow(filePath) {
-	if (!filePath || !state.mainWindow) return;
+function _raiseMainWindow() {
 	if (state.mainWindow.isMinimized()) state.mainWindow.restore();
 	state.mainWindow.show();
 	state.mainWindow.focus();
+}
+
+function _openPlanInWindow(filePath) {
+	if (!filePath || !state.mainWindow) return;
+	_raiseMainWindow();
 	_sendOpenPath(filePath);
 }
 
@@ -836,9 +825,7 @@ if (!app.requestSingleInstanceLock()) {
 		if (filePath) {
 			_openPlanInWindow(filePath);
 		} else if (state.mainWindow) {
-			if (state.mainWindow.isMinimized()) state.mainWindow.restore();
-			state.mainWindow.show();
-			state.mainWindow.focus();
+			_raiseMainWindow();
 		}
 	});
 	app.on("open-file", (event, filePath) => {

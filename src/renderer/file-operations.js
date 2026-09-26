@@ -40,9 +40,8 @@ class FileOperations {
 				return;
 			}
 
-			const fileName = filePath.split(/[\\/]/).pop();
-			this._loadStudents();
-			this.updateWindowTitle(fileName);
+			this.refreshStudents();
+			this.updateWindowTitle(path.basename(filePath));
 			localStorage.setItem("lastLessonPath", filePath);
 			this.logManager.initialize(filePath);
 			this.cursorManager.resetProgress();
@@ -66,7 +65,7 @@ class FileOperations {
 		if (!this.lessonManager.hasChanges()) return true;
 
 		const name =
-			(this.lessonManager.getCurrentFilePath() || "").split(/[\\/]/).pop() ||
+			path.basename(this.lessonManager.getCurrentFilePath() || "") ||
 			"This lesson";
 		const choice = await ipcRenderer.invoke("show-choice-dialog", {
 			type: "warning",
@@ -121,8 +120,8 @@ class FileOperations {
 		if (!(await this.confirmDiscard())) return;
 		const from = await this._autosaveToRecover(filePath);
 
-		this._loadStudents();
-		this.updateWindowTitle(filePath.split(/[\\/]/).pop());
+		this.refreshStudents();
+		this.updateWindowTitle(path.basename(filePath));
 
 		this.lessonManager.load(
 			filePath,
@@ -157,7 +156,7 @@ class FileOperations {
 		);
 	}
 
-	_loadStudents() {
+	refreshStudents() {
 		const students =
 			this.courseManager && this.courseManager.isOpen()
 				? this.courseManager.getStudentNames()
@@ -166,10 +165,6 @@ class FileOperations {
 		if (this.onStudentsLoaded) {
 			this.onStudentsLoaded(students);
 		}
-	}
-
-	refreshStudents() {
-		return this._loadStudents();
 	}
 
 	getStudents() {
@@ -204,50 +199,27 @@ class FileOperations {
 
 	refreshTitle() {
 		const filePath = this.lessonManager.getCurrentFilePath();
-		const fileName = filePath ? filePath.split(/[\\/]/).pop() : "";
-		this.updateWindowTitle(fileName);
+		this.updateWindowTitle(filePath ? path.basename(filePath) : "");
 	}
 
-	updateWindowTitle(fileName = "") {
+	updateWindowTitle(fileName = "", hasUnsaved = false) {
 		const studentCount =
 			this.students.length > 0 ? this.students.length : null;
-		const courseName = this._courseName();
-		ipcRenderer.send("update-window-title", {
-			fileName,
-			studentCount,
-			courseName,
-		});
 		document.title = buildWindowTitle(
 			fileName,
 			studentCount,
-			false,
-			courseName,
+			hasUnsaved,
+			this._courseName(),
 		);
 	}
 
 	updateWindowTitleWithUnsavedIndicator() {
 		const filePath = this.lessonManager.getCurrentFilePath();
 		if (!filePath) return;
-
-		const fileName = filePath.split(/[\\/]/).pop();
-		const hasUnsaved = this.lessonManager.hasChanges();
-		const studentCount =
-			this.students.length > 0 ? this.students.length : null;
-		const courseName = this._courseName();
-
-		document.title = buildWindowTitle(
-			fileName,
-			studentCount,
-			hasUnsaved,
-			courseName,
+		this.updateWindowTitle(
+			path.basename(filePath),
+			this.lessonManager.hasChanges(),
 		);
-
-		const titleFileName = hasUnsaved ? `${fileName} *` : fileName;
-		ipcRenderer.send("update-window-title", {
-			fileName: titleFileName,
-			studentCount,
-			courseName,
-		});
 	}
 
 	setInitialStateToInactive() {

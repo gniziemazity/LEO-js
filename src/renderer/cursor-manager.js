@@ -112,10 +112,7 @@ class CursorManager {
 				const current = this.executionSteps[this.currentStepIndex];
 				if (current.type === "anchor") {
 					current.element.classList.add("consumed");
-					if (!current._logged) {
-						current._logged = true;
-						this.logManager.addEntry({ anchor: current.value });
-					}
+					this._logAnchor(current);
 					this.currentStepIndex++;
 				} else if (current.type === "block") {
 					current.element.classList.add("consumed");
@@ -304,7 +301,7 @@ class CursorManager {
 
 	resetProgress() {
 		this._leaveSpecialBlocksExcept();
-		for (const b of Object.values(this._blocks)) b.at = null;
+		this._forgetBlockPositions();
 		this.currentStepIndex = 0;
 		this.uiManager.updateProgressBar(0);
 	}
@@ -314,7 +311,7 @@ class CursorManager {
 		this._activeBlockEl = step.element;
 		this._scrollIntoView(step.element);
 
-		const key = step.kind || getBlockKind(String(step.text || "").trim());
+		const key = step.kind || getBlockKind(step.text);
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
 
 		this._leaveSpecialBlocksExcept(entry.keep);
@@ -341,6 +338,16 @@ class CursorManager {
 			}
 			this.currentStepIndex++;
 		}
+	}
+
+	_logAnchor(step) {
+		if (step._logged) return;
+		step._logged = true;
+		this.logManager.addEntry({ anchor: step.value });
+	}
+
+	_forgetBlockPositions() {
+		for (const b of Object.values(this._blocks)) b.at = null;
 	}
 
 	_clearCursorMarks() {
@@ -382,10 +389,7 @@ class CursorManager {
 				this._updateCharCursor(step);
 			} else if (step.type === "anchor") {
 				this._updateCharCursor(step);
-				if (!step._logged) {
-					step._logged = true;
-					this.logManager.addEntry({ anchor: step.value });
-				}
+				this._logAnchor(step);
 			} else if (step.type === "block") {
 				this._updateBlockCursor(step);
 			}
@@ -411,10 +415,7 @@ class CursorManager {
 			this.currentStepIndex++;
 		} else if (currentStep.type === "anchor") {
 			currentStep.element.classList.add("consumed");
-			if (!currentStep._logged) {
-				currentStep._logged = true;
-				this.logManager.addEntry({ anchor: currentStep.value });
-			}
+			this._logAnchor(currentStep);
 			this.currentStepIndex++;
 			ipcRenderer.send("input-complete");
 		} else if (currentStep.type === "block") {
@@ -468,7 +469,7 @@ class CursorManager {
 	}
 
 	jumpTo(index) {
-		for (const b of Object.values(this._blocks)) b.at = null;
+		this._forgetBlockPositions();
 		this.forgetCursorMarks();
 		this.currentStepIndex = index;
 
@@ -489,7 +490,7 @@ class CursorManager {
 
 	_stepOne(delta) {
 		const to = this.currentStepIndex + delta;
-		for (const b of Object.values(this._blocks)) b.at = null;
+		this._forgetBlockPositions();
 
 		const moved =
 			delta > 0

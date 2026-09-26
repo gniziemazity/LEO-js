@@ -13,10 +13,7 @@ function makeCursorManager(steps) {
 	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
 		electron: ipc.stub,
 	});
-	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
-		{ addEntry() {} },
-	);
+	const cm = new CursorManager({ updateProgressBar() {} }, { addEntry() {} });
 	cm.setExecutionSteps(steps.map((s, i) => ({ ...s, globalIndex: i })));
 	return { cm, sent: ipc.sent };
 }

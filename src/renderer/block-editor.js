@@ -1,5 +1,4 @@
 const { formatCodeForAutoTyping } = require("./code-formatter");
-const UIManager = require("./ui-manager");
 
 let copiedBlock = null;
 
@@ -55,14 +54,7 @@ class BlockEditor {
 	}
 
 	focusNewBlock(blockIdx) {
-		setTimeout(() => {
-			const blocks = document.querySelectorAll(".block");
-			const target = blocks[blockIdx];
-			if (target && target.contentEditable !== "false") {
-				target.focus();
-				UIManager.putCaret(target, null);
-			}
-		}, 0);
+		this.uiManager.refocusBlock(blockIdx);
 	}
 
 	removeBlock(index) {

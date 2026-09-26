@@ -14,6 +14,10 @@ class InteractionOverlay extends RemoteOverlay {
 		this.closeOverlay();
 	}
 
+	keepsInteractionBtns() {
+		return false;
+	}
+
 	handleBtn(interactionType) {
 		if (currentStudents.length > 0) {
 			this.openedAt = Date.now();
@@ -114,14 +118,14 @@ class InteractionOverlay extends RemoteOverlay {
 		this.startWaiting(idx, type, null);
 		const grid = document.getElementById("iGrid");
 		grid.innerHTML = "";
-		grid.appendChild(
-			this.makeStudentBtn(
-				InteractionView.DONE_LABEL,
-				() => this.closeOverlay(),
-				"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
-					"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);",
-			),
+		const done = this.makeStudentBtn(
+			InteractionView.DONE_LABEL,
+			() => this.closeOverlay(),
+			"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
+				"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);",
 		);
+		done.classList.add("popup-done-btn");
+		grid.appendChild(done);
 	}
 
 	startWaiting(idx, type, questionText) {

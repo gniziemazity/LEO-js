@@ -16,14 +16,10 @@
 		<script>
 			const { ipcRenderer } = require("electron");
 
-			initFloatWindow({
+			const { unfade } = initFloatWindow({
 				close: "close-options-window",
 				devtools: "open-options-devtools",
-			});
-
-			ipcRenderer.on("fade-out", () => {
-				document.body.style.transition = "opacity 300ms ease";
-				document.body.style.opacity = "0";
+				fade: true,
 			});
 
 			ipcRenderer.invoke("get-settings").then((s) => {
@@ -31,15 +27,9 @@
 			});
 
 			ipcRenderer.on("set-options", (event, { options, bgColor }) => {
-				document.body.style.transition = "";
-				document.body.style.opacity = "1";
+				unfade();
 				const area = document.getElementById("optionsArea");
-				const solidColor =
-					bgColor ||
-					getComputedStyle(document.body)
-						.getPropertyValue("--clr-question-bg")
-						.trim();
-				setBackgroundColor(solidColor);
+				setBackgroundColor(bgColor);
 				area.innerHTML = "";
 				(options || []).forEach((opt) => {
 					const row = document.createElement("div");

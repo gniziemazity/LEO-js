@@ -125,8 +125,6 @@ function resetGesture() {
 	twoFingerMoved = false;
 	oneFingerMoved = false;
 	scrollAnchorId = null;
-	scrollAccum = 0;
-	scrollVelocity = 0;
 }
 
 function deactivateTouchpad() {
@@ -507,9 +505,7 @@ function initTouchpad() {
 		}
 
 		if (isDragging) {
-			isDragging = false;
-			sendMessage("mouse-drag-end", {});
-			overlay.classList.remove("dragging");
+			stopDragIfActive();
 			return;
 		}
 

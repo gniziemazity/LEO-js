@@ -64,10 +64,15 @@ test("block text comes from the step, never from the contaminated DOM", () => {
 	);
 });
 
+function sealedOptionSource() {
+	const src = read("renderer/ui-manager.js");
+	const option = /createBlockOption\(\{[\s\S]*?\n\t\}/.exec(src)[0];
+	assert.match(option, /UIManager\.sealIsland\(wrap\)/);
+	return /static sealIsland\(el\)[\s\S]*?\n\t\}/.exec(src)[0];
+}
+
 test("the option swallows input and change, which bubble", () => {
-	const fn = /createBlockOption\(\{[\s\S]*?\n\t\}/.exec(
-		read("renderer/ui-manager.js"),
-	)[0];
+	const fn = sealedOptionSource();
 	for (const type of ["input", "change"]) {
 		assert.match(
 			fn,
@@ -325,9 +330,7 @@ test("typing the last character confirms the popup", () => {
 });
 
 test("ticking an option does not reach the block underneath", () => {
-	const fn = /createBlockOption\(\{[\s\S]*?\n\t\}/.exec(
-		read("renderer/ui-manager.js"),
-	)[0];
+	const fn = sealedOptionSource();
 	assert.match(
 		fn,
 		/"mousedown"[\s\S]*?e\.stopPropagation\(\)/,

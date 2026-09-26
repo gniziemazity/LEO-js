@@ -13,17 +13,12 @@ const {
 	startingCodeLabel,
 } = LeoBlocks;
 
-function renderMoveToTargetLabel(target) {
-	return MoveToTarget.moveToTargetLabel(target);
-}
-
 function updateActiveState(active) {
 	isActive = active;
 	const toggleBtn = document.getElementById("toggleBtn");
 	toggleBtn.textContent = active ? "❚❚" : "▶︎";
 	toggleBtn.classList.toggle("btn-stop", active);
 	toggleBtn.classList.toggle("btn-start", !active);
-	toggleBtn.classList.add("interaction-btn");
 }
 
 function applySettings(settings) {
@@ -64,7 +59,7 @@ function updateLessonData(data) {
 			div.innerText = startingCodeLabel(block.files);
 		} else if (block.type === "move-to") {
 			div.className = "block move-to-block";
-			div.innerText = `➡️ ${renderMoveToTargetLabel(block.target)}`;
+			div.innerText = `➡️ ${MoveToTarget.moveToTargetLabel(block.target)}`;
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "comment") {

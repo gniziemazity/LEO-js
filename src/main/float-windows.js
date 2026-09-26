@@ -157,6 +157,15 @@ function _centeredPos(w, h) {
 	};
 }
 
+function _questionWindowPos(w, h) {
+	const pos = _centeredPos(w, h);
+	if (floatState.questionWindowIsLesson) {
+		const wa = screen.getPrimaryDisplay().workArea;
+		pos.y = wa.y + wa.height + QUESTION_WIN_OFFSCREEN_MARGIN;
+	}
+	return pos;
+}
+
 function _makeFloatingWindow({
 	width,
 	height,
@@ -240,19 +249,12 @@ function makeFloat(opts) {
 const _questionFloat = makeFloat({
 	channel: "set-question",
 	make: () => {
-		const display = screen.getPrimaryDisplay();
-		const workArea = display.workArea;
-		const winW = 900;
-		const winH = 480;
-		const offX = Math.floor(workArea.x + (workArea.width - winW) / 2);
-		const offY = floatState.questionWindowIsLesson
-			? workArea.y + workArea.height + QUESTION_WIN_OFFSCREEN_MARGIN
-			: Math.floor(workArea.y + (workArea.height - winH) / 2);
+		const { x, y } = _questionWindowPos(900, 480);
 		return _makeFloatingWindow({
-			width: winW,
-			height: winH,
-			x: offX,
-			y: offY,
+			width: 900,
+			height: 480,
+			x,
+			y,
 			title: "Question",
 			html: "../question-window.html",
 		});
@@ -367,22 +369,22 @@ function openQuestionWindow(question, bgColor, interaction) {
 	_questionFloat.showOrReuse(payload, {});
 }
 
+function _setQuestionBounds(qw, bounds) {
+	qw.setBounds(bounds);
+	const r = _questionFloat.rect;
+	if (!r) return;
+	r.x = bounds.x;
+	r.y = bounds.y;
+	r.w = bounds.width;
+	r.h = bounds.height;
+}
+
 function setQuestionWindowSquare() {
 	const qw = _questionFloat.activeWin;
 	if (!qw) return;
-	const workArea = screen.getPrimaryDisplay().workArea;
 	const side = QUESTION_WIN_SQUARE_SIDE;
-	const x = Math.floor(workArea.x + (workArea.width - side) / 2);
-	const y = floatState.questionWindowIsLesson
-		? workArea.y + workArea.height + QUESTION_WIN_OFFSCREEN_MARGIN
-		: Math.floor(workArea.y + (workArea.height - side) / 2);
-	qw.setBounds({ x, y, width: side, height: side });
-	if (_questionFloat.rect) {
-		_questionFloat.rect.x = x;
-		_questionFloat.rect.y = y;
-		_questionFloat.rect.w = side;
-		_questionFloat.rect.h = side;
-	}
+	const { x, y } = _questionWindowPos(side, side);
+	_setQuestionBounds(qw, { x, y, width: side, height: side });
 }
 
 let questionWindowSlideTimer = null;
@@ -404,19 +406,12 @@ function _animateQuestionWindowTo(target, duration, onDone) {
 		const t = Math.min(1, (Date.now() - startTime) / duration);
 		const eased = 1 - Math.pow(1 - t, 3);
 		const lerp = (a, z) => Math.round(a + (z - a) * eased);
-		const nb = {
+		_setQuestionBounds(qw, {
 			x: lerp(start.x, target.x),
 			y: lerp(start.y, target.y),
 			width: lerp(start.width, target.width),
 			height: lerp(start.height, target.height),
-		};
-		qw.setBounds(nb);
-		if (_questionFloat.rect) {
-			_questionFloat.rect.x = nb.x;
-			_questionFloat.rect.y = nb.y;
-			_questionFloat.rect.w = nb.width;
-			_questionFloat.rect.h = nb.height;
-		}
+		});
 		if (t >= 1) {
 			clearInterval(questionWindowSlideTimer);
 			questionWindowSlideTimer = null;
@@ -429,9 +424,8 @@ function animateQuestionWindowOnScreen() {
 	const qw = _questionFloat.activeWin;
 	if (!qw) return;
 	_onFloatShown(_questionFloat);
-	const workArea = screen.getPrimaryDisplay().workArea;
 	const b = qw.getBounds();
-	const targetY = Math.floor(workArea.y + (workArea.height - b.height) / 2);
+	const targetY = _centeredPos(b.width, b.height).y;
 	if (b.y === targetY) return;
 	_animateQuestionWindowTo(
 		{ x: b.x, y: targetY, width: b.width, height: b.height },

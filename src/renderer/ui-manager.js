@@ -36,7 +36,6 @@ class UIManager {
 			this.elements.toggleBtn.title = "Stop Auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-start");
 			this.elements.toggleBtn.classList.add("btn-stop");
-			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.add("hidden");
 			document.body.classList.add("typing-active");
 		} else {
@@ -44,7 +43,6 @@ class UIManager {
 			this.elements.toggleBtn.title = "Start Auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-stop");
 			this.elements.toggleBtn.classList.add("btn-start");
-			this.elements.toggleBtn.classList.add("interaction-btn");
 			this.elements.editorSidebar.classList.remove("hidden");
 			document.body.classList.remove("typing-active");
 		}
@@ -130,16 +128,13 @@ class UIManager {
 	createBlockOption({ label, checked, disabled, onChange }) {
 		const wrap = document.createElement("label");
 		wrap.className = "block-opt-check";
-		wrap.dataset.blockOpt = "1";
-		wrap.contentEditable = "false";
 		const input = document.createElement("input");
 		input.type = "checkbox";
 		input.checked = checked;
 		input.disabled = disabled;
 		wrap.appendChild(input);
 		wrap.appendChild(document.createTextNode(label));
-		for (const type of ["mousedown", "click", "input", "change", "keydown"])
-			wrap.addEventListener(type, (e) => e.stopPropagation());
+		UIManager.sealIsland(wrap);
 		input.addEventListener("change", () => onChange(input.checked));
 		return wrap;
 	}
@@ -197,15 +192,6 @@ class UIManager {
 		return btn;
 	}
 
-	removeCursorClasses() {
-		document
-			.querySelectorAll(".cursor")
-			.forEach((el) => el.classList.remove("cursor"));
-		document
-			.querySelectorAll(".active-block")
-			.forEach((el) => el.classList.remove("active-block"));
-	}
-
 	populateSpecialKeys(keys, onKeyClick) {
 		this.elements.specialKeysContainer.innerHTML = "";
 
@@ -259,12 +245,7 @@ class UIManager {
 			const block = document.querySelectorAll(".block")[blockIdx];
 			if (!block || block.contentEditable !== "true") return;
 			block.focus();
-			const range = document.createRange();
-			range.selectNodeContents(block);
-			range.collapse(false);
-			const selection = window.getSelection();
-			selection.removeAllRanges();
-			selection.addRange(range);
+			UIManager.putCaret(block, null);
 		}, 0);
 	}
 

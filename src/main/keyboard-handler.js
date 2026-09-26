@@ -220,7 +220,7 @@ class KeyboardHandler {
 
 					state.send("auto-type-step-complete", steps[i].index);
 
-					await new Promise((resolve) => setTimeout(resolve, speed));
+					await sleep(speed);
 				} catch (error) {
 					console.error("[LEO] auto-type failed:", error);
 					this.ensureHotkeyRegistered(charLower, isInterceptorKey);
@@ -236,7 +236,7 @@ class KeyboardHandler {
 
 			if (mapping.pause) {
 				state.pause("pause-key");
-				await new Promise((resolve) => setTimeout(resolve, mapping.pause));
+				await sleep(mapping.pause);
 				state.unpause("pause-key");
 				return;
 			}

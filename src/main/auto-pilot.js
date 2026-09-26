@@ -18,7 +18,6 @@ function createAutoPilot({
 		if (next === state.autoPilot) return;
 		state.autoPilot = next;
 		broadcastServer.updateAutoPilot(next);
-		state.send("auto-pilot", next);
 	}
 
 	function set(on) {
@@ -60,17 +59,12 @@ function createAutoPilot({
 		}, graceMs);
 	}
 
-	function sync() {
-		reportRemotes();
-		state.send("auto-pilot", state.autoPilot);
-	}
-
 	return {
 		set,
 		onActiveChanged,
 		onClientConnected,
 		onClientDisconnected,
-		sync,
+		sync: reportRemotes,
 	};
 }
 

@@ -22,40 +22,15 @@ function buildArtificialLogEvents(executionSteps) {
 	const startTime = Date.now();
 	const events = [];
 
-	let seenCodeInsert = null;
-	let seenMoveTo = null;
-
 	executionSteps.forEach((step, i) => {
 		const t = startTime + i * intervalMs;
 		if (step.type === "char") {
-			seenCodeInsert = null;
-			seenMoveTo = null;
 			events.push({ timestamp: t, char: step.char });
 		} else if (step.type === "anchor") {
-			seenCodeInsert = null;
-			seenMoveTo = null;
 			events.push({ timestamp: t, anchor: step.value });
 		} else if (step.type === "block") {
-			if (step.kind === "move-to") {
-				if (seenMoveTo !== step.globalIndex) {
-					seenMoveTo = step.globalIndex;
-					seenCodeInsert = null;
-					for (const e of stepToLogEvents(step))
-						events.push({ timestamp: t, ...e });
-				}
-				return;
-			}
-			const entries = stepToLogEvents(step);
-			if (entries.length) {
-				if (seenCodeInsert !== step.globalIndex) {
-					seenCodeInsert = step.globalIndex;
-					seenMoveTo = null;
-					for (const e of entries) events.push({ timestamp: t, ...e });
-				}
-			} else {
-				seenCodeInsert = null;
-				seenMoveTo = null;
-			}
+			for (const e of stepToLogEvents(step))
+				events.push({ timestamp: t, ...e });
 		}
 	});
 

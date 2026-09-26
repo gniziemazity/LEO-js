@@ -30,10 +30,6 @@ class CodeInsertOverlay extends RemoteOverlay {
 		this.closeUI();
 	}
 
-	closeUI() {
-		this.close();
-	}
-
 	confirm() {
 		sendMessage("code-insert-confirmed", {});
 		this.closeUI();

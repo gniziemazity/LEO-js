@@ -12,10 +12,7 @@ function makeCursorManager(steps) {
 		electron: ipc.stub,
 	});
 	const sent = ipc.sent;
-	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
-		{ addEntry() {} },
-	);
+	const cm = new CursorManager({ updateProgressBar() {} }, { addEntry() {} });
 	cm.setExecutionSteps(steps);
 	return { cm, channels: () => sent.map((m) => m.ch) };
 }

@@ -42,7 +42,7 @@ function cursorManagerOn(step) {
 	});
 	const logged = [];
 	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
+		{ updateProgressBar() {} },
 		{ addEntry: (entry) => logged.push(entry) },
 	);
 	cm.setExecutionSteps([step]);

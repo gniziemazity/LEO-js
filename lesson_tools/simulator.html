@@ -325,11 +325,6 @@
 				align-items: center;
 				gap: 18px;
 			}
-			#lv-landing-title {
-				font-size: 22px;
-				font-weight: bold;
-				color: var(--clr-text);
-			}
 		</style>
 	</head>
 	<body>
@@ -357,16 +352,6 @@
 			})();
 		</script>
 		<div id="vis-root"></div>
-		<script>
-			window.__LOG_DATA__ = window.__LOG_DATA_PRELOAD__ || null;
-			if (!window.__LOG_DATA__) {
-				document.write(
-					"<scr" +
-						'ipt src=".last_vis_data.js" onerror="void 0"><\/scr' +
-						"ipt>",
-				);
-			}
-		</script>
 		<script src="preview.js"></script>
 		<script src="shared/tooltip.js"></script>
 		<script src="shared/diff-utils.js"></script>

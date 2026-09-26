@@ -44,10 +44,6 @@ class MediaOverlay extends RemoteOverlay {
 		this.closeUI();
 	}
 
-	closeUI() {
-		this.close();
-	}
-
 	confirm() {
 		sendMessage("media-confirmed", {});
 		this.closeUI();

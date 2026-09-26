@@ -83,6 +83,7 @@ function makeDom({ withPin }) {
 	const frag = node("#fragment");
 	const document = {
 		body: {
+			style: {},
 			get firstChild() {
 				return body.children[0];
 			},
@@ -130,6 +131,7 @@ function makeDom({ withPin }) {
 
 	return {
 		body,
+		style: document.body.style,
 		pinBtn,
 		sent,
 		listeners,
@@ -264,6 +266,28 @@ test("setPin is idempotent, which is why callers need no pinned flag of their ow
 		after,
 		"already pinned: nothing crosses the wire",
 	);
+});
+
+test("a window that fades out on fade-out is brought back by unfade", () => {
+	const d = makeDom({ withPin: false });
+	const { unfade } = d.initFloatWindow({
+		close: "c",
+		devtools: "d",
+		fade: true,
+	});
+	d.listeners.ipc["fade-out"]();
+	assert.equal(d.style.opacity, "0");
+	assert.equal(d.style.transition, "opacity 300ms ease");
+	unfade();
+	assert.equal(d.style.opacity, "1");
+	assert.equal(d.style.transition, "");
+});
+
+test("fading is wired only when the page asked for it", () => {
+	const d = makeDom({ withPin: false });
+	const { unfade } = d.initFloatWindow({ close: "c", devtools: "d" });
+	assert.equal(d.listeners.ipc["fade-out"], undefined);
+	assert.doesNotThrow(() => unfade());
 });
 
 test("a window with no pin button still initialises, and setPin is a safe no-op", () => {

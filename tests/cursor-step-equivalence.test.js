@@ -51,7 +51,7 @@ function buildSteps() {
 
 function manager(steps) {
 	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
+		{ updateProgressBar() {} },
 		{ addEntry: () => ({}) },
 	);
 	cm.setExecutionSteps(steps);
@@ -102,7 +102,7 @@ test("stepping back onto an anchor logs it again, exactly as a jump does", () =>
 		const steps = buildSteps();
 		const logged = [];
 		const cm = new CursorManager(
-			{ updateProgressBar() {}, removeCursorClasses() {} },
+			{ updateProgressBar() {} },
 			{
 				addEntry: (e) => {
 					logged.push(e);

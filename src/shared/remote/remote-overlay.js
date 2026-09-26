@@ -46,6 +46,10 @@ class RemoteOverlay {
 		this.closeUI();
 	}
 
+	closeUI() {
+		this.close();
+	}
+
 	autoPilotPad() {
 		return null;
 	}

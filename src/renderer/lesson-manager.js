@@ -77,18 +77,21 @@ class LessonManager {
 		return split.pin ? split : null;
 	}
 
+	static _normalized(b) {
+		if (!b || typeof b.text !== "string") return b;
+		if (b.type === "code") {
+			return { ...b, text: normalizeEdgeNewlines(b.text) };
+		}
+		if (b.type === "comment") {
+			const shorthand = LessonManager._pinShorthand(b.text);
+			if (shorthand) return { ...b, text: shorthand.text, pin: true };
+		}
+		return b;
+	}
+
 	static _migrateBlocks(blocks) {
 		if (!Array.isArray(blocks)) return blocks;
-		return blocks.map((b) => {
-			if (b && b.type === "code" && typeof b.text === "string") {
-				return { ...b, text: normalizeEdgeNewlines(b.text) };
-			}
-			if (b && b.type === "comment" && typeof b.text === "string") {
-				const shorthand = LessonManager._pinShorthand(b.text);
-				if (shorthand) return { ...b, text: shorthand.text, pin: true };
-			}
-			return b;
-		});
+		return blocks.map(LessonManager._normalized);
 	}
 
 	static authored(blocks) {
@@ -227,19 +230,10 @@ class LessonManager {
 				target: typeof initialText === "string" ? initialText : "MAIN",
 			};
 		} else {
-			const text =
-				initialText !== null && initialText !== undefined
-					? initialText
-					: "";
-			newBlock = {
+			newBlock = LessonManager._normalized({
 				type,
-				text: type === "code" ? normalizeEdgeNewlines(text) : text,
-			};
-			const shorthand = LessonManager._pinShorthand(newBlock.text);
-			if (shorthand) {
-				newBlock.text = shorthand.text;
-				newBlock.pin = true;
-			}
+				text: initialText ?? "",
+			});
 		}
 
 		let at;
@@ -301,8 +295,7 @@ class LessonManager {
 	}
 
 	canSetBlockKind(index, kind) {
-		if (index < 0 || index >= this.data.length) return false;
-		const block = this.data[index];
+		const block = this.getBlock(index);
 		if (!block || block.fromInclude) return false;
 		if (
 			block.type !== "comment" &&
@@ -351,28 +344,18 @@ class LessonManager {
 	}
 
 	removeBlock(index) {
-		if (index < 0 || index >= this.data.length) {
-			return false;
-		}
-
+		if (!this.getBlock(index)) return false;
 		this.data.splice(index, 1);
 		this.markAsChanged();
 		return true;
 	}
 
 	updateBlock(index, text) {
-		if (index < 0 || index >= this.data.length) {
-			return false;
-		}
-
-		const block = this.data[index];
-		let next = block.type === "code" ? normalizeEdgeNewlines(text) : text;
-		const shorthand = LessonManager._pinShorthand(next);
-		if (shorthand) {
-			next = shorthand.text;
-			block.pin = true;
-		}
-		block.text = next;
+		const block = this.getBlock(index);
+		if (!block) return false;
+		const next = LessonManager._normalized({ type: block.type, text });
+		block.text = next.text;
+		if (next.pin) block.pin = true;
 		this.markAsChanged();
 		return true;
 	}
@@ -387,31 +370,32 @@ class LessonManager {
 		);
 	}
 
+	_moveToBlock(index) {
+		const block = this.getBlock(index);
+		return block && block.type === "move-to" ? block : null;
+	}
+
 	updateMoveToTarget(index, target) {
-		if (index < 0 || index >= this.data.length) {
-			return false;
-		}
-		if (this.data[index].type !== "move-to") return false;
-		this.data[index].target = target;
+		const block = this._moveToBlock(index);
+		if (!block) return false;
+		block.target = target;
 		this.markAsChanged();
 		return true;
 	}
 
 	updateMoveToNote(index, note) {
-		if (index < 0 || index >= this.data.length) {
-			return false;
-		}
-		if (this.data[index].type !== "move-to") return false;
+		const block = this._moveToBlock(index);
+		if (!block) return false;
 		const text = String(note == null ? "" : note).trim();
-		if (text) this.data[index].note = text;
-		else delete this.data[index].note;
+		if (text) block.note = text;
+		else delete block.note;
 		this.markAsChanged();
 		return true;
 	}
 
 	isFirstMoveToFile(index) {
-		const block = this.data[index];
-		if (!block || block.type !== "move-to") return false;
+		const block = this._moveToBlock(index);
+		if (!block) return false;
 		const target = block.target;
 		if (!isFileName(target)) return false;
 		for (let i = 0; i < index; i++) {
@@ -422,10 +406,8 @@ class LessonManager {
 	}
 
 	updateBlockOption(index, key, value, defaultValue) {
-		if (index < 0 || index >= this.data.length) {
-			return false;
-		}
-		const block = this.data[index];
+		const block = this.getBlock(index);
+		if (!block) return false;
 		if (value === defaultValue) delete block[key];
 		else block[key] = value;
 		this.markAsChanged();

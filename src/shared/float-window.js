@@ -63,12 +63,27 @@
 		return setPin;
 	}
 
+	function wireFade() {
+		const style = document.body.style;
+		ipcRenderer.on("fade-out", () => {
+			style.transition = "opacity 300ms ease";
+			style.opacity = "0";
+		});
+		return () => {
+			style.transition = "";
+			style.opacity = "1";
+		};
+	}
+
 	function initFloatWindow(opts) {
 		const o = opts || {};
 		addResizeHandles();
 		wireResize();
 		wireKeys(o.close, o.devtools);
-		return { setPin: o.pin ? wirePin(o.pin) : () => {} };
+		return {
+			setPin: o.pin ? wirePin(o.pin) : () => {},
+			unfade: o.fade ? wireFade() : () => {},
+		};
 	}
 
 	window.initFloatWindow = initFloatWindow;

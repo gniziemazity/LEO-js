@@ -417,7 +417,6 @@ function openLessonTool(tool) {
 }
 
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
-const _VIS_PRELOAD = path.join(__dirname, "vis-preload.js");
 
 function openLogVisualizer(logFilePath) {
 	const stamp = Date.now();
@@ -497,7 +496,6 @@ function openLogVisualizer(logFilePath) {
 		webPreferences: {
 			nodeIntegration: false,
 			contextIsolation: true,
-			preload: _VIS_PRELOAD,
 		},
 	});
 	visualizerWindow.setMenu(null);

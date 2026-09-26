@@ -17,10 +17,6 @@ class NoteOverlay extends RemoteOverlay {
 		this.confirm();
 	}
 
-	closeUI() {
-		this.close();
-	}
-
 	confirm() {
 		sendMessage("note-confirmed", {});
 		this.closeUI();

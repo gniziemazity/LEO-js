@@ -48,10 +48,6 @@ const WINDOW_CONFIG = {
 	skipTaskbar: false,
 };
 
-const LOG_CONFIG = {
-	SAVE_INTERVAL: 10,
-};
-
 const TIMER_CONFIG = {
 	DEFAULT_MINUTES: 90,
 };
@@ -74,6 +70,5 @@ module.exports = {
 	NUTJS_KEY_MAPPING,
 	TIMER_CONFIG,
 	WINDOW_CONFIG,
-	LOG_CONFIG,
 	buildWindowTitle,
 };

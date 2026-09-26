@@ -182,7 +182,7 @@ function build(opts = {}) {
 	nodes.codeInsertOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.noteOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.mediaOverlay.classList.add("overlay overlay-pad-ok");
-	nodes.interactionOverlay.classList.add("overlay");
+	nodes.interactionOverlay.classList.add("overlay overlay-pad-ok");
 
 	const overlayIds = [
 		"questionOverlay",

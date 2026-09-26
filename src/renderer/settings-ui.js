@@ -236,21 +236,7 @@ class SettingsUI {
 			document.head.appendChild(styleEl);
 		}
 
-		styleEl.textContent =
-			buildSettingsCSS(settings) +
-			`
-         #speedSettingContainer {
-            display: ${settings.hotkeyMode === "auto-run" ? "block" : "none"};
-         }
-         
-         .speed-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8em;
-            color: var(--clr-label);
-            margin-top: 5px;
-         }
-      `;
+		styleEl.textContent = buildSettingsCSS(settings);
 	}
 }
 

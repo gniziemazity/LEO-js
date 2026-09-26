@@ -1141,6 +1141,14 @@ body.sim-resizing {
 	font-size: 11px;
 }
 
+.speed-labels {
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.8em;
+	color: var(--clr-label);
+	margin-top: 5px;
+}
+
 .modal-footer {
 	padding: 15px 20px;
 	border-top: 1px solid var(--clr-border-light);
@@ -1559,7 +1567,10 @@ body[data-pad-tint="mouse"] .overlay.pad-lifted::after {
 body[data-pad-tint="keyboard"] .overlay.pad-lifted::after {
 	background: var(--clr-pad-tint-kb);
 }
-.overlay.pad-lifted button:not(.popup-student-btn) {
+.overlay.pad-lifted button:not(.popup-student-btn),
+.overlay.pad-lifted .popup-done-btn,
+.overlay.pad-lifted select,
+.overlay.pad-lifted input {
 	pointer-events: auto;
 	position: relative;
 	z-index: 2;
@@ -1709,6 +1720,10 @@ body.side-left .popup-modal {
 }
 #interactionOverlay {
 	z-index: 2501;
+}
+
+#interactionOverlay.pad-lifted {
+	z-index: 2556;
 }
 
 .popup-modal {

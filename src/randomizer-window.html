@@ -18,14 +18,10 @@
 		<script>
 			const { ipcRenderer } = require("electron");
 
-			initFloatWindow({
+			const { unfade } = initFloatWindow({
 				close: "close-randomizer-window",
 				devtools: "open-randomizer-devtools",
-			});
-
-			ipcRenderer.on("fade-out", () => {
-				document.body.style.transition = "opacity 300ms ease";
-				document.body.style.opacity = "0";
+				fade: true,
 			});
 
 			ipcRenderer.invoke("get-settings").then((s) => {
@@ -35,15 +31,9 @@
 			ipcRenderer.on(
 				"set-randomizer",
 				(event, { names, style, bgColor }) => {
-					document.body.style.transition = "";
-					document.body.style.opacity = "1";
+					unfade();
 					const area = document.getElementById("randomizerArea");
-					const solidColor =
-						bgColor ||
-						getComputedStyle(document.body)
-							.getPropertyValue("--clr-question-bg")
-							.trim();
-					setBackgroundColor(solidColor);
+					setBackgroundColor(bgColor);
 					runRandomizerStyle(style, area, names || [], (index) => {
 						ipcRenderer.send("randomizer-done", index);
 					});

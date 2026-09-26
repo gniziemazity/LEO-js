@@ -1,7 +1,7 @@
 const { ipcRenderer } = require("electron");
 const path = require("path");
 
-const PLAN_EXT_RE = /\.(leo|json)$/i;
+const CourseManager = require("./course-manager");
 
 class CourseUI {
 	constructor(courseManager, fileOperations, lessonManager) {
@@ -56,9 +56,7 @@ class CourseUI {
 			: [];
 		const current = this.lessonManager.getCurrentFilePath();
 		if (open && current && this.courseManager.isInPlans(current)) {
-			this.courseManager.setLastPlan(
-				path.basename(current).replace(PLAN_EXT_RE, ""),
-			);
+			this.courseManager.setLastPlan(CourseManager.planName(current));
 		}
 		ipcRenderer.send("set-course-menu", {
 			open,
@@ -135,7 +133,7 @@ class CourseUI {
 			title: "New Plan",
 		});
 		if (!target) return;
-		const name = path.basename(target).replace(PLAN_EXT_RE, "");
+		const name = CourseManager.planName(target);
 		let planPath;
 		try {
 			planPath = this.courseManager.addPlan(name);
@@ -157,7 +155,7 @@ class CourseUI {
 		});
 		if (!file) return;
 		let planPath = file;
-		const name = path.basename(file).replace(PLAN_EXT_RE, "");
+		const name = CourseManager.planName(file);
 		if (this.courseManager.isInPlans(file)) {
 			this.courseManager.ensurePlanFolders(name);
 		} else {

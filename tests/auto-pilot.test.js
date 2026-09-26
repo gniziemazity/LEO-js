@@ -36,13 +36,13 @@ function fixture(initialClients = 1, graceMs = 5) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-test("turning auto-pilot on tells the phones and the desktop window", () => {
+test("turning auto-pilot on tells the phones, and nothing on the desktop", () => {
 	const f = fixture();
 	f.pilot.set(true);
 
 	assert.equal(f.state.autoPilot, true);
 	assert.deepEqual(f.broadcasts, [true]);
-	assert.deepEqual(f.sent, [["auto-pilot", true]]);
+	assert.deepEqual(f.sent, [], "no desktop control listens for auto-pilot");
 });
 
 test("without a remote it cannot be turned on", () => {
@@ -67,15 +67,12 @@ test("it cannot be turned on while auto-typing is off", () => {
 test("stopping auto-typing turns auto-pilot off, and starting it again brings it back", () => {
 	const f = fixture();
 	f.pilot.set(true);
-	f.sent.length = 0;
 
 	f.state.isActive = false;
 	f.pilot.onActiveChanged();
 	assert.equal(f.state.autoPilot, false);
 	assert.deepEqual(f.broadcasts, [true, false]);
-	assert.deepEqual(f.sent, [["auto-pilot", false]]);
 
-	f.sent.length = 0;
 	f.state.isActive = true;
 	f.pilot.onActiveChanged();
 	assert.equal(
@@ -84,7 +81,6 @@ test("stopping auto-typing turns auto-pilot off, and starting it again brings it
 		"it was on when typing paused, so it is on again",
 	);
 	assert.deepEqual(f.broadcasts, [true, false, true]);
-	assert.deepEqual(f.sent, [["auto-pilot", true]]);
 });
 
 test("starting auto-typing never turns on an auto-pilot that was not on before", () => {
@@ -181,7 +177,7 @@ test("auto-typing changing while auto-pilot is off announces nothing", () => {
 	assert.deepEqual(f.broadcasts, []);
 });
 
-test("only a real true turns it on: the message and the IPC are untrusted", () => {
+test("only a real true turns it on: the message is untrusted", () => {
 	const f = fixture();
 	for (const junk of ["true", 1, {}, null, undefined]) f.pilot.set(junk);
 	assert.equal(f.state.autoPilot, false);
@@ -226,10 +222,7 @@ test("the last remote leaving turns it off after the grace period", async () => 
 	await sleep(30);
 	assert.equal(f.state.autoPilot, false);
 	assert.deepEqual(f.broadcasts, [true, false]);
-	assert.deepEqual(f.sent, [
-		["remote-count", 0],
-		["auto-pilot", false],
-	]);
+	assert.deepEqual(f.sent, [["remote-count", 0]]);
 });
 
 test("a phone that reconnects inside the grace period keeps auto-pilot", async () => {
@@ -261,10 +254,7 @@ test("a reloaded desktop window is brought up to date", () => {
 	f.sent.length = 0;
 
 	f.pilot.sync();
-	assert.deepEqual(f.sent, [
-		["remote-count", 3],
-		["auto-pilot", true],
-	]);
+	assert.deepEqual(f.sent, [["remote-count", 3]]);
 });
 
 test("the phone's request is a strict boolean, and off is the default", () => {
@@ -323,12 +313,12 @@ test("the server counts only open sockets", () => {
 	);
 });
 
-test("main wires the switch from the desktop button, the phone and the connections", () => {
+test("main wires the switch from the phone and the connections", () => {
 	const main = read("main/main.js");
 	assert.match(main, /require\("\.\/auto-pilot"\)/);
-	assert.match(
-		main,
-		/ipcMain\.on\("set-auto-pilot", \(event, on\) => autoPilot\.set\(on === true\)\)/,
+	assert.ok(
+		!main.includes('ipcMain.on("set-auto-pilot"'),
+		"the phone is the only switch; the desktop sends nothing",
 	);
 	assert.match(
 		main,

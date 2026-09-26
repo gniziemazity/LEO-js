@@ -126,7 +126,7 @@ test("the renderer writes the log-student-interaction payload straight into the 
 		"utf-8",
 	);
 	const handler =
-		/ipcRenderer\.on\(\s*"log-student-interaction"[\s\S]*?\n\t\);/.exec(
+		/ipcRenderer\.on\(\s*"log-student-interaction"[\s\S]*?\n\t\}\);/.exec(
 			appSrc,
 		);
 	assert.ok(handler, "log-student-interaction listener not found");

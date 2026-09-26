@@ -79,12 +79,6 @@ class TextState {
 		return true;
 	}
 
-	currentLineRange() {
-		const ls = lineStartAt(this.text, this.cursor);
-		const raw = this.text.indexOf("\n", this.cursor);
-		return [ls, raw === -1 ? this.text.length : raw + 1];
-	}
-
 	deleteForward(n = 1) {
 		if (this.cursor + n > this.text.length) return;
 		const end = this.cursor + n;

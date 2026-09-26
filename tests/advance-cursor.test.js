@@ -14,10 +14,7 @@ function makeCursorManager(steps) {
 		},
 	});
 	const sent = ipc.sent;
-	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
-		{ addEntry() {} },
-	);
+	const cm = new CursorManager({ updateProgressBar() {} }, { addEntry() {} });
 	cm.updateCursor = () => {};
 	cm.setExecutionSteps(steps);
 	return { cm, sent, replies: () => sent.map((m) => m.ch) };

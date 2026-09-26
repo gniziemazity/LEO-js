@@ -122,17 +122,17 @@ cursorManager.onLeaveQuestionBlock = () => {
 	finalizeTeacherQuestion();
 };
 
-cursorManager.onEnterNoteBlock = (payload) => {
-	cursorManager.suspendAutoTypingFor("note");
-	deskPopup.showNote(payload);
-	ipcRenderer.send("enter-note-block", payload);
-};
+function enterPausingBlock(kind, payload, showCard) {
+	cursorManager.suspendAutoTypingFor(kind);
+	showCard.call(deskPopup, payload);
+	ipcRenderer.send(`enter-${kind}-block`, payload);
+}
+
+cursorManager.onEnterNoteBlock = (payload) =>
+	enterPausingBlock("note", payload, deskPopup.showNote);
 
 function enterMediaBlock(kind, name) {
-	const payload = { kind, name };
-	cursorManager.suspendAutoTypingFor(kind);
-	deskPopup.showMedia(payload);
-	ipcRenderer.send(`enter-${kind}-block`, payload);
+	enterPausingBlock(kind, { kind, name }, deskPopup.showMedia);
 }
 
 cursorManager.onImageBlock = (imageName, shouldPin) => {
@@ -153,17 +153,11 @@ cursorManager.onWebBlock = (url, shouldPin) => {
 	enterMediaBlock("web", url);
 };
 
-cursorManager.onEnterMoveToBlock = (payload) => {
-	cursorManager.suspendAutoTypingFor("move-to");
-	deskPopup.showMoveTo(payload);
-	ipcRenderer.send("enter-move-to-block", payload);
-};
+cursorManager.onEnterMoveToBlock = (payload) =>
+	enterPausingBlock("move-to", payload, deskPopup.showMoveTo);
 
-cursorManager.onEnterCodeInsertBlock = (payload) => {
-	cursorManager.suspendAutoTypingFor("code-insert");
-	deskPopup.showCodeInsert(payload);
-	ipcRenderer.send("enter-code-insert-block", payload);
-};
+cursorManager.onEnterCodeInsertBlock = (payload) =>
+	enterPausingBlock("code-insert", payload, deskPopup.showCodeInsert);
 
 cursorManager.onLeaveSpecialBlock = (kind) => deskPopup.closeIf(kind);
 

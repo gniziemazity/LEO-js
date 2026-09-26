@@ -333,7 +333,7 @@ function cursorWith(steps) {
 	});
 	const logged = [];
 	const cm = new CursorManager(
-		{ updateProgressBar() {}, removeCursorClasses() {} },
+		{ updateProgressBar() {} },
 		{ addEntry: (e) => logged.push(e) },
 	);
 	const el = (text) => ({

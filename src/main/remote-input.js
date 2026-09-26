@@ -55,28 +55,23 @@ broadcastServer.on("client-mouse-drag-start", async () => {
 		warnRemoteInput("drag start", e);
 	}
 });
-broadcastServer.on("client-mouse-drag-end", async () => {
+async function releaseDrag(op) {
+	mouseDragActive = false;
+	mouseDragOwner = null;
 	try {
-		mouseDragActive = false;
-		mouseDragOwner = null;
 		await mouse.releaseButton(Button.LEFT);
 	} catch (e) {
-		warnRemoteInput("drag end", e);
+		warnRemoteInput(op, e);
 	}
-});
+}
+broadcastServer.on("client-mouse-drag-end", () => releaseDrag("drag end"));
 broadcastServer.on("client-connected", () => {
 	state.send("client-connected");
 });
 broadcastServer.on("client-disconnected", async (clientId) => {
 	if (!mouseDragActive) return;
 	if (mouseDragOwner !== null && mouseDragOwner !== clientId) return;
-	try {
-		mouseDragActive = false;
-		mouseDragOwner = null;
-		await mouse.releaseButton(Button.LEFT);
-	} catch (e) {
-		warnRemoteInput("drag release on disconnect", e);
-	}
+	await releaseDrag("drag release on disconnect");
 });
 
 broadcastServer.on("client-window-pinch", (scale, dx, dy) =>
@@ -110,14 +105,7 @@ broadcastServer.on("client-remote-edit-key", async (action) => {
 });
 
 function releaseHeldMouseButton() {
-	if (!mouseDragActive) return;
-	mouseDragActive = false;
-	mouseDragOwner = null;
-	try {
-		mouse.releaseButton(Button.LEFT);
-	} catch (e) {
-		warnRemoteInput("drag release on quit", e);
-	}
+	if (mouseDragActive) releaseDrag("drag release on quit");
 }
 
 module.exports = { warnRemoteInput, releaseHeldMouseButton };

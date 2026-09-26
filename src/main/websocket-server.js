@@ -263,16 +263,15 @@ class LEOBroadcastServer extends EventEmitter {
 		return `${proto}://${address}:${this.port}/?t=${this.token}`;
 	}
 
+	localRemoteUrls() {
+		return Object.values(os.networkInterfaces())
+			.flat()
+			.filter((iface) => iface.family === "IPv4" && !iface.internal)
+			.map((iface) => this.remoteUrl(iface.address));
+	}
+
 	printLocalIPs() {
-		const interfaces = os.networkInterfaces();
-		Object.keys(interfaces).forEach((ifname) => {
-			interfaces[ifname].forEach((iface) => {
-				if (iface.family === "IPv4" && !iface.internal) {
-					const url = this.remoteUrl(iface.address);
-					console.log(`Remote: ${url}`);
-				}
-			});
-		});
+		for (const url of this.localRemoteUrls()) console.log(`Remote: ${url}`);
 	}
 
 	broadcast(data) {
@@ -471,23 +470,17 @@ class LEOBroadcastServer extends EventEmitter {
 
 	async getServerInfo() {
 		if (!this.listening) return [];
-		const interfaces = os.networkInterfaces();
 		const serverInfos = [];
-		for (const ifname of Object.keys(interfaces)) {
-			for (const iface of interfaces[ifname]) {
-				if (iface.family === "IPv4" && !iface.internal) {
-					const url = this.remoteUrl(iface.address);
-					try {
-						const qrCodeDataUrl = await QRCode.toDataURL(url, {
-							width: 300,
-							margin: 2,
-							color: { dark: "#000000", light: "#ffffff" },
-						});
-						serverInfos.push({ url, qrCodeDataUrl });
-					} catch (err) {
-						console.error("[LEO] QR failed:", err);
-					}
-				}
+		for (const url of this.localRemoteUrls()) {
+			try {
+				const qrCodeDataUrl = await QRCode.toDataURL(url, {
+					width: 300,
+					margin: 2,
+					color: { dark: "#000000", light: "#ffffff" },
+				});
+				serverInfos.push({ url, qrCodeDataUrl });
+			} catch (err) {
+				console.error("[LEO] QR failed:", err);
 			}
 		}
 		return serverInfos;

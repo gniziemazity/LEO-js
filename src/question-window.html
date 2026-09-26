@@ -55,12 +55,7 @@
 						banner.textContent = "";
 						banner.className = "student-banner";
 					}
-					const solidColor =
-						bgColor ||
-						getComputedStyle(document.body)
-							.getPropertyValue("--clr-question-bg")
-							.trim();
-					setBackgroundColor(solidColor);
+					setBackgroundColor(bgColor);
 				},
 			);
 

@@ -51,17 +51,10 @@ function applyBlock(editors, active, block, tag = 0) {
 	}
 	if (block.type === "move-to") {
 		const t = classifyMoveToTarget(block.target || "");
-		if (t.mode === "main") {
-			openEditor(editors, "main");
-			return "main";
-		}
-		if (t.mode === "dev") {
-			openEditor(editors, "dev");
-			return "dev";
-		}
-		if (t.mode === "file") {
-			openEditor(editors, t.target);
-			return t.target;
+		if (t.mode !== "anchor") {
+			const name = t.mode === "file" ? t.target : t.mode;
+			openEditor(editors, name);
+			return name;
 		}
 		for (const [name, st] of Object.entries(editors)) {
 			if (st.anchors[t.inner] != null) {

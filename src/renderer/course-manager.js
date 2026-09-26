@@ -10,12 +10,17 @@ const ALTER_EGO_FILE = "alter-egos.txt";
 const STUDENTS_HEADER = "Student ID;Student Name;Student Number;Alter Ego";
 const COURSE_DIRS = ["plans", "lessons", "assignments"];
 const INVALID_FS_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
+const PLAN_EXT_RE = /\.(leo|json)$/i;
 
 class CourseManager {
 	constructor() {
 		this.rootPath = "";
 		this.name = "";
 		this.lastPlan = "";
+	}
+
+	static planName(file) {
+		return path.basename(file).replace(PLAN_EXT_RE, "");
 	}
 
 	isOpen() {
@@ -84,9 +89,7 @@ class CourseManager {
 			this.lastPlan = meta.lastPlan || "";
 			this._ensureDirs();
 		} catch (e) {
-			this.rootPath = "";
-			this.name = "";
-			this.lastPlan = "";
+			this.close();
 			throw e;
 		}
 	}
@@ -182,10 +185,10 @@ class CourseManager {
 		if (!fs.existsSync(dir)) return [];
 		return fs
 			.readdirSync(dir)
-			.filter((f) => /\.(leo|json)$/i.test(f))
+			.filter((f) => PLAN_EXT_RE.test(f))
 			.sort((a, b) => a.localeCompare(b))
 			.map((f) => ({
-				name: f.replace(/\.(leo|json)$/i, ""),
+				name: CourseManager.planName(f),
 				path: path.join(dir, f),
 			}));
 	}

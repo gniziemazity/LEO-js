@@ -165,7 +165,12 @@ function initBackground(setting, color) {
 	_raf = requestAnimationFrame(_frame);
 }
 
-function setBackgroundColor(color) {
+function setBackgroundColor(bgColor) {
+	const color =
+		bgColor ||
+		getComputedStyle(document.body)
+			.getPropertyValue("--clr-question-bg")
+			.trim();
 	if (color) _solidColor = color;
 	if (_mode === "solid") {
 		_drawSolid();

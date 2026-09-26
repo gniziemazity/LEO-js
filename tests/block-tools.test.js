@@ -1492,13 +1492,19 @@ test("an empty editable block keeps a place to type when it gets tools", () => {
 });
 
 test("the caret lands in the text, never past the island", () => {
-	const src = read("renderer/block-editor.js");
 	assert.match(
-		src,
-		/UIManager\.putCaret\(target, null\)/,
-		"selectNodeContents + collapse(false) put the caret after the island",
+		read("renderer/block-editor.js"),
+		/focusNewBlock\(blockIdx\) \{\s*this\.uiManager\.refocusBlock\(blockIdx\);/,
+		"a new block and an undo refocus take the same path",
 	);
 	const ui = read("renderer/ui-manager.js");
+	const refocus = /refocusBlock\(blockIdx\) \{[\s\S]*?\n\t\}/.exec(ui)[0];
+	assert.match(
+		refocus,
+		/UIManager\.putCaret\(block, null\)/,
+		"selectNodeContents + collapse(false) put the caret after the island",
+	);
+	assert.doesNotMatch(refocus, /selectNodeContents/);
 	assert.match(ui, /static caretAtTextEnd\(el\)/);
 	assert.match(
 		ui,
