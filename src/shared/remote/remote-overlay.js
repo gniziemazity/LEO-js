@@ -87,11 +87,34 @@ class RemoteOverlay {
 		return btn;
 	}
 
-	fillStudentGrid(grid, students, makeOnClick) {
+	makeActionBtn(label, onClick) {
+		const btn = this.makeStudentBtn(label, onClick);
+		btn.classList.add("popup-action-btn");
+		return btn;
+	}
+
+	fillStudentGrid(
+		grid,
+		students,
+		makeOnClick,
+		indexes = InteractionView.sortedStudentIndexes(students),
+	) {
 		grid.innerHTML = "";
-		for (const idx of InteractionView.sortedStudentIndexes(students)) {
+		for (const idx of indexes) {
 			const name = students[idx];
 			grid.appendChild(this.makeStudentBtn(name, makeOnClick(idx, name)));
 		}
+	}
+
+	markPicked(grid, name) {
+		if (!grid) return;
+		const buttons = grid.querySelectorAll(
+			".popup-student-btn:not(.popup-action-btn)",
+		);
+		buttons.forEach((b) => b.classList.remove("popup-student-btn-picked"));
+		const btn = [...buttons].find((b) => b.textContent === name);
+		if (!btn) return;
+		btn.classList.add("popup-student-btn-picked");
+		btn.scrollIntoView({ behavior: "smooth", block: "center" });
 	}
 }

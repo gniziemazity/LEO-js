@@ -13,7 +13,7 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { WINDOW_CONFIG, buildWindowTitle } = require("../shared/constants");
-const { interactionBgColor } = require("../shared/interaction-view");
+const { interactionBgColor, isTeacher } = require("../shared/interaction-view");
 const state = require("./state");
 
 const {
@@ -53,8 +53,9 @@ const {
 	confirmKeyFor,
 	pasteAndConfirm,
 	armMoveToName,
-	typeNextNameChar,
+	typeNameOnKey,
 	hasPendingName,
+	stepMoveToName,
 	setNameProgressHandler,
 	openPopupKind,
 	releaseCodeFromClipboard,
@@ -83,12 +84,8 @@ const MEDIA_FLOATS = { image: _imageFloat, web: _webFloat };
 broadcastServer.on("client-toggle-active", () => {
 	state.send("hotkey-toggle-active");
 });
-broadcastServer.on("client-step-backward", () => {
-	state.send("hotkey-step-backward");
-});
-broadcastServer.on("client-step-forward", () => {
-	state.send("hotkey-step-forward");
-});
+broadcastServer.on("client-step-backward", () => hotkeyManager.step(-1));
+broadcastServer.on("client-step-forward", () => hotkeyManager.step(1));
 broadcastServer.on("client-jump-to", (stepIndex) => {
 	state.send("client-jump-to", stepIndex);
 });
@@ -114,13 +111,12 @@ broadcastServer.on("client-question-show-options", () => {
 broadcastServer.on("client-interaction", (interactionType) => {
 	state.send("log-interaction", interactionType);
 });
-broadcastServer.on("client-student-answered", (studentName) => {
-	endQuestion();
+const ANSWER_FADE_MS = 300;
+function revealAnswer(studentName, onReveal) {
 	const resolved = resolveStudentName(studentName);
 	floatState.questionWindowStudentAnswered = resolved;
-	const ANSWER_FADE_MS = 300;
 	const reveal = () => {
-		state.send("question-answered", { studentName });
+		if (onReveal) onReveal();
 		const qw = _questionFloat.activeWin;
 		if (qw) qw.webContents.send("set-answered", resolved);
 	};
@@ -133,25 +129,43 @@ broadcastServer.on("client-student-answered", (studentName) => {
 	} else {
 		reveal();
 	}
+}
+broadcastServer.on("client-student-answered", (studentName) => {
+	endQuestion();
+	revealAnswer(studentName, () =>
+		state.send("question-answered", { studentName }),
+	);
 });
 broadcastServer.on(
 	"client-show-student-interaction",
 	(interactionType, studentName, questionText, openedAt) => {
-		const resolved = resolveStudentName(studentName);
 		const isQuestion = interactionType === "student-question";
+		const teacherAsked = isQuestion && isTeacher(studentName);
+		const resolved = teacherAsked ? null : resolveStudentName(studentName);
 		const displayText = isQuestion
 			? questionText || "(no question text)"
 			: `Helping`;
 		const emoji = isQuestion ? "❓" : "🤝";
-		const bgColor = interactionBgColor(interactionType);
-		openQuestionWindow(displayText, bgColor, emoji, resolved);
+		const bgColor = teacherAsked
+			? settingsManager.get("colors.questionColor")
+			: interactionBgColor(interactionType);
+		openQuestionWindow(displayText, bgColor, { emoji, asker: resolved });
 	},
 );
 broadcastServer.on(
 	"client-close-student-interaction",
-	(interactionType, studentName, questionText, openedAt, closedAt) => {
+	(
+		interactionType,
+		studentName,
+		questionText,
+		openedAt,
+		closedAt,
+		answeredBy,
+	) => {
 		floatState.questionWindowIsLesson = false;
-		_questionFloat.close({ force: true });
+		const answered = answeredBy !== undefined && answeredBy !== null;
+		if (answered && _questionFloat.isAlive()) revealAnswer(answeredBy);
+		else _questionFloat.close({ force: true });
 		broadcastServer.broadcastQuestionEnded();
 		state.send("log-student-interaction", {
 			interactionType,
@@ -159,6 +173,7 @@ broadcastServer.on(
 			questionText,
 			openedAt,
 			closedAt,
+			answeredBy: answered ? answeredBy : null,
 		});
 	},
 );
@@ -193,9 +208,10 @@ broadcastServer.on("client-code-insert-paste", () => pasteAndConfirm());
 broadcastServer.on("client-move-to-type-name", () => armMoveToName());
 state.onPopupKey = () => {
 	if (!hasPendingName()) return false;
-	typeNextNameChar();
+	typeNameOnKey();
 	return true;
 };
+state.onStepKey = (delta) => stepMoveToName(delta);
 setNameProgressHandler((p) => {
 	broadcastServer.broadcastMoveToTyping(p);
 	state.send("move-to-typing", p);
@@ -713,11 +729,16 @@ async function createWindow() {
 	}
 	broadcastServer.updateSettings(settingsManager.getAll());
 	hotkeyManager.registerSystemShortcuts();
+	const sendMaximized = () =>
+		state.send("window-maximized", state.mainWindow.isMaximized());
+	state.mainWindow.on("maximize", sendMaximized);
+	state.mainWindow.on("unmaximize", sendMaximized);
 	state.mainWindow.webContents.on("did-finish-load", () => {
 		state.mainWindow.webContents.send(
 			"settings-loaded",
 			settingsManager.getAll(),
 		);
+		sendMaximized();
 		autoPilot.sync();
 		showEditorTipOnce();
 		if (pendingOpenFile) {

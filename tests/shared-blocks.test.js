@@ -168,6 +168,50 @@ test("the phone gives every block the same kind class the editor does", () => {
 	);
 });
 
+test("the phone shows Starting Code as one row and keeps the step numbers", () => {
+	const { buildRemote } = require("./helpers/remote-dom.js");
+	const ctx = buildRemote();
+	ctx.api.updateLessonData({
+		blocks: [
+			{ type: "include", dir: "part_2_start", files: 2, anchors: {} },
+			{ type: "move-to", target: "a.js", fromInclude: true },
+			{ type: "comment", text: "📋 a\n\tb", fromInclude: true },
+			{ type: "move-to", target: "b.js", fromInclude: true },
+			{ type: "comment", text: "📋 c\n\td", fromInclude: true },
+			{ type: "comment", text: "a reminder" },
+		],
+	});
+	const kids = ctx.nodes["lesson-container"].children;
+	assert.deepEqual(
+		kids.map((el) => el.className),
+		[
+			"block include-block",
+			"block move-to-block from-include",
+			"block snippet-block collapsed from-include",
+			"block move-to-block from-include",
+			"block snippet-block collapsed from-include",
+			"block note-block",
+		],
+	);
+	assert.equal(kids[0].innerText, "Starting Code (2 files)");
+	assert.equal(kids[0].dataset.stepIndex, undefined, "the row is not a step");
+	assert.deepEqual(
+		kids.slice(1).map((el) => el.dataset.stepIndex),
+		[0, 1, 2, 3, 4],
+		"the hidden blocks still count, so the host's step numbers line up",
+	);
+
+	const plain = buildRemote();
+	plain.api.updateLessonData({
+		blocks: [{ type: "include", anchors: {} }, { type: "comment", text: "n" }],
+	});
+	assert.deepEqual(
+		plain.nodes["lesson-container"].children.map((el) => el.className),
+		["block note-block"],
+		"no start folder, no row",
+	);
+});
+
 test("the support kinds are the block kinds that are not code", () => {
 	const { SUPPORT_KINDS, BLOCK_KINDS } = require(
 		path.join(BASE, "shared/blocks.js"),

@@ -10,11 +10,16 @@ const {
 const { POPUP_TITLES } = require("../shared/blocks");
 const {
 	DONE_LABEL,
+	TEACHER_ASKER,
 	isQuestion,
 	interactionTitle,
 	waitingTitle,
 	participantId,
 	sortedStudentIndexes,
+	askerChoices,
+	askerFromValue,
+	fillAskerRow,
+	QUESTION_BG,
 } = require("../shared/interaction-view");
 
 class DeskPopup {
@@ -113,14 +118,26 @@ class DeskPopup {
 		return b;
 	}
 
-	_fillStudentGrid(el, students, makeOnClick) {
+	_fillStudentGrid(
+		el,
+		students,
+		makeOnClick,
+		indexes = sortedStudentIndexes(students),
+	) {
 		const grid = document.createElement("div");
 		grid.className = "desk-popup-grid";
 		el.appendChild(grid);
-		for (const i of sortedStudentIndexes(students)) {
+		for (const i of indexes) {
 			this._studentBtn(grid, students[i], makeOnClick(i));
 		}
 		return grid;
+	}
+
+	_askerRow(el, choices, onChange) {
+		const row = document.createElement("div");
+		row.className = "asker-row";
+		el.appendChild(row);
+		return fillAskerRow(row, choices, onChange);
 	}
 
 	_studentBtn(grid, label, onClick, extraClass) {
@@ -266,6 +283,9 @@ class DeskPopup {
 		);
 		grid.style.display = "none";
 		if (!list) this._studentBtn(grid, "Answered", () => this._answered(null));
+		this._studentBtn(grid, this.teacherName, () =>
+			this._answered(participantId(TEACHER_ASKER)),
+		);
 	}
 
 	revealQuestion() {
@@ -284,7 +304,6 @@ class DeskPopup {
 	}
 
 	showInteraction(interactionType) {
-		const asksQuestion = isQuestion(interactionType);
 		if (!this.students.length) {
 			this._send("client-interaction", interactionType);
 			return;
@@ -293,31 +312,47 @@ class DeskPopup {
 		this.interaction = { type: interactionType, openedAt: Date.now() };
 		this._title(el, interactionTitle(interactionType));
 
-		let input = null;
-		if (asksQuestion) {
-			input = document.createElement("input");
+		if (isQuestion(interactionType)) {
+			const asker = this._askerRow(
+				el,
+				askerChoices(this.students, this.teacherName),
+				(picked) => (el.style.background = this._askerBg(picked)),
+			);
+			el.style.background = this._askerBg(askerFromValue(asker.value));
+			const input = document.createElement("input");
 			input.type = "text";
 			input.className = "desk-popup-input";
-			input.placeholder = "What did they ask?";
+			input.placeholder = "What was asked?";
 			el.appendChild(input);
+			const actions = this._actions(el);
+			this._button(actions, "Show", () =>
+				this._questionAsked(
+					askerFromValue(asker.value),
+					input.value.trim(),
+				),
+			);
+			this._button(
+				actions,
+				"✕",
+				() => this._interactionDone(),
+				"desk-popup-btn desk-popup-icon",
+			);
+		} else {
+			this._fillStudentGrid(
+				el,
+				this.students,
+				(idx) => () => this._interactionPicked(idx),
+			);
 		}
-
-		const pick = (idx) => () =>
-			this._interactionPicked(idx, input ? input.value.trim() : null);
-		const grid = this._fillStudentGrid(el, this.students, pick);
-		if (asksQuestion)
-			this._studentBtn(grid, this.teacherName, pick("teacher"));
 
 		this._send("client-interaction-overlay-shown");
 	}
 
-	_interactionPicked(idx, questionText) {
+	_startInteraction(idx, questionText) {
 		const it = this.interaction;
-		if (!it) return;
-		const isTeacher = idx === "teacher";
 		it.studentName = participantId(idx);
 		it.questionText = questionText || null;
-		const name = isTeacher ? this.teacherName : (this.students[idx] ?? "");
+		const name = idx === TEACHER_ASKER ? null : (this.students[idx] ?? "");
 
 		this._send(
 			"client-show-student-interaction",
@@ -327,9 +362,19 @@ class DeskPopup {
 			it.openedAt,
 		);
 
-		const el = this._open("interaction", "");
+		const el = this._open("interaction", this._askerBg(idx));
 		this.interaction = it;
 		this._title(el, waitingTitle(it.type, name, it.questionText));
+		return el;
+	}
+
+	_askerBg(asker) {
+		return asker === TEACHER_ASKER ? QUESTION_BG : "";
+	}
+
+	_interactionPicked(idx) {
+		if (!this.interaction) return;
+		const el = this._startInteraction(idx, null);
 		this._button(
 			this._actions(el),
 			DONE_LABEL,
@@ -338,7 +383,28 @@ class DeskPopup {
 		);
 	}
 
-	_interactionDone() {
+	_questionAsked(asker, questionText) {
+		if (!this.interaction) return;
+		const el = this._startInteraction(asker, questionText);
+		const actions = this._actions(el);
+		this._button(
+			actions,
+			"🎲",
+			() => this._randomize(this.students),
+			"desk-popup-btn desk-popup-icon",
+		);
+		this._button(
+			actions,
+			"✕",
+			() => this._interactionDone(),
+			"desk-popup-btn desk-popup-icon",
+		);
+		const answered = (idx) => () => this._interactionDone(participantId(idx));
+		const grid = this._fillStudentGrid(el, this.students, answered);
+		this._studentBtn(grid, this.teacherName, answered(TEACHER_ASKER));
+	}
+
+	_interactionDone(answeredBy = null) {
 		const it = this.interaction;
 		if (it && it.studentName !== undefined) {
 			this._send(
@@ -348,6 +414,7 @@ class DeskPopup {
 				it.questionText,
 				it.openedAt,
 				Date.now(),
+				answeredBy,
 			);
 		}
 		this.close();

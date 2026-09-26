@@ -57,14 +57,76 @@
 		return true;
 	}
 
-	function renderLines(container, text, colored) {
+	function piecesAt(segs, lineStart, cuts) {
+		const pieces = [];
+		let pos = lineStart;
+		for (const seg of segs) {
+			const end = pos + seg.text.length;
+			let from = pos;
+			for (const cut of cuts) {
+				if (cut > from && cut < end) {
+					pieces.push({
+						...seg,
+						text: seg.text.slice(from - pos, cut - pos),
+						at: from,
+					});
+					from = cut;
+				}
+			}
+			pieces.push({ ...seg, text: seg.text.slice(from - pos), at: from });
+			pos = end;
+		}
+		return pieces;
+	}
+
+	function makeCaretSpan() {
+		const caret = document.createElement("span");
+		caret.className = "snippet-caret";
+		return caret;
+	}
+
+	function renderMarkedLine(row, segs, lineStart, lineEnd, marks) {
+		const caret = Number.isInteger(marks.caret) ? marks.caret : null;
+		const ranges = (marks.ranges || []).filter(
+			([from, to]) => to > lineStart && from <= lineEnd,
+		);
+		const inMark = (at) => ranges.some(([from, to]) => at >= from && at < to);
+		const cuts = ranges
+			.flat()
+			.concat(caret === null ? [] : [caret])
+			.sort((a, b) => a - b);
+		let caretDone = !(caret >= lineStart && caret <= lineEnd);
+		for (const piece of piecesAt(segs, lineStart, cuts)) {
+			if (!caretDone && piece.at >= caret) {
+				row.appendChild(makeCaretSpan());
+				caretDone = true;
+			}
+			if (!piece.text) continue;
+			const span = makeSegSpan(piece.text, piece.color);
+			if (inMark(piece.at)) span.className = "snippet-mark";
+			row.appendChild(span);
+		}
+		if (!caretDone) row.appendChild(makeCaretSpan());
+		if (inMark(lineEnd)) {
+			const eol = makeSegSpan(" ", null);
+			eol.className = "snippet-mark";
+			row.appendChild(eol);
+		}
+	}
+
+	function renderLines(container, text, colored, marks) {
 		container.innerHTML = "";
 		const lines = String(text == null ? "" : text).split("\n");
+		let lineStart = 0;
 		lines.forEach((line, i) => {
 			const row = document.createElement("div");
 			row.className = "mt-modal-line";
-			renderLine(row, segsFor(colored, lines, i));
+			const segs = segsFor(colored, lines, i);
+			const lineEnd = lineStart + line.length;
+			if (marks) renderMarkedLine(row, segs, lineStart, lineEnd, marks);
+			else renderLine(row, segs);
 			container.appendChild(row);
+			lineStart = lineEnd + 1;
 		});
 	}
 

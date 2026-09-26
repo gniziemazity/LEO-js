@@ -41,6 +41,36 @@ test("VS Code opens lessons/<lesson>, not lessons/<lesson>/<lesson>", () => {
 	);
 });
 
+test("the start code is copied into the folder VS Code opens, never over what is there", () => {
+	const c = makeCourse();
+	const start = path.join(path.dirname(c.plan), "part_1_start");
+	put(path.join(start, "index.html"), "<p>start</p>");
+	put(path.join(start, "src", "app.js"), "let a = 1;");
+	put(path.join(start, "logo.png"), Buffer.from([137, 80, 0, 1]));
+	put(path.join(start, "node_modules", "dep", "index.js"), "x");
+	put(path.join(start, ".git", "HEAD"), "ref");
+	put(path.join(c.lesson, "index.html"), "<p>edited in class</p>");
+
+	assert.equal(tools.lessonWorkspaceFolder(), c.lesson);
+
+	const read = (...p) => fs.readFileSync(path.join(c.lesson, ...p), "utf8");
+	assert.equal(read("index.html"), "<p>edited in class</p>");
+	assert.equal(read("src", "app.js"), "let a = 1;");
+	assert.deepEqual(
+		[...fs.readFileSync(path.join(c.lesson, "logo.png"))],
+		[137, 80, 0, 1],
+		"every file is the start, images included",
+	);
+	assert.equal(fs.existsSync(path.join(c.lesson, "node_modules")), false);
+	assert.equal(fs.existsSync(path.join(c.lesson, ".git")), false);
+});
+
+test("a plan with no start folder opens an empty lesson folder", () => {
+	const c = makeCourse();
+	assert.equal(tools.lessonWorkspaceFolder(), c.lesson);
+	assert.deepEqual(fs.readdirSync(c.lesson), []);
+});
+
 test("with no data, only the Simulator is offered", async () => {
 	const c = makeCourse();
 	fs.mkdirSync(c.lesson, { recursive: true });

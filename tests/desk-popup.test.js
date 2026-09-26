@@ -285,28 +285,59 @@ test("an interaction with no students is logged without a card", () => {
 	assert.equal(popup.isOpen(), false);
 });
 
-test("picking a student opens the waiting state, Done closes it", () => {
+function findTag(popup, tag) {
+	const walk = (el) => {
+		for (const c of el.children || []) {
+			if (c.tag === tag) return c;
+			const hit = walk(c);
+			if (hit) return hit;
+		}
+		return null;
+	};
+	return walk(popup.el);
+}
+
+const askerOptions = (popup) =>
+	findTag(popup, "select").children.map((o) => o.textContent);
+
+test("a question is asked by the teacher unless changed, and Show projects it", () => {
 	const { popup, sent } = build();
 	popup.setStudents(["Ada", "Linus"]);
 	popup.showInteraction("student-question");
 
 	assert.deepEqual(sent[0], ["client-interaction-overlay-shown"]);
-	const input = popup.el.children[1];
-	input.value = "why does it crash?";
+	assert.equal(popup.el.children[0].textContent, "❓ Question");
+	const select = findTag(popup, "select");
+	assert.deepEqual(askerOptions(popup), ["Teacher", "Ada", "Linus"]);
+	assert.ok(
+		popup.el.children.indexOf(select.parent.parent) <
+			popup.el.children.indexOf(findTag(popup, "input")),
+		"Asked by comes before the question text",
+	);
+	findTag(popup, "input").value = "why does it crash?";
 
-	byLabel(popup, "Ada").click();
+	byLabel(popup, "Show").click();
 	const shown = sent[1];
 	assert.equal(shown[0], "client-show-student-interaction");
 	assert.equal(shown[1], "student-question");
-	assert.equal(shown[2], 1, "1-based student id");
+	assert.equal(shown[2], 0, "left on its default, the teacher asked");
 	assert.equal(shown[3], "why does it crash?");
-	assert.match(
+	assert.equal(
 		popup.el.children[0].textContent,
-		/^❓ Ada: why does it crash\?$/,
+		"why does it crash?",
+		"the teacher asked: shown like a planned question, no asker",
+	);
+	assert.equal(popup.el.style.background, "var(--clr-question-bg)");
+	assert.ok(byLabel(popup, "🎲"), "the usual buttons");
+	assert.deepEqual(
+		studentButtons(popup),
+		["Ada", "Linus", "Teacher"],
+		"the teacher asked, and may end up answering it too",
 	);
 
-	byLabel(popup, "✓ Done — close").click();
+	byLabel(popup, "Linus").click();
 	assert.equal(sent[2][0], "client-close-student-interaction");
+	assert.equal(sent[2][6], 2, "answered by Linus, roster id 2");
 	assert.equal(sent[3][0], "client-interaction-overlay-closed");
 	assert.equal(popup.isOpen(), false);
 });
@@ -322,12 +353,68 @@ test("helping someone has no question box and picks the teacher never", () => {
 	assert.equal(popup.el.children[0].textContent, "🤝 Helping Ada");
 });
 
-test("the teacher can be the one who asked", () => {
+test("a student can be the one who asked, and the teacher can answer", () => {
 	const { popup, sent } = build();
-	popup.setStudents(["Ada"]);
+	popup.setStudents(["Ada", "Bo"]);
 	popup.showInteraction("student-question");
+	const select = findTag(popup, "select");
+	assert.equal(
+		popup.el.style.background,
+		"var(--clr-question-bg)",
+		"the form wears the planned colour while the teacher is the asker",
+	);
+	select.value = "1";
+	select.onchange();
+	assert.equal(popup.el.style.background, "", "and drops it for a student");
+	byLabel(popup, "Show").click();
+
+	assert.equal(sent[1][2], 2, "Bo is roster id 2");
+	assert.match(popup.el.children[0].textContent, /^❓ Bo$/);
+	assert.equal(
+		popup.el.style.background,
+		"",
+		"a student's question keeps its own look",
+	);
+	assert.deepEqual(
+		studentButtons(popup),
+		["Ada", "Bo", "Teacher"],
+		"the asker may end up answering their own question",
+	);
 	byLabel(popup, "Teacher").click();
-	assert.equal(sent[1][2], 0, "the teacher is id 0");
+	assert.equal(sent[2][6], 0, "the teacher is id 0");
+});
+
+test("✕ before Show logs nothing, ✕ after it logs an unanswered question", () => {
+	const before = build();
+	before.popup.setStudents(["Ada"]);
+	before.popup.showInteraction("student-question");
+	byLabel(before.popup, "✕").click();
+	assert.deepEqual(before.sent.slice(1), [
+		["client-interaction-overlay-closed"],
+	]);
+	assert.equal(before.popup.isOpen(), false);
+
+	const after = build();
+	after.popup.setStudents(["Ada"]);
+	after.popup.showInteraction("student-question");
+	byLabel(after.popup, "Show").click();
+	byLabel(after.popup, "✕").click();
+	assert.equal(after.sent[2][0], "client-close-student-interaction");
+	assert.equal(after.sent[2][6], null, "nobody answered");
+});
+
+test("a planned question shows no asker row", () => {
+	const { popup } = build();
+	popup.setStudents(["Ada"]);
+	popup.setTeacherName("Ms. Lee");
+	popup.showQuestion({
+		question: "What is X?",
+		options: null,
+		students: ["Ada"],
+	});
+
+	assert.equal(findTag(popup, "select"), null);
+	assert.equal(popup.el.children[0].textContent, "What is X?");
 });
 
 test("closeIf only closes the popup it names", () => {
@@ -591,13 +678,20 @@ const studentButtons = (popup) =>
 		.filter((b) => b.className.includes("popup-student-btn"))
 		.map((b) => b.textContent);
 
-test("the interaction picker lists students alphabetically, teacher last", () => {
+test("the asker list is the teacher, then the students alphabetically", () => {
 	const { popup } = build();
 	popup.setStudents(["Zoe", "ada", "Mo"]);
 	popup.setTeacherName("Ms. Lee");
 	popup.showInteraction("student-question");
 
-	assert.deepEqual(studentButtons(popup), ["ada", "Mo", "Zoe", "Ms. Lee"]);
+	assert.deepEqual(askerOptions(popup), ["Ms. Lee", "ada", "Mo", "Zoe"]);
+	findTag(popup, "select").value = "2";
+	byLabel(popup, "Show").click();
+	assert.deepEqual(
+		studentButtons(popup),
+		["ada", "Mo", "Zoe", "Ms. Lee"],
+		"answers are sorted too, the asker kept and the teacher last",
+	);
 });
 
 test("help (no question text box) still sorts, with no teacher entry", () => {
@@ -635,5 +729,16 @@ test("the question answer grid is sorted too", () => {
 		options: null,
 		students: ["Priya", "Ana", "Zed"],
 	});
-	assert.deepEqual(studentButtons(popup), ["Ana", "Priya", "Zed"]);
+	assert.deepEqual(
+		studentButtons(popup),
+		["Ana", "Priya", "Zed", "Teacher"],
+		"sorted, and the teacher can answer too, last",
+	);
+});
+
+test("the teacher answering a planned question is id 0", () => {
+	const { popup, sent } = build();
+	popup.showQuestion({ question: "q", options: null, students: ["Ada"] });
+	byLabel(popup, "Teacher").click();
+	assert.deepEqual(sent.at(-1), ["client-student-answered", 0]);
 });

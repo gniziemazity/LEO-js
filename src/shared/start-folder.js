@@ -22,6 +22,17 @@ function isDirectory(dir) {
 	}
 }
 
+function copyStartFiles(planPath, dest) {
+	const dir = startDirFor(planPath);
+	if (!dir || !isDirectory(dir)) return;
+	fs.cpSync(dir, dest, {
+		recursive: true,
+		force: false,
+		errorOnExist: false,
+		filter: (src) => !SKIPPED_DIRS.has(path.basename(src)),
+	});
+}
+
 function looksBinary(buffer) {
 	return buffer.includes(0);
 }
@@ -109,6 +120,7 @@ function readAnchors(body) {
 module.exports = {
 	startDirFor,
 	isDirectory,
+	copyStartFiles,
 	listStartFiles,
 	embedAnchors,
 	readAnchors,

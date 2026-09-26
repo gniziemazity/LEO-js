@@ -15,7 +15,7 @@ const {
 	embedAnchors,
 	readAnchors,
 	listStartFiles,
-} = require("../src/renderer/start-folder");
+} = require("../src/shared/start-folder");
 
 const INDEX = "<html>\n  <body>\n  </body>\n</html>\n";
 const APP = 'function main() {\n  console.log("hi");\n}\n';

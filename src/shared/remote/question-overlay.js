@@ -45,6 +45,11 @@ class QuestionOverlay extends RemoteOverlay {
 				),
 			);
 		}
+		grid.appendChild(
+			this.makeStudentBtn(teacherName, () =>
+				this.studentAnswered(InteractionView.TEACHER_ASKER),
+			),
+		);
 
 		grid.insertBefore(this.buildActionButtons(), grid.firstChild);
 
@@ -60,12 +65,6 @@ class QuestionOverlay extends RemoteOverlay {
 			frag.appendChild(this.makeActionBtn("🔤", () => this.showOptions()));
 		}
 		return frag;
-	}
-
-	makeActionBtn(label, onClick) {
-		const btn = this.makeStudentBtn(label, onClick);
-		btn.classList.add("popup-action-btn");
-		return btn;
 	}
 
 	showToTeacher(animate) {
@@ -95,21 +94,14 @@ class QuestionOverlay extends RemoteOverlay {
 	}
 
 	showRandomResult(index, name) {
-		const grid = document.getElementById("qGrid");
-		if (!grid) return;
-		const buttons = grid.querySelectorAll(
-			".popup-student-btn:not(.popup-action-btn)",
-		);
-		buttons.forEach((b) => b.classList.remove("popup-student-btn-picked"));
-		const btn = [...buttons].find((b) => b.textContent === name);
-		if (!btn) return;
-		btn.classList.add("popup-student-btn-picked");
-		btn.scrollIntoView({ behavior: "smooth", block: "center" });
+		this.markPicked(document.getElementById("qGrid"), name);
 	}
 
 	studentAnswered(idx) {
 		const studentId =
-			idx != null && idx >= 0 ? InteractionView.participantId(idx) : null;
+			idx === InteractionView.TEACHER_ASKER || (idx != null && idx >= 0)
+				? InteractionView.participantId(idx)
+				: null;
 		sendMessage("student-answered", { studentName: studentId });
 		this.close();
 	}

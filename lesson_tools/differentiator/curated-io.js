@@ -257,14 +257,13 @@ function _curatedBuildSaveControls() {
 	basisSel.addEventListener("change", syncCustom);
 	syncCustom();
 
-	const showStatus = (msg, ok) => {
+	const setError = (msg) => {
 		statusEl.textContent = msg;
-		statusEl.style.color = ok ? "var(--clr-green)" : "var(--clr-red)";
 	};
 
 	const resolve = () => {
 		const r = _curatedResolveSaveName(basisSel.value, customInp.value);
-		if (!r) showStatus("Enter a name for the file.", false);
+		if (!r) setError("Enter a name for the file.");
 		return r;
 	};
 	const resolveLoose = () => {
@@ -281,7 +280,7 @@ function _curatedBuildSaveControls() {
 	form.querySelector("#csm-download").addEventListener("click", () => {
 		const r = resolveLoose();
 		_curatedDownloadFile(r.fname, r.matching);
-		showStatus(`⬇ Downloaded ${r.fname}`, true);
+		setError("");
 	});
 
 	const saveBtn = form.querySelector("#csm-save");
@@ -289,13 +288,13 @@ function _curatedBuildSaveControls() {
 		const r = resolve();
 		if (!r) return;
 		saveBtn.disabled = true;
-		showStatus("Saving…", true);
+		setError("");
 		try {
 			await _curatedSaveToFolder(r.fname, r.matching);
 			_curatedFloatWin.win.style.display = "none";
 		} catch (err) {
 			console.error("[Differentiator] Save failed", err);
-			showStatus("Save failed: " + (err && err.message), false);
+			setError("Save failed: " + (err && err.message));
 			saveBtn.disabled = false;
 		}
 	});

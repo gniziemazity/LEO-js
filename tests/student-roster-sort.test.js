@@ -38,13 +38,21 @@ test("the question answer grid on the phone is sorted alphabetically", () => {
 		null,
 		null,
 	);
-	assert.deepEqual(studentBtnTexts(ctx.nodes.qGrid), ["Ana", "Priya", "Zed"]);
+	assert.deepEqual(studentBtnTexts(ctx.nodes.qGrid), [
+		"Ana",
+		"Priya",
+		"Zed",
+		"Teacher",
+	]);
 });
 
-test("the phone's student-question picker sorts, teacher last", () => {
+test("the phone's question answers sort, asker kept, teacher last", () => {
 	const ctx = build();
 	ctx.api.setStudents(["Zoe", "ada", "Mo"]);
 	ctx.api.handleInteractionBtn("student-question");
+	assert.deepEqual(studentBtnTexts(ctx.nodes.iGrid), [], "nothing until Show");
+	ctx.nodes.iAskerRow.children[0].children[0].value = "2";
+	ctx.api.interactionAsk();
 	assert.deepEqual(studentBtnTexts(ctx.nodes.iGrid), [
 		"ada",
 		"Mo",

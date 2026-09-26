@@ -30,12 +30,14 @@ const HOTKEY_SETTINGS = [
 		domId: "stepBackwardKey",
 		value: "CommandOrControl+Left",
 		channel: "hotkey-step-backward",
+		step: -1,
 	},
 	{
 		key: "stepForward",
 		domId: "stepForwardKey",
 		value: "CommandOrControl+Right",
 		channel: "hotkey-step-forward",
+		step: 1,
 	},
 	{
 		key: "alwaysOnTop",

@@ -354,11 +354,12 @@ function closeAllChildWindows() {
 	closeToolWindows();
 }
 
-function openQuestionWindow(question, bgColor, emoji, studentName) {
+function openQuestionWindow(question, bgColor, interaction) {
 	_randomizerFloat.close({ force: true });
 	_optionsFloat.close({ force: true });
-	const payload = { question, bgColor, emoji, studentName };
-	floatState.questionWindowIsLesson = !studentName;
+	const { emoji, asker } = interaction || {};
+	const payload = { question, bgColor, emoji, studentName: asker };
+	floatState.questionWindowIsLesson = !interaction;
 	floatState.questionShown = false;
 	floatState.questionWindowBgColor = bgColor || null;
 	floatState.questionOptions = [];

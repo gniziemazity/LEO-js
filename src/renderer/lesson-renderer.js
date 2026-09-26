@@ -6,6 +6,7 @@ const {
 	kindClass,
 	SUPPORT_KINDS,
 	collapsedLabel,
+	startingCodeLabel,
 	stripBlockPrefix,
 } = require("../shared/blocks");
 const { computeMoveToSnippets } = require("./anchor-snippet");
@@ -45,7 +46,9 @@ class LessonRenderer {
 		this.lastEditedBlockIndex = null;
 		this.lastEditTime = 0;
 		this.expandedIncludes = new Set();
+		this.startCollapsed = true;
 		this._moveToSnippets = new Map();
+		this.onRendered = null;
 	}
 
 	_isScrollbarClick(e) {
@@ -62,6 +65,12 @@ class LessonRenderer {
 			this.expandedIncludes.add(blockIdx);
 		}
 		this.render();
+	}
+
+	toggleStartCollapsed() {
+		this.startCollapsed = !this.startCollapsed;
+		this.uiManager.setStartCollapsed(this.startCollapsed);
+		this._syncSidebar();
 	}
 
 	attachEditHandlers(element, allowTab = false) {
@@ -107,6 +116,7 @@ class LessonRenderer {
 	resetView() {
 		this.endEditBurst();
 		this.expandedIncludes.clear();
+		this.startCollapsed = true;
 		if (this.uiManager.getSelectedBlockIndex() !== null) {
 			this.uiManager.deselectBlock();
 		}
@@ -135,6 +145,7 @@ class LessonRenderer {
 		const isTypingActive = this.uiManager.isActive();
 
 		this.uiManager.clearLessonContainer();
+		this.uiManager.setStartCollapsed(this.startCollapsed);
 		const executionSteps = [];
 		let globalStepCounter = 0;
 
@@ -171,6 +182,7 @@ class LessonRenderer {
 		}
 
 		this.broadcastLessonData(executionSteps);
+		if (this.onRendered) this.onRendered();
 	}
 
 	_syncSidebar() {
@@ -184,7 +196,9 @@ class LessonRenderer {
 			block.type === "comment" &&
 			getBlockKind(block.text) === "snippet";
 		this.uiManager.setSidebarEnabled(
-			codeSelected || snippetSelected || this.expandedIncludes.size > 0,
+			codeSelected ||
+				snippetSelected ||
+				(!this.startCollapsed && this.expandedIncludes.size > 0),
 			codeSelected,
 		);
 	}
@@ -359,17 +373,25 @@ class LessonRenderer {
 		return island;
 	}
 
-	_attachFold(el, blockIdx) {
-		this.uiManager.attachBlockIsland(el, {
-			tools: [
-				{
-					glyph: "▴",
-					title: "Fold this file",
-					onClick: () => this.toggleIncludeExpanded(blockIdx),
-				},
-			],
-			className: "block-opt-fold",
-		});
+	_onFoldArrow(e) {
+		const el = e && e.currentTarget;
+		if (!el || typeof e.clientX !== "number") return false;
+		const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+		let node;
+		while ((node = walker.nextNode())) {
+			if (node.length && !node.parentElement.closest("[data-block-opt]"))
+				break;
+		}
+		if (!node) return false;
+		const range = document.createRange();
+		range.setStart(node, 0);
+		range.setEnd(node, node.data.codePointAt(0) > 0xffff ? 2 : 1);
+		const first = range.getBoundingClientRect();
+		return (
+			e.clientX < first.left &&
+			e.clientY >= first.top &&
+			e.clientY <= first.bottom
+		);
 	}
 
 	_onStartFileInput(el, blockIdx) {
@@ -386,11 +408,6 @@ class LessonRenderer {
 		this.lessonManager.setStartAnchors(blockIdx, body);
 		if (typed === block.text) return;
 		el.textContent = block.text;
-		if (
-			this.expandedIncludes.has(blockIdx) &&
-			this.isMultilineSnippet(blockIdx)
-		)
-			this._attachFold(el, blockIdx);
 		if (caret !== null)
 			this._placeCaret(el, caret - (typed.length - block.text.length));
 	}
@@ -404,6 +421,32 @@ class LessonRenderer {
 		before.selectNodeContents(el);
 		before.setEnd(range.endContainer, range.endOffset);
 		return before.toString().length;
+	}
+
+	caretFocus() {
+		if (this.uiManager.isActive()) return null;
+		const active = document.activeElement;
+		const blockEl =
+			active && active.closest ? active.closest(".block") : null;
+		if (!blockEl) return null;
+		const index = [...document.querySelectorAll(".block")].indexOf(blockEl);
+		const block = this.lessonManager.getAllBlocks()[index];
+		if (!block || block.fromInclude || block.type === "include") return null;
+		const sel = window.getSelection();
+		if (
+			block.type !== "code" ||
+			!sel ||
+			!sel.rangeCount ||
+			!blockEl.contains(sel.focusNode)
+		) {
+			return { index, caret: null };
+		}
+		const before = document.createRange();
+		before.selectNodeContents(blockEl);
+		before.setEnd(sel.focusNode, sel.focusOffset);
+		const holder = document.createElement("div");
+		holder.appendChild(before.cloneContents());
+		return { index, caret: readCodeText(holder).length };
 	}
 
 	_caretAtBodyStart(el) {
@@ -507,11 +550,7 @@ class LessonRenderer {
 		this._syncEmpty(blockDiv, shown);
 		this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
 
-		if (block.startFile) {
-			blockDiv.classList.add("start-file");
-			if (isMultilineInsert && isExpanded)
-				this._attachFold(blockDiv, blockIdx);
-		}
+		if (block.startFile) blockDiv.classList.add("start-file");
 
 		blockDiv.oninput = () => {
 			if (block.startFile) {
@@ -589,22 +628,8 @@ class LessonRenderer {
 			return stepIndex;
 		}
 		blockDiv.classList.add("include-block");
-
-		const label = document.createElement("span");
-		label.className = "start-with-label";
-		label.textContent = "Start with";
-		blockDiv.appendChild(label);
-
-		const dir = document.createElement("span");
-		dir.className = "start-with-dir";
-		dir.textContent = `${block.dir}/`;
-		blockDiv.appendChild(dir);
-
-		const hint = document.createElement("span");
-		hint.className = "start-with-hint";
-		hint.textContent = `${block.files} ${block.files === 1 ? "file" : "files"} · open one to add or remove ⚓ anchors`;
-		blockDiv.appendChild(hint);
-
+		blockDiv.textContent = startingCodeLabel(block.files);
+		blockDiv.title = `${block.dir}/ · open a file to add or remove ⚓ anchors`;
 		return stepIndex;
 	}
 
@@ -750,22 +775,17 @@ class LessonRenderer {
 	}
 
 	handleBlockClick(e, block, blockIdx) {
-		if (block.type === "include") return;
+		if (block.type === "include") {
+			if (block.dir) this.toggleStartCollapsed();
+			return;
+		}
 		if (block.fromInclude) {
-			if (
-				block.startFile &&
-				(this.expandedIncludes.has(blockIdx) ||
-					!this.isMultilineSnippet(blockIdx))
-			) {
+			if (this.uiManager.isActive() || !this.isMultilineSnippet(blockIdx))
 				return;
-			}
-			if (
-				!this.uiManager.isActive() &&
-				this.isMultilineSnippet(blockIdx) &&
-				!this._isScrollbarClick(e)
-			) {
+			const openStartFile =
+				!!block.startFile && this.expandedIncludes.has(blockIdx);
+			if (openStartFile ? this._onFoldArrow(e) : !this._isScrollbarClick(e))
 				this.toggleIncludeExpanded(blockIdx);
-			}
 			return;
 		}
 		if (this.uiManager.isActive()) {

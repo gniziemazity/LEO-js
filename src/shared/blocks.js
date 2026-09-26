@@ -54,6 +54,11 @@
 		return String(text).split("\n")[0] + "...";
 	}
 
+	function startingCodeLabel(files) {
+		const n = Number(files) || 0;
+		return `Starting Code (${n} ${n === 1 ? "file" : "files"})`;
+	}
+
 	function stripBlockPrefix(text) {
 		const s = String(text == null ? "" : text);
 		for (const [prefix] of BLOCK_KINDS) {
@@ -90,6 +95,7 @@
 			(k) => `.${kindClass(k)}.active-block`,
 		).join(",\n\t\t\t");
 		return `
+			:root { --clr-question-bg: ${c.questionColor}; }
 			body { font-size: ${settings.fontSize}px; }
 			${all},
 			.code-block { color: ${c.textColor}; }
@@ -147,6 +153,7 @@
 		stripBlockPrefix,
 		isMultilineSnippet,
 		collapsedLabel,
+		startingCodeLabel,
 		splitPinToken,
 		buildSettingsCSS,
 	};

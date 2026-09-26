@@ -5,8 +5,13 @@ let scrollPending = null;
 let isActive = false;
 let teacherName = "Teacher";
 
-const { getBlockKind, buildSettingsCSS, isMultilineSnippet, collapsedLabel } =
-	LeoBlocks;
+const {
+	getBlockKind,
+	buildSettingsCSS,
+	isMultilineSnippet,
+	collapsedLabel,
+	startingCodeLabel,
+} = LeoBlocks;
 
 function renderMoveToTargetLabel(target) {
 	return MoveToTarget.moveToTargetLabel(target);
@@ -53,15 +58,16 @@ function updateLessonData(data) {
 	let ctr = 0;
 	blocks.forEach((block) => {
 		const div = document.createElement("div");
-		if (block.type === "move-to") {
+		if (block.type === "include") {
+			if (!block.dir) return;
+			div.className = "block include-block";
+			div.innerText = startingCodeLabel(block.files);
+		} else if (block.type === "move-to") {
 			div.className = "block move-to-block";
 			div.innerText = `➡️ ${renderMoveToTargetLabel(block.target)}`;
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
-			container.appendChild(div);
-			return;
-		}
-		if (block.type === "comment") {
+		} else if (block.type === "comment") {
 			div.className = `block ${getBlockKind(block.text)}-block`;
 			const isMultilineInsert = isMultilineSnippet(block.text);
 			if (isMultilineInsert) {
@@ -79,6 +85,7 @@ function updateLessonData(data) {
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleCodeClick;
 		}
+		if (block.fromInclude) div.classList.add("from-include");
 		container.appendChild(div);
 	});
 	indexSteps(container);

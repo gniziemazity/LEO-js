@@ -3,6 +3,8 @@ const { spawn, spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
 const path = require("path");
 const fs = require("fs");
+const { copyStartFiles } = require("../shared/start-folder");
+const { windowHandles, maximizeVSCode } = require("./vscode-window");
 
 let courseMenuState = { open: false, plans: [], currentPath: "" };
 
@@ -68,6 +70,11 @@ function lessonWorkspaceFolder() {
 	try {
 		fs.mkdirSync(folder, { recursive: true });
 	} catch (_) {}
+	try {
+		copyStartFiles(courseMenuState.currentPath, folder);
+	} catch (e) {
+		console.error("[LEO] copying the start code failed:", e);
+	}
 	return folder;
 }
 
@@ -241,9 +248,18 @@ function launchExternalApp(key, args = []) {
 	}
 }
 
-function launchVSCode() {
+async function launchVSCode() {
 	const folder = lessonWorkspaceFolder();
+	const before = await windowHandles();
 	launchExternalApp("vscode", folder ? [folder] : []);
+	try {
+		await maximizeVSCode({
+			before,
+			folderName: folder ? path.basename(folder) : null,
+		});
+	} catch (e) {
+		console.error("[LEO] maximizing VSCode failed:", e);
+	}
 }
 
 function folderUrl(folder) {

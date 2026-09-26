@@ -934,6 +934,21 @@ test("the chips are white whatever the block, and never dimmed by it", () => {
 	);
 });
 
+test("an inherited block has no overlay: it scrolls, and opacity already dims it", () => {
+	const css = read("shared/styles.css");
+	assert.match(
+		css,
+		/\nbody:not\(\.mobile-view\) \.block\.from-include::after \{\n\tcontent: none;\n\}/,
+		"an expanded start file scrolls, and an inset: 0 overlay covers only " +
+			"its first screenful, so its edge shows when scrolling down",
+	);
+	assert.match(css, /\n\.block\.from-include \{\n\topacity: 0\.6;/);
+	assert.match(
+		css,
+		/\n\.block\.from-include\.snippet-block:not\(\.collapsed\) \{\n\topacity: 0\.85;[\s\S]*?overflow-y: auto;/,
+	);
+});
+
 test("every kind is offered, derived from the one prefix table", () => {
 	assert.deepEqual(
 		KIND_CHOICES.map((c) => c.kind),
@@ -1091,7 +1106,7 @@ test("the type list is not a move-to list, so the anchor preview ignores it", ()
 	);
 });
 
-function sidebarFor({ blocks, selected, expanded = [] }) {
+function sidebarFor({ blocks, selected, expanded = [], startShown = true }) {
 	const calls = [];
 	const lm = manager(blocks);
 	const renderer = new LessonRenderer(
@@ -1103,6 +1118,7 @@ function sidebarFor({ blocks, selected, expanded = [] }) {
 		{},
 	);
 	for (const i of expanded) renderer.expandedIncludes.add(i);
+	renderer.startCollapsed = !startShown;
 	renderer._syncSidebar();
 	return calls;
 }
@@ -1129,6 +1145,16 @@ test("an open start file keeps the keys, but not format", () => {
 		sidebarFor({ blocks: [start], selected: null, expanded: [1] }),
 		[[true, false]],
 		"a start file is only ever given anchors, through the ⚓ key",
+	);
+	assert.deepEqual(
+		sidebarFor({
+			blocks: [start],
+			selected: null,
+			expanded: [1],
+			startShown: false,
+		}),
+		[[false, false]],
+		"a start file hidden inside a collapsed Starting Code section is not open",
 	);
 });
 
@@ -1310,8 +1336,14 @@ test("opening a plan forgets the old plan's selection and expansions", () => {
 		{},
 	);
 	renderer.expandedIncludes.add(2);
+	renderer.startCollapsed = false;
 	renderer.lastEditedBlockIndex = 5;
 	renderer.resetView();
+	assert.equal(
+		renderer.startCollapsed,
+		true,
+		"every plan opens with its Starting Code folded away",
+	);
 	assert.deepEqual(
 		calls,
 		["deselect"],
@@ -1485,8 +1517,9 @@ test("editing a block back to empty does not cost it its tools", () => {
 	);
 	assert.match(keep, /this\.refreshIsland\(blockIdx\)/);
 	for (const handler of ["makeCodeBlockEditable", "renderKindBlock"]) {
-		const at = src.indexOf(handler);
-		const body = src.slice(at, at + 2000);
+		const body = new RegExp(
+			`\\n\\t${handler}\\([^)]*\\) \\{[\\s\\S]*?\\n\\t\\}`,
+		).exec(src)[0];
 		assert.match(
 			body,
 			/this\._keepIsland\(/,

@@ -8,7 +8,7 @@ const { loadModule } = require("./helpers/load-module");
 
 const MAIN = path.resolve(__dirname, "..", "src/main");
 
-function harness() {
+function harness(settings = {}) {
 	const events = [];
 	let clip = "";
 	let confirmKey = null;
@@ -26,7 +26,7 @@ function harness() {
 			Key: { LeftControl: "Ctrl", LeftCmd: "Cmd", V: "V", Enter: "Enter" },
 		},
 		"./context": {
-			settingsManager: { get: () => undefined },
+			settingsManager: { get: (key) => settings[key] },
 			broadcastServer: new Proxy(
 				{},
 				{
@@ -148,6 +148,122 @@ test("Ctrl+Enter on a move-to that creates a file starts typing its name", async
 		h.sends(),
 		["move-to-confirmed"],
 		"the typing keys finish the name, and the last one confirms",
+	);
+});
+
+const armName = (h) => {
+	h.popups.enterPopup("move-to", {
+		mode: "file",
+		target: "app.js",
+		typeName: true,
+	});
+	h.press();
+};
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const settle = async (done) => {
+	for (let i = 0; i < 500 && !done(); i++) {
+		await new Promise((r) => setTimeout(r, 1));
+	}
+};
+
+test("in Single Key mode each typing key types one letter of the name", async () => {
+	const h = harness({ hotkeyMode: "single-key", autoTypingSpeed: 1 });
+	armName(h);
+	h.popups.typeNameOnKey();
+	await pause(30);
+	assert.deepEqual(
+		h.keys().map((k) => k[1][0]),
+		["a"],
+	);
+	assert.equal(h.popups.openPopupKind(), "move-to");
+});
+
+test("in Entire Block mode one key types the whole name, Enter, and confirms", async () => {
+	const h = harness({ hotkeyMode: "auto-run", autoTypingSpeed: 1 });
+	armName(h);
+	h.popups.typeNameOnKey();
+	h.popups.typeNameOnKey();
+	await settle(() => h.popups.openPopupKind() === null);
+	assert.deepEqual(
+		h.keys().map((k) => k[1][0]),
+		["a", "p", "p", ".", "j", "s", "Enter"],
+		"a second press during the run neither restarts nor doubles it",
+	);
+	assert.deepEqual(h.sends(), ["move-to-confirmed"]);
+});
+
+test("closing the move-to stops a name that is running", async () => {
+	const h = harness({ hotkeyMode: "auto-run", autoTypingSpeed: 1 });
+	armName(h);
+	h.popups.typeNameOnKey();
+	h.popups.endPopup("move-to");
+	await pause(30);
+	assert.deepEqual(
+		h.keys().map((k) => k[1][0]),
+		["a"],
+		"the letter already on its way, and nothing after it",
+	);
+	assert.deepEqual(h.sends(), []);
+});
+
+test("Ctrl+Left/Right move within a name being typed, never out of the move-to", async () => {
+	const h = harness();
+	const progress = [];
+	h.popups.setNameProgressHandler((p) => progress.push(p.typed));
+	assert.equal(h.popups.stepMoveToName(-1), false, "no popup: the plan steps");
+
+	h.popups.enterPopup("move-to", {
+		mode: "file",
+		target: "app.js",
+		typeName: true,
+	});
+	assert.equal(
+		h.popups.stepMoveToName(-1),
+		false,
+		"a name that is only offered, not being typed, leaves the step to the plan",
+	);
+
+	h.press();
+	await h.popups.typeNextNameChar();
+	await h.popups.typeNextNameChar();
+	assert.deepEqual(progress, [0, 1, 2]);
+
+	assert.equal(h.popups.stepMoveToName(-1), true);
+	assert.equal(progress.at(-1), 1, "back one letter");
+	h.popups.stepMoveToName(-1);
+	h.popups.stepMoveToName(-1);
+	assert.equal(progress.at(-1), 0, "and never before the first");
+	assert.equal(h.popups.openPopupKind(), "move-to", "still in the move-to");
+
+	await h.popups.typeNextNameChar();
+	assert.deepEqual(
+		h.keys().map((k) => k[1][0]),
+		["a", "p", "a"],
+		"the next key types from where the name now stands",
+	);
+	assert.deepEqual(h.keys().at(-1)[1], ["a"]);
+
+	for (let i = 0; i < 10; i++) h.popups.stepMoveToName(1);
+	assert.equal(
+		progress.at(-1),
+		"app.js".length - 1,
+		"never past the last letter: typing that one is what finishes the name",
+	);
+	assert.deepEqual(h.sends(), []);
+
+	await h.popups.typeNextNameChar();
+	assert.deepEqual(
+		h
+			.keys()
+			.slice(-2)
+			.map((k) => k[1][0]),
+		["s", "Enter"],
+	);
+	assert.deepEqual(h.sends(), ["move-to-confirmed"]);
+	assert.equal(
+		h.popups.stepMoveToName(1),
+		false,
+		"done: the plan steps again",
 	);
 });
 

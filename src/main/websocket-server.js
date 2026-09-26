@@ -62,6 +62,7 @@ const FORWARDED_CLIENT_FIELDS = {
 		"questionText?",
 		"openedAt?",
 		"closedAt?",
+		"answeredBy",
 	],
 };
 

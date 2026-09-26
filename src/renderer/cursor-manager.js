@@ -179,6 +179,15 @@ class CursorManager {
 		}
 	}
 
+	_passBlock(at) {
+		const step = this.executionSteps[this.currentStepIndex];
+		if (at === null || !step || step.type !== "block") return;
+		if (step.globalIndex !== at) return;
+		step.element.classList.add("consumed");
+		this.currentStepIndex++;
+		this.updateCursor();
+	}
+
 	_clearBlockIndices(kinds) {
 		for (const kind of kinds) this._block(kind).at = null;
 	}
@@ -261,6 +270,7 @@ class CursorManager {
 
 	confirmSpecial(kind) {
 		const b = this._block(kind);
+		const at = b.at;
 		b.waiting = false;
 		if (!SPECIAL_BLOCKS[kind].keepsWindow) {
 			b.open = false;
@@ -268,7 +278,12 @@ class CursorManager {
 		}
 		const shouldResume = !!b.resumeAuto;
 		b.resumeAuto = false;
+		this._passBlock(at);
 		return shouldResume;
+	}
+
+	questionWindowClosed() {
+		this._passBlock(this._block("question").at);
 	}
 
 	_broadcastProgress() {

@@ -71,7 +71,7 @@
 			Reconnecting to LEO...
 		</div>
 
-		<div id="lesson-container">
+		<div id="lesson-container" class="start-collapsed">
 			<div class="empty-state">Connecting to LEO...</div>
 		</div>
 
@@ -187,7 +187,7 @@
 			<button
 				class="mode-side-btn mode-side-btn-question"
 				onclick="handleInteractionBtn('student-question')"
-				title="Student Question"
+				title="Improvised Question"
 			>
 				<span class="side-btn-emoji">❓</span>
 			</button>
@@ -217,6 +217,7 @@
 		<div id="interactionOverlay" class="overlay">
 			<div class="popup-modal" id="iModal">
 				<div class="popup-title" id="iTitle">Select student</div>
+				<div class="asker-row" id="iAskerRow" style="display: none"></div>
 				<div class="i-question-row" id="iQuestionRow" style="display: none">
 					<input
 						type="text"
@@ -232,6 +233,14 @@
 						🎤
 					</button>
 				</div>
+				<button
+					class="popup-show-btn"
+					id="iShowBtn"
+					style="display: none"
+					onclick="interactionAsk()"
+				>
+					Show
+				</button>
 				<div class="popup-student-grid" id="iGrid"></div>
 			</div>
 		</div>

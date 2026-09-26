@@ -214,6 +214,35 @@ async function typeNextNameChar() {
 	return true;
 }
 
+function typeNameOnKey() {
+	if (settingsManager.get("hotkeyMode") === "auto-run") runMoveToName();
+	else typeNextNameChar();
+}
+
+async function runMoveToName() {
+	const run = pendingName;
+	if (!run || run.running) return;
+	run.running = true;
+	const ms = settingsManager.get("autoTypingSpeed");
+	while (pendingName === run) {
+		await typeNextNameChar();
+		if (pendingName === run) await sleep(ms);
+	}
+}
+
+function stepMoveToName(delta) {
+	if (!pendingName) return false;
+	if (!pendingName.busy) {
+		const last = pendingName.chars.length - 1;
+		pendingName.index = Math.max(
+			0,
+			Math.min(last, pendingName.index + delta),
+		);
+		if (onNameProgress) onNameProgress(nameProgress());
+	}
+	return true;
+}
+
 function openPopupKind() {
 	return openPopup;
 }
@@ -235,6 +264,8 @@ module.exports = {
 	armMoveToName,
 	hasPendingName,
 	typeNextNameChar,
+	typeNameOnKey,
+	stepMoveToName,
 	setNameProgressHandler,
 	openPopupKind,
 	releaseCodeFromClipboard,

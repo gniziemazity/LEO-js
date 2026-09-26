@@ -1,5 +1,6 @@
 const { extractAnchorSnippet } = require("./anchor-snippet");
 const { renderSnippet } = require("../shared/snippet-view");
+const { moveToTargetLabel } = require("../shared/move-to-target");
 
 const SHOW_DELAY_MS = 120;
 const MARGIN = 8;
@@ -94,6 +95,12 @@ class AnchorPreview {
 
 		const el = this._element();
 		if (!renderSnippet(el, snippet)) return;
+		if (snippet.file) {
+			const header = document.createElement("div");
+			header.className = "anchor-preview-file";
+			header.textContent = moveToTargetLabel(snippet.file);
+			el.insertBefore(header, el.firstChild);
+		}
 		el.style.display = "block";
 		this._place(hit.el, hit.list);
 	}

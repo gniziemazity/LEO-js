@@ -107,34 +107,33 @@ for (const [kind, text] of [
 	});
 }
 
-test("confirming an image keeps its window until the cursor moves on", () => {
-	const { cm, channels } = makeCursorManager([
-		blockStep("🖼️ pic.png"),
-		charStep(),
-	]);
-	let opened = 0;
-	cm.onImageBlock = () => opened++;
-	cm.updateCursor();
-	cm.confirmSpecial("image");
-	assert.equal(
-		channels().includes("close-image-window"),
-		false,
-		"OK means carry on, not take the picture down",
-	);
-	cm.updateCursor();
-	assert.equal(
-		opened,
-		1,
-		"and staying on the block does not open it, or its popup, again",
-	);
-	cm.currentStepIndex = 1;
-	cm.updateCursor();
-	assert.deepEqual(
-		channels().filter((c) => c === "close-image-window"),
-		["close-image-window"],
-		"typing on is what closes it, pin-aware, as before",
-	);
-});
+for (const [kind, text] of [
+	["image", "🖼️ pic.png"],
+	["web", "🌐 http://example.com"],
+]) {
+	test(`confirming a ${kind} passes the block and closes its window, pin-aware`, () => {
+		const { cm, channels } = makeCursorManager([
+			blockStep(text),
+			charStep(),
+			charStep(),
+		]);
+		cm.updateCursor();
+		cm.confirmSpecial(kind);
+		assert.equal(cm.currentStepIndex, 1, "OK passes the block");
+		assert.deepEqual(
+			channels().filter((c) => c === `close-${kind}-window`),
+			[`close-${kind}-window`],
+			"the soft close, which a pinned window ignores",
+		);
+		cm.currentStepIndex = 2;
+		cm.updateCursor();
+		assert.equal(
+			channels().filter((c) => c === `close-${kind}-window`).length,
+			1,
+			"typing on does not close it a second time",
+		);
+	});
+}
 
 test("confirming a note forgets it, like the other transient popups", () => {
 	const { cm, channels } = makeCursorManager([

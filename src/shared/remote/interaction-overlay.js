@@ -4,6 +4,8 @@ class InteractionOverlay extends RemoteOverlay {
 		this.openedAt = null;
 		this.waiting = false;
 		this.pendingWaitingData = null;
+		this.type = null;
+		this.askerSelect = null;
 		this._recognition = null;
 		this._starting = false;
 	}
@@ -28,16 +30,30 @@ class InteractionOverlay extends RemoteOverlay {
 	show(title, students, type) {
 		const modal = document.getElementById("iModal");
 		modal.className = "popup-modal";
+		this.type = type;
 
-		const bg = InteractionView.interactionBgVar(type);
+		let bg = InteractionView.interactionBgVar(type);
 
 		document.getElementById("iTitle").textContent = title;
 
-		const questionInput = document.getElementById("iQuestionInput");
-		const questionRow = document.getElementById("iQuestionRow");
-		if (InteractionView.isQuestion(type)) {
-			questionRow.style.display = "flex";
-			questionInput.value = "";
+		const grid = document.getElementById("iGrid");
+		const asks = InteractionView.isQuestion(type);
+		this.setQuestionForm(asks);
+		if (asks) {
+			this.askerSelect = InteractionView.fillAskerRow(
+				document.getElementById("iAskerRow"),
+				InteractionView.askerChoices(students, teacherName),
+				(asker) =>
+					(this.el.style.background = InteractionView.interactionBgVar(
+						type,
+						asker,
+					)),
+			);
+			bg = InteractionView.interactionBgVar(
+				type,
+				InteractionView.askerFromValue(this.askerSelect.value),
+			);
+			document.getElementById("iQuestionInput").value = "";
 			const micBtn = document.getElementById("iMicBtn");
 			if (micBtn) {
 				const hasSR = !!(
@@ -46,49 +62,56 @@ class InteractionOverlay extends RemoteOverlay {
 				const canDictate = hasSR && window.isSecureContext;
 				micBtn.style.display = canDictate ? "" : "none";
 			}
+			grid.innerHTML = "";
 		} else {
-			questionRow.style.display = "none";
-		}
-
-		const grid = document.getElementById("iGrid");
-		const pick = (idx) => () => {
-			const qText = InteractionView.isQuestion(type)
-				? questionInput.value.trim()
-				: null;
-			this.studentSelected(idx, type, qText);
-		};
-		this.fillStudentGrid(grid, students, pick);
-		if (InteractionView.isQuestion(type)) {
-			grid.appendChild(this.makeStudentBtn(teacherName, pick("teacher")));
+			this.fillStudentGrid(
+				grid,
+				students,
+				(idx) => () => this.studentSelected(idx, type),
+			);
 		}
 
 		this.open(bg);
 		sendMessage("interaction-overlay-shown", {});
 	}
 
-	studentSelected(idx, type, questionText) {
-		this.stopDictation();
-		const isTeacher = idx === "teacher";
-		const studentId =
-			isTeacher || (idx != null && idx >= 0)
-				? InteractionView.participantId(idx)
-				: null;
-		const name = isTeacher ? teacherName : (currentStudents[idx] ?? "");
-		const msgData = {
-			interactionType: type,
-			studentName: studentId,
-			questionText: questionText || null,
-			openedAt: this.openedAt,
-		};
-		sendMessage("show-student-interaction", msgData);
+	setQuestionForm(visible) {
+		for (const id of ["iAskerRow", "iQuestionRow"]) {
+			document.getElementById(id).style.display = visible ? "flex" : "none";
+		}
+		document.getElementById("iShowBtn").style.display = visible
+			? "block"
+			: "none";
+	}
 
-		this.waiting = true;
-		this.pendingWaitingData = msgData;
+	ask() {
+		if (this.waiting || !InteractionView.isQuestion(this.type)) return;
+		const asker = InteractionView.askerFromValue(
+			this.askerSelect ? this.askerSelect.value : "",
+		);
+		const questionText = document
+			.getElementById("iQuestionInput")
+			.value.trim();
+		this.startWaiting(asker, this.type, questionText);
 
-		document.getElementById("iQuestionRow").style.display = "none";
-		document.getElementById("iTitle").textContent =
-			InteractionView.waitingTitle(type, name, questionText);
+		const grid = document.getElementById("iGrid");
+		const answered = (idx) => () =>
+			this.closeOverlay(InteractionView.participantId(idx));
+		this.fillStudentGrid(grid, currentStudents, answered);
+		grid.appendChild(
+			this.makeStudentBtn(
+				teacherName,
+				answered(InteractionView.TEACHER_ASKER),
+			),
+		);
+		grid.insertBefore(
+			this.makeActionBtn("🎲", () => sendMessage("question-randomize", {})),
+			grid.firstChild,
+		);
+	}
 
+	studentSelected(idx, type) {
+		this.startWaiting(idx, type, null);
 		const grid = document.getElementById("iGrid");
 		grid.innerHTML = "";
 		grid.appendChild(
@@ -101,18 +124,47 @@ class InteractionOverlay extends RemoteOverlay {
 		);
 	}
 
-	closeOverlay() {
+	startWaiting(idx, type, questionText) {
+		this.stopDictation();
+		const isTeacher = idx === InteractionView.TEACHER_ASKER;
+		const studentId =
+			isTeacher || (idx != null && idx >= 0)
+				? InteractionView.participantId(idx)
+				: null;
+		const name = isTeacher ? null : (currentStudents[idx] ?? "");
+		const msgData = {
+			interactionType: type,
+			studentName: studentId,
+			questionText: questionText || null,
+			openedAt: this.openedAt,
+		};
+		sendMessage("show-student-interaction", msgData);
+
+		this.waiting = true;
+		this.pendingWaitingData = msgData;
+
+		this.setQuestionForm(false);
+		document.getElementById("iTitle").textContent =
+			InteractionView.waitingTitle(type, name, questionText);
+	}
+
+	showRandomResult(index, name) {
+		if (this.waiting) this.markPicked(document.getElementById("iGrid"), name);
+	}
+
+	closeOverlay(answeredBy = null) {
 		this.stopDictation();
 		if (this.waiting && this.pendingWaitingData) {
 			sendMessage("close-student-interaction", {
 				...this.pendingWaitingData,
 				closedAt: Date.now(),
+				answeredBy,
 			});
 		}
 		this.waiting = false;
 		this.pendingWaitingData = null;
 		this.close();
-		document.getElementById("iQuestionRow").style.display = "none";
+		this.setQuestionForm(false);
 		sendMessage("interaction-overlay-closed", {});
 	}
 

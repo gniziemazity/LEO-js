@@ -18,7 +18,7 @@ const {
 	listStartFiles,
 	embedAnchors,
 	readAnchors,
-} = require("./start-folder");
+} = require("../shared/start-folder");
 
 const AUTOSAVE_EXT = ".autosave";
 const AUTOSAVE_DEBOUNCE_MS = 2000;
@@ -28,7 +28,7 @@ class LessonManager {
 		this.data = [];
 		this.currentFilePath = "";
 		this.hasUnsavedChanges = false;
-		this.onChangeCallback = null;
+		this.changeListeners = [];
 		this.autosaveTimer = null;
 	}
 
@@ -500,9 +500,7 @@ class LessonManager {
 	markAsChanged() {
 		this.hasUnsavedChanges = true;
 		this.scheduleAutosave();
-		if (this.onChangeCallback) {
-			this.onChangeCallback();
-		}
+		for (const listener of this.changeListeners) listener();
 	}
 
 	static autosavePathFor(planPath) {
@@ -572,7 +570,7 @@ class LessonManager {
 	}
 
 	onChange(callback) {
-		this.onChangeCallback = callback;
+		this.changeListeners.push(callback);
 	}
 }
 

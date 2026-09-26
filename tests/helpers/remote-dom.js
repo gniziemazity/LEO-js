@@ -152,10 +152,12 @@ function build(opts = {}) {
 		"mtModal",
 		"iModal",
 		"iTitle",
+		"iAskerRow",
 		"iGrid",
 		"iQuestionRow",
 		"iQuestionInput",
 		"iMicBtn",
+		"iShowBtn",
 		"codeInsertOverlay",
 		"ciModal",
 		"ciCode",
@@ -245,7 +247,6 @@ function build(opts = {}) {
 		console,
 		LeoBlocks: require(path.join(BASE, "shared/blocks.js")),
 		MoveToTarget: require(path.join(BASE, "shared/move-to-target.js")),
-		InteractionView: require(path.join(BASE, "shared/interaction-view.js")),
 	};
 
 	const src = [
@@ -253,6 +254,8 @@ function build(opts = {}) {
 		"const SnippetView = window.SnippetView;",
 		fs.readFileSync(path.join(BASE, "shared/code-text.js"), "utf-8"),
 		"const CodeTextRenderer = window.CodeTextRenderer;",
+		fs.readFileSync(path.join(BASE, "shared/interaction-view.js"), "utf-8"),
+		"const InteractionView = window.InteractionView;",
 		...LOAD_ORDER.map((f) => fs.readFileSync(path.join(REMOTE, f), "utf-8")),
 	].join("\n;\n");
 
@@ -271,7 +274,7 @@ function build(opts = {}) {
 		"showNoteOverlay,closeNoteOverlayUI,closeNoteOverlay," +
 		"showMediaOverlay,closeMediaOverlayUI,closeMediaOverlay," +
 		"pinMediaWindow,setPinnedWindows,unpinWindows,closeActiveOverlay," +
-		"handleInteractionBtn,closeInteractionOverlay:()=>interactionOverlay.closeOverlay()," +
+		"handleInteractionBtn,interactionAsk,closeInteractionOverlay:()=>interactionOverlay.closeOverlay()," +
 		"setStudents,activePadOverlay,onRandomizerResult," +
 		"padMode:()=>(touchpadActive?touchpadMode:null)};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));

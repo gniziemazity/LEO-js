@@ -59,21 +59,76 @@ test("main relays them onto the exact channels the desktop's own Ctrl+Left/Right
 	const settings = read("shared/settings-schema.js");
 	assert.match(
 		settings,
-		/key: "stepBackward"[\s\S]*?channel: "hotkey-step-backward"/,
+		/key: "stepBackward"[\s\S]*?channel: "hotkey-step-backward",\s*step: -1,/,
 		"the remote button has to land on the same channel the global shortcut uses",
 	);
 	assert.match(
 		settings,
-		/key: "stepForward"[\s\S]*?channel: "hotkey-step-forward"/,
+		/key: "stepForward"[\s\S]*?channel: "hotkey-step-forward",\s*step: 1,/,
 	);
 	assert.match(
 		main,
-		/"client-step-backward", \(\) => \{\s*state\.send\("hotkey-step-backward"\);\s*\}/,
+		/"client-step-backward", \(\) => hotkeyManager\.step\(-1\)\)/,
+		"the phone's ◀ is the desktop shortcut, through the same function",
 	);
 	assert.match(
 		main,
-		/"client-step-forward", \(\) => \{\s*state\.send\("hotkey-step-forward"\);\s*\}/,
+		/"client-step-forward", \(\) => hotkeyManager\.step\(1\)\)/,
 	);
+	assert.match(
+		main,
+		/state\.onStepKey = \(delta\) => stepMoveToName\(delta\);/,
+	);
+});
+
+function hotkeys() {
+	const registered = {};
+	const sent = [];
+	const state = { send: (ch) => sent.push(ch), onStepKey: null };
+	const HotkeyManager = require("./helpers/load-module").loadModule(
+		"src/main/hotkey-manager.js",
+		{
+			electron: {
+				globalShortcut: { register: (k, fn) => (registered[k] = fn) },
+			},
+			"./state": state,
+		},
+	);
+	const manager = new HotkeyManager({
+		get: () => ({
+			toggleActive: "T",
+			stepBackward: "L",
+			stepForward: "R",
+			alwaysOnTop: "A",
+			toggleTransparency: "O",
+			toggleWindow: "W",
+		}),
+	});
+	manager.registerSystemShortcuts();
+	return { registered, sent, state };
+}
+
+test("Ctrl+Left/Right step the plan unless something else claims the step", () => {
+	const h = hotkeys();
+	h.registered.L();
+	h.registered.R();
+	h.registered.T();
+	assert.deepEqual(h.sent, [
+		"hotkey-step-backward",
+		"hotkey-step-forward",
+		"hotkey-toggle-active",
+	]);
+
+	const claimed = [];
+	h.state.onStepKey = (delta) => (claimed.push(delta), true);
+	h.registered.L();
+	h.registered.R();
+	assert.deepEqual(claimed, [-1, 1]);
+	assert.equal(h.sent.length, 3, "a claimed step never reaches the plan");
+
+	h.state.onStepKey = () => false;
+	h.registered.R();
+	assert.equal(h.sent.at(-1), "hotkey-step-forward");
 });
 
 test("the renderer needs no new listener: it already answers the desktop hotkey's channel", () => {

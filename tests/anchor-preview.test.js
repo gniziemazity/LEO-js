@@ -14,6 +14,11 @@ function makeEl(tag) {
 		childNodes: kids,
 		children: kids,
 		appendChild: (c) => (kids.push(c), c),
+		insertBefore: (c, before) => {
+			const i = before ? kids.indexOf(before) : -1;
+			kids.splice(i < 0 ? kids.length : i, 0, c);
+			return c;
+		},
 		contains: () => false,
 		rect: {
 			top: 200,
@@ -25,6 +30,7 @@ function makeEl(tag) {
 		},
 		getBoundingClientRect: () => el.rect,
 	};
+	Object.defineProperty(el, "firstChild", { get: () => kids[0] || null });
 	Object.defineProperty(el, "innerHTML", {
 		get: () => "",
 		set: () => {
@@ -194,6 +200,61 @@ test("hovering a plain block is not an anchor hover", () => {
 	plain.closest = (sel) => (sel === ".block" ? plain : null);
 	p._onOver({ target: plain });
 	assert.equal(p.target, null);
+});
+
+function header(p) {
+	const first = p.el.children[0];
+	return first && first.className === "anchor-preview-file"
+		? first.textContent
+		: null;
+}
+
+test("the preview names the file above the code", () => {
+	const p = build();
+	const { opt } = optionOf(3, "⚓7⚓");
+	p._show(p._hoverTarget({ target: opt }));
+	assert.equal(header(p), "📄 app.js");
+	assert.equal(
+		p.el.children.filter((c) => c.className === "anchor-preview-file").length,
+		1,
+		"one header, even after the tooltip is reused",
+	);
+	p._show(p._hoverTarget({ target: opt }));
+	assert.equal(
+		p.el.children.filter((c) => c.className === "anchor-preview-file").length,
+		1,
+	);
+});
+
+test("an anchor in another file is named by its own file, not the open one", () => {
+	const blocks = [
+		{ type: "move-to", target: "app.js" },
+		{ type: "code", text: "const a = 1;⚓7⚓" },
+		{ type: "move-to", target: "style.css" },
+		{ type: "code", text: "body {}" },
+		{ type: "move-to", target: "⚓7⚓" },
+	];
+	const p = build({ blocks });
+	const { opt } = optionOf(4, "⚓7⚓");
+	p._show(p._hoverTarget({ target: opt }));
+	assert.equal(header(p), "📄 app.js");
+});
+
+test("a file target and the main editor are named too", () => {
+	const p = build();
+	const { opt } = optionOf(3, "app.js");
+	p._show(p._hoverTarget({ target: opt }));
+	assert.equal(header(p), "📄 app.js");
+
+	const main = build({
+		blocks: [
+			{ type: "code", text: "let x = 1;⚓3⚓" },
+			{ type: "move-to", target: "⚓3⚓" },
+		],
+	});
+	const item = optionOf(1, "⚓3⚓").opt;
+	main._show(main._hoverTarget({ target: item }));
+	assert.equal(header(main), "Main Editor");
 });
 
 test("hide clears the pending timer and the tooltip", () => {

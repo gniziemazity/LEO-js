@@ -85,11 +85,17 @@ test("extractAnchorSnippet: extracts the windowed snippet around the anchor", ()
 		"colored",
 		"arrowIdx",
 		"anchorCol",
+		"file",
 		"switchTo",
 	]);
 	assert.deepEqual(r.lines, ["const a = 1;", "const b = 2;", "const c = 3;"]);
 	assert.equal(r.arrowIdx, 1);
 	assert.equal(r.anchorCol, 12);
+	assert.equal(
+		r.file,
+		"MAIN",
+		"the editor the anchor is in, for the hover header",
+	);
 });
 
 test("extractAnchorSnippet: before/after clamp at file boundaries", () => {

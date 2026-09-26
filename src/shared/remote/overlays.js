@@ -41,6 +41,10 @@ function interactionMic() {
 	interactionOverlay.toggleDictation();
 }
 
+function interactionAsk() {
+	interactionOverlay.ask();
+}
+
 function showMoveToOverlay(payload) {
 	moveToOverlay.show(payload);
 }
@@ -131,4 +135,5 @@ function moveToTypeName() {
 
 function onRandomizerResult(index, name) {
 	questionOverlay.showRandomResult(index, name);
+	interactionOverlay.showRandomResult(index, name);
 }

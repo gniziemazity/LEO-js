@@ -61,13 +61,15 @@ test("a student's answer is logged by roster id, not by the name shown on screen
 			"sending the resolved name here is what silently dropped every " +
 			"answered marker from the generated report",
 	);
+	assert.match(body, /revealAnswer\(studentName,/);
+	const reveal = /function revealAnswer\([\s\S]*?\n\}/.exec(MAIN_SRC)[0];
 	assert.match(
-		body,
+		reveal,
 		/qw\.webContents\.send\("set-answered", resolved\)/,
 		"the floating question window still gets the resolved name to display",
 	);
 	assert.match(
-		body,
+		reveal,
 		/floatState\.questionWindowStudentAnswered = resolved/,
 		"the on-screen 'who answered' state still shows a name, not a bare id",
 	);
@@ -92,11 +94,29 @@ test("a student-question/providing-help close is logged by roster id", () => {
 
 test("the floating interaction window (display only) still resolves to a name", () => {
 	const body = handlerBody("client-show-student-interaction");
-	assert.match(body, /const resolved = resolveStudentName\(studentName\)/);
 	assert.match(
 		body,
-		/openQuestionWindow\(displayText, bgColor, emoji, resolved\)/,
+		/const resolved = teacherAsked \? null : resolveStudentName\(studentName\)/,
+	);
+	assert.match(
+		body,
+		/openQuestionWindow\(displayText, bgColor, \{ emoji, asker: resolved \}\)/,
 		"this path never reaches the log, so showing a name here is correct",
+	);
+});
+
+test("a question the teacher asked looks like a planned one in the window", () => {
+	const body = handlerBody("client-show-student-interaction");
+	assert.match(body, /teacherAsked = isQuestion && isTeacher\(studentName\)/);
+	assert.match(body, /settingsManager\.get\("colors\.questionColor"\)/);
+	const fw = fs.readFileSync(
+		path.resolve(__dirname, "..", "src/main/float-windows.js"),
+		"utf-8",
+	);
+	assert.match(
+		fw,
+		/floatState\.questionWindowIsLesson = !interaction;/,
+		"no asker name must not turn an improvised question into a planned one",
 	);
 });
 
@@ -110,8 +130,13 @@ test("the renderer writes the log-student-interaction payload straight into the 
 			appSrc,
 		);
 	assert.ok(handler, "log-student-interaction listener not found");
-	assert.match(handler[0], /asked_by: studentName/);
+	assert.match(handler[0], /questionLogEntry\(payload\)/);
 	assert.match(handler[0], /student: studentName/);
+	const viewSrc = fs.readFileSync(
+		path.resolve(__dirname, "..", "src/shared/interaction-view.js"),
+		"utf-8",
+	);
+	assert.match(viewSrc, /asked_by: studentName/);
 });
 
 test("the renderer writes question-answered's payload straight into answered_by", () => {

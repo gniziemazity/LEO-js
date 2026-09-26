@@ -62,6 +62,13 @@ class UIManager {
 		this.elements.lessonContainer.innerHTML = "";
 	}
 
+	setStartCollapsed(collapsed) {
+		this.elements.lessonContainer.classList.toggle(
+			"start-collapsed",
+			!!collapsed,
+		);
+	}
+
 	selectBlock(index) {
 		this.selectedBlockIndex = index;
 	}

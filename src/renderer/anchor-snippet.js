@@ -5,7 +5,10 @@ const {
 	replayOpensCloses,
 } = require("../../lesson_tools/shared/simulator-model");
 const { initProfiles } = require("../../lesson_tools/languages/profiles");
-const { classifyMoveToTarget } = require("../shared/move-to-target");
+const {
+	classifyMoveToTarget,
+	moveToDisplayName,
+} = require("../shared/move-to-target");
 const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,
@@ -34,11 +37,16 @@ function openEditor(editors, name) {
 	return editors[name];
 }
 
-function applyBlock(editors, active, block) {
+function applyBlock(editors, active, block, tag = 0) {
 	if (!block) return active;
 	if (block.type === "code") {
 		openEditor(editors, active);
-		applyTypedText(editors[active], block.text || "", 0, typingOpts(active));
+		applyTypedText(
+			editors[active],
+			block.text || "",
+			tag,
+			typingOpts(active),
+		);
 		return active;
 	}
 	if (block.type === "move-to") {
@@ -68,7 +76,7 @@ function applyBlock(editors, active, block) {
 		applyAtomicText(
 			editors[active],
 			stripBlockPrefix(block.text || ""),
-			0,
+			tag,
 			typingOpts(active),
 		);
 	}
@@ -83,6 +91,110 @@ function replayPlan(blocks, stopAt = Infinity) {
 		active = applyBlock(editors, active, blocks[i]);
 	}
 	return { editors, active };
+}
+
+function filesOf(editors) {
+	return Object.entries(editors)
+		.filter(([, state]) => state.text)
+		.map(([name, state]) => ({
+			name,
+			label: moveToDisplayName(editorTarget(name)),
+			text: state.text,
+		}));
+}
+
+function typedPrefix(text, caret) {
+	let cut = Math.max(0, Math.min(caret, text.length));
+	for (const m of text.matchAll(/⚓\d*⚓/g)) {
+		if (m.index < cut && cut < m.index + m[0].length) cut = m.index;
+	}
+	return text.slice(0, cut);
+}
+
+const CARET_TAG = "caret";
+
+function markCaret(state, tag) {
+	const after = state.cursor > 0;
+	const at = after ? state.cursor - 1 : 0;
+	if (at >= state.charTs.length) return null;
+	const own = state.charTs[at] === tag;
+	state.charTs[at] = CARET_TAG;
+	return { after, own };
+}
+
+function marksIn(state, tag, caretMark) {
+	const ranges = [];
+	let caret = null;
+	let lastHead = -1;
+	let firstTail = -1;
+	state.charTs.forEach((t, i) => {
+		let mine = t === tag || t === -tag;
+		if (t === CARET_TAG) {
+			caret = caretMark.after ? i + 1 : i;
+			mine = caretMark.own;
+		}
+		if (t === tag) lastHead = i;
+		if (t === -tag && firstTail < 0) firstTail = i;
+		if (!mine) return;
+		const last = ranges[ranges.length - 1];
+		if (last && last[1] === i) last[1] = i + 1;
+		else ranges.push([i, i + 1]);
+	});
+	if (caret === null && caretMark) {
+		if (lastHead >= 0) caret = lastHead + 1;
+		else if (firstTail >= 0) caret = firstTail;
+	}
+	return { ranges, caret };
+}
+
+function replayMarked(blocks, focus = null) {
+	const editors = { main: new TextState() };
+	let active = "main";
+	const tag = focus ? focus.index + 1 : null;
+	let caretMark = null;
+	blocks.forEach((block, i) => {
+		const split =
+			i + 1 === tag &&
+			block &&
+			block.type === "code" &&
+			Number.isInteger(focus.caret);
+		if (!split) {
+			active = applyBlock(editors, active, block, i + 1);
+			return;
+		}
+		const text = block.text || "";
+		const head = typedPrefix(text, focus.caret);
+		active = applyBlock(editors, active, { ...block, text: head }, tag);
+		caretMark = markCaret(editors[active], tag) || {
+			after: false,
+			own: false,
+		};
+		const tail = { ...block, text: text.slice(head.length) };
+		active = applyBlock(editors, active, tail, -tag);
+	});
+
+	const marks = {};
+	let marked = null;
+	if (tag !== null) {
+		for (const [name, state] of Object.entries(editors)) {
+			const found = marksIn(state, tag, caretMark);
+			if (!found.ranges.length && found.caret === null) continue;
+			marks[name] = found;
+			if (!marked) marked = name;
+		}
+	}
+	return { files: filesOf(editors), active, marks, marked };
+}
+
+function fileColoredLines(name, text) {
+	const lines = text.split("\n");
+	return buildColoredLines(
+		text,
+		0,
+		lines.length - 1,
+		lines,
+		highlightType(name),
+	);
 }
 
 function buildColoredLines(
@@ -170,6 +282,7 @@ function computeSnippetFor(target, editors, active, before, after) {
 		if (!state || !state.text) return null;
 		return {
 			...snippetAt(name, state, state.cursor, before, after),
+			file: editorTarget(name),
 			switchTo: null,
 		};
 	}
@@ -190,6 +303,7 @@ function computeSnippetFor(target, editors, active, before, after) {
 	const state = editors[found];
 	return {
 		...snippetAt(found, state, state.anchors[id], before, after),
+		file: editorTarget(found),
 		switchTo: found === active ? null : editorTarget(found),
 	};
 }
@@ -235,4 +349,6 @@ module.exports = {
 	computeMoveToSnippets,
 	buildColoredLines,
 	replayPlan,
+	replayMarked,
+	fileColoredLines,
 };

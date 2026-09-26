@@ -15,10 +15,12 @@ const TypingController = require("./typing-controller");
 const QRModalManager = require("./qr-modal");
 const AnchorPreview = require("./anchor-preview");
 const DeskPopup = require("./desk-popup");
+const SimPanel = require("./sim-panel");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
 const { COLOR_SETTINGS, defaultsFrom } = require("../shared/settings-schema");
 const { addChoices } = require("./block-types");
+const { questionLogEntry } = require("../shared/interaction-view");
 const path = require("path");
 const fs = require("fs");
 
@@ -50,6 +52,9 @@ const anchorPreview = new AnchorPreview(lessonManager, uiManager);
 const deskPopup = new DeskPopup((type, args) =>
 	ipcRenderer.send("desk-action", { type, args }),
 );
+const simPanel = new SimPanel(lessonManager, () => lessonRenderer.caretFocus());
+lessonManager.onChange(() => simPanel.changed());
+lessonRenderer.onRendered = () => simPanel.changed();
 
 const courseManager = new CourseManager();
 const fileOperations = new FileOperations(
@@ -201,6 +206,13 @@ function playFireworksSound() {
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
 	anchorPreview.attach(uiManager.getElement("lessonContainer"));
+	simPanel.attach(
+		document.getElementById("sim-panel"),
+		uiManager.getElement("lessonContainer"),
+	);
+	for (const type of ["selectionchange", "focusin", "focusout"]) {
+		document.addEventListener(type, () => simPanel.schedule());
+	}
 	settingsUI.initialize();
 	specialKeys.initialize();
 	const coursePlanLoaded = courseUI.init();
@@ -254,6 +266,9 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("hotkey-step-backward", () => cursorManager.stepBackward());
 	ipcRenderer.on("hotkey-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
+	ipcRenderer.on("window-maximized", (e, maximized) =>
+		simPanel.setVisible(maximized),
+	);
 	ipcRenderer.on("move-to-typing", (e, p) => deskPopup.setMoveToTyped(p));
 	const syncDesk = (s) => {
 		deskPopup.setTeacherName(s.teacherName);
@@ -313,7 +328,7 @@ function setupGlobalIpcListeners() {
 				logManager.save();
 			}
 		}
-		if (studentName) {
+		if (studentName != null) {
 			playFireworksSound();
 		}
 	});
@@ -326,30 +341,23 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("question-window-closed", () => {
 		deskPopup.closeIf("question");
 		finalizeTeacherQuestion();
+		cursorManager.questionWindowClosed();
 	});
 
-	ipcRenderer.on(
-		"log-student-interaction",
-		(
-			event,
-			{ interactionType, studentName, questionText, openedAt, closedAt },
-		) => {
-			if (interactionType === "student-question") {
-				const fields = { asked_by: studentName };
-				if (questionText) fields.info = questionText;
-				if (openedAt) fields.timestamp = openedAt;
-				if (closedAt) fields.closed_at = closedAt;
-				logManager.addInteraction("student-question", fields);
-			} else if (interactionType === "providing-help") {
-				const fields = { student: studentName };
-				if (openedAt) fields.timestamp = openedAt;
-				if (closedAt) fields.closed_at = closedAt;
-				logManager.addInteraction("providing-help", fields);
-			} else {
-				logManager.addInteraction(interactionType);
-			}
-		},
-	);
+	ipcRenderer.on("log-student-interaction", (event, payload) => {
+		const { interactionType, studentName, openedAt, closedAt } = payload;
+		if (interactionType === "student-question") {
+			logManager.addInteraction(...questionLogEntry(payload));
+			if (payload.answeredBy) playFireworksSound();
+		} else if (interactionType === "providing-help") {
+			const fields = { student: studentName };
+			if (openedAt) fields.timestamp = openedAt;
+			if (closedAt) fields.closed_at = closedAt;
+			logManager.addInteraction("providing-help", fields);
+		} else {
+			logManager.addInteraction(interactionType);
+		}
+	});
 
 	ipcRenderer.on("undo", () => performUndo());
 	ipcRenderer.on("redo", () => performRedo());

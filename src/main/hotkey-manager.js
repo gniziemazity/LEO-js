@@ -33,13 +33,20 @@ class HotkeyManager {
 		}
 	}
 
+	step(delta) {
+		if (state.onStepKey && state.onStepKey(delta)) return;
+		const h = HOTKEY_SETTINGS.find((s) => s.step === delta);
+		if (h) state.send(h.channel);
+	}
+
 	registerSystemShortcuts() {
 		const shortcuts = this.settingsManager.get("hotkeys");
 
 		for (const h of HOTKEY_SETTINGS) {
 			if (!h.channel) continue;
 			globalShortcut.register(shortcuts[h.key], () => {
-				state.send(h.channel);
+				if (h.step) this.step(h.step);
+				else state.send(h.channel);
 			});
 		}
 
