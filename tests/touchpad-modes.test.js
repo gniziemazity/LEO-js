@@ -380,7 +380,7 @@ test("the toolbars stay pressable even when a handler stands the glass down", ()
 	assert.match(
 		CSS,
 		/\.touchpad-toolbar \{[^}]*pointer-events: auto;/,
-		"jedi-pad-off puts pointer-events:none on the overlay; the bars must opt back in",
+		"a handler may put pointer-events:none on the overlay; the bars must opt back in",
 	);
 });
 

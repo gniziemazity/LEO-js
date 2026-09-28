@@ -259,11 +259,88 @@ test("the ✕ is the size of the other side buttons, with a glyph that does not 
 	);
 });
 
-test("in side-left the question and help buttons clear the ✕ at the header end", () => {
+test("the question and help buttons are centred in the band, but never within 20px of the ✕", () => {
 	const css = read("shared/styles.css");
+	const left =
+		/body\.side-left #interactionSideBtns \{\s*top: max\(([\s\S]*?)\);/.exec(
+			css,
+		);
+	assert.ok(
+		left,
+		"side-left takes the later of the two, the ✕ being at the header end",
+	);
+	assert.match(
+		left[1],
+		/calc\(var\(--side-band\) \/ 2 \+ var\(--header-h\) \+ 2px\)/,
+	);
+	assert.match(
+		left[1],
+		/calc\(var\(--pad-header-gap\) \+ 20px \+ 2 \* var\(--mode-btn-h, 58px\) \+ 2px\)/,
+		"the ✕'s top, its height, the 20px gap and half the column",
+	);
+	const right =
+		/body\.side-right #interactionSideBtns \{\s*top: min\(([\s\S]*?)\);/.exec(
+			css,
+		);
+	assert.ok(
+		right,
+		"side-right the earlier, the ✕ being 10px off the page bottom",
+	);
+	assert.match(right[1], /calc\(100% - var\(--side-band\) \/ 2\)/);
+	assert.match(
+		right[1],
+		/calc\(100% - 10px - 20px - 2 \* var\(--mode-btn-h, 58px\) - 2px\)/,
+	);
+});
+
+test("the band is never too short for the ✕, the two interaction buttons and the modes' gap", () => {
+	const css = read("shared/styles.css");
+	const floor = (side) =>
+		new RegExp(
+			"body\\.side-" +
+				side +
+				" \\{\\s*--side-band-floor: calc\\(([^;]*)\\);",
+		).exec(css)[1];
+	assert.match(
+		floor("right"),
+		/10px \+ 20px \+ 3 \* var\(--mode-btn-h, 58px\) \+ 4px \+ 8px/,
+	);
+	assert.match(
+		floor("left"),
+		/var\(--pad-header-gap\) \+ 20px \+ 3 \* var\(--mode-btn-h, 58px\) \+ 4px \+ 8px/,
+		"the header end is 64px longer: the ✕ starts under the header there",
+	);
 	assert.match(
 		css,
-		/body\.side-left #interactionSideBtns \{\s*top: calc\(var\(--side-band\) \/ 2 \+ var\(--header-h\) \+ 2px\);/,
+		/body\.side-right,\s*body\.side-left \{\s*--side-band: max\(35%, var\(--side-band-floor\)\);/,
+		"35% on a tall phone, which is every layout the band was tuned on",
+	);
+});
+
+test("a short phone gets compact side buttons and a band packed from the ✕ end", () => {
+	const css = read("shared/styles.css");
+	const compact = /@media \(max-height: 800px\) \{([\s\S]*?)\n\}/.exec(css);
+	assert.ok(
+		compact,
+		"below 800px the edge is ~717px of 58px buttons and cannot hold them",
+	);
+	assert.match(
+		compact[1],
+		/\.mode-side-btn \{\s*padding-top: 8px;\s*padding-bottom: 8px;/,
+	);
+	assert.match(
+		compact[1],
+		/\.touchpad-edit-bar \.pad-bar-btn,\s*\.touchpad-step-bar \.pad-bar-btn \{\s*padding-top: 6px;\s*padding-bottom: 6px;/,
+	);
+	assert.ok(
+		css.indexOf("@media (max-height: 800px)") >
+			css.indexOf("body.side-left .touchpad-step-bar {"),
+		"after the bar rules it shrinks, since the selectors tie",
+	);
+	assert.match(
+		css,
+		/@media \(max-height: 700px\) \{\s*body\.side-right,\s*body\.side-left \{\s*--side-band: var\(--side-band-floor\);/,
+		"and below 700px 35% of the edge is room the edit keys need more",
 	);
 });
 

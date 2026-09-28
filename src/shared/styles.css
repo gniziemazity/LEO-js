@@ -1345,6 +1345,20 @@ body.disconnected .connection-banner {
 :root {
 	--side-band: 35%;
 }
+body.side-right {
+	--side-band-floor: calc(
+		10px + 20px + 3 * var(--mode-btn-h, 58px) + 4px + 8px
+	);
+}
+body.side-left {
+	--side-band-floor: calc(
+		var(--pad-header-gap) + 20px + 3 * var(--mode-btn-h, 58px) + 4px + 8px
+	);
+}
+body.side-right,
+body.side-left {
+	--side-band: max(35%, var(--side-band-floor));
+}
 
 .mode-side-btns {
 	position: fixed;
@@ -1355,7 +1369,6 @@ body.disconnected .connection-banner {
 	gap: 4px;
 }
 
-/* modes: stacked up to the band's edge, growing towards the physical left */
 body.side-right #modeSideBtns {
 	bottom: var(--side-band);
 	transform: none;
@@ -1368,11 +1381,17 @@ body.side-left #modeSideBtns {
 
 /* interactions: centred inside the band */
 body.side-right #interactionSideBtns {
-	top: calc(100% - var(--side-band) / 2);
+	top: min(
+		calc(100% - var(--side-band) / 2),
+		calc(100% - 10px - 20px - 2 * var(--mode-btn-h, 58px) - 2px)
+	);
 	transform: translateY(-50%);
 }
 body.side-left #interactionSideBtns {
-	top: calc(var(--side-band) / 2 + var(--header-h) + 2px);
+	top: max(
+		calc(var(--side-band) / 2 + var(--header-h) + 2px),
+		calc(var(--pad-header-gap) + 20px + 2 * var(--mode-btn-h, 58px) + 2px)
+	);
 	transform: translateY(-50%);
 	flex-direction: column-reverse;
 }
@@ -1422,10 +1441,7 @@ body.side-left #interactionSideBtns {
 	opacity: 0.15;
 	pointer-events: none;
 }
-#modeSideBtns.has-active
-	.mode-side-btn:not(.mode-active):not(.mode-side-btn-question):not(
-		.mode-side-btn-help
-	) {
+#modeSideBtns.has-active .mode-side-btn:not(.mode-active) {
 	display: none;
 }
 #modeSideBtns.has-pad #modeBtnMouse,
@@ -1544,6 +1560,24 @@ body.side-left .touchpad-step-bar {
 	bottom: auto;
 	left: 10px;
 	flex-direction: column;
+}
+
+@media (max-height: 800px) {
+	.mode-side-btn {
+		padding-top: 8px;
+		padding-bottom: 8px;
+	}
+	.touchpad-edit-bar .pad-bar-btn,
+	.touchpad-step-bar .pad-bar-btn {
+		padding-top: 6px;
+		padding-bottom: 6px;
+	}
+}
+@media (max-height: 700px) {
+	body.side-right,
+	body.side-left {
+		--side-band: var(--side-band-floor);
+	}
 }
 
 .overlay.pad-lifted {

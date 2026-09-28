@@ -25,6 +25,11 @@ test("the step buttons live in their own bar, wearing the same base class as eve
 		2,
 		"same shape as the edit keys: the box is derived from the shared class",
 	);
+	assert.ok(
+		bar.indexOf("remoteStep('forward')") < bar.indexOf("remoteStep('back')"),
+		"the bar grows away from the mode buttons, so its first button is the viewer's right " +
+			"on both hands: forward goes first, leaving back on the left",
+	);
 });
 
 test("a tap sends the bare wire message, nothing else", () => {
