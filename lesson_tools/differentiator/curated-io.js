@@ -205,6 +205,81 @@ async function _curatedSaveToFolder(fname, matching) {
 	throw new Error("This dataset is read-only (no writable location).");
 }
 
+let _curatedLastExport = null;
+
+function _curatedExportRel(key, file, prefix) {
+	const dirs = key.slice(prefix.length).split("/").slice(0, -1);
+	return [...dirs, file.name].join("/");
+}
+
+async function _curatedCorrectedFiles() {
+	const enc = new TextEncoder();
+	const files = [];
+	const taken = new Set();
+	const add = (rel, data) => {
+		const k = rel.toLowerCase();
+		if (taken.has(k)) return;
+		taken.add(k);
+		files.push({ path: rel, data });
+	};
+	for (const [name, text] of Object.entries(_curatedApplyToStudent())) {
+		add(name, enc.encode(text));
+	}
+	const ds = _curatedActiveDataSource();
+	const sid = _curatedCurrentSid();
+	if (!ds || !ds.files) return files;
+	const studentPfx = sid ? `anon_ids/${String(sid).toLowerCase()}/` : null;
+	const media = [...ds.files.entries()].filter(
+		([key, f]) => f && MEDIA_EXT.test(key),
+	);
+	const sources = [];
+	if (studentPfx) {
+		for (const [key, f] of media) {
+			if (key.startsWith(studentPfx)) sources.push([key, f, studentPfx]);
+		}
+	}
+	for (const teacherPfx of ["correct/", "start/"]) {
+		for (const [key, f] of media) {
+			if (key.startsWith(teacherPfx)) sources.push([key, f, teacherPfx]);
+		}
+	}
+	for (const [key, f, pfx] of sources) {
+		const rel = _curatedExportRel(key, f, pfx);
+		if (taken.has(rel.toLowerCase())) continue;
+		add(rel, new Uint8Array(await f.arrayBuffer()));
+	}
+	return files;
+}
+
+async function _curatedExportCorrected() {
+	const files = await _curatedCorrectedFiles();
+	const sid = _curatedCurrentSid();
+	const bridge = window.leoTools;
+	if (bridge && typeof bridge.exportFiles === "function") {
+		const r = await bridge.exportFiles(files);
+		if (!r || r.canceled) return null;
+		if (r.error) throw new Error(r.error);
+		return { sid, where: r.dir, count: r.count, canOpen: true };
+	}
+	if (typeof window.showDirectoryPicker === "function") {
+		let dir;
+		try {
+			dir = await window.showDirectoryPicker({
+				id: "leo-corrected",
+				mode: "readwrite",
+			});
+		} catch (err) {
+			if (err && err.name === "AbortError") return null;
+			throw err;
+		}
+		for (const f of files) {
+			await _curatedWriteFs(dir, f.path.split("/"), f.data);
+		}
+		return { sid, where: dir.name, count: files.length, canOpen: false };
+	}
+	throw new Error("This browser cannot write files to a folder.");
+}
+
 function _curatedResolveSaveName(basis, custom) {
 	if (basis === "ideal") {
 		return { fname: "diff_marks_ideal.json", matching: "ideal" };

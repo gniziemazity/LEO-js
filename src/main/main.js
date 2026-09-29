@@ -41,7 +41,9 @@ const {
 	openLogVisualizer,
 	setCourseMenuState,
 	refreshToolAvailability,
+	isLessonToolSender,
 } = require("./lesson-tools");
+const { registerToolExport } = require("./tool-export");
 const { releaseHeldMouseButton } = require("./remote-input");
 const {
 	enterPopup,
@@ -593,6 +595,13 @@ ipcMain.handle("show-create-course-dialog", async () => {
 		properties: ["createDirectory"],
 	});
 	return result.filePath;
+});
+registerToolExport({
+	ipcMain,
+	dialog,
+	shell,
+	BrowserWindow,
+	isToolSender: isLessonToolSender,
 });
 
 ipcMain.on("update-lesson-data", (e, d) => broadcastServer.updateLessonData(d));

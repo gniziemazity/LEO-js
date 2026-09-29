@@ -36,6 +36,15 @@ Object.defineProperty(FakeEl.prototype, "textContent", { set() {}, get() { retur
 Object.defineProperty(FakeEl.prototype, "innerHTML", { set() {}, get() { return ""; } });
 const document = { createElement: () => new FakeEl(), getElementById: () => null, body: new FakeEl() };
 const window = { addEventListener() {} };
+const MEDIA_EXT = /\\.(png|jpe?g|gif|svg|webp|ico|bmp|mp3|wav|ogg|m4a|aac|flac|mp4|webm|ogv|mov)$/i;
+let _navState = null;
+function __setNav(dataSource, sid) {
+	_navState = { dataSource, folders: [sid], currentIdx: 0 };
+}
+function __setWindow(extra) {
+	for (const k of ["leoTools", "showDirectoryPicker"]) delete window[k];
+	Object.assign(window, extra);
+}
 function __setState(teacher, student, marks, mode) {
 	_teacherFiles = teacher;
 	_studentFiles = student;
@@ -87,7 +96,11 @@ function loadAPI() {
 			_curatedMarkedToLineHtml,
 			_curatedCorrectionsData,
 			_curatedMarksForSelection,
+			_curatedCorrectedFiles,
+			_curatedExportCorrected,
 			__setState,
+			__setNav,
+			__setWindow,
 			__getRows,
 		};
 	`)();
@@ -1122,4 +1135,145 @@ test("step-by-step snippets number their changes like the full file", () => {
 		}
 	}
 	assert.deepEqual(seen.sort(), [0, 1, 2]);
+});
+
+const fakeFile = (name, contents) => ({
+	name,
+	arrayBuffer: async () => new TextEncoder().encode(contents).buffer,
+});
+
+function exportFixture() {
+	api.__setState(
+		{ "index.html": "<p>a</p>" },
+		{ "index.html": "<p>b</p>" },
+		{
+			ideal: {
+				token_matching: "ideal",
+				teacher_files: { "index.html": [] },
+				student_files: { "index.html": [] },
+			},
+		},
+		"ideal",
+	);
+	const files = new Map(
+		[
+			["anon_ids/55/index.html", "index.html", "student html"],
+			["anon_ids/55/flower.png", "Flower.png", "student flower"],
+			["anon_ids/55/img/a.png", "a.png", "student a"],
+			["anon_ids/55/diff_marks_ideal.json", "diff_marks_ideal.json", "{}"],
+			["anon_ids/55/tokens.txt", "tokens.txt", "t"],
+			["anon_ids/66/other.png", "other.png", "someone else"],
+			["correct/pieces/p1.png", "p1.png", "teacher p1"],
+			["correct/flower.png", "flower.png", "teacher flower"],
+			["start/img/a.png", "a.png", "teacher a"],
+			["reconstructed/r.png", "r.png", "reconstructed"],
+		].map(([key, name, text]) => [key, fakeFile(name, text)]),
+	);
+	api.__setNav({ files }, "55");
+}
+
+const asText = (files) =>
+	Object.fromEntries(
+		files.map((f) => [f.path, Buffer.from(f.data).toString("utf8")]),
+	);
+
+test("corrected files: the corrected code, the student's media, then the teacher's", async () => {
+	exportFixture();
+	const files = await api._curatedCorrectedFiles();
+	assert.deepEqual(asText(files), {
+		"index.html": "<p>b</p>",
+		"Flower.png": "student flower",
+		"img/a.png": "student a",
+		"pieces/p1.png": "teacher p1",
+	});
+	for (const f of files) assert.ok(f.data instanceof Uint8Array, f.path);
+});
+
+test("export goes through the app's bridge when there is one", async () => {
+	exportFixture();
+	let sent = null;
+	api.__setWindow({
+		leoTools: {
+			exportFiles: async (files) => {
+				sent = files;
+				return { dir: "C:\\out\\55", count: files.length };
+			},
+		},
+		showDirectoryPicker: async () => {
+			throw new Error("the browser picker must not open");
+		},
+	});
+	const r = await api._curatedExportCorrected();
+	assert.deepEqual(r, {
+		sid: "55",
+		where: "C:\\out\\55",
+		count: 4,
+		canOpen: true,
+	});
+	assert.deepEqual(Object.keys(asText(sent)).sort(), [
+		"Flower.png",
+		"img/a.png",
+		"index.html",
+		"pieces/p1.png",
+	]);
+
+	api.__setWindow({
+		leoTools: { exportFiles: async () => ({ canceled: true }) },
+	});
+	assert.equal(await api._curatedExportCorrected(), null);
+	api.__setWindow({
+		leoTools: { exportFiles: async () => ({ error: "nope" }) },
+	});
+	await assert.rejects(api._curatedExportCorrected(), /nope/);
+	api.__setWindow({});
+});
+
+function fakeDirHandle(name) {
+	const written = {};
+	const make = (prefix) => ({
+		name,
+		getDirectoryHandle: async (n) => make(prefix + n + "/"),
+		getFileHandle: async (n) => ({
+			createWritable: async () => {
+				const chunks = [];
+				return {
+					write: async (d) => chunks.push(Buffer.from(d)),
+					close: async () => {
+						written[prefix + n] = Buffer.concat(chunks).toString("utf8");
+					},
+				};
+			},
+		}),
+	});
+	return { root: make(""), written };
+}
+
+test("without the bridge the browser folder picker is used", async () => {
+	exportFixture();
+	const handle = fakeDirHandle("picked");
+	api.__setWindow({ showDirectoryPicker: async () => handle.root });
+	const r = await api._curatedExportCorrected();
+	assert.deepEqual(r, {
+		sid: "55",
+		where: "picked",
+		count: 4,
+		canOpen: false,
+	});
+	assert.deepEqual(handle.written, {
+		"index.html": "<p>b</p>",
+		"Flower.png": "student flower",
+		"img/a.png": "student a",
+		"pieces/p1.png": "teacher p1",
+	});
+
+	api.__setWindow({
+		showDirectoryPicker: async () => {
+			const e = new Error("cancelled");
+			e.name = "AbortError";
+			throw e;
+		},
+	});
+	assert.equal(await api._curatedExportCorrected(), null);
+	api.__setWindow({});
+	await assert.rejects(api._curatedExportCorrected(), /cannot write/);
 });

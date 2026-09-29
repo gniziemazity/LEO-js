@@ -338,6 +338,16 @@ function isLessonToolPageUrl(url) {
 	}
 }
 
+function isLessonToolSender(event) {
+	const sender = event && event.sender;
+	const frame = event && event.senderFrame;
+	if (!sender || !frame || frame.parent) return false;
+	const known = [...lessonToolWindows.values()].some(
+		({ win }) => !win.isDestroyed() && win.webContents === sender,
+	);
+	return known && isLessonToolPageUrl(frame.url);
+}
+
 function enableDevToolsShortcut(win) {
 	win.webContents.on("before-input-event", (e, input) => {
 		if (input.type !== "keyDown") return;
@@ -406,6 +416,7 @@ function openLessonTool(tool) {
 			webPreferences: {
 				nodeIntegration: false,
 				contextIsolation: true,
+				preload: path.join(__dirname, "lesson-tools-preload.js"),
 			},
 		});
 		win.setMenu(null);
@@ -536,6 +547,7 @@ module.exports = {
 	lessonWorkspaceFolder,
 	openSimulator,
 	openLessonTool,
+	isLessonToolSender,
 	openLogVisualizer,
 	launchVSCode,
 	launchChrome,

@@ -1623,11 +1623,59 @@ function _curatedRenderPreview(restore) {
 	fmtChk.checked = CURATED_REINDENT;
 	fmtLabel.appendChild(fmtChk);
 	fmtLabel.appendChild(document.createTextNode(" Fix Indentation"));
+	const writeBtn = document.createElement("button");
+	writeBtn.className = "btn-edit";
+	writeBtn.textContent = "📂 Write files";
+	writeBtn.title =
+		"Write the corrected files, with their images, to a folder you choose";
 	actions.appendChild(fmtLabel);
 	actions.appendChild(htmlBtn);
 	actions.appendChild(dlBtn);
+	actions.appendChild(writeBtn);
 	toolbar.appendChild(viewToggle);
 	toolbar.appendChild(actions);
+
+	const exportStatus = document.createElement("div");
+	exportStatus.className = "tw-export-status";
+	const renderExportStatus = () => {
+		const last = _curatedLastExport;
+		exportStatus.replaceChildren();
+		exportStatus.classList.remove("is-error");
+		if (!last || last.sid !== _curatedCurrentSid()) return;
+		if (last.error) {
+			exportStatus.classList.add("is-error");
+			exportStatus.textContent = "Write failed: " + last.error;
+			return;
+		}
+		const text = document.createElement("span");
+		text.className = "tw-export-where";
+		text.textContent = `Written ${last.count} file${last.count === 1 ? "" : "s"} to ${last.where}`;
+		exportStatus.appendChild(text);
+		if (last.canOpen) {
+			const open = document.createElement("button");
+			open.type = "button";
+			open.className = "btn-edit";
+			open.textContent = "Open folder";
+			open.addEventListener("click", () => window.leoTools.openFolder());
+			exportStatus.appendChild(open);
+		}
+	};
+	renderExportStatus();
+	writeBtn.addEventListener("click", async () => {
+		writeBtn.disabled = true;
+		try {
+			const result = await _curatedExportCorrected();
+			if (result) _curatedLastExport = result;
+		} catch (err) {
+			_curatedLastExport = {
+				sid: _curatedCurrentSid(),
+				error: String((err && err.message) || err),
+			};
+		}
+		writeBtn.disabled = false;
+		if (exportStatus.isConnected) renderExportStatus();
+		else _curatedRefreshPreviewIfOpen();
+	});
 
 	const codeView = document.createElement("div");
 	codeView.className = "tw-preview-codeview";
@@ -1727,6 +1775,7 @@ function _curatedRenderPreview(restore) {
 
 	const saveEl = (restore && restore.saveEl) || _curatedBuildSaveControls();
 	left.appendChild(toolbar);
+	left.appendChild(exportStatus);
 	left.appendChild(codeView);
 	left.appendChild(stepView);
 	left.appendChild(saveEl);

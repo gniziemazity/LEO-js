@@ -186,6 +186,15 @@ token in the code, ready to mark.
 
 Export the corrections as a **📸 Screenshot** or **🌐 HTML**.
 
+To try the corrected program for real, press **📂 Write files** and pick a
+folder (a new one can be made from the dialog). Every corrected code file is
+written straight into it, with the student's images and any teacher images the
+student doesn't have, so it opens and runs as it does in the preview; files
+already there with the same names are overwritten. A line under the toolbar then
+names the folder, and in the app's Tools windows **Open folder** opens it. In a
+plain browser the browser's own folder picker is used and only the folder's
+name is shown.
+
 ---
 
 ## 8. Saving your work

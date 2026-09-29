@@ -1144,6 +1144,34 @@
 				cursor: pointer;
 				user-select: none;
 			}
+			.curated-float-win .tw-export-status {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex: 0 0 auto;
+				padding: 4px 8px;
+				font-size: 11px;
+				color: var(--clr-text);
+				background: var(--clr-toolbar);
+				border-bottom: 1px solid var(--clr-border);
+			}
+			.curated-float-win .tw-export-status:empty {
+				display: none;
+			}
+			.curated-float-win .tw-export-status.is-error {
+				color: var(--clr-red);
+				font-weight: 600;
+			}
+			.curated-float-win .tw-export-where {
+				flex: 1 1 auto;
+				min-width: 0;
+				overflow-wrap: anywhere;
+				user-select: text;
+			}
+			.curated-float-win .tw-export-status .btn-edit {
+				flex: 0 0 auto;
+				white-space: nowrap;
+			}
 			.curated-float-win .tw-preview-codeview {
 				display: flex;
 				flex-direction: column;
