@@ -125,6 +125,7 @@ corrections reproduce the teacher's tokens yet.
 | Token selected               | `i` or `p`                   | **Insert** anchor / **Pair** (then click partner)     |
 | Token selected               | `r`                          | **Remove** pair                                       |
 | Token selected               | `d` / `Delete` / `Backspace` | **Delete** mark (Shift = include its pair / comments) |
+| Text selected in Corrections | `d` / `Delete` / `Backspace` | **Delete** every mark behind the changes it touches   |
 | Any                          | `Esc`                        | Cancel a pending pair / close the panel               |
 | Any                          | `Ctrl+Z` / `Ctrl+Y`          | Undo / redo                                           |
 
@@ -163,6 +164,13 @@ shows:
 - **Result After Corrections** — a live render (iframe) of the corrected program,
   so you can confirm it works.
 - A **Diff marks** row along the bottom, for saving your work (§8).
+
+A wrong correction can be removed right here: select any part of it (or just
+click inside it), in either view, and press **`d`** / **Delete**. Every mark
+behind each change the selection touches is deleted — both sides of a
+substitution, both ends of a move — and unchanged text in the selection is
+ignored. It is one **Ctrl+Z**. The popup stays open and follows every edit,
+including ones made in the panels, keeping its view, file tab and scroll.
 
 Below the Corrections button, a **token-parity line** is updated live:
 

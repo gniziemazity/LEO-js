@@ -31,6 +31,8 @@ function _curatedOnKeyDown(ev) {
 
 	if (inField) return;
 
+	if (_curatedPreviewOnKeyDown(ev)) return;
+
 	if (!_curatedCurrentSel) return;
 	const sel = _curatedCurrentSel;
 

@@ -5,7 +5,29 @@ const CURATED_INS_CLOSE = String.fromCharCode(0xe001);
 const CURATED_DEL_OPEN = String.fromCharCode(0xe002);
 const CURATED_DEL_CLOSE = String.fromCharCode(0xe003);
 const CURATED_DEL_NL = String.fromCharCode(0xe004);
+const CURATED_OP_TAG_BASE = 0xf0000;
+const CURATED_OP_TAG_RE = new RegExp(
+	"([" + CURATED_INS_OPEN + CURATED_DEL_OPEN + "])([\\u{F0000}-\\u{FFFFD}])",
+	"gu",
+);
 let CURATED_REINDENT = true;
+
+function _curatedMarkRefs(side, file, marks) {
+	return (marks || []).map((mark) => ({ side, file, mark }));
+}
+
+function _curatedSwapPartnerRefs(curatedData, group) {
+	const teacherMarks = (curatedData.teacher_files || {})[group.pairFile] || [];
+	const partners = teacherMarks.filter(
+		(m) =>
+			m.label === "missing" &&
+			m.paired_with &&
+			m.paired_with.file === group.file &&
+			m.start < group.pairHi &&
+			m.end > group.pairLo,
+	);
+	return _curatedMarkRefs("teacher", group.pairFile, partners);
+}
 
 function _curatedBackwardWhitespace(text, pos) {
 	if (pos <= 0 || !/\s/.test(text[pos - 1])) return "";
@@ -104,6 +126,7 @@ function _curatedCleanupCorrectedText(text) {
 
 function _curatedApplyToStudent(opts) {
 	const _mark = !!(opts && opts.mark);
+	const sink = _mark && opts.ops ? opts.ops : null;
 	const out = {};
 	const curatedData = _curatedMarks();
 	if (!curatedData) return out;
@@ -180,12 +203,16 @@ function _curatedApplyToStudent(opts) {
 					teacherLo,
 					teacherHi,
 				),
+				refs: contiguous.flatMap((g) =>
+					_curatedMarkRefs(g.side, g.file, g.marks),
+				),
 			};
 			for (const missingGroup of contiguous)
 				consumedMissings.add(missingGroup);
 		}
 		const rawOps = [];
 		for (const group of groups) {
+			const refs = _curatedMarkRefs(group.side, group.file, group.marks);
 			if (
 				group.side === "teacher" &&
 				group.kind === "missing-insert" &&
@@ -206,6 +233,7 @@ function _curatedApplyToStudent(opts) {
 					srcStart: group.lo,
 					srcEnd: group.hi,
 					body,
+					refs,
 				});
 			} else if (
 				group.side === "student" &&
@@ -226,6 +254,7 @@ function _curatedApplyToStudent(opts) {
 					srcStart: group.pairLo,
 					srcEnd: group.pairHi,
 					body,
+					refs: refs.concat(_curatedSwapPartnerRefs(curatedData, group)),
 				});
 			} else if (
 				group.side === "student" &&
@@ -238,6 +267,7 @@ function _curatedApplyToStudent(opts) {
 						origStart: group.lo,
 						origEnd: group.hi,
 						body: group._coalesced.body,
+						refs: refs.concat(group._coalesced.refs),
 					});
 					delete group._coalesced;
 				} else {
@@ -246,6 +276,7 @@ function _curatedApplyToStudent(opts) {
 						origStart: group.lo,
 						origEnd: group.hi,
 						body: "",
+						refs,
 					});
 				}
 			} else if (
@@ -259,6 +290,7 @@ function _curatedApplyToStudent(opts) {
 					origStart: group.lo,
 					origEnd: group.hi,
 					body: "",
+					refs,
 				});
 				if (group.moveFile === studentName) {
 					rawOps.push({
@@ -268,6 +300,7 @@ function _curatedApplyToStudent(opts) {
 						srcStart: group.lo,
 						srcEnd: group.hi,
 						body,
+						refs,
 					});
 				}
 			}
@@ -327,11 +360,18 @@ function _curatedApplyToStudent(opts) {
 					start: aligned.start,
 					end: aligned.end,
 					text: aligned.text,
+					refs: op.refs,
 				});
 			} else {
-				pushOp({ start: op.origStart, end: op.origEnd, text: op.body });
+				pushOp({
+					start: op.origStart,
+					end: op.origEnd,
+					text: op.body,
+					refs: op.refs,
+				});
 			}
 		}
+		const opRefs = [];
 		ops.sort((a, b) => {
 			if (a.start !== b.start) return b.start - a.start;
 			const aLen = a.end - a.start;
@@ -364,20 +404,34 @@ function _curatedApplyToStudent(opts) {
 				}
 			}
 			if (_mark) {
+				const tag = sink
+					? String.fromCodePoint(
+							CURATED_OP_TAG_BASE + opRefs.push(op.refs || []) - 1,
+						)
+					: "";
 				const removed = text.slice(op.start, op.end);
 				const del = removed
 					? CURATED_DEL_OPEN +
+						tag +
 						removed.replace(/\n/g, CURATED_DEL_NL) +
 						CURATED_DEL_CLOSE
 					: "";
 				const ins = op.text
-					? CURATED_INS_OPEN + body + CURATED_INS_CLOSE
+					? CURATED_INS_OPEN + tag + body + CURATED_INS_CLOSE
 					: "";
 				if (del || ins) body = del + ins;
 			}
 			text = text.slice(0, op.start) + body + text.slice(op.end);
 		}
 		const outName = filePairs[studentName] || studentName;
+		if (sink) {
+			const perMarker = [];
+			text = text.replace(CURATED_OP_TAG_RE, (_m, open, tag) => {
+				perMarker.push(opRefs[tag.codePointAt(0) - CURATED_OP_TAG_BASE]);
+				return open;
+			});
+			sink[outName] = perMarker;
+		}
 		out[outName] = _curatedCleanupCorrectedText(text);
 	}
 
@@ -475,26 +529,33 @@ function _curatedReindent(text, ext, lp) {
 	return out.join("\n");
 }
 
-function _curatedMarkedToHtml(text) {
-	const delRe = new RegExp(
-		CURATED_DEL_OPEN + "([^" + CURATED_DEL_CLOSE + "]*)" + CURATED_DEL_CLOSE,
+function _curatedMarkedToHtml(text, opBase) {
+	const openRe = new RegExp(
+		CURATED_DEL_OPEN +
+			"([^" +
+			CURATED_DEL_CLOSE +
+			"]*)" +
+			CURATED_DEL_CLOSE +
+			"|" +
+			CURATED_INS_OPEN,
 		"g",
 	);
+	let nextOp = typeof opBase === "number" ? opBase : null;
 	return escHtml(text)
-		.replace(delRe, (_m, content) =>
-			content
+		.replace(openRe, (_m, content) => {
+			const attr = nextOp == null ? "" : ` data-op="${nextOp++}"`;
+			if (content === undefined) return `<span class="tw-ins"${attr}>`;
+			return content
 				.split(CURATED_DEL_NL)
 				.map((line) => {
 					const lead = (line.match(/^[ \t]*/) || [""])[0];
 					const rest = line.slice(lead.length);
 					return rest
-						? lead + `<span class="tw-del">${rest}</span>`
+						? lead + `<span class="tw-del"${attr}>${rest}</span>`
 						: line;
 				})
-				.join("\n"),
-		)
-		.split(CURATED_INS_OPEN)
-		.join('<span class="tw-ins">')
+				.join("\n");
+		})
 		.split(CURATED_INS_CLOSE)
 		.join("</span>");
 }
@@ -603,8 +664,20 @@ function _curatedFileExtRank(n) {
 	return r[e] != null ? r[e] : 3;
 }
 
-function _curatedCorrectionsData() {
-	const out = _curatedApplyToStudent({ mark: true });
+function _curatedOpensBefore(lines) {
+	const before = [0];
+	for (const line of lines) {
+		let n = before[before.length - 1];
+		for (const ch of line) {
+			if (ch === CURATED_INS_OPEN || ch === CURATED_DEL_OPEN) n++;
+		}
+		before.push(n);
+	}
+	return before;
+}
+
+function _curatedCorrectionsData(marked) {
+	const out = marked || _curatedApplyToStudent({ mark: true });
 	const names = Object.keys(out).sort(
 		(a, b) =>
 			_curatedFileExtRank(a) - _curatedFileExtRank(b) || a.localeCompare(b),
@@ -620,6 +693,7 @@ function _curatedCorrectionsData() {
 		const stuMap = _curatedStudentLineMap(fullText);
 		const groups = _curatedChangedGroups(lines);
 		if (!groups.length) continue;
+		const opensBefore = _curatedOpensBefore(lines);
 		if (showHeaders) blocks.push({ type: "file", text: name });
 		for (const [s, e] of groups.slice().reverse()) {
 			const snippetLines = [];
@@ -640,30 +714,40 @@ function _curatedCorrectionsData() {
 				label: "line " + stuMap[s],
 				marked: formatted,
 				file: name,
+				opBase: opensBefore[s],
 			});
 		}
 	}
 	return blocks;
 }
 
-function _curatedMarkedToSegLines(marked) {
+function _curatedMarkedToSegLines(marked, opBase) {
+	const numbered = typeof opBase === "number";
+	let nextOp = numbered ? opBase : 0;
+	let op = null;
 	const out = [[]];
 	let style = "normal";
 	let cur = "";
 	const flush = () => {
-		if (cur) out[out.length - 1].push({ text: cur, style });
+		if (cur) {
+			const seg = { text: cur, style };
+			if (numbered && style !== "normal") seg.op = op;
+			out[out.length - 1].push(seg);
+		}
 		cur = "";
 	};
 	for (const ch of String(marked)) {
 		if (ch === CURATED_INS_OPEN) {
 			flush();
 			style = "ins";
+			op = nextOp++;
 		} else if (ch === CURATED_INS_CLOSE) {
 			flush();
 			style = "normal";
 		} else if (ch === CURATED_DEL_OPEN) {
 			flush();
 			style = "del";
+			op = nextOp++;
 		} else if (ch === CURATED_DEL_CLOSE) {
 			flush();
 			style = "normal";
@@ -680,8 +764,10 @@ function _curatedMarkedToSegLines(marked) {
 		if (!seg || seg.style !== "del") continue;
 		const lead = (seg.text.match(/^[ \t]*/) || [""])[0];
 		if (!lead) continue;
-		if (lead.length === seg.text.length) seg.style = "normal";
-		else {
+		if (lead.length === seg.text.length) {
+			seg.style = "normal";
+			delete seg.op;
+		} else {
 			seg.text = seg.text.slice(lead.length);
 			segLine.unshift({ text: lead, style: "normal" });
 		}
@@ -689,8 +775,8 @@ function _curatedMarkedToSegLines(marked) {
 	return out;
 }
 
-function _curatedMarkedToLineHtml(marked, nums) {
-	const segLines = _curatedMarkedToSegLines(marked);
+function _curatedMarkedToLineHtml(marked, nums, opBase) {
+	const segLines = _curatedMarkedToSegLines(marked, opBase);
 	if (!nums || nums.length !== segLines.length)
 		nums = _curatedDisplayLineNumbers(marked);
 	return segLines
@@ -698,10 +784,11 @@ function _curatedMarkedToLineHtml(marked, nums) {
 			const inner = sl
 				.map((seg) => {
 					const t = escHtml(seg.text);
+					const op = seg.op != null ? ` data-op="${seg.op}"` : "";
 					if (seg.style === "ins")
-						return `<span class="tw-ins">${t}</span>`;
+						return `<span class="tw-ins"${op}>${t}</span>`;
 					if (seg.style === "del")
-						return `<span class="tw-del">${t}</span>`;
+						return `<span class="tw-del"${op}>${t}</span>`;
 					return t;
 				})
 				.join("");
@@ -914,7 +1001,7 @@ function _curatedCopyCorrectionsHtml() {
 	_curatedCopyText(html, "tw-html-btn");
 }
 
-function _curatedBuildCorrectionsListEl(blocks) {
+function _curatedBuildCorrectionsListEl(blocks, numbered) {
 	const list = document.createElement("div");
 	list.className = "tw-corr-list";
 	if (!blocks.length) {
@@ -937,7 +1024,11 @@ function _curatedBuildCorrectionsListEl(blocks) {
 		const pre = document.createElement("pre");
 		pre.className = "tw-pre tw-corr-pre";
 		pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(b.file));
-		pre.innerHTML = _curatedMarkedToHtml(b.marked);
+		pre.dataset.file = b.file;
+		pre.innerHTML = _curatedMarkedToHtml(
+			b.marked,
+			numbered ? b.opBase : undefined,
+		);
 		row.appendChild(label);
 		row.appendChild(pre);
 		list.appendChild(row);
@@ -1394,14 +1485,109 @@ function _curatedParityJump(side, file, start, end) {
 }
 
 function _curatedPreview() {
+	_curatedRenderPreview(null);
+}
+
+function _curatedPreviewIsOpen() {
+	return !!(
+		_curatedFloatWin &&
+		_curatedFloatWin.corrections &&
+		_curatedFloatWin.win.style.display !== "none" &&
+		typeof _curatedEditMode !== "undefined" &&
+		_curatedEditMode
+	);
+}
+
+function _curatedPreviewState() {
+	const c = _curatedFloatWin && _curatedFloatWin.corrections;
+	if (!c) return null;
+	const activeTab = c.tabBar.querySelector(".file-tab-active");
+	return {
+		stepShown: c.isStepShown(),
+		tab: activeTab ? activeTab.textContent : null,
+		panesScroll: [c.panes.scrollTop, c.panes.scrollLeft],
+		stepScroll: [c.stepView.scrollTop, c.stepView.scrollLeft],
+		saveEl: c.saveEl,
+	};
+}
+
+let _curatedPreviewRefreshQueued = false;
+
+function _curatedRefreshPreviewIfOpen() {
+	if (_curatedPreviewRefreshQueued || !_curatedPreviewIsOpen()) return;
+	_curatedPreviewRefreshQueued = true;
+	requestAnimationFrame(() => {
+		_curatedPreviewRefreshQueued = false;
+		if (_curatedPreviewIsOpen())
+			_curatedRenderPreview(_curatedPreviewState());
+	});
+}
+
+function _curatedMarksForSelection(sink, hits) {
+	const seen = new Set();
+	const refs = [];
+	for (const { file, op } of hits) {
+		for (const ref of (sink[file] || [])[op] || []) {
+			if (seen.has(ref.mark)) continue;
+			seen.add(ref.mark);
+			refs.push(ref);
+		}
+	}
+	return refs;
+}
+
+function _curatedPreviewSelectionHits() {
+	if (!_curatedPreviewIsOpen()) return null;
+	const c = _curatedFloatWin.corrections;
+	const sel = window.getSelection();
+	if (!sel || !sel.rangeCount) return null;
+	const inWin = (node) => !!node && _curatedFloatWin.win.contains(node);
+	if (!inWin(sel.anchorNode) && !inWin(sel.focusNode)) return null;
+	const range = sel.getRangeAt(0);
+	const hits = [];
+	for (const el of c.body.querySelectorAll("[data-op]")) {
+		if (!range.intersectsNode(el)) continue;
+		const pre = el.closest("pre");
+		if (pre && pre.dataset.file != null) {
+			hits.push({ file: pre.dataset.file, op: Number(el.dataset.op) });
+		}
+	}
+	return hits;
+}
+
+function _curatedPreviewOnKeyDown(ev) {
+	const k = ev.key;
+	if (k !== "Delete" && k !== "Backspace" && k.toLowerCase() !== "d") {
+		return false;
+	}
+	const hits = _curatedPreviewSelectionHits();
+	if (hits === null) return false;
+	ev.preventDefault();
+	if (ev.ctrlKey || ev.metaKey || ev.altKey) return true;
+	const refs = _curatedMarksForSelection(
+		_curatedFloatWin.corrections.sink,
+		hits,
+	);
+	if (!refs.length) return true;
+	_curatedSnapshot();
+	for (const { side, file, mark } of refs)
+		_curatedRemoveMark(side, file, mark);
+	_curatedHideControls();
+	_curatedRerender();
+	return true;
+}
+
+function _curatedRenderPreview(restore) {
+	const sink = {};
 	const out = _curatedApplyToStudent();
-	const marked = _curatedApplyToStudent({ mark: true });
+	const marked = _curatedApplyToStudent({ mark: true, ops: sink });
 	const body = document.createElement("div");
 	body.className = "tw-preview-split";
 
 	if (!Object.keys(out).length) {
 		body.textContent = "No student files to preview.";
 		_curatedShowFloatWin("Corrections", body);
+		_curatedFloatWin.corrections = null;
 		return;
 	}
 
@@ -1457,10 +1643,14 @@ function _curatedPreview() {
 		return a.localeCompare(b);
 	});
 
+	const startTab = Math.max(
+		0,
+		sortedEntries.findIndex(([name]) => restore && name === restore.tab),
+	);
 	const paneEls = [];
 	sortedEntries.forEach(([name, text], i) => {
 		const btn = document.createElement("button");
-		btn.className = "file-tab" + (i === 0 ? " file-tab-active" : "");
+		btn.className = "file-tab" + (i === startTab ? " file-tab-active" : "");
 		btn.textContent = name;
 		btn.onclick = () => {
 			tabBar
@@ -1475,8 +1665,9 @@ function _curatedPreview() {
 		tabBar.appendChild(btn);
 
 		const pre = document.createElement("pre");
-		pre.className = "tw-pre" + (i === 0 ? " active" : "");
+		pre.className = "tw-pre" + (i === startTab ? " active" : "");
 		pre.style.setProperty("--tw-ins-color", _diffMissingColorFor(name));
+		pre.dataset.file = name;
 		paneEls.push({ pre, name, text });
 		panes.appendChild(pre);
 	});
@@ -1487,7 +1678,7 @@ function _curatedPreview() {
 			const mtext = CURATED_REINDENT
 				? _curatedReindent(base, getFileExt(name))
 				: base;
-			pre.innerHTML = _curatedMarkedToLineHtml(mtext, nums);
+			pre.innerHTML = _curatedMarkedToLineHtml(mtext, nums, 0);
 		}
 	};
 	renderPanes();
@@ -1498,7 +1689,10 @@ function _curatedPreview() {
 	const stepView = document.createElement("div");
 	stepView.className = "tw-corr-list tw-preview-stepview";
 	const renderStep = () => {
-		const fresh = _curatedBuildCorrectionsListEl(_curatedCorrectionsData());
+		const fresh = _curatedBuildCorrectionsListEl(
+			_curatedCorrectionsData(marked),
+			true,
+		);
 		stepView.replaceChildren(...fresh.childNodes);
 	};
 	renderStep();
@@ -1508,7 +1702,7 @@ function _curatedPreview() {
 		renderStep();
 	});
 
-	let _stepShown = false;
+	let _stepShown = !!(restore && restore.stepShown);
 	const _applyView = () => {
 		codeView.style.display = _stepShown ? "none" : "flex";
 		stepView.style.display = _stepShown ? "flex" : "none";
@@ -1531,10 +1725,11 @@ function _curatedPreview() {
 	);
 	_applyView();
 
+	const saveEl = (restore && restore.saveEl) || _curatedBuildSaveControls();
 	left.appendChild(toolbar);
 	left.appendChild(codeView);
 	left.appendChild(stepView);
-	left.appendChild(_curatedBuildSaveControls());
+	left.appendChild(saveEl);
 
 	const right = document.createElement("div");
 	right.className = "tw-preview-render";
@@ -1553,6 +1748,19 @@ function _curatedPreview() {
 	body.appendChild(left);
 	body.appendChild(right);
 	_curatedShowFloatWin("Corrections", body);
+	_curatedFloatWin.corrections = {
+		sink,
+		body,
+		tabBar,
+		panes,
+		stepView,
+		saveEl,
+		isStepShown: () => _stepShown,
+	};
+	if (restore) {
+		[panes.scrollTop, panes.scrollLeft] = restore.panesScroll;
+		[stepView.scrollTop, stepView.scrollLeft] = restore.stepScroll;
+	}
 
 	if (typeof updatePreview === "function") {
 		updatePreview("student", { ...out }, iframe);

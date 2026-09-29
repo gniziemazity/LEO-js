@@ -84,7 +84,9 @@ function loadAPI() {
 			_curatedDedentSnippet,
 			_curatedStudentLineMap,
 			_curatedMarkedToSegLines,
+			_curatedMarkedToLineHtml,
 			_curatedCorrectionsData,
+			_curatedMarksForSelection,
 			__setState,
 			__getRows,
 		};
@@ -809,4 +811,315 @@ test("stray whitespace: apply keeps it (preview)", () => {
 		/ {8}b/.test(apply),
 		"apply keeps stray indent (preview): " + JSON.stringify(apply),
 	);
+});
+
+const INS_OPEN = String.fromCharCode(0xe000);
+const DEL_OPEN = String.fromCharCode(0xe002);
+const opensIn = (s) =>
+	[...s].filter((ch) => ch === INS_OPEN || ch === DEL_OPEN).length;
+
+function applyWithSink({ teacher, student, marks, mode = "ideal" }) {
+	api.__setState(teacher, student, { [mode]: marks }, mode);
+	const plain = api._curatedApplyToStudent({ mark: true });
+	api.__setState(teacher, student, { [mode]: marks }, mode);
+	const sink = {};
+	const marked = api._curatedApplyToStudent({ mark: true, ops: sink });
+	return { plain, marked, sink };
+}
+
+function assertSinkAligned({ plain, marked, sink }) {
+	assert.deepEqual(marked, plain, "the ops sink leaves the output unchanged");
+	for (const [file, text] of Object.entries(marked)) {
+		const entries = sink[file] || [];
+		assert.equal(
+			entries.length,
+			opensIn(text),
+			`${file}: one sink entry per opening marker`,
+		);
+		for (const refs of entries) {
+			assert.ok(refs.length > 0, `${file}: every change names its marks`);
+		}
+	}
+}
+
+const tokensOf = (refs) => refs.map((r) => `${r.side}:${r.mark.token}`).sort();
+
+const cssInsertFixture = () => ({
+	student: { "f.css": ".a{}" },
+	teacher: { "f.css": ".a{}\n\t\t\t.b{}" },
+	marks: {
+		token_matching: "ideal",
+		teacher_files: {
+			"f.css": [".", "b", "{", "}"].map((token, i) => ({
+				token,
+				label: "missing",
+				start: 8 + i,
+				end: 9 + i,
+				insert_at: { file: "f.css", pos: 4 },
+			})),
+		},
+		student_files: { "f.css": [] },
+	},
+});
+
+test("ops sink: an insertion names its missing marks", () => {
+	const r = applyWithSink(cssInsertFixture());
+	assertSinkAligned(r);
+	assert.equal(r.sink["f.css"].length, 1);
+	assert.deepEqual(tokensOf(r.sink["f.css"][0]), [
+		"teacher:.",
+		"teacher:b",
+		"teacher:{",
+		"teacher:}",
+	]);
+});
+
+test("ops sink: a deletion names its extra mark, a ghost its ghost mark", () => {
+	for (const label of ["extra", "ghost_extra"]) {
+		const r = applyWithSink({
+			student: { "f.css": ".a{x}" },
+			teacher: { "f.css": ".a{}" },
+			marks: {
+				token_matching: "ideal",
+				teacher_files: { "f.css": [] },
+				student_files: {
+					"f.css": [{ token: "x", label, start: 3, end: 4 }],
+				},
+			},
+		});
+		assertSinkAligned(r);
+		assert.equal(r.sink["f.css"].length, 1, label);
+		assert.deepEqual(tokensOf(r.sink["f.css"][0]), ["student:x"], label);
+		assert.equal(r.sink["f.css"][0][0].file, "f.css");
+	}
+});
+
+test("ops sink: a substitution names both sides, on both its markers", () => {
+	const pairTo = (file, start, end, token, label) => ({
+		file,
+		start,
+		end,
+		token,
+		label,
+	});
+	const r = applyWithSink({
+		teacher: { "f.js": "X foo bar Y" },
+		student: { "f.js": "A old1 old2 B" },
+		marks: {
+			token_matching: "ideal",
+			teacher_files: {
+				"f.js": [
+					{
+						token: "foo",
+						label: "missing",
+						start: 2,
+						end: 5,
+						paired_with: pairTo("f.js", 2, 11, "old1old2", "extra"),
+					},
+					{
+						token: "bar",
+						label: "missing",
+						start: 6,
+						end: 9,
+						paired_with: pairTo("f.js", 2, 11, "old1old2", "extra"),
+					},
+				],
+			},
+			student_files: {
+				"f.js": [
+					{
+						token: "old1",
+						label: "extra",
+						start: 2,
+						end: 6,
+						paired_with: pairTo("f.js", 2, 9, "foobar", "missing"),
+					},
+					{
+						token: "old2",
+						label: "extra",
+						start: 7,
+						end: 11,
+						paired_with: pairTo("f.js", 2, 9, "foobar", "missing"),
+					},
+				],
+			},
+		},
+	});
+	assertSinkAligned(r);
+	const entries = r.sink["f.js"];
+	assert.equal(entries.length, 2, "one deletion and one insertion marker");
+	const both = ["student:old1", "student:old2", "teacher:bar", "teacher:foo"];
+	assert.deepEqual(tokensOf(entries[0]), both);
+	assert.deepEqual(tokensOf(entries[1]), both);
+	assert.equal(
+		api._curatedMarksForSelection(r.sink, [
+			{ file: "f.js", op: 0 },
+			{ file: "f.js", op: 1 },
+		]).length,
+		4,
+		"selecting both halves removes each mark once",
+	);
+});
+
+test("ops sink: a coalesced extra names the missing marks it absorbed", () => {
+	const student = { "f.js": "a.replace Children(x);" };
+	const r = applyWithSink({
+		student,
+		teacher: { "f.js": "a.replaceChildren(x);" },
+		marks: {
+			token_matching: "ideal",
+			teacher_files: {
+				"f.js": [
+					{
+						token: "replaceChildren",
+						label: "missing",
+						start: 2,
+						end: 17,
+						insert_at: {
+							file: "f.js",
+							pos: student["f.js"].indexOf("Children"),
+						},
+					},
+				],
+			},
+			student_files: {
+				"f.js": [
+					{ token: "replace", label: "extra", start: 2, end: 9 },
+					{ token: "Children", label: "extra", start: 10, end: 18 },
+				],
+			},
+		},
+	});
+	assertSinkAligned(r);
+	const all = r.sink["f.js"].map(tokensOf);
+	assert.ok(
+		all.some(
+			(t) =>
+				t.includes("student:Children") &&
+				t.includes("teacher:replaceChildren"),
+		),
+		"the coalesced change carries the extra and the absorbed missing: " +
+			JSON.stringify(all),
+	);
+	assert.ok(
+		all.some((t) => t.length === 1 && t[0] === "student:replace"),
+		"the plain deletion carries only its own extra",
+	);
+});
+
+test("ops sink: a move names its extra at both ends", () => {
+	const r = applyWithSink({
+		student: { "f.js": "b(); a();" },
+		teacher: { "f.js": "a(); b();" },
+		marks: {
+			token_matching: "ideal",
+			teacher_files: { "f.js": [] },
+			student_files: {
+				"f.js": [
+					{
+						token: "b",
+						label: "extra",
+						start: 0,
+						end: 1,
+						move_to: { file: "f.js", pos: 9 },
+					},
+				],
+			},
+		},
+	});
+	assertSinkAligned(r);
+	assert.equal(r.sink["f.js"].length, 2, "a deletion and an insertion");
+	for (const refs of r.sink["f.js"]) {
+		assert.deepEqual(tokensOf(refs), ["student:b"]);
+	}
+});
+
+test("seg lines and line html number changes only when asked", () => {
+	const c = (n) => String.fromCharCode(n);
+	const marked =
+		"a" +
+		c(0xe000) +
+		"I" +
+		c(0xe001) +
+		c(0xe002) +
+		"D" +
+		c(0xe004) +
+		"E" +
+		c(0xe003) +
+		"b";
+	assert.deepEqual(api._curatedMarkedToSegLines(marked, 5), [
+		[
+			{ text: "a", style: "normal" },
+			{ text: "I", style: "ins", op: 5 },
+			{ text: "D", style: "del", op: 6 },
+		],
+		[
+			{ text: "E", style: "del", op: 6 },
+			{ text: "b", style: "normal" },
+		],
+	]);
+	const html = api._curatedMarkedToLineHtml(marked, null, 0);
+	assert.ok(html.includes('<span class="tw-ins" data-op="0">I</span>'));
+	assert.ok(html.includes('<span class="tw-del" data-op="1">E</span>'));
+	assert.ok(!api._curatedMarkedToLineHtml(marked).includes("data-op"));
+});
+
+test("marked-to-html numbers deletions and insertions in text order", () => {
+	const c = (n) => String.fromCharCode(n);
+	const text =
+		c(0xe002) +
+		"x" +
+		c(0xe004) +
+		"  y" +
+		c(0xe003) +
+		c(0xe000) +
+		"z" +
+		c(0xe001);
+	assert.equal(
+		api._curatedMarkedToHtml(text, 3),
+		'<span class="tw-del" data-op="3">x</span>\n  <span class="tw-del" data-op="3">y</span>' +
+			'<span class="tw-ins" data-op="4">z</span>',
+	);
+	assert.equal(
+		api._curatedMarkedToHtml(text),
+		'<span class="tw-del">x</span>\n  <span class="tw-del">y</span>' +
+			'<span class="tw-ins">z</span>',
+	);
+});
+
+test("step-by-step snippets number their changes like the full file", () => {
+	const lines = [];
+	for (let i = 0; i < 16; i++) lines.push(`v${i};`);
+	const text = lines.join("\n");
+	const extras = [1, 7, 13].map((n) => {
+		const token = `v${n}`;
+		const start = text.indexOf(token + ";");
+		return { token, label: "extra", start, end: start + token.length };
+	});
+	const r = applyWithSink({
+		student: { "f.css": text },
+		teacher: { "f.css": text },
+		marks: {
+			token_matching: "ideal",
+			teacher_files: { "f.css": [] },
+			student_files: { "f.css": extras },
+		},
+	});
+	assertSinkAligned(r);
+	const snippets = api
+		._curatedCorrectionsData(r.marked)
+		.filter((b) => b.type === "snippet");
+	assert.equal(snippets.length, 3, "three separate snippets");
+	const seen = [];
+	for (const b of snippets) {
+		const html = api._curatedMarkedToHtml(b.marked, b.opBase);
+		for (const [, op, shown] of html.matchAll(
+			/<span class="tw-del" data-op="(\d+)">([^<]*)<\/span>/g,
+		)) {
+			const refs = r.sink["f.css"][Number(op)];
+			assert.equal(refs[0].mark.token, shown, "op id points at its mark");
+			seen.push(Number(op));
+		}
+	}
+	assert.deepEqual(seen.sort(), [0, 1, 2]);
 });

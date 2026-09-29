@@ -61,6 +61,8 @@ function _curatedRenderPreservingScroll() {
 	});
 	if (typeof _curatedUpdateParityIndicator === "function")
 		_curatedUpdateParityIndicator();
+	if (typeof _curatedRefreshPreviewIfOpen === "function")
+		_curatedRefreshPreviewIfOpen();
 }
 
 function _curatedWorkingKey() {
