@@ -82,6 +82,12 @@ test("Ctrl+Up/Down navigates the selection; Ctrl+Shift+Up/Down moves the block",
 	assert.match(navBranch[0], /lessonRenderer\.render\(\)/);
 	assert.match(
 		navBranch[0],
+		/lessonRenderer\.render\(\);\s*uiManager\.refocusBlock\(next\);/,
+		"the newly selected block must take focus after the re-render, " +
+			"or the simulator panel (which follows focus) marks nothing",
+	);
+	assert.match(
+		navBranch[0],
 		/lessonManager\.firstAuthoredIndex\(\)/,
 		"navigation must not select into the inherited/include run",
 	);

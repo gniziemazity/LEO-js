@@ -441,6 +441,7 @@ function setupBlockShortcuts() {
 			e.preventDefault();
 			uiManager.selectBlock(next);
 			lessonRenderer.render();
+			uiManager.refocusBlock(next);
 			return;
 		}
 
