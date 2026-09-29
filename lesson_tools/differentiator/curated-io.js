@@ -84,7 +84,8 @@ function _curatedDownloadFile(fname, matching) {
 function _curatedFlashButton(id, label) {
 	const btn = document.getElementById(id);
 	if (!btn) return;
-	const orig = btn.textContent;
+	const orig = btn.dataset.label || btn.textContent;
+	btn.dataset.label = orig;
 	btn.textContent = label;
 	btn.classList.add("active");
 	setTimeout(() => {
@@ -291,12 +292,12 @@ function _curatedBuildSaveControls() {
 		setError("");
 		try {
 			await _curatedSaveToFolder(r.fname, r.matching);
-			_curatedFloatWin.win.style.display = "none";
+			_curatedFlashButton("csm-save", "✓ Saved");
 		} catch (err) {
 			console.error("[Differentiator] Save failed", err);
 			setError("Save failed: " + (err && err.message));
-			saveBtn.disabled = false;
 		}
+		saveBtn.disabled = false;
 	});
 
 	return form;
