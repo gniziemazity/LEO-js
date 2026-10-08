@@ -1,6 +1,6 @@
 const { formatCodeForAutoTyping } = require("./code-formatter");
 
-let copiedBlock = null;
+let copiedBlocks = [];
 
 class BlockEditor {
 	constructor(lessonManager, uiManager, lessonRenderer, undoManager = null) {
@@ -30,24 +30,36 @@ class BlockEditor {
 	}
 
 	copyBlock(index) {
-		const block = this.lessonManager.getBlock(index);
-		if (!block || block.fromInclude || block.type === "include") return false;
-		copiedBlock = JSON.parse(JSON.stringify(block));
+		return this.copyBlocks([index]);
+	}
+
+	copyBlocks(indices) {
+		const blocks = indices.map((i) => this.lessonManager.getBlock(i));
+		if (
+			!blocks.length ||
+			blocks.some((b) => !b || b.fromInclude || b.type === "include")
+		)
+			return false;
+		copiedBlocks = blocks.map((b) => JSON.parse(JSON.stringify(b)));
 		if (this.uiManager.setHasCopiedBlock)
 			this.uiManager.setHasCopiedBlock(true);
 		return true;
 	}
 
 	hasCopiedBlock() {
-		return copiedBlock !== null;
+		return copiedBlocks.length > 0;
 	}
 
 	pasteBlock(afterIndex) {
-		if (!copiedBlock) return null;
+		if (!copiedBlocks.length) return null;
 		this._checkpoint("paste-block");
 
-		const at = this.lessonManager.insertBlockCopy(copiedBlock, afterIndex);
-		this.uiManager.selectBlock(at);
+		const pasted = copiedBlocks.map((block, k) =>
+			this.lessonManager.insertBlockCopy(block, afterIndex + k),
+		);
+		const at = pasted[0];
+		if (pasted.length === 1) this.uiManager.selectBlock(at);
+		else this.uiManager.selectBlocks(pasted, at);
 		this.lessonRenderer.render();
 		this.focusNewBlock(at);
 		return at;
@@ -61,26 +73,43 @@ class BlockEditor {
 		const blockIdx =
 			index === undefined ? this.uiManager.getSelectedBlockIndex() : index;
 		if (blockIdx === null) return;
-		if (!this.lessonManager.canRemoveBlock(blockIdx)) return;
+		this.removeBlocks([blockIdx]);
+	}
+
+	removeBlocks(indices) {
+		if (!this.lessonManager.canRemoveBlocks(indices)) return;
 
 		this._checkpoint("remove-block");
 
-		this.lessonManager.removeBlock(blockIdx);
+		this.lessonManager.removeBlocks(indices);
 		this.uiManager.deselectBlock();
 		const remaining = this.lessonManager.getAllBlocks().length;
 		if (remaining > 0) {
-			this.uiManager.selectBlock(Math.max(0, blockIdx - 1));
+			this.uiManager.selectBlock(Math.max(0, Math.min(...indices) - 1));
 		}
 		this.lessonRenderer.render();
 	}
 
 	moveBlock(index, delta) {
-		if (!this.lessonManager.canMoveBlock(index, delta)) return;
+		this.moveBlocks([index], delta);
+	}
+
+	moveBlocks(indices, delta) {
+		if (!this.lessonManager.canMoveBlocks(indices, delta)) return;
 
 		this._checkpoint("move-block");
 
-		this.lessonManager.moveBlock(index, delta);
-		this.uiManager.selectBlock(index + delta);
+		this.lessonManager.moveBlocks(indices, delta);
+		if (indices.length === 1) {
+			this.uiManager.selectBlock(indices[0] + delta);
+		} else {
+			const primary = this.uiManager.getSelectedBlockIndex();
+			const moved = indices.map((i) => i + delta);
+			this.uiManager.selectBlocks(
+				moved,
+				indices.includes(primary) ? primary + delta : moved[0],
+			);
+		}
 		this.lessonRenderer.render();
 	}
 

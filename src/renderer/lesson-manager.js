@@ -272,24 +272,58 @@ class LessonManager {
 		return i;
 	}
 
-	canRemoveBlock(index) {
+	_authoredSet(indices) {
 		const floor = this.firstAuthoredIndex();
-		if (index < floor || index >= this.data.length) return false;
-		return this.data.length - floor > 1;
+		const sorted = [...new Set(indices)].sort((a, b) => a - b);
+		if (!sorted.length) return null;
+		if (sorted[0] < floor || sorted[sorted.length - 1] >= this.data.length)
+			return null;
+		return { floor, sorted };
+	}
+
+	canRemoveBlock(index) {
+		return this.canRemoveBlocks([index]);
+	}
+
+	canRemoveBlocks(indices) {
+		const set = this._authoredSet(indices);
+		if (!set) return false;
+		return this.data.length - set.floor - set.sorted.length >= 1;
+	}
+
+	removeBlocks(indices) {
+		if (!this.canRemoveBlocks(indices)) return false;
+		const sorted = this._authoredSet(indices).sorted;
+		for (const i of sorted.reverse()) this.data.splice(i, 1);
+		this.markAsChanged();
+		return true;
 	}
 
 	canMoveBlock(index, delta) {
-		const floor = this.firstAuthoredIndex();
-		const to = index + delta;
-		if (index < floor || index >= this.data.length) return false;
-		return to >= floor && to < this.data.length;
+		return this.canMoveBlocks([index], delta);
+	}
+
+	canMoveBlocks(indices, delta) {
+		const set = this._authoredSet(indices);
+		if (!set) return false;
+		const { floor, sorted } = set;
+		return (
+			sorted[0] + delta >= floor &&
+			sorted[sorted.length - 1] + delta < this.data.length
+		);
 	}
 
 	moveBlock(index, delta) {
-		if (!this.canMoveBlock(index, delta)) return false;
-		const to = index + delta;
-		const [block] = this.data.splice(index, 1);
-		this.data.splice(to, 0, block);
+		return this.moveBlocks([index], delta);
+	}
+
+	moveBlocks(indices, delta) {
+		if (!this.canMoveBlocks(indices, delta)) return false;
+		const sorted = this._authoredSet(indices).sorted;
+		for (const i of delta < 0 ? sorted : sorted.reverse()) {
+			const [block] = this.data.splice(i, 1);
+			this.data.splice(i + delta, 0, block);
+		}
 		this.markAsChanged();
 		return true;
 	}

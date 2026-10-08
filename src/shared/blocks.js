@@ -114,7 +114,8 @@
 				background: ${c.activeBlockColor};
 				color: ${c.activeBlockTextColor};
 			}
-			.block.selected {
+			.block.selected,
+			.block.multi-selected {
 				background-color: ${c.selectedBlockColor};
 				border-left-color: ${c.selectedBorder};
 			}

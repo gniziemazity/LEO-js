@@ -13,6 +13,8 @@ class UIManager {
 		this.isTypingActive = false;
 		this.remotesConnected = false;
 		this.selectedBlockIndex = null;
+		this.selectedIndices = new Set();
+		this.selectionAnchor = null;
 		this.sidebarEnabled = false;
 	}
 
@@ -69,10 +71,63 @@ class UIManager {
 
 	selectBlock(index) {
 		this.selectedBlockIndex = index;
+		this.selectedIndices = new Set(index === null ? [] : [index]);
+		this.selectionAnchor = index;
 	}
 
 	deselectBlock() {
-		this.selectedBlockIndex = null;
+		this.selectBlock(null);
+	}
+
+	selectBlocks(indices, primary) {
+		this.selectedIndices = new Set(indices);
+		this.selectedBlockIndex = primary;
+		this.selectedIndices.add(primary);
+		this.selectionAnchor = primary;
+	}
+
+	toggleInSelection(index) {
+		if (this.selectedBlockIndex === null) {
+			this.selectBlock(index);
+			return;
+		}
+		this.selectionAnchor = index;
+		if (!this.selectedIndices.has(index)) {
+			this.selectedIndices.add(index);
+			this.selectedBlockIndex = index;
+			return;
+		}
+		if (this.selectedIndices.size === 1) return;
+		this.selectedIndices.delete(index);
+		if (this.selectedBlockIndex !== index) return;
+		const rest = [...this.selectedIndices].sort((a, b) => a - b);
+		const below = rest.filter((i) => i < index);
+		this.selectedBlockIndex = below.length
+			? below[below.length - 1]
+			: rest[0];
+	}
+
+	selectRange(index, floor) {
+		const from = this.selectionAnchor !== null ? this.selectionAnchor : index;
+		const lo = Math.max(floor, Math.min(from, index));
+		const hi = Math.max(from, index);
+		this.selectedIndices = new Set();
+		for (let i = lo; i <= hi; i++) this.selectedIndices.add(i);
+		this.selectedBlockIndex = index;
+	}
+
+	collapseSelection() {
+		const primary = this.selectedBlockIndex;
+		this.selectedIndices = new Set(primary === null ? [] : [primary]);
+		this.selectionAnchor = primary;
+	}
+
+	getSelectedBlockIndices() {
+		return [...this.selectedIndices].sort((a, b) => a - b);
+	}
+
+	isMultiSelected() {
+		return this.selectedIndices.size > 1;
 	}
 
 	setSidebarEnabled(enabled, formatEnabled = enabled) {
@@ -104,6 +159,8 @@ class UIManager {
 
 		if (this.selectedBlockIndex === blockIdx) {
 			blockDiv.classList.add("selected");
+		} else if (this.selectedIndices.has(blockIdx)) {
+			blockDiv.classList.add("multi-selected");
 		}
 
 		if (block.fromInclude) {

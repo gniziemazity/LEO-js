@@ -274,10 +274,25 @@ class LessonRenderer {
 	_pasteTool(after, where) {
 		return {
 			glyph: "📥",
-			title: `Paste the copied block ${where} (Ctrl+Shift+V)`,
+			title: `Paste what was copied ${where} (Ctrl+Shift+V)`,
 			className: `block-tool-paste block-tool-hover ${where}`,
 			onClick: () => this.blockEditor && this.blockEditor.pasteBlock(after),
 		};
+	}
+
+	_targetsFor(blockIdx) {
+		const picked = this.uiManager.getSelectedBlockIndices
+			? this.uiManager.getSelectedBlockIndices()
+			: [];
+		return picked.length > 1 && picked.includes(blockIdx)
+			? picked
+			: [blockIdx];
+	}
+
+	_targetsLabel(targets) {
+		return targets.length > 1
+			? `${targets.length} selected blocks`
+			: "this block";
 	}
 
 	_addRow(block, blockIdx, isTypingActive, where) {
@@ -285,40 +300,43 @@ class LessonRenderer {
 		const above = where === "above";
 		const delta = above ? -1 : 1;
 		const after = above ? blockIdx - 1 : blockIdx;
+		const targets = this._targetsFor(blockIdx);
 		return [
 			...this._addTools(after, where),
 			this._pasteTool(after, where),
 			{
 				glyph: above ? "▲" : "▼",
-				title: above
-					? "Move this block up (Ctrl+Up)"
-					: "Move this block down (Ctrl+Down)",
+				title: `Move ${this._targetsLabel(targets)} ${
+					above ? "up (Ctrl+Shift+Up)" : "down (Ctrl+Shift+Down)"
+				}`,
 				className: "block-tool-hover",
-				disabled: !this.lessonManager.canMoveBlock(blockIdx, delta),
+				disabled: !this.lessonManager.canMoveBlocks(targets, delta),
 				onClick: () =>
-					this.blockEditor && this.blockEditor.moveBlock(blockIdx, delta),
+					this.blockEditor && this.blockEditor.moveBlocks(targets, delta),
 			},
 		];
 	}
 
 	_blockTools(block, blockIdx, isTypingActive) {
 		if (isTypingActive || !this._hasControls(block)) return [];
+		const targets = this._targetsFor(blockIdx);
+		const label = this._targetsLabel(targets);
 
 		return [
 			{
 				glyph: "⧉",
-				title: "Copy this block (Ctrl+Shift+C)",
+				title: `Copy ${label} (Ctrl+Shift+C)`,
 				className: "block-tool-hover",
 				onClick: () =>
-					this.blockEditor && this.blockEditor.copyBlock(blockIdx),
+					this.blockEditor && this.blockEditor.copyBlocks(targets),
 			},
 			{
 				glyph: "🗑️",
-				title: "Delete this block (Ctrl+D)",
+				title: `Delete ${label} (Ctrl+D)`,
 				className: "block-tool-remove block-tool-hover",
-				disabled: !this.lessonManager.canRemoveBlock(blockIdx),
+				disabled: !this.lessonManager.canRemoveBlocks(targets),
 				onClick: () =>
-					this.blockEditor && this.blockEditor.removeBlock(blockIdx),
+					this.blockEditor && this.blockEditor.removeBlocks(targets),
 			},
 		];
 	}
@@ -837,7 +855,29 @@ class LessonRenderer {
 		}, 0);
 	}
 
+	_extendSelection(e, blockIdx) {
+		const ui = this.uiManager;
+		const primary = ui.getSelectedBlockIndex();
+		const toggle = e.ctrlKey || e.metaKey;
+		if (primary === null || (!toggle && !e.shiftKey)) return false;
+		if (!toggle && primary === blockIdx) return false;
+		e.preventDefault();
+		if (toggle) ui.toggleInSelection(blockIdx);
+		else ui.selectRange(blockIdx, this.lessonManager.firstAuthoredIndex());
+		this.render();
+		ui.refocusBlock(ui.getSelectedBlockIndex());
+		return true;
+	}
+
 	_handleClickWhileEditing(e, block, blockIdx) {
+		if (this._extendSelection(e, blockIdx)) return;
+
+		if (this.uiManager.isMultiSelected()) {
+			this.uiManager.selectBlock(blockIdx);
+			this._rerenderAndFocus(blockIdx, e.clientX, e.clientY);
+			return;
+		}
+
 		const previousSelectedIndex = this.uiManager.getSelectedBlockIndex();
 
 		if (previousSelectedIndex === blockIdx) return;

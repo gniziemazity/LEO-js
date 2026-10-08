@@ -364,6 +364,7 @@ function rerenderAfterHistory(changed) {
 		document.activeElement.classList &&
 		document.activeElement.classList.contains("block");
 	const selected = uiManager.getSelectedBlockIndex();
+	uiManager.collapseSelection();
 	lessonRenderer.endEditBurst();
 	lessonRenderer.render();
 	if (editing && selected !== null) uiManager.refocusBlock(selected);
@@ -397,6 +398,14 @@ function setupUndoRedoShortcuts() {
 function setupBlockShortcuts() {
 	document.addEventListener("keydown", (e) => {
 		if (uiManager.isActive()) return;
+		const modified = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
+		if (e.key === "Escape" && !modified && uiManager.isMultiSelected()) {
+			e.preventDefault();
+			uiManager.collapseSelection();
+			lessonRenderer.render();
+			uiManager.refocusBlock(uiManager.getSelectedBlockIndex());
+			return;
+		}
 		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
 
 		const blockIdx = uiManager.getSelectedBlockIndex();
@@ -404,18 +413,19 @@ function setupBlockShortcuts() {
 		const block = lessonManager.getAllBlocks()[blockIdx];
 		if (!block) return;
 		const hasControls = !block.fromInclude && block.type !== "include";
+		const picked = uiManager.getSelectedBlockIndices();
 
 		const key = e.key.toLowerCase();
 		if (key === "d" && !e.shiftKey) {
-			if (!lessonManager.canRemoveBlock(blockIdx)) return;
+			if (!lessonManager.canRemoveBlocks(picked)) return;
 			e.preventDefault();
-			blockEditor.removeBlock(blockIdx);
+			blockEditor.removeBlocks(picked);
 			return;
 		}
 		if (key === "c" && e.shiftKey) {
 			if (!hasControls) return;
 			e.preventDefault();
-			blockEditor.copyBlock(blockIdx);
+			blockEditor.copyBlocks(picked);
 			return;
 		}
 		if (key === "v" && e.shiftKey) {
@@ -427,9 +437,9 @@ function setupBlockShortcuts() {
 		if ((key === "arrowup" || key === "arrowdown") && e.shiftKey) {
 			if (!hasControls) return;
 			const delta = key === "arrowup" ? -1 : 1;
-			if (!lessonManager.canMoveBlock(blockIdx, delta)) return;
+			if (!lessonManager.canMoveBlocks(picked, delta)) return;
 			e.preventDefault();
-			blockEditor.moveBlock(blockIdx, delta);
+			blockEditor.moveBlocks(picked, delta);
 			return;
 		}
 		if (key === "arrowup" || key === "arrowdown") {

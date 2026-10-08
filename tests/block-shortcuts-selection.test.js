@@ -37,19 +37,43 @@ test("block shortcuts (delete, copy, paste, move, add) act on the selected block
 			"selection, not whatever the mouse happens to be over",
 	);
 
+	assert.match(
+		body,
+		/const picked = uiManager\.getSelectedBlockIndices\(\);/,
+		"delete, copy and move act on every selected block",
+	);
 	for (const action of [
-		"lessonManager.canRemoveBlock(blockIdx)",
-		"blockEditor.removeBlock(blockIdx)",
-		"blockEditor.copyBlock(blockIdx)",
+		"lessonManager.canRemoveBlocks(picked)",
+		"blockEditor.removeBlocks(picked)",
+		"blockEditor.copyBlocks(picked)",
 		"blockEditor.pasteBlock(blockIdx)",
-		"lessonManager.canMoveBlock(blockIdx, delta)",
-		"blockEditor.moveBlock(blockIdx, delta)",
+		"lessonManager.canMoveBlocks(picked, delta)",
+		"blockEditor.moveBlocks(picked, delta)",
 	]) {
 		assert.ok(
 			body.includes(action),
-			`${action} no longer keys off the selected block`,
+			`${action} no longer keys off the selection`,
 		);
 	}
+});
+
+test("Escape and undo/redo collapse a multi-selection to its primary block", () => {
+	const body = funcBody("setupBlockShortcuts");
+	const esc =
+		/if \(e\.key === "Escape" && !modified && uiManager\.isMultiSelected\(\)\) \{[\s\S]*?\n\t\t\}/.exec(
+			body,
+		);
+	assert.ok(esc, "a bare Escape collapses only a multi-selection");
+	assert.match(esc[0], /uiManager\.collapseSelection\(\);/);
+	assert.match(
+		esc[0],
+		/uiManager\.refocusBlock\(uiManager\.getSelectedBlockIndex\(\)\)/,
+	);
+	assert.match(
+		funcBody("rerenderAfterHistory"),
+		/uiManager\.collapseSelection\(\);\s*lessonRenderer\.endEditBurst\(\);\s*lessonRenderer\.render\(\);/,
+		"undo can move blocks under a selection, so it keeps only the primary",
+	);
 });
 
 test("Ctrl+Up/Down navigates the selection; Ctrl+Shift+Up/Down moves the block", () => {
@@ -60,11 +84,8 @@ test("Ctrl+Up/Down navigates the selection; Ctrl+Shift+Up/Down moves the block",
 			body,
 		);
 	assert.ok(moveBranch, "the shifted arrow-key branch (move) is missing");
-	assert.match(moveBranch[0], /blockEditor\.moveBlock\(blockIdx, delta\)/);
-	assert.match(
-		moveBranch[0],
-		/lessonManager\.canMoveBlock\(blockIdx, delta\)/,
-	);
+	assert.match(moveBranch[0], /blockEditor\.moveBlocks\(picked, delta\)/);
+	assert.match(moveBranch[0], /lessonManager\.canMoveBlocks\(picked, delta\)/);
 
 	const afterMove = body.slice(
 		body.indexOf(moveBranch[0]) + moveBranch[0].length,

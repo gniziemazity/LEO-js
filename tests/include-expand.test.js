@@ -47,8 +47,8 @@ function makeRenderer({ blocks, selected = null, typing = false }) {
 	const renderer = new LessonRenderer(
 		{
 			getAllBlocks: () => blocks,
-			canMoveBlock: () => true,
-			canRemoveBlock: () => true,
+			canMoveBlocks: () => true,
+			canRemoveBlocks: () => true,
 		},
 		{
 			isActive: () => typing,
