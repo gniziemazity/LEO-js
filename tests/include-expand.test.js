@@ -89,7 +89,6 @@ test("an inherited paste starts collapsed to its first line", () => {
 	const div = renderComment(renderer, blocks, 0);
 	assert.equal(div.classList.contains("collapsed"), true);
 	assert.equal(div.textContent, "📋 <!DOCTYPE html>...");
-	assert.equal(div.dataset.fullText, INHERITED.text);
 	assert.equal(div.title, undefined, "no native tooltip on a collapsed paste");
 });
 

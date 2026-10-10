@@ -176,13 +176,6 @@ button {
 	background-color: var(--clr-black);
 }
 
-#controls input {
-	flex: 1;
-	padding: 5px;
-	border: none;
-	border-radius: 3px;
-}
-
 #timerSection {
 	display: flex;
 	align-items: center;
@@ -579,11 +572,6 @@ body.typing-active .move-to-new-file-input {
 	min-width: 140px;
 }
 
-.move-to-select option {
-	color: var(--clr-black);
-	background: var(--clr-white);
-}
-
 button.move-to-select {
 	cursor: pointer;
 }
@@ -778,22 +766,11 @@ body:not(.mobile-view) .block.from-include::after {
 	display: none;
 }
 
-.sidebar.hidden {
-	display: none;
-}
-
 .sidebar-section {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 	align-items: center;
-}
-
-.sidebar h4 {
-	font-size: 8px;
-	color: var(--clr-border);
-	text-transform: uppercase;
-	text-align: center;
 }
 
 #sim-panel {
@@ -1135,13 +1112,6 @@ body.sim-resizing {
 	cursor: pointer;
 }
 
-.setting-item small {
-	display: block;
-	margin-top: 4px;
-	color: var(--clr-muted);
-	font-size: 11px;
-}
-
 .speed-labels {
 	display: flex;
 	justify-content: space-between;
@@ -1264,10 +1234,6 @@ body.sim-resizing {
 	text-overflow: ellipsis;
 }
 
-.mobile-view body {
-	padding-top: 0;
-}
-
 #mobile-header {
 	position: sticky;
 	top: 0;
@@ -1277,11 +1243,6 @@ body.sim-resizing {
 	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 	width: 100%;
 	transition: transform 0.2s ease;
-}
-
-#mobile-header.hidden {
-	transform: translateY(-100%);
-	pointer-events: none;
 }
 
 .mobile-view #mobile-header.above-pad {

@@ -207,8 +207,8 @@ overview/students tables.
 | 📊 Timeline       | app Tools menu                      | Keylog charts and session analysis                                                                                 |
 | 📋 Simulator      | app Tools menu                      | Animated keystroke-log replay with live preview                                                                    |
 
-See `lesson_tools/CLAUDE.md` for the grading pipeline and the full `npm run` command list
-(`main`, `main-all`, `web`, `eval`, `overview`).
+The grading pipeline runs through the `npm run` scripts `main`, `main-all`, `web`, `eval`
+and `overview`.
 
 ## 📺 Demo
 
@@ -343,3 +343,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Built with [Electron](https://www.electronjs.org/)
 - Keyboard automation powered by [@computer-use/nut-js](https://www.npmjs.com/package/@computer-use/nut-js)
 - WebSocket server using [ws](https://github.com/websockets/ws)
+- Developed with the help of large language models, primarily [Claude](https://claude.com/claude-code) by Anthropic

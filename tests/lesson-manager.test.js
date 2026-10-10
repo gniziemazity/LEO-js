@@ -25,13 +25,14 @@ test("addBlock with no initial text defaults to empty string", () => {
 	assert.equal(lm.getBlock(0).text, "");
 });
 
-test("removeBlock removes at index and returns true", () => {
+test("removeBlocks removes at index and returns true", () => {
 	const lm = new LessonManager();
+	lm.data = [{ type: "include" }];
 	lm.addBlock("code", null, "a");
 	lm.addBlock("code", null, "b");
-	assert.equal(lm.removeBlock(0), true);
-	assert.equal(lm.getAllBlocks().length, 1);
-	assert.equal(lm.getBlock(0).text, "b");
+	assert.equal(lm.removeBlocks([1]), true);
+	assert.equal(lm.getAllBlocks().length, 2);
+	assert.equal(lm.getBlock(1).text, "b");
 });
 
 test("_migrateBlocks touches only code blocks", () => {
@@ -60,10 +61,14 @@ test("getAllMoveToFiles: collects file targets, dedups, ignores anchors/MAIN", (
 	assert.deepEqual(lm.getAllMoveToFiles(), ["a.js", "b.css"]);
 });
 
-test("removeBlock on out-of-range index returns false", () => {
+test("removeBlocks on out-of-range index returns false", () => {
 	const lm = new LessonManager();
-	assert.equal(lm.removeBlock(0), false);
-	assert.equal(lm.removeBlock(-1), false);
+	lm.data = [{ type: "include" }];
+	lm.addBlock("code", null, "a");
+	lm.addBlock("code", null, "b");
+	assert.equal(lm.removeBlocks([5]), false);
+	assert.equal(lm.removeBlocks([-1]), false);
+	assert.equal(lm.getAllBlocks().length, 3);
 });
 
 test("updateBlock changes text and returns true", () => {
@@ -92,14 +97,16 @@ test("markAsChanged flips flag and invokes callback", () => {
 	assert.equal(called, 1);
 });
 
-test("addBlock / removeBlock / updateBlock all trigger markAsChanged", () => {
+test("addBlock / removeBlocks / updateBlock all trigger markAsChanged", () => {
 	const lm = new LessonManager();
+	lm.data = [{ type: "include" }];
 	let called = 0;
 	lm.onChange(() => called++);
 	lm.addBlock("code");
-	lm.updateBlock(0, "x");
-	lm.removeBlock(0);
-	assert.equal(called, 3);
+	lm.addBlock("code");
+	lm.updateBlock(1, "x");
+	lm.removeBlocks([1]);
+	assert.equal(called, 4);
 });
 
 test("a code block cannot start or end with a bare newline", () => {

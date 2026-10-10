@@ -1,23 +1,13 @@
 class QuestionOverlay extends RemoteOverlay {
 	constructor() {
 		super("questionOverlay");
-		this.autoCloseTimer = null;
 	}
 
 	keepsInteractionBtns() {
 		return false;
 	}
 
-	clearTimer() {
-		if (this.autoCloseTimer) {
-			clearTimeout(this.autoCloseTimer);
-			this.autoCloseTimer = null;
-		}
-	}
-
 	show(question, students, bgColor, options) {
-		this.clearTimer();
-
 		document.getElementById("qText").textContent = question;
 
 		const grid = document.getElementById("qGrid");
@@ -103,11 +93,6 @@ class QuestionOverlay extends RemoteOverlay {
 				? InteractionView.participantId(idx)
 				: null;
 		sendMessage("student-answered", { studentName: studentId });
-		this.close();
-	}
-
-	closeUI() {
-		this.clearTimer();
 		this.close();
 	}
 

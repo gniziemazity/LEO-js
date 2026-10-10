@@ -137,19 +137,16 @@ function enterMediaBlock(kind, name) {
 
 cursorManager.onImageBlock = (imageName, shouldPin) => {
 	const lessonFilePath = lessonManager.getCurrentFilePath();
-	const bgColor = getColor("imageBlockColor", null);
 	ipcRenderer.send("open-image-window", {
 		imageName,
 		lessonFilePath,
-		bgColor,
 		shouldPin,
 	});
 	enterMediaBlock("image", imageName);
 };
 
 cursorManager.onWebBlock = (url, shouldPin) => {
-	const bgColor = getColor("imageBlockColor", null);
-	ipcRenderer.send("open-web-window", { url, bgColor, shouldPin });
+	ipcRenderer.send("open-web-window", { url, shouldPin });
 	enterMediaBlock("web", url);
 };
 

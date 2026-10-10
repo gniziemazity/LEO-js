@@ -2,6 +2,7 @@ const { ipcRenderer } = require("electron");
 
 const {
 	getBlockKind,
+	blockKindOf,
 	isMultilineSnippet,
 	kindClass,
 	SUPPORT_KINDS,
@@ -219,7 +220,7 @@ class LessonRenderer {
 	}
 
 	_kindPicker(block, blockIdx, isTypingActive) {
-		const kind = this._kindOf(block);
+		const kind = blockKindOf(block);
 		return {
 			glyph: kindGlyph(kind),
 			title: "Change block type",
@@ -247,12 +248,6 @@ class LessonRenderer {
 			blockDiv,
 			this._kindPicker(block, blockIdx, isTypingActive),
 		);
-	}
-
-	_kindOf(block) {
-		if (block.type === "move-to") return "move-to";
-		if (block.type === "code") return "code";
-		return getBlockKind(block.text);
 	}
 
 	_hasControls(block) {
@@ -556,13 +551,11 @@ class LessonRenderer {
 		if (isMultilineInsert && !isExpanded) {
 			blockDiv.contentEditable = "false";
 			blockDiv.textContent = collapsedLabel(shown);
-			blockDiv.dataset.fullText = block.text;
 			blockDiv.classList.add("collapsed");
 		} else {
 			blockDiv.contentEditable =
 				!isTypingActive && (!block.fromInclude || !!block.startFile);
 			blockDiv.textContent = shown;
-			delete blockDiv.dataset.fullText;
 		}
 
 		this._syncEmpty(blockDiv, shown);
@@ -603,7 +596,6 @@ class LessonRenderer {
 			globalIndex: stepIndex,
 		});
 
-		blockDiv.dataset.stepIndex = stepIndex;
 		return stepIndex + 1;
 	}
 
@@ -633,7 +625,6 @@ class LessonRenderer {
 				globalIndex: stepIndex,
 			});
 
-			blockDiv.dataset.stepIndex = stepIndex;
 			return stepIndex + 1;
 		}
 	}
@@ -726,7 +717,6 @@ class LessonRenderer {
 			globalIndex: stepIndex,
 		});
 
-		blockDiv.dataset.stepIndex = stepIndex;
 		return stepIndex + 1;
 	}
 

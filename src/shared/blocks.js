@@ -46,6 +46,12 @@
 		return NOTE_KIND;
 	}
 
+	function blockKindOf(block) {
+		if (block.type === "comment") return getBlockKind(block.text);
+		if (block.type === MOVE_TO_KIND) return MOVE_TO_KIND;
+		return block.type;
+	}
+
 	function isMultilineSnippet(text) {
 		return getBlockKind(text) === "snippet" && String(text).includes("\n");
 	}
@@ -151,6 +157,7 @@
 		kindPrefix,
 		withKindPrefix,
 		getBlockKind,
+		blockKindOf,
 		stripBlockPrefix,
 		isMultilineSnippet,
 		collapsedLabel,

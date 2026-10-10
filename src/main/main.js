@@ -49,7 +49,6 @@ const {
 	enterPopup,
 	endPopup,
 	confirmPopup,
-	endPopupIfOpen,
 	confirmMedia,
 	dismissMedia,
 	confirmKeyFor,
@@ -348,7 +347,7 @@ for (const w of FLOAT_WINDOWS) {
 	if (w.close) {
 		ipcMain.on(`close-${w.name}-window`, () => {
 			w.float.close(w.close === "force" ? { force: true } : undefined);
-			if (w.popup) endPopupIfOpen(w.name);
+			if (w.popup) endPopup(w.name);
 		});
 	}
 	if (w.forceClose) {
@@ -425,7 +424,7 @@ ipcMain.on("desk-action", (event, payload) => {
 
 ipcMain.on(
 	"open-image-window",
-	(event, { imageName, lessonFilePath, bgColor, shouldPin }) => {
+	(event, { imageName, lessonFilePath, shouldPin }) => {
 		if (!lessonFilePath) return;
 		const imagePath = path.join(
 			path.dirname(lessonFilePath),
@@ -437,7 +436,7 @@ ipcMain.on(
 			return;
 		}
 		_imageFloat.showOrReuse(
-			{ imagePath, bgColor, shouldPin },
+			{ imagePath, shouldPin },
 			{ shouldPin, gatePin: true },
 		);
 	},
@@ -464,11 +463,8 @@ ipcMain.on("resize-image-window", (event, { width, height }) => {
 	_imageFloat.rect = { x: b.x, y: b.y, w: b.width, h: b.height };
 });
 
-ipcMain.on("open-web-window", (event, { url, bgColor, shouldPin }) => {
-	_webFloat.showOrReuse(
-		{ url, bgColor, shouldPin },
-		{ shouldPin, gatePin: true },
-	);
+ipcMain.on("open-web-window", (event, { url, shouldPin }) => {
+	_webFloat.showOrReuse({ url, shouldPin }, { shouldPin, gatePin: true });
 });
 
 let activeResize = null;

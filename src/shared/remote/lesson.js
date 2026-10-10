@@ -1,4 +1,3 @@
-let currentSettings = null;
 let stepEls = [];
 let appliedStep = null;
 let scrollPending = null;
@@ -22,7 +21,6 @@ function updateActiveState(active) {
 }
 
 function applySettings(settings) {
-	currentSettings = settings;
 	if (settings.teacherName) teacherName = settings.teacherName;
 	const id = "dynamic-settings-styles";
 	let s = document.getElementById(id);
@@ -67,7 +65,6 @@ function updateLessonData(data) {
 			const isMultilineInsert = isMultilineSnippet(block.text);
 			if (isMultilineInsert) {
 				div.innerText = collapsedLabel(block.text);
-				div.dataset.fullText = block.text;
 				div.classList.add("collapsed");
 			} else {
 				div.innerText = block.text;

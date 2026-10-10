@@ -377,13 +377,6 @@ class LessonManager {
 		return true;
 	}
 
-	removeBlock(index) {
-		if (!this.getBlock(index)) return false;
-		this.data.splice(index, 1);
-		this.markAsChanged();
-		return true;
-	}
-
 	updateBlock(index, text) {
 		const block = this.getBlock(index);
 		if (!block) return false;

@@ -77,7 +77,6 @@ const CHAR_TO_KEY = {
 	"-": Key.Minus,
 	"=": Key.Equal,
 	"`": Key.Grave,
-	"\t": Key.Tab,
 };
 
 const LAYOUT_NATIVE_CHAINS = {

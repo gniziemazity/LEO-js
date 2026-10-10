@@ -229,11 +229,11 @@ test("the phone's OK confirms whichever media popup the host has open", () => {
 
 test("closing a window ends its popup only if that popup is the open one", () => {
 	const { popups, calls } = popupsHarness();
-	popups.endPopupIfOpen("image");
+	popups.endPopup("image");
 	assert.deepEqual(calls, [], "a pinned image closed later ends nothing");
 
 	popups.enterPopup("image", { name: "a.png" });
-	popups.endPopupIfOpen("image");
+	popups.endPopup("image");
 	assert.deepEqual(calls.at(-1), ["broadcastMediaEnded"]);
 	assert.equal(popups.openPopupKind(), null);
 });
@@ -243,7 +243,7 @@ test("the close channel of a presented window also ends its popup", () => {
 	const loop = /for \(const w of FLOAT_WINDOWS\) \{[\s\S]*?\n\}/.exec(main)[0];
 	assert.match(
 		loop,
-		/ipcMain\.on\(`close-\$\{w\.name\}-window`, \(\) => \{\s*w\.float\.close\([^;]*\);\s*if \(w\.popup\) endPopupIfOpen\(w\.name\);/,
+		/ipcMain\.on\(`close-\$\{w\.name\}-window`, \(\) => \{\s*w\.float\.close\([^;]*\);\s*if \(w\.popup\) endPopup\(w\.name\);/,
 		"one handler per channel: a second ipcMain.on would be easy to miss",
 	);
 	for (const name of ["image", "web"]) {

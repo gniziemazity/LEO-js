@@ -92,10 +92,6 @@ function confirmPopup(kind) {
 	return true;
 }
 
-function endPopupIfOpen(kind) {
-	return endPopup(kind);
-}
-
 function confirmMedia() {
 	if (MEDIA_KINDS.includes(openPopup)) confirmPopup(openPopup);
 }
@@ -256,7 +252,6 @@ module.exports = {
 	enterPopup,
 	endPopup,
 	confirmPopup,
-	endPopupIfOpen,
 	confirmMedia,
 	dismissMedia,
 	confirmKeyFor,

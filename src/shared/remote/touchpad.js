@@ -107,8 +107,6 @@ function stopDragIfActive() {
 	if (isDragging) {
 		isDragging = false;
 		sendMessage("mouse-drag-end", {});
-		const overlay = document.getElementById("touchpadOverlay");
-		if (overlay) overlay.classList.remove("dragging");
 	}
 }
 
@@ -422,7 +420,6 @@ function initTouchpad() {
 			}
 			isDragging = true;
 			sendMessage("mouse-drag-start", {});
-			overlay.classList.add("dragging");
 			tapTime = 0;
 		}
 	});

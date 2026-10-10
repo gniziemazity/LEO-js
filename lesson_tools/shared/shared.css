@@ -36,7 +36,6 @@
 	--clr-text-soft: var(--c-gray-3);
 	--clr-text-strong: var(--c-gray-3);
 	--clr-gray: var(--c-gray-3);
-	--clr-text-dim: var(--c-gray-2);
 	--clr-text-faint: var(--c-gray-2);
 	--clr-label: var(--c-gray-4);
 	--clr-muted: var(--c-gray-2);
@@ -133,7 +132,6 @@
 	--clr-chart-dot-muted-stroke: #777;
 
 	--clr-legend-bg: rgba(255, 255, 255, 0.53);
-	--clr-asn-col-bg: rgba(0, 122, 204, 0.04);
 
 	--hl-comment: var(--c-green-1);
 	--hl-tag: var(--c-orange-1);

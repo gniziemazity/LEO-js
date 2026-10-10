@@ -82,7 +82,8 @@
 			option.textContent = choice.label;
 			select.appendChild(option);
 		}
-		if (onChange) select.onchange = () => onChange(askerFromValue(select.value));
+		if (onChange)
+			select.onchange = () => onChange(askerFromValue(select.value));
 		label.appendChild(select);
 		row.appendChild(label);
 		return select;
@@ -105,7 +106,6 @@
 
 	const api = {
 		DONE_LABEL,
-		ASKED_BY_LABEL,
 		TEACHER_ASKER,
 		isQuestion,
 		interactionTitle,

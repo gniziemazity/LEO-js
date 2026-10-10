@@ -194,10 +194,7 @@ class CourseManager {
 	}
 
 	_parseStudentNames(csvText) {
-		const lines = csvText
-			.replace(/^﻿/, "")
-			.split(/\r?\n/)
-			.filter((l) => l.trim().length > 0);
+		const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
 		if (!lines.length) return [];
 		const header = lines[0].split(";").map((h) => h.trim());
 		const nameIdx = header.indexOf("Student Name");

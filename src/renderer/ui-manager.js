@@ -1,11 +1,5 @@
-const { getBlockKind, kindClass, MOVE_TO_KIND } = require("../shared/blocks");
+const { blockKindOf, kindClass } = require("../shared/blocks");
 const { KIND_PLACEHOLDERS } = require("./block-types");
-
-function blockKindOf(block) {
-	if (block.type === "comment") return getBlockKind(block.text);
-	if (block.type === MOVE_TO_KIND) return MOVE_TO_KIND;
-	return block.type;
-}
 
 class UIManager {
 	constructor() {
@@ -257,7 +251,6 @@ class UIManager {
 			btn.className = "key-btn";
 			btn.textContent = char;
 			btn.title = keys[char];
-			btn.dataset.char = char;
 			btn.disabled = !this.sidebarEnabled;
 			btn.onclick = () => onKeyClick(char);
 			this.elements.specialKeysContainer.appendChild(btn);
