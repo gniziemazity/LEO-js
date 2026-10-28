@@ -44,7 +44,7 @@ function buildSteps() {
 	for (const ch of "let a = 1;") push({ type: "char", char: ch });
 	push({ type: "anchor", value: "3" });
 	for (const ch of "more();") push({ type: "char", char: ch });
-	push({ type: "block", kind: "code", text: "", blockIndex: 1 });
+	push({ type: "block", blockType: "code", text: "", blockIndex: 1 });
 	for (const ch of "tail();") push({ type: "char", char: ch });
 	return steps;
 }

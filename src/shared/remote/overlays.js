@@ -12,8 +12,8 @@ function setStudents(students) {
 
 const questionOverlay = new QuestionOverlay();
 const interactionOverlay = new InteractionOverlay();
-const moveToOverlay = new MoveToOverlay();
-const codeInsertOverlay = new CodeInsertOverlay();
+const goToOverlay = new GoToOverlay();
+const snippetOverlay = new SnippetOverlay();
 const noteOverlay = new NoteOverlay();
 const mediaOverlay = new MediaOverlay();
 
@@ -45,32 +45,32 @@ function interactionAsk() {
 	interactionOverlay.ask();
 }
 
-function showMoveToOverlay(payload) {
-	moveToOverlay.show(payload);
+function showGoToOverlay(payload) {
+	goToOverlay.show(payload);
 }
 
-function closeMoveToOverlayUI() {
-	moveToOverlay.closeUI();
+function closeGoToOverlayUI() {
+	goToOverlay.closeUI();
 }
 
-function closeMoveToOverlay() {
-	moveToOverlay.confirm();
+function closeGoToOverlay() {
+	goToOverlay.confirm();
 }
 
-function showCodeInsertOverlay(payload) {
-	codeInsertOverlay.show(payload);
+function showSnippetOverlay(payload) {
+	snippetOverlay.show(payload);
 }
 
-function closeCodeInsertOverlayUI() {
-	codeInsertOverlay.closeUI();
+function closeSnippetOverlayUI() {
+	snippetOverlay.closeUI();
 }
 
-function closeCodeInsertOverlay() {
-	codeInsertOverlay.confirm();
+function closeSnippetOverlay() {
+	snippetOverlay.confirm();
 }
 
-function codeInsertPaste() {
-	codeInsertOverlay.paste();
+function snippetPaste() {
+	snippetOverlay.paste();
 }
 
 function showNoteOverlay(payload) {
@@ -115,8 +115,8 @@ function setPinnedWindows(pinned) {
 function resyncOverlays(state) {
 	const host = [
 		[questionOverlay, state.activeQuestion],
-		[moveToOverlay, state.activeMoveTo],
-		[codeInsertOverlay, state.activeCodeInsert],
+		[goToOverlay, state.activeGoTo],
+		[snippetOverlay, state.activeSnippet],
 		[noteOverlay, state.activeNote],
 		[mediaOverlay, state.activeMedia],
 	];
@@ -129,8 +129,8 @@ function unpinWindows() {
 	sendMessage("unpin-windows", {});
 }
 
-function moveToTypeName() {
-	moveToOverlay.typeName();
+function goToTypeName() {
+	goToOverlay.typeName();
 }
 
 function onRandomizerResult(index, name) {

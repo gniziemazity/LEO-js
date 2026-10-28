@@ -190,22 +190,22 @@ function _makeFloatWin({ id, className, onClose }) {
 	if (id) win.id = id;
 
 	const header = document.createElement("div");
-	header.className = "float-win__header";
+	header.className = "float-win-header";
 	const dragHint = document.createElement("span");
-	dragHint.className = "float-win__drag";
+	dragHint.className = "float-win-drag";
 	dragHint.textContent = "⠿";
 	header.appendChild(dragHint);
 	const titleEl = document.createElement("span");
-	titleEl.className = "float-win__title";
+	titleEl.className = "float-win-title";
 	header.appendChild(titleEl);
 	const closeBtn = document.createElement("button");
-	closeBtn.className = "float-win__close";
+	closeBtn.className = "float-win-close";
 	closeBtn.textContent = "×";
 	if (onClose) closeBtn.addEventListener("click", onClose);
 	header.appendChild(closeBtn);
 
 	const body = document.createElement("div");
-	body.className = "float-win__body";
+	body.className = "float-win-body";
 
 	win.appendChild(header);
 	win.appendChild(body);

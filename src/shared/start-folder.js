@@ -1,8 +1,10 @@
 const fs = require("fs");
 const path = require("path");
+const { decodeBuffer } = require("./encoding");
+const { wrapAnchor, anchorIdPattern } = require("./go-to-target");
 
 const SKIPPED_DIRS = new Set(["node_modules", ".git"]);
-const TOKEN_RE = /⚓(\d+)⚓/g;
+const TOKEN_RE = anchorIdPattern();
 const STRAY_RE = /⚓\d*/g;
 
 function startDirFor(planPath) {
@@ -55,7 +57,7 @@ function listStartFiles(dir) {
 			if (looksBinary(buffer)) continue;
 			out.push({
 				name: childRel,
-				text: buffer.toString("utf8").replace(/\r\n?/g, "\n"),
+				text: decodeBuffer(buffer).replace(/\r\n?/g, "\n"),
 			});
 		}
 	};
@@ -93,7 +95,7 @@ function embedAnchors(text, anchors) {
 		.sort((a, b) => b[1] - a[1] || Number(b[0]) - Number(a[0]));
 	let out = text;
 	for (const [id, offset] of placed) {
-		out = out.slice(0, offset) + `⚓${id}⚓` + out.slice(offset);
+		out = out.slice(0, offset) + wrapAnchor(id) + out.slice(offset);
 	}
 	return out;
 }

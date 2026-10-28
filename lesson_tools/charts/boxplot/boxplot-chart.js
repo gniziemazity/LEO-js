@@ -135,7 +135,7 @@ class BoxPlotChart {
 				const yWlo = this._axisY(stats.whiskerMin, axKey);
 				const yWhi = this._axisY(stats.whiskerMax, axKey);
 
-				ctx.fillStyle = ds.color ?? "rgba(100,100,100,0.4)";
+				ctx.fillStyle = ds.color ?? CHART_COLOR.datasetFill;
 				ctx.fillRect(bx, yQ3, boxW, yQ1 - yQ3);
 				ctx.strokeStyle = ds.borderColor ?? CHART_COLOR.barBorder;
 				ctx.lineWidth = 1.5;

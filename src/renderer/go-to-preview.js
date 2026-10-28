@@ -1,12 +1,13 @@
-const { extractAnchorSnippet } = require("./anchor-snippet");
-const { renderSnippet } = require("../shared/snippet-view");
-const { moveToTargetLabel } = require("../shared/move-to-target");
+const { extractGoToExcerpt } = require("./plan-replay");
+const { renderExcerpt } = require("../shared/excerpt-view");
+const { goToTargetLabel } = require("../shared/go-to-target");
+const UIManager = require("./ui-manager");
 
 const SHOW_DELAY_MS = 120;
 const MARGIN = 8;
 const MIN_STRIP_HEIGHT = 90;
 
-class AnchorPreview {
+class GoToPreview {
 	constructor(lessonManager, uiManager) {
 		this.lessonManager = lessonManager;
 		this.uiManager = uiManager;
@@ -27,9 +28,9 @@ class AnchorPreview {
 		const closest = e.target && e.target.closest;
 		if (!closest) return null;
 
-		const option = e.target.closest(".mt-option");
+		const option = e.target.closest(".gt-option");
 		if (option) {
-			const list = option.closest(".mt-options");
+			const list = option.closest(".gt-options");
 			const idx = list ? Number(list.dataset.blockIndex) : NaN;
 			if (!Number.isFinite(idx)) return null;
 			return {
@@ -42,7 +43,7 @@ class AnchorPreview {
 
 		const block = e.target.closest(".block");
 		if (block && block.dataset.target) {
-			const idx = this._domBlockIndex(block);
+			const idx = UIManager.blockIndexOf(block);
 			if (idx === null) return null;
 			return {
 				el: block,
@@ -52,12 +53,6 @@ class AnchorPreview {
 			};
 		}
 		return null;
-	}
-
-	_domBlockIndex(block) {
-		const blocks = [...document.querySelectorAll(".block")];
-		const idx = blocks.indexOf(block);
-		return idx < 0 ? null : idx;
 	}
 
 	_onOver(e) {
@@ -84,21 +79,21 @@ class AnchorPreview {
 
 	_show(hit) {
 		this.timer = null;
-		const snippet = extractAnchorSnippet(
+		const excerpt = extractGoToExcerpt(
 			hit.value,
 			hit.blockIdx,
 			this.lessonManager.getAllBlocks(),
 			3,
 			3,
 		);
-		if (!snippet) return;
+		if (!excerpt) return;
 
 		const el = this._element();
-		if (!renderSnippet(el, snippet)) return;
-		if (snippet.file) {
+		if (!renderExcerpt(el, excerpt)) return;
+		if (excerpt.file) {
 			const header = document.createElement("div");
-			header.className = "anchor-preview-file";
-			header.textContent = moveToTargetLabel(snippet.file);
+			header.className = "go-to-preview-file";
+			header.textContent = goToTargetLabel(excerpt.file);
 			el.insertBefore(header, el.firstChild);
 		}
 		el.style.display = "block";
@@ -108,7 +103,7 @@ class AnchorPreview {
 	_element() {
 		if (!this.el) {
 			this.el = document.createElement("div");
-			this.el.className = "anchor-preview";
+			this.el.className = "go-to-preview";
 			document.body.appendChild(this.el);
 		}
 		return this.el;
@@ -174,4 +169,4 @@ class AnchorPreview {
 	}
 }
 
-module.exports = AnchorPreview;
+module.exports = GoToPreview;

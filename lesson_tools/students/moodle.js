@@ -218,14 +218,6 @@ function _buildMoodleScript(rows) {
 	);
 }
 
-function _moodleFlash(btn, label) {
-	const original = btn.textContent;
-	btn.textContent = label;
-	setTimeout(() => {
-		btn.textContent = original;
-	}, 1400);
-}
-
 function _copyMoodleScript() {
 	const btn = document.getElementById("moodle-btn");
 	const rows = _moodleFeedbackRows();
@@ -233,23 +225,7 @@ function _copyMoodleScript() {
 		alert("No students with a Grade, a Comments value or a Follow score.");
 		return;
 	}
-	const text = _buildMoodleScript(rows);
-	const done = () => _moodleFlash(btn, "✓ " + rows.length + " copied");
-	const fail = () => _moodleFlash(btn, "✖ Failed");
-	if (navigator.clipboard && navigator.clipboard.writeText) {
-		navigator.clipboard.writeText(text).then(done).catch(fail);
-		return;
-	}
-	const ta = document.createElement("textarea");
-	ta.value = text;
-	ta.style.position = "fixed";
-	ta.style.opacity = "0";
-	document.body.appendChild(ta);
-	ta.select();
-	try {
-		document.execCommand("copy") ? done() : fail();
-	} catch {
-		fail();
-	}
-	ta.remove();
+	copyText(_buildMoodleScript(rows)).then((ok) =>
+		flashButton(btn, ok ? rows.length + " copied" : "Failed", 1400),
+	);
 }

@@ -1,21 +1,13 @@
 let touchpadActive = false;
-let touchStartX = 0;
-let touchStartY = 0;
-let lastSendTime = 0;
 let MOUSE_SENSITIVITY = 3;
 let SCROLL_SENSITIVITY = 3;
 const SEND_THROTTLE_MS = 30;
-let isDragging = false;
-let oneFingerMoved = false;
-let tapTime = 0;
-let tapTimeout = null;
-let twoFingerStartX = 0;
-let twoFingerTapStart = 0;
-let twoFingerMoved = false;
-let wasTwoFinger = false;
+const TAP_MAX_MS = 200;
+const DOUBLE_TAP_GAP_MS = 300;
+const TWO_FINGER_TAP_MS = 300;
+const MOVE_THRESHOLD = 8;
 let touchpadMode = "mouse";
 let touchpadSide = "right";
-let scrollAnchorId = null;
 let scrollAccum = 0;
 
 const touchpadModeHandlers = {};
@@ -65,6 +57,21 @@ function stopScrollMomentum() {
 	scrollAccum = 0;
 }
 
+function sendScroll(dy) {
+	scrollAccum += dy;
+	scrollVelocity =
+		scrollVelocity * (1 - VELOCITY_SMOOTHING) + dy * VELOCITY_SMOOTHING;
+	const toSend = Math.trunc(scrollAccum);
+	if (toSend === 0) return false;
+	scrollAccum -= toSend;
+	sendMessage("mouse-scroll", { dy: toSend });
+	return true;
+}
+
+function releaseScroll() {
+	if (Math.abs(scrollVelocity) > MOMENTUM_MIN_VEL) startScrollMomentum();
+}
+
 function rotateCCW(dx, dy) {
 	return { dx: dy, dy: -dx };
 }
@@ -80,6 +87,190 @@ function rotateForSide(dx, dy) {
 function setTouchpadSide(side) {
 	touchpadSide = side || "right";
 }
+
+function findTouch(touches, id) {
+	for (let i = 0; i < touches.length; i++) {
+		if (touches[i].identifier === id) return touches[i];
+	}
+	return null;
+}
+
+function createPadGestures(opts) {
+	const o = Object.assign(
+		{
+			sendThrottleMs: SEND_THROTTLE_MS,
+			getMouseSensitivity: () => MOUSE_SENSITIVITY,
+			getScrollSensitivity: () => SCROLL_SENSITIVITY,
+			rotateForSide: (dx, dy) => rotateForSide(dx, dy),
+			getTwoFingerMode: () => "scroll",
+			onCursorMove: (d) => sendMessage("mouse-move", d),
+			onTap: (button) => sendMessage("mouse-click", { button }),
+			onDragStart: () => sendMessage("mouse-drag-start", {}),
+			onDragEnd: () => sendMessage("mouse-drag-end", {}),
+			onScroll: ({ dy }) => sendScroll(dy),
+			onScrollStop: () => stopScrollMomentum(),
+			onScrollRelease: () => releaseScroll(),
+			startPinch: () => {},
+			movePinch: () => false,
+		},
+		opts,
+	);
+	let lastSendTime = 0;
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let touchDownX = 0;
+	let touchDownY = 0;
+	let touchDownTime = 0;
+	let oneFingerMoved = false;
+	let tapTime = 0;
+	let tapTimeout = null;
+	let isDragging = false;
+	let wasTwoFinger = false;
+	let twoFingerTapStart = 0;
+	let twoFingerMoved = false;
+	let twoFingerStartX = 0;
+	let twoFingerStartY = 0;
+	let scrollAnchorId = null;
+
+	function clearTap() {
+		if (tapTimeout) {
+			clearTimeout(tapTimeout);
+			tapTimeout = null;
+		}
+		tapTime = 0;
+	}
+
+	function stopDrag() {
+		if (!isDragging) return;
+		isDragging = false;
+		o.onDragEnd();
+	}
+
+	function twoFingerMove(e, dx, dy) {
+		if (o.getTwoFingerMode() === "pinch") return o.movePinch(e);
+		const sens = o.getScrollSensitivity();
+		return o.onScroll({ dy: o.rotateForSide(dx * sens, dy * sens).dy });
+	}
+
+	function start(e) {
+		if (e.touches.length === 2) {
+			const anchor = e.touches[0];
+			scrollAnchorId = anchor.identifier;
+			twoFingerStartX = anchor.clientX;
+			twoFingerStartY = anchor.clientY;
+			twoFingerTapStart = Date.now();
+			twoFingerMoved = false;
+			wasTwoFinger = true;
+			o.onScrollStop();
+			o.startPinch(e);
+			return;
+		}
+
+		const t = e.touches[0];
+		touchStartX = t.clientX;
+		touchStartY = t.clientY;
+		touchDownX = t.clientX;
+		touchDownY = t.clientY;
+		touchDownTime = Date.now();
+		oneFingerMoved = false;
+
+		if (tapTime > 0 && touchDownTime - tapTime < DOUBLE_TAP_GAP_MS) {
+			clearTap();
+			isDragging = true;
+			o.onDragStart();
+		}
+	}
+
+	function move(e) {
+		const now = Date.now();
+		if (now - lastSendTime < o.sendThrottleMs) return;
+		lastSendTime = now;
+
+		if (e.touches.length === 2) {
+			const anchor = findTouch(e.touches, scrollAnchorId);
+			if (!anchor) return;
+			const dx = anchor.clientX - twoFingerStartX;
+			const dy = anchor.clientY - twoFingerStartY;
+			twoFingerStartX = anchor.clientX;
+			twoFingerStartY = anchor.clientY;
+			if (twoFingerMove(e, dx, dy)) twoFingerMoved = true;
+		} else if (e.touches.length === 1) {
+			if (wasTwoFinger) return;
+
+			const t = e.touches[0];
+			const totalDx = Math.abs(t.clientX - touchDownX);
+			const totalDy = Math.abs(t.clientY - touchDownY);
+			if (totalDx > MOVE_THRESHOLD || totalDy > MOVE_THRESHOLD) {
+				oneFingerMoved = true;
+			}
+			const sens = o.getMouseSensitivity();
+			const rotated = o.rotateForSide(
+				(t.clientX - touchStartX) * sens,
+				(t.clientY - touchStartY) * sens,
+			);
+			touchStartX = t.clientX;
+			touchStartY = t.clientY;
+			if (Math.abs(rotated.dx) > 0.5 || Math.abs(rotated.dy) > 0.5) {
+				o.onCursorMove({
+					dx: Math.round(rotated.dx),
+					dy: Math.round(rotated.dy),
+				});
+			}
+		}
+	}
+
+	function end(e) {
+		if (e.touches.length > 0) return;
+
+		if (twoFingerTapStart > 0) {
+			stopDrag();
+			const elapsed = Date.now() - twoFingerTapStart;
+			if (!twoFingerMoved && elapsed < TWO_FINGER_TAP_MS) {
+				o.onTap("right");
+			} else if (twoFingerMoved) {
+				o.onScrollRelease();
+			}
+			twoFingerTapStart = 0;
+			wasTwoFinger = false;
+			return;
+		}
+
+		if (wasTwoFinger) {
+			wasTwoFinger = false;
+			return;
+		}
+
+		if (isDragging) {
+			stopDrag();
+			return;
+		}
+
+		const elapsed = Date.now() - touchDownTime;
+		if (!oneFingerMoved && elapsed < TAP_MAX_MS) {
+			tapTime = Date.now();
+			tapTimeout = setTimeout(() => {
+				o.onTap("left");
+				tapTime = 0;
+				tapTimeout = null;
+			}, DOUBLE_TAP_GAP_MS);
+		}
+	}
+
+	function cancel() {
+		stopDrag();
+		o.onScrollStop();
+		clearTap();
+		wasTwoFinger = false;
+		twoFingerTapStart = 0;
+		twoFingerMoved = false;
+		oneFingerMoved = false;
+		scrollAnchorId = null;
+	}
+
+	return { options: o, start, move, end, cancel };
+}
+
+const mouseGestures = createPadGestures();
 
 function updateModeBtns(activeMode) {
 	const ids = {
@@ -103,28 +294,6 @@ function updateModeBtns(activeMode) {
 	}
 }
 
-function stopDragIfActive() {
-	if (isDragging) {
-		isDragging = false;
-		sendMessage("mouse-drag-end", {});
-	}
-}
-
-function resetGesture() {
-	stopDragIfActive();
-	stopScrollMomentum();
-	if (tapTimeout) {
-		clearTimeout(tapTimeout);
-		tapTimeout = null;
-	}
-	tapTime = 0;
-	wasTwoFinger = false;
-	twoFingerTapStart = 0;
-	twoFingerMoved = false;
-	oneFingerMoved = false;
-	scrollAnchorId = null;
-}
-
 function deactivateTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
 	const header = document.getElementById("mobile-header");
@@ -132,7 +301,7 @@ function deactivateTouchpad() {
 	overlay.classList.remove("active", "keyboard-mode");
 	delete document.body.dataset.padTint;
 	header.classList.remove("hidden", "above-pad");
-	resetGesture();
+	mouseGestures.cancel();
 	if (activeModeHandler) {
 		if (activeModeHandler.deactivate)
 			activeModeHandler.deactivate({ overlay, header });
@@ -207,14 +376,14 @@ function setTouchpadSensitivity(sensitivity) {
 	SCROLL_SENSITIVITY = sensitivity * 0.67;
 }
 
-let sessionActive = false;
+let autoTypingActive = false;
 
 function blockingOverlayOpen() {
 	return !!document.querySelector(".overlay.active:not(.overlay-pad-ok)");
 }
 
 function keyInputAllowed() {
-	return sessionActive && !blockingOverlayOpen();
+	return autoTypingActive && !blockingOverlayOpen();
 }
 
 function padOverlay() {
@@ -280,7 +449,7 @@ function remoteStep(direction) {
 }
 
 function autoPilotMode() {
-	if (!sessionActive) return "mouse";
+	if (!autoTypingActive) return "mouse";
 	const overlay = padOverlay();
 	const wanted = overlay && overlay.autoPilotPad && overlay.autoPilotPad();
 	return wanted || "keyboard";
@@ -324,11 +493,11 @@ function setAutoPilot(on) {
 
 function syncAutoPilotBtn() {
 	const btn = document.getElementById("autoPilotBtn");
-	if (btn) btn.disabled = !sessionActive;
+	if (btn) btn.disabled = !autoTypingActive;
 }
 
 function requestAutoPilot() {
-	if (!sessionActive) return;
+	if (!autoTypingActive) return;
 	sendMessage("set-auto-pilot", { autoPilot: !autoPilot });
 }
 
@@ -349,20 +518,14 @@ function syncKeyInputGate() {
 	syncTouchpadToolbar();
 }
 
-function setSessionActive(active) {
-	sessionActive = !!active;
+function setAutoTypingActive(active) {
+	autoTypingActive = !!active;
 	syncAutoPilotBtn();
 	syncKeyInputGate();
 }
 
 function initTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
-	const TAP_MAX_MS = 200;
-	const DOUBLE_TAP_GAP_MS = 300;
-	const MOVE_THRESHOLD = 8;
-	let touchDownTime = 0;
-	let touchDownX = 0;
-	let touchDownY = 0;
 
 	for (const handler of Object.values(touchpadModeHandlers)) {
 		if (handler.init) handler.init();
@@ -392,132 +555,18 @@ function initTouchpad() {
 			if (keyInputAllowed()) sendMessage("remote-key-press", {});
 			return;
 		}
-
-		if (e.touches.length === 2) {
-			const anchor = e.touches[0];
-			scrollAnchorId = anchor.identifier;
-			twoFingerStartX = anchor.clientX;
-			twoFingerTapStart = Date.now();
-			twoFingerMoved = false;
-			wasTwoFinger = true;
-			stopScrollMomentum();
-			return;
-		}
-
-		const t = e.touches[0];
-		touchStartX = t.clientX;
-		touchStartY = t.clientY;
-		touchDownX = t.clientX;
-		touchDownY = t.clientY;
-		touchDownTime = Date.now();
-		oneFingerMoved = false;
-
-		const gap = touchDownTime - tapTime;
-		if (tapTime > 0 && gap < DOUBLE_TAP_GAP_MS) {
-			if (tapTimeout) {
-				clearTimeout(tapTimeout);
-				tapTimeout = null;
-			}
-			isDragging = true;
-			sendMessage("mouse-drag-start", {});
-			tapTime = 0;
-		}
+		mouseGestures.start(e);
 	});
 
 	padListener("touchmove", "onTouchMove", (e) => {
-		if (touchpadMode === "keyboard") return;
-
-		const now = Date.now();
-		if (now - lastSendTime < SEND_THROTTLE_MS) return;
-		lastSendTime = now;
-
-		if (e.touches.length === 2) {
-			let anchor = null;
-			for (let i = 0; i < e.touches.length; i++) {
-				if (e.touches[i].identifier === scrollAnchorId) {
-					anchor = e.touches[i];
-					break;
-				}
-			}
-			if (!anchor) return;
-			const dx = (anchor.clientX - twoFingerStartX) * SCROLL_SENSITIVITY;
-			twoFingerStartX = anchor.clientX;
-			const scrollDy = touchpadSide === "left" ? dx : -dx;
-			scrollAccum += scrollDy;
-			scrollVelocity =
-				scrollVelocity * (1 - VELOCITY_SMOOTHING) +
-				scrollDy * VELOCITY_SMOOTHING;
-			const toSend = Math.trunc(scrollAccum);
-			if (toSend !== 0) {
-				twoFingerMoved = true;
-				scrollAccum -= toSend;
-				sendMessage("mouse-scroll", { dy: toSend });
-			}
-		} else if (e.touches.length === 1) {
-			if (wasTwoFinger) return;
-
-			const t = e.touches[0];
-			const totalDx = Math.abs(t.clientX - touchDownX);
-			const totalDy = Math.abs(t.clientY - touchDownY);
-			if (totalDx > MOVE_THRESHOLD || totalDy > MOVE_THRESHOLD) {
-				oneFingerMoved = true;
-			}
-			const screenDx = (t.clientX - touchStartX) * MOUSE_SENSITIVITY;
-			const screenDy = (t.clientY - touchStartY) * MOUSE_SENSITIVITY;
-			touchStartX = t.clientX;
-			touchStartY = t.clientY;
-			const rotated = rotateForSide(screenDx, screenDy);
-			if (Math.abs(rotated.dx) > 0.5 || Math.abs(rotated.dy) > 0.5) {
-				sendMessage("mouse-move", {
-					dx: Math.round(rotated.dx),
-					dy: Math.round(rotated.dy),
-				});
-			}
-		}
+		if (touchpadMode !== "keyboard") mouseGestures.move(e);
 	});
 
 	padListener("touchend", "onTouchEnd", (e) => {
-		if (touchpadMode === "keyboard") return;
-
-		if (e.touches.length === 0 && twoFingerTapStart > 0) {
-			const elapsed = Date.now() - twoFingerTapStart;
-			if (!twoFingerMoved && elapsed < 300) {
-				sendMessage("mouse-click", { button: "right" });
-			} else if (
-				twoFingerMoved &&
-				Math.abs(scrollVelocity) > MOMENTUM_MIN_VEL
-			) {
-				startScrollMomentum();
-			}
-			twoFingerTapStart = 0;
-			wasTwoFinger = false;
-			return;
-		}
-
-		if (e.touches.length > 0) return;
-
-		if (wasTwoFinger) {
-			wasTwoFinger = false;
-			return;
-		}
-
-		if (isDragging) {
-			stopDragIfActive();
-			return;
-		}
-
-		const elapsed = Date.now() - touchDownTime;
-		if (!oneFingerMoved && elapsed < TAP_MAX_MS) {
-			tapTime = Date.now();
-			tapTimeout = setTimeout(() => {
-				sendMessage("mouse-click", { button: "left" });
-				tapTime = 0;
-				tapTimeout = null;
-			}, DOUBLE_TAP_GAP_MS);
-		}
+		if (touchpadMode !== "keyboard") mouseGestures.end(e);
 	});
 
 	padListener("touchcancel", "onTouchCancel", () => {
-		resetGesture();
+		mouseGestures.cancel();
 	});
 }

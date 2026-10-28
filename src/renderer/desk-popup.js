@@ -1,20 +1,19 @@
 const {
-	renderSnippet,
+	renderExcerpt,
 	renderLines,
 	renderTypedName,
-} = require("../shared/snippet-view");
-const {
-	moveToDisplayName,
-	moveToPopupTitle,
-} = require("../shared/move-to-target");
+} = require("../shared/excerpt-view");
+const { goToDisplayName, goToPopupTitle } = require("../shared/go-to-target");
 const { POPUP_TITLES } = require("../shared/blocks");
 const {
 	DONE_LABEL,
+	ANSWERED_LABEL,
 	TEACHER_ASKER,
 	isQuestion,
 	interactionTitle,
 	waitingTitle,
 	participantId,
+	waitingName,
 	sortedStudentIndexes,
 	askerChoices,
 	askerFromValue,
@@ -26,13 +25,13 @@ class DeskPopup {
 	constructor(send) {
 		this.send = send;
 		this.el = null;
-		this.kind = null;
+		this.type = null;
 		this.students = [];
 		this.teacherName = "Teacher";
 		this.confirmKey = "";
 		this.options = null;
 		this.interaction = null;
-		this.moveToBody = null;
+		this.goToBody = null;
 	}
 
 	setStudents(students) {
@@ -50,22 +49,22 @@ class DeskPopup {
 		);
 	}
 
-	isOpen(kind) {
-		return kind ? this.kind === kind : this.kind !== null;
+	isOpen(type) {
+		return type ? this.type === type : this.type !== null;
 	}
 
 	close() {
-		this.kind = null;
+		this.type = null;
 		this.interaction = null;
-		this.moveToBody = null;
+		this.goToBody = null;
 		if (this.el) {
 			this.el.innerHTML = "";
 			this.el.style.display = "none";
 		}
 	}
 
-	closeIf(kind) {
-		if (this.kind === kind) this.close();
+	closeIf(type) {
+		if (this.type === type) this.close();
 	}
 
 	_host() {
@@ -77,12 +76,12 @@ class DeskPopup {
 		return this.el;
 	}
 
-	_open(kind, bgColor) {
+	_open(type, bgColor) {
 		const el = this._host();
 		el.innerHTML = "";
 		el.style.display = "block";
 		el.style.background = bgColor || "";
-		this.kind = kind;
+		this.type = type;
 		return el;
 	}
 
@@ -92,7 +91,7 @@ class DeskPopup {
 
 	_body(el, className) {
 		const b = document.createElement("div");
-		b.className = `snippet-view desk-popup-body ${className || ""}`.trim();
+		b.className = `excerpt-view desk-popup-body ${className || ""}`.trim();
 		el.appendChild(b);
 		return b;
 	}
@@ -140,46 +139,45 @@ class DeskPopup {
 		return this._button(grid, label, onClick, "popup-student-btn");
 	}
 
-	showMoveTo({ mode, target, snippet, typeName, note }) {
-		const el = this._open("move-to");
+	showGoTo({ mode, target, excerpt, typeName, note }) {
+		const el = this._open("go-to");
 		const canTypeName = mode === "file" && !!typeName;
-		this._title(el, moveToPopupTitle({ mode, snippet, typeName }));
-		if (note) this._panel(el, "mt-modal-note", note);
+		this._title(el, goToPopupTitle({ mode, excerpt, typeName }));
+		if (note) this._panel(el, "popup-note", note);
 		const named = mode !== "anchor";
-		if (named) this._moveToName(el, target);
-		if (!this._snippetBody(el, snippet) && !named)
-			this._moveToName(el, target);
+		if (named) this._goToName(el, target);
+		if (!this._excerptBody(el, excerpt) && !named) this._goToName(el, target);
 		const row = this._actions(el);
 		if (canTypeName) {
-			this._button(row, "Auto-type", () =>
-				this._send("client-move-to-type-name"),
+			this._button(row, "Type name", () =>
+				this._send("client-go-to-type-name"),
 			);
 			return;
 		}
-		this._button(row, "OK", () => this._act("client-move-to-confirmed"));
+		this._button(row, "OK", () => this._act("client-go-to-confirmed"));
 	}
 
-	_moveToName(el, target) {
+	_goToName(el, target) {
 		const body = this._body(el, "desk-popup-plain");
-		renderTypedName(body, moveToDisplayName(target || "MAIN"), null);
-		this.moveToBody = body;
+		renderTypedName(body, goToDisplayName(target || "MAIN"), null);
+		this.goToBody = body;
 	}
 
-	_snippetBody(el, snippet) {
-		if (!snippet) return false;
+	_excerptBody(el, excerpt) {
+		if (!excerpt) return false;
 		const body = this._body(el);
-		if (renderSnippet(body, snippet)) return true;
+		if (renderExcerpt(body, excerpt)) return true;
 		body.remove();
 		return false;
 	}
 
-	setMoveToTyped(data) {
-		if (this.kind !== "move-to" || !this.moveToBody || !data) return;
-		renderTypedName(this.moveToBody, data.target, data.typed);
+	setGoToTyped(data) {
+		if (this.type !== "go-to" || !this.goToBody || !data) return;
+		renderTypedName(this.goToBody, data.target, data.typed);
 	}
 
-	showCodeInsert({ text, colored, paste }) {
-		const el = this._open("code-insert");
+	showSnippet({ text, colored, paste }) {
+		const el = this._open("snippet");
 		this._title(el, "Code snippet:");
 		renderLines(this._body(el), text, colored);
 		if (paste !== false) {
@@ -191,7 +189,7 @@ class DeskPopup {
 			el.appendChild(hint);
 		}
 		this._button(this._actions(el), "OK", () =>
-			this._act("client-code-insert-confirmed"),
+			this._act("client-snippet-confirmed"),
 		);
 	}
 
@@ -206,15 +204,15 @@ class DeskPopup {
 	showNote({ text }) {
 		const el = this._open("note");
 		this._title(el, POPUP_TITLES.note);
-		this._panel(el, "mt-modal-note note-modal-text", text);
+		this._panel(el, "popup-note note-modal-text", text);
 		this._button(this._actions(el), "OK", () =>
 			this._act("client-note-confirmed"),
 		);
 	}
 
-	showMedia({ kind, name }) {
-		const el = this._open(kind);
-		this._title(el, POPUP_TITLES[kind] || "");
+	showMedia({ type, name }) {
+		const el = this._open(type);
+		this._title(el, POPUP_TITLES[type] || "");
 		this._panel(el, "media-modal-panel", name);
 		this._button(this._actions(el), "OK", () =>
 			this._act("client-media-confirmed"),
@@ -267,14 +265,15 @@ class DeskPopup {
 			(i) => () => this._answered(participantId(i)),
 		);
 		grid.style.display = "none";
-		if (!list) this._studentBtn(grid, "Answered", () => this._answered(null));
+		if (!list)
+			this._studentBtn(grid, ANSWERED_LABEL, () => this._answered(null));
 		this._studentBtn(grid, this.teacherName, () =>
 			this._answered(participantId(TEACHER_ASKER)),
 		);
 	}
 
 	revealQuestion() {
-		if (this.kind === "question" && this._revealQuestionUI) {
+		if (this.type === "question" && this._revealQuestionUI) {
 			this._revealQuestionUI();
 		}
 	}
@@ -332,7 +331,7 @@ class DeskPopup {
 		const it = this.interaction;
 		it.studentName = participantId(idx);
 		it.questionText = questionText || null;
-		const name = idx === TEACHER_ASKER ? null : (this.students[idx] ?? "");
+		const name = waitingName(idx, this.students);
 
 		this._send(
 			"client-show-student-interaction",

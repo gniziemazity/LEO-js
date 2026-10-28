@@ -5,7 +5,7 @@ let vis;
 let _visReady = null;
 let _pendingVisData = null;
 
-window.__leoApplyVisData = (data) => {
+window.__leoApplySimulatorData = (data) => {
 	if (!data) return;
 	if (_visReady) _visReady(data);
 	else _pendingVisData = data;
@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			e,
 		);
 	}
-	vis = new LogVisualizer();
+	vis = new Simulator();
 
 	const landing = document.getElementById("lv-landing");
 	const btnOpen = document.getElementById("btn-open-log");
@@ -136,8 +136,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		vis.loadFile(data);
 	}
 
-	// The engine is ready: apply any log already pushed by the Electron
-	// visualizer, and route future pushes straight through.
 	_visReady = loadFromData;
 	if (_pendingVisData) {
 		loadFromData(_pendingVisData);

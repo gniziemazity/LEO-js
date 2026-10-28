@@ -89,10 +89,8 @@ body {
 	align-items: center;
 	gap: 5px;
 	cursor: pointer;
-	font:
-		11px Consolas,
-		monospace;
-	color: var(--clr-text-soft);
+	font: 11px var(--font-mono);
+	color: var(--clr-text);
 	white-space: nowrap;
 }
 
@@ -118,21 +116,23 @@ body {
 	display: none;
 	align-items: center;
 	gap: 4px;
-	font:
-		11px Consolas,
-		monospace;
-	color: var(--clr-text-soft);
+	font: 11px var(--font-mono);
+	color: var(--clr-text);
 }
 
 #chart-bottom-basis.has-options {
 	display: inline-flex;
 }
 
+#chart-bottom-basis label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
 #chart-bottom-basis select {
-	font:
-		11px Consolas,
-		monospace;
-	color: var(--clr-text-soft);
+	font: 11px var(--font-mono);
+	color: var(--clr-text);
 	background: var(--clr-bg);
 	border: 1px solid var(--clr-border);
 	border-radius: 3px;
@@ -143,17 +143,14 @@ body {
 	color: var(--clr-mark-extra);
 }
 #chart-bottom-basis select option {
-	color: var(--clr-text-soft);
+	color: var(--clr-text);
 }
 #chart-bottom-basis select option[value="ideal"],
 #chart-bottom-basis select option[value="minimal"] {
 	color: var(--clr-mark-extra);
 }
 #chart-bottom-basis select option[value="leo_star"],
-#chart-bottom-basis select option[value="leo"],
-#chart-bottom-basis select option[value="lcs_star"],
 #chart-bottom-basis select option[value="lcs"],
-#chart-bottom-basis select option[value="git_star"],
 #chart-bottom-basis select option[value="git"] {
 	color: var(--clr-accent);
 }
@@ -194,7 +191,7 @@ body {
 }
 #btn-shake {
 	z-index: 10;
-	transition: background 0.15s;
+	transition: background var(--t-hover);
 }
 #btn-students {
 	top: auto;
@@ -220,10 +217,8 @@ body {
 	z-index: 5;
 }
 .leg-total-row {
-	font:
-		bold 10px Consolas,
-		monospace;
-	color: var(--clr-text-soft);
+	font: bold 10px var(--font-mono);
+	color: var(--clr-text);
 	margin-bottom: 3px;
 	user-select: none;
 }
@@ -232,10 +227,8 @@ body {
 	align-items: center;
 	gap: 4px;
 	cursor: pointer;
-	font:
-		10px Consolas,
-		monospace;
-	color: var(--clr-text-soft);
+	font: 10px var(--font-mono);
+	color: var(--clr-text);
 	height: 14px;
 	user-select: none;
 	white-space: nowrap;
@@ -281,4 +274,14 @@ html.autoload #loading {
 	height: 3px;
 	background: var(--clr-gray);
 	display: block;
+}
+
+#tooltip-student-preview {
+	white-space: pre-wrap;
+	word-break: break-all;
+	max-width: min(440px, 35vw);
+	max-height: 50vh;
+	overflow: hidden;
+	z-index: calc(var(--z-tip) + 1);
+	border-left: 3px solid var(--clr-accent);
 }

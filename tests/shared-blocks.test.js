@@ -6,30 +6,30 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const BASE = path.resolve(__dirname, "..", "src");
-const { getBlockKind, buildSettingsCSS, BLOCK_KINDS } = require(
+const { getBlockType, buildSettingsCSS, BLOCK_TYPES } = require(
 	path.join(BASE, "shared/blocks.js"),
 );
 const SettingsManager = require(path.join(BASE, "main/settings-manager.js"));
 
-test("each special prefix names its kind", () => {
-	assert.equal(getBlockKind("❓ why"), "question");
-	assert.equal(getBlockKind("🖼️ pic.png"), "image");
-	assert.equal(getBlockKind("🌐 http://x"), "web");
-	assert.equal(getBlockKind("📋 paste me"), "snippet");
+test("each special prefix names its type", () => {
+	assert.equal(getBlockType("❓ why"), "question");
+	assert.equal(getBlockType("🖼️ pic.png"), "image");
+	assert.equal(getBlockType("🌐 http://x"), "web");
+	assert.equal(getBlockType("📋 paste me"), "snippet");
 	assert.equal(
-		getBlockKind("plain words"),
+		getBlockType("plain words"),
 		"note",
 		"a block with no prefix is a note, not a nameless leftover",
 	);
 });
 
 test("leading whitespace does not hide a prefix", () => {
-	assert.equal(getBlockKind("   ❓ why"), "question");
+	assert.equal(getBlockType("   ❓ why"), "question");
 });
 
 test("a missing text is not a crash", () => {
-	assert.equal(getBlockKind(null), "note");
-	assert.equal(getBlockKind(undefined), "note");
+	assert.equal(getBlockType(null), "note");
+	assert.equal(getBlockType(undefined), "note");
 });
 
 test("every colour the app can set reaches the stylesheet", () => {
@@ -63,10 +63,10 @@ test("remote.html loads the shared modules before the scripts that use them", ()
 
 	const DEPENDENTS = {
 		"blocks.js": ["remote/lesson.js"],
-		"move-to-target.js": ["remote/lesson.js", "remote/move-to-overlay.js"],
-		"snippet-view.js": [
-			"remote/move-to-overlay.js",
-			"remote/code-insert-overlay.js",
+		"go-to-target.js": ["remote/lesson.js", "remote/go-to-overlay.js"],
+		"excerpt-view.js": [
+			"remote/go-to-overlay.js",
+			"remote/snippet-overlay.js",
 		],
 	};
 
@@ -89,17 +89,17 @@ test("the remote reads the shared functions rather than defining them", () => {
 	assert.ok(!/function buildSettingsCSS/.test(lesson));
 });
 
-test("the kind table and the classifier agree", () => {
-	for (const [prefix, kind] of BLOCK_KINDS) {
-		assert.equal(getBlockKind(`${prefix} something`), kind);
+test("the type table and the classifier agree", () => {
+	for (const [prefix, type] of BLOCK_TYPES) {
+		assert.equal(getBlockType(`${prefix} something`), type);
 	}
 });
 
 test("the editor-only UI never reaches the remote", () => {
 	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
 	for (const name of [
-		"anchor-preview.js",
-		"move-to-dropdown.js",
+		"go-to-preview.js",
+		"go-to-dropdown.js",
 		"block-types.js",
 	]) {
 		assert.equal(
@@ -122,8 +122,8 @@ test("every dual-mode module ends with the same export footer", () => {
 	const expected = {
 		"code-text.js": "CodeTextRenderer",
 		"blocks.js": "LeoBlocks",
-		"move-to-target.js": "MoveToTarget",
-		"snippet-view.js": "SnippetView",
+		"go-to-target.js": "GoToTarget",
+		"excerpt-view.js": "ExcerptView",
 	};
 	for (const [file, name] of Object.entries(expected)) {
 		const src = fs
@@ -140,7 +140,7 @@ test("every dual-mode module ends with the same export footer", () => {
 	}
 });
 
-test("the phone gives every block the same kind class the editor does", () => {
+test("the phone gives every block the same type class the editor does", () => {
 	const { buildRemote } = require("./helpers/remote-dom.js");
 	const ctx = buildRemote();
 	ctx.api.updateLessonData({
@@ -150,7 +150,7 @@ test("the phone gives every block the same kind class the editor does", () => {
 			{ type: "comment", text: "📋 a\nb" },
 			{ type: "comment", text: "🖼️ p.png" },
 			{ type: "comment", text: "🌐 http://x" },
-			{ type: "move-to", target: "index.html" },
+			{ type: "go-to", target: "index.html" },
 		],
 	});
 	assert.deepEqual(
@@ -161,7 +161,7 @@ test("the phone gives every block the same kind class the editor does", () => {
 			"block snippet-block collapsed",
 			"block image-block",
 			"block web-block",
-			"block move-to-block",
+			"block go-to-block",
 		],
 		"the phone shares buildSettingsCSS, so a class it does not emit is a " +
 			"block that renders unpainted",
@@ -174,10 +174,10 @@ test("the phone shows Starting Code as one row and keeps the step numbers", () =
 	ctx.api.updateLessonData({
 		blocks: [
 			{ type: "include", dir: "part_2_start", files: 2, anchors: {} },
-			{ type: "move-to", target: "a.js", fromInclude: true },
-			{ type: "comment", text: "📋 a\n\tb", fromInclude: true },
-			{ type: "move-to", target: "b.js", fromInclude: true },
-			{ type: "comment", text: "📋 c\n\td", fromInclude: true },
+			{ type: "go-to", target: "a.js", fromStart: true },
+			{ type: "comment", text: "📋 a\n\tb", fromStart: true },
+			{ type: "go-to", target: "b.js", fromStart: true },
+			{ type: "comment", text: "📋 c\n\td", fromStart: true },
 			{ type: "comment", text: "a reminder" },
 		],
 	});
@@ -186,10 +186,10 @@ test("the phone shows Starting Code as one row and keeps the step numbers", () =
 		kids.map((el) => el.className),
 		[
 			"block include-block",
-			"block move-to-block from-include",
-			"block snippet-block collapsed from-include",
-			"block move-to-block from-include",
-			"block snippet-block collapsed from-include",
+			"block go-to-block from-start",
+			"block snippet-block collapsed from-start",
+			"block go-to-block from-start",
+			"block snippet-block collapsed from-start",
 			"block note-block",
 		],
 	);
@@ -203,7 +203,10 @@ test("the phone shows Starting Code as one row and keeps the step numbers", () =
 
 	const plain = buildRemote();
 	plain.api.updateLessonData({
-		blocks: [{ type: "include", anchors: {} }, { type: "comment", text: "n" }],
+		blocks: [
+			{ type: "include", anchors: {} },
+			{ type: "comment", text: "n" },
+		],
 	});
 	assert.deepEqual(
 		plain.nodes["lesson-container"].children.map((el) => el.className),
@@ -212,26 +215,26 @@ test("the phone shows Starting Code as one row and keeps the step numbers", () =
 	);
 });
 
-test("the support kinds are the block kinds that are not code", () => {
-	const { SUPPORT_KINDS, BLOCK_KINDS } = require(
+test("the support types are the block types that are not code", () => {
+	const { SUPPORT_TYPES, BLOCK_TYPES } = require(
 		path.join(BASE, "shared/blocks.js"),
 	);
 	assert.deepEqual(
-		SUPPORT_KINDS,
-		["note", ...BLOCK_KINDS.map(([, kind]) => kind), "move-to"],
+		SUPPORT_TYPES,
+		["note", ...BLOCK_TYPES.map(([, type]) => type), "go-to"],
 		"a lesson is code blocks and support blocks; this list is the second half",
 	);
 	assert.equal(
-		SUPPORT_KINDS.includes("code"),
+		SUPPORT_TYPES.includes("code"),
 		false,
-		"code is what LEO types, not what supports the typing",
+		"code is what LEO types, not what supports the auto-typing",
 	);
 	assert.equal(
 		/\.support-block/.test(
 			fs.readFileSync(path.join(BASE, "shared/styles.css"), "utf-8"),
 		),
 		false,
-		"support is a word for the docs, not a class: the per-kind classes and " +
+		"support is a word for the docs, not a class: the per-type classes and " +
 			"the generated selector lists carry the styling",
 	);
 });

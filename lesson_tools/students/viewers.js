@@ -29,7 +29,7 @@ function _msgEditorHtml(text) {
 
 function _msgDocSrcdoc(text) {
 	const esc = typeof escHtml === "function" ? escHtml(text) : text;
-	return `<!DOCTYPE html><html><body style="margin:16px;font-family:sans-serif;color:#888">${esc}</body></html>`;
+	return `<!DOCTYPE html><html><body style="margin:16px;font-family:sans-serif;color:${THEME.muted}">${esc}</body></html>`;
 }
 
 function _setView(bodyId, mode) {
@@ -84,7 +84,8 @@ async function _instructionsSrcdoc(file) {
 	return (
 		`<!DOCTYPE html><html><head><meta charset="utf-8">${baseTag}` +
 		"<style>body{margin:14px 18px;font-family:sans-serif;font-size:14px;" +
-		"line-height:1.6;color:#222;background:#eef8ef}img{max-width:100%;height:auto}</style>" +
+		`line-height:1.6;color:${THEME.textStrong};background:#eef8ef}` +
+		"img{max-width:100%;height:auto}</style>" +
 		`</head><body>${html}</body></html>`
 	);
 }

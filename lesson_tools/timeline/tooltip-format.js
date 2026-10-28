@@ -12,7 +12,7 @@ function textPartsToHtml(parts, partColors, evs, replay) {
 	const flushPending = () => {
 		if (!pendingBuf) return;
 		if (pendingColor) {
-			html += `<span style="color:${pendingColor};font-weight:bold;text-decoration:underline">${pendingBuf}</span>`;
+			html += `<span class="tt-emph" style="color:${pendingColor}">${pendingBuf}</span>`;
 		} else {
 			const open = _decoSpanOpen(pendingDeco);
 			html += open ? `${open}${pendingBuf}</span>` : pendingBuf;
@@ -41,13 +41,13 @@ function textPartsToHtml(parts, partColors, evs, replay) {
 			const flushSeg = () => {
 				if (!curBuf) return;
 				if (curColor) {
-					html += `<span style="color:${curColor};font-weight:bold;text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+					html += `<span class="tt-emph tt-pasted" style="color:${curColor}">${escHtml(curBuf)}</span>`;
 				} else if (curDeco === "ghost") {
-					html += `<span class="tt-mark-ghost" style="text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+					html += `<span class="tt-mark-ghost tt-pasted">${escHtml(curBuf)}</span>`;
 				} else if (curDeco === "comment") {
-					html += `<span class="tt-mark-comment" style="text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+					html += `<span class="tt-mark-comment tt-pasted">${escHtml(curBuf)}</span>`;
 				} else {
-					html += `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(curBuf)}</span>`;
+					html += `<span class="tt-mark-extra tt-pasted">${escHtml(curBuf)}</span>`;
 				}
 				curBuf = "";
 			};

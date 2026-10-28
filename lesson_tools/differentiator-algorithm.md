@@ -276,7 +276,7 @@ def _build_line_diff_marks(teacher_files, student_files, align_fn):
 difflib-style opcodes. `-w` ignores whitespace-only line differences, so the
 per-line token diff runs on **every** paired line (not just `replace` blocks) to
 catch token differences inside lines that strip to equal. Git emits both
-per-token marks (coloured letters) and per-line marks (line backgrounds, via
+per-token marks (colored letters) and per-line marks (line backgrounds, via
 `_make_line_mark`).
 
 ---
@@ -439,7 +439,7 @@ wrappers (`diffColorizePositions()`) — no re-tokenisation in the browser, so
 
 Line backgrounds use faded variants (`--clr-mark-*-bg`); pair/swap/curated
 highlights derive from the same `--clr-mark-*` palette (read once into
-`MARK_COLORS` in `shared/diff-utils.js`), so a colour change happens in one place.
+`MARK_COLORS` in `shared/diff-utils.js`), so a color change happens in one place.
 
 ---
 

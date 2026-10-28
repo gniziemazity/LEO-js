@@ -25,24 +25,15 @@
 
 	--clr-page: var(--c-gray-1);
 	--clr-surface: var(--c-gray-1);
-	--clr-surface-light: var(--c-gray-1);
-	--clr-surface-soft: var(--c-gray-1);
 	--clr-toolbar: var(--c-gray-1);
-	--clr-tab-hover: var(--c-gray-1);
-	--clr-btn-bg-soft: var(--c-gray-1);
-	--clr-code-light: var(--c-gray-1);
 
 	--clr-text: var(--c-gray-3);
-	--clr-text-soft: var(--c-gray-3);
-	--clr-text-strong: var(--c-gray-3);
 	--clr-gray: var(--c-gray-3);
 	--clr-text-faint: var(--c-gray-2);
 	--clr-label: var(--c-gray-4);
 	--clr-muted: var(--c-gray-2);
 
 	--clr-border: var(--c-gray-2);
-	--clr-border-mid: var(--c-gray-2);
-	--clr-border-strong: var(--c-gray-2);
 	--clr-bar-track: var(--c-gray-1);
 	--clr-diff-btn-border: var(--c-gray-2);
 	--clr-code-muted: #aaa;
@@ -51,14 +42,14 @@
 
 	--clr-accent: var(--c-blue-1);
 	--clr-accent-dark: var(--c-blue-2);
-	--clr-accent-light: rgba(0, 122, 204, 0.1);
+	--clr-accent-light: color-mix(in srgb, var(--c-blue-1) 10%, transparent);
 	--clr-extra-dark: var(--c-gray-3);
 	--clr-extra-darker: var(--c-black);
 	--clr-ghost-dark: var(--c-gray-2);
 	--clr-ghost-darker: var(--c-gray-3);
 
 	--clr-red: var(--c-red-1);
-	--clr-pale-red: rgba(204, 34, 34, 0.4);
+	--clr-pale-red: color-mix(in srgb, var(--c-red-1) 40%, transparent);
 	--clr-orange: var(--c-orange-1);
 	--clr-yellow: var(--c-yellow-1);
 	--clr-artefact-ok: #e0e0e0;
@@ -66,22 +57,37 @@
 	--clr-purple: var(--c-purple-1);
 
 	--clr-danger: var(--c-red-1);
-	--clr-danger-dark: var(--c-red-1);
 	--clr-danger-darker: var(--c-red-2);
-	--clr-danger-soft-bg: rgba(204, 34, 34, 0.06);
-	--clr-danger-soft-border: rgba(204, 34, 34, 0.4);
-	--clr-danger-hover-bg: rgba(204, 34, 34, 0.12);
+	--clr-danger-soft-bg: color-mix(in srgb, var(--c-red-1) 6%, transparent);
+	--clr-danger-soft-border: color-mix(
+		in srgb,
+		var(--c-red-1) 40%,
+		transparent
+	);
+	--clr-danger-hover-bg: color-mix(in srgb, var(--c-red-1) 12%, transparent);
 
-	--clr-row-hover: rgba(0, 122, 204, 0.1);
-	--clr-row-active: rgba(0, 122, 204, 0.2);
-	--clr-row-selected: rgba(0, 122, 204, 0.25);
-	--clr-row-selected-hover: rgba(0, 122, 204, 0.32);
+	--clr-row-hover: color-mix(in srgb, var(--c-blue-1) 10%, transparent);
+	--clr-row-active: color-mix(in srgb, var(--c-blue-1) 20%, transparent);
+	--clr-row-selected: color-mix(in srgb, var(--c-blue-1) 25%, transparent);
+	--clr-row-selected-hover: color-mix(
+		in srgb,
+		var(--c-blue-1) 32%,
+		transparent
+	);
 
-	--clr-highlight-warm: rgba(255, 220, 0, 0.15);
-	--clr-highlight-warm-soft: rgba(255, 220, 0, 0.1);
+	--clr-highlight-warm: color-mix(in srgb, var(--c-yellow-1) 15%, transparent);
+	--clr-highlight-warm-soft: color-mix(
+		in srgb,
+		var(--c-yellow-1) 10%,
+		transparent
+	);
 	--clr-highlight-warm-border: var(--c-yellow-2);
 	--clr-highlight-active: var(--c-yellow-2);
-	--clr-highlight-active-bg: rgba(255, 220, 0, 0.45);
+	--clr-highlight-active-bg: color-mix(
+		in srgb,
+		var(--c-yellow-1) 45%,
+		transparent
+	);
 
 	--clr-info-pill-text: var(--c-blue-2);
 
@@ -89,37 +95,46 @@
 	--clr-mark-extra: var(--c-black);
 	--clr-mark-ghost: rgba(0, 0, 0, 0.5);
 	--clr-mark-comment: var(--c-green-1);
-	--clr-mark-missing-bg: rgba(204, 34, 34, 0.13);
+	--clr-mark-missing-bg: color-mix(in srgb, var(--c-red-1) 13%, transparent);
 	--clr-mark-extra-bg: rgba(0, 0, 0, 0.08);
 	--clr-mark-active-bg: rgba(0, 0, 0, 0.1);
-	--clr-mark-missing-pair-bg: rgba(204, 34, 34, 0.22);
+	--clr-mark-missing-pair-bg: color-mix(
+		in srgb,
+		var(--c-red-1) 22%,
+		transparent
+	);
 	--clr-mark-extra-pair-bg: rgba(0, 0, 0, 0.18);
-	--clr-mark-missing-soft-bg: rgba(204, 34, 34, 0.08);
+	--clr-mark-missing-soft-bg: color-mix(
+		in srgb,
+		var(--c-red-1) 8%,
+		transparent
+	);
 	--clr-mark-extra-soft-bg: rgba(0, 0, 0, 0.06);
 	--clr-mark-ghost-soft-bg: rgba(0, 0, 0, 0.04);
 	--clr-ghost-text: #d8d8d8;
-	--clr-ghost-pair: #888;
+	--clr-ghost-pair: var(--c-gray-2);
 
 	--clr-pos: var(--c-green-2);
 	--clr-neg: var(--c-red-1);
 	--clr-st-pass: var(--c-blue-2);
-	--clr-st-pass-bg: rgba(0, 122, 204, 0.12);
+	--clr-st-pass-bg: color-mix(in srgb, var(--c-blue-1) 12%, transparent);
 	--clr-st-prime: var(--c-blue-2);
-	--clr-st-prime-bg: rgba(0, 122, 204, 0.07);
+	--clr-st-prime-bg: color-mix(in srgb, var(--c-blue-1) 7%, transparent);
 	--clr-st-star: var(--c-orange-2);
-	--clr-st-star-bg: rgba(224, 112, 32, 0.12);
+	--clr-st-star-bg: color-mix(in srgb, var(--c-orange-1) 12%, transparent);
 	--clr-st-fail: var(--c-red-1);
-	--clr-st-fail-bg: rgba(204, 34, 34, 0.12);
+	--clr-st-fail-bg: color-mix(in srgb, var(--c-red-1) 12%, transparent);
 
-	--clr-tip-bg-blue: rgba(0, 122, 204, 0.1);
-	--clr-tip-bg-orange: rgba(224, 112, 32, 0.1);
-	--clr-tip-bg-green: rgba(102, 187, 106, 0.15);
-	--clr-tip-bg-purple: rgba(142, 68, 173, 0.12);
+	--clr-tip-bg-blue: color-mix(in srgb, var(--c-blue-1) 10%, transparent);
+	--clr-tip-bg-orange: color-mix(in srgb, var(--c-orange-1) 10%, transparent);
+	--clr-tip-bg-green: color-mix(in srgb, var(--c-green-1) 15%, transparent);
+	--clr-tip-bg-purple: color-mix(in srgb, var(--c-purple-1) 12%, transparent);
 	--clr-tip-bg-gray: #f5f5f5;
 	--clr-tip-bg-delete: #ffebee;
 
 	--clr-chart-bg: var(--c-white);
 	--clr-chart-grid: #e8e8e8;
+	--clr-chart-grid-faint: #f0f0f0;
 	--clr-chart-axis-line: #ccc;
 	--clr-chart-axis-text: #555;
 	--clr-chart-axis-tick: #aaa;
@@ -130,6 +145,10 @@
 	--clr-chart-insert-marker: #999;
 	--clr-chart-dot-muted-fill: #a8a8a8;
 	--clr-chart-dot-muted-stroke: #777;
+	--clr-chart-text: #333;
+	--clr-chart-border: #ddd;
+	--clr-chart-bar-border: #999;
+	--clr-chart-dataset-fill: rgba(100, 100, 100, 0.4);
 
 	--clr-legend-bg: rgba(255, 255, 255, 0.53);
 
@@ -148,9 +167,25 @@
 	--hl-css-at: var(--c-blue-2);
 	--hl-doctype: var(--c-blue-1);
 
+	--font-mono: "Consolas", "Monaco", "Courier New", monospace;
+	--font-ui: "Segoe UI", system-ui, sans-serif;
+
 	--shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.18);
 	--shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.18);
 	--shadow-pin: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+	--t-hover: 0.15s;
+
+	--z-dropdown: 100;
+	--z-overlay: 500;
+	--z-pair-svg: 600;
+	--z-bottom-bar: 610;
+	--z-controls: 620;
+	--z-float-tip: 630;
+	--z-float: 640;
+	--z-menu: 650;
+	--z-viewer: 660;
+	--z-tip: 1000;
 }
 
 *,
@@ -162,14 +197,14 @@
 }
 
 body {
-	font-family: "Segoe UI", sans-serif;
+	font-family: var(--font-ui);
 	font-size: 13px;
 	color: var(--clr-text);
 }
 
 .is-toggle-on {
 	background: var(--clr-orange) !important;
-	color: #fff !important;
+	color: var(--clr-white) !important;
 }
 
 .app-toolbar {
@@ -208,12 +243,11 @@ body {
 	background: var(--clr-surface);
 	color: var(--clr-muted);
 	font-size: 11px;
-	font-family: Consolas, monospace;
+	font-family: var(--font-mono);
 	cursor: pointer;
 	white-space: nowrap;
 }
 .file-tab:hover {
-	background: var(--clr-tab-hover);
 	color: var(--clr-gray);
 }
 .file-tab-active {
@@ -276,8 +310,8 @@ body {
 	cursor: pointer;
 	color: var(--clr-text);
 	transition:
-		background 0.15s,
-		border-color 0.15s;
+		background var(--t-hover),
+		border-color var(--t-hover);
 }
 .landing-btn:hover {
 	background: var(--clr-accent-light);
@@ -290,7 +324,7 @@ body {
 	font-weight: 700;
 	line-height: 1.1;
 	text-align: left;
-	font-family: Consolas, monospace;
+	font-family: var(--font-mono);
 	font-size: 12px;
 	margin-bottom: 2px;
 	color: var(--clr-text);
@@ -304,7 +338,7 @@ body {
 .follow-bar-fill {
 	height: 100%;
 	border-radius: 2px;
-	background: var(--clr-text-strong);
+	background: var(--clr-text);
 }
 
 .sp-toggle {
@@ -325,7 +359,7 @@ body {
 }
 .sp-toggle button.active {
 	background: var(--clr-accent);
-	color: #fff;
+	color: var(--clr-white);
 }
 
 #loading {
@@ -338,28 +372,31 @@ body {
 	padding-bottom: 40px;
 	font-size: 18px;
 	color: var(--clr-label);
-	z-index: 500;
+	z-index: var(--z-overlay);
 }
 
-#tooltip {
+.leo-tip {
 	position: fixed;
 	display: none;
 	background: var(--clr-bg);
 	color: var(--clr-text);
-	font-family: Consolas, monospace;
+	font-family: var(--font-mono);
 	font-size: 11px;
+	line-height: 1.5;
 	padding: 6px 10px;
 	border-radius: 4px;
+	box-shadow: var(--shadow-pin);
 	pointer-events: none;
-	z-index: 1000;
+	z-index: var(--z-tip);
+	max-width: 640px;
+}
+#tooltip {
 	max-width: min(440px, 50vw);
 	max-height: 50vh;
 	overflow-y: auto;
 	overflow-x: hidden;
 	white-space: pre-wrap;
 	word-break: break-all;
-	box-shadow: var(--shadow-pin);
-	line-height: 1.6;
 	border-left: 3px solid transparent;
 }
 #tooltip.pinned {
@@ -423,6 +460,9 @@ body {
 	font-weight: bold;
 	text-decoration: underline;
 }
+.tt-pasted {
+	text-decoration: underline var(--clr-code-muted);
+}
 .ia-box {
 	display: inline-flex;
 	align-items: center;
@@ -473,12 +513,12 @@ th.col-int {
 	border: 1px solid var(--clr-text-faint);
 	border-radius: 6px;
 	box-shadow: var(--shadow-pop);
-	font-family: ui-monospace, Consolas, monospace;
+	font-family: var(--font-mono);
 	font-size: 11px;
 	overflow: hidden;
 }
 
-.float-win__header {
+.float-win-header {
 	display: flex;
 	align-items: center;
 	cursor: move;
@@ -490,13 +530,13 @@ th.col-int {
 	flex-shrink: 0;
 }
 
-.float-win__drag {
+.float-win-drag {
 	color: var(--clr-diff-btn-border);
 	margin-right: 6px;
 	font-size: 11px;
 }
 
-.float-win__title {
+.float-win-title {
 	flex: 1;
 	font-weight: 700;
 	font-size: 12px;
@@ -505,7 +545,7 @@ th.col-int {
 	text-overflow: ellipsis;
 }
 
-.float-win__close {
+.float-win-close {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -514,11 +554,11 @@ th.col-int {
 	padding: 0 4px;
 	line-height: 1;
 }
-.float-win__close:hover {
+.float-win-close:hover {
 	color: var(--clr-text);
 }
 
-.float-win__body {
+.float-win-body {
 	overflow: auto;
 	padding: 8px 10px;
 }
@@ -558,7 +598,7 @@ body.is-dragging-overlay iframe {
 	height: 6px;
 }
 .fv-tabs::-webkit-scrollbar-thumb {
-	background: var(--clr-border-strong);
+	background: var(--clr-border);
 	border-radius: 3px;
 }
 .fv-tabs > .file-tab {
@@ -579,7 +619,7 @@ body.is-dragging-overlay iframe {
 	overflow: auto;
 	background: var(--clr-bg);
 	color: var(--clr-text);
-	font-family: Consolas, "Courier New", monospace;
+	font-family: var(--font-mono);
 	font-size: 12px;
 	line-height: 1.5;
 	padding: 6px 8px;
@@ -594,7 +634,7 @@ body.is-dragging-overlay iframe {
 	user-select: none;
 	touch-action: none;
 	cursor: col-resize;
-	transition: background 0.15s;
+	transition: background var(--t-hover);
 }
 .fv-divider:hover {
 	background: var(--clr-accent);

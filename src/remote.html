@@ -243,30 +243,30 @@
 			</div>
 		</div>
 
-		<div id="moveToOverlay" class="overlay overlay-pad-ok">
-			<div class="popup-modal" id="mtModal">
+		<div id="goToOverlay" class="overlay overlay-pad-ok">
+			<div class="popup-modal" id="gtoModal">
 				<div class="popup-title popup-title-row">
-					<span id="mtoTitle">Move to…</span>
+					<span id="gtoTitle">Go to…</span>
 					<span
-						class="mt-modal-note"
-						id="mtoNote"
+						class="popup-note"
+						id="gtoNote"
 						style="display: none"
 					></span>
 				</div>
-				<div class="mt-modal-target" id="mtoTarget"></div>
-				<div class="snippet-view mt-modal-snippet" id="mtoSnippet"></div>
-				<div class="mt-modal-actions" id="mtoActions">
+				<div class="popup-target" id="gtoTarget"></div>
+				<div class="excerpt-view popup-excerpt" id="gtoExcerpt"></div>
+				<div class="popup-actions" id="gtoActions">
 					<button
-						class="mt-modal-confirm"
-						id="mtoTypeName"
-						onclick="moveToTypeName()"
+						class="popup-confirm"
+						id="gtoTypeName"
+						onclick="goToTypeName()"
 					>
-						Auto-type
+						Type name
 					</button>
 					<button
-						class="mt-modal-confirm"
-						id="mtoConfirm"
-						onclick="closeMoveToOverlay()"
+						class="popup-confirm"
+						id="gtoConfirm"
+						onclick="closeGoToOverlay()"
 					>
 						OK
 					</button>
@@ -274,25 +274,25 @@
 			</div>
 		</div>
 
-		<div id="codeInsertOverlay" class="overlay overlay-pad-ok">
-			<div class="popup-modal" id="ciModal">
+		<div id="snippetOverlay" class="overlay overlay-pad-ok">
+			<div class="popup-modal" id="snModal">
 				<div class="popup-title">Code snippet:</div>
 				<div
-					class="snippet-view mt-modal-snippet ci-modal-code"
-					id="ciCode"
+					class="excerpt-view popup-excerpt sn-modal-code"
+					id="snCode"
 				></div>
-				<div class="mt-modal-actions" id="ciActions">
+				<div class="popup-actions" id="snActions">
 					<button
-						class="mt-modal-confirm ci-paste-btn"
-						id="ciPaste"
-						onclick="codeInsertPaste()"
+						class="popup-confirm sn-paste-btn"
+						id="snPaste"
+						onclick="snippetPaste()"
 					>
 						Paste
 					</button>
 					<button
-						class="mt-modal-confirm"
-						id="ciConfirm"
-						onclick="closeCodeInsertOverlay()"
+						class="popup-confirm"
+						id="snConfirm"
+						onclick="closeSnippetOverlay()"
 					>
 						OK
 					</button>
@@ -303,9 +303,9 @@
 		<div id="noteOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal">
 				<div class="popup-title" id="ntTitle">Note:</div>
-				<div class="mt-modal-note note-modal-text" id="ntText"></div>
-				<div class="mt-modal-actions">
-					<button class="mt-modal-confirm" onclick="closeNoteOverlay()">
+				<div class="popup-note note-modal-text" id="ntText"></div>
+				<div class="popup-actions">
+					<button class="popup-confirm" onclick="closeNoteOverlay()">
 						OK
 					</button>
 				</div>
@@ -315,17 +315,17 @@
 		<div id="mediaOverlay" class="overlay overlay-pad-ok">
 			<div class="popup-modal">
 				<div class="popup-title" id="mdTitle"></div>
-				<div class="mt-modal-target media-modal-panel" id="mdName"></div>
-				<div class="mt-modal-actions">
+				<div class="popup-target media-modal-panel" id="mdName"></div>
+				<div class="popup-actions">
 					<button
-						class="mt-modal-confirm"
+						class="popup-confirm"
 						id="mdPin"
 						onclick="pinMediaWindow()"
 						title="Pin this window"
 					>
 						📌
 					</button>
-					<button class="mt-modal-confirm" onclick="closeMediaOverlay()">
+					<button class="popup-confirm" onclick="closeMediaOverlay()">
 						OK
 					</button>
 				</div>
@@ -333,9 +333,9 @@
 		</div>
 
 		<script src="code-text.js"></script>
-		<script src="move-to-target.js"></script>
+		<script src="go-to-target.js"></script>
 		<script src="blocks.js"></script>
-		<script src="snippet-view.js"></script>
+		<script src="excerpt-view.js"></script>
 		<script src="interaction-view.js"></script>
 		<script src="remote/connection.js"></script>
 		<script src="remote/touchpad.js"></script>
@@ -344,8 +344,8 @@
 		<script src="remote/remote-overlay.js"></script>
 		<script src="remote/question-overlay.js"></script>
 		<script src="remote/interaction-overlay.js"></script>
-		<script src="remote/move-to-overlay.js"></script>
-		<script src="remote/code-insert-overlay.js"></script>
+		<script src="remote/go-to-overlay.js"></script>
+		<script src="remote/snippet-overlay.js"></script>
 		<script src="remote/note-overlay.js"></script>
 		<script src="remote/media-overlay.js"></script>
 		<script src="remote/overlays.js"></script>
@@ -372,7 +372,7 @@
 						break;
 					case "active":
 						updateActiveState(data.isActive);
-						setSessionActive(data.isActive);
+						setAutoTypingActive(data.isActive);
 						break;
 					case "auto-pilot":
 						setAutoPilot(data.autoPilot);
@@ -400,20 +400,20 @@
 					case "open-interaction":
 						handleInteractionBtn(data.interactionType);
 						break;
-					case "move-to-started":
-						showMoveToOverlay(data);
+					case "go-to-started":
+						showGoToOverlay(data);
 						break;
-					case "move-to-typing":
-						moveToOverlay.setTyped(data);
+					case "go-to-typing":
+						goToOverlay.setTyped(data);
 						break;
-					case "move-to-ended":
-						closeMoveToOverlayUI();
+					case "go-to-ended":
+						closeGoToOverlayUI();
 						break;
-					case "code-insert-started":
-						showCodeInsertOverlay(data);
+					case "snippet-started":
+						showSnippetOverlay(data);
 						break;
-					case "code-insert-ended":
-						closeCodeInsertOverlayUI();
+					case "snippet-ended":
+						closeSnippetOverlayUI();
 						break;
 					case "note-started":
 						showNoteOverlay(data);
@@ -444,7 +444,7 @@
 				updateProgress(state);
 				if (state.isActive !== undefined) {
 					updateActiveState(state.isActive);
-					setSessionActive(state.isActive);
+					setAutoTypingActive(state.isActive);
 				}
 				setAutoPilot(state.autoPilot === true);
 				if (state.settings) applySettings(state.settings);
@@ -461,9 +461,8 @@
 					);
 				if (state.activeQuestion && state.activeQuestionShown)
 					revealQuestionOverlay();
-				if (state.activeMoveTo) showMoveToOverlay(state.activeMoveTo);
-				if (state.activeCodeInsert)
-					showCodeInsertOverlay(state.activeCodeInsert);
+				if (state.activeGoTo) showGoToOverlay(state.activeGoTo);
+				if (state.activeSnippet) showSnippetOverlay(state.activeSnippet);
 				setPinnedWindows(state.pinnedWindows);
 				if (state.activeNote) showNoteOverlay(state.activeNote);
 				if (state.activeMedia) showMediaOverlay(state.activeMedia);

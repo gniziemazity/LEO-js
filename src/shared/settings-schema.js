@@ -1,11 +1,11 @@
 const COLOR_SETTINGS = [
-	{ key: "codeBlockColor", domId: "codeBlockColor", value: "#ffffff" },
+	{ key: "codeColor", domId: "codeColor", value: "#ffffff" },
 	{ key: "noteColor", domId: "noteColor", value: "#fff9c4" },
 	{ key: "questionColor", domId: "questionColor", value: "#facaca" },
-	{ key: "imageBlockColor", domId: "imageBlockColor", value: "#bbdefb" },
+	{ key: "imageColor", domId: "imageColor", value: "#bbdefb" },
 	{ key: "snippetColor", domId: "snippetColor", value: "#f0f0f0" },
-	{ key: "moveToBlockColor", domId: "moveToBlockColor", value: "#424242" },
-	{ key: "moveToTextColor", domId: "moveToTextColor", value: "#3498db" },
+	{ key: "goToColor", domId: "goToColor", value: "#424242" },
+	{ key: "goToTextColor", domId: "goToTextColor", value: "#3498db" },
 	{ key: "activeBlockColor", domId: "activeBlockColor", value: "#2c3e50" },
 	{ key: "selectedBlockColor", domId: "selectedBlockColor", value: "#f0f8ff" },
 	{

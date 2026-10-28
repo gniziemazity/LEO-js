@@ -149,7 +149,7 @@ class BarChart {
 			const ds = this._datasets[si];
 			const slot = setSlot[si];
 			const isOverlap = slot < 0;
-			const bg = ds.backgroundColor ?? "rgba(100,100,100,0.4)";
+			const bg = ds.backgroundColor ?? CHART_COLOR.datasetFill;
 			const bd = ds.borderColor ?? CHART_COLOR.barBorder;
 			const bgPerBar = Array.isArray(bg);
 			const bdPerBar = Array.isArray(bd);
@@ -172,7 +172,7 @@ class BarChart {
 				}
 				if (bh > 0) {
 					const fillColor = bgPerBar
-						? (bg[gi] ?? "rgba(100,100,100,0.4)")
+						? (bg[gi] ?? CHART_COLOR.datasetFill)
 						: bg;
 					const strokeColor = bdPerBar
 						? (bd[gi] ?? CHART_COLOR.barBorder)

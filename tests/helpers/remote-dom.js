@@ -12,8 +12,8 @@ const LOAD_ORDER = [
 	"remote-overlay.js",
 	"question-overlay.js",
 	"interaction-overlay.js",
-	"move-to-overlay.js",
-	"code-insert-overlay.js",
+	"go-to-overlay.js",
+	"snippet-overlay.js",
 	"note-overlay.js",
 	"media-overlay.js",
 	"overlays.js",
@@ -136,20 +136,20 @@ function build(opts = {}) {
 		"modeSideBtns",
 		"touchpadEditKeys",
 		"touchpadStepKeys",
-		"mtoConfirm",
-		"mtoActions",
-		"mtoTypeName",
+		"gtoConfirm",
+		"gtoActions",
+		"gtoTypeName",
 		"questionOverlay",
-		"moveToOverlay",
+		"goToOverlay",
 		"interactionOverlay",
 		"qText",
 		"qGrid",
 		"qShowBtn",
-		"mtoTitle",
-		"mtoNote",
-		"mtoTarget",
-		"mtoSnippet",
-		"mtModal",
+		"gtoTitle",
+		"gtoNote",
+		"gtoTarget",
+		"gtoExcerpt",
+		"gtoModal",
 		"iModal",
 		"iTitle",
 		"iAskerRow",
@@ -158,12 +158,12 @@ function build(opts = {}) {
 		"iQuestionInput",
 		"iMicBtn",
 		"iShowBtn",
-		"codeInsertOverlay",
-		"ciModal",
-		"ciCode",
-		"ciActions",
-		"ciPaste",
-		"ciConfirm",
+		"snippetOverlay",
+		"snModal",
+		"snCode",
+		"snActions",
+		"snPaste",
+		"snConfirm",
 		"noteOverlay",
 		"ntTitle",
 		"ntText",
@@ -178,16 +178,16 @@ function build(opts = {}) {
 	for (const id of ids) nodes[id] = el(id);
 
 	nodes.questionOverlay.classList.add("overlay overlay-pad-ok");
-	nodes.moveToOverlay.classList.add("overlay overlay-pad-ok");
-	nodes.codeInsertOverlay.classList.add("overlay overlay-pad-ok");
+	nodes.goToOverlay.classList.add("overlay overlay-pad-ok");
+	nodes.snippetOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.noteOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.mediaOverlay.classList.add("overlay overlay-pad-ok");
 	nodes.interactionOverlay.classList.add("overlay overlay-pad-ok");
 
 	const overlayIds = [
 		"questionOverlay",
-		"moveToOverlay",
-		"codeInsertOverlay",
+		"goToOverlay",
+		"snippetOverlay",
 		"noteOverlay",
 		"mediaOverlay",
 		"interactionOverlay",
@@ -246,12 +246,12 @@ function build(opts = {}) {
 		cancelAnimationFrame() {},
 		console,
 		LeoBlocks: require(path.join(BASE, "shared/blocks.js")),
-		MoveToTarget: require(path.join(BASE, "shared/move-to-target.js")),
+		GoToTarget: require(path.join(BASE, "shared/go-to-target.js")),
 	};
 
 	const src = [
-		fs.readFileSync(path.join(BASE, "shared/snippet-view.js"), "utf-8"),
-		"const SnippetView = window.SnippetView;",
+		fs.readFileSync(path.join(BASE, "shared/excerpt-view.js"), "utf-8"),
+		"const ExcerptView = window.ExcerptView;",
 		fs.readFileSync(path.join(BASE, "shared/code-text.js"), "utf-8"),
 		"const CodeTextRenderer = window.CodeTextRenderer;",
 		fs.readFileSync(path.join(BASE, "shared/interaction-view.js"), "utf-8"),
@@ -261,16 +261,16 @@ function build(opts = {}) {
 
 	const exported =
 		src +
-		"\n;module.exports={setSessionActive,setTouchpadMode,initTouchpad," +
-		"showQuestionOverlay,closeQuestionOverlayUI,showMoveToOverlay," +
-		"closeMoveToOverlayUI,showCodeInsertOverlay,closeCodeInsertOverlayUI," +
+		"\n;module.exports={setAutoTypingActive,setTouchpadMode,initTouchpad," +
+		"showQuestionOverlay,closeQuestionOverlayUI,showGoToOverlay," +
+		"closeGoToOverlayUI,showSnippetOverlay,closeSnippetOverlayUI," +
 		"resyncOverlays," +
-		"closeCodeInsertOverlay,codeInsertPaste," +
+		"closeSnippetOverlay,snippetPaste," +
 		"updateLessonData,applySettings,updateCursor," +
 		"showQuestionToTeacher,closeQuestionOverlay:()=>questionOverlay.dismiss()," +
-		"closeMoveToOverlay," +
-		"moveToTypeName,setAutoPilot,requestAutoPilot,remoteStep," +
-		"moveToSetTyped:(d)=>moveToOverlay.setTyped(d)," +
+		"closeGoToOverlay," +
+		"goToTypeName,setAutoPilot,requestAutoPilot,remoteStep," +
+		"goToSetTyped:(d)=>goToOverlay.setTyped(d)," +
 		"showNoteOverlay,closeNoteOverlayUI,closeNoteOverlay," +
 		"showMediaOverlay,closeMediaOverlayUI,closeMediaOverlay," +
 		"pinMediaWindow,setPinnedWindows,unpinWindows,closeActiveOverlay," +

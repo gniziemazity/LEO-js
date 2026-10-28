@@ -88,8 +88,8 @@ const marked = (code) =>
 	code.children.map((row) =>
 		row.children
 			.map((s) => {
-				if (s.className === "snippet-caret") return "|";
-				if (s.className === "snippet-mark") return `[${s.textContent}]`;
+				if (s.className === "excerpt-caret") return "|";
+				if (s.className === "excerpt-mark") return `[${s.textContent}]`;
 				return s.textContent;
 			})
 			.join("")
@@ -97,9 +97,9 @@ const marked = (code) =>
 	);
 
 const PLAN = [
-	{ type: "move-to", target: "index.html" },
+	{ type: "go-to", target: "index.html" },
 	{ type: "code", text: "<p>hi</p>" },
-	{ type: "move-to", target: "app.js" },
+	{ type: "go-to", target: "app.js" },
 	{ type: "code", text: "let a = 1;↩let b = 2;" },
 ];
 
@@ -150,9 +150,9 @@ test("going un-maximized hides it and cancels a pending regenerate", () => {
 });
 
 const SPLIT = [
-	{ type: "move-to", target: "app.js" },
+	{ type: "go-to", target: "app.js" },
 	{ type: "code", text: "a();⚓1⚓↩c();" },
-	{ type: "move-to", target: "⚓1⚓" },
+	{ type: "go-to", target: "⚓1⚓" },
 	{ type: "code", text: "↩b();" },
 ];
 

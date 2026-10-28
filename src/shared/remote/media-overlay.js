@@ -1,21 +1,21 @@
 class MediaOverlay extends RemoteOverlay {
 	constructor() {
-		super("mediaOverlay");
-		this.kind = null;
+		super("mediaOverlay", "media-confirmed");
+		this.type = null;
 		this.pinned = { image: false, web: false };
 	}
 
 	show(payload) {
-		const { kind, name } = payload || {};
+		const { type, name } = payload || {};
 		const overlay = this.el;
 		const nameEl = document.getElementById("mdName");
 		if (!overlay || !nameEl) return;
-		this.kind = kind;
+		this.type = type;
 		const titleEl = document.getElementById("mdTitle");
-		if (titleEl) titleEl.textContent = LeoBlocks.POPUP_TITLES[kind] || "";
+		if (titleEl) titleEl.textContent = LeoBlocks.POPUP_TITLES[type] || "";
 		nameEl.textContent = name || "";
 		this.syncPin();
-		this.open("var(--clr-moveto-bg)");
+		this.open("var(--clr-popup-bg)");
 	}
 
 	setPinned(pinned) {
@@ -27,7 +27,7 @@ class MediaOverlay extends RemoteOverlay {
 	}
 
 	isPinned() {
-		return !!this.pinned[this.kind];
+		return !!this.pinned[this.type];
 	}
 
 	syncPin() {
@@ -41,11 +41,6 @@ class MediaOverlay extends RemoteOverlay {
 
 	chromeClose() {
 		sendMessage("media-dismissed", {});
-		this.closeUI();
-	}
-
-	confirm() {
-		sendMessage("media-confirmed", {});
 		this.closeUI();
 	}
 }

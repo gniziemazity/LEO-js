@@ -172,6 +172,37 @@ test("reset and getAll never hand out the defaults themselves", () => {
 	);
 });
 
+test("a renamed setting keeps the teacher's value", () => {
+	const sm = new SettingsManager();
+	const file = path.join(
+		require("node:os").tmpdir(),
+		`leo-settings-${process.pid}-${Date.now()}.json`,
+	);
+	require("node:fs").writeFileSync(
+		file,
+		JSON.stringify({ autoTypingSpeed: 120 }),
+	);
+	try {
+		const loaded = sm.load.call({
+			settingsPath: file,
+			defaults: () => sm.defaults(),
+			defaultSettings: sm.defaultSettings,
+		});
+		assert.equal(
+			loaded.autoRunSpeed,
+			120,
+			"the old key's value carries over",
+		);
+		assert.equal(
+			"autoTypingSpeed" in loaded,
+			false,
+			"and the old key is gone",
+		);
+	} finally {
+		require("node:fs").unlinkSync(file);
+	}
+});
+
 test("a first run with no settings file does not alias the defaults", () => {
 	const sm = new SettingsManager();
 	sm.save = () => true;
@@ -186,6 +217,6 @@ test("a first run with no settings file does not alias the defaults", () => {
 	assert.notEqual(
 		sm.settings.hotkeys.typing,
 		sm.defaultSettings.hotkeys.typing,
-		"the typing hotkey array is shared with the defaults",
+		"the auto-typing hotkey array is shared with the defaults",
 	);
 });

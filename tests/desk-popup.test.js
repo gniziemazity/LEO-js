@@ -73,7 +73,6 @@ function build() {
 	return { popup, sent };
 }
 
-// Every button in the card, flattened.
 function buttons(popup) {
 	const out = [];
 	const walk = (el) => {
@@ -97,26 +96,26 @@ const SNIPPET = {
 	switchTo: "app.js",
 };
 
-test("the move-to card shows the snippet and names the file to open", () => {
+test("the go-to card shows the excerpt and names the file to open", () => {
 	const { popup, sent } = build();
-	popup.showMoveTo({ mode: "anchor", target: "⚓7⚓", snippet: SNIPPET });
+	popup.showGoTo({ mode: "anchor", target: "⚓7⚓", excerpt: SNIPPET });
 
-	assert.equal(popup.isOpen("move-to"), true);
+	assert.equal(popup.isOpen("go-to"), true);
 	assert.equal(popup.el.children[0].textContent, "Go to (app.js):");
 	const body = popup.el.children[1];
-	assert.equal(body.children.length, 2, "one row per snippet line");
+	assert.equal(body.children.length, 2, "one row per excerpt line");
 
 	byLabel(popup, "OK").click();
-	assert.deepEqual(sent, [["client-move-to-confirmed"]]);
+	assert.deepEqual(sent, [["client-go-to-confirmed"]]);
 	assert.equal(popup.isOpen(), false, "confirming closes the card");
 });
 
-test("a file move-to names the file above the code it lands in", () => {
+test("a file go-to names the file above the code it lands in", () => {
 	const { popup } = build();
-	popup.showMoveTo({
+	popup.showGoTo({
 		mode: "file",
 		target: "app.js",
-		snippet: { ...SNIPPET, switchTo: null },
+		excerpt: { ...SNIPPET, switchTo: null },
 	});
 	assert.equal(popup.el.children[0].textContent, "Go to:");
 	assert.equal(popup.el.children[1].textContent, "app.js");
@@ -126,25 +125,25 @@ test("a file move-to names the file above the code it lands in", () => {
 
 test("an anchor that cannot be found falls back to its name", () => {
 	const { popup } = build();
-	popup.showMoveTo({
+	popup.showGoTo({
 		mode: "anchor",
 		target: "⚓9⚓",
-		snippet: { lines: [] },
+		excerpt: { lines: [] },
 	});
 	assert.equal(popup.el.children.length, 3, "no empty code box is left");
 	assert.equal(popup.el.children[1].textContent, "⚓9⚓");
 });
 
-test("a move-to that is not an anchor just names its target", () => {
+test("a go-to that is not an anchor just names its target", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "dev", target: "DEV", snippet: null });
+	popup.showGoTo({ mode: "dev", target: "DEV", excerpt: null });
 	assert.equal(popup.el.children[0].textContent, "Go to:");
 	assert.equal(popup.el.children[1].textContent, "Dev Tools");
 });
 
-test("the code-insert card points at the clipboard, with no Paste button", () => {
+test("the snippet card points at the clipboard, with no Paste button", () => {
 	const { popup, sent } = build();
-	popup.showCodeInsert({ text: "const a = 1;\nconst b = 2;", colored: null });
+	popup.showSnippet({ text: "const a = 1;\nconst b = 2;", colored: null });
 
 	assert.equal(popup.el.children[1].children.length, 2);
 	assert.equal(
@@ -155,7 +154,7 @@ test("the code-insert card points at the clipboard, with no Paste button", () =>
 		"the desk pastes with Ctrl+V; the button belongs to the phone",
 	);
 	byLabel(popup, "OK").click();
-	assert.deepEqual(sent, [["client-code-insert-confirmed"]]);
+	assert.deepEqual(sent, [["client-snippet-confirmed"]]);
 });
 
 test("the note card shows the note and confirms it", () => {
@@ -166,7 +165,7 @@ test("the note card shows the note and confirms it", () => {
 	assert.equal(popup.el.children[1].textContent, "Mind the\nindentation");
 	assert.match(
 		popup.el.children[1].className,
-		/mt-modal-note/,
+		/popup-note/,
 		"it wears the note colour the Settings theme sets",
 	);
 	byLabel(popup, "OK").click();
@@ -174,14 +173,14 @@ test("the note card shows the note and confirms it", () => {
 	assert.equal(popup.isOpen(), false);
 });
 
-test("the image and web cards name what is shown, under their own kind", () => {
-	for (const [kind, title] of [
+test("the image and web cards name what is shown, under their own type", () => {
+	for (const [type, title] of [
 		["image", "Image:"],
 		["web", "Web page:"],
 	]) {
 		const { popup, sent } = build();
-		popup.showMedia({ kind, name: "flex.webp" });
-		assert.equal(popup.isOpen(kind), true, "closeIf(kind) must find it");
+		popup.showMedia({ type, name: "flex.webp" });
+		assert.equal(popup.isOpen(type), true, "closeIf(type) must find it");
 		assert.equal(popup.el.children[0].textContent, title);
 		assert.equal(popup.el.children[1].textContent, "flex.webp");
 		assert.deepEqual(
@@ -199,18 +198,18 @@ test("the snippet hint names the key that pastes and carries on", () => {
 	const hint = () =>
 		popup.el.children.find((c) => c.className === "desk-popup-hint")
 			.textContent;
-	popup.showCodeInsert({ text: "x", colored: null });
+	popup.showSnippet({ text: "x", colored: null });
 	assert.equal(hint(), "(to paste: Ctrl/⌘+V in your editor)");
 
 	popup.setConfirmKey("CommandOrControl+Enter");
-	popup.showCodeInsert({ text: "x", colored: null });
+	popup.showSnippet({ text: "x", colored: null });
 	assert.equal(
 		hint(),
 		"(to paste: Ctrl/⌘+V in your editor, or Ctrl/⌘+Enter to paste and carry on)",
 	);
 
 	popup.setConfirmKey("Alt+P");
-	popup.showCodeInsert({ text: "x", colored: null });
+	popup.showSnippet({ text: "x", colored: null });
 	assert.match(hint(), /or Alt\+P to paste/, "a rebound key is the one named");
 });
 
@@ -419,17 +418,17 @@ test("a planned question shows no asker row", () => {
 
 test("closeIf only closes the popup it names", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "anchor", target: "⚓7⚓", snippet: SNIPPET });
+	popup.showGoTo({ mode: "anchor", target: "⚓7⚓", excerpt: SNIPPET });
 	popup.closeIf("question");
-	assert.equal(popup.isOpen("move-to"), true);
-	popup.closeIf("move-to");
+	assert.equal(popup.isOpen("go-to"), true);
+	popup.closeIf("go-to");
 	assert.equal(popup.isOpen(), false);
 });
 
 test("the host ending a block closes the card without confirming it", () => {
 	const { popup, sent } = build();
-	popup.showCodeInsert({ text: "x", colored: null });
-	popup.closeIf("code-insert");
+	popup.showSnippet({ text: "x", colored: null });
+	popup.closeIf("snippet");
 	assert.deepEqual(sent, [], "stepping past must not fire the confirm");
 });
 
@@ -474,7 +473,7 @@ test("the popups live in LEO's own window, with no second client shape", () => {
 	assert.equal(read("src/index.html").includes("controlPanel"), false);
 	for (const f of [
 		"src/shared/remote/connection.js",
-		"src/shared/remote/code-insert-overlay.js",
+		"src/shared/remote/snippet-overlay.js",
 		"src/shared/remote/interaction-overlay.js",
 	]) {
 		assert.equal(
@@ -488,7 +487,10 @@ test("the popups live in LEO's own window, with no second client shape", () => {
 		false,
 		"styles.css carries rules nothing can match",
 	);
-	for (const f of ["src/main/main.js", "src/main/float-windows.js"]) {
+	for (const f of [
+		"src/main/main.js",
+		"src/main/floating-window-manager.js",
+	]) {
 		assert.equal(
 			read(f).includes("setPanelVisible"),
 			false,
@@ -526,9 +528,9 @@ test("every desk action is a message the server already knows", () => {
 	);
 });
 
-test("Auto-type arms the name and leaves the card open, with no OK beside it", () => {
+test("Type name arms the name and leaves the card open, with no OK beside it", () => {
 	const { popup, sent } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css", typeName: true });
+	popup.showGoTo({ mode: "file", target: "style.css", typeName: true });
 
 	assert.equal(
 		byLabel(popup, "OK"),
@@ -536,30 +538,30 @@ test("Auto-type arms the name and leaves the card open, with no OK beside it", (
 		"typing the last character is what confirms; an OK would let it be skipped",
 	);
 
-	byLabel(popup, "Auto-type").click();
-	assert.deepEqual(sent, [["client-move-to-type-name"]]);
+	byLabel(popup, "Type name").click();
+	assert.deepEqual(sent, [["client-go-to-type-name"]]);
 	assert.equal(
-		popup.isOpen("move-to"),
+		popup.isOpen("go-to"),
 		true,
 		"the card has to stay up: the name is typed one key at a time",
 	);
 });
 
-test("the card titles a file-creating move-to as such", () => {
+test("the card titles a file-creating go-to as such", () => {
 	const creating = build().popup;
-	creating.showMoveTo({ mode: "file", target: "style.css", typeName: true });
+	creating.showGoTo({ mode: "file", target: "style.css", typeName: true });
 	assert.equal(creating.el.children[0].textContent, "Create file:");
 
 	const plain = build().popup;
-	plain.showMoveTo({ mode: "file", target: "style.css" });
+	plain.showGoTo({ mode: "file", target: "style.css" });
 	assert.equal(plain.el.children[0].textContent, "Go to:");
 });
 
-test("a file move-to without Auto-type is just an OK", () => {
+test("a file go-to without Type name is just an OK", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css" });
+	popup.showGoTo({ mode: "file", target: "style.css" });
 
-	assert.equal(byLabel(popup, "Auto-type"), undefined);
+	assert.equal(byLabel(popup, "Type name"), undefined);
 	assert.ok(byLabel(popup, "OK"));
 
 	const hints = [];
@@ -570,22 +572,22 @@ test("a file move-to without Auto-type is just an OK", () => {
 		}
 	};
 	walk(popup.el);
-	assert.deepEqual(hints, [], "the move-to card carries no hint");
+	assert.deepEqual(hints, [], "the go-to card carries no hint");
 });
 
-test("a move-to with Auto-type switched off offers no Auto-type button", () => {
+test("a go-to with Type name switched off offers no Type name button", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css", typeName: false });
+	popup.showGoTo({ mode: "file", target: "style.css", typeName: false });
 
-	assert.equal(byLabel(popup, "Auto-type"), undefined);
+	assert.equal(byLabel(popup, "Type name"), undefined);
 	assert.ok(byLabel(popup, "OK"), "OK is still the way out");
 });
 
-test("a later move-to to the same file offers nothing extra", () => {
+test("a later go-to to the same file offers nothing extra", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css" });
+	popup.showGoTo({ mode: "file", target: "style.css" });
 	assert.equal(
-		byLabel(popup, "Auto-type"),
+		byLabel(popup, "Type name"),
 		undefined,
 		"the payload decides; the surface must not re-derive it from mode alone",
 	);
@@ -594,13 +596,13 @@ test("a later move-to to the same file offers nothing extra", () => {
 
 test("a code insert with paste switched off drops the Ctrl+V hint", () => {
 	const withPaste = build().popup;
-	withPaste.showCodeInsert({ text: "x", colored: null });
+	withPaste.showSnippet({ text: "x", colored: null });
 	const hintOf = (p) =>
 		(p.el.children || []).find((c) => c.className === "desk-popup-hint");
 	assert.ok(hintOf(withPaste), "the hint is the desk's stand-in for Paste");
 
 	const noPaste = build().popup;
-	noPaste.showCodeInsert({ text: "x", colored: null, paste: false });
+	noPaste.showSnippet({ text: "x", colored: null, paste: false });
 	assert.equal(hintOf(noPaste), undefined);
 });
 
@@ -621,23 +623,23 @@ test("only terminating actions close the card", () => {
 		false,
 		"_send is the one that leaves the card up",
 	);
-	const moveTo = /showMoveTo\(\{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(moveTo, /_send\("client-move-to-type-name"\)/);
-	assert.match(moveTo, /_act\("client-move-to-confirmed"\)/);
+	const goTo = /showGoTo\(\{[\s\S]*?\n\t\}/.exec(src)[0];
+	assert.match(goTo, /_send\("client-go-to-type-name"\)/);
+	assert.match(goTo, /_act\("client-go-to-confirmed"\)/);
 });
 
 test("the card shows the typed name as it advances", () => {
 	const { popup } = build();
-	popup.showMoveTo({ mode: "file", target: "style.css" });
+	popup.showGoTo({ mode: "file", target: "style.css" });
 
-	popup.setMoveToTyped({ target: "style.css", typed: 3 });
+	popup.setGoToTyped({ target: "style.css", typed: 3 });
 	const body = popup.el.children[1];
 	assert.equal(
 		body.children.map((c) => c.textContent).join(""),
 		"style.css↩",
 		"the return is shown as part of what gets typed",
 	);
-	assert.equal(body.children[3].className, "mt-modal-anchor-cursor");
+	assert.equal(body.children[3].className, "excerpt-anchor-cursor");
 });
 
 test("the question card reveals itself when the confirm key shows the question", () => {

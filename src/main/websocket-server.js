@@ -27,10 +27,10 @@ const BARE_CLIENT_MESSAGES = [
 	"toggle-active",
 	"step-backward",
 	"step-forward",
-	"move-to-confirmed",
-	"code-insert-confirmed",
-	"code-insert-paste",
-	"move-to-type-name",
+	"go-to-confirmed",
+	"snippet-confirmed",
+	"snippet-paste",
+	"go-to-type-name",
 	"note-confirmed",
 	"media-confirmed",
 	"media-dismissed",
@@ -127,8 +127,8 @@ class LEOBroadcastServer extends EventEmitter {
 			activeQuestionShown: false,
 			students: [],
 			timeRemaining: null,
-			activeMoveTo: null,
-			activeCodeInsert: null,
+			activeGoTo: null,
+			activeSnippet: null,
 			activeNote: null,
 			activeMedia: null,
 			pinnedWindows: { image: false, web: false },
@@ -369,28 +369,28 @@ class LEOBroadcastServer extends EventEmitter {
 		this.broadcast({ type: "question-ended", data: {} });
 	}
 
-	broadcastMoveToStarted(payload) {
-		this.currentState.activeMoveTo = payload;
-		this.broadcast({ type: "move-to-started", data: payload });
+	broadcastGoToStarted(payload) {
+		this.currentState.activeGoTo = payload;
+		this.broadcast({ type: "go-to-started", data: payload });
 	}
 
-	broadcastMoveToTyping(data) {
-		this.broadcast({ type: "move-to-typing", data });
+	broadcastGoToTyping(data) {
+		this.broadcast({ type: "go-to-typing", data });
 	}
 
-	broadcastMoveToEnded() {
-		this.currentState.activeMoveTo = null;
-		this.broadcast({ type: "move-to-ended", data: {} });
+	broadcastGoToEnded() {
+		this.currentState.activeGoTo = null;
+		this.broadcast({ type: "go-to-ended", data: {} });
 	}
 
-	broadcastCodeInsertStarted(payload) {
-		this.currentState.activeCodeInsert = payload;
-		this.broadcast({ type: "code-insert-started", data: payload });
+	broadcastSnippetStarted(payload) {
+		this.currentState.activeSnippet = payload;
+		this.broadcast({ type: "snippet-started", data: payload });
 	}
 
-	broadcastCodeInsertEnded() {
-		this.currentState.activeCodeInsert = null;
-		this.broadcast({ type: "code-insert-ended", data: {} });
+	broadcastSnippetEnded() {
+		this.currentState.activeSnippet = null;
+		this.broadcast({ type: "snippet-ended", data: {} });
 	}
 
 	broadcastNoteStarted(payload) {
@@ -489,3 +489,5 @@ class LEOBroadcastServer extends EventEmitter {
 
 module.exports = LEOBroadcastServer;
 module.exports.CLIENT_MESSAGE_TYPES = CLIENT_MESSAGE_TYPES;
+module.exports.EDIT_KEYS = EDIT_KEYS;
+module.exports.clampNum = clampNum;

@@ -13,7 +13,11 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { WINDOW_CONFIG } = require("../shared/constants");
-const { interactionBgColor, isTeacher } = require("../shared/interaction-view");
+const {
+	interactionBgColor,
+	isTeacher,
+	isQuestion: isQuestionType,
+} = require("../shared/interaction-view");
 const state = require("./state");
 
 const {
@@ -25,6 +29,9 @@ const {
 } = require("./context");
 const { createApplicationMenu } = require("./app-menu");
 const {
+	MEDIA_FLOATS,
+	FLOATING_WINDOW_MIN_WIDTH,
+	FLOATING_WINDOW_MIN_HEIGHT,
 	floatState,
 	openQuestionWindow,
 	closeAllChildWindows,
@@ -36,9 +43,9 @@ const {
 	_webFloat,
 	_randomizerFloat,
 	_optionsFloat,
-} = require("./float-windows");
+} = require("./floating-window-manager");
 const {
-	openLogVisualizer,
+	openSimulatorWindow,
 	setCourseMenuState,
 	refreshToolAvailability,
 	isLessonToolSender,
@@ -53,12 +60,12 @@ const {
 	dismissMedia,
 	confirmKeyFor,
 	pasteAndConfirm,
-	armMoveToName,
+	armGoToName,
 	typeNameOnKey,
 	hasPendingName,
-	stepMoveToName,
+	stepGoToName,
 	setNameProgressHandler,
-	openPopupKind,
+	openPopupType,
 	releaseCodeFromClipboard,
 } = require("./popups");
 const {
@@ -77,8 +84,6 @@ if (mainPlugin.registerMain) {
 }
 
 let tray = null;
-
-const MEDIA_FLOATS = { image: _imageFloat, web: _webFloat };
 
 // broadcast handlers
 
@@ -140,7 +145,7 @@ broadcastServer.on("client-student-answered", (studentName) => {
 broadcastServer.on(
 	"client-show-student-interaction",
 	(interactionType, studentName, questionText, openedAt) => {
-		const isQuestion = interactionType === "student-question";
+		const isQuestion = isQuestionType(interactionType);
 		const teacherAsked = isQuestion && isTeacher(studentName);
 		const resolved = teacherAsked ? null : resolveStudentName(studentName);
 		const displayText = isQuestion
@@ -179,14 +184,12 @@ broadcastServer.on(
 	},
 );
 broadcastServer.on("client-show-question", (animate) => showQuestion(animate));
-broadcastServer.on("client-move-to-confirmed", () => confirmPopup("move-to"));
-broadcastServer.on("client-code-insert-confirmed", () =>
-	confirmPopup("code-insert"),
-);
+broadcastServer.on("client-go-to-confirmed", () => confirmPopup("go-to"));
+broadcastServer.on("client-snippet-confirmed", () => confirmPopup("snippet"));
 broadcastServer.on("client-note-confirmed", () => confirmPopup("note"));
 broadcastServer.on("client-media-confirmed", () => confirmMedia());
 broadcastServer.on("client-pin-window", (pinned) => {
-	const float = MEDIA_FLOATS[openPopupKind()];
+	const float = MEDIA_FLOATS[openPopupType()];
 	if (float && float.isAlive()) float.setPinned(pinned);
 });
 broadcastServer.on("client-media-dismissed", () => dismissMedia(MEDIA_FLOATS));
@@ -204,17 +207,17 @@ broadcastServer.on("client-disconnected", (clientId) => {
 	autoPilot.onClientDisconnected();
 	syncRemoteHotkeys();
 });
-broadcastServer.on("client-code-insert-paste", () => pasteAndConfirm());
-broadcastServer.on("client-move-to-type-name", () => armMoveToName());
+broadcastServer.on("client-snippet-paste", () => pasteAndConfirm());
+broadcastServer.on("client-go-to-type-name", () => armGoToName());
 state.onPopupKey = () => {
 	if (!hasPendingName()) return false;
 	typeNameOnKey();
 	return true;
 };
-state.onStepKey = (delta) => stepMoveToName(delta);
+state.onStepKey = (delta) => stepGoToName(delta);
 setNameProgressHandler((p) => {
-	broadcastServer.broadcastMoveToTyping(p);
-	state.send("move-to-typing", p);
+	broadcastServer.broadcastGoToTyping(p);
+	state.send("go-to-typing", p);
 });
 broadcastServer.on("client-dismiss-question", () => {
 	endQuestion();
@@ -235,7 +238,7 @@ broadcastServer.on("client-interaction-overlay-shown", () => {
 	const clientId = broadcastServer.currentClientId;
 	if (interactionHolds.has(clientId)) return;
 	interactionHolds.set(clientId, state.pause(`interaction:${clientId}`));
-	state.send("stop-auto-typing");
+	state.send("stop-auto-run");
 });
 broadcastServer.on("client-interaction-overlay-closed", () => {
 	releaseInteractionHold(broadcastServer.currentClientId);
@@ -372,18 +375,18 @@ ipcMain.on("close-question-window", () => {
 	broadcastServer.broadcastQuestionEnded();
 });
 
-ipcMain.on("enter-move-to-block", (event, payload) =>
-	enterPopup("move-to", payload),
+ipcMain.on("enter-go-to-block", (event, payload) =>
+	enterPopup("go-to", payload),
 );
-ipcMain.on("close-move-to-window", () => endPopup("move-to"));
+ipcMain.on("close-go-to-popup", () => endPopup("go-to"));
 
-ipcMain.on("enter-code-insert-block", (event, payload) =>
-	enterPopup("code-insert", payload),
+ipcMain.on("enter-snippet-block", (event, payload) =>
+	enterPopup("snippet", payload),
 );
-ipcMain.on("close-code-insert-window", () => endPopup("code-insert"));
+ipcMain.on("close-snippet-popup", () => endPopup("snippet"));
 
 ipcMain.on("enter-note-block", (event, payload) => enterPopup("note", payload));
-ipcMain.on("close-note-window", () => endPopup("note"));
+ipcMain.on("close-note-popup", () => endPopup("note"));
 
 ipcMain.on("enter-image-block", (event, payload) =>
 	enterPopup("image", payload),
@@ -398,9 +401,9 @@ ipcMain.on("start-interaction", (event, interactionType) => {
 });
 
 const DESK_ACTIONS = new Set([
-	"client-move-to-confirmed",
-	"client-code-insert-confirmed",
-	"client-move-to-type-name",
+	"client-go-to-confirmed",
+	"client-snippet-confirmed",
+	"client-go-to-type-name",
 	"client-note-confirmed",
 	"client-media-confirmed",
 	"client-show-question",
@@ -500,18 +503,24 @@ ipcMain.on("start-resizing", (event, edge) => {
 			return;
 		}
 		if (edge.includes("right")) {
-			b.width = Math.max(220, initBounds.width + dx);
+			b.width = Math.max(FLOATING_WINDOW_MIN_WIDTH, initBounds.width + dx);
 		}
 		if (edge.includes("bottom")) {
-			b.height = Math.max(150, initBounds.height + dy);
+			b.height = Math.max(
+				FLOATING_WINDOW_MIN_HEIGHT,
+				initBounds.height + dy,
+			);
 		}
 		if (edge.includes("left")) {
 			b.x = initBounds.x + dx;
-			b.width = Math.max(220, initBounds.width - dx);
+			b.width = Math.max(FLOATING_WINDOW_MIN_WIDTH, initBounds.width - dx);
 		}
 		if (edge.includes("top")) {
 			b.y = initBounds.y + dy;
-			b.height = Math.max(150, initBounds.height - dy);
+			b.height = Math.max(
+				FLOATING_WINDOW_MIN_HEIGHT,
+				initBounds.height - dy,
+			);
 		}
 		win.setBounds(b);
 	}, 16);
@@ -522,12 +531,12 @@ ipcMain.on("set-active", (event, isActive) => {
 	state.isActive = isActive;
 	broadcastServer.updateActiveState(isActive);
 	if (isActive) {
-		cleanupAutoTyping();
+		cleanupAutoRun();
 		state.clearQueue();
-		state.send("stop-auto-typing");
-		hotkeyManager.registerTypingHotkeys();
+		state.send("stop-auto-run");
+		hotkeyManager.registerAutoTypingHotkeys();
 	} else {
-		hotkeyManager.unregisterTypingHotkeys();
+		hotkeyManager.unregisterAutoTypingHotkeys();
 	}
 });
 ipcMain.on("set-active", () => autoPilot.onActiveChanged());
@@ -535,13 +544,13 @@ ipcMain.on("type-character", (event, char) =>
 	keyboardHandler.typeCharacter(char),
 );
 ipcMain.on("input-complete", () => keyboardHandler.processQueue());
-ipcMain.on("auto-typing-complete", () => cleanupAutoTyping());
+ipcMain.on("auto-run-complete", () => cleanupAutoRun());
 ipcMain.on(
-	"start-auto-type-block",
+	"start-auto-run-block",
 	async (event, { steps, startIndex, speed }) => {
-		await keyboardHandler.autoTypeBlock(steps, startIndex, speed);
-		cleanupAutoTyping();
-		state.send("auto-typing-finished");
+		await keyboardHandler.autoRunBlock(steps, startIndex, speed);
+		cleanupAutoRun();
+		state.send("auto-run-finished");
 	},
 );
 
@@ -600,7 +609,7 @@ registerToolExport({
 	isToolSender: isLessonToolSender,
 });
 
-ipcMain.on("update-lesson-data", (e, d) => broadcastServer.updateLessonData(d));
+ipcMain.on("update-plan-data", (e, d) => broadcastServer.updateLessonData(d));
 ipcMain.on("update-cursor", (e, s) => broadcastServer.updateCursor(s));
 ipcMain.on("update-progress", (e, d) =>
 	broadcastServer.updateProgress(d.currentStep, d.totalSteps),
@@ -632,8 +641,8 @@ ipcMain.on("reset-settings", (event) => {
 	event.reply("settings-loaded", settingsManager.getAll());
 });
 
-ipcMain.on("open-log-visualizer", (_event, logFilePath) => {
-	openLogVisualizer(logFilePath);
+ipcMain.on("open-simulator-window", (_event, logFilePath) => {
+	openSimulatorWindow(logFilePath);
 });
 
 // window functions
@@ -642,20 +651,20 @@ function reapplySettings() {
 	hotkeyManager.unregisterAll();
 	hotkeyManager.registerSystemShortcuts();
 	if (state.isActive) {
-		hotkeyManager.registerTypingHotkeys();
+		hotkeyManager.registerAutoTypingHotkeys();
 	}
-	if (state.isAutoTyping) {
-		hotkeyManager.registerEscapeForAutoTyping();
+	if (state.isAutoRunning) {
+		hotkeyManager.registerEscapeForAutoRun();
 	}
-	const kind = openPopupKind();
-	if (kind) hotkeyManager.registerConfirmPopup(confirmKeyFor(kind));
+	const type = openPopupType();
+	if (type) hotkeyManager.registerConfirmPopup(confirmKeyFor(type));
 	else rearmQuestionShow();
 	keyboardHandler.updatePlatformSettings();
 }
 
 function cleanup() {
 	releaseHeldInput();
-	hotkeyManager.unregisterTypingHotkeys();
+	hotkeyManager.unregisterAutoTypingHotkeys();
 	state.reset();
 }
 
@@ -672,8 +681,8 @@ function releaseHeldInput() {
 	}
 }
 
-function cleanupAutoTyping() {
-	state.stopAutoTyping();
+function cleanupAutoRun() {
+	state.stopAutoRun();
 	state.unlock();
 	hotkeyManager.unregisterEscape();
 }
@@ -693,7 +702,7 @@ async function showEditorTipOnce() {
 		message: "LEO types into your editor as if you were typing.",
 		detail:
 			"Autocomplete, bracket closing and suggestion popups " +
-			"may interfere with your lesson plans. I recommend you switch to the settings provided in:\n" +
+			"may interfere with your plans. I recommend you switch to the settings provided in:\n" +
 			"settings/vscode_settings.json before you get used to LEO (paste it into your VS Code settings.json)\n\n" +
 			"This message is shown only once.",
 		buttons: ["Show me the settings", "Later"],

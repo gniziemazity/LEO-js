@@ -4,6 +4,7 @@ const { pathToFileURL } = require("url");
 const path = require("path");
 const fs = require("fs");
 const { copyStartFiles } = require("../shared/start-folder");
+const { planName } = require("../shared/plan-name");
 const { windowHandles, maximizeVSCode } = require("./vscode-window");
 
 let courseMenuState = { open: false, plans: [], currentPath: "" };
@@ -34,7 +35,7 @@ const SIMULATOR_TOOL = LESSON_TOOLS.find((t) => t.file === "simulator.html");
 const SKIPPED_DIRS = new Set(["students", "anon_names", "curated"]);
 
 const lessonToolWindows = new Map();
-let visualizerWindow = null;
+let simulatorWindow = null;
 
 function getCourseMenuState() {
 	return courseMenuState;
@@ -55,7 +56,7 @@ function currentCourseContext() {
 	if (path.basename(plansDir).toLowerCase() !== "plans") return null;
 	return {
 		courseRoot: path.dirname(plansDir),
-		lesson: path.basename(lessonPath).replace(/\.(leo|json)$/i, ""),
+		lesson: planName(lessonPath),
 	};
 }
 
@@ -73,7 +74,7 @@ function lessonWorkspaceFolder() {
 	try {
 		copyStartFiles(courseMenuState.currentPath, folder);
 	} catch (e) {
-		console.error("[LEO] copying the start code failed:", e);
+		console.error("[LEO] copying the starting code failed:", e);
 	}
 	return folder;
 }
@@ -348,14 +349,17 @@ function isLessonToolSender(event) {
 	return known && isLessonToolPageUrl(frame.url);
 }
 
+function isDevToolsShortcut(input) {
+	if (input.type !== "keyDown") return false;
+	const mod = process.platform === "darwin" ? input.meta : input.control;
+	return !!mod && (input.key === "i" || input.key === "I");
+}
+
 function enableDevToolsShortcut(win) {
 	win.webContents.on("before-input-event", (e, input) => {
-		if (input.type !== "keyDown") return;
-		const mod = process.platform === "darwin" ? input.meta : input.control;
-		if (mod && (input.key === "i" || input.key === "I")) {
-			win.webContents.toggleDevTools();
-			e.preventDefault();
-		}
+		if (!isDevToolsShortcut(input)) return;
+		win.webContents.toggleDevTools();
+		e.preventDefault();
 	});
 }
 
@@ -429,7 +433,7 @@ function openLessonTool(tool) {
 
 const _VIS_HTML = path.join(__dirname, "../../lesson_tools/simulator.html");
 
-function openLogVisualizer(logFilePath) {
+function openSimulatorWindow(logFilePath) {
 	const stamp = Date.now();
 	let payload = null;
 	if (logFilePath) {
@@ -488,20 +492,20 @@ function openLogVisualizer(logFilePath) {
 	}
 
 	let prevBounds = null;
-	if (visualizerWindow && !visualizerWindow.isDestroyed()) {
-		const old = visualizerWindow;
-		visualizerWindow = null;
+	if (simulatorWindow && !simulatorWindow.isDestroyed()) {
+		const old = simulatorWindow;
+		simulatorWindow = null;
 		try {
 			prevBounds = old.getBounds();
 		} catch (_) {}
 		old.removeAllListeners("closed");
 		old.destroy();
 	}
-	visualizerWindow = new BrowserWindow({
+	simulatorWindow = new BrowserWindow({
 		width: prevBounds ? prevBounds.width : 1200,
 		height: prevBounds ? prevBounds.height : 800,
 		...(prevBounds ? { x: prevBounds.x, y: prevBounds.y } : {}),
-		title: "Log Visualizer",
+		title: "Simulator",
 		icon: path.join(__dirname, "../shared/icon.ico"),
 		autoHideMenuBar: true,
 		webPreferences: {
@@ -509,27 +513,27 @@ function openLogVisualizer(logFilePath) {
 			contextIsolation: true,
 		},
 	});
-	visualizerWindow.setMenu(null);
-	enableDevToolsShortcut(visualizerWindow);
-	const target = visualizerWindow;
+	simulatorWindow.setMenu(null);
+	enableDevToolsShortcut(simulatorWindow);
+	const target = simulatorWindow;
 
 	target.webContents.once("did-finish-load", () => {
 		if (target.isDestroyed() || !payload) return;
 		target.webContents
 			.executeJavaScript(
-				`window.__leoApplyVisData && window.__leoApplyVisData(${JSON.stringify(payload)});`,
+				`window.__leoApplySimulatorData && window.__leoApplySimulatorData(${JSON.stringify(payload)});`,
 			)
-			.catch((e) => console.error("[LEO] visualizer push failed:", e));
+			.catch((e) => console.error("[LEO] simulator push failed:", e));
 	});
 	target.loadFile(_VIS_HTML);
 	target.on("closed", () => {
-		visualizerWindow = null;
+		simulatorWindow = null;
 	});
 }
 
 function closeToolWindows() {
-	if (visualizerWindow && !visualizerWindow.isDestroyed()) {
-		visualizerWindow.destroy();
+	if (simulatorWindow && !simulatorWindow.isDestroyed()) {
+		simulatorWindow.destroy();
 	}
 	for (const entry of [...lessonToolWindows.values()]) {
 		if (entry.win && !entry.win.isDestroyed()) entry.win.destroy();
@@ -548,9 +552,10 @@ module.exports = {
 	openSimulator,
 	openLessonTool,
 	isLessonToolSender,
-	openLogVisualizer,
+	openSimulatorWindow,
 	launchVSCode,
 	launchChrome,
 	folderUrl,
 	closeToolWindows,
+	isDevToolsShortcut,
 };

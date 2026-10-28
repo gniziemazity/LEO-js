@@ -62,7 +62,7 @@ class Mismatches {
 		return this.parts
 			.map(
 				(p) =>
-					`<span style="color:${p.color};font-family:Consolas,monospace;font-weight:bold${
+					`<span style="color:${p.color};font-family:var(--font-mono);font-weight:bold${
 						p.dim ? ";opacity:0.5" : ""
 					}">${escHtml(p.token)}${p.n > 1 ? "&times;" + p.n : ""}</span>`,
 			)

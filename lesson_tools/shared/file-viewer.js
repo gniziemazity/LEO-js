@@ -12,12 +12,13 @@ const FV_LOADING_HTML =
 	'<!doctype html><meta charset="utf-8">' +
 	"<style>html,body{margin:0;height:100%}" +
 	"body{display:flex;align-items:center;justify-content:center;" +
-	"background:#fff;color:#999;font-family:'Segoe UI',sans-serif;font-size:13px}" +
+	`background:${THEME.bg};color:${THEME.muted};` +
+	"font-family:'Segoe UI',sans-serif;font-size:13px}" +
 	"</style><body>Loading…</body>";
 
 const FV_LOADING_EDITOR_HTML =
 	'<div style="display:flex;align-items:center;justify-content:center;' +
-	"height:100%;color:#999;font-family:'Segoe UI',sans-serif;font-size:13px\">Loading…</div>";
+	'height:100%;color:var(--clr-muted);font-family:var(--font-ui);font-size:13px">Loading…</div>';
 
 class FileViewer {
 	constructor(opts = {}) {

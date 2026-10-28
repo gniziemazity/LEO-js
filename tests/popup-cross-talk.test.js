@@ -34,8 +34,8 @@ function harness() {
 			hotkeyManager: {
 				registerConfirmPopup: (cb) => (confirmKey = cb),
 				unregisterConfirmPopup: () => (confirmKey = null),
-				releaseTypingHotkeysFor: () => [],
-				restoreTypingHotkeys() {},
+				releaseAutoTypingHotkeysFor: () => [],
+				restoreAutoTypingHotkeys() {},
 			},
 		},
 		"./state": {
@@ -56,7 +56,7 @@ function harness() {
 
 test("a confirm for a popup that is not open cannot tear down the one that is", () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "let x = 1;", paste: true });
+	h.popups.enterPopup("snippet", { text: "let x = 1;", paste: true });
 
 	assert.equal(h.hasConfirmKey(), true);
 	assert.equal(h.paused.has("popup"), true);
@@ -99,14 +99,14 @@ test("a close arriving after its own popup was confirmed is a no-op", () => {
 	assert.equal(h.events.length, before, "it broadcast a second note-ended");
 });
 
-test("a code-insert releases the clipboard only for its own teardown", () => {
+test("a snippet releases the clipboard only for its own teardown", () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "SNIPPET", paste: true });
-	h.popups.endPopup("move-to");
+	h.popups.enterPopup("snippet", { text: "SNIPPET", paste: true });
+	h.popups.endPopup("go-to");
 	assert.equal(
 		h.popups.hasPendingName(),
 		false,
 		"sanity: no name is armed here",
 	);
-	assert.equal(h.popups.confirmPopup("code-insert"), true);
+	assert.equal(h.popups.confirmPopup("snippet"), true);
 });

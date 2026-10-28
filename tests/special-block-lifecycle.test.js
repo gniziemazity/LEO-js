@@ -6,7 +6,7 @@ const { loadModule, fakeIpcRenderer } = require("./helpers/load-module.js");
 
 function makeCursorManager(steps) {
 	const ipc = fakeIpcRenderer({
-		invoke: async () => ({ autoTypingSpeed: 10 }),
+		invoke: async () => ({ autoRunSpeed: 10 }),
 	});
 	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
 		electron: ipc.stub,
@@ -41,7 +41,7 @@ const BLOCKS = [
 	{
 		name: "note",
 		step: blockStep("Remember the semicolon"),
-		closes: "close-note-window",
+		closes: "close-note-popup",
 	},
 	{
 		name: "question",
@@ -59,14 +59,14 @@ const BLOCKS = [
 		closes: "close-web-window",
 	},
 	{
-		name: "move-to",
-		step: blockStep("", { kind: "move-to", target: "MAIN" }),
-		closes: "close-move-to-window",
+		name: "go-to",
+		step: blockStep("", { blockType: "go-to", target: "MAIN" }),
+		closes: "close-go-to-popup",
 	},
 	{
-		name: "code-insert",
+		name: "snippet",
 		step: blockStep("📋 const x = 1;"),
-		closes: "close-code-insert-window",
+		closes: "close-snippet-popup",
 	},
 ];
 
@@ -84,7 +84,7 @@ for (const block of BLOCKS) {
 		assert.ok(
 			channels().includes(block.closes),
 			`loading another lesson must send ${block.closes}; leaving it open ` +
-				"holds the main process paused and typing dies silently",
+				"holds the main process paused and auto-typing dies silently",
 		);
 	});
 
@@ -102,11 +102,11 @@ for (const block of BLOCKS) {
 	});
 }
 
-test("resetProgress leaves auto-typing runnable after a move-to block", async () => {
+test("resetProgress leaves auto-run runnable after a go-to block", async () => {
 	const { cm, channels } = makeCursorManager([
 		{
 			type: "block",
-			kind: "move-to",
+			blockType: "go-to",
 			element: element(""),
 			globalIndex: 0,
 			target: "MAIN",
@@ -115,20 +115,20 @@ test("resetProgress leaves auto-typing runnable after a move-to block", async ()
 
 	cm.updateCursor();
 	cm.resetProgress();
-	await cm.startAutoTyping();
+	await cm.startAutoRun();
 
 	assert.ok(
-		!channels().includes("auto-typing-complete"),
-		"a move-to left open makes startAutoTyping bail out immediately",
+		!channels().includes("auto-run-complete"),
+		"a go-to left open makes startAutoRun bail out immediately",
 	);
-	assert.ok(channels().includes("start-auto-type-block"));
+	assert.ok(channels().includes("start-auto-run-block"));
 });
 
-test("a first-class move-to block is not mistaken for a legacy arrow comment", () => {
+test("a first-class go-to block is not mistaken for a legacy arrow comment", () => {
 	const { cm } = makeCursorManager([
 		{
 			type: "block",
-			kind: "move-to",
+			blockType: "go-to",
 			element: element("➡️ index.html"),
 			globalIndex: 0,
 			target: "index.html",
@@ -136,10 +136,10 @@ test("a first-class move-to block is not mistaken for a legacy arrow comment", (
 	]);
 
 	const seen = [];
-	cm.onEnterMoveToBlock = (payload) => seen.push(payload);
+	cm.onEnterGoToBlock = (payload) => seen.push(payload);
 	cm.updateCursor();
 
-	assert.equal(seen.length, 1, "the move-to overlay must be asked to open");
+	assert.equal(seen.length, 1, "the go-to overlay must be asked to open");
 	assert.equal(seen[0].mode, "file");
 	assert.equal(seen[0].target, "index.html");
 });
@@ -150,33 +150,33 @@ test("a legacy arrow comment is now an ordinary comment", () => {
 		{ type: "block", element: element("➡️ somewhere"), globalIndex: 0 },
 	]);
 	cm.logManager = { addEntry: (e) => logged.push(e) };
-	cm.onEnterMoveToBlock = () => assert.fail("it must open no overlay");
+	cm.onEnterGoToBlock = () => assert.fail("it must open no overlay");
 
 	cm.updateCursor();
 	assert.deepEqual(
 		logged,
 		[],
-		"no plan authored this form; move-to is a first-class block",
+		"no plan authored this form; go-to is a first-class block",
 	);
 });
 
-for (const kind of ["move-to", "code-insert"]) {
-	test(`auto-typing resumes after a ${kind} only if it was running`, () => {
+for (const type of ["go-to", "snippet"]) {
+	test(`auto-run resumes after a ${type} only if it was running`, () => {
 		const { cm } = makeCursorManager([]);
 
-		cm.autoTypingActive = true;
-		cm.suspendAutoTypingFor(kind);
-		assert.equal(cm.autoTypingActive, false, `the ${kind} stops it first`);
+		cm.autoRunActive = true;
+		cm.suspendAutoRunFor(type);
+		assert.equal(cm.autoRunActive, false, `the ${type} stops it first`);
 		assert.equal(
-			cm.confirmSpecial(kind),
+			cm.confirmSpecial(type),
 			true,
 			"and confirming asks for it back",
 		);
 
-		cm.autoTypingActive = false;
-		cm.suspendAutoTypingFor(kind);
+		cm.autoRunActive = false;
+		cm.suspendAutoRunFor(type);
 		assert.equal(
-			cm.confirmSpecial(kind),
+			cm.confirmSpecial(type),
 			false,
 			"but never starts it unasked",
 		);
@@ -186,21 +186,21 @@ for (const kind of ["move-to", "code-insert"]) {
 test("one popup's suspend does not answer for the other", () => {
 	const { cm } = makeCursorManager([]);
 
-	cm.autoTypingActive = true;
-	cm.suspendAutoTypingFor("move-to");
+	cm.autoRunActive = true;
+	cm.suspendAutoRunFor("go-to");
 	assert.equal(
-		cm.confirmSpecial("code-insert"),
+		cm.confirmSpecial("snippet"),
 		false,
-		"confirming a code-insert must not resume what the move-to paused",
+		"confirming a snippet must not resume what the go-to paused",
 	);
-	assert.equal(cm.confirmSpecial("move-to"), true);
+	assert.equal(cm.confirmSpecial("go-to"), true);
 });
 
-test("confirming a move-to unblocks auto-typing", async () => {
+test("confirming a go-to unblocks auto-run", async () => {
 	const { cm, channels } = makeCursorManager([
 		{
 			type: "block",
-			kind: "move-to",
+			blockType: "go-to",
 			element: element(""),
 			globalIndex: 0,
 			target: "MAIN",
@@ -208,24 +208,24 @@ test("confirming a move-to unblocks auto-typing", async () => {
 	]);
 
 	cm.updateCursor();
-	cm.confirmSpecial("move-to");
-	await cm.startAutoTyping();
+	cm.confirmSpecial("go-to");
+	await cm.startAutoRun();
 
-	assert.ok(channels().includes("start-auto-type-block"));
+	assert.ok(channels().includes("start-auto-run-block"));
 });
 
-test("an open code-insert holds auto-typing until it is confirmed", async () => {
+test("an open snippet holds auto-run until it is confirmed", async () => {
 	const step = blockStep("📋 const x = 1;");
 	const { cm, channels } = makeCursorManager([step]);
 
 	cm.updateCursor();
-	await cm.startAutoTyping();
+	await cm.startAutoRun();
 	assert.ok(
-		!channels().includes("start-auto-type-block"),
-		"typing must not run past a code-insert that is still open",
+		!channels().includes("start-auto-run-block"),
+		"auto-typing must not run past a snippet that is still open",
 	);
 
-	cm.confirmSpecial("code-insert");
-	await cm.startAutoTyping();
-	assert.ok(channels().includes("start-auto-type-block"));
+	cm.confirmSpecial("snippet");
+	await cm.startAutoRun();
+	assert.ok(channels().includes("start-auto-run-block"));
 });

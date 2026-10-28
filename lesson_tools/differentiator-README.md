@@ -19,7 +19,7 @@ final file.
 
 ## 1. Opening it
 
-**From the dashboard (the usual way).** In the overview, students, or timeline
+**From the overview, students or timeline page (the usual way).** In the overview, students, or timeline
 tools, click a student. The differentiator opens for that student and lesson,
 data already loaded. (Shift+click an id/name opens it in a new tab.)
 
@@ -234,7 +234,7 @@ the editor (undoable with Ctrl+Z; nothing is written until you Save).
 
 ## Quick start
 
-1. Open a student from the dashboard.
+1. Open a student from the overview or students page.
 2. Switch the mode to **Minimal** (or **Ideal**).
 3. Select tokens and label them (`m`/`e`/`g`/`c`), pairing substitutions with `p`.
 4. Watch the follow **%** and the parity line until the corrections check out.

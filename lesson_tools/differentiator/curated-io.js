@@ -81,40 +81,10 @@ function _curatedDownloadFile(fname, matching) {
 	URL.revokeObjectURL(url);
 }
 
-function _curatedFlashButton(id, label) {
-	const btn = document.getElementById(id);
-	if (!btn) return;
-	const orig = btn.dataset.label || btn.textContent;
-	btn.dataset.label = orig;
-	btn.textContent = label;
-	btn.classList.add("active");
-	setTimeout(() => {
-		btn.textContent = orig;
-		btn.classList.remove("active");
-	}, 900);
-}
-
 function _curatedCopyText(text, btnId) {
-	const done = () => _curatedFlashButton(btnId, "✓ Copied");
-	const fail = () => _curatedFlashButton(btnId, "✖ Failed");
-	if (navigator.clipboard && navigator.clipboard.writeText) {
-		navigator.clipboard.writeText(text).then(done).catch(fail);
-		return;
-	}
-	const ta = document.createElement("textarea");
-	ta.value = text;
-	ta.style.position = "fixed";
-	ta.style.left = "-9999px";
-	document.body.appendChild(ta);
-	ta.focus();
-	ta.select();
-	let ok = false;
-	try {
-		ok = document.execCommand("copy");
-	} catch {}
-	ta.remove();
-	if (ok) done();
-	else fail();
+	copyText(text).then((ok) =>
+		flashButton(document.getElementById(btnId), ok ? "Copied" : "Failed"),
+	);
 }
 
 function _curatedCurrentSid() {
@@ -367,7 +337,7 @@ function _curatedBuildSaveControls() {
 		setError("");
 		try {
 			await _curatedSaveToFolder(r.fname, r.matching);
-			_curatedFlashButton("csm-save", "✓ Saved");
+			flashButton(saveBtn, "Saved");
 		} catch (err) {
 			console.error("[Differentiator] Save failed", err);
 			setError("Save failed: " + (err && err.message));

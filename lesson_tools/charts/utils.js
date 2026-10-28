@@ -12,17 +12,19 @@ const CHART_FONT = {
 };
 
 const CHART_COLOR = {
-	axisText: "#595959",
-	grid: "#e8e8e8",
-	gridFaint: "#f0f0f0",
-	axisLine: "#ccc",
-	white: "#fff",
-	border: "#ddd",
-	text: "#333",
-	barBorder: "#999",
-	muted: "#555",
-	faint: "#888",
-	rightAxis: "#007acc",
+	axisText: _cssVar("--clr-chart-axis-text") || "#555",
+	grid: _cssVar("--clr-chart-grid") || "#e8e8e8",
+	gridFaint: _cssVar("--clr-chart-grid-faint") || "#f0f0f0",
+	axisLine: _cssVar("--clr-chart-axis-line") || "#ccc",
+	white: _cssVar("--clr-white") || "#fff",
+	border: _cssVar("--clr-chart-border") || "#ddd",
+	text: _cssVar("--clr-chart-text") || "#333",
+	barBorder: _cssVar("--clr-chart-bar-border") || "#999",
+	muted: _cssVar("--clr-chart-axis-text") || "#555",
+	faint: _cssVar("--clr-muted") || "#888",
+	rightAxis: _cssVar("--clr-accent") || "#007acc",
+	datasetFill:
+		_cssVar("--clr-chart-dataset-fill") || "rgba(100, 100, 100, 0.4)",
 };
 
 function niceStep(range, targetSteps) {

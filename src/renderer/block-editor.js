@@ -1,4 +1,5 @@
 const { formatCodeForAutoTyping } = require("./code-formatter");
+const { hasBlockControls } = require("../shared/blocks");
 
 let copiedBlocks = [];
 
@@ -35,11 +36,7 @@ class BlockEditor {
 
 	copyBlocks(indices) {
 		const blocks = indices.map((i) => this.lessonManager.getBlock(i));
-		if (
-			!blocks.length ||
-			blocks.some((b) => !b || b.fromInclude || b.type === "include")
-		)
-			return false;
+		if (!blocks.length || !blocks.every(hasBlockControls)) return false;
 		copiedBlocks = blocks.map((b) => JSON.parse(JSON.stringify(b)));
 		if (this.uiManager.setHasCopiedBlock)
 			this.uiManager.setHasCopiedBlock(true);
@@ -113,12 +110,12 @@ class BlockEditor {
 		this.lessonRenderer.render();
 	}
 
-	setKind(index, kind) {
-		if (!this.lessonManager.canSetBlockKind(index, kind)) return;
+	setType(index, type) {
+		if (!this.lessonManager.canSetBlockType(index, type)) return;
 
 		this._checkpoint("change-block-type");
 
-		this.lessonManager.setBlockKind(index, kind);
+		this.lessonManager.setBlockType(index, type);
 		this.lessonRenderer.render();
 	}
 

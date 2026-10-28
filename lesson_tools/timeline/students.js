@@ -12,45 +12,12 @@ async function loadXlsxFiles(files) {
 		return;
 	}
 
-	_basisFiles = new Map();
-	_basisFallbackFile = null;
-	for (const f of files) {
-		const n = f.name.toLowerCase();
-		if (!n.includes("remarks") || !n.endsWith(".xlsx")) continue;
-		let matched = false;
-		for (const { key } of REMARKS_BASES) {
-			if (remarksFileRe(key).test(n)) {
-				_basisFiles.set(key, f);
-				matched = true;
-				break;
-			}
-		}
-		if (!matched) _basisFallbackFile = f;
-	}
-
-	let chosenKey = null;
-	const _wantBasis = parseToolParams().basis;
-	if (_wantBasis && _basisFiles.has(_wantBasis)) {
-		chosenKey = _wantBasis;
-	}
-	if (!chosenKey)
-		for (const key of DIFF_MARKS_PRIORITY) {
-			if (_basisFiles.has(key)) {
-				chosenKey = key;
-				break;
-			}
-		}
-	if (!chosenKey) {
-		for (const { key } of REMARKS_BASES) {
-			if (_basisFiles.has(key)) {
-				chosenKey = key;
-				break;
-			}
-		}
-	}
-	_activeBasis = chosenKey;
-	const remarksFile = chosenKey
-		? _basisFiles.get(chosenKey)
+	const picked = pickRemarksFiles(files, { lessonName: _lessonName });
+	_basisFiles = picked.basisFiles;
+	_basisFallbackFile = picked.fallback;
+	_activeBasis = defaultBasis(_basisFiles, parseToolParams().basis);
+	const remarksFile = _activeBasis
+		? _basisFiles.get(_activeBasis)
 		: _basisFallbackFile;
 	if (!remarksFile) return;
 
@@ -86,25 +53,13 @@ async function _loadRemarksFile(file) {
 function _renderBasisPicker() {
 	const container = document.getElementById("chart-bottom-basis");
 	if (!container) return;
-	const hasBasisOptions = REMARKS_BASES.some(({ key }) =>
-		_basisFiles.has(key),
-	);
-	if (!hasBasisOptions) {
-		container.classList.remove("has-options");
-		container.innerHTML = "";
-		return;
-	}
-	container.classList.add("has-options");
-	let select = container.querySelector("select");
-	if (!select) {
-		container.innerHTML = "";
-		container.appendChild(document.createTextNode("Basis: "));
-		select = document.createElement("select");
-		container.appendChild(select);
-		select.addEventListener("change", async () => {
-			_activeBasis = select.value;
-			select.classList.toggle("is-curated", CURATED_MODES.has(_activeBasis));
-			const f = _basisFiles.get(_activeBasis);
+	const shown = renderBasisSelect(
+		container,
+		_basisFiles,
+		_activeBasis,
+		async (key) => {
+			_activeBasis = key;
+			const f = _basisFiles.get(key);
 			if (!f) return;
 			try {
 				showLoading(true);
@@ -113,25 +68,13 @@ function _renderBasisPicker() {
 				showLoading(false);
 				alert("Error loading basis xlsx:\n" + ex.message);
 			}
-		});
-	}
-	select.innerHTML = "";
-	for (const { key, label } of REMARKS_BASES) {
-		if (!_basisFiles.has(key)) continue;
-		const opt = document.createElement("option");
-		opt.value = key;
-		opt.textContent = label;
-		select.appendChild(opt);
-	}
-	if (_activeBasis) select.value = _activeBasis;
-	select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
+		},
+	);
+	container.classList.toggle("has-options", !!shown);
 }
 
 function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
-	const wbR = XLSX.read(remarksBuf, { type: "array" });
-	const wsR = wbR.Sheets["Remarks"] || wbR.Sheets[wbR.SheetNames[0]];
-	const rowsR = XLSX.utils.sheet_to_json(wsR, { header: 1, defval: "" });
-	const hdrR = rowsR[0] || [];
+	const { rows: rowsR, hdr: hdrR } = readRemarksSheet(remarksBuf);
 	const nameColR = hdrR.indexOf("Student");
 	const pctColR = hdrR.indexOf("Follow (E)");
 	const descColR = hdrR.indexOf("Follow (E) Desc");
@@ -161,11 +104,7 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 		}
 	}
 
-	const langDescCols = {};
-	for (const label of ["HTML", "CSS", "JS", "Py"]) {
-		const col = hdrR.indexOf(`${label} (E) Desc`);
-		if (col !== -1) langDescCols[label] = col;
-	}
+	const langCols = remarksLangCols(hdrR).filter((c) => c.desc !== -1);
 
 	const followData = {};
 	for (let i = 1; i < rowsR.length; i++) {
@@ -175,19 +114,14 @@ function parseStudentData(remarksBuf, sessionDate, sessionStart, sessionEnd) {
 		const pct = parseFloat(row[pctColR]);
 		const desc = descColR !== -1 ? String(row[descColR] || "") : "";
 		const events = parseFollowEvents(desc, sessionDate);
-		const langOf = new Map();
-		for (const [label, col] of Object.entries(langDescCols)) {
-			const langDesc = String(row[col] || "");
-			if (!langDesc) continue;
-			for (const ev of parseFollowEvents(langDesc, sessionDate)) {
-				langOf.set(`${ev.kind}|${ev.token}|${ev.ts}`, label);
+		const langEvents = [];
+		for (const col of langCols) {
+			for (const ev of parseFollowEvents(row[col.desc], sessionDate)) {
+				ev.lang = col.label;
+				langEvents.push(ev);
 			}
 		}
-		for (const ev of events) {
-			const key = `${ev.kind}|${ev.token}|${ev.ts}`;
-			const lang = langOf.get(key);
-			if (lang) ev.lang = lang;
-		}
+		tagEventLangs(events, langEvents);
 		followData[name] = {
 			pct: isNaN(pct) ? null : pct,
 			events,

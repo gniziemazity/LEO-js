@@ -33,8 +33,9 @@ function activePadOverlay() {
 }
 
 class RemoteOverlay {
-	constructor(overlayId) {
+	constructor(overlayId, confirmMessage = null) {
 		this.overlayId = overlayId;
+		this.confirmMessage = confirmMessage;
 		remoteOverlays.push(this);
 	}
 
@@ -43,11 +44,24 @@ class RemoteOverlay {
 	}
 
 	chromeClose() {
+		if (this.confirmMessage) this.confirm();
+		else this.closeUI();
+	}
+
+	confirm() {
+		if (this.confirmMessage) sendMessage(this.confirmMessage, {});
 		this.closeUI();
 	}
 
 	closeUI() {
 		this.close();
+	}
+
+	swapActions(altId, okId, useAlt) {
+		const alt = document.getElementById(altId);
+		if (alt) alt.style.display = useAlt ? "" : "none";
+		const ok = document.getElementById(okId);
+		if (ok) ok.style.display = useAlt ? "none" : "";
 	}
 
 	autoPilotPad() {

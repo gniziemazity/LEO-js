@@ -1,7 +1,7 @@
 const { ipcRenderer } = require("electron");
 const path = require("path");
 
-const CourseManager = require("./course-manager");
+const { planName } = require("../shared/plan-name");
 
 class CourseUI {
 	constructor(courseManager, fileOperations, lessonManager) {
@@ -56,7 +56,7 @@ class CourseUI {
 			: [];
 		const current = this.lessonManager.getCurrentFilePath();
 		if (open && current && this.courseManager.isInPlans(current)) {
-			this.courseManager.setLastPlan(CourseManager.planName(current));
+			this.courseManager.setLastPlan(planName(current));
 		}
 		ipcRenderer.send("set-course-menu", {
 			open,
@@ -124,7 +124,7 @@ class CourseUI {
 
 	async newPlan() {
 		if (!this.courseManager.isOpen()) {
-			this.fileOperations.createNewLesson();
+			this.fileOperations.createNewPlan();
 			return;
 		}
 		if (!(await this.fileOperations.confirmDiscard())) return;
@@ -133,7 +133,7 @@ class CourseUI {
 			title: "New Plan",
 		});
 		if (!target) return;
-		const name = CourseManager.planName(target);
+		const name = planName(target);
 		let planPath;
 		try {
 			planPath = this.courseManager.addPlan(name);
@@ -146,7 +146,7 @@ class CourseUI {
 
 	async loadPlan() {
 		if (!this.courseManager.isOpen()) {
-			this.fileOperations.loadLesson();
+			this.fileOperations.loadPlan();
 			return;
 		}
 		if (!(await this.fileOperations.confirmDiscard())) return;
@@ -155,7 +155,7 @@ class CourseUI {
 		});
 		if (!file) return;
 		let planPath = file;
-		const name = CourseManager.planName(file);
+		const name = planName(file);
 		if (this.courseManager.isInPlans(file)) {
 			this.courseManager.ensurePlanFolders(name);
 		} else {

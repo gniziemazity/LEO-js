@@ -12,13 +12,13 @@ const read = (p) => fs.readFileSync(path.join(SRC, p), "utf-8");
 test("a note rides on the block and disappears when emptied", () => {
 	const LessonManager = require("../src/renderer/lesson-manager.js");
 	const lm = Object.create(LessonManager.prototype);
-	lm.data = [{ type: "move-to", target: "MAIN" }];
+	lm.data = [{ type: "go-to", target: "MAIN" }];
 	lm.markAsChanged = () => {};
 
-	lm.updateMoveToNote(0, "  because the bug is here  ");
+	lm.updateGoToNote(0, "  because the bug is here  ");
 	assert.equal(lm.data[0].note, "because the bug is here", "trimmed");
 
-	lm.updateMoveToNote(0, "   ");
+	lm.updateGoToNote(0, "   ");
 	assert.equal(
 		"note" in lm.data[0],
 		false,
@@ -26,28 +26,28 @@ test("a note rides on the block and disappears when emptied", () => {
 	);
 });
 
-test("only a move-to block takes a note", () => {
+test("only a go-to block takes a note", () => {
 	const LessonManager = require("../src/renderer/lesson-manager.js");
 	const lm = Object.create(LessonManager.prototype);
 	lm.data = [{ type: "code", text: "x" }];
 	lm.markAsChanged = () => {};
-	assert.equal(lm.updateMoveToNote(0, "hi"), false);
+	assert.equal(lm.updateGoToNote(0, "hi"), false);
 	assert.equal("note" in lm.data[0], false);
 });
 
 test("the popup shows the note, and hides the row when there is none", () => {
 	const ctx = buildRemote();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 
-	ctx.api.showMoveToOverlay({ mode: "main", note: "we broke this earlier" });
-	assert.equal(ctx.nodes.mtoNote.textContent, "we broke this earlier");
-	assert.notEqual(ctx.nodes.mtoNote.style.display, "none");
+	ctx.api.showGoToOverlay({ mode: "main", note: "we broke this earlier" });
+	assert.equal(ctx.nodes.gtoNote.textContent, "we broke this earlier");
+	assert.notEqual(ctx.nodes.gtoNote.style.display, "none");
 
-	ctx.api.closeMoveToOverlayUI();
-	ctx.api.showMoveToOverlay({ mode: "main" });
-	assert.equal(ctx.nodes.mtoNote.textContent, "");
+	ctx.api.closeGoToOverlayUI();
+	ctx.api.showGoToOverlay({ mode: "main" });
+	assert.equal(ctx.nodes.gtoNote.textContent, "");
 	assert.equal(
-		ctx.nodes.mtoNote.style.display,
+		ctx.nodes.gtoNote.style.display,
 		"none",
 		"an empty note must not leave a coloured band on the popup",
 	);
@@ -55,7 +55,7 @@ test("the popup shows the note, and hides the row when there is none", () => {
 
 test("the note reaches the popup from the step", () => {
 	const cm = read("renderer/cursor-manager.js");
-	const fn = /_enterMoveToBlock\(step\) \{[\s\S]*?\n\t\}/.exec(cm)[0];
+	const fn = /_enterGoToBlock\(step\) \{[\s\S]*?\n\t\}/.exec(cm)[0];
 	assert.match(fn, /note: step\.note \|\| ""/);
 	assert.match(
 		read("renderer/lesson-renderer.js"),
@@ -66,7 +66,7 @@ test("the note reaches the popup from the step", () => {
 
 test("the note wears the note colours on both surfaces", () => {
 	const css = read("shared/styles.css");
-	for (const sel of [".mt-modal-note", ".move-to-note"]) {
+	for (const sel of [".popup-note", ".go-to-note"]) {
 		const rule = new RegExp(
 			sel.replace(".", "\\.") + " \\{[\\s\\S]*?\\n\\}",
 		).exec(css)[0];
@@ -91,15 +91,15 @@ test("typing in the note does not select or delete the block", () => {
 		);
 	assert.match(
 		made,
-		/note\.disabled = isTypingActive \|\| !!block\.fromInclude/,
-		"an inherited block is read-only, and typing is not the time to edit",
+		/note\.disabled = isAutoTypingActive \|\| !!block\.fromStart/,
+		"an inherited block is read-only, and auto-typing is not the time to edit",
 	);
 });
 
 test("the note runs to the end of the block, chip and all", () => {
 	const css = read("shared/styles.css");
 	assert.equal(
-		/:has\(> \.block-opt\) \.move-to-note/.test(css),
+		/:has\(> \.block-opt\) \.go-to-note/.test(css),
 		false,
 		"reserving room for the chip wasted the row; it floats over instead",
 	);
@@ -113,7 +113,7 @@ test("the note runs to the end of the block, chip and all", () => {
 
 test("a wide snippet scrolls instead of pushing the buttons away", () => {
 	const css = read("shared/styles.css");
-	const rule = /\.mt-modal-snippet \{[\s\S]*?\n\}/.exec(css)[0];
+	const rule = /\.popup-excerpt \{[\s\S]*?\n\}/.exec(css)[0];
 	assert.match(rule, /overflow: auto/);
 	assert.match(
 		rule,
@@ -126,7 +126,7 @@ test("a wide snippet scrolls instead of pushing the buttons away", () => {
 test("the target picker is dark on solid light", () => {
 	const css = read("shared/styles.css");
 	const rule =
-		/\.move-to-select,\s*\n\.move-to-new-file-input \{[\s\S]*?\n\}/.exec(
+		/\.go-to-select,\s*\n\.go-to-new-file-input \{[\s\S]*?\n\}/.exec(
 			css,
 		)[0];
 	assert.match(rule, /color: var\(--clr-black\)/);
@@ -135,7 +135,7 @@ test("the target picker is dark on solid light", () => {
 		/rgba\(255, 255, 255/.test(rule),
 		false,
 		"white on a near-transparent fill depends on the block behind it; " +
-			"solid white reads the same on every move-to colour",
+			"solid white reads the same on every go-to colour",
 	);
 });
 
@@ -145,8 +145,8 @@ test("the note rides on the title line, not a band under it", () => {
 		html,
 	);
 	assert.ok(row, "the title and the note share one row element");
-	assert.match(row[0], /id="mtoTitle"/);
-	assert.match(row[0], /id="mtoNote"/);
+	assert.match(row[0], /id="gtoTitle"/);
+	assert.match(row[0], /id="gtoNote"/);
 	const css = read("shared/styles.css");
 	assert.match(
 		css,
@@ -174,16 +174,25 @@ test("the chrome ✕ closes whichever popup is open, its own way", () => {
 	assert.match(base, /overlay\.chromeClose\(\)/);
 	assert.match(
 		base,
-		/chromeClose\(\) \{\s*\n\t\tthis\.closeUI\(\);/,
-		"the default is a plain close; a popup that needs more overrides it",
+		/chromeClose\(\) \{\s*\n\t\tif \(this\.confirmMessage\) this\.confirm\(\);\s*\n\t\telse this\.closeUI\(\);/,
+		"a popup that has a confirm message confirms on ✕, any other just closes",
 	);
+	for (const [file, message] of [
+		["go-to-overlay.js", "go-to-confirmed"],
+		["snippet-overlay.js", "snippet-confirmed"],
+		["note-overlay.js", "note-confirmed"],
+	])
+		assert.match(
+			read("shared/remote/" + file),
+			new RegExp(`super\\("\\w+", "${message}"\\)`),
+			file + " confirms on ✕",
+		);
 	const pairs = [
-		["move-to-overlay.js", /chromeClose\(\) \{\s*\n\t\tthis\.confirm\(\)/],
-		[
-			"code-insert-overlay.js",
-			/chromeClose\(\) \{\s*\n\t\tthis\.confirm\(\)/,
-		],
 		["question-overlay.js", /chromeClose\(\) \{\s*\n\t\tthis\.dismiss\(\)/],
+		[
+			"media-overlay.js",
+			/chromeClose\(\) \{\s*\n\t\tsendMessage\("media-dismissed", \{\}\);/,
+		],
 		[
 			"interaction-overlay.js",
 			/chromeClose\(\) \{\s*\n\t\tthis\.closeOverlay\(\)/,
@@ -207,7 +216,7 @@ test("the chrome ✕ shows only while a popup is up", () => {
 
 test("the action buttons are centred, and flush with the ✕ on the right", () => {
 	const css = read("shared/styles.css");
-	for (const cls of ["mt-modal-actions"]) {
+	for (const cls of ["popup-actions"]) {
 		const rule = new RegExp("\\." + cls + " \\{[\\s\\S]*?\\n\\}").exec(
 			css,
 		)[0];
@@ -399,12 +408,12 @@ test("the note follows the note block theme from Settings", () => {
 		colors: {
 			textColor: "#112233",
 			noteColor: "#ffe08a",
-			codeBlockColor: "#fff",
+			codeColor: "#fff",
 			questionColor: "#f0f",
-			imageBlockColor: "#0ff",
+			imageColor: "#0ff",
 			snippetColor: "#eee",
-			moveToBlockColor: "#424242",
-			moveToTextColor: "#fff",
+			goToColor: "#424242",
+			goToTextColor: "#fff",
 			activeBlockColor: "#0f0",
 			activeBlockTextColor: "#000",
 			selectedBlockColor: "#ccc",
@@ -414,12 +423,12 @@ test("the note follows the note block theme from Settings", () => {
 	});
 	assert.match(
 		css,
-		/\.move-to-note,\s*\n\s*\.mt-modal-note \{ background: #ffe08a; color: #112233; \}/,
-		"a note on a move-to is still a note, so it wears the note colours",
+		/\.go-to-note,\s*\n\s*\.popup-note \{ background: #ffe08a; color: #112233; \}/,
+		"a note on a go-to is still a note, so it wears the note colours",
 	);
 	assert.match(
 		css,
-		/\.move-to-note::placeholder \{ color: #112233; \}/,
+		/\.go-to-note::placeholder \{ color: #112233; \}/,
 		"the hint text too, or it keeps the stock palette",
 	);
 });
@@ -428,7 +437,7 @@ test("the themed rule reaches the phone as well as the editor", () => {
 	const remote = read("shared/remote/lesson.js");
 	assert.match(
 		remote,
-		/buildSettingsCSS\(settings\)/,
+		/applySettingsCSS\(settings\)/,
 		"the popup note is styled by the same generated sheet as the block",
 	);
 });
@@ -441,7 +450,7 @@ test("disabled controls are not faded; the active block carries the signal", () 
 		"a half-transparent checkbox chip let the code under it show through",
 	);
 	assert.equal(
-		/move-to-select:disabled \{[^}]*opacity/.test(css),
+		/go-to-select:disabled \{[^}]*opacity/.test(css),
 		false,
 		"and a faded dropdown is just harder to read",
 	);
@@ -452,12 +461,12 @@ test("disabled controls are not faded; the active block carries the signal", () 
 		colors: {
 			textColor: "#111",
 			noteColor: "#ffe08a",
-			codeBlockColor: "#fff",
+			codeColor: "#fff",
 			questionColor: "#f0f",
-			imageBlockColor: "#0ff",
+			imageColor: "#0ff",
 			snippetColor: "#eee",
-			moveToBlockColor: "#424242",
-			moveToTextColor: "#fff",
+			goToColor: "#424242",
+			goToTextColor: "#fff",
 			activeBlockColor: "#c8e6c9",
 			activeBlockTextColor: "#1b5e20",
 			selectedBlockColor: "#ccc",
@@ -466,14 +475,14 @@ test("disabled controls are not faded; the active block carries the signal", () 
 		},
 	});
 	assert.equal(
-		/body\.typing-active/.test(gen),
+		/body\.auto-typing-active/.test(gen),
 		false,
 		"colouring every block would make the active highlight meaningless",
 	);
 	assert.ok(
-		gen.indexOf(".move-to-block.active-block") >
-			gen.indexOf(".move-to-block { background"),
-		"the active colour has to come after the per-kind colours or a move-to " +
+		gen.indexOf(".go-to-block.active-block") >
+			gen.indexOf(".go-to-block { background"),
+		"the active colour has to come after the per-type colours or a go-to " +
 			"block never shows it: same specificity, so order decides",
 	);
 });

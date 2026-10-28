@@ -69,7 +69,7 @@ function renderArtefactTotals(counts, schema) {
 		parts.push(
 			`<span style="display:inline-block;` +
 				`min-width:14px;height:14px;border-radius:2px;margin:0 1px;` +
-				`vertical-align:middle;background:${clr};color:white;` +
+				`vertical-align:middle;background:${clr};color:var(--clr-white);` +
 				`font-size:10px;font-weight:bold;text-align:center;` +
 				`line-height:14px;padding:0 2px">${count}</span>`,
 		);
@@ -89,7 +89,7 @@ function renderArtefactTotalOne(count, entry) {
 	const clr = artefactBitColor(count > 0, entry);
 	return (
 		`<span style="display:inline-block;min-width:14px;height:14px;` +
-		`border-radius:2px;vertical-align:middle;background:${clr};color:white;` +
+		`border-radius:2px;vertical-align:middle;background:${clr};color:var(--clr-white);` +
 		`font-size:10px;font-weight:bold;text-align:center;line-height:14px;` +
 		`padding:0 2px">${count}</span>`
 	);

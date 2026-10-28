@@ -32,7 +32,7 @@
 				background: var(--clr-border);
 				user-select: none;
 				touch-action: none;
-				transition: background 0.15s;
+				transition: background var(--t-hover);
 			}
 
 			#vis-divider {
@@ -84,7 +84,7 @@
 			#btn-toggle-devtools {
 				background: var(--clr-muted);
 				padding: 4px 8px;
-				transition: background 0.15s;
+				transition: background var(--t-hover);
 			}
 			#btn-toggle-log:hover,
 			#btn-toggle-devtools:hover {
@@ -156,7 +156,7 @@
 				overflow: auto;
 				background: var(--clr-bg);
 				color: var(--clr-text);
-				font-family: Consolas, "Courier New", monospace;
+				font-family: var(--font-mono);
 				font-size: 12px;
 				line-height: 1.5;
 				padding: 6px 8px;
@@ -171,14 +171,14 @@
 				display: flex;
 				flex-direction: column;
 				border-left: 1px solid var(--clr-border);
-				background: var(--clr-surface-light);
+				background: var(--clr-surface);
 				overflow: hidden;
 			}
 
 			#vis-event-log {
 				flex: 1 1 0;
 				overflow-y: auto;
-				font-family: Consolas, monospace;
+				font-family: var(--font-mono);
 				font-size: 10px;
 				padding: 4px 6px;
 				white-space: pre-wrap;
@@ -198,15 +198,15 @@
 				min-height: 0;
 				display: flex;
 				flex-direction: column;
-				background: var(--clr-surface-light);
+				background: var(--clr-surface);
 			}
 
 			pre#vis-dev-editor {
 				flex: 1 1 0;
 				overflow: auto;
-				background: var(--clr-surface-light);
+				background: var(--clr-surface);
 				color: var(--clr-purple);
-				font-family: Consolas, "Courier New", monospace;
+				font-family: var(--font-mono);
 				font-size: 11px;
 				line-height: 1.5;
 				padding: 4px 6px;
@@ -240,7 +240,7 @@
 
 			.vis-int-line {
 				font-size: 12px;
-				color: var(--clr-text-soft);
+				color: var(--clr-text);
 				margin-bottom: 3px;
 			}
 
@@ -299,13 +299,13 @@
 				position: fixed;
 				display: none;
 				background: var(--clr-text);
-				color: var(--clr-code-light);
-				font-family: Consolas, monospace;
+				color: var(--clr-surface);
+				font-family: var(--font-mono);
 				font-size: 11px;
 				padding: 3px 7px;
 				border-radius: 3px;
 				pointer-events: none;
-				z-index: 200;
+				z-index: var(--z-tip);
 				white-space: nowrap;
 				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 			}
@@ -317,7 +317,7 @@
 				align-items: center;
 				justify-content: center;
 				background: var(--clr-toolbar);
-				z-index: 500;
+				z-index: var(--z-overlay);
 			}
 			#lv-landing-box {
 				display: flex;
@@ -368,7 +368,7 @@
 		<script src="shared/drag-divider.js"></script>
 		<script src="shared/file-viewer.js"></script>
 		<script src="simulator/seekbar.js"></script>
-		<script src="simulator/visualizer.js"></script>
+		<script src="simulator/simulator.js"></script>
 		<script src="simulator/index.js"></script>
 	</body>
 </html>

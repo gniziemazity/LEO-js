@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { writeFileAtomicSync } = require("../shared/atomic-write");
 
 const JOURNAL_EXT = ".jsonl";
 
@@ -167,15 +168,10 @@ class LogManager {
 	}
 
 	static writeAtomic(filePath, data) {
-		const temp = `${filePath}.tmp`;
 		try {
-			fs.writeFileSync(temp, JSON.stringify(data, null, 2));
-			fs.renameSync(temp, filePath);
+			writeFileAtomicSync(filePath, JSON.stringify(data, null, 2));
 		} catch (error) {
 			console.error("[LEO] log save failed:", error);
-			try {
-				fs.unlinkSync(temp);
-			} catch (_) {}
 		}
 	}
 

@@ -1,6 +1,6 @@
 class NoteOverlay extends RemoteOverlay {
 	constructor() {
-		super("noteOverlay");
+		super("noteOverlay", "note-confirmed");
 	}
 
 	show(payload) {
@@ -10,15 +10,6 @@ class NoteOverlay extends RemoteOverlay {
 		if (!overlay || !textEl) return;
 		if (titleEl) titleEl.textContent = LeoBlocks.POPUP_TITLES.note;
 		textEl.textContent = (payload && payload.text) || "";
-		this.open("var(--clr-moveto-bg)");
-	}
-
-	chromeClose() {
-		this.confirm();
-	}
-
-	confirm() {
-		sendMessage("note-confirmed", {});
-		this.closeUI();
+		this.open("var(--clr-popup-bg)");
 	}
 }

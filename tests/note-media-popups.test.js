@@ -14,7 +14,7 @@ const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 function makeCursorManager(steps) {
 	const ipc = fakeIpcRenderer({
-		invoke: async () => ({ autoTypingSpeed: 10 }),
+		invoke: async () => ({ autoRunSpeed: 10 }),
 	});
 	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
 		electron: ipc.stub,
@@ -55,7 +55,7 @@ test("a note opens a popup with its own text", () => {
 test("a blank note, or the end of a code block, opens nothing", () => {
 	const { cm } = makeCursorManager([
 		blockStep("   "),
-		{ type: "block", kind: "code", element: element(), globalIndex: 1 },
+		{ type: "block", blockType: "code", element: element(), globalIndex: 1 },
 	]);
 	cm.onEnterNoteBlock = () => assert.fail("no popup for an empty note");
 	cm.updateCursor();
@@ -68,66 +68,66 @@ test("the step at the end of a code block says it is code", () => {
 	const code = /renderCodeBlock\(ctx\) \{[\s\S]*?\n\t\}/.exec(src)[0];
 	assert.match(
 		code,
-		/type: "block",\s*kind: "code",/,
+		/type: "block",\s*blockType: "code",/,
 		"without it the empty step reads as a note and every code block " +
 			"would end in an empty popup",
 	);
 });
 
-for (const [kind, text] of [
+for (const [type, text] of [
 	["note", "Remember this"],
 	["image", "🖼️ pic.png"],
 	["web", "🌐 http://example.com"],
 ]) {
-	test(`a ${kind} holds auto-typing until it is confirmed`, async () => {
+	test(`a ${type} holds auto-run until it is confirmed`, async () => {
 		const { cm, channels } = makeCursorManager([blockStep(text), charStep()]);
 		cm.updateCursor();
-		await cm.startAutoTyping();
+		await cm.startAutoRun();
 		assert.equal(
-			channels().includes("start-auto-type-block"),
+			channels().includes("start-auto-run-block"),
 			false,
-			`typing must not run past a ${kind} that is still open`,
+			`auto-typing must not run past a ${type} that is still open`,
 		);
-		cm.confirmSpecial(kind);
-		await cm.startAutoTyping();
-		assert.ok(channels().includes("start-auto-type-block"));
+		cm.confirmSpecial(type);
+		await cm.startAutoRun();
+		assert.ok(channels().includes("start-auto-run-block"));
 	});
 
-	test(`auto-typing resumes after a ${kind} only if it was running`, () => {
+	test(`auto-run resumes after a ${type} only if it was running`, () => {
 		const { cm } = makeCursorManager([]);
-		cm.autoTypingActive = true;
-		cm.suspendAutoTypingFor(kind);
-		assert.equal(cm.autoTypingActive, false);
-		assert.equal(cm.confirmSpecial(kind), true);
-		cm.suspendAutoTypingFor(kind);
-		assert.equal(cm.confirmSpecial(kind), false);
+		cm.autoRunActive = true;
+		cm.suspendAutoRunFor(type);
+		assert.equal(cm.autoRunActive, false);
+		assert.equal(cm.confirmSpecial(type), true);
+		cm.suspendAutoRunFor(type);
+		assert.equal(cm.confirmSpecial(type), false);
 	});
 }
 
-for (const [kind, text] of [
+for (const [type, text] of [
 	["image", "🖼️ pic.png"],
 	["web", "🌐 http://example.com"],
 ]) {
-	test(`confirming a ${kind} passes the block and closes its window, pin-aware`, () => {
+	test(`confirming a ${type} passes the block and closes its window, pin-aware`, () => {
 		const { cm, channels } = makeCursorManager([
 			blockStep(text),
 			charStep(),
 			charStep(),
 		]);
 		cm.updateCursor();
-		cm.confirmSpecial(kind);
+		cm.confirmSpecial(type);
 		assert.equal(cm.currentStepIndex, 1, "OK passes the block");
 		assert.deepEqual(
-			channels().filter((c) => c === `close-${kind}-window`),
-			[`close-${kind}-window`],
+			channels().filter((c) => c === `close-${type}-window`),
+			[`close-${type}-window`],
 			"the soft close, which a pinned window ignores",
 		);
 		cm.currentStepIndex = 2;
 		cm.updateCursor();
 		assert.equal(
-			channels().filter((c) => c === `close-${kind}-window`).length,
+			channels().filter((c) => c === `close-${type}-window`).length,
 			1,
-			"typing on does not close it a second time",
+			"carrying on auto-typing does not close it a second time",
 		);
 	});
 }
@@ -142,13 +142,13 @@ test("confirming a note forgets it, like the other transient popups", () => {
 	cm.currentStepIndex = 1;
 	cm.updateCursor();
 	assert.equal(
-		channels().includes("close-note-window"),
+		channels().includes("close-note-popup"),
 		false,
 		"a confirmed note has nothing left to close",
 	);
 });
 
-test("stepping past an unconfirmed note closes it and frees typing", async () => {
+test("stepping past an unconfirmed note closes it and frees auto-typing", async () => {
 	const { cm, channels } = makeCursorManager([
 		blockStep("Remember this"),
 		charStep(),
@@ -156,10 +156,10 @@ test("stepping past an unconfirmed note closes it and frees typing", async () =>
 	cm.updateCursor();
 	cm.currentStepIndex = 1;
 	cm.updateCursor();
-	assert.ok(channels().includes("close-note-window"));
-	await cm.startAutoTyping();
+	assert.ok(channels().includes("close-note-popup"));
+	await cm.startAutoRun();
 	assert.ok(
-		channels().includes("start-auto-type-block"),
+		channels().includes("start-auto-run-block"),
 		"a popup the teacher stepped past must not keep holding the keys",
 	);
 });
@@ -200,7 +200,7 @@ test("image and web popups tell the phone which one they are", () => {
 	popups.enterPopup("web", { name: "http://x" });
 	assert.deepEqual(calls[0], [
 		"broadcastMediaStarted",
-		{ name: "http://x", kind: "web" },
+		{ name: "http://x", type: "web" },
 	]);
 });
 
@@ -235,7 +235,7 @@ test("closing a window ends its popup only if that popup is the open one", () =>
 	popups.enterPopup("image", { name: "a.png" });
 	popups.endPopup("image");
 	assert.deepEqual(calls.at(-1), ["broadcastMediaEnded"]);
-	assert.equal(popups.openPopupKind(), null);
+	assert.equal(popups.openPopupType(), null);
 });
 
 test("the close channel of a presented window also ends its popup", () => {
@@ -300,11 +300,11 @@ test("a phone that reconnects finds the open popup and the pin", () => {
 		LEOBroadcastServer.prototype[name].call(fake, ...args);
 
 	call("broadcastNoteStarted", { text: "x" });
-	call("broadcastMediaStarted", { kind: "image", name: "a.png" });
+	call("broadcastMediaStarted", { type: "image", name: "a.png" });
 	call("updatePinnedWindows", { image: 1 });
 	assert.deepEqual(fake.currentState, {
 		activeNote: { text: "x" },
-		activeMedia: { kind: "image", name: "a.png" },
+		activeMedia: { type: "image", name: "a.png" },
 		pinnedWindows: { image: true, web: false },
 	});
 	call("broadcastNoteEnded");
@@ -384,7 +384,7 @@ test("a window opened pinned reports it", () => {
 });
 
 test("the 📌 on the phone unpins the pinned windows and closes nothing itself", () => {
-	const src = read("main/float-windows.js");
+	const src = read("main/floating-window-manager.js");
 	const fn = /function unpinWindows\(\) \{[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(fn, /if \(f\.pinned\) f\.setPinned\(false\)/);
 	assert.equal(/close\(/.test(fn), false, "a window still on its block stays");
@@ -403,7 +403,7 @@ test("the 📌 on the phone unpins the pinned windows and closes nothing itself"
 	);
 	assert.match(
 		main,
-		/"client-pin-window", \(pinned\) => \{\s*const float = MEDIA_FLOATS\[openPopupKind\(\)\];/,
+		/"client-pin-window", \(pinned\) => \{\s*const float = MEDIA_FLOATS\[openPopupType\(\)\];/,
 		"the phone pins the window its popup is about, never a name it sends",
 	);
 });
@@ -467,7 +467,7 @@ test("the phone's ✕ on an image or web popup closes an unpinned window, and le
 		[["send", "image-confirmed"]],
 		"and the lesson carries on exactly as it does for OK",
 	);
-	assert.equal(popups.openPopupKind(), null);
+	assert.equal(popups.openPopupType(), null);
 
 	closed.length = 0;
 	popups.enterPopup("web", { name: "http://x" });
@@ -477,7 +477,7 @@ test("the phone's ✕ on an image or web popup closes an unpinned window, and le
 		[],
 		"pinned: only the popup goes, the window stays",
 	);
-	assert.equal(popups.openPopupKind(), null);
+	assert.equal(popups.openPopupType(), null);
 });
 
 test("✕ decides from the host's own pin, and only for a media popup", () => {
@@ -529,7 +529,7 @@ test("the host ending a note closes it without echoing a confirm", () => {
 
 test("the media popup names what is shown and offers a bare 📌 in the OK's colour", () => {
 	const ctx = buildRemote();
-	ctx.api.showMediaOverlay({ kind: "web", name: "https://example.com" });
+	ctx.api.showMediaOverlay({ type: "web", name: "https://example.com" });
 	assert.equal(ctx.nodes.mediaOverlay.classList.contains("active"), true);
 	assert.equal(ctx.nodes.mdTitle.textContent, "Web page:");
 	assert.equal(ctx.nodes.mdName.textContent, "https://example.com");
@@ -543,7 +543,7 @@ test("the media popup names what is shown and offers a bare 📌 in the OK's col
 	const pin = /<button[^>]*id="mdPin"[\s\S]*?<\/button>/.exec(html)[0];
 	assert.match(
 		pin,
-		/class="mt-modal-confirm"/,
+		/class="popup-confirm"/,
 		"the same blue as OK, no colour of its own",
 	);
 	const label = pin
@@ -580,7 +580,7 @@ test("the media popup names what is shown and offers a bare 📌 in the OK's col
 
 test("unpinning from the top while the popup is still up brings the pin back", () => {
 	const ctx = buildRemote();
-	ctx.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	ctx.api.setPinnedWindows({ image: true, web: false });
 	assert.equal(ctx.nodes.mdPin.style.visibility, "hidden");
 
@@ -599,13 +599,13 @@ test("unpinning from the top while the popup is still up brings the pin back", (
 
 test("the phone's ✕ on a media popup dismisses it; OK still only confirms", () => {
 	const ctx = buildRemote();
-	ctx.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	ctx.api.closeActiveOverlay();
 	assert.deepEqual(ctx.sent, [{ type: "media-dismissed", data: {} }]);
 	assert.equal(ctx.nodes.mediaOverlay.classList.contains("active"), false);
 
 	ctx.sent.length = 0;
-	ctx.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	ctx.api.closeMediaOverlay();
 	assert.deepEqual(ctx.sent, [{ type: "media-confirmed", data: {} }]);
 });
@@ -613,7 +613,7 @@ test("the phone's ✕ on a media popup dismisses it; OK still only confirms", ()
 test("the pin button reads the window its popup is about", () => {
 	const ctx = buildRemote();
 	ctx.api.setPinnedWindows({ image: false, web: true });
-	ctx.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	assert.equal(ctx.nodes.mdTitle.textContent, "Image:");
 	assert.equal(
 		ctx.nodes.mdPin.style.visibility,
@@ -622,7 +622,7 @@ test("the pin button reads the window its popup is about", () => {
 	);
 	ctx.api.closeMediaOverlayUI();
 
-	ctx.api.showMediaOverlay({ kind: "web", name: "http://x" });
+	ctx.api.showMediaOverlay({ type: "web", name: "http://x" });
 	assert.equal(ctx.nodes.mdPin.style.visibility, "hidden");
 });
 
@@ -646,9 +646,9 @@ test("the 📌 beside the pads shows only while something is pinned, and unpins"
 
 test("both popups leave the pad usable and lift above it", async () => {
 	const ctx = buildRemote();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
-	ctx.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	assert.equal(ctx.api.padMode(), "keyboard");
 	assert.equal(ctx.nodes.mediaOverlay.classList.contains("pad-lifted"), true);
 	ctx.api.closeMediaOverlayUI();

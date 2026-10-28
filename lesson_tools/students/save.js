@@ -73,7 +73,7 @@ function _updateSaveButton() {
 function _flashSaved(editsCount) {
 	const btn = document.getElementById("save-btn");
 	if (!btn) return;
-	btn.textContent = `✓ Saved (${editsCount})`;
+	btn.textContent = `Saved (${editsCount})`;
 	setTimeout(() => {
 		if (!_saveInFlight) _updateSaveButton();
 	}, 1500);
@@ -311,10 +311,13 @@ async function _saveActiveBasis(silent = false) {
 		}
 
 		_dirtyEdits.clear();
+		const savedFile = _activeBasisFile;
 		_activeBasisFile = newFile;
 		_activeBasisFileName = targetName;
-		if (_activeBasis) _basisFiles.set(_activeBasis, newFile);
-		else if (_basisFallbackFile) _basisFallbackFile = newFile;
+		if (_basisFallbackFile === savedFile) _basisFallbackFile = newFile;
+		for (const [key, f] of _basisFiles) {
+			if (f === savedFile) _basisFiles.set(key, newFile);
+		}
 		_allFiles.set(targetName.toLowerCase(), newFile);
 		_updateSaveButton();
 		document.querySelectorAll("#tbody td.dirty").forEach((el) => {

@@ -6,13 +6,13 @@ const {
 	buildWindowTitle,
 	NUTJS_KEY_MAPPING,
 } = require("../src/shared/constants");
-const { getBlockKind } = require("../src/shared/blocks");
+const { getBlockType } = require("../src/shared/blocks");
 
-test("only the listed prefixes name a kind", () => {
+test("only the listed prefixes name a type", () => {
 	assert.equal(
-		getBlockKind("➡️ location"),
+		getBlockType("➡️ location"),
 		"note",
-		"move-to is a first-class block type, not a text prefix",
+		"go-to is a first-class block type, not a text prefix",
 	);
 });
 

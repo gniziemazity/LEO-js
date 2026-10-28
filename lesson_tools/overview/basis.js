@@ -1,25 +1,21 @@
 "use strict";
 
-const _OVERVIEW_BASIS_LANG = [
-	{ key: "follow_html", header: "HTML (E)" },
-	{ key: "follow_css", header: "CSS (E)" },
-	{ key: "follow_js", header: "JS (E)" },
+const _OVERVIEW_FOLLOW_FIELDS = [
+	"follow",
+	...LANG_FOLLOW_KEYS.map((k) => k.key),
 ];
 
 function _overviewParseSheetFollow(ws) {
 	const out = new Map();
 	if (!ws) return out;
-	const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-	const hdr = (rows[0] || []).map((h) => String(h || "").trim());
+	const { rows, hdr } = remarksSheetTable(ws);
 	const iId = hdr.findIndex((h) => /^(student.?id|id)$/i.test(h));
-	let iScore = hdr.indexOf("Follow (E)");
-	if (iScore === -1) iScore = hdr.indexOf("Similarity");
+	const iScore = remarksScoreCols(hdr).pct;
 	if (iId === -1 || iScore === -1) return out;
-	const langIdx = {};
-	for (const def of _OVERVIEW_BASIS_LANG) {
-		const i = hdr.indexOf(def.header);
-		if (i !== -1) langIdx[def.key] = i;
-	}
+	const langCols = remarksLangCols(hdr).filter(
+		(c) =>
+			c.pct !== -1 && _OVERVIEW_FOLLOW_FIELDS.includes(`follow_${c.key}`),
+	);
 	for (let r = 1; r < rows.length; r++) {
 		const row = rows[r] || [];
 		const id = String(row[iId] || "")
@@ -28,11 +24,9 @@ function _overviewParseSheetFollow(ws) {
 		if (!id) continue;
 		const f = parseFloat(row[iScore]);
 		const rec = { follow: isNaN(f) ? null : f };
-		for (const def of _OVERVIEW_BASIS_LANG) {
-			if (langIdx[def.key] != null) {
-				const v = parseFloat(row[langIdx[def.key]]);
-				rec[def.key] = isNaN(v) ? null : v;
-			}
+		for (const c of langCols) {
+			const v = parseFloat(row[c.pct]);
+			rec[`follow_${c.key}`] = isNaN(v) ? null : v;
 		}
 		out.set(id, rec);
 	}
@@ -67,25 +61,21 @@ async function _overviewDetectBasisFiles() {
 	if (!_overviewDs || typeof REMARKS_BASES === "undefined") {
 		return;
 	}
-	const validKeys = new Set(REMARKS_BASES.map((b) => b.key));
-	const seen = new Set();
-	const add = (topic, key, file) => {
-		if (!validKeys.has(key) || !topic) return;
-		const sk = `${key}|${topic}`;
-		if (seen.has(sk)) return;
-		seen.add(sk);
-		if (!_basisFiles.has(key)) _basisFiles.set(key, new Map());
-		_basisFiles.get(key).set(topic, file);
+	const byTopic = new Map();
+	const add = (topic, file) => {
+		if (!topic) return;
+		if (!byTopic.has(topic)) byTopic.set(topic, []);
+		byTopic.get(topic).push(file);
 	};
 
 	if (_overviewDs.files) {
 		for (const grp of ["lessons", "assignments"]) {
 			const re = new RegExp(
-				String.raw`^${grp}/([^/]+)/(?:excels/)?remarks_([a-z0-9_]+?)${REMARKS_STAMP}\.xlsx$`,
+				String.raw`^${grp}/([^/]+)/(?:excels/)?remarks_[^/]*\.xlsx$`,
 			);
 			for (const [path, file] of _overviewDs.files) {
 				const m = path.match(re);
-				if (m) add(m[1], m[2], file);
+				if (m) add(m[1], file);
 			}
 		}
 	}
@@ -112,20 +102,22 @@ async function _overviewDetectBasisFiles() {
 					}
 					for (const e of files || []) {
 						if (!e || e.kind === "directory" || !e.name) continue;
-						const basis = remarksBasisOf(e.name);
-						if (!basis) continue;
+						if (!remarksBasisOf(e.name)) continue;
 						const url = new URL(
 							`/grades-data/${sub}${e.name}`,
 							location.href,
 						).href;
-						add(
-							t.name.toLowerCase(),
-							basis,
-							new HttpFileLike(url, e.name),
-						);
+						add(t.name.toLowerCase(), new HttpFileLike(url, e.name));
 					}
 				}
 			}
+		}
+	}
+
+	for (const [topic, files] of byTopic) {
+		for (const [key, file] of pickRemarksFiles(files).basisFiles) {
+			if (!_basisFiles.has(key)) _basisFiles.set(key, new Map());
+			_basisFiles.get(key).set(topic, file);
 		}
 	}
 }
@@ -135,12 +127,9 @@ function _overviewCaptureFollowSnapshot() {
 	for (const s of _students) {
 		const perTopic = {};
 		for (const l of s.lessons) {
-			perTopic[l.name] = {
-				follow: l.follow,
-				follow_html: l.follow_html,
-				follow_css: l.follow_css,
-				follow_js: l.follow_js,
-			};
+			const v = {};
+			for (const k of _OVERVIEW_FOLLOW_FIELDS) v[k] = l[k];
+			perTopic[l.name] = v;
 		}
 		_baseFollowSnapshot.set(s.id, perTopic);
 	}
@@ -154,10 +143,7 @@ function _overviewRestoreFollowSnapshot() {
 		for (const l of s.lessons) {
 			const v = snap[l.name];
 			if (!v) continue;
-			l.follow = v.follow;
-			l.follow_html = v.follow_html;
-			l.follow_css = v.follow_css;
-			l.follow_js = v.follow_js;
+			for (const k of _OVERVIEW_FOLLOW_FIELDS) l[k] = v[k];
 		}
 	}
 }
@@ -196,7 +182,6 @@ async function _overviewApplyBasis(key) {
 				} catch (e) {}
 			}),
 		);
-		let nOverlaid = 0;
 		for (const s of _students) {
 			const sid = String(s.id).toLowerCase();
 			for (const l of s.lessons) {
@@ -204,11 +189,7 @@ async function _overviewApplyBasis(key) {
 				if (!m) continue;
 				const rec = m.get(sid);
 				if (!rec) continue;
-				if ("follow" in rec) l.follow = rec.follow;
-				if ("follow_html" in rec) l.follow_html = rec.follow_html;
-				if ("follow_css" in rec) l.follow_css = rec.follow_css;
-				if ("follow_js" in rec) l.follow_js = rec.follow_js;
-				nOverlaid++;
+				Object.assign(l, rec);
 			}
 		}
 	}
@@ -226,54 +207,13 @@ async function _overviewRenderBasisPicker() {
 		const container = document.getElementById("basis-picker");
 		if (!container) return;
 		await _overviewDetectBasisFiles();
-
-		const options = [];
-		if (typeof REMARKS_BASES !== "undefined") {
-			for (const { key, label } of REMARKS_BASES) {
-				if (_basisFiles.has(key)) options.push({ key, label });
-			}
-		}
-		if (!options.length) {
-			container.innerHTML = "";
-			return;
-		}
-		_overviewBuildBasisSelect(container, options);
+		const chosen = renderBasisSelect(
+			container,
+			_basisFiles,
+			defaultBasis(_basisFiles),
+			_overviewApplyBasis,
+			{ labelClass: "toolbar-check", selectClass: "tb-select" },
+		);
+		if (chosen) _overviewApplyBasis(chosen);
 	} catch (e) {}
-}
-
-function _overviewBuildBasisSelect(container, options) {
-	let chosen = null;
-	for (const k of DIFF_MARKS_PRIORITY) {
-		if (_basisFiles.has(k)) {
-			chosen = k;
-			break;
-		}
-	}
-	if (!chosen) chosen = options[0].key;
-
-	container.innerHTML = "";
-	const label = document.createElement("label");
-	label.className = "toolbar-check";
-	label.appendChild(document.createTextNode("Basis:"));
-	const select = document.createElement("select");
-	select.id = "basis-select";
-	select.className = "tb-select";
-	for (const { key, label: lbl } of options) {
-		const opt = document.createElement("option");
-		opt.value = key;
-		opt.textContent = lbl;
-		select.appendChild(opt);
-	}
-	select.value = chosen;
-	const syncCurated = () =>
-		select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
-	syncCurated();
-	select.addEventListener("change", () => {
-		syncCurated();
-		_overviewApplyBasis(select.value);
-	});
-	label.appendChild(select);
-	container.appendChild(label);
-
-	_overviewApplyBasis(chosen);
 }

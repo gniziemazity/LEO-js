@@ -10,7 +10,7 @@ const active = (node) => node.classList.contains("active");
 
 test("a reconnect closes a popup the host has moved past", () => {
 	const h = buildRemote();
-	h.api.setSessionActive(true);
+	h.api.setAutoTypingActive(true);
 
 	h.api.showNoteOverlay({ text: "look at this" });
 	assert.equal(active(h.nodes.noteOverlay), true, "setup: the note is open");
@@ -32,7 +32,7 @@ test("a reconnect closes a popup the host has moved past", () => {
 
 test("a reconnect leaves a popup the host still has open", () => {
 	const h = buildRemote();
-	h.api.setSessionActive(true);
+	h.api.setAutoTypingActive(true);
 	h.api.showNoteOverlay({ text: "still live" });
 
 	h.api.resyncOverlays({ activeNote: { text: "still live" } });
@@ -46,20 +46,20 @@ test("a reconnect leaves a popup the host still has open", () => {
 
 test("every host-driven overlay is resynced, not just the note", () => {
 	const h = buildRemote();
-	h.api.setSessionActive(true);
+	h.api.setAutoTypingActive(true);
 
 	h.api.showQuestionOverlay("q?", ["Ann"], null, []);
-	h.api.showMoveToOverlay({ mode: "file", target: "app.js" });
-	h.api.showCodeInsertOverlay({ text: "x", paste: true });
+	h.api.showGoToOverlay({ mode: "file", target: "app.js" });
+	h.api.showSnippetOverlay({ text: "x", paste: true });
 	h.api.showNoteOverlay({ text: "n" });
-	h.api.showMediaOverlay({ kind: "image", name: "a.png" });
+	h.api.showMediaOverlay({ type: "image", name: "a.png" });
 
 	h.api.resyncOverlays({});
 
 	for (const id of [
 		"questionOverlay",
-		"moveToOverlay",
-		"codeInsertOverlay",
+		"goToOverlay",
+		"snippetOverlay",
 		"noteOverlay",
 		"mediaOverlay",
 	]) {
@@ -69,7 +69,7 @@ test("every host-driven overlay is resynced, not just the note", () => {
 
 test("the phone's own interaction picker is not closed by a resync", () => {
 	const h = buildRemote();
-	h.api.setSessionActive(true);
+	h.api.setAutoTypingActive(true);
 	h.api.setStudents(["Ann", "Bo"]);
 	h.api.handleInteractionBtn("student-question");
 	assert.equal(

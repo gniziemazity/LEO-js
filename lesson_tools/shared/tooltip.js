@@ -4,13 +4,13 @@ class Tooltip {
 	constructor({
 		el = null,
 		createId = null,
-		inlineStyle = null,
+		className = null,
 		manageWhiteSpace = false,
 		offset = { x: 14, y: -8 },
 	} = {}) {
 		this._el = el;
 		this._createId = createId;
-		this._inlineStyle = inlineStyle;
+		this._className = className;
 		this._manageWhiteSpace = manageWhiteSpace;
 		this._offset = offset;
 	}
@@ -21,7 +21,7 @@ class Tooltip {
 			if (!e) {
 				e = document.createElement("div");
 				e.id = this._createId;
-				if (this._inlineStyle) e.style.cssText = this._inlineStyle;
+				if (this._className) e.className = this._className;
 				document.body.appendChild(e);
 			}
 			this._el = e;

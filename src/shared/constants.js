@@ -1,4 +1,5 @@
 const { Key } = require("@computer-use/nut-js");
+const { planName } = require("./plan-name");
 
 const NUTJS_KEY_MAPPING = {
 	"←": { key: Key.Left },
@@ -13,7 +14,7 @@ const NUTJS_KEY_MAPPING = {
 	"⌫": { key: Key.Backspace },
 	"↢": { key: Key.Backspace },
 	"―": { key: Key.Tab },
-	"⛔": { modifier: Key.LeftControl, shift: true, key: Key.K },
+	"⛔": { primary: true, shift: true, key: Key.K },
 	"⌦": { key: Key.Delete },
 
 	"⇑": { shift: true, key: Key.Up },
@@ -21,17 +22,17 @@ const NUTJS_KEY_MAPPING = {
 	"⇐": { shift: true, key: Key.Home },
 	"⇒": { shift: true, key: Key.End },
 
-	"💾": { modifier: Key.LeftControl, key: Key.S },
+	"💾": { primary: true, key: Key.S },
 	"🔁": { modifier: Key.LeftAlt, key: Key.Tab },
 	Ö: { modifier: Key.LeftAlt, key: Key.Tab },
 	ö: { modifier: Key.LeftControl, key: Key.F5 },
 	Ș: { modifier: Key.LeftControl, key: Key.Tab },
-	ñ: { modifier: Key.LeftControl, key: Key.N },
-	ω: { modifier: Key.LeftControl, key: Key.W },
+	ñ: { primary: true, key: Key.N },
+	ω: { primary: true, key: Key.W },
 	"↩": { key: Key.Enter },
 	é: { key: Key.Escape },
 	"🅴": { key: Key.Escape },
-	Ț: { modifier: Key.LeftControl, key: Key.F },
+	Ț: { primary: true, key: Key.F },
 
 	"🕛": { pause: 500 },
 };
@@ -56,8 +57,7 @@ function buildWindowTitle(fileName, studentCount, hasUnsaved, courseName) {
 	const baseTitle = "LEO";
 	const parts = [];
 	if (courseName && courseName.trim() !== "") parts.push(courseName.trim());
-	if (fileName && fileName.trim() !== "")
-		parts.push(fileName.replace(/\.(leo|json)$/i, ""));
+	if (fileName && fileName.trim() !== "") parts.push(planName(fileName));
 	if (parts.length === 0) return baseTitle;
 	let title = `${baseTitle} - ${parts.join(" / ")}`;
 	if (studentCount !== null && studentCount !== undefined)

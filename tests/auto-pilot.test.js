@@ -78,7 +78,7 @@ test("stopping auto-typing turns auto-pilot off, and starting it again brings it
 	assert.equal(
 		f.state.autoPilot,
 		true,
-		"it was on when typing paused, so it is on again",
+		"it was on when auto-typing paused, so it is on again",
 	);
 	assert.deepEqual(f.broadcasts, [true, false, true]);
 });
@@ -335,7 +335,7 @@ test("main wires the switch from the phone and the connections", () => {
 	assert.match(
 		main,
 		/"client-disconnected", \(clientId\) => \{\s*releaseInteractionHold\(clientId\);/,
-		"a phone that vanishes with its picker open must not pause typing for good",
+		"a phone that vanishes with its picker open must not pause auto-typing for good",
 	);
 	assert.match(
 		main,
@@ -404,25 +404,27 @@ function hotkeys(settings) {
 	});
 	const manager = new HotkeyManager({
 		get: (key) =>
-			key === "hotkeys.typing" ? ["a", "b", "c"] : settings[key],
+			key === "hotkeys.typing"
+				? settings[key] || ["a", "b", "c"]
+				: settings[key],
 	});
 	return { manager, registered };
 }
 
-test("the typing hotkeys stay on when the setting is off, remote or not", () => {
+test("the auto-typing hotkeys stay on when the setting is off, remote or not", () => {
 	const h = hotkeys({ typingHotkeysOffWithRemote: false });
 	h.manager.setRemoteConnected(true);
-	h.manager.registerTypingHotkeys();
+	h.manager.registerAutoTypingHotkeys();
 
-	assert.equal(h.manager.typingHotkeysEnabled(), true);
+	assert.equal(h.manager.autoTypingHotkeysEnabled(), true);
 	assert.deepEqual([...h.registered.keys()], ["a", "b", "c"]);
 });
 
 test("with the setting on, no remote means the hotkeys work as ever", () => {
 	const h = hotkeys({ typingHotkeysOffWithRemote: true });
-	h.manager.registerTypingHotkeys();
+	h.manager.registerAutoTypingHotkeys();
 
-	assert.equal(h.manager.typingHotkeysEnabled(), true);
+	assert.equal(h.manager.autoTypingHotkeysEnabled(), true);
 	assert.deepEqual([...h.registered.keys()], ["a", "b", "c"]);
 });
 
@@ -431,7 +433,7 @@ test("with the setting on, a remote takes the letters back to the keyboard", () 
 	state.isActive = true;
 	try {
 		const h = hotkeys({ typingHotkeysOffWithRemote: true });
-		h.manager.registerTypingHotkeys();
+		h.manager.registerAutoTypingHotkeys();
 		assert.equal(h.registered.size, 3);
 
 		h.manager.setRemoteConnected(true);
@@ -440,9 +442,9 @@ test("with the setting on, a remote takes the letters back to the keyboard", () 
 			0,
 			"released the moment a remote connects",
 		);
-		assert.equal(h.manager.typingHotkeysEnabled(), false);
+		assert.equal(h.manager.autoTypingHotkeysEnabled(), false);
 
-		h.manager.registerTypingHotkeys();
+		h.manager.registerAutoTypingHotkeys();
 		h.manager.registerKey("a");
 		assert.equal(
 			h.registered.size,
@@ -450,11 +452,11 @@ test("with the setting on, a remote takes the letters back to the keyboard", () 
 			"and nothing puts them back while it is there",
 		);
 		assert.deepEqual(
-			h.manager.typingHotkeysFor("a"),
+			h.manager.autoTypingHotkeysFor("a"),
 			[],
 			"so typing a name releases nothing",
 		);
-		assert.deepEqual(h.manager.releaseTypingHotkeysFor("a"), []);
+		assert.deepEqual(h.manager.releaseAutoTypingHotkeysFor("a"), []);
 
 		h.manager.setRemoteConnected(false);
 		assert.deepEqual(
@@ -467,7 +469,7 @@ test("with the setting on, a remote takes the letters back to the keyboard", () 
 	}
 });
 
-test("a remote connecting while typing is off leaves the letters alone", () => {
+test("a remote connecting while auto-typing is off leaves the letters alone", () => {
 	const state = require("../src/main/state");
 	state.isActive = false;
 	const h = hotkeys({ typingHotkeysOffWithRemote: true });
@@ -476,11 +478,11 @@ test("a remote connecting while typing is off leaves the letters alone", () => {
 	assert.equal(
 		h.registered.size,
 		0,
-		"no registering for a session that is not typing",
+		"no registering for a session that is not auto-typing",
 	);
 });
 
-test("only the typing hotkeys are gated: the other shortcuts keep working", () => {
+test("only the auto-typing hotkeys are gated: the other shortcuts keep working", () => {
 	const h = hotkeys({
 		typingHotkeysOffWithRemote: true,
 		"hotkeys.confirmPopup": "CommandOrControl+Enter",
@@ -488,21 +490,33 @@ test("only the typing hotkeys are gated: the other shortcuts keep working", () =
 	h.manager.setRemoteConnected(true);
 
 	h.manager.registerConfirmPopup(() => {});
-	h.manager.registerEscapeForAutoTyping();
+	h.manager.registerEscapeForAutoRun();
 	assert.ok(h.registered.has("CommandOrControl+Enter"));
 	assert.ok(h.registered.has("Escape"));
 });
 
 test("the keyboard handler skips the per-letter release when the letters are not held", () => {
 	const src = read("main/keyboard-handler.js");
-	const gated = src.match(
-		/this\.hotkeyManager\.typingHotkeysEnabled\(\) &&\s*typingHotkeys\.includes\(charLower\)/g,
-	);
 	assert.equal(
-		gated && gated.length,
-		2,
-		"typeCharacter and autoTypeBlock both",
+		(src.match(/typeCharWithHotkeyManagement\(/g) || []).length,
+		3,
+		"typeCharacter and autoRunBlock both go through the one wrapper",
 	);
+	const wrapper =
+		/async typeCharWithHotkeyManagement\(char\) \{[\s\S]*?\n\t\}/.exec(
+			src,
+		)[0];
+	assert.match(
+		wrapper,
+		/this\.hotkeyManager\.releaseAutoTypingHotkeysFor\(char\)/,
+		"which asks the manager, whose autoTypingHotkeysFor returns nothing while the letters are not held",
+	);
+});
+
+test("an upper-case auto-typing hotkey is still released while LEO types that letter", () => {
+	const h = hotkeys({ "hotkeys.typing": ["A", "b"] });
+	assert.deepEqual(h.manager.autoTypingHotkeysFor("a"), ["A"]);
+	assert.deepEqual(h.manager.autoTypingHotkeysFor("B"), ["b"]);
 });
 
 test("the setting ships off, in Settings, and is saved with the rest", () => {

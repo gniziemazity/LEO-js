@@ -11,22 +11,23 @@ const CourseManager = require("./course-manager");
 const CourseUI = require("./course-ui");
 const SettingsUI = require("./settings-ui");
 const SpecialKeys = require("./special-keys");
-const TypingController = require("./typing-controller");
+const AutoTypingController = require("./auto-typing-controller");
 const QRModalManager = require("./qr-modal");
-const AnchorPreview = require("./anchor-preview");
+const GoToPreview = require("./go-to-preview");
 const DeskPopup = require("./desk-popup");
 const SimPanel = require("./sim-panel");
 const { buildArtificialLogEvents } = require("./log-event-builder");
 const { parseQuestionOptions } = require("./question-options");
 const { COLOR_SETTINGS, defaultsFrom } = require("../shared/settings-schema");
 const { addChoices } = require("./block-types");
-const { questionLogEntry } = require("../shared/interaction-view");
+const { questionLogEntry, isQuestion } = require("../shared/interaction-view");
+const { hasBlockControls } = require("../shared/blocks");
 const path = require("path");
 const fs = require("fs");
 
 const COLOR_DEFAULTS = defaultsFrom(COLOR_SETTINGS);
 
-const { PAUSING_KINDS } = CursorManager;
+const { PAUSING_TYPES } = CursorManager;
 
 const soundPath = path.join(__dirname, "..", "..", "assets", "sounds");
 
@@ -48,7 +49,7 @@ const blockEditor = new BlockEditor(
 	undoManager,
 );
 lessonRenderer.blockEditor = blockEditor;
-const anchorPreview = new AnchorPreview(lessonManager, uiManager);
+const goToPreview = new GoToPreview(lessonManager, uiManager);
 const deskPopup = new DeskPopup((type, args) =>
 	ipcRenderer.send("desk-action", { type, args }),
 );
@@ -68,7 +69,7 @@ const fileOperations = new FileOperations(
 const courseUI = new CourseUI(courseManager, fileOperations, lessonManager);
 const settingsUI = new SettingsUI();
 const specialKeys = new SpecialKeys(uiManager, blockEditor, lessonManager);
-const typingController = new TypingController(
+const autoTypingController = new AutoTypingController(
 	uiManager,
 	lessonRenderer,
 	cursorManager,
@@ -122,17 +123,17 @@ cursorManager.onLeaveQuestionBlock = () => {
 	finalizeTeacherQuestion();
 };
 
-function enterPausingBlock(kind, payload, showCard) {
-	cursorManager.suspendAutoTypingFor(kind);
+function enterPausingBlock(type, payload, showCard) {
+	cursorManager.suspendAutoRunFor(type);
 	showCard.call(deskPopup, payload);
-	ipcRenderer.send(`enter-${kind}-block`, payload);
+	ipcRenderer.send(`enter-${type}-block`, payload);
 }
 
 cursorManager.onEnterNoteBlock = (payload) =>
 	enterPausingBlock("note", payload, deskPopup.showNote);
 
-function enterMediaBlock(kind, name) {
-	enterPausingBlock(kind, { kind, name }, deskPopup.showMedia);
+function enterMediaBlock(type, name) {
+	enterPausingBlock(type, { type, name }, deskPopup.showMedia);
 }
 
 cursorManager.onImageBlock = (imageName, shouldPin) => {
@@ -150,13 +151,13 @@ cursorManager.onWebBlock = (url, shouldPin) => {
 	enterMediaBlock("web", url);
 };
 
-cursorManager.onEnterMoveToBlock = (payload) =>
-	enterPausingBlock("move-to", payload, deskPopup.showMoveTo);
+cursorManager.onEnterGoToBlock = (payload) =>
+	enterPausingBlock("go-to", payload, deskPopup.showGoTo);
 
-cursorManager.onEnterCodeInsertBlock = (payload) =>
-	enterPausingBlock("code-insert", payload, deskPopup.showCodeInsert);
+cursorManager.onEnterSnippetBlock = (payload) =>
+	enterPausingBlock("snippet", payload, deskPopup.showSnippet);
 
-cursorManager.onLeaveSpecialBlock = (kind) => deskPopup.closeIf(kind);
+cursorManager.onLeaveSupportBlock = (type) => deskPopup.closeIf(type);
 
 function getColor(key, fallback = COLOR_DEFAULTS[key] ?? null) {
 	return (
@@ -196,7 +197,7 @@ function playFireworksSound() {
 
 window.addEventListener("DOMContentLoaded", () => {
 	uiManager.cacheElements();
-	anchorPreview.attach(uiManager.getElement("lessonContainer"));
+	goToPreview.attach(uiManager.getElement("lessonContainer"));
 	simPanel.attach(
 		document.getElementById("sim-panel"),
 		uiManager.getElement("lessonContainer"),
@@ -227,7 +228,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 function setupEventListeners() {
 	uiManager.getElement("toggleBtn").onclick = () =>
-		typingController.toggleActive();
+		autoTypingController.toggleActive();
 }
 
 function openArtificialSimulator() {
@@ -246,13 +247,13 @@ function openArtificialSimulator() {
 	}
 
 	if (logPath) {
-		ipcRenderer.send("open-log-visualizer", logPath);
+		ipcRenderer.send("open-simulator-window", logPath);
 	}
 }
 
 function setupGlobalIpcListeners() {
 	ipcRenderer.on("hotkey-toggle-active", () =>
-		typingController.toggleActive(),
+		autoTypingController.toggleActive(),
 	);
 	ipcRenderer.on("hotkey-step-backward", () => cursorManager.stepBackward());
 	ipcRenderer.on("hotkey-step-forward", () => cursorManager.stepForward());
@@ -260,7 +261,7 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("window-maximized", (e, maximized) =>
 		simPanel.setVisible(maximized),
 	);
-	ipcRenderer.on("move-to-typing", (e, p) => deskPopup.setMoveToTyped(p));
+	ipcRenderer.on("go-to-typing", (e, p) => deskPopup.setGoToTyped(p));
 	const syncDesk = (s) => {
 		deskPopup.setTeacherName(s.teacherName);
 		deskPopup.setConfirmKey(s.hotkeys && s.hotkeys.confirmPopup);
@@ -275,7 +276,7 @@ function setupGlobalIpcListeners() {
 		settingsUI.close();
 	});
 	ipcRenderer.on("new-plan", () => courseUI.newPlan());
-	ipcRenderer.on("save-plan", () => fileOperations.saveLesson());
+	ipcRenderer.on("save-plan", () => fileOperations.savePlan());
 	ipcRenderer.on("load-plan", () => courseUI.loadPlan());
 	ipcRenderer.on("new-course", () => courseUI.newCourse());
 	ipcRenderer.on("open-course", () => courseUI.openCourse());
@@ -299,14 +300,13 @@ function setupGlobalIpcListeners() {
 		logManager.addInteraction(type),
 	);
 
-	ipcRenderer.on("start-auto-typing", () => cursorManager.startAutoTyping());
-	ipcRenderer.on("stop-auto-typing", () => cursorManager.stopAutoTyping());
+	ipcRenderer.on("start-auto-run", () => cursorManager.startAutoRun());
+	ipcRenderer.on("stop-auto-run", () => cursorManager.stopAutoRun());
 
-	for (const kind of PAUSING_KINDS) {
-		ipcRenderer.on(`${kind}-confirmed`, () => {
-			deskPopup.closeIf(kind);
-			if (cursorManager.confirmSpecial(kind))
-				cursorManager.startAutoTyping();
+	for (const type of PAUSING_TYPES) {
+		ipcRenderer.on(`${type}-confirmed`, () => {
+			deskPopup.closeIf(type);
+			if (cursorManager.confirmSpecial(type)) cursorManager.startAutoRun();
 		});
 	}
 
@@ -337,7 +337,7 @@ function setupGlobalIpcListeners() {
 
 	ipcRenderer.on("log-student-interaction", (event, payload) => {
 		const { interactionType, studentName, openedAt, closedAt } = payload;
-		if (interactionType === "student-question") {
+		if (isQuestion(interactionType)) {
 			logManager.addInteraction(...questionLogEntry(payload));
 			if (payload.answeredBy) playFireworksSound();
 		} else if (interactionType === "providing-help") {
@@ -409,7 +409,7 @@ function setupBlockShortcuts() {
 		if (blockIdx === null) return;
 		const block = lessonManager.getAllBlocks()[blockIdx];
 		if (!block) return;
-		const hasControls = !block.fromInclude && block.type !== "include";
+		const hasControls = hasBlockControls(block);
 		const picked = uiManager.getSelectedBlockIndices();
 
 		const key = e.key.toLowerCase();
@@ -458,7 +458,7 @@ function setupBlockShortcuts() {
 			if (!choice) return;
 			e.preventDefault();
 			blockEditor.addBlock(
-				choice.type,
+				choice.storedType,
 				choice.initialText || null,
 				blockIdx,
 			);

@@ -126,7 +126,7 @@ test("a pause mid-burst ends the chain instead of stranding it", async () => {
 	await h.settle();
 	assert.ok(
 		h.typed.length > 1,
-		"typing resumes once the question is answered",
+		"auto-typing resumes once the question is answered",
 	);
 });
 
@@ -197,7 +197,7 @@ test("whether the lesson is running travels on exactly one channel", () => {
 	);
 
 	for (const f of [
-		"src/renderer/typing-controller.js",
+		"src/renderer/auto-typing-controller.js",
 		"src/renderer/file-operations.js",
 	]) {
 		assert.equal(
@@ -213,10 +213,13 @@ test("the touchpad's session flag is named for what feeds it", () => {
 		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
 	const pad = read("src/shared/remote/touchpad.js");
 	assert.equal(
-		pad.includes("autoTypingActive"),
+		pad.includes("autoRunActive"),
 		false,
-		"it is fed from data.isActive, not from auto-typing",
+		"it is fed from data.isActive, not from auto-run",
 	);
-	assert.match(pad, /let sessionActive = false;/);
-	assert.match(read("src/remote.html"), /setSessionActive\(data\.isActive\)/);
+	assert.match(pad, /let autoTypingActive = false;/);
+	assert.match(
+		read("src/remote.html"),
+		/setAutoTypingActive\(data\.isActive\)/,
+	);
 });

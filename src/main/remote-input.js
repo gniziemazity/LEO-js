@@ -5,7 +5,11 @@ const {
 	hotkeyManager,
 } = require("./context");
 const state = require("./state");
-const { applyWindowPinch, applyWindowDrag } = require("./float-windows");
+const { primaryModifier } = require("./platform");
+const {
+	applyWindowPinch,
+	applyWindowDrag,
+} = require("./floating-window-manager");
 
 const warnedRemoteOps = new Set();
 function warnRemoteInput(op, err) {
@@ -94,11 +98,10 @@ broadcastServer.on("client-remote-edit-key", async (action) => {
 			await keyboard.type(Key.Enter);
 			return;
 		}
-		const modifier =
-			settingsManager.get("platform") === "macos"
-				? Key.LeftCmd
-				: Key.LeftControl;
-		await keyboard.type(modifier, EDIT_KEY_TO_KEY[action] || Key.C);
+		await keyboard.type(
+			primaryModifier(settingsManager, Key),
+			EDIT_KEY_TO_KEY[action] || Key.C,
+		);
 	} catch (e) {
 		warnRemoteInput("edit key", e);
 	}

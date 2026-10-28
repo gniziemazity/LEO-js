@@ -76,10 +76,10 @@ function withFakeDom(el, pointToNodeOffset, body) {
 function renderer() {
 	const LessonRenderer = loadModule("src/renderer/lesson-renderer.js", {
 		electron: fakeIpcRenderer().stub,
-		"./anchor-snippet": { computeMoveToSnippets: () => new Map() },
+		"./plan-replay": { computeGoToExcerpts: () => new Map() },
 		"../shared/code-text": {},
-		"../shared/move-to-target": {},
-		"./move-to-dropdown": {},
+		"../shared/go-to-target": {},
+		"./go-to-dropdown": {},
 		"./block-types": {},
 		"../shared/blocks": {},
 	});

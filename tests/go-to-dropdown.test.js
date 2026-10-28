@@ -90,7 +90,7 @@ const {
 	openDropdown,
 	closeDropdown,
 	isOpen,
-} = require("../src/renderer/move-to-dropdown");
+} = require("../src/renderer/go-to-dropdown");
 
 const OPTIONS = [
 	{ value: "⚓7⚓", label: "⚓7⚓" },

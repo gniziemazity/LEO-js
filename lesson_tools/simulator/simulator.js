@@ -60,7 +60,7 @@ function computeSkipRegions(cumDelay, cap) {
 	return regions;
 }
 
-class LogVisualizer {
+class Simulator {
 	constructor() {
 		this.micro = [];
 		this.microIdx = 0;
@@ -115,10 +115,10 @@ class LogVisualizer {
             <div class="sep"></div>
             <label><input id="chk-autoscroll" type="checkbox" checked> Auto-scroll</label>
             <label><input id="chk-skip-pauses" type="checkbox" checked> Skip pauses</label>
-            <span id="ts-label" style="margin-left:auto;color:${CLR.accent};font-family:Consolas,monospace;font-size:11px;line-height:1"></span>
+            <span id="ts-label" style="margin-left:auto;color:${CLR.accent};font-family:var(--font-mono);font-size:11px;line-height:1"></span>
             <button id="btn-copy-ts" title="Copy link to this moment" style="margin-left:6px" disabled>🔗</button>
             <button id="btn-export-code" title="Export the code as it stands at this moment" style="margin-left:6px" disabled>💾 Export code</button>
-            <span id="prog-label" style="margin-left:12px;color:${CLR.muted};font-family:Consolas,monospace;font-size:11px;line-height:1">No file loaded</span>
+            <span id="prog-label" style="margin-left:12px;color:${CLR.muted};font-family:var(--font-mono);font-size:11px;line-height:1">No file loaded</span>
           </div>
           <div id="vis-seekbar"><div id="vis-seekfill"></div></div>
           <div id="vis-main">
@@ -506,17 +506,6 @@ class LogVisualizer {
 		await writable.close();
 	}
 
-	_flashExport(label) {
-		if (!this.elExport) return;
-		if (this._exportFlashTimer) clearTimeout(this._exportFlashTimer);
-		else this._exportLabel = this.elExport.textContent;
-		this.elExport.textContent = label;
-		this._exportFlashTimer = setTimeout(() => {
-			this.elExport.textContent = this._exportLabel;
-			this._exportFlashTimer = null;
-		}, 2500);
-	}
-
 	async _exportCode() {
 		const entries = this._exportEntries();
 		if (!entries.length) {
@@ -549,8 +538,10 @@ class LogVisualizer {
 					`"${dirHandle.name}"${at ? " at " + at : ""}: ` +
 					entries.map((e) => e.path).join(", "),
 			);
-			this._flashExport(
-				`✓ ${entries.length} file${entries.length === 1 ? "" : "s"}`,
+			flashButton(
+				this.elExport,
+				`${entries.length} file${entries.length === 1 ? "" : "s"}`,
+				2500,
 			);
 		} catch (e) {
 			alert("Export failed: " + (e.message || e));
@@ -592,33 +583,9 @@ class LogVisualizer {
 					location.href,
 				).href
 			: tsStr;
-		const flash = (msg) => {
-			this.elCopyTs.textContent = msg;
-			clearTimeout(this._copyTsTimer);
-			this._copyTsTimer = setTimeout(() => {
-				this.elCopyTs.textContent = "🔗";
-			}, 1200);
-		};
-		if (navigator.clipboard && navigator.clipboard.writeText) {
-			navigator.clipboard
-				.writeText(text)
-				.then(() => flash("✓"))
-				.catch(() => flash("✖"));
-			return;
-		}
-		const ta = document.createElement("textarea");
-		ta.value = text;
-		ta.style.position = "fixed";
-		ta.style.left = "-9999px";
-		document.body.appendChild(ta);
-		ta.focus();
-		ta.select();
-		let ok = false;
-		try {
-			ok = document.execCommand("copy");
-		} catch {}
-		ta.remove();
-		flash(ok ? "✓" : "✖");
+		copyText(text).then((ok) =>
+			flashButton(this.elCopyTs, ok ? "✓" : "✖", 1200),
+		);
 	}
 
 	setSpeed(value) {
@@ -641,7 +608,7 @@ class LogVisualizer {
 
 	_play() {
 		this.playing = true;
-		this.elPlay.textContent = "⏸  Pause";
+		this.elPlay.textContent = "Pause";
 		this.elPlay.style.background = CLR.red;
 		this._lastWall = performance.now();
 		this._rafId = requestAnimationFrame(() => this._raf());
@@ -735,16 +702,7 @@ class LogVisualizer {
 	_logInteraction(it) {
 		if (!this._loggedInteractions) this._loggedInteractions = new Set();
 		this._loggedInteractions.add(it);
-		const KIND = {
-			"teacher-question": {
-				icon: "❓",
-				label: "Question",
-				color: CLR.accent,
-			},
-			"student-question": { icon: "🙋", label: "Question", color: CLR.move },
-			"providing-help": { icon: "🤝", label: "Help", color: CLR.green },
-		};
-		const k = KIND[it.interaction] || {
+		const k = INTERACTION_KINDS[it.interaction] || {
 			icon: "💬",
 			label: "Interaction",
 			color: CLR.dim,

@@ -10,7 +10,7 @@ const read = (p) => fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
 
 test("the host types the name from its own state, never from the message", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const chars = /function moveToNameChars\(\)[\s\S]*?\n\}/.exec(src)[0];
+	const chars = /function goToNameChars\(\)[\s\S]*?\n\}/.exec(src)[0];
 	const step = /async function typeNextNameChar\(\)[\s\S]*?\n\}/.exec(src)[0];
 
 	assert.match(
@@ -18,7 +18,7 @@ test("the host types the name from its own state, never from the message", () =>
 		/openPayload && openPayload\.target/,
 		"the name must come from the payload the renderer sent",
 	);
-	assert.match(chars, /openPopup !== "move-to"/, "only while a move-to is up");
+	assert.match(chars, /openPopup !== "go-to"/, "only while a go-to is up");
 	assert.match(chars, /isFileName\(target\)/, "and only for a real filename");
 	assert.match(
 		src,
@@ -34,7 +34,7 @@ test("the host types the name from its own state, never from the message", () =>
 	);
 	assert.match(
 		step,
-		/index >= pendingName\.chars\.length\)[\s\S]*?keyboard\.type\(Key\.Enter\)[\s\S]*?confirmPopup\("move-to"\)/,
+		/index >= pendingName\.chars\.length\)[\s\S]*?keyboard\.type\(Key\.Enter\)[\s\S]*?confirmPopup\("go-to"\)/,
 		"the last character types Enter and confirms in the same press",
 	);
 });
@@ -47,26 +47,26 @@ test("the message carries no payload, and the desk may raise it", () => {
 	const bare = /const BARE_CLIENT_MESSAGES = \[([\s\S]*?)\];/.exec(server)[1];
 	assert.match(
 		bare,
-		/"move-to-type-name"/,
+		/"go-to-type-name"/,
 		"a bare message forwards nothing, which is the point",
 	);
 
 	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
 	assert.match(
 		main,
-		/"client-move-to-type-name",\s*\(\) => armMoveToName\(\)/,
+		/"client-go-to-type-name",\s*\(\) => armGoToName\(\)/,
 	);
 	const desk = /const DESK_ACTIONS = new Set\(\[([\s\S]*?)\]\);/.exec(main)[1];
 	assert.match(
 		desk,
-		/"client-move-to-type-name"/,
+		/"client-go-to-type-name"/,
 		"the desk card raises the same event as the phone",
 	);
 });
 
 test("the popup releases the name when it closes", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const end = /function endPopup\(kind\)[\s\S]*?\n\}/.exec(src)[0];
+	const end = /function endPopup\(type\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(
 		end,
 		/openPayload = null/,
@@ -75,28 +75,27 @@ test("the popup releases the name when it closes", () => {
 });
 
 test("both surfaces gate the button on the payload, not on mode alone", () => {
-	const phone = read("src/shared/remote/move-to-overlay.js");
+	const phone = read("src/shared/remote/go-to-overlay.js");
 	assert.match(phone, /this\.canTypeName = mode === "file" && !!typeName/);
-	assert.match(phone, /typeBtn\.style\.display = this\.canTypeName/);
 	assert.match(
 		phone,
-		/okBtn\.style\.display = this\.canTypeName \? "none" : ""/,
+		/this\.swapActions\("gtoTypeName", "gtoConfirm", this\.canTypeName\)/,
 		"while the name must be typed there is no OK to skip it with",
 	);
 	assert.match(
 		phone,
-		/sendMessage\("move-to-type-name", \{\}\)/,
+		/sendMessage\("go-to-type-name", \{\}\)/,
 		"the phone sends no text",
 	);
 
 	const desk = read("src/renderer/desk-popup.js");
-	const fn = /showMoveTo\(\{[^}]*\}\)[\s\S]*?\n\t\}/.exec(desk)[0];
+	const fn = /showGoTo\(\{[^}]*\}\)[\s\S]*?\n\t\}/.exec(desk)[0];
 	assert.match(fn, /const canTypeName = mode === "file" && !!typeName/);
-	assert.match(fn, /client-move-to-type-name/);
+	assert.match(fn, /client-go-to-type-name/);
 });
 
 test("a pad covering the popup lifts it instead of hiding its buttons", () => {
-	const phone = read("src/shared/remote/move-to-overlay.js");
+	const phone = read("src/shared/remote/go-to-overlay.js");
 	assert.equal(
 		/setPadCovered/.test(phone),
 		false,
@@ -151,7 +150,7 @@ test("a logged filename would corrupt the file that happens to be open", () => {
 	assert.equal(
 		withFilename.files.get("MAIN").text,
 		"style.css\n",
-		"which is why the move-to alone records the file, and the keys are not logged",
+		"which is why the go-to alone records the file, and the keys are not logged",
 	);
 });
 
@@ -161,22 +160,22 @@ test("only the letter being typed is released, not all twenty-six", () => {
 
 	assert.match(
 		fn,
-		/releaseTypingHotkeysFor\(ch\)/,
+		/releaseAutoTypingHotkeysFor\(ch\)/,
 		"a-z are all accelerators, so releasing every one per character cost " +
 			"52 OS calls a keystroke and dropped the teacher's key into the editor",
 	);
 	assert.equal(
-		/unregisterTypingHotkeys\(\)/.test(fn),
+		/unregisterAutoTypingHotkeys\(\)/.test(fn),
 		false,
 		"the blanket release is what left the gap",
 	);
-	assert.match(fn, /restoreTypingHotkeys\(released\)/);
+	assert.match(fn, /restoreAutoTypingHotkeys\(released\)/);
 	assert.ok(
-		fn.indexOf("releaseTypingHotkeysFor") < fn.indexOf("keyboard.type"),
+		fn.indexOf("releaseAutoTypingHotkeysFor") < fn.indexOf("keyboard.type"),
 		"released before typing",
 	);
 	assert.ok(
-		fn.indexOf("keyboard.type") < fn.indexOf("restoreTypingHotkeys"),
+		fn.indexOf("keyboard.type") < fn.indexOf("restoreAutoTypingHotkeys"),
 		"and taken back after",
 	);
 	assert.match(
@@ -188,7 +187,7 @@ test("only the letter being typed is released, not all twenty-six", () => {
 
 test("a character that is not a hotkey releases nothing at all", () => {
 	const src = fs.readFileSync(path.join(MAIN, "hotkey-manager.js"), "utf-8");
-	const fn = /typingHotkeysFor\(ch\) \{[\s\S]*?\n\t\}/.exec(src)[0];
+	const fn = /autoTypingHotkeysFor\(ch\) \{[\s\S]*?\n\t\}/.exec(src)[0];
 	assert.match(
 		fn,
 		/typeof ch !== "string"/,
@@ -201,14 +200,14 @@ test("keyboard-handler wraps its own typing the same way", () => {
 	const kb = fs.readFileSync(path.join(MAIN, "keyboard-handler.js"), "utf-8");
 	assert.match(
 		kb,
-		/unregisterKey\(charLower\)[\s\S]*?typeWithNutJs\(char\)[\s\S]*?registerKey\(charLower\)/,
-		"this is the pattern typeNextNameChar has to follow",
+		/releaseAutoTypingHotkeysFor\(char\)[\s\S]*?typeWithNutJs\(char\)[\s\S]*?restoreAutoTypingHotkeys\(released\)/,
+		"the same release and restore typeNextNameChar uses, so the case rule is in one place",
 	);
 });
 
-test("Auto-type arms a queue; it does not type the whole name at once", () => {
+test("Type name arms a queue; it does not type the whole name at once", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const arm = /function armMoveToName\(\)[\s\S]*?\n\}/.exec(src)[0];
+	const arm = /function armGoToName\(\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.equal(
 		/keyboard\.type/.test(arm),
 		false,
@@ -230,7 +229,7 @@ test("an armed name consumes advance keys before the pause swallows them", () =>
 	const fn = /handleKey\(letter\) \{[\s\S]*?\n\t\}/.exec(hk)[0];
 	assert.ok(
 		fn.indexOf("state.onPopupKey") < fn.indexOf("state.isPaused"),
-		"a move-to popup pauses, so the hook has to run before that check",
+		"a go-to popup pauses, so the hook has to run before that check",
 	);
 	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
 	assert.match(
@@ -241,7 +240,7 @@ test("an armed name consumes advance keys before the pause swallows them", () =>
 });
 
 test("the name renders with a cursor and a trailing return once armed", () => {
-	const { renderTypedName } = require("../src/shared/snippet-view");
+	const { renderTypedName } = require("../src/shared/excerpt-view");
 	const spans = () => [...node.children].map((c) => c.textContent);
 	let node;
 
@@ -282,12 +281,12 @@ test("the name renders with a cursor and a trailing return once armed", () => {
 		"style.css↩",
 		"armed: name plus the return",
 	);
-	assert.equal(node.children[0].className, "mt-modal-anchor-cursor");
+	assert.equal(node.children[0].className, "excerpt-anchor-cursor");
 
 	node.children = [];
 	renderTypedName(node, "style.css", 3);
-	assert.equal(node.children[3].className, "mt-modal-anchor-cursor");
-	assert.equal(node.children[2].className, "mto-name-typed");
+	assert.equal(node.children[3].className, "excerpt-anchor-cursor");
+	assert.equal(node.children[2].className, "gto-name-typed");
 
 	global.document = realDoc;
 });

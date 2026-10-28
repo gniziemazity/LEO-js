@@ -1,5 +1,6 @@
 const { spawn } = require("child_process");
 const { getWindows } = require("@computer-use/nut-js");
+const { sleep } = require("./platform");
 
 const POLL_MS = 300;
 const FIND_TIMEOUT_MS = 20000;
@@ -46,8 +47,6 @@ async function windowHandles() {
 		return new Set();
 	}
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function findVSCode(before, folderName) {
 	const deadline = Date.now() + FIND_TIMEOUT_MS;

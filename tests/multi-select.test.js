@@ -177,7 +177,7 @@ test("group move shifts every selected block one step, contiguous or not", () =>
 
 test("a group move is refused as a whole at either edge", () => {
 	const lm = manager([
-		{ type: "comment", text: "inherited", fromInclude: true },
+		{ type: "comment", text: "inherited", fromStart: true },
 		...notes("a", "b", "c"),
 	]);
 	assert.equal(

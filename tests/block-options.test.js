@@ -39,7 +39,7 @@ test("block text comes from the step, never from the contaminated DOM", () => {
 		"_enterQuestionBlock",
 		"_enterImageBlock",
 		"_enterWebBlock",
-		"_enterCodeInsertBlock",
+		"_enterSnippetBlock",
 	]) {
 		const body = new RegExp(`${fn}\\(step\\) \\{[\\s\\S]*?\\n\\t\\}`).exec(
 			src,
@@ -221,49 +221,49 @@ function withBlocks(blocks) {
 	return lm;
 }
 
-test("only the first move-to to a file creates it", () => {
+test("only the first go-to to a file creates it", () => {
 	const lm = withBlocks([
-		{ type: "move-to", target: "MAIN" },
-		{ type: "move-to", target: "index.js" },
+		{ type: "go-to", target: "MAIN" },
+		{ type: "go-to", target: "index.js" },
 		{ type: "code", text: "x" },
-		{ type: "move-to", target: "style.css" },
-		{ type: "move-to", target: "index.js" },
+		{ type: "go-to", target: "style.css" },
+		{ type: "go-to", target: "index.js" },
 	]);
 
-	assert.equal(lm.isFirstMoveToFile(1), true, "index.js is created here");
-	assert.equal(lm.isFirstMoveToFile(3), true, "style.css is created here");
+	assert.equal(lm.isFirstGoToFile(1), true, "index.js is created here");
+	assert.equal(lm.isFirstGoToFile(3), true, "style.css is created here");
 	assert.equal(
-		lm.isFirstMoveToFile(4),
+		lm.isFirstGoToFile(4),
 		false,
 		"the second visit lands in a file that already exists",
 	);
-	assert.equal(lm.isFirstMoveToFile(0), false, "MAIN is not a file");
+	assert.equal(lm.isFirstGoToFile(0), false, "MAIN is not a file");
 });
 
 test("a file an included plan already touched is not created again", () => {
 	const lm = withBlocks([
-		{ type: "move-to", target: "index.js", fromInclude: true },
-		{ type: "comment", text: "📋 …", fromInclude: true },
-		{ type: "move-to", target: "index.js" },
+		{ type: "go-to", target: "index.js", fromStart: true },
+		{ type: "comment", text: "📋 …", fromStart: true },
+		{ type: "go-to", target: "index.js" },
 	]);
 
 	assert.equal(
-		lm.isFirstMoveToFile(2),
+		lm.isFirstGoToFile(2),
 		false,
-		"under Start with, the inherited move-to means the file is already there — " +
+		"under Start with, the inherited go-to means the file is already there — " +
 			"this is exactly why 'create on first appearance' was rejected before",
 	);
-	assert.equal(lm.isFirstMoveToFile(0), true);
+	assert.equal(lm.isFirstGoToFile(0), true);
 });
 
 test("an anchor target never creates a file", () => {
-	const lm = withBlocks([{ type: "move-to", target: "⚓3⚓" }]);
-	assert.equal(lm.isFirstMoveToFile(0), false);
+	const lm = withBlocks([{ type: "go-to", target: "⚓3⚓" }]);
+	assert.equal(lm.isFirstGoToFile(0), false);
 });
 
 test("the option is opt-out: absent means the button shows", () => {
 	for (const [file, expr] of [
-		["shared/remote/code-insert-overlay.js", /paste !== false/],
+		["shared/remote/snippet-overlay.js", /paste !== false/],
 		["renderer/desk-popup.js", /paste !== false/],
 		["renderer/cursor-manager.js", /step\.paste !== false/],
 		["renderer/lesson-renderer.js", /block\.paste !== false/],
@@ -277,17 +277,17 @@ test("the option is opt-out: absent means the button shows", () => {
 	}
 });
 
-test("Auto-type is offered only where the file is created", () => {
+test("Type name is offered only where the file is created", () => {
 	const src = read("renderer/lesson-renderer.js");
 	assert.match(
 		src,
-		/isFirstMoveToFile\(blockIdx\)/,
-		"a later move-to lands in a file that already exists",
+		/isFirstGoToFile\(blockIdx\)/,
+		"a later go-to lands in a file that already exists",
 	);
 	assert.match(
 		src,
 		/typeName: creates && block\.typeName !== false/,
-		"the payload flag must fold in the first-move-to rule, not just the checkbox",
+		"the payload flag must fold in the first-go-to rule, not just the checkbox",
 	);
 });
 
@@ -298,24 +298,27 @@ test("the phone never tells a teacher to press Ctrl+V it cannot honour", () => {
 		"with paste off the clipboard is never loaded, so the hint promised " +
 			"a paste that would insert whatever the teacher had copied",
 	);
-	assert.equal(
-		/ciHint/.test(read("shared/remote/code-insert-overlay.js")),
-		false,
-	);
+	assert.equal(/ciHint/.test(read("shared/remote/snippet-overlay.js")), false);
 	assert.equal(/ci-modal-hint/.test(read("shared/styles.css")), false);
 });
 
 test("no OK is offered when the name has to be typed", () => {
-	const phone = read("shared/remote/move-to-overlay.js");
+	const phone = read("shared/remote/go-to-overlay.js");
 	assert.match(
 		phone,
-		/okBtn\.style\.display = this\.canTypeName \? "none" : ""/,
-		"typing the last character is what confirms, so an OK would race it",
+		/this\.swapActions\("gtoTypeName", "gtoConfirm", this\.canTypeName\)/,
+		"Type name takes OK's place on exactly the block that creates the file",
+	);
+	const base = read("shared/remote/remote-overlay.js");
+	assert.match(
+		base,
+		/if \(alt\) alt\.style\.display = useAlt \? "" : "none";/,
+		"the alternative shows when it applies",
 	);
 	assert.match(
-		phone,
-		/typeBtn\.style\.display = this\.canTypeName \? "" : "none"/,
-		"and Auto-type is offered on exactly the block that creates the file",
+		base,
+		/if \(ok\) ok\.style\.display = useAlt \? "none" : "";/,
+		"and then there is no OK: typing the last character is what confirms",
 	);
 });
 
@@ -324,8 +327,8 @@ test("typing the last character confirms the popup", () => {
 	const fn = /async function typeNextNameChar\(\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(
 		fn,
-		/pendingName\.index >= pendingName\.chars\.length\) \{[\s\S]*?confirmPopup\("move-to"\)/,
-		"there is no OK while Auto-type is required, so completion is what closes it",
+		/pendingName\.index >= pendingName\.chars\.length\) \{[\s\S]*?confirmPopup\("go-to"\)/,
+		"there is no OK while Type name is required, so completion is what closes it",
 	);
 });
 
@@ -431,23 +434,30 @@ test("authored() keeps the flag through a save round-trip", () => {
 	const blocks = [
 		{ type: "include", anchors: {} },
 		{ type: "comment", text: "📋 x", paste: false },
-		{ type: "move-to", target: "a.js", typeName: false, note: "why" },
+		{ type: "go-to", target: "a.js", typeName: false, note: "why" },
 		{ type: "comment", text: "🖼️ a.png", pin: true },
 	];
 	assert.deepEqual(
 		LessonManager.authored(blocks),
-		blocks.slice(1),
+		[blocks[1], { ...blocks[2], type: "move-to" }, blocks[3]],
 		"a field-by-field rebuild would silently drop paste/typeName",
 	);
 	assert.equal(LessonManager.authored(blocks)[0], blocks[1]);
 });
 
-test("the gutter is given back when the bar goes away for typing", () => {
+test("a plan file says move-to, so a plan saved today opens in an older LEO", () => {
+	const saved = [{ type: "move-to", target: "a.js", note: "why" }];
+	const loaded = LessonManager._migrateBlocks(saved);
+	assert.deepEqual(loaded, [{ type: "go-to", target: "a.js", note: "why" }]);
+	assert.deepEqual(LessonManager.authored(loaded), saved);
+});
+
+test("the gutter is given back when the bar goes away for auto-typing", () => {
 	const css = read("shared/styles.css");
-	const rule = /body\.typing-active #main-layout \{[\s\S]*?\n\}/.exec(css);
+	const rule = /body\.auto-typing-active #main-layout \{[\s\S]*?\n\}/.exec(css);
 	assert.ok(
 		rule,
-		"typing hides the sidebar, so its 55px has to go back to the code",
+		"auto-typing hides the sidebar, so its 55px has to go back to the code",
 	);
 	assert.match(rule[0], /padding-right: 0/);
 });

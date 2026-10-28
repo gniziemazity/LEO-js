@@ -29,7 +29,7 @@ class QuestionOverlay extends RemoteOverlay {
 		} else {
 			grid.appendChild(
 				this.makeStudentBtn(
-					"Answered",
+					InteractionView.ANSWERED_LABEL,
 					() => this.studentAnswered(null),
 					"width:100%;margin-bottom:4px",
 				),
@@ -43,7 +43,7 @@ class QuestionOverlay extends RemoteOverlay {
 
 		grid.insertBefore(this.buildActionButtons(), grid.firstChild);
 
-		this.open(bgColor ? bgColor : "var(--clr-q-bg)");
+		this.open(bgColor ? bgColor : "var(--clr-question-bg)");
 	}
 
 	buildActionButtons() {
@@ -88,11 +88,9 @@ class QuestionOverlay extends RemoteOverlay {
 	}
 
 	studentAnswered(idx) {
-		const studentId =
-			idx === InteractionView.TEACHER_ASKER || (idx != null && idx >= 0)
-				? InteractionView.participantId(idx)
-				: null;
-		sendMessage("student-answered", { studentName: studentId });
+		sendMessage("student-answered", {
+			studentName: InteractionView.answererId(idx),
+		});
 		this.close();
 	}
 

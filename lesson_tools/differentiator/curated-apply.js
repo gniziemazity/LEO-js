@@ -799,6 +799,22 @@ function _curatedMarkedToLineHtml(marked, nums, opBase) {
 		.join("");
 }
 
+function _curatedColors() {
+	const cv = (n, fb) => _cssVar(n) || fb;
+	return {
+		bg: cv("--clr-bg", "#fff"),
+		text: cv("--clr-code-muted", "#aaa"),
+		ins: cv("--clr-mark-missing", "#cc2222"),
+		del: cv("--clr-mark-extra", "#000"),
+		label: cv("--clr-muted", "#888"),
+		file: cv("--clr-label", "#595959"),
+		border: cv("--clr-border", "#888"),
+		same: cv("--clr-green", "#66bb6a"),
+		reordered: cv("--clr-orange", "#e07020"),
+		changed: cv("--clr-red", "#cc2222"),
+	};
+}
+
 function _curatedRenderBlocksToImage(blocks, filename) {
 	if (!blocks.length) return;
 	const fontSize = 12;
@@ -807,16 +823,7 @@ function _curatedRenderBlocksToImage(blocks, filename) {
 	const boxPad = 6;
 	const gap = Math.round(lineH * 0.5);
 	const font = fontSize + "px Consolas, 'Courier New', monospace";
-	const cv = (n, fb) => _cssVar(n) || fb;
-	const colors = {
-		bg: cv("--clr-bg", "#ffffff"),
-		text: cv("--clr-code-muted", "#aaaaaa"),
-		ins: cv("--clr-mark-missing", "#cc2222"),
-		del: cv("--clr-mark-extra", "#000000"),
-		label: cv("--clr-muted", "#888888"),
-		file: cv("--clr-label", "#555555"),
-		border: cv("--clr-border-mid", "#cccccc"),
-	};
+	const colors = _curatedColors();
 	const meas = document.createElement("canvas").getContext("2d");
 	meas.font = font;
 	const segW = (seg) => {
@@ -946,13 +953,14 @@ function _curatedDownloadCorrectedCodeImage() {
 function _curatedCorrectionsHtml() {
 	const blocks = _curatedCorrectionsData();
 	if (!blocks.length) return "";
-	const cv = (n, fb) => _cssVar(n) || fb;
-	const cMuted = cv("--clr-code-muted", "#aaaaaa");
-	const cIns = cv("--clr-mark-missing", "#cc2222");
-	const cDel = cv("--clr-mark-extra", "#000000");
-	const cLabel = cv("--clr-muted", "#888888");
-	const cFile = cv("--clr-label", "#555555");
-	const cBorder = cv("--clr-border-mid", "#cccccc");
+	const {
+		text: cMuted,
+		ins: cIns,
+		del: cDel,
+		label: cLabel,
+		file: cFile,
+		border: cBorder,
+	} = _curatedColors();
 	const mono = "ui-monospace, Consolas, monospace";
 	const segHtml = (marked) =>
 		_curatedMarkedToSegLines(marked)
@@ -1243,7 +1251,7 @@ function _curatedParityLocateInStudent(oSpans, items) {
 function _curatedParityInfo(p) {
 	if (p.sameOrder)
 		return {
-			clr: _cssVar("--clr-green") || "#1a7f37",
+			clr: _curatedColors().same,
 			text: "Same tokens",
 			title:
 				"Applying these corrections reproduces the teacher's non-comment " +
@@ -1251,7 +1259,7 @@ function _curatedParityInfo(p) {
 		};
 	if (p.sameSet)
 		return {
-			clr: _cssVar("--clr-orange") || "#bf8700",
+			clr: _curatedColors().reordered,
 			text: "Different order",
 			title:
 				"Applying these corrections reproduces the same set of teacher " +
@@ -1261,7 +1269,7 @@ function _curatedParityInfo(p) {
 	if (p.extra) parts.push(`+${p.extra}`);
 	if (p.missing) parts.push(`−${p.missing}`);
 	return {
-		clr: _cssVar("--clr-red") || "#c1121f",
+		clr: _curatedColors().changed,
 		text: `Δ ${parts.join(" · ")}`,
 		title:
 			"Applying these corrections does not reproduce the teacher's tokens: " +

@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { loadModule, fakeIpcRenderer } = require("./helpers/load-module.js");
 const { buildRemote } = require("./helpers/remote-dom.js");
-const { extractAnchorSnippet } = require("../src/renderer/anchor-snippet.js");
+const { extractGoToExcerpt } = require("../src/renderer/plan-replay.js");
 const {
 	buildArtificialLogEvents,
 } = require("../src/renderer/log-event-builder.js");
@@ -12,19 +12,19 @@ const { expandEvents } = require("../lesson_tools/shared/simulator-model.js");
 
 const CROSS_FILE_BLOCKS = [
 	{ type: "code", text: "let x = 1;" },
-	{ type: "move-to", target: "other.js" },
+	{ type: "go-to", target: "other.js" },
 	{ type: "code", text: "other line ⚓3⚓ here" },
-	{ type: "move-to", target: "style.css" },
+	{ type: "go-to", target: "style.css" },
 	{ type: "code", text: "body { }" },
-	{ type: "move-to", target: "⚓3⚓" },
+	{ type: "go-to", target: "⚓3⚓" },
 ];
 
-function moveToStep(target, snippet) {
+function goToStep(target, excerpt) {
 	return {
 		type: "block",
-		kind: "move-to",
+		blockType: "go-to",
 		target,
-		snippet,
+		excerpt,
 		globalIndex: 0,
 		element: {
 			innerText: "",
@@ -50,10 +50,10 @@ function cursorManagerOn(step) {
 }
 
 test("the keylog opens the file before it jumps to the anchor", () => {
-	const snippet = extractAnchorSnippet("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
-	assert.equal(snippet.switchTo, "other.js");
+	const excerpt = extractGoToExcerpt("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
+	assert.equal(excerpt.switchTo, "other.js");
 
-	const { cm, logged } = cursorManagerOn(moveToStep("⚓3⚓", snippet));
+	const { cm, logged } = cursorManagerOn(goToStep("⚓3⚓", excerpt));
 	cm.updateCursor();
 
 	assert.deepEqual(
@@ -64,18 +64,18 @@ test("the keylog opens the file before it jumps to the anchor", () => {
 });
 
 test("an anchor in the current file logs one move_to, as before", () => {
-	const snippet = extractAnchorSnippet("⚓3⚓", 3, CROSS_FILE_BLOCKS, 1, 1);
-	assert.equal(snippet.switchTo, null);
+	const excerpt = extractGoToExcerpt("⚓3⚓", 3, CROSS_FILE_BLOCKS, 1, 1);
+	assert.equal(excerpt.switchTo, null);
 
-	const { cm, logged } = cursorManagerOn(moveToStep("⚓3⚓", snippet));
+	const { cm, logged } = cursorManagerOn(goToStep("⚓3⚓", excerpt));
 	cm.updateCursor();
 
 	assert.deepEqual(logged, [{ move_to: "⚓3⚓" }]);
 });
 
 test("the artificial log carries the same implicit switch", () => {
-	const snippet = extractAnchorSnippet("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
-	const events = buildArtificialLogEvents([moveToStep("⚓3⚓", snippet)]);
+	const excerpt = extractGoToExcerpt("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
+	const events = buildArtificialLogEvents([goToStep("⚓3⚓", excerpt)]);
 
 	assert.deepEqual(
 		events.map((e) => e.move_to),
@@ -85,8 +85,8 @@ test("the artificial log carries the same implicit switch", () => {
 });
 
 test("replay expands the pair into a file switch and then a jump", () => {
-	const snippet = extractAnchorSnippet("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
-	const events = buildArtificialLogEvents([moveToStep("⚓3⚓", snippet)]);
+	const excerpt = extractGoToExcerpt("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
+	const events = buildArtificialLogEvents([goToStep("⚓3⚓", excerpt)]);
 
 	assert.deepEqual(
 		expandEvents(events).map((m) => [m[0], m[1]]),
@@ -98,17 +98,17 @@ test("replay expands the pair into a file switch and then a jump", () => {
 	);
 });
 
-test("a move-to with no snippet at all still logs its target", () => {
-	const { cm, logged } = cursorManagerOn(moveToStep("MAIN", null));
+test("a go-to with no excerpt at all still logs its target", () => {
+	const { cm, logged } = cursorManagerOn(goToStep("MAIN", null));
 	cm.updateCursor();
 	assert.deepEqual(logged, [{ move_to: "MAIN" }]);
 });
 
 function showAnchor(ctx, switchTo) {
-	ctx.api.showMoveToOverlay({
+	ctx.api.showGoToOverlay({
 		mode: "anchor",
 		target: "⚓3⚓",
-		snippet: {
+		excerpt: {
 			lines: ["other line  here"],
 			colored: null,
 			arrowIdx: 0,
@@ -116,7 +116,7 @@ function showAnchor(ctx, switchTo) {
 			switchTo,
 		},
 	});
-	return ctx.nodes.mtoTitle.textContent;
+	return ctx.nodes.gtoTitle.textContent;
 }
 
 test("the popup names the file to open in its title", () => {
@@ -133,50 +133,50 @@ test("an anchor in the file already open keeps the plain title", () => {
 	assert.equal(showAnchor(buildRemote(), null), "Go to:");
 });
 
-test("the snippet shown is still the anchor's own file", () => {
+test("the excerpt shown is still the anchor's own file", () => {
 	const ctx = buildRemote();
 	showAnchor(ctx, "other.js");
-	assert.equal(ctx.nodes.mtoSnippet.style.display, "block");
-	assert.equal(ctx.nodes.mtoTarget.style.display, "none");
+	assert.equal(ctx.nodes.gtoExcerpt.style.display, "block");
+	assert.equal(ctx.nodes.gtoTarget.style.display, "none");
 });
 
-test("a file move-to shows the name and the code where typing left it", () => {
+test("a file go-to shows the name and the code where auto-typing left it", () => {
 	const ctx = buildRemote();
-	const snippet = extractAnchorSnippet("other.js", 5, CROSS_FILE_BLOCKS);
-	ctx.api.showMoveToOverlay({ mode: "file", target: "other.js", snippet });
+	const excerpt = extractGoToExcerpt("other.js", 5, CROSS_FILE_BLOCKS);
+	ctx.api.showGoToOverlay({ mode: "file", target: "other.js", excerpt });
 
-	assert.equal(ctx.nodes.mtoTitle.textContent, "Go to:");
-	assert.equal(ctx.nodes.mtoTarget.textContent, "other.js");
-	assert.notEqual(ctx.nodes.mtoTarget.style.display, "none");
-	assert.equal(ctx.nodes.mtoSnippet.style.display, "block");
-	assert.equal(ctx.nodes.mtoSnippet.children.length, 1);
+	assert.equal(ctx.nodes.gtoTitle.textContent, "Go to:");
+	assert.equal(ctx.nodes.gtoTarget.textContent, "other.js");
+	assert.notEqual(ctx.nodes.gtoTarget.style.display, "none");
+	assert.equal(ctx.nodes.gtoExcerpt.style.display, "block");
+	assert.equal(ctx.nodes.gtoExcerpt.children.length, 1);
 
-	ctx.api.showMoveToOverlay({ mode: "file", target: "new.js", snippet: null });
+	ctx.api.showGoToOverlay({ mode: "file", target: "new.js", excerpt: null });
 	assert.equal(
-		ctx.nodes.mtoSnippet.style.display,
+		ctx.nodes.gtoExcerpt.style.display,
 		"none",
-		"a snippet from the last popup must not linger",
+		"a excerpt from the last popup must not linger",
 	);
 });
 
-test("a file move-to logs its target once", () => {
-	const snippet = extractAnchorSnippet("other.js", 5, CROSS_FILE_BLOCKS);
-	assert.ok(snippet);
-	const { cm, logged } = cursorManagerOn(moveToStep("other.js", snippet));
+test("a file go-to logs its target once", () => {
+	const excerpt = extractGoToExcerpt("other.js", 5, CROSS_FILE_BLOCKS);
+	assert.ok(excerpt);
+	const { cm, logged } = cursorManagerOn(goToStep("other.js", excerpt));
 	cm.updateCursor();
 	assert.deepEqual(logged, [{ move_to: "other.js" }]);
 });
 
-test("file, main and dev move-tos with nothing typed just name their target", () => {
+test("file, main and dev go-tos with nothing typed just name their target", () => {
 	const ctx = buildRemote();
 
-	ctx.api.showMoveToOverlay({ mode: "file", target: "index.html" });
-	assert.equal(ctx.nodes.mtoTitle.textContent, "Go to:");
-	assert.equal(ctx.nodes.mtoTarget.textContent, "index.html");
+	ctx.api.showGoToOverlay({ mode: "file", target: "index.html" });
+	assert.equal(ctx.nodes.gtoTitle.textContent, "Go to:");
+	assert.equal(ctx.nodes.gtoTarget.textContent, "index.html");
 
-	ctx.api.showMoveToOverlay({ mode: "main", target: "MAIN" });
-	assert.equal(ctx.nodes.mtoTarget.textContent, "Main Editor");
+	ctx.api.showGoToOverlay({ mode: "main", target: "MAIN" });
+	assert.equal(ctx.nodes.gtoTarget.textContent, "Main Editor");
 
-	ctx.api.showMoveToOverlay({ mode: "dev", target: "DEV" });
-	assert.equal(ctx.nodes.mtoTarget.textContent, "Dev Tools");
+	ctx.api.showGoToOverlay({ mode: "dev", target: "DEV" });
+	assert.equal(ctx.nodes.gtoTarget.textContent, "Dev Tools");
 });

@@ -83,19 +83,20 @@ function loadPad(opts) {
 		setInteractionBtnsVisible() {},
 		activePadOverlay: () => o.padOverlay || null,
 		navigator: { vibrate() {} },
-		setTimeout: () => 0,
-		clearTimeout() {},
+		setTimeout: o.timers ? (fn) => o.timers.push(fn) : () => 0,
+		clearTimeout: o.timers ? (id) => (o.timers[id - 1] = null) : () => {},
 		setInterval: () => 0,
 		clearInterval() {},
-		requestAnimationFrame: () => 0,
+		requestAnimationFrame: o.frames ? (fn) => o.frames.push(fn) : () => 0,
 		cancelAnimationFrame() {},
 		console,
 	};
 
 	const exported =
 		SRC +
-		"\n;module.exports={setSessionActive,setTouchpadMode,initTouchpad," +
-		"syncTouchpadToolbar,setTouchpadSensitivity,registerTouchpadMode};";
+		"\n;module.exports={setAutoTypingActive,setTouchpadMode,initTouchpad," +
+		"syncTouchpadToolbar,setTouchpadSensitivity,registerTouchpadMode," +
+		"sendScroll,releaseScroll,createPadGestures};";
 	new Function(...Object.keys(sandbox), exported)(...Object.values(sandbox));
 
 	const api = sandbox.module.exports;
@@ -145,7 +146,7 @@ function loadPad(opts) {
 
 async function openPad(mode, opts) {
 	const pad = loadPad(opts);
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 	await pad.api.setTouchpadMode(mode);
 	pad.sent.length = 0;
 	return pad;
@@ -231,10 +232,186 @@ test("the mouse pad still moves, scrolls and right-clicks", async () => {
 	);
 });
 
+test("a flick keeps scrolling after the fingers lift, until two fingers land", async () => {
+	const frames = [];
+	const pad = await openPad("mouse", { frames });
+	const scrolls = () => pad.sent.filter((m) => m.type === "mouse-scroll");
+
+	pad.twoDown();
+	pad.twoMoveTo(160);
+	pad.twoMoveTo(220);
+	pad.fire("touchend", []);
+	assert.equal(frames.length, 1, "the lift starts the coast");
+
+	const atLift = scrolls().length;
+	frames.shift()();
+	frames.shift()();
+	assert.equal(
+		scrolls().length,
+		atLift + 2,
+		"each frame scrolls a little more",
+	);
+
+	pad.twoDown();
+	pad.sent.length = 0;
+	frames.shift()();
+	assert.equal(scrolls().length, 0, "two fingers landing stop the coast");
+});
+
+test("an extension mode scrolls through the same pipeline, fractions and coast included", () => {
+	const frames = [];
+	const pad = loadPad({ frames });
+	const scrolls = () =>
+		pad.sent.filter((m) => m.type === "mouse-scroll").map((m) => m.data.dy);
+
+	pad.api.sendScroll(0.6);
+	assert.deepEqual(scrolls(), [], "a fraction is kept, not sent");
+	pad.api.sendScroll(0.6);
+	assert.deepEqual(scrolls(), [1], "and it adds up to a whole step");
+
+	pad.api.sendScroll(20);
+	pad.api.sendScroll(20);
+	pad.api.releaseScroll();
+	assert.equal(frames.length, 1, "a fast scroll coasts on release");
+});
+
+test("a tap clicks late, so a second tap can turn it into a drag instead", async () => {
+	const timers = [];
+	const pad = await openPad("mouse", { timers });
+	pad.down(100, 100);
+	pad.tick(50);
+	pad.up();
+	assert.deepEqual(pad.types(), [], "the click waits for a second tap");
+	assert.equal(timers.length, 1);
+
+	pad.tick(100);
+	pad.down(100, 100);
+	assert.deepEqual(pad.types(), ["mouse-drag-start"]);
+	assert.equal(
+		timers[0],
+		null,
+		"and the waiting click is cancelled, not sent too",
+	);
+	pad.moveTo(140, 100);
+	pad.up();
+	assert.deepEqual(pad.types(), [
+		"mouse-drag-start",
+		"mouse-move",
+		"mouse-drag-end",
+	]);
+
+	pad.sent.length = 0;
+	pad.tick(1000);
+	pad.down(100, 100);
+	pad.tick(50);
+	pad.up();
+	timers[timers.length - 1]();
+	assert.deepEqual(
+		pad.sent.map((m) => m.data.button),
+		["left"],
+		"a lone tap clicks once its wait is over",
+	);
+});
+
+test("a two-finger tap is timed from the second finger, and moving cancels it", async () => {
+	const pad = await openPad("mouse");
+	const rights = () =>
+		pad.sent
+			.filter((m) => m.type === "mouse-click")
+			.map((m) => m.data.button);
+
+	pad.down(100, 100);
+	pad.tick(250);
+	pad.twoDown();
+	pad.tick(100);
+	pad.up();
+	assert.deepEqual(
+		rights(),
+		["right"],
+		"the first finger landing early does not use up the second's 300 ms",
+	);
+
+	pad.sent.length = 0;
+	pad.twoDown();
+	pad.twoMoveTo(110);
+	pad.up();
+	assert.deepEqual(rights(), [], "a scroll is not a right-click");
+});
+
+test("one finger left behind by two drives nothing until the hand leaves the glass", async () => {
+	const pad = await openPad("mouse");
+	pad.twoDown();
+	pad.tick(400);
+	pad.fire("touchend", [{ clientX: 140, clientY: 100, identifier: 1 }]);
+	pad.moveTo(400, 300);
+	assert.deepEqual(pad.types(), [], "the finger left behind is latched out");
+	pad.up();
+	pad.down(100, 100);
+	pad.moveTo(140, 100);
+	assert.deepEqual(
+		pad.types(),
+		["mouse-move"],
+		"and a fresh touch points again",
+	);
+});
+
+test("a held drag ends when the hand leaves the glass, even if a second finger joined", async () => {
+	const pad = await openPad("mouse");
+	pad.down(100, 100);
+	pad.up();
+	pad.down(100, 100);
+	pad.fire("touchstart", [
+		{ clientX: 100, clientY: 100, identifier: 0 },
+		{ clientX: 140, clientY: 100, identifier: 1 },
+	]);
+	pad.tick(400);
+	pad.up();
+	assert.deepEqual(
+		pad.types(),
+		["mouse-drag-start", "mouse-drag-end"],
+		"or the host's button stays down after every finger is off",
+	);
+});
+
+test("an extension mode gets the mouse pad's recogniser, with its own hooks", () => {
+	const pad = loadPad();
+	const seen = [];
+	const g = pad.api.createPadGestures({
+		sendThrottleMs: 0,
+		getTwoFingerMode: () => "pinch",
+		onCursorMove: (d) => seen.push(["move", d.dx, d.dy]),
+		startPinch: () => seen.push(["pinch-start"]),
+		movePinch: () => seen.push(["pinch"]) > 0,
+	});
+	g.start({ touches: [{ clientX: 10, clientY: 10, identifier: 0 }] });
+	g.move({ touches: [{ clientX: 10.1, clientY: 10, identifier: 0 }] });
+	g.move({ touches: [{ clientX: 12, clientY: 10, identifier: 0 }] });
+	g.end({ touches: [] });
+	g.start({
+		touches: [
+			{ clientX: 10, clientY: 10, identifier: 0 },
+			{ clientX: 50, clientY: 10, identifier: 1 },
+		],
+	});
+	g.move({
+		touches: [
+			{ clientX: 10, clientY: 10, identifier: 0 },
+			{ clientX: 60, clientY: 10, identifier: 1 },
+		],
+	});
+	g.end({ touches: [] });
+	assert.deepEqual(seen, [["move", 0, -2], ["pinch-start"], ["pinch"]]);
+	assert.deepEqual(
+		pad.types(),
+		[],
+		"a moved pinch is not a right-click, and nothing else reached the wire",
+	);
+});
+
 test("the edit keys live on the mouse pad, where the pointer that selects text is", async () => {
 	const pad = loadPad();
 	const keys = pad.els.touchpadEditKeys;
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("keyboard");
 	assert.equal(
@@ -319,7 +496,7 @@ test("a mode handler can borrow the edit keys, and only while it asks", async ()
 		modeBtnId: "modeBtnJedi",
 		wantsEditKeys: () => wanted,
 	});
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(
@@ -347,7 +524,7 @@ test("a mode handler can borrow the edit keys, and only while it asks", async ()
 test("a handler with no opinion on the edit keys gets none", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(pad.els.touchpadEditKeys.classList.contains("visible"), false);
@@ -356,7 +533,7 @@ test("a handler with no opinion on the edit keys gets none", async () => {
 test("the step keys are the keyboard pad's own, not a handler mode's", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(
@@ -387,7 +564,7 @@ test("the toolbars stay pressable even when a handler stands the glass down", ()
 test("an open pad keeps both mode buttons reachable, so switching is one press", async () => {
 	const pad = loadPad();
 	const side = pad.els.modeSideBtns;
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("keyboard");
 	assert.equal(side.classList.contains("has-pad"), true);
@@ -402,7 +579,7 @@ test("an open pad keeps both mode buttons reachable, so switching is one press",
 test("a mode handler still gets the strip to itself: it brings its own controls", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("jedi");
 	const side = pad.els.modeSideBtns;
@@ -459,7 +636,7 @@ test("a handler mode covers the popup unless it says it stood down", async () =>
 		padOverlay: { setPadCovered: (v) => covered.push(v) },
 	});
 	pad.api.registerTouchpadMode("jedi", { modeBtnId: "modeBtnJedi" });
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 	await pad.api.setTouchpadMode("jedi");
 
 	assert.equal(
@@ -480,7 +657,7 @@ test("a handler that stands its glass down leaves the popup alone", async () => 
 		modeBtnId: "modeBtnJedi",
 		coversScreen: () => !down,
 	});
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(covered[covered.length - 1], true);
 
@@ -533,7 +710,7 @@ test("the toolbars sit outside the gesture surface, or they could not be pressed
 
 test("the pad stamps its tint on the body so a lifted popup can wear it", async () => {
 	const pad = loadPad();
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 
 	await pad.api.setTouchpadMode("mouse");
 	assert.equal(pad.body.dataset.padTint, "mouse");
@@ -555,7 +732,7 @@ test("a handler mode wears the tint it declares, and only that", async () => {
 		modeBtnId: "modeBtnJedi",
 		padTint: "jedi",
 	});
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 	await pad.api.setTouchpadMode("jedi");
 	assert.equal(
 		pad.body.dataset.padTint,
@@ -575,7 +752,7 @@ test("a handler mode wears the tint it declares, and only that", async () => {
 test("a handler that names no tint paints none", async () => {
 	const pad = loadPad();
 	pad.api.registerTouchpadMode("mystery", { modeBtnId: "modeBtnJedi" });
-	pad.api.setSessionActive(true);
+	pad.api.setAutoTypingActive(true);
 	await pad.api.setTouchpadMode("mystery");
 	assert.equal(
 		pad.body.dataset.padTint,
@@ -671,7 +848,7 @@ test("the header's play and auto-pilot buttons sit together on the phone", () =>
 	assert.match(html, /setAutoPilot\(state\.autoPilot === true\);/);
 });
 
-test("the pad no longer swaps itself: the implicit move-to logic is gone", () => {
+test("the pad no longer swaps itself: the implicit go-to logic is gone", () => {
 	for (const name of [
 		"padEnterMoveTo",
 		"padLeaveMoveTo",
@@ -681,7 +858,7 @@ test("the pad no longer swaps itself: the implicit move-to logic is gone", () =>
 		assert.equal(SRC.includes(name), false, name + " was the clever swap");
 	}
 	const overlay = fs.readFileSync(
-		path.join(BASE, "shared/remote/move-to-overlay.js"),
+		path.join(BASE, "shared/remote/go-to-overlay.js"),
 		"utf-8",
 	);
 	assert.equal(/pad(Enter|Leave|TypeName)/.test(overlay), false);

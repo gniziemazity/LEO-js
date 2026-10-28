@@ -40,18 +40,6 @@ const _origObs = new Map();
 
 let _artefactSchema = [];
 
-const LANG_COL_DEFS = [
-	{
-		key: "html",
-		label: "HTML",
-		header: "HTML (E)",
-		descHeader: "HTML (E) Desc",
-	},
-	{ key: "css", label: "CSS", header: "CSS (E)", descHeader: "CSS (E) Desc" },
-	{ key: "js", label: "JS", header: "JS (E)", descHeader: "JS (E) Desc" },
-	{ key: "py", label: "Py", header: "Py (E)", descHeader: "Py (E) Desc" },
-];
-
 const COL_HIDE_KEYS = [
 	{ key: "name", label: "Name" },
 	{ key: "num", label: "Number" },

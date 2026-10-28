@@ -18,11 +18,11 @@ test("a note popup leaves the question and help buttons on screen", () => {
 	assert.deepEqual(hidden(ctx), [undefined, undefined]);
 });
 
-test("so do the other pausing popups: media, move-to and code snippet", () => {
+test("so do the other pausing popups: media, go-to and code snippet", () => {
 	const ctx = build();
-	ctx.api.showMediaOverlay({ kind: "image", name: "cat.png" });
-	ctx.api.showMoveToOverlay({ mode: "main", target: "MAIN" });
-	ctx.api.showCodeInsertOverlay({ code: "let a = 1;", paste: true });
+	ctx.api.showMediaOverlay({ type: "image", name: "cat.png" });
+	ctx.api.showGoToOverlay({ mode: "main", target: "MAIN" });
+	ctx.api.showSnippetOverlay({ code: "let a = 1;", paste: true });
 
 	assert.deepEqual(hidden(ctx), [undefined, undefined]);
 });
@@ -49,7 +49,7 @@ test("the picker itself hides them, and closing it brings them back", () => {
 test("the picker keeps an open pad and floats over it, like any other popup", async () => {
 	for (const type of ["student-question", "providing-help"]) {
 		const ctx = build();
-		ctx.api.setSessionActive(true);
+		ctx.api.setAutoTypingActive(true);
 		await ctx.api.setTouchpadMode("mouse");
 
 		ctx.api.setStudents(["Ada", "Linus"]);
@@ -70,7 +70,7 @@ test("the picker keeps an open pad and floats over it, like any other popup", as
 
 test("either pad opens over the picker, and the picker drops back when it closes", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.setStudents(["Ada"]);
 	ctx.api.handleInteractionBtn("student-question");
 	assert.equal(
@@ -127,7 +127,7 @@ test("under a pad the form and Done stay pressable, the names and 🎲 go inert"
 
 test("a pausing popup does not take the mouse pad away", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("mouse");
 
 	ctx.api.showNoteOverlay({ text: "Remember to save" });
@@ -190,7 +190,7 @@ test("the pad's bar buttons take the width of the mode buttons, not of their gly
 			getBoundingClientRect: () => ({ width: 45.6, height: 57.6 }),
 		},
 	];
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("mouse");
 
 	assert.equal(

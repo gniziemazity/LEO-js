@@ -27,7 +27,7 @@ class FileOperations {
 		});
 	}
 
-	async createNewLesson() {
+	async createNewPlan() {
 		if (!(await this.confirmDiscard())) return;
 
 		const filePath = await ipcRenderer.invoke("show-save-dialog");
@@ -54,7 +54,7 @@ class FileOperations {
 		});
 	}
 
-	async loadLesson() {
+	async loadPlan() {
 		const filePath = await ipcRenderer.invoke("show-open-dialog");
 		if (!filePath) return;
 
@@ -171,7 +171,7 @@ class FileOperations {
 		return this.students;
 	}
 
-	saveLesson() {
+	savePlan() {
 		this.lessonManager.save((err) => {
 			if (err) {
 				console.error("[LEO] save failed:", err);

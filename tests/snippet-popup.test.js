@@ -43,10 +43,10 @@ function codeStep(text = CODE) {
 	};
 }
 
-test("arriving at a code-insert block opens the popup with the code", () => {
+test("arriving at a snippet block opens the popup with the code", () => {
 	const { cm, logged } = makeCursorManager([codeStep()]);
 	const seen = [];
-	cm.onEnterCodeInsertBlock = (payload) => seen.push(payload);
+	cm.onEnterSnippetBlock = (payload) => seen.push(payload);
 
 	cm.updateCursor();
 
@@ -58,7 +58,7 @@ test("arriving at a code-insert block opens the popup with the code", () => {
 test("the popup carries coloured lines, one per line of code", () => {
 	const { cm } = makeCursorManager([codeStep()]);
 	let payload = null;
-	cm.onEnterCodeInsertBlock = (p) => (payload = p);
+	cm.onEnterSnippetBlock = (p) => (payload = p);
 
 	cm.updateCursor();
 
@@ -76,7 +76,7 @@ test("a collapsed multi-line block sends the full text, not the preview", () => 
 	step.text = "📋 " + CODE;
 	const { cm, logged } = makeCursorManager([step]);
 	let payload = null;
-	cm.onEnterCodeInsertBlock = (p) => (payload = p);
+	cm.onEnterSnippetBlock = (p) => (payload = p);
 
 	cm.updateCursor();
 
@@ -87,7 +87,7 @@ test("a collapsed multi-line block sends the full text, not the preview", () => 
 test("standing on the block does not re-open or re-log it", () => {
 	const { cm, logged } = makeCursorManager([codeStep()]);
 	const seen = [];
-	cm.onEnterCodeInsertBlock = (p) => seen.push(p);
+	cm.onEnterSnippetBlock = (p) => seen.push(p);
 
 	cm.updateCursor();
 	cm.updateCursor();
@@ -101,7 +101,7 @@ test("anchors are stripped from what is shown and pasted, but kept in the log", 
 	const withAnchors = "function f() {\n\treturn ⚓0⚓1;\n}⚓7⚓";
 	const { cm, logged } = makeCursorManager([codeStep(withAnchors)]);
 	let payload = null;
-	cm.onEnterCodeInsertBlock = (p) => (payload = p);
+	cm.onEnterSnippetBlock = (p) => (payload = p);
 
 	cm.updateCursor();
 
@@ -114,7 +114,7 @@ test("anchors are stripped from what is shown and pasted, but kept in the log", 
 		logged,
 		[{ code_insert: withAnchors }],
 		"the log keeps them: replay sets the anchor at that spot instead of typing it, " +
-			"and a later move-to may target it",
+			"and a later go-to may target it",
 	);
 });
 
@@ -147,7 +147,7 @@ test("stripping drops exactly what the replay drops (one line: no auto-indent in
 test("colour spans line up with the stripped text, not the authored text", () => {
 	const { cm } = makeCursorManager([codeStep("let a = ⚓0⚓1;\nlet b = 2;")]);
 	let payload = null;
-	cm.onEnterCodeInsertBlock = (p) => (payload = p);
+	cm.onEnterSnippetBlock = (p) => (payload = p);
 
 	cm.updateCursor();
 
@@ -156,7 +156,7 @@ test("colour spans line up with the stripped text, not the authored text", () =>
 });
 
 function openPopup(ctx, text = CODE) {
-	ctx.api.showCodeInsertOverlay({
+	ctx.api.showSnippetOverlay({
 		text,
 		colored: null,
 	});
@@ -167,54 +167,54 @@ test("the remote popup renders every line of the code", () => {
 	openPopup(ctx);
 
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("active"),
+		ctx.nodes.snippetOverlay.classList.contains("active"),
 		true,
 		"the overlay must open",
 	);
-	assert.equal(ctx.nodes.ciCode.children.length, CODE.split("\n").length);
+	assert.equal(ctx.nodes.snCode.children.length, CODE.split("\n").length);
 });
 
 test("Paste is the popup's one action: it pastes and closes", () => {
 	const ctx = buildRemote();
 	openPopup(ctx);
-	assert.equal(ctx.nodes.ciPaste.style.display, "");
+	assert.equal(ctx.nodes.snPaste.style.display, "");
 	assert.equal(
-		ctx.nodes.ciConfirm.style.display,
+		ctx.nodes.snConfirm.style.display,
 		"none",
 		"an OK beside Paste would be a second, different way to finish",
 	);
 
-	ctx.api.codeInsertPaste();
+	ctx.api.snippetPaste();
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
-		["code-insert-paste"],
+		["snippet-paste"],
 		"the host confirms after the paste; a confirm from here would race it",
 	);
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("active"),
+		ctx.nodes.snippetOverlay.classList.contains("active"),
 		false,
 	);
 });
 
 test("with Paste off, OK is the way on", () => {
 	const ctx = buildRemote();
-	ctx.api.showCodeInsertOverlay({ text: CODE, colored: null, paste: false });
-	assert.equal(ctx.nodes.ciPaste.style.display, "none");
-	assert.equal(ctx.nodes.ciConfirm.style.display, "");
+	ctx.api.showSnippetOverlay({ text: CODE, colored: null, paste: false });
+	assert.equal(ctx.nodes.snPaste.style.display, "none");
+	assert.equal(ctx.nodes.snConfirm.style.display, "");
 
-	ctx.api.closeCodeInsertOverlay();
+	ctx.api.closeSnippetOverlay();
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
-		["code-insert-confirmed"],
+		["snippet-confirmed"],
 	);
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("active"),
+		ctx.nodes.snippetOverlay.classList.contains("active"),
 		false,
 	);
 
 	openPopup(ctx);
 	assert.equal(
-		ctx.nodes.ciConfirm.style.display,
+		ctx.nodes.snConfirm.style.display,
 		"none",
 		"the next popup with Paste on hides OK again",
 	);
@@ -224,10 +224,10 @@ test("the host ending the block closes the popup without confirming again", () =
 	const ctx = buildRemote();
 	openPopup(ctx);
 
-	ctx.api.closeCodeInsertOverlayUI();
+	ctx.api.closeSnippetOverlayUI();
 
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("active"),
+		ctx.nodes.snippetOverlay.classList.contains("active"),
 		false,
 	);
 	assert.deepEqual(
@@ -239,32 +239,32 @@ test("the host ending the block closes the popup without confirming again", () =
 
 test("with the pad over it, the popup keeps its own Paste and OK", async () => {
 	const ctx = buildRemote();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 	openPopup(ctx);
 
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("pad-lifted"),
+		ctx.nodes.snippetOverlay.classList.contains("pad-lifted"),
 		true,
 		"the popup goes above the pad so its own buttons can be pressed",
 	);
 	assert.notEqual(
-		ctx.nodes.ciActions.style.display,
+		ctx.nodes.snActions.style.display,
 		"none",
 		"the buttons stay where the thumb last saw them",
 	);
 
-	ctx.api.closeCodeInsertOverlayUI();
+	ctx.api.closeSnippetOverlayUI();
 	assert.equal(
-		ctx.nodes.codeInsertOverlay.classList.contains("pad-lifted"),
+		ctx.nodes.snippetOverlay.classList.contains("pad-lifted"),
 		false,
 		"and the lift is dropped with the popup",
 	);
 });
 
-test("the keyboard pad stays open over a code-insert popup", async () => {
+test("the keyboard pad stays open over a snippet popup", async () => {
 	const ctx = buildRemote();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 
 	openPopup(ctx);
@@ -279,7 +279,7 @@ test("the keyboard pad stays open over a code-insert popup", async () => {
 test("the code is on the clipboard for exactly as long as the block is open", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
 
-	const entry = /"code-insert": \{[\s\S]*?\n\t\},/.exec(src)[0];
+	const entry = /\tsnippet: \{[\s\S]*?\n\t\},/.exec(src)[0];
 	assert.match(entry, /onEnter: \(payload\) => holdCodeOnClipboard\(/);
 	assert.match(entry, /onExit: \(\) => releaseCodeFromClipboard\(\)/);
 
@@ -310,7 +310,7 @@ test("the code is on the clipboard for exactly as long as the block is open", ()
 
 test("the Paste button re-asserts the code before pressing Ctrl+V", () => {
 	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const fn = /async function pasteCodeInsert\(\)[\s\S]*?\n\}/.exec(src)[0];
+	const fn = /async function pasteSnippet\(\)[\s\S]*?\n\}/.exec(src)[0];
 
 	assert.match(
 		fn,
@@ -322,22 +322,26 @@ test("the Paste button re-asserts the code before pressing Ctrl+V", () => {
 		/if \(clipboard\.readText\(\) !== held\.code\) clipboard\.writeText\(held\.code\)/,
 		"the button means paste THIS, even if something else took the clipboard",
 	);
-	assert.match(fn, /keyboard\.type\(modifier, Key\.V\)/);
+	assert.match(
+		fn,
+		/keyboard\.type\(primaryModifier\(settingsManager, Key\), Key\.V\)/,
+		"Cmd+V on a Mac, Ctrl+V elsewhere, decided in one place",
+	);
 });
 
 test("on the phone the Paste button is the one that shows", () => {
 	const ctx = buildRemote();
 	openPopup(ctx);
 
-	assert.equal(ctx.nodes.ciPaste.style.display, "");
+	assert.equal(ctx.nodes.snPaste.style.display, "");
 });
 
 test("the code never reaches the remote as a keystroke stream", () => {
 	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/shared/remote/code-insert-overlay.js"),
+		path.resolve(__dirname, "..", "src/shared/remote/snippet-overlay.js"),
 		"utf-8",
 	);
-	assert.match(src, /sendMessage\("code-insert-paste", \{\}\)/);
+	assert.match(src, /sendMessage\("snippet-paste", \{\}\)/);
 	assert.doesNotMatch(
 		src,
 		/remote-edit-key/,

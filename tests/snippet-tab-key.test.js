@@ -52,7 +52,7 @@ function press(el, inserted, key, shiftKey = false) {
 	return prevented;
 }
 
-test("Tab types a real tab inside a code-insert block", () => {
+test("Tab types a real tab inside a snippet block", () => {
 	const { el, inserted } = handlers(true);
 	assert.equal(
 		press(el, inserted, "Tab"),
@@ -77,7 +77,7 @@ test("other blocks keep Tab for focus: ― is what a code block wants", () => {
 test("only the code snippet block is handed the tab key", () => {
 	assert.match(
 		SRC,
-		/attachEditHandlers\(blockDiv, kind === "snippet"\)/,
+		/attachEditHandlers\(blockDiv, type === "snippet"\)/,
 		"a raw tab in a code block would be typed as a character, not pressed",
 	);
 });

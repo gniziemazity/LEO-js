@@ -1,5 +1,5 @@
-const { replayMarked, fileColoredLines } = require("./anchor-snippet");
-const { renderLines } = require("../shared/snippet-view");
+const { replayMarked, fileColoredLines } = require("./plan-replay");
+const { renderLines } = require("../shared/excerpt-view");
 
 const REGENERATE_DELAY_MS = 200;
 const MIN_PANEL_W = 260;
@@ -180,9 +180,9 @@ class SimPanel {
 		);
 		this.codeEl.scrollTop = keepScroll ? scrollTop : 0;
 		this.codeEl.scrollLeft = keepScroll ? scrollLeft : 0;
-		const caret = this.codeEl.querySelector(".snippet-caret");
+		const caret = this.codeEl.querySelector(".excerpt-caret");
 		this._reveal(
-			caret || (revealMark && this.codeEl.querySelector(".snippet-mark")),
+			caret || (revealMark && this.codeEl.querySelector(".excerpt-mark")),
 		);
 	}
 

@@ -41,6 +41,8 @@ function loadAPI() {
 			DIFF_METHODS, REMARKS_BASES, CURATED_MODES, basisToDiffMode,
 			_hmsToSeconds, parseFollowEvents, parseFollowLabel,
 			DIFF_MARKS_PRIORITY, remarksFileRe, remarksStampOf, remarksBasisOf,
+			pickRemarksFiles, defaultBasis, remarksScoreCols, remarksLangCols,
+			tagEventLangs, LANG_COL_DEFS,
 		};
 	`)();
 }
@@ -243,5 +245,108 @@ test("no tool hardcodes the remarks filename or the default basis order", () => 
 			false,
 			`${f} spells the remarks filename itself instead of using the shared rule`,
 		);
+	}
+});
+
+const xlsx = (name, lastModified = 0) => ({ name, lastModified });
+
+test("pickRemarksFiles: the newest copy of each basis wins, whatever the order", () => {
+	const old = xlsx("remarks_ideal_20250101-000000.xlsx");
+	const fresh = xlsx("remarks_ideal_20260831-091400.xlsx");
+	for (const files of [
+		[old, fresh],
+		[fresh, old],
+	]) {
+		assert.equal(api.pickRemarksFiles(files).basisFiles.get("ideal"), fresh);
+	}
+	const plainOld = xlsx("remarks_lcs.xlsx", 100);
+	const plainNew = xlsx("remarks_lcs.xlsx", 200);
+	assert.equal(
+		api.pickRemarksFiles([plainNew, plainOld]).basisFiles.get("lcs"),
+		plainNew,
+	);
+});
+
+test("pickRemarksFiles: the working file is the fallback, never a basis file", () => {
+	const working = xlsx("remarks_20260901-120000.xlsx");
+	const older = xlsx("remarks_20260801-120000.xlsx");
+	const basis = xlsx("remarks_leo_star.xlsx");
+	const picked = api.pickRemarksFiles([basis, older, working]);
+	assert.equal(picked.fallback, working);
+	assert.deepEqual([...picked.basisFiles.keys()], ["leo_star"]);
+	assert.equal(api.remarksStampOf(working.name), "_20260901-120000");
+	assert.equal(api.remarksStampOf("remarks.xlsx"), "");
+});
+
+test("pickRemarksFiles: lesson-named and legacy remarks files are later fallbacks", () => {
+	const named = xlsx("remarks_wall_20260901-120000.xlsx");
+	assert.equal(
+		api.pickRemarksFiles([named], { lessonName: "wall" }).fallback,
+		named,
+	);
+	const legacy = xlsx("old remarks.xlsx");
+	assert.equal(api.pickRemarksFiles([legacy]).fallback, legacy);
+	assert.equal(
+		api.pickRemarksFiles([legacy, xlsx("remarks_git.xlsx")]).fallback,
+		null,
+		"a legacy file is only a fallback when no basis file exists",
+	);
+});
+
+test("defaultBasis: a present request, else ideal > minimal > leo_star, else the first basis", () => {
+	const has = (...keys) => new Map(keys.map((k) => [k, {}]));
+	assert.equal(api.defaultBasis(has("lcs", "minimal")), "minimal");
+	assert.equal(api.defaultBasis(has("lcs", "minimal"), "lcs"), "lcs");
+	assert.equal(api.defaultBasis(has("minimal"), "ideal"), "minimal");
+	assert.equal(api.defaultBasis(has("git", "lcs")), "lcs");
+	assert.equal(api.defaultBasis(has()), null);
+});
+
+test("remarks columns: follow or similarity, and every language including Py", () => {
+	const follow = api.remarksScoreCols(["ID", "Follow (E)", "Follow (E) Desc"]);
+	assert.deepEqual(follow, { pct: 1, desc: 2, isSimilarity: false });
+	const sim = api.remarksScoreCols(["ID", "Similarity", "Similarity Desc"]);
+	assert.deepEqual(sim, { pct: 1, desc: 2, isSimilarity: true });
+	const langs = api.remarksLangCols(["Py (E)", "x", "HTML (E) Desc"]);
+	assert.deepEqual(
+		langs.map((c) => [c.key, c.pct, c.desc]),
+		[
+			["html", -1, 2],
+			["py", 0, -1],
+		],
+	);
+	assert.deepEqual(
+		api.LANG_COL_DEFS.map((d) => d.key),
+		["html", "css", "js", "py"],
+	);
+});
+
+test("tagEventLangs: an event takes the language of the matching per-language event", () => {
+	const events = [
+		{ kind: "missing", token: "a", ts: 1 },
+		{ kind: "extra", token: "b", ts: 2 },
+	];
+	api.tagEventLangs(events, [
+		{ kind: "missing", token: "a", ts: 1, lang: "css" },
+	]);
+	assert.equal(events[0].lang, "css");
+	assert.equal("lang" in events[1], false);
+});
+
+test("the three basis pickers share one selection rule", () => {
+	const read = (p) =>
+		fs.readFileSync(
+			path.resolve(__dirname, "..", "lesson_tools", p),
+			"utf-8",
+		);
+	for (const f of [
+		"students/load.js",
+		"timeline/students.js",
+		"overview/basis.js",
+	]) {
+		const src = read(f);
+		assert.match(src, /pickRemarksFiles\(/, `${f} selects remarks itself`);
+		assert.match(src, /renderBasisSelect\(/, `${f} builds its own picker`);
+		assert.equal(/DIFF_MARKS_PRIORITY/.test(src), false, f);
 	}
 });

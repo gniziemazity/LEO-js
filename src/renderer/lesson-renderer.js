@@ -1,16 +1,18 @@
 const { ipcRenderer } = require("electron");
 
 const {
-	getBlockKind,
-	blockKindOf,
+	getBlockType,
+	blockTypeOf,
+	hasBlockControls,
 	isMultilineSnippet,
-	kindClass,
-	SUPPORT_KINDS,
+	typeClass,
+	SUPPORT_TYPES,
 	collapsedLabel,
 	startingCodeLabel,
 	stripBlockPrefix,
 } = require("../shared/blocks");
-const { computeMoveToSnippets } = require("./anchor-snippet");
+const { computeGoToExcerpts } = require("./plan-replay");
+const UIManager = require("./ui-manager");
 const {
 	buildCodeText,
 	readCodeText,
@@ -19,22 +21,22 @@ const {
 const {
 	isFileName,
 	wrapAnchor,
-	moveToTargetLabel,
-	classifyMoveToTarget,
-} = require("../shared/move-to-target");
+	goToTargetLabel,
+	classifyGoToTarget,
+} = require("../shared/go-to-target");
 const {
 	openDropdown,
 	closeDropdown,
 	isOpen: isDropdownOpen,
-} = require("./move-to-dropdown");
-const { addChoices, kindChoices, kindGlyph } = require("./block-types");
+} = require("./go-to-dropdown");
+const { addChoices, typeChoices, typeGlyph } = require("./block-types");
 
 const EDIT_BURST_IDLE_MS = 1000;
 
 const BLOCK_RENDERERS = {
-	comment: "renderKindBlock",
+	comment: "renderCommentBlock",
 	code: "renderCodeBlock",
-	"move-to": "renderMoveToBlock",
+	"go-to": "renderGoToBlock",
 	include: "renderIncludeBlock",
 };
 
@@ -46,9 +48,9 @@ class LessonRenderer {
 		this.undoManager = undoManager;
 		this.lastEditedBlockIndex = null;
 		this.lastEditTime = 0;
-		this.expandedIncludes = new Set();
+		this.expandedStartFiles = new Set();
 		this.startCollapsed = true;
-		this._moveToSnippets = new Map();
+		this._goToExcerpts = new Map();
 		this.onRendered = null;
 	}
 
@@ -59,11 +61,11 @@ class LessonRenderer {
 		);
 	}
 
-	toggleIncludeExpanded(blockIdx) {
-		if (this.expandedIncludes.has(blockIdx)) {
-			this.expandedIncludes.delete(blockIdx);
+	toggleStartFile(blockIdx) {
+		if (this.expandedStartFiles.has(blockIdx)) {
+			this.expandedStartFiles.delete(blockIdx);
 		} else {
-			this.expandedIncludes.add(blockIdx);
+			this.expandedStartFiles.add(blockIdx);
 		}
 		this.render();
 	}
@@ -116,7 +118,7 @@ class LessonRenderer {
 
 	resetView() {
 		this.endEditBurst();
-		this.expandedIncludes.clear();
+		this.expandedStartFiles.clear();
 		this.startCollapsed = true;
 		if (this.uiManager.getSelectedBlockIndex() !== null) {
 			this.uiManager.deselectBlock();
@@ -143,7 +145,7 @@ class LessonRenderer {
 	}
 
 	render() {
-		const isTypingActive = this.uiManager.isActive();
+		const isAutoTypingActive = this.uiManager.isActive();
 
 		this.uiManager.clearLessonContainer();
 		this.uiManager.setStartCollapsed(this.startCollapsed);
@@ -151,7 +153,7 @@ class LessonRenderer {
 		let globalStepCounter = 0;
 
 		const blocks = this.lessonManager.getAllBlocks();
-		this._moveToSnippets = computeMoveToSnippets(blocks);
+		this._goToExcerpts = computeGoToExcerpts(blocks);
 
 		blocks.forEach((block, blockIdx) => {
 			const blockDiv = this.uiManager.createBlockElement(block, blockIdx);
@@ -165,7 +167,7 @@ class LessonRenderer {
 					blockDiv,
 					block,
 					blockIdx,
-					isTypingActive,
+					isAutoTypingActive,
 					stepIndex: globalStepCounter,
 					steps: executionSteps,
 				});
@@ -178,7 +180,7 @@ class LessonRenderer {
 
 		this.cursorManager.setExecutionSteps(executionSteps);
 
-		if (isTypingActive) {
+		if (isAutoTypingActive) {
 			this.cursorManager.updateCursor();
 		}
 
@@ -190,16 +192,16 @@ class LessonRenderer {
 		const selected = this.uiManager.getSelectedBlockIndex();
 		const block =
 			selected === null ? null : this.lessonManager.getAllBlocks()[selected];
-		const authored = !!block && !block.fromInclude;
+		const authored = !!block && !block.fromStart;
 		const codeSelected = authored && block.type === "code";
 		const snippetSelected =
 			authored &&
 			block.type === "comment" &&
-			getBlockKind(block.text) === "snippet";
+			getBlockType(block.text) === "snippet";
 		this.uiManager.setSidebarEnabled(
 			codeSelected ||
 				snippetSelected ||
-				(!this.startCollapsed && this.expandedIncludes.size > 0),
+				(!this.startCollapsed && this.expandedStartFiles.size > 0),
 			codeSelected,
 		);
 	}
@@ -219,39 +221,35 @@ class LessonRenderer {
 		};
 	}
 
-	_kindPicker(block, blockIdx, isTypingActive) {
-		const kind = blockKindOf(block);
+	_typePicker(block, blockIdx, isAutoTypingActive) {
+		const type = blockTypeOf(block);
 		return {
-			glyph: kindGlyph(kind),
+			glyph: typeGlyph(type),
 			title: "Change block type",
-			disabled: isTypingActive,
+			disabled: isAutoTypingActive,
 			onClick: (btn) =>
 				openDropdown({
 					anchorEl: btn,
 					blockIdx,
-					value: kind,
-					options: kindChoices().map((c) => ({
-						value: c.kind,
+					value: type,
+					options: typeChoices().map((c) => ({
+						value: c.type,
 						label: `${c.glyph} ${c.label}`,
 					})),
-					listClass: "bt-options",
-					itemClass: "bt-option",
+					listClass: "type-options",
+					itemClass: "type-option",
 					onPick: (v) =>
-						this.blockEditor && this.blockEditor.setKind(blockIdx, v),
+						this.blockEditor && this.blockEditor.setType(blockIdx, v),
 				}),
 		};
 	}
 
-	_attachKind(blockDiv, block, blockIdx, isTypingActive) {
-		if (!this._hasControls(block)) return;
-		this.uiManager.attachKindPicker(
+	_attachType(blockDiv, block, blockIdx, isAutoTypingActive) {
+		if (!hasBlockControls(block)) return;
+		this.uiManager.attachTypePicker(
 			blockDiv,
-			this._kindPicker(block, blockIdx, isTypingActive),
+			this._typePicker(block, blockIdx, isAutoTypingActive),
 		);
-	}
-
-	_hasControls(block) {
-		return !block.fromInclude && block.type !== "include";
 	}
 
 	_addTools(after, where) {
@@ -259,10 +257,14 @@ class LessonRenderer {
 			glyph: `+${c.glyph}`,
 			title: `Add a ${c.label.toLowerCase()} block ${where} (Ctrl+${i + 1})`,
 			className: `block-tool-add block-tool-hover ${where}`,
-			dataset: { addKind: c.kind },
+			dataset: { addType: c.type },
 			onClick: () =>
 				this.blockEditor &&
-				this.blockEditor.addBlock(c.type, c.initialText || null, after),
+				this.blockEditor.addBlock(
+					c.storedType,
+					c.initialText || null,
+					after,
+				),
 		}));
 	}
 
@@ -290,8 +292,8 @@ class LessonRenderer {
 			: "this block";
 	}
 
-	_addRow(block, blockIdx, isTypingActive, where) {
-		if (isTypingActive || !this._hasControls(block)) return [];
+	_addRow(block, blockIdx, isAutoTypingActive, where) {
+		if (isAutoTypingActive || !hasBlockControls(block)) return [];
 		const above = where === "above";
 		const delta = above ? -1 : 1;
 		const after = above ? blockIdx - 1 : blockIdx;
@@ -312,8 +314,8 @@ class LessonRenderer {
 		];
 	}
 
-	_blockTools(block, blockIdx, isTypingActive) {
-		if (isTypingActive || !this._hasControls(block)) return [];
+	_blockTools(block, blockIdx, isAutoTypingActive) {
+		if (isAutoTypingActive || !hasBlockControls(block)) return [];
 		const targets = this._targetsFor(blockIdx);
 		const label = this._targetsLabel(targets);
 
@@ -336,53 +338,53 @@ class LessonRenderer {
 		];
 	}
 
-	_optionFor(block, blockIdx, isTypingActive) {
-		if (block.fromInclude) return null;
+	_optionFor(block, blockIdx, isAutoTypingActive) {
+		if (block.fromStart) return null;
 		const option = (label, checked, key, byDefault) =>
 			this._blockOption({
 				label,
 				checked,
-				disabled: isTypingActive,
+				disabled: isAutoTypingActive,
 				blockIdx,
 				key,
 				byDefault,
 			});
 		if (block.type === "comment") {
-			const kind = getBlockKind(block.text);
-			if (kind === "snippet") {
+			const type = getBlockType(block.text);
+			if (type === "snippet") {
 				return option("Show Paste", block.paste !== false, "paste", true);
 			}
-			if (kind === "image" || kind === "web") {
+			if (type === "image" || type === "web") {
 				return option("Pin window", block.pin === true, "pin", false);
 			}
 		}
-		if (block.type === "move-to" && this._createsFile(block, blockIdx)) {
-			return option("Auto-type", block.typeName !== false, "typeName", true);
+		if (block.type === "go-to" && this._createsFile(block, blockIdx)) {
+			return option("Type name", block.typeName !== false, "typeName", true);
 		}
 		return null;
 	}
 
 	_createsFile(block, blockIdx) {
 		return (
-			classifyMoveToTarget(block.target || "MAIN").mode === "file" &&
-			this.lessonManager.isFirstMoveToFile(blockIdx)
+			classifyGoToTarget(block.target || "MAIN").mode === "file" &&
+			this.lessonManager.isFirstGoToFile(blockIdx)
 		);
 	}
 
-	_attachIsland(blockDiv, block, blockIdx, isTypingActive) {
+	_attachIsland(blockDiv, block, blockIdx, isAutoTypingActive) {
 		this.uiManager.attachBlockIsland(blockDiv, {
-			tools: this._addRow(block, blockIdx, isTypingActive, "above"),
+			tools: this._addRow(block, blockIdx, isAutoTypingActive, "above"),
 			className: "block-opt-above",
 		});
 		const island = this.uiManager.attachBlockIsland(blockDiv, {
-			option: this._optionFor(block, blockIdx, isTypingActive),
-			tools: this._blockTools(block, blockIdx, isTypingActive),
+			option: this._optionFor(block, blockIdx, isAutoTypingActive),
+			tools: this._blockTools(block, blockIdx, isAutoTypingActive),
 		});
 		this.uiManager.attachBlockIsland(blockDiv, {
-			tools: this._addRow(block, blockIdx, isTypingActive, "below"),
+			tools: this._addRow(block, blockIdx, isAutoTypingActive, "below"),
 			className: "block-opt-below",
 		});
-		this._attachKind(blockDiv, block, blockIdx, isTypingActive);
+		this._attachType(blockDiv, block, blockIdx, isAutoTypingActive);
 		return island;
 	}
 
@@ -392,8 +394,7 @@ class LessonRenderer {
 		const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
 		let node;
 		while ((node = walker.nextNode())) {
-			if (node.length && !node.parentElement.closest("[data-block-opt]"))
-				break;
+			if (node.length && !UIManager.isIsland(node)) break;
 		}
 		if (!node) return false;
 		const range = document.createRange();
@@ -425,15 +426,23 @@ class LessonRenderer {
 			this._placeCaret(el, caret - (typed.length - block.text.length));
 	}
 
+	_fragmentBefore(el, node, offset) {
+		const before = document.createRange();
+		before.selectNodeContents(el);
+		before.setEnd(node, offset);
+		const holder = document.createElement("div");
+		holder.appendChild(before.cloneContents());
+		return holder;
+	}
+
 	_caretOffset(el) {
 		const sel = window.getSelection();
 		if (!sel || !sel.rangeCount) return null;
 		const range = sel.getRangeAt(0);
 		if (!el.contains(range.endContainer)) return null;
-		const before = document.createRange();
-		before.selectNodeContents(el);
-		before.setEnd(range.endContainer, range.endOffset);
-		return before.toString().length;
+		return readCodeText(
+			this._fragmentBefore(el, range.endContainer, range.endOffset),
+		).length;
 	}
 
 	caretFocus() {
@@ -442,9 +451,9 @@ class LessonRenderer {
 		const blockEl =
 			active && active.closest ? active.closest(".block") : null;
 		if (!blockEl) return null;
-		const index = [...document.querySelectorAll(".block")].indexOf(blockEl);
+		const index = UIManager.blockIndexOf(blockEl);
 		const block = this.lessonManager.getAllBlocks()[index];
-		if (!block || block.fromInclude || block.type === "include") return null;
+		if (!hasBlockControls(block)) return null;
 		const sel = window.getSelection();
 		if (
 			block.type !== "code" ||
@@ -454,11 +463,11 @@ class LessonRenderer {
 		) {
 			return { index, caret: null };
 		}
-		const before = document.createRange();
-		before.selectNodeContents(blockEl);
-		before.setEnd(sel.focusNode, sel.focusOffset);
-		const holder = document.createElement("div");
-		holder.appendChild(before.cloneContents());
+		const holder = this._fragmentBefore(
+			blockEl,
+			sel.focusNode,
+			sel.focusOffset,
+		);
 		return { index, caret: readCodeText(holder).length };
 	}
 
@@ -467,10 +476,11 @@ class LessonRenderer {
 		if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
 		const range = sel.getRangeAt(0);
 		if (!el.contains(range.endContainer)) return false;
-		const before = document.createRange();
-		before.selectNodeContents(el);
-		before.setEnd(range.endContainer, range.endOffset);
-		const fragment = before.cloneContents();
+		const fragment = this._fragmentBefore(
+			el,
+			range.endContainer,
+			range.endOffset,
+		);
 		fragment
 			.querySelectorAll("[data-block-opt]")
 			.forEach((island) => island.remove());
@@ -486,7 +496,7 @@ class LessonRenderer {
 		let left = Math.max(0, offset);
 		let node;
 		while ((node = walker.nextNode())) {
-			if (node.parentElement.closest("[data-block-opt]")) continue;
+			if (UIManager.isIsland(node)) continue;
 			if (left <= node.length) {
 				const range = document.createRange();
 				range.setStart(node, left);
@@ -507,7 +517,7 @@ class LessonRenderer {
 		}
 		if (
 			el.querySelector(":scope > .block-opt-below") &&
-			el.querySelector(":scope > .block-kind")
+			el.querySelector(":scope > .block-type")
 		)
 			return;
 		this.refreshIsland(blockIdx);
@@ -515,11 +525,11 @@ class LessonRenderer {
 
 	refreshIsland(blockIdx) {
 		if (blockIdx === null || blockIdx === undefined) return;
-		const el = document.querySelectorAll(".block")[blockIdx];
+		const el = UIManager.blockElement(blockIdx);
 		const block = this.lessonManager.getAllBlocks()[blockIdx];
 		if (!el || !block) return;
 		for (const old of el.querySelectorAll(
-			":scope > .block-opt, :scope > .block-kind",
+			":scope > .block-opt, :scope > .block-type",
 		))
 			old.remove();
 		this._attachIsland(el, block, blockIdx, this.uiManager.isActive());
@@ -530,21 +540,27 @@ class LessonRenderer {
 		else el.classList.add("is-empty");
 	}
 
-	renderKindBlock(ctx) {
-		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
-			ctx;
-		const kind = getBlockKind(block.text);
+	renderCommentBlock(ctx) {
+		const {
+			blockDiv,
+			block,
+			blockIdx,
+			isAutoTypingActive,
+			stepIndex,
+			steps,
+		} = ctx;
+		const type = getBlockType(block.text);
 
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 		const isMultilineInsert = isMultilineSnippet(block.text);
 		const isExpanded =
 			isMultilineInsert &&
-			!isTypingActive &&
-			(block.fromInclude
-				? this.expandedIncludes.has(blockIdx)
+			!isAutoTypingActive &&
+			(block.fromStart
+				? this.expandedStartFiles.has(blockIdx)
 				: selectedBlockIndex === blockIdx);
 
-		const shown = this._hasControls(block)
+		const shown = hasBlockControls(block)
 			? stripBlockPrefix(block.text)
 			: block.text;
 
@@ -554,12 +570,12 @@ class LessonRenderer {
 			blockDiv.classList.add("collapsed");
 		} else {
 			blockDiv.contentEditable =
-				!isTypingActive && (!block.fromInclude || !!block.startFile);
+				!isAutoTypingActive && (!block.fromStart || !!block.startFile);
 			blockDiv.textContent = shown;
 		}
 
 		this._syncEmpty(blockDiv, shown);
-		this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
+		this._attachIsland(blockDiv, block, blockIdx, isAutoTypingActive);
 
 		if (block.startFile) blockDiv.classList.add("start-file");
 
@@ -576,18 +592,18 @@ class LessonRenderer {
 			this._keepIsland(blockDiv, blockIdx);
 
 			const current = this.lessonManager.getAllBlocks()[blockIdx];
-			const kind = getBlockKind(current.text);
-			blockDiv.classList.remove(...SUPPORT_KINDS.map(kindClass));
-			blockDiv.classList.add(kindClass(kind));
-			const picker = blockDiv.querySelector(":scope > .block-kind");
-			if (picker) picker.textContent = kindGlyph(kind);
+			const type = getBlockType(current.text);
+			blockDiv.classList.remove(...SUPPORT_TYPES.map(typeClass));
+			blockDiv.classList.add(typeClass(type));
+			const picker = blockDiv.querySelector(":scope > .block-type");
+			if (picker) picker.textContent = typeGlyph(type);
 		};
 
-		this.attachEditHandlers(blockDiv, kind === "snippet");
+		this.attachEditHandlers(blockDiv, type === "snippet");
 
 		steps.push({
 			type: "block",
-			fromInclude: !!block.fromInclude,
+			fromStart: !!block.fromStart,
 			text: block.text,
 			paste: block.paste !== false,
 			pin: block.pin === true,
@@ -600,13 +616,13 @@ class LessonRenderer {
 	}
 
 	renderCodeBlock(ctx) {
-		const { blockDiv, block, blockIdx, isTypingActive, steps } = ctx;
+		const { blockDiv, block, blockIdx, isAutoTypingActive, steps } = ctx;
 		let stepIndex = ctx.stepIndex;
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 
-		if (selectedBlockIndex === blockIdx && !isTypingActive) {
+		if (selectedBlockIndex === blockIdx && !isAutoTypingActive) {
 			this.makeCodeBlockEditable(blockDiv, block, blockIdx);
-			this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
+			this._attachIsland(blockDiv, block, blockIdx, isAutoTypingActive);
 			return stepIndex;
 		} else {
 			blockDiv.contentEditable = "false";
@@ -615,11 +631,11 @@ class LessonRenderer {
 				steps.push({ ...step, blockIndex: blockIdx }),
 			);
 			this._syncEmpty(blockDiv, block.text);
-			this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
+			this._attachIsland(blockDiv, block, blockIdx, isAutoTypingActive);
 
 			steps.push({
 				type: "block",
-				kind: "code",
+				blockType: "code",
 				element: blockDiv,
 				blockIndex: blockIdx,
 				globalIndex: stepIndex,
@@ -642,25 +658,31 @@ class LessonRenderer {
 		return stepIndex;
 	}
 
-	renderMoveToBlock(ctx) {
-		const { blockDiv, block, blockIdx, isTypingActive, stepIndex, steps } =
-			ctx;
+	renderGoToBlock(ctx) {
+		const {
+			blockDiv,
+			block,
+			blockIdx,
+			isAutoTypingActive,
+			stepIndex,
+			steps,
+		} = ctx;
 		blockDiv.contentEditable = "false";
 		const target = block.target || "MAIN";
 		blockDiv.dataset.target = target;
 
-		if (!this._hasControls(block)) {
+		if (!hasBlockControls(block)) {
 			const arrow = document.createElement("span");
-			arrow.className = "move-to-arrow";
+			arrow.className = "go-to-arrow";
 			arrow.textContent = "➡️ ";
 			blockDiv.appendChild(arrow);
 		}
 
 		const btn = document.createElement("button");
 		btn.type = "button";
-		btn.className = "move-to-select";
-		btn.textContent = moveToTargetLabel(target);
-		btn.disabled = isTypingActive || !!block.fromInclude;
+		btn.className = "go-to-select";
+		btn.textContent = goToTargetLabel(target);
+		btn.disabled = isAutoTypingActive || !!block.fromStart;
 		btn.addEventListener("mousedown", (e) => e.stopPropagation());
 		btn.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -672,16 +694,16 @@ class LessonRenderer {
 			openDropdown({
 				anchorEl: btn,
 				blockIdx,
-				options: this._moveToOptions(block.target, blockIdx),
+				options: this._goToOptions(block.target, blockIdx),
 				value: block.target,
 				onPick: (v) => {
 					if (v === "__new__") {
 						this._promptNewFile(blockDiv, blockIdx, btn);
 						return;
 					}
-					this.lessonManager.updateMoveToTarget(blockIdx, v);
+					this.lessonManager.updateGoToTarget(blockIdx, v);
 					blockDiv.dataset.target = v;
-					btn.textContent = moveToTargetLabel(v);
+					btn.textContent = goToTargetLabel(v);
 				},
 			});
 		});
@@ -689,29 +711,29 @@ class LessonRenderer {
 
 		const note = document.createElement("input");
 		note.type = "text";
-		note.className = "move-to-note";
+		note.className = "go-to-note";
 		note.value = block.note || "";
 		note.placeholder = "why go here?";
-		note.disabled = isTypingActive || !!block.fromInclude;
+		note.disabled = isAutoTypingActive || !!block.fromStart;
 		note.addEventListener("mousedown", (e) => e.stopPropagation());
 		note.addEventListener("click", (e) => e.stopPropagation());
 		note.addEventListener("keydown", (e) => e.stopPropagation());
 		note.addEventListener("input", () => {
-			this.lessonManager.updateMoveToNote(blockIdx, note.value);
+			this.lessonManager.updateGoToNote(blockIdx, note.value);
 		});
 		blockDiv.appendChild(note);
 
 		const creates = this._createsFile(block, blockIdx);
-		this._attachIsland(blockDiv, block, blockIdx, isTypingActive);
+		this._attachIsland(blockDiv, block, blockIdx, isAutoTypingActive);
 
 		steps.push({
 			type: "block",
-			kind: "move-to",
-			fromInclude: !!block.fromInclude,
+			blockType: "go-to",
+			fromStart: !!block.fromStart,
 			target,
 			note: block.note || "",
 			typeName: creates && block.typeName !== false,
-			snippet: this._moveToSnippets.get(blockIdx) || null,
+			excerpt: this._goToExcerpts.get(blockIdx) || null,
 			element: blockDiv,
 			blockIndex: blockIdx,
 			globalIndex: stepIndex,
@@ -720,7 +742,7 @@ class LessonRenderer {
 		return stepIndex + 1;
 	}
 
-	_moveToOptions(currentTarget, blockIdx) {
+	_goToOptions(currentTarget, blockIdx) {
 		const anchorLike = this.lessonManager
 			.anchorIdsBefore(blockIdx)
 			.filter((id) => !isFileName(id))
@@ -734,10 +756,10 @@ class LessonRenderer {
 				if (bNum) return 1;
 				return a.localeCompare(b);
 			});
-		const fileLike = this.lessonManager.getAllMoveToFiles();
+		const fileLike = this.lessonManager.getAllGoToFiles();
 
 		const opts = [];
-		const option = (value) => ({ value, label: moveToTargetLabel(value) });
+		const option = (value) => ({ value, label: goToTargetLabel(value) });
 		for (const id of anchorLike) opts.push(option(wrapAnchor(id)));
 		for (const name of fileLike) opts.push(option(name));
 		opts.push(option("MAIN"));
@@ -759,7 +781,7 @@ class LessonRenderer {
 		};
 		const input = document.createElement("input");
 		input.type = "text";
-		input.className = "move-to-new-file-input";
+		input.className = "go-to-new-file-input";
 		input.placeholder = "filename.ext";
 		input.addEventListener("mousedown", (e) => e.stopPropagation());
 		input.addEventListener("click", (e) => e.stopPropagation());
@@ -768,7 +790,7 @@ class LessonRenderer {
 				e.preventDefault();
 				const val = input.value.trim();
 				if (val) {
-					this.lessonManager.updateMoveToTarget(blockIdx, val);
+					this.lessonManager.updateGoToTarget(blockIdx, val);
 					this.render();
 				} else {
 					restore();
@@ -787,17 +809,17 @@ class LessonRenderer {
 			if (block.dir) this.toggleStartCollapsed();
 			return;
 		}
-		if (block.fromInclude) {
+		if (block.fromStart) {
 			if (this.uiManager.isActive() || !this.isMultilineSnippet(blockIdx))
 				return;
 			const openStartFile =
-				!!block.startFile && this.expandedIncludes.has(blockIdx);
+				!!block.startFile && this.expandedStartFiles.has(blockIdx);
 			if (openStartFile ? this._onFoldArrow(e) : !this._isScrollbarClick(e))
-				this.toggleIncludeExpanded(blockIdx);
+				this.toggleStartFile(blockIdx);
 			return;
 		}
 		if (this.uiManager.isActive()) {
-			this._handleClickWhileTyping(e, block, blockIdx);
+			this._handleClickWhileAutoTyping(e, block, blockIdx);
 		} else {
 			this._handleClickWhileEditing(e, block, blockIdx);
 		}
@@ -813,12 +835,7 @@ class LessonRenderer {
 		let offset = 0;
 		let node;
 		while ((node = walker.nextNode())) {
-			if (
-				node.parentElement &&
-				node.parentElement.closest("[data-block-opt]")
-			) {
-				continue;
-			}
+			if (UIManager.isIsland(node)) continue;
 			if (node === range.startContainer) return offset + range.startOffset;
 			offset += node.length;
 		}
@@ -835,7 +852,7 @@ class LessonRenderer {
 		this.render();
 
 		setTimeout(() => {
-			const target = document.querySelectorAll(".block")[blockIdx];
+			const target = UIManager.blockElement(blockIdx);
 			if (target && caretOffset !== null) {
 				target.focus();
 				this._placeCaret(target, caretOffset);
@@ -936,7 +953,7 @@ class LessonRenderer {
 		this.uiManager.focusBlock(blockIdx, clickX, clickY);
 	}
 
-	_handleClickWhileTyping(e, block, blockIdx) {
+	_handleClickWhileAutoTyping(e, block, blockIdx) {
 		if (block.type === "code") {
 			const clickedSpan = e.target.closest(".char");
 			if (clickedSpan) {
@@ -957,7 +974,7 @@ class LessonRenderer {
 		if (!steps) return;
 		if (!this.uiManager.remotesConnected) return;
 
-		ipcRenderer.send("update-lesson-data", {
+		ipcRenderer.send("update-plan-data", {
 			blocks: this.lessonManager.getAllBlocks(),
 			executionSteps: steps.map((step) => ({
 				type: step.type,

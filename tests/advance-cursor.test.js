@@ -115,7 +115,7 @@ test("the characters come out in order, which is the whole feature", () => {
 	);
 });
 
-test("a consumed step is marked consumed, whatever kind it is", () => {
+test("a consumed step is marked consumed, whatever type it is", () => {
 	const steps = [charStep("a"), blockStep(), anchorStep("⚓1⚓")];
 	const { cm } = makeCursorManager(steps);
 	for (let i = 0; i < steps.length; i++) cm.advanceCursor();

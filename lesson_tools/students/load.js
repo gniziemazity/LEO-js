@@ -35,101 +35,13 @@ async function loadXlsxFiles(files) {
 		showLoading(false);
 		return;
 	}
-	const xlsxFiles = files.filter((f) =>
-		f.name.toLowerCase().endsWith(".xlsx"),
+	const picked = pickRemarksFiles(files, { lessonName: _lessonName });
+	_basisFiles = picked.basisFiles;
+	_basisFallbackFile = picked.fallback;
+	const _desiredBasis = defaultBasis(
+		_basisFiles,
+		_setParam || (_paperMode ? "ideal" : null),
 	);
-	const _recency = (f) => {
-		const name = f.name;
-		let m = name.match(/(\d{8})[-_](\d{6})(?=\D*$)/);
-		if (m) {
-			const d = m[1];
-			const t = m[2];
-			const ms = Date.UTC(
-				+d.slice(0, 4),
-				+d.slice(4, 6) - 1,
-				+d.slice(6, 8),
-				+t.slice(0, 2),
-				+t.slice(2, 4),
-				+t.slice(4, 6),
-			);
-			if (!Number.isNaN(ms)) return ms;
-		}
-		return f.lastModified || 0;
-	};
-
-	_basisFiles = new Map();
-	const _basisKeysByLength = REMARKS_BASES.map((b) => b.key).sort(
-		(a, b) => b.length - a.length,
-	);
-	const _basisCandidates = new Map();
-	for (const f of xlsxFiles) {
-		const n = f.name.toLowerCase();
-		for (const key of _basisKeysByLength) {
-			if (!remarksFileRe(key).test(n)) continue;
-			const stamp = remarksStampOf(n);
-			const arr = _basisCandidates.get(key) || [];
-			arr.push({ f, stamp });
-			_basisCandidates.set(key, arr);
-			break;
-		}
-	}
-	for (const [key, arr] of _basisCandidates) {
-		arr.sort((a, b) => {
-			if (a.stamp && b.stamp && a.stamp.length === b.stamp.length) {
-				return a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : 0;
-			}
-			if (a.stamp !== b.stamp) return a.stamp < b.stamp ? 1 : -1;
-			return (b.f.lastModified || 0) - (a.f.lastModified || 0);
-		});
-		_basisFiles.set(key, arr[0].f);
-	}
-
-	const _workingRemarksRe = /^remarks(?:_(\d{8}-\d{6}|\d{10,}))?\.xlsx$/;
-	_basisFallbackFile =
-		xlsxFiles
-			.filter((f) => _workingRemarksRe.test(f.name.toLowerCase()))
-			.sort((a, b) => _recency(b) - _recency(a))[0] || null;
-
-	if (!_basisFallbackFile && _lessonName) {
-		const lessonLc = String(_lessonName)
-			.toLowerCase()
-			.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const canonRe = new RegExp(
-			`^remarks_${lessonLc}(?:_(?:\\d{8}-\\d{6}|\\d{10,}))?\\.xlsx$`,
-		);
-		_basisFallbackFile =
-			xlsxFiles
-				.filter((f) => canonRe.test(f.name.toLowerCase()))
-				.sort((a, b) => _recency(b) - _recency(a))[0] || null;
-	}
-
-	let legacyRemarksFile = null;
-	if (!_basisFallbackFile && _basisFiles.size === 0) {
-		const remarksFiles = xlsxFiles
-			.filter((f) => /remarks/i.test(f.name))
-			.sort((a, b) => _recency(b) - _recency(a));
-		legacyRemarksFile = remarksFiles[0] || null;
-	}
-
-	let _desiredBasis = _setParam;
-	if (!_desiredBasis && _paperMode) _desiredBasis = "ideal";
-	if (!_desiredBasis || !_basisFiles.has(_desiredBasis)) {
-		_desiredBasis = null;
-		for (const key of DIFF_MARKS_PRIORITY) {
-			if (_basisFiles.has(key)) {
-				_desiredBasis = key;
-				break;
-			}
-		}
-		if (!_desiredBasis) {
-			for (const { key } of REMARKS_BASES) {
-				if (_basisFiles.has(key)) {
-					_desiredBasis = key;
-					break;
-				}
-			}
-		}
-	}
 	const _desiredBasisFile = _desiredBasis
 		? _basisFiles.get(_desiredBasis)
 		: null;
@@ -147,9 +59,6 @@ async function loadXlsxFiles(files) {
 	} else if (_desiredBasisFile) {
 		initialFile = _desiredBasisFile;
 		_activeBasis = _desiredBasis;
-	} else if (legacyRemarksFile) {
-		initialFile = legacyRemarksFile;
-		_activeBasis = null;
 	}
 
 	if (!initialFile) {
@@ -252,31 +161,14 @@ async function _overlayBasisFollow(file) {
 function _renderBasisPicker() {
 	const container = document.getElementById("basis-picker");
 	if (!container) return;
-
-	const options = [];
-	for (const { key, label } of REMARKS_BASES) {
-		if (_basisFiles.has(key)) options.push({ key, label });
-	}
-
-	if (options.length === 0) {
-		container.innerHTML = "";
-		return;
-	}
-
-	let select = container.querySelector("select");
-	if (!select) {
-		container.innerHTML = "";
-		const label = document.createElement("label");
-		label.appendChild(document.createTextNode("Basis:"));
-		select = document.createElement("select");
-		select.id = "basis-select";
-		label.appendChild(select);
-		container.appendChild(label);
-		select.addEventListener("change", async () => {
-			_activeBasis = select.value;
-			select.classList.toggle("is-curated", CURATED_MODES.has(_activeBasis));
+	const shown = renderBasisSelect(
+		container,
+		_basisFiles,
+		_activeBasis,
+		async (key) => {
+			_activeBasis = key;
 			try {
-				const f = _basisFiles.get(_activeBasis);
+				const f = _basisFiles.get(key);
 				if (!f) return;
 				if (_baseStudents) {
 					await _overlayBasisFollow(f);
@@ -287,19 +179,7 @@ function _renderBasisPicker() {
 				showLoading(false);
 				alert("Error loading basis xlsx:\n" + ex.message);
 			}
-		});
-	}
-	select.innerHTML = "";
-	for (const { key, label } of options) {
-		const opt = document.createElement("option");
-		opt.value = key;
-		opt.textContent = label;
-		select.appendChild(opt);
-	}
-	if (_activeBasis && options.some((o) => o.key === _activeBasis)) {
-		select.value = _activeBasis;
-	} else {
-		_activeBasis = select.value;
-	}
-	select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
+		},
+	);
+	if (shown) _activeBasis = shown;
 }

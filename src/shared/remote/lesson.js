@@ -5,8 +5,8 @@ let isActive = false;
 let teacherName = "Teacher";
 
 const {
-	getBlockKind,
-	buildSettingsCSS,
+	getBlockType,
+	applySettingsCSS,
 	isMultilineSnippet,
 	collapsedLabel,
 	startingCodeLabel,
@@ -22,14 +22,7 @@ function updateActiveState(active) {
 
 function applySettings(settings) {
 	if (settings.teacherName) teacherName = settings.teacherName;
-	const id = "dynamic-settings-styles";
-	let s = document.getElementById(id);
-	if (!s) {
-		s = document.createElement("style");
-		s.id = id;
-		document.head.appendChild(s);
-	}
-	s.textContent = buildSettingsCSS(settings);
+	applySettingsCSS(settings);
 
 	if (settings.touchpadSensitivity != null) {
 		setTouchpadSensitivity(settings.touchpadSensitivity);
@@ -55,13 +48,13 @@ function updateLessonData(data) {
 			if (!block.dir) return;
 			div.className = "block include-block";
 			div.innerText = startingCodeLabel(block.files);
-		} else if (block.type === "move-to") {
-			div.className = "block move-to-block";
-			div.innerText = `➡️ ${MoveToTarget.moveToTargetLabel(block.target)}`;
+		} else if (block.type === "go-to") {
+			div.className = "block go-to-block";
+			div.innerText = `➡️ ${GoToTarget.goToTargetLabel(block.target)}`;
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleBlockClick;
 		} else if (block.type === "comment") {
-			div.className = `block ${getBlockKind(block.text)}-block`;
+			div.className = `block ${getBlockType(block.text)}-block`;
 			const isMultilineInsert = isMultilineSnippet(block.text);
 			if (isMultilineInsert) {
 				div.innerText = collapsedLabel(block.text);
@@ -77,7 +70,7 @@ function updateLessonData(data) {
 			div.dataset.stepIndex = ctr++;
 			div.onclick = handleCodeClick;
 		}
-		if (block.fromInclude) div.classList.add("from-include");
+		if (block.fromStart) div.classList.add("from-start");
 		container.appendChild(div);
 	});
 	indexSteps(container);

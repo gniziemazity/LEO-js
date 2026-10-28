@@ -6,39 +6,39 @@ const {
 	hotkeyManager,
 } = require("./context");
 const state = require("./state");
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { sleep, isMacOS, primaryModifier } = require("./platform");
 const { warnRemoteInput } = require("./remote-input");
-const { isFileName } = require("../shared/move-to-target");
+const { isFileName } = require("../shared/go-to-target");
 
-function mediaPopup(kind) {
+function mediaPopup(type) {
 	return {
 		started: (payload) =>
-			broadcastServer.broadcastMediaStarted({ ...payload, kind }),
+			broadcastServer.broadcastMediaStarted({ ...payload, type }),
 		ended: () => broadcastServer.broadcastMediaEnded(),
-		confirmChannel: `${kind}-confirmed`,
+		confirmChannel: `${type}-confirmed`,
 	};
 }
 
 const PAUSING_POPUPS = {
-	"move-to": {
-		started: (payload) => broadcastServer.broadcastMoveToStarted(payload),
-		ended: () => broadcastServer.broadcastMoveToEnded(),
-		confirmChannel: "move-to-confirmed",
+	"go-to": {
+		started: (payload) => broadcastServer.broadcastGoToStarted(payload),
+		ended: () => broadcastServer.broadcastGoToEnded(),
+		confirmChannel: "go-to-confirmed",
 		onConfirmKey: (payload) => {
-			if (!offersName(payload)) return confirmPopup("move-to");
-			if (!hasPendingName()) armMoveToName();
+			if (!offersName(payload)) return confirmPopup("go-to");
+			if (!hasPendingName()) armGoToName();
 		},
 	},
-	"code-insert": {
-		started: (payload) => broadcastServer.broadcastCodeInsertStarted(payload),
-		ended: () => broadcastServer.broadcastCodeInsertEnded(),
-		confirmChannel: "code-insert-confirmed",
+	snippet: {
+		started: (payload) => broadcastServer.broadcastSnippetStarted(payload),
+		ended: () => broadcastServer.broadcastSnippetEnded(),
+		confirmChannel: "snippet-confirmed",
 		onEnter: (payload) => holdCodeOnClipboard(payload),
 		onExit: () => releaseCodeFromClipboard(),
 		onConfirmKey: (payload) =>
 			payload && payload.paste !== false
 				? pasteAndConfirm()
-				: confirmPopup("code-insert"),
+				: confirmPopup("snippet"),
 	},
 	note: {
 		started: (payload) => broadcastServer.broadcastNoteStarted(payload),
@@ -49,7 +49,7 @@ const PAUSING_POPUPS = {
 	web: mediaPopup("web"),
 };
 
-const MEDIA_KINDS = ["image", "web"];
+const MEDIA_TYPES = ["image", "web"];
 const PASTE_SETTLE_MS = 300;
 
 let openPopup = null;
@@ -57,25 +57,25 @@ let openPayload = null;
 let pendingName = null;
 let onNameProgress = null;
 
-function enterPopup(kind, payload) {
-	const popup = PAUSING_POPUPS[kind];
-	openPopup = kind;
+function enterPopup(type, payload) {
+	const popup = PAUSING_POPUPS[type];
+	openPopup = type;
 	openPayload = payload;
 	state.pause("popup");
 	if (popup.onEnter) popup.onEnter(payload);
 	popup.started(payload);
-	hotkeyManager.registerConfirmPopup(confirmKeyFor(kind));
+	hotkeyManager.registerConfirmPopup(confirmKeyFor(type));
 }
 
-function confirmKeyFor(kind) {
-	const popup = PAUSING_POPUPS[kind];
-	if (!popup.onConfirmKey) return () => confirmPopup(kind);
+function confirmKeyFor(type) {
+	const popup = PAUSING_POPUPS[type];
+	if (!popup.onConfirmKey) return () => confirmPopup(type);
 	return () => popup.onConfirmKey(openPayload);
 }
 
-function endPopup(kind) {
-	if (openPopup !== kind) return false;
-	const popup = PAUSING_POPUPS[kind];
+function endPopup(type) {
+	if (openPopup !== type) return false;
+	const popup = PAUSING_POPUPS[type];
 	openPopup = null;
 	openPayload = null;
 	pendingName = null;
@@ -86,18 +86,18 @@ function endPopup(kind) {
 	return true;
 }
 
-function confirmPopup(kind) {
-	if (!endPopup(kind)) return false;
-	state.send(PAUSING_POPUPS[kind].confirmChannel);
+function confirmPopup(type) {
+	if (!endPopup(type)) return false;
+	state.send(PAUSING_POPUPS[type].confirmChannel);
 	return true;
 }
 
 function confirmMedia() {
-	if (MEDIA_KINDS.includes(openPopup)) confirmPopup(openPopup);
+	if (MEDIA_TYPES.includes(openPopup)) confirmPopup(openPopup);
 }
 
 function dismissMedia(floats) {
-	if (!MEDIA_KINDS.includes(openPopup)) return;
+	if (!MEDIA_TYPES.includes(openPopup)) return;
 	const float = floats[openPopup];
 	if (float && !float.pinned) float.close();
 	confirmPopup(openPopup);
@@ -120,28 +120,24 @@ function releaseCodeFromClipboard() {
 	if (clipboard.readText() === held.code) clipboard.writeText(held.previous);
 }
 
-async function pasteCodeInsert() {
+async function pasteSnippet() {
 	const held = heldClipboard;
 	if (!held) return;
 	try {
 		if (clipboard.readText() !== held.code) clipboard.writeText(held.code);
-		const modifier =
-			settingsManager.get("platform") === "macos"
-				? Key.LeftCmd
-				: Key.LeftControl;
-		await keyboard.type(modifier, Key.V);
+		await keyboard.type(primaryModifier(settingsManager, Key), Key.V);
 	} catch (e) {
-		warnRemoteInput("code insert paste", e);
+		warnRemoteInput("snippet paste", e);
 	}
 }
 
 async function pasteAndConfirm() {
 	const payload = openPayload;
-	if (openPopup !== "code-insert") return;
-	await pasteCodeInsert();
+	if (openPopup !== "snippet") return;
+	await pasteSnippet();
 	await sleep(PASTE_SETTLE_MS);
-	if (openPopup === "code-insert" && openPayload === payload) {
-		confirmPopup("code-insert");
+	if (openPopup === "snippet" && openPayload === payload) {
+		confirmPopup("snippet");
 	}
 }
 
@@ -149,9 +145,9 @@ function offersName(payload) {
 	return !!(payload && payload.typeName && isFileName(payload.target || ""));
 }
 
-function moveToNameChars() {
+function goToNameChars() {
 	const target = openPayload && openPayload.target;
-	if (openPopup !== "move-to" || !target) return null;
+	if (openPopup !== "go-to" || !target) return null;
 	if (!isFileName(target)) return null;
 	return [...target];
 }
@@ -167,8 +163,8 @@ function hasPendingName() {
 	return pendingName !== null;
 }
 
-function armMoveToName() {
-	const chars = moveToNameChars();
+function armGoToName() {
+	const chars = goToNameChars();
 	if (!chars) return;
 	pendingName = { chars, index: 0, busy: false };
 	if (onNameProgress) onNameProgress(nameProgress());
@@ -178,9 +174,9 @@ async function typeNextNameChar() {
 	if (!pendingName || pendingName.busy) return !!pendingName;
 	const ch = pendingName.chars[pendingName.index];
 	pendingName.busy = true;
-	const macOS = settingsManager.get("platform") === "macos";
+	const macOS = isMacOS(settingsManager);
 	const released = state.isActive
-		? hotkeyManager.releaseTypingHotkeysFor(ch)
+		? hotkeyManager.releaseAutoTypingHotkeysFor(ch)
 		: [];
 	if (released.length && macOS) await sleep(20);
 	try {
@@ -190,7 +186,7 @@ async function typeNextNameChar() {
 	} finally {
 		if (released.length) {
 			if (macOS) await sleep(20);
-			hotkeyManager.restoreTypingHotkeys(released);
+			hotkeyManager.restoreAutoTypingHotkeys(released);
 		}
 	}
 	if (!pendingName) return true;
@@ -203,7 +199,7 @@ async function typeNextNameChar() {
 		} catch (e) {
 			warnRemoteInput("type file name", e);
 		}
-		confirmPopup("move-to");
+		confirmPopup("go-to");
 		return true;
 	}
 	if (onNameProgress) onNameProgress(nameProgress());
@@ -211,22 +207,22 @@ async function typeNextNameChar() {
 }
 
 function typeNameOnKey() {
-	if (settingsManager.get("hotkeyMode") === "auto-run") runMoveToName();
+	if (settingsManager.get("hotkeyMode") === "auto-run") runGoToName();
 	else typeNextNameChar();
 }
 
-async function runMoveToName() {
+async function runGoToName() {
 	const run = pendingName;
 	if (!run || run.running) return;
 	run.running = true;
-	const ms = settingsManager.get("autoTypingSpeed");
+	const ms = settingsManager.get("autoRunSpeed");
 	while (pendingName === run) {
 		await typeNextNameChar();
 		if (pendingName === run) await sleep(ms);
 	}
 }
 
-function stepMoveToName(delta) {
+function stepGoToName(delta) {
 	if (!pendingName) return false;
 	if (!pendingName.busy) {
 		const last = pendingName.chars.length - 1;
@@ -239,7 +235,7 @@ function stepMoveToName(delta) {
 	return true;
 }
 
-function openPopupKind() {
+function openPopupType() {
 	return openPopup;
 }
 
@@ -256,12 +252,12 @@ module.exports = {
 	dismissMedia,
 	confirmKeyFor,
 	pasteAndConfirm,
-	armMoveToName,
+	armGoToName,
 	hasPendingName,
 	typeNextNameChar,
 	typeNameOnKey,
-	stepMoveToName,
+	stepGoToName,
 	setNameProgressHandler,
-	openPopupKind,
+	openPopupType,
 	releaseCodeFromClipboard,
 };

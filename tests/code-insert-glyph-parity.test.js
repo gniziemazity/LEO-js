@@ -93,9 +93,9 @@ test("headlessReplay drops ignored and pause glyphs like the model does", () => 
 	}
 });
 
-test("the visualizer replays through the shared dispatcher, not its own copy", () => {
+test("the simulator replays through the shared dispatcher, not its own copy", () => {
 	const src = fs.readFileSync(
-		path.join(__dirname, "..", "lesson_tools", "simulator", "visualizer.js"),
+		path.join(__dirname, "..", "lesson_tools", "simulator", "simulator.js"),
 		"utf-8",
 	);
 	assert.match(
@@ -119,7 +119,7 @@ test("the visualizer replays through the shared dispatcher, not its own copy", (
 	}
 });
 
-test("a visualizer-shaped context replays identically to the headless one", () => {
+test("a simulator-shaped context replays identically to the headless one", () => {
 	const { makeReplayContext, replayStep, expandEvents } = model;
 	const script = "one↩two↩three↑↑◄⛔►↩four⌫";
 	const events = [...script].map((ch, i) => ({ char: ch, timestamp: i }));

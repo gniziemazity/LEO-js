@@ -9,7 +9,7 @@
 		<div id="controls">
 			<button
 				id="toggleBtn"
-				title="Start Auto-typing"
+				title="Start auto-typing"
 				class="interaction-btn btn-start"
 			>
 				▶︎
@@ -69,7 +69,7 @@
 			<div class="sim-panel-bar">
 				<div class="sim-panel-tabs"></div>
 			</div>
-			<div class="snippet-view sim-panel-code"></div>
+			<div class="excerpt-view sim-panel-code"></div>
 		</aside>
 
 		<div id="settingsModal" class="modal">
@@ -81,10 +81,10 @@
 
 				<div class="modal-body">
 					<div class="settings-section">
-						<h3>Keyboard Shortcuts</h3>
+						<h3>Hotkeys</h3>
 
 						<div class="setting-item">
-							<label>Auto-Typing Hotkeys:</label>
+							<label>Auto-typing Hotkeys:</label>
 							<input
 								type="text"
 								id="typingHotkeys"
@@ -103,7 +103,7 @@
 						</div>
 
 						<div class="setting-item">
-							<label>Toggle Auto-Typing:</label>
+							<label>Toggle Auto-typing:</label>
 							<input
 								type="text"
 								id="toggleActiveKey"
@@ -171,7 +171,7 @@
 
 						<div class="setting-item">
 							<label>Code Block:</label>
-							<input type="color" id="codeBlockColor" />
+							<input type="color" id="codeColor" />
 						</div>
 
 						<div class="setting-item">
@@ -185,8 +185,8 @@
 						</div>
 
 						<div class="setting-item">
-							<label>Image Block (🖼️):</label>
-							<input type="color" id="imageBlockColor" />
+							<label>Image / Web Block (🖼️ 🌐):</label>
+							<input type="color" id="imageColor" />
 						</div>
 
 						<div class="setting-item">
@@ -195,13 +195,13 @@
 						</div>
 
 						<div class="setting-item">
-							<label>Move To Block (➡️) Background:</label>
-							<input type="color" id="moveToBlockColor" />
+							<label>Go To Block (➡️) Background:</label>
+							<input type="color" id="goToColor" />
 						</div>
 
 						<div class="setting-item">
-							<label>Move To Block (➡️) Text Color:</label>
-							<input type="color" id="moveToTextColor" />
+							<label>Go To Block (➡️) Text Color:</label>
+							<input type="color" id="goToTextColor" />
 						</div>
 
 						<div class="setting-item">
@@ -290,7 +290,7 @@
 						<div class="setting-item">
 							<select id="hotkeyMode">
 								<option value="single-key">Single Key</option>
-								<option value="auto-run">Entire Block</option>
+								<option value="auto-run">Auto-Run</option>
 							</select>
 						</div>
 
@@ -301,7 +301,7 @@
 							>
 							<input
 								type="range"
-								id="autoTypingSpeed"
+								id="autoRunSpeed"
 								min="10"
 								max="200"
 								step="5"

@@ -174,45 +174,13 @@ function updatePreview(side, files, iframe) {
 		iframe.srcdoc = `<p style='font-family:sans-serif;padding:20px;color:${THEME.muted}'>No HTML file found.</p>`;
 		return;
 	}
-	let html = files[activeHtml];
 	const baseUrl = side === "teacher" ? _teacherBaseUrl : _studentBaseUrl;
-	const headInjects = [];
-	if (baseUrl) headInjects.push(`<base href="${baseUrl}">`);
-	const mediaMap = {};
-	for (const [name, url] of Object.entries(_imageUris)) {
-		if (/^(?:blob|https?):/i.test(url)) mediaMap[name] = url;
-	}
-	if (Object.keys(mediaMap).length) {
-		headInjects.push(_buildMediaShimScript(mediaMap));
-	}
-	if (headInjects.length) html = _injectIntoHead(html, headInjects.join("\n"));
-	const filesMap = { ..._imageUris };
+	const filesMap = {};
 	for (const [name, content] of Object.entries(files)) {
 		if (!/\.html$/i.test(name)) filesMap[name] = content;
 	}
-	iframe.srcdoc = previewBaseTarget(inlineFilesInHtml(html, filesMap) || "");
-}
-
-function _injectIntoHead(html, snippet) {
-	if (/<head\b[^>]*>/i.test(html)) {
-		return html.replace(/(<head\b[^>]*>)/i, `$1\n${snippet}`);
-	}
-	if (/<html\b[^>]*>/i.test(html)) {
-		return html.replace(/(<html\b[^>]*>)/i, `$1\n<head>${snippet}</head>`);
-	}
-	return `<head>${snippet}</head>${html}`;
-}
-
-function _buildMediaShimScript(mediaMap) {
-	const json = JSON.stringify(mediaMap).replace(/<\/script/gi, "<\\/script");
-	return (
-		"<script>(function(){const __M=" +
-		json +
-		";function _b(s){return String(s).split(/[/\\\\]/).pop();}" +
-		"const _OA=window.Audio;" +
-		"window.Audio=function(src){const m=typeof src==='string'?__M[_b(src)]:null;return new _OA(m||src);};" +
-		"window.Audio.prototype=_OA.prototype;" +
-		"})();</script>"
+	iframe.srcdoc = previewBaseTarget(
+		buildPreviewSrcdoc(files[activeHtml], filesMap, _imageUris, baseUrl),
 	);
 }
 

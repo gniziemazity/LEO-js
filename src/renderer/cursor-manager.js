@@ -1,75 +1,75 @@
 const { ipcRenderer } = require("electron");
-const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
+const { getBlockType, stripBlockPrefix } = require("../shared/blocks");
 const { stepToLogEvents } = require("./log-event-builder");
-const { classifyMoveToTarget } = require("../shared/move-to-target");
-const { buildColoredLines } = require("./anchor-snippet");
+const { classifyGoToTarget } = require("../shared/go-to-target");
+const { buildColoredLines } = require("./plan-replay");
 const { stripAnchors } = require("../shared/code-text");
 
-const SPECIAL_BLOCKS = {
+const SUPPORT_BLOCKS = {
 	question: {
 		closeChannel: "close-question-window",
 		afterLeave: (cm) => {
 			if (cm.onLeaveQuestionBlock) cm.onLeaveQuestionBlock();
 		},
 	},
-	note: { closeChannel: "close-note-window", pausesTyping: true },
+	note: { closeChannel: "close-note-popup", pausesAutoTyping: true },
 	image: {
 		closeChannel: "close-image-window",
-		pausesTyping: true,
+		pausesAutoTyping: true,
 		keepsWindow: true,
 	},
 	web: {
 		closeChannel: "close-web-window",
-		pausesTyping: true,
+		pausesAutoTyping: true,
 		keepsWindow: true,
 	},
-	"move-to": { closeChannel: "close-move-to-window", pausesTyping: true },
-	"code-insert": {
-		closeChannel: "close-code-insert-window",
-		pausesTyping: true,
+	"go-to": { closeChannel: "close-go-to-popup", pausesAutoTyping: true },
+	snippet: {
+		closeChannel: "close-snippet-popup",
+		pausesAutoTyping: true,
 	},
 };
 
-const SPECIAL_BLOCK_KINDS = Object.keys(SPECIAL_BLOCKS);
-const PAUSING_KINDS = SPECIAL_BLOCK_KINDS.filter(
-	(kind) => SPECIAL_BLOCKS[kind].pausesTyping,
+const SUPPORT_BLOCK_TYPES = Object.keys(SUPPORT_BLOCKS);
+const PAUSING_TYPES = SUPPORT_BLOCK_TYPES.filter(
+	(type) => SUPPORT_BLOCKS[type].pausesAutoTyping,
 );
-const TRANSIENT_KINDS = ["code-insert", "move-to", "note"];
+const TRANSIENT_TYPES = ["snippet", "go-to", "note"];
 
 const BLOCK_ENTRIES = {
-	"move-to": {
-		keep: "move-to",
-		clear: ["code-insert", "note"],
-		enter: (cm, step) => cm._enterMoveToBlock(step),
+	"go-to": {
+		keep: "go-to",
+		clear: ["snippet", "note"],
+		enter: (cm, step) => cm._enterGoToBlock(step),
 	},
 	note: {
 		keep: "note",
-		clear: ["code-insert", "move-to"],
+		clear: ["snippet", "go-to"],
 		enter: (cm, step) => cm._enterNoteBlock(step),
 	},
 	question: {
 		keep: "question",
-		clear: TRANSIENT_KINDS,
+		clear: TRANSIENT_TYPES,
 		enter: (cm, step) => cm._enterQuestionBlock(step),
 	},
 	image: {
 		keep: "image",
-		clear: TRANSIENT_KINDS,
+		clear: TRANSIENT_TYPES,
 		enter: (cm, step) => cm._enterImageBlock(step),
 	},
 	web: {
 		keep: "web",
-		clear: TRANSIENT_KINDS,
+		clear: TRANSIENT_TYPES,
 		enter: (cm, step) => cm._enterWebBlock(step),
 	},
 	snippet: {
-		keep: "code-insert",
+		keep: "snippet",
 		clear: ["note"],
-		enter: (cm, step) => cm._enterCodeInsertBlock(step),
+		enter: (cm, step) => cm._enterSnippetBlock(step),
 	},
 };
 
-const PLAIN_BLOCK = { clear: TRANSIENT_KINDS };
+const PLAIN_BLOCK = { clear: TRANSIENT_TYPES };
 
 class CursorManager {
 	constructor(uiManager, logManager) {
@@ -77,7 +77,7 @@ class CursorManager {
 		this.logManager = logManager;
 		this.currentStepIndex = 0;
 		this.executionSteps = [];
-		this.autoTypingActive = false;
+		this.autoRunActive = false;
 		this._cursorEl = null;
 		this._activeBlockEl = null;
 		this._scrollPending = null;
@@ -87,14 +87,14 @@ class CursorManager {
 		this.onLeaveQuestionBlock = null;
 		this.onImageBlock = null;
 		this.onWebBlock = null;
-		this.onEnterMoveToBlock = null;
-		this.onEnterCodeInsertBlock = null;
-		this.onLeaveSpecialBlock = null;
+		this.onEnterGoToBlock = null;
+		this.onEnterSnippetBlock = null;
+		this.onLeaveSupportBlock = null;
 
 		this._blocks = {};
 
 		this._onAutoStepComplete = (event, stepIndex) => {
-			if (!this.autoTypingActive) return;
+			if (!this.autoRunActive) return;
 			if (stepIndex < this.executionSteps.length) {
 				const step = this.executionSteps[stepIndex];
 				if (step.type === "char") {
@@ -106,8 +106,8 @@ class CursorManager {
 			}
 		};
 		this._onAutoFinish = () => {
-			if (!this.autoTypingActive) return;
-			this.autoTypingActive = false;
+			if (!this.autoRunActive) return;
+			this.autoRunActive = false;
 			while (this.currentStepIndex < this.executionSteps.length) {
 				const current = this.executionSteps[this.currentStepIndex];
 				if (current.type === "anchor") {
@@ -126,8 +126,8 @@ class CursorManager {
 			}
 			this.updateCursor();
 		};
-		ipcRenderer.on("auto-type-step-complete", this._onAutoStepComplete);
-		ipcRenderer.on("auto-typing-finished", this._onAutoFinish);
+		ipcRenderer.on("auto-run-step-complete", this._onAutoStepComplete);
+		ipcRenderer.on("auto-run-finished", this._onAutoFinish);
 	}
 
 	setExecutionSteps(steps) {
@@ -140,39 +140,39 @@ class CursorManager {
 		return this.currentStepIndex;
 	}
 
-	_block(kind) {
-		let b = this._blocks[kind];
+	_block(type) {
+		let b = this._blocks[type];
 		if (!b) {
 			b = { open: false, at: null, resumeAuto: false, waiting: false };
-			this._blocks[kind] = b;
+			this._blocks[type] = b;
 		}
 		return b;
 	}
 
-	_arriveAt(kind, globalIndex, opensWindow) {
-		const b = this._block(kind);
+	_arriveAt(type, globalIndex, opensWindow) {
+		const b = this._block(type);
 		if (b.at === globalIndex) return false;
 		b.at = globalIndex;
 		if (opensWindow) b.open = true;
-		if (SPECIAL_BLOCKS[kind].pausesTyping) b.waiting = true;
+		if (SUPPORT_BLOCKS[type].pausesAutoTyping) b.waiting = true;
 		return true;
 	}
 
-	_leaveBlock(kind) {
-		const b = this._block(kind);
+	_leaveBlock(type) {
+		const b = this._block(type);
 		b.waiting = false;
 		if (!b.open) return;
 		b.open = false;
 		b.at = null;
-		ipcRenderer.send(SPECIAL_BLOCKS[kind].closeChannel);
-		if (this.onLeaveSpecialBlock) this.onLeaveSpecialBlock(kind);
-		const afterLeave = SPECIAL_BLOCKS[kind].afterLeave;
+		ipcRenderer.send(SUPPORT_BLOCKS[type].closeChannel);
+		if (this.onLeaveSupportBlock) this.onLeaveSupportBlock(type);
+		const afterLeave = SUPPORT_BLOCKS[type].afterLeave;
 		if (afterLeave) afterLeave(this);
 	}
 
-	_leaveSpecialBlocksExcept(kind) {
-		for (const k of SPECIAL_BLOCK_KINDS) {
-			if (k !== kind) this._leaveBlock(k);
+	_leaveSupportBlocksExcept(type) {
+		for (const k of SUPPORT_BLOCK_TYPES) {
+			if (k !== type) this._leaveBlock(k);
 		}
 	}
 
@@ -185,8 +185,8 @@ class CursorManager {
 		this.updateCursor();
 	}
 
-	_clearBlockIndices(kinds) {
-		for (const kind of kinds) this._block(kind).at = null;
+	_clearBlockIndices(types) {
+		for (const type of types) this._block(type).at = null;
 	}
 
 	_enterNoteBlock(step) {
@@ -227,28 +227,28 @@ class CursorManager {
 		if (this.onWebBlock) this.onWebBlock(url, !!step.pin);
 	}
 
-	_enterMoveToBlock(step) {
-		if (!this._arriveAt("move-to", step.globalIndex, true)) return;
+	_enterGoToBlock(step) {
+		if (!this._arriveAt("go-to", step.globalIndex, true)) return;
 		for (const e of stepToLogEvents(step)) this.logManager.addEntry(e);
-		if (this.onEnterMoveToBlock) {
-			const { mode, target } = classifyMoveToTarget(step.target);
-			this.onEnterMoveToBlock({
+		if (this.onEnterGoToBlock) {
+			const { mode, target } = classifyGoToTarget(step.target);
+			this.onEnterGoToBlock({
 				mode,
 				target,
 				typeName: !!step.typeName,
 				note: step.note || "",
-				snippet: step.snippet || null,
+				excerpt: step.excerpt || null,
 			});
 		}
 	}
 
-	_enterCodeInsertBlock(step) {
-		if (!this._arriveAt("code-insert", step.globalIndex, true)) return;
+	_enterSnippetBlock(step) {
+		if (!this._arriveAt("snippet", step.globalIndex, true)) return;
 		const text = stripBlockPrefix(step.text);
 		this.logManager.addEntry({ code_insert: text });
-		if (this.onEnterCodeInsertBlock) {
+		if (this.onEnterSnippetBlock) {
 			const pasted = stripAnchors(text);
-			this.onEnterCodeInsertBlock({
+			this.onEnterSnippetBlock({
 				text: pasted,
 				paste: step.paste !== false,
 				colored: buildColoredLines(
@@ -260,16 +260,16 @@ class CursorManager {
 		}
 	}
 
-	suspendAutoTypingFor(kind) {
-		this._block(kind).resumeAuto = this.autoTypingActive;
-		if (this.autoTypingActive) this.stopAutoTyping();
+	suspendAutoRunFor(type) {
+		this._block(type).resumeAuto = this.autoRunActive;
+		if (this.autoRunActive) this.stopAutoRun();
 	}
 
-	confirmSpecial(kind) {
-		const b = this._block(kind);
+	confirmSpecial(type) {
+		const b = this._block(type);
 		const at = b.at;
 		b.waiting = false;
-		if (!SPECIAL_BLOCKS[kind].keepsWindow) {
+		if (!SUPPORT_BLOCKS[type].keepsWindow) {
 			b.open = false;
 			b.at = null;
 		}
@@ -300,7 +300,7 @@ class CursorManager {
 	}
 
 	resetProgress() {
-		this._leaveSpecialBlocksExcept();
+		this._leaveSupportBlocksExcept();
 		this._forgetBlockPositions();
 		this.currentStepIndex = 0;
 		this.uiManager.updateProgressBar(0);
@@ -311,26 +311,26 @@ class CursorManager {
 		this._activeBlockEl = step.element;
 		this._scrollIntoView(step.element);
 
-		const key = step.kind || getBlockKind(step.text);
+		const key = step.blockType || getBlockType(step.text);
 		const entry = BLOCK_ENTRIES[key] || PLAIN_BLOCK;
 
-		this._leaveSpecialBlocksExcept(entry.keep);
+		this._leaveSupportBlocksExcept(entry.keep);
 		this._clearBlockIndices(entry.clear);
 		if (entry.enter) entry.enter(this, step);
 	}
 
 	_updateCharCursor(step) {
-		this._leaveSpecialBlocksExcept();
-		this._clearBlockIndices(TRANSIENT_KINDS);
+		this._leaveSupportBlocksExcept();
+		this._clearBlockIndices(TRANSIENT_TYPES);
 		step.element.classList.add("cursor");
 		this._cursorEl = step.element;
 		this._scrollIntoView(step.element);
 	}
 
-	_skipInheritedSteps() {
+	_skipStartSteps() {
 		while (this.currentStepIndex < this.executionSteps.length) {
 			const step = this.executionSteps[this.currentStepIndex];
-			if (!step || !step.fromInclude) return;
+			if (!step || !step.fromStart) return;
 			step.element.classList.add("consumed");
 			if (!step._logged) {
 				step._logged = true;
@@ -380,7 +380,7 @@ class CursorManager {
 
 	updateCursor() {
 		this._clearCursorMarks();
-		this._skipInheritedSteps();
+		this._skipStartSteps();
 
 		if (this.currentStepIndex < this.executionSteps.length) {
 			const step = this.executionSteps[this.currentStepIndex];
@@ -394,14 +394,14 @@ class CursorManager {
 				this._updateBlockCursor(step);
 			}
 		} else {
-			this._leaveSpecialBlocksExcept();
+			this._leaveSupportBlocksExcept();
 		}
 
 		this._broadcastProgress();
 	}
 
 	advanceCursor() {
-		this._skipInheritedSteps();
+		this._skipStartSteps();
 		if (this.currentStepIndex >= this.executionSteps.length) {
 			ipcRenderer.send("input-complete");
 			return;
@@ -430,16 +430,16 @@ class CursorManager {
 		this.updateCursor();
 	}
 
-	async startAutoTyping() {
-		if (this.autoTypingActive) return;
-		if (PAUSING_KINDS.some((kind) => this._block(kind).waiting)) {
-			ipcRenderer.send("auto-typing-complete");
+	async startAutoRun() {
+		if (this.autoRunActive) return;
+		if (PAUSING_TYPES.some((type) => this._block(type).waiting)) {
+			ipcRenderer.send("auto-run-complete");
 			return;
 		}
-		this.autoTypingActive = true;
+		this.autoRunActive = true;
 
 		const settings = await ipcRenderer.invoke("get-settings");
-		const speed = settings.autoTypingSpeed || 100;
+		const speed = settings.autoRunSpeed || 100;
 		const currentIndex = this.currentStepIndex;
 		const stepsToType = [];
 
@@ -454,17 +454,17 @@ class CursorManager {
 			}
 		}
 
-		ipcRenderer.send("start-auto-type-block", {
+		ipcRenderer.send("start-auto-run-block", {
 			steps: stepsToType,
 			startIndex: 0,
 			speed,
 		});
 	}
 
-	stopAutoTyping() {
-		if (this.autoTypingActive) {
-			this.autoTypingActive = false;
-			ipcRenderer.send("auto-typing-complete");
+	stopAutoRun() {
+		if (this.autoRunActive) {
+			this.autoRunActive = false;
+			ipcRenderer.send("auto-run-complete");
 		}
 	}
 
@@ -528,6 +528,6 @@ class CursorManager {
 	}
 }
 
-CursorManager.PAUSING_KINDS = PAUSING_KINDS;
+CursorManager.PAUSING_TYPES = PAUSING_TYPES;
 
 module.exports = CursorManager;

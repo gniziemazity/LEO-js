@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { buildRemote: build } = require("./helpers/remote-dom.js");
 
 async function openKeyboardPad(ctx) {
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("keyboard");
 }
 
@@ -74,15 +74,15 @@ test("closing the question drops the lift with it", async () => {
 });
 
 async function openAutoPilot(ctx) {
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.setAutoPilot(true);
 }
 
-test("a manual keyboard pad never changes on its own, move-to or not", async () => {
+test("a manual keyboard pad never changes on its own, go-to or not", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
 
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(
 		ctx.api.padMode(),
 		"keyboard",
@@ -90,26 +90,26 @@ test("a manual keyboard pad never changes on its own, move-to or not", async () 
 	);
 
 	ctx.sent.length = 0;
-	ctx.api.closeMoveToOverlay();
+	ctx.api.closeGoToOverlay();
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
-		["move-to-confirmed"],
+		["go-to-confirmed"],
 	);
 	assert.equal(ctx.api.padMode(), "keyboard");
 });
 
 test("a manual mouse pad stays put while the file name is typed", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	await ctx.api.setTouchpadMode("mouse");
-	ctx.api.showMoveToOverlay({
+	ctx.api.showGoToOverlay({
 		mode: "file",
 		target: "app.js",
 		typeName: true,
 	});
 
-	ctx.api.moveToTypeName();
-	ctx.api.moveToSetTyped({ target: "app.js", typed: 1 });
+	ctx.api.goToTypeName();
+	ctx.api.goToSetTyped({ target: "app.js", typed: 1 });
 
 	assert.equal(ctx.api.padMode(), "mouse");
 });
@@ -127,15 +127,15 @@ test("auto-pilot is on the keyboard pad while nothing is open", async () => {
 	);
 });
 
-test("auto-pilot takes the mouse pad for a move-to, and hands the keyboard back on OK", async () => {
+test("auto-pilot takes the mouse pad for a go-to, and hands the keyboard back on OK", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
 
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(
 		ctx.api.padMode(),
 		"mouse",
-		"a move-to is about pointing at a place, so the pointer is what you need",
+		"a go-to is about pointing at a place, so the pointer is what you need",
 	);
 	assert.equal(
 		ctx.nodes.touchpadEditKeys.classList.contains("visible"),
@@ -145,40 +145,40 @@ test("auto-pilot takes the mouse pad for a move-to, and hands the keyboard back 
 	assert.equal(ctx.nodes.autoPilotBtn.classList.contains("mode-active"), true);
 
 	ctx.sent.length = 0;
-	ctx.api.closeMoveToOverlay();
+	ctx.api.closeGoToOverlay();
 
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
-		["move-to-confirmed"],
+		["go-to-confirmed"],
 	);
-	assert.equal(ctx.nodes.moveToOverlay.classList.contains("active"), false);
+	assert.equal(ctx.nodes.goToOverlay.classList.contains("active"), false);
 	assert.equal(
 		ctx.api.padMode(),
 		"keyboard",
-		"and typing carries on where it left off, without a second press",
+		"and auto-typing carries on where it left off, without a second press",
 	);
 });
 
-test("auto-pilot hands the keyboard pad back when the host ends the move-to", async () => {
+test("auto-pilot hands the keyboard pad back when the host ends the go-to", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(ctx.api.padMode(), "mouse");
 
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(ctx.api.padMode(), "keyboard");
 });
 
 test("auto-pilot leaves the keyboard pad alone for a question, code insert, note or media", async () => {
 	const opens = {
 		question: (api) => api.showQuestionOverlay("Why?", ["Ada"], null, null),
-		"code insert": (api) => api.showCodeInsertOverlay({ text: "x" }),
+		"code insert": (api) => api.showSnippetOverlay({ text: "x" }),
 		note: (api) => api.showNoteOverlay({ text: "Slow down" }),
-		media: (api) => api.showMediaOverlay({ kind: "image", name: "a.png" }),
+		media: (api) => api.showMediaOverlay({ type: "image", name: "a.png" }),
 	};
 	const closes = {
 		question: (api) => api.closeQuestionOverlayUI(),
-		"code insert": (api) => api.closeCodeInsertOverlayUI(),
+		"code insert": (api) => api.closeSnippetOverlayUI(),
 		note: (api) => api.closeNoteOverlayUI(),
 		media: (api) => api.closeMediaOverlayUI(),
 	};
@@ -205,7 +205,7 @@ test("auto-pilot leaves the keyboard pad alone for a question, code insert, note
 test("auto-pilot types the file name on the keyboard pad, then goes back on the last character", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({
+	ctx.api.showGoToOverlay({
 		mode: "file",
 		target: "app.js",
 		typeName: true,
@@ -213,10 +213,10 @@ test("auto-pilot types the file name on the keyboard pad, then goes back on the 
 	assert.equal(ctx.api.padMode(), "mouse");
 
 	ctx.sent.length = 0;
-	ctx.api.moveToTypeName();
+	ctx.api.goToTypeName();
 
 	assert.equal(
-		ctx.sent.some((m) => m.type === "move-to-type-name"),
+		ctx.sent.some((m) => m.type === "go-to-type-name"),
 		true,
 		"the host still starts typing the name",
 	);
@@ -226,47 +226,51 @@ test("auto-pilot types the file name on the keyboard pad, then goes back on the 
 		"and the pad becomes the tap target that types it",
 	);
 
-	ctx.api.closeMoveToOverlayUI();
-	assert.equal(ctx.api.padMode(), "keyboard", "the name done, typing goes on");
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.closeGoToOverlayUI();
+	assert.equal(
+		ctx.api.padMode(),
+		"keyboard",
+		"the name done, auto-typing goes on",
+	);
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(
 		ctx.api.padMode(),
 		"mouse",
-		"and the next move-to starts on the mouse pad again",
+		"and the next go-to starts on the mouse pad again",
 	);
 });
 
 test("a name the host starts itself (desk card, Ctrl+Enter) also gets the keyboard pad", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({
+	ctx.api.showGoToOverlay({
 		mode: "file",
 		target: "app.js",
 		typeName: true,
 	});
 	assert.equal(ctx.api.padMode(), "mouse");
 
-	ctx.api.moveToSetTyped({ target: "app.js", typed: 0 });
+	ctx.api.goToSetTyped({ target: "app.js", typed: 0 });
 	assert.equal(ctx.api.padMode(), "keyboard");
 
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(ctx.api.padMode(), "keyboard");
 });
 
 test("a progress message with no name pending does not steal the mouse pad", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({
+	ctx.api.showGoToOverlay({
 		mode: "file",
 		target: "app.js",
 		typeName: true,
 	});
 
-	ctx.api.moveToSetTyped({ target: "app.js", typed: null });
+	ctx.api.goToSetTyped({ target: "app.js", typed: null });
 	assert.equal(ctx.api.padMode(), "mouse");
 });
 
-test("auto-pilot waits on the mouse pad until typing starts, then moves to the keyboard", async () => {
+test("auto-pilot waits on the mouse pad until auto-typing starts, then moves to the keyboard", async () => {
 	const ctx = build();
 	ctx.api.setAutoPilot(true);
 	assert.equal(
@@ -275,14 +279,14 @@ test("auto-pilot waits on the mouse pad until typing starts, then moves to the k
 		"the keyboard pad is unavailable before the first block, so it must not be picked",
 	);
 
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	assert.equal(ctx.api.padMode(), "keyboard");
 
-	ctx.api.setSessionActive(false);
+	ctx.api.setAutoTypingActive(false);
 	assert.equal(
 		ctx.api.padMode(),
 		"mouse",
-		"and back again when typing stops, instead of the pad vanishing",
+		"and back again when auto-typing stops, instead of the pad vanishing",
 	);
 });
 
@@ -368,13 +372,13 @@ test("a popup opening or closing also ends a turned-off pad, and so does the mou
 	const ctx = build();
 	await openAutoPilot(ctx);
 	await ctx.api.setTouchpadMode("keyboard");
-	ctx.api.showMoveToOverlay({ mode: "main" });
-	assert.equal(ctx.api.padMode(), "mouse", "a move-to wants the mouse pad");
+	ctx.api.showGoToOverlay({ mode: "main" });
+	assert.equal(ctx.api.padMode(), "mouse", "a go-to wants the mouse pad");
 
 	await ctx.api.setTouchpadMode("mouse");
 	assert.equal(ctx.api.padMode(), null, "and its button turns that off too");
 
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(ctx.api.padMode(), "keyboard", "confirming moves the plan on");
 });
 
@@ -401,13 +405,9 @@ test("an override holds while nothing changes, and a popup opening ends it", asy
 		"unrelated messages do not undo it",
 	);
 
-	ctx.api.showMoveToOverlay({ mode: "main" });
-	assert.equal(
-		ctx.api.padMode(),
-		"mouse",
-		"the move-to wants the mouse anyway",
-	);
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.showGoToOverlay({ mode: "main" });
+	assert.equal(ctx.api.padMode(), "mouse", "the go-to wants the mouse anyway");
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(
 		ctx.api.padMode(),
 		"keyboard",
@@ -418,7 +418,7 @@ test("an override holds while nothing changes, and a popup opening ends it", asy
 test("a popup ends an override that disagrees with it", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(ctx.api.padMode(), "mouse");
 
 	await ctx.api.setTouchpadMode("keyboard");
@@ -428,11 +428,11 @@ test("a popup ends an override that disagrees with it", async () => {
 		"the teacher may want the keyboard here",
 	);
 
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(ctx.api.padMode(), "keyboard", "confirming moves the plan on");
 
 	await ctx.api.setTouchpadMode("mouse");
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(ctx.api.padMode(), "mouse");
 });
 
@@ -457,20 +457,20 @@ test("the plan advancing ends an override, and only a new step counts", async ()
 	);
 });
 
-test("typing being switched on or off ends an override too", async () => {
+test("auto-typing being switched on or off ends an override too", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
 	await ctx.api.setTouchpadMode("mouse");
 
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	assert.equal(ctx.api.padMode(), "keyboard");
 
 	await ctx.api.setTouchpadMode("mouse");
-	ctx.api.setSessionActive(false);
+	ctx.api.setAutoTypingActive(false);
 	assert.equal(
 		ctx.api.padMode(),
 		"mouse",
-		"not typing, so the mouse pad it is",
+		"not auto-typing, so the mouse pad it is",
 	);
 });
 
@@ -488,7 +488,7 @@ test("an override never outlives auto-pilot", async () => {
 	);
 });
 
-test("under auto-pilot the keyboard pad is refused before typing starts, like anywhere", async () => {
+test("under auto-pilot the keyboard pad is refused before auto-typing starts, like anywhere", async () => {
 	const ctx = build();
 	ctx.api.setAutoPilot(true);
 	assert.equal(ctx.api.padMode(), "mouse");
@@ -511,7 +511,7 @@ test("under auto-pilot the picker keeps the live pad, and the pad buttons still 
 
 test("the auto-pilot button asks the host and waits for the answer", () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.requestAutoPilot();
 	assert.deepEqual(ctx.sent, [
 		{ type: "set-auto-pilot", data: { autoPilot: true } },
@@ -543,7 +543,7 @@ test("the host turning auto-pilot off closes the pad and gives the buttons back"
 		false,
 	);
 
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(ctx.api.padMode(), null, "a closed pad stays closed");
 
 	await ctx.api.setTouchpadMode("mouse");
@@ -553,7 +553,7 @@ test("the host turning auto-pilot off closes the pad and gives the buttons back"
 test("repeating the host's value changes nothing", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 
 	ctx.api.setAutoPilot(true);
 	assert.equal(ctx.api.padMode(), "mouse", "no restart, no reset");
@@ -586,21 +586,21 @@ test("a popup opened under auto-pilot is lifted above the pad it is on", async (
 	const ctx = build();
 	await openAutoPilot(ctx);
 
-	ctx.api.showMoveToOverlay({ mode: "main" });
-	assert.equal(lifted(ctx.nodes.moveToOverlay), true);
+	ctx.api.showGoToOverlay({ mode: "main" });
+	assert.equal(lifted(ctx.nodes.goToOverlay), true);
 	assert.equal(
 		ctx.nodes.touchpadOverlay.classList.contains("keyboard-mode"),
 		false,
 	);
 });
 
-test("a move-to with no pad open leaves the pad closed", async () => {
+test("a go-to with no pad open leaves the pad closed", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.setAutoTypingActive(true);
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(ctx.nodes.touchpadOverlay.classList.contains("active"), false);
 
-	ctx.api.closeMoveToOverlayUI();
+	ctx.api.closeGoToOverlayUI();
 	assert.equal(
 		ctx.nodes.touchpadOverlay.classList.contains("active"),
 		false,
@@ -611,41 +611,41 @@ test("a move-to with no pad open leaves the pad closed", async () => {
 test("the OK never moves: the pad is what gets out of its way", async () => {
 	const ctx = build();
 	await openKeyboardPad(ctx);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.showGoToOverlay({ mode: "main" });
 
-	assert.equal(lifted(ctx.nodes.moveToOverlay), true);
+	assert.equal(lifted(ctx.nodes.goToOverlay), true);
 	assert.notEqual(
-		ctx.nodes.mtoActions.style.display,
+		ctx.nodes.gtoActions.style.display,
 		"none",
 		"the row a thumb already knows must not be taken away",
 	);
 	assert.notEqual(
-		ctx.nodes.mtoConfirm.style.display,
+		ctx.nodes.gtoConfirm.style.display,
 		"none",
 		"and there is still exactly one OK, the popup's own",
 	);
 
-	ctx.api.closeMoveToOverlayUI();
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.closeGoToOverlayUI();
+	ctx.api.showGoToOverlay({ mode: "main" });
 	assert.equal(
-		lifted(ctx.nodes.moveToOverlay),
+		lifted(ctx.nodes.goToOverlay),
 		true,
 		"and it is lifted again for as long as a pad is over it",
 	);
 });
 
-test("with no pad open the move-to is not lifted at all", async () => {
+test("with no pad open the go-to is not lifted at all", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
-	ctx.api.showMoveToOverlay({ mode: "main" });
+	ctx.api.setAutoTypingActive(true);
+	ctx.api.showGoToOverlay({ mode: "main" });
 
 	assert.equal(
-		lifted(ctx.nodes.moveToOverlay),
+		lifted(ctx.nodes.goToOverlay),
 		false,
 		"nothing is covering it, so there is nothing to rise above",
 	);
 	assert.notEqual(
-		ctx.nodes.mtoConfirm.style.display,
+		ctx.nodes.gtoConfirm.style.display,
 		"none",
 		"the popup is the only way to dismiss it, so its button must stay",
 	);
@@ -668,7 +668,7 @@ test("the interaction overlay is covered like the others: its text input rides t
 
 test("with the pad closed the popup is left exactly as it renders", async () => {
 	const ctx = build();
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
 
 	assert.equal(lifted(ctx.nodes.questionOverlay), false);
@@ -689,8 +689,8 @@ test("only the overlays that opt in are handed to the pad", () => {
 	);
 
 	ctx.nodes.interactionOverlay.classList.remove("active");
-	ctx.nodes.moveToOverlay.classList.add("active");
-	assert.equal(ctx.api.activePadOverlay().overlayId, "moveToOverlay");
+	ctx.nodes.goToOverlay.classList.add("active");
+	assert.equal(ctx.api.activePadOverlay().overlayId, "goToOverlay");
 });
 
 test("the auto-pilot button is only pressable while auto-typing is on", () => {
@@ -701,23 +701,23 @@ test("the auto-pilot button is only pressable while auto-typing is on", () => {
 		"the page ships it disabled; nothing has touched it yet",
 	);
 
-	ctx.api.setSessionActive(false);
+	ctx.api.setAutoTypingActive(false);
 	assert.equal(ctx.nodes.autoPilotBtn.disabled, true);
 	ctx.api.requestAutoPilot();
 	assert.deepEqual(ctx.sent, [], "a press that gets through asks for nothing");
 
-	ctx.api.setSessionActive(true);
+	ctx.api.setAutoTypingActive(true);
 	assert.equal(ctx.nodes.autoPilotBtn.disabled, false);
 	ctx.api.requestAutoPilot();
 	assert.deepEqual(ctx.sent, [
 		{ type: "set-auto-pilot", data: { autoPilot: true } },
 	]);
 
-	ctx.api.setSessionActive(false);
+	ctx.api.setAutoTypingActive(false);
 	assert.equal(
 		ctx.nodes.autoPilotBtn.disabled,
 		true,
-		"and it goes again when typing stops",
+		"and it goes again when auto-typing stops",
 	);
 });
 

@@ -1,10 +1,10 @@
-const { blockKindOf, kindClass } = require("../shared/blocks");
-const { KIND_PLACEHOLDERS } = require("./block-types");
+const { blockTypeOf, typeClass } = require("../shared/blocks");
+const { TYPE_PLACEHOLDERS } = require("./block-types");
 
 class UIManager {
 	constructor() {
 		this.elements = {};
-		this.isTypingActive = false;
+		this.isAutoTypingActive = false;
 		this.remotesConnected = false;
 		this.selectedBlockIndex = null;
 		this.selectedIndices = new Set();
@@ -24,23 +24,23 @@ class UIManager {
 		};
 	}
 
-	setTypingActive(active) {
-		this.isTypingActive = active;
+	setAutoTypingActive(active) {
+		this.isAutoTypingActive = active;
 
 		if (active) {
 			this.elements.toggleBtn.textContent = "❚❚";
-			this.elements.toggleBtn.title = "Stop Auto-typing";
+			this.elements.toggleBtn.title = "Stop auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-start");
 			this.elements.toggleBtn.classList.add("btn-stop");
 			this.elements.editorSidebar.classList.add("hidden");
-			document.body.classList.add("typing-active");
+			document.body.classList.add("auto-typing-active");
 		} else {
 			this.elements.toggleBtn.textContent = "▶︎";
-			this.elements.toggleBtn.title = "Start Auto-typing";
+			this.elements.toggleBtn.title = "Start auto-typing";
 			this.elements.toggleBtn.classList.remove("btn-stop");
 			this.elements.toggleBtn.classList.add("btn-start");
 			this.elements.editorSidebar.classList.remove("hidden");
-			document.body.classList.remove("typing-active");
+			document.body.classList.remove("auto-typing-active");
 		}
 	}
 
@@ -140,15 +140,15 @@ class UIManager {
 	}
 
 	isActive() {
-		return this.isTypingActive;
+		return this.isAutoTypingActive;
 	}
 
 	createBlockElement(block, blockIdx) {
 		const blockDiv = document.createElement("div");
-		blockDiv.className = `block ${kindClass(blockKindOf(block))}`;
+		blockDiv.className = `block ${typeClass(blockTypeOf(block))}`;
 
 		const placeholder =
-			block.placeholder || KIND_PLACEHOLDERS[blockKindOf(block)];
+			block.placeholder || TYPE_PLACEHOLDERS[blockTypeOf(block)];
 		if (placeholder) blockDiv.dataset.placeholder = placeholder;
 
 		if (this.selectedBlockIndex === blockIdx) {
@@ -157,8 +157,8 @@ class UIManager {
 			blockDiv.classList.add("multi-selected");
 		}
 
-		if (block.fromInclude) {
-			blockDiv.classList.add("from-include");
+		if (block.fromStart) {
+			blockDiv.classList.add("from-start");
 		}
 
 		return blockDiv;
@@ -227,10 +227,10 @@ class UIManager {
 		return island;
 	}
 
-	attachKindPicker(blockDiv, { glyph, title, disabled, onClick }) {
+	attachTypePicker(blockDiv, { glyph, title, disabled, onClick }) {
 		const btn = document.createElement("button");
 		btn.type = "button";
-		btn.className = "block-kind";
+		btn.className = "block-type";
 		btn.textContent = glyph;
 		btn.title = title;
 		btn.disabled = !!disabled;
@@ -238,7 +238,7 @@ class UIManager {
 		btn.addEventListener("click", () => {
 			if (!btn.disabled) onClick(btn);
 		});
-		blockDiv.classList.add("has-kind");
+		blockDiv.classList.add("has-type");
 		blockDiv.insertBefore(btn, blockDiv.firstChild);
 		return btn;
 	}
@@ -261,6 +261,15 @@ class UIManager {
 		if (!node) return false;
 		const el = node.nodeType === 1 ? node : node.parentElement;
 		return !!(el && el.closest && el.closest("[data-block-opt]"));
+	}
+
+	static blockElement(index) {
+		return document.querySelectorAll(".block")[index] || null;
+	}
+
+	static blockIndexOf(el) {
+		const index = [...document.querySelectorAll(".block")].indexOf(el);
+		return index < 0 ? null : index;
 	}
 
 	static caretAtTextEnd(el) {
@@ -292,7 +301,7 @@ class UIManager {
 
 	refocusBlock(blockIdx) {
 		setTimeout(() => {
-			const block = document.querySelectorAll(".block")[blockIdx];
+			const block = UIManager.blockElement(blockIdx);
 			if (!block || block.contentEditable !== "true") return;
 			block.focus();
 			UIManager.putCaret(block, null);
@@ -301,8 +310,7 @@ class UIManager {
 
 	focusBlock(blockIdx, clickX, clickY) {
 		setTimeout(() => {
-			const blocks = document.querySelectorAll(".block");
-			const targetBlock = blocks[blockIdx];
+			const targetBlock = UIManager.blockElement(blockIdx);
 			if (targetBlock) {
 				targetBlock.focus();
 				UIManager.putCaret(

@@ -8,12 +8,12 @@ const LessonRenderer = require("../src/renderer/lesson-renderer");
 const INHERITED = {
 	type: "comment",
 	text: "📋 <!DOCTYPE html>\n<html>\n</html>",
-	fromInclude: true,
+	fromStart: true,
 };
 const START_FILE = {
 	type: "comment",
 	text: "📋 <!DOCTYPE html>\n<html>\n</html>",
-	fromInclude: true,
+	fromStart: true,
 	startFile: "index.html",
 	startText: "<!DOCTYPE html>\n<html>\n</html>",
 };
@@ -35,7 +35,7 @@ function fakeBlockDiv() {
 	};
 }
 
-function makeRenderer({ blocks, selected = null, typing = false }) {
+function makeRenderer({ blocks, selected = null, autoTyping = false }) {
 	const calls = {
 		selected: [],
 		renders: 0,
@@ -51,12 +51,12 @@ function makeRenderer({ blocks, selected = null, typing = false }) {
 			canRemoveBlocks: () => true,
 		},
 		{
-			isActive: () => typing,
+			isActive: () => autoTyping,
 			getSelectedBlockIndex: () => selected,
 			selectBlock: (i) => calls.selected.push(i),
 			setSidebarEnabled: (enabled) => calls.sidebar.push(enabled),
 			setStartCollapsed: (c) => calls.startCollapsed.push(c),
-			attachKindPicker: () => {},
+			attachTypePicker: () => {},
 			attachBlockIsland: (el, island) => {
 				calls.islands.push(island);
 				if (island.option) calls.appended.push(island.option);
@@ -70,13 +70,13 @@ function makeRenderer({ blocks, selected = null, typing = false }) {
 	return { renderer, calls };
 }
 
-function renderComment(renderer, blocks, blockIdx, typing = false) {
+function renderComment(renderer, blocks, blockIdx, autoTyping = false) {
 	const blockDiv = fakeBlockDiv();
-	renderer.renderKindBlock({
+	renderer.renderCommentBlock({
 		blockDiv,
 		block: blocks[blockIdx],
 		blockIdx,
-		isTypingActive: typing,
+		isAutoTypingActive: autoTyping,
 		stepIndex: 0,
 		steps: [],
 	});
@@ -100,7 +100,7 @@ test("clicking an inherited paste expands it without selecting it", () => {
 
 	assert.deepEqual(calls.selected, []);
 	assert.equal(calls.renders, 1);
-	assert.equal(renderer.expandedIncludes.has(0), true);
+	assert.equal(renderer.expandedStartFiles.has(0), true);
 
 	const div = renderComment(renderer, blocks, 0);
 	assert.equal(div.classList.contains("collapsed"), false);
@@ -110,7 +110,7 @@ test("clicking an inherited paste expands it without selecting it", () => {
 test("an expanded inherited paste is still read-only", () => {
 	const blocks = [INHERITED];
 	const { renderer } = makeRenderer({ blocks });
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 	const div = renderComment(renderer, blocks, 0);
 	assert.equal(div.contentEditable, false);
 });
@@ -122,7 +122,7 @@ test("clicking an expanded inherited paste collapses it again", () => {
 	renderer.handleBlockClick({}, blocks[0], 0);
 	renderer.handleBlockClick({}, blocks[0], 0);
 
-	assert.equal(renderer.expandedIncludes.has(0), false);
+	assert.equal(renderer.expandedStartFiles.has(0), false);
 	assert.equal(
 		renderComment(renderer, blocks, 0).classList.contains("collapsed"),
 		true,
@@ -154,21 +154,21 @@ test("an authored paste still expands by selection, not by the include set", () 
 	assert.equal(div.contentEditable, true);
 });
 
-test("a click while typing neither expands nor selects", () => {
+test("a click while auto-typing neither expands nor selects", () => {
 	const blocks = [INHERITED];
-	const { renderer, calls } = makeRenderer({ blocks, typing: true });
+	const { renderer, calls } = makeRenderer({ blocks, autoTyping: true });
 
 	renderer.handleBlockClick({}, blocks[0], 0);
 
-	assert.equal(renderer.expandedIncludes.size, 0);
+	assert.equal(renderer.expandedStartFiles.size, 0);
 	assert.equal(calls.renders, 0);
 	assert.deepEqual(calls.selected, []);
 });
 
-test("an expanded inherited paste stays collapsed once typing starts", () => {
+test("an expanded inherited paste stays collapsed once auto-typing starts", () => {
 	const blocks = [INHERITED];
 	const { renderer } = makeRenderer({ blocks });
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 	assert.equal(
 		renderComment(renderer, blocks, 0, true).classList.contains("collapsed"),
 		true,
@@ -178,35 +178,35 @@ test("an expanded inherited paste stays collapsed once typing starts", () => {
 test("dragging the scrollbar of an expanded paste does not fold it shut", () => {
 	const blocks = [INHERITED];
 	const { renderer, calls } = makeRenderer({ blocks });
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 
 	renderer.handleBlockClick(
 		{ currentTarget: { clientWidth: 300 }, offsetX: 308 },
 		blocks[0],
 		0,
 	);
-	assert.equal(renderer.expandedIncludes.has(0), true);
+	assert.equal(renderer.expandedStartFiles.has(0), true);
 
 	renderer.handleBlockClick(
 		{ currentTarget: { clientWidth: 300 }, offsetX: 120 },
 		blocks[0],
 		0,
 	);
-	assert.equal(renderer.expandedIncludes.has(0), false);
+	assert.equal(renderer.expandedStartFiles.has(0), false);
 	assert.deepEqual(calls.selected, []);
 });
 
 test("an open start file is editable, so anchors can be placed in it", () => {
 	const blocks = [START_FILE];
 	const { renderer } = makeRenderer({ blocks });
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 	const div = renderComment(renderer, blocks, 0);
 	assert.equal(div.contentEditable, true);
 	assert.equal(div.classList.contains("start-file"), true);
 	assert.equal(
 		renderComment(renderer, blocks, 0, true).contentEditable,
 		"false",
-		"but never while typing: it is rendered collapsed and inert then",
+		"but never while auto-typing: it is rendered collapsed and inert then",
 	);
 });
 
@@ -215,10 +215,10 @@ test("a click inside an open start file leaves it open, for the caret", () => {
 	const { renderer, calls } = makeRenderer({ blocks });
 
 	renderer.handleBlockClick({}, blocks[0], 0);
-	assert.equal(renderer.expandedIncludes.has(0), true, "the first opens it");
+	assert.equal(renderer.expandedStartFiles.has(0), true, "the first opens it");
 	renderer.handleBlockClick({}, blocks[0], 0);
 	assert.equal(
-		renderer.expandedIncludes.has(0),
+		renderer.expandedStartFiles.has(0),
 		true,
 		"a second click places the caret instead of folding it shut",
 	);
@@ -229,21 +229,25 @@ test("the ▾ on the left of an open start file is what folds it", () => {
 	const blocks = [START_FILE];
 	const { renderer, calls } = makeRenderer({ blocks });
 	renderer._onFoldArrow = (e) => e.onArrow === true;
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 
 	renderer.handleBlockClick({ onArrow: false }, blocks[0], 0);
 	assert.equal(
-		renderer.expandedIncludes.has(0),
+		renderer.expandedStartFiles.has(0),
 		true,
 		"the text takes the caret",
 	);
 
 	renderer.handleBlockClick({ onArrow: true }, blocks[0], 0);
-	assert.equal(renderer.expandedIncludes.has(0), false, "the arrow folds it");
+	assert.equal(
+		renderer.expandedStartFiles.has(0),
+		false,
+		"the arrow folds it",
+	);
 	assert.deepEqual(calls.selected, []);
 
 	renderComment(renderer, blocks, 0);
-	renderer.toggleIncludeExpanded(0);
+	renderer.toggleStartFile(0);
 	renderComment(renderer, blocks, 0);
 	assert.equal(
 		calls.islands.some((i) => (i.tools || []).some((t) => t.glyph === "▴")),
@@ -252,13 +256,13 @@ test("the ▾ on the left of an open start file is what folds it", () => {
 	);
 });
 
-test("an arrow click while typing folds nothing", () => {
+test("an arrow click while auto-typing folds nothing", () => {
 	const blocks = [START_FILE];
-	const { renderer } = makeRenderer({ blocks, typing: true });
+	const { renderer } = makeRenderer({ blocks, autoTyping: true });
 	renderer._onFoldArrow = () => true;
-	renderer.expandedIncludes.add(0);
+	renderer.expandedStartFiles.add(0);
 	renderer.handleBlockClick({}, blocks[0], 0);
-	assert.equal(renderer.expandedIncludes.has(0), true);
+	assert.equal(renderer.expandedStartFiles.has(0), true);
 });
 
 test("the ▾ of an open start file shows it can be clicked", () => {
@@ -270,7 +274,7 @@ test("the ▾ of an open start file shows it can be clicked", () => {
 		.replace(/\r\n/g, "\n");
 	assert.match(
 		css,
-		/\n\.block\.from-include\.start-file:not\(\.collapsed\)::before \{\n\tcursor: pointer;/,
+		/\n\.block\.from-start\.start-file:not\(\.collapsed\)::before \{\n\tcursor: pointer;/,
 	);
 	assert.equal(/block-opt-fold/.test(css), false);
 });
@@ -281,7 +285,7 @@ test("the include row itself is never expandable", () => {
 
 	renderer.handleBlockClick({}, blocks[0], 0);
 
-	assert.equal(renderer.expandedIncludes.size, 0);
+	assert.equal(renderer.expandedStartFiles.size, 0);
 	assert.equal(calls.renders, 0);
 	assert.deepEqual(
 		calls.startCollapsed,
@@ -333,9 +337,9 @@ test("the Starting Code section is folded until its row is clicked", () => {
 	assert.deepEqual(calls.selected, [], "and the row is never selected");
 });
 
-test("the section folds while typing too, since nothing is re-rendered", () => {
+test("the section folds while auto-typing too, since nothing is re-rendered", () => {
 	const blocks = [SLOT];
-	const { renderer, calls } = makeRenderer({ blocks, typing: true });
+	const { renderer, calls } = makeRenderer({ blocks, autoTyping: true });
 	renderer.handleBlockClick({}, blocks[0], 0);
 	assert.equal(renderer.startCollapsed, false);
 	assert.deepEqual(calls.startCollapsed, [false]);
@@ -346,7 +350,7 @@ test("folding the section hides an open start file from the ⚓ keys", () => {
 	const blocks = [SLOT, START_FILE];
 	const { renderer, calls } = makeRenderer({ blocks });
 	renderer.handleBlockClick({}, blocks[0], 0);
-	renderer.expandedIncludes.add(1);
+	renderer.expandedStartFiles.add(1);
 	renderer.handleBlockClick({}, blocks[0], 0);
 	assert.equal(calls.sidebar.at(-1), false);
 	renderer.handleBlockClick({}, blocks[0], 0);
@@ -367,7 +371,7 @@ test("inherited blocks are hidden by the section, on both surfaces", () => {
 	const css = src("shared/styles.css");
 	assert.match(
 		css,
-		/\n\.start-collapsed \.block\.from-include \{\n\tdisplay: none;\n\}/,
+		/\n\.start-collapsed \.block\.from-start \{\n\tdisplay: none;\n\}/,
 	);
 	assert.match(
 		css,

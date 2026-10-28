@@ -24,4 +24,4 @@ function readTextFileSync(filePath) {
 	return decodeBuffer(fs.readFileSync(filePath));
 }
 
-module.exports = { readTextFileSync };
+module.exports = { decodeBuffer, readTextFileSync };

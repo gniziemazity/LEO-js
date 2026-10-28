@@ -8,7 +8,7 @@ const { loadModule, fakeIpcRenderer } = require("./helpers/load-module.js");
 
 function makeCursorManager(steps) {
 	const ipc = fakeIpcRenderer({
-		invoke: async () => ({ autoTypingSpeed: 10 }),
+		invoke: async () => ({ autoRunSpeed: 10 }),
 	});
 	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
 		electron: ipc.stub,
@@ -33,17 +33,17 @@ const char = (c = "a") => ({ type: "char", char: c, element: element() });
 
 const PAUSING = [
 	["note", block("Remember this")],
-	["move-to", block("", { kind: "move-to", target: "MAIN" })],
-	["code-insert", block("📋 const x = 1;")],
+	["go-to", block("", { blockType: "go-to", target: "MAIN" })],
+	["snippet", block("📋 const x = 1;")],
 	["image", block("🖼️ pic.png")],
 	["web", block("🌐 http://example.com")],
 ];
 
-for (const [kind, step] of PAUSING) {
-	test(`OK on a ${kind} moves on, so the next key types`, () => {
+for (const [type, step] of PAUSING) {
+	test(`OK on a ${type} moves on, so the next key types`, () => {
 		const { cm, sent } = makeCursorManager([step, char("x")]);
 		cm.updateCursor();
-		cm.confirmSpecial(kind);
+		cm.confirmSpecial(type);
 		assert.equal(cm.currentStepIndex, 1, "the block is passed on OK");
 
 		sent.length = 0;
@@ -58,14 +58,14 @@ for (const [kind, step] of PAUSING) {
 
 test("the popup after the one confirmed opens straight away", () => {
 	const { cm } = makeCursorManager([
-		block("", { kind: "move-to", target: "MAIN" }),
+		block("", { blockType: "go-to", target: "MAIN" }),
 		block("Now explain it"),
 		char(),
 	]);
 	const notes = [];
 	cm.onEnterNoteBlock = (p) => notes.push(p.text);
 	cm.updateCursor();
-	cm.confirmSpecial("move-to");
+	cm.confirmSpecial("go-to");
 	assert.deepEqual(notes, ["Now explain it"]);
 	assert.equal(cm.currentStepIndex, 1);
 });

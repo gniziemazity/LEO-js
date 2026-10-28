@@ -131,7 +131,7 @@ function formatHit(hit, simple = false) {
 			const entries = bar.studentEntries || [];
 			if (!entries.length) {
 				_barBlockStudents = [];
-				return `<b>${tokenEsc}</b>${tagStr}<br><span style="color:#aaa">no mismatches</span>`;
+				return `<b>${tokenEsc}</b>${tagStr}<br><span style="color:${THEME.codeMuted}">no mismatches</span>`;
 			}
 			const sorted = [...entries].sort(
 				(a, b) => (b.s.follow_pct ?? 0) - (a.s.follow_pct ?? 0),
@@ -148,7 +148,7 @@ function formatHit(hit, simple = false) {
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
 			lines.push(
-				`<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(trimmed)}</span>`,
+				`<span class="tt-mark-extra tt-pasted">${escHtml(trimmed)}</span>`,
 			);
 			break;
 		}
@@ -353,7 +353,7 @@ function formatHitSimple(hit) {
 			const trimmed = raw
 				.replace(/^(?:[ \t]*\n)+/, "")
 				.replace(/\n+[ \t]*$/, "");
-			return `<span style="color:${THEME.black};text-decoration:underline ${THEME.codeMuted}">${escHtml(trimmed)}</span>`;
+			return `<span class="tt-mark-extra tt-pasted">${escHtml(trimmed)}</span>`;
 		}
 		case "interaction": {
 			const q = hit.q;

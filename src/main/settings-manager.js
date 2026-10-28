@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { writeFileAtomicSync } = require("../shared/atomic-write");
 const {
 	COLOR_SETTINGS,
 	HOTKEY_SETTINGS,
@@ -14,6 +15,15 @@ const RENAMED_COLORS = {
 	commentActive: "activeBlockColor",
 	commentActiveText: "activeBlockTextColor",
 	commentSelected: "selectedBlockColor",
+	codeBlockColor: "codeColor",
+	imageBlockColor: "imageColor",
+	moveToBlockColor: "goToColor",
+	moveToColor: "goToColor",
+	moveToTextColor: "goToTextColor",
+};
+
+const RENAMED_SETTINGS = {
+	autoTypingSpeed: "autoRunSpeed",
 };
 
 const RETIRED_SETTINGS = ["mode"];
@@ -22,15 +32,19 @@ function deepClone(value) {
 	return JSON.parse(JSON.stringify(value));
 }
 
-function migrateColors(colors) {
-	const out = { ...(colors || {}) };
-	for (const [was, now] of Object.entries(RENAMED_COLORS)) {
+function renameKeys(source, renames) {
+	const out = { ...(source || {}) };
+	for (const [was, now] of Object.entries(renames)) {
 		if (was in out) {
 			if (!(now in out)) out[now] = out[was];
 			delete out[was];
 		}
 	}
 	return out;
+}
+
+function migrateColors(colors) {
+	return renameKeys(colors, RENAMED_COLORS);
 }
 
 class SettingsManager {
@@ -45,7 +59,7 @@ class SettingsManager {
 			colors: defaultsFrom(COLOR_SETTINGS),
 			fontSize: 14,
 			hotkeyMode: "single-key",
-			autoTypingSpeed: 50,
+			autoRunSpeed: 50,
 			touchpadSensitivity: 3,
 			touchpadSide: "right",
 			floatingTheme: "solid",
@@ -67,7 +81,7 @@ class SettingsManager {
 		try {
 			if (fs.existsSync(this.settingsPath)) {
 				const data = fs.readFileSync(this.settingsPath, "utf8");
-				const saved = JSON.parse(data);
+				const saved = renameKeys(JSON.parse(data), RENAMED_SETTINGS);
 				for (const key of RETIRED_SETTINGS) delete saved[key];
 				const defaults = this.defaults();
 				return {
@@ -91,7 +105,7 @@ class SettingsManager {
 
 	save() {
 		try {
-			fs.writeFileSync(
+			writeFileAtomicSync(
 				this.settingsPath,
 				JSON.stringify(this.settings, null, 2),
 			);
@@ -136,3 +150,4 @@ class SettingsManager {
 module.exports = SettingsManager;
 module.exports.migrateColors = migrateColors;
 module.exports.RENAMED_COLORS = RENAMED_COLORS;
+module.exports.RENAMED_SETTINGS = RENAMED_SETTINGS;

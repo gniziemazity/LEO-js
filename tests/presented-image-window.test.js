@@ -22,17 +22,17 @@ test("an image the carousel put up is closed by the next step, like a 🖼️ bl
 	const { cm, types } = makeCursorManager();
 	cm.markImageWindowOpen();
 
-	cm._leaveSpecialBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
 	assert.ok(
 		types().includes("close-image-window"),
-		"typing on must take the image down, or it sits over the lesson forever",
+		"carrying on auto-typing must take the image down, or it sits over the lesson forever",
 	);
 });
 
 test("the close is the pin-aware one, so a pinned image survives the step", () => {
 	const { cm, sent } = makeCursorManager();
 	cm.markImageWindowOpen();
-	cm._leaveSpecialBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
 
 	const closes = sent.filter((m) => m.ch.endsWith("close-image-window"));
 	assert.deepEqual(
@@ -45,9 +45,9 @@ test("the close is the pin-aware one, so a pinned image survives the step", () =
 test("it is asked to close once, not on every step after", () => {
 	const { cm, sent } = makeCursorManager();
 	cm.markImageWindowOpen();
-	cm._leaveSpecialBlocksExcept("code");
-	cm._leaveSpecialBlocksExcept("code");
-	cm._leaveSpecialBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
 
 	assert.equal(
 		sent.filter((m) => m.ch === "close-image-window").length,
@@ -58,7 +58,7 @@ test("it is asked to close once, not on every step after", () => {
 
 test("with nothing presented, stepping closes no image window", () => {
 	const { cm, types } = makeCursorManager();
-	cm._leaveSpecialBlocksExcept("code");
+	cm._leaveSupportBlocksExcept("code");
 	assert.equal(types().includes("close-image-window"), false);
 });
 

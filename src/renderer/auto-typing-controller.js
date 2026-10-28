@@ -1,6 +1,6 @@
 const { ipcRenderer } = require("electron");
 
-class TypingController {
+class AutoTypingController {
 	constructor(uiManager, lessonRenderer, cursorManager) {
 		this.uiManager = uiManager;
 		this.lessonRenderer = lessonRenderer;
@@ -14,7 +14,7 @@ class TypingController {
 			this.uiManager.deselectBlock();
 		}
 
-		this.uiManager.setTypingActive(isCurrentlyInactive);
+		this.uiManager.setAutoTypingActive(isCurrentlyInactive);
 		ipcRenderer.send("set-active", isCurrentlyInactive);
 
 		this.lessonRenderer.render();
@@ -25,4 +25,4 @@ class TypingController {
 	}
 }
 
-module.exports = TypingController;
+module.exports = AutoTypingController;

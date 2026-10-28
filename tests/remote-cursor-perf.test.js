@@ -8,7 +8,7 @@ const LESSON = {
 	blocks: [
 		{ type: "comment", text: "A title" },
 		{ type: "code", text: "let a = 1;\nlet b = 2;" },
-		{ type: "move-to", target: "app.js" },
+		{ type: "go-to", target: "app.js" },
 		{ type: "code", text: "console.log(a + b);" },
 		{ type: "comment", text: "📋 paste me" },
 	],

@@ -6,7 +6,7 @@ function createAutoPilot({
 	graceMs = DEFAULT_GRACE_MS,
 }) {
 	let graceTimer = null;
-	let resumeWithTyping = false;
+	let resumeWithAutoTyping = false;
 
 	function cancelGrace() {
 		if (!graceTimer) return;
@@ -21,7 +21,7 @@ function createAutoPilot({
 	}
 
 	function set(on) {
-		resumeWithTyping = false;
+		resumeWithAutoTyping = false;
 		apply(
 			on === true &&
 				state.isActive === true &&
@@ -31,12 +31,12 @@ function createAutoPilot({
 
 	function onActiveChanged() {
 		if (!state.isActive) {
-			if (state.autoPilot) resumeWithTyping = true;
+			if (state.autoPilot) resumeWithAutoTyping = true;
 			apply(false);
 			return;
 		}
-		const resume = resumeWithTyping;
-		resumeWithTyping = false;
+		const resume = resumeWithAutoTyping;
+		resumeWithAutoTyping = false;
 		if (resume) apply(broadcastServer.clientCount() > 0);
 	}
 

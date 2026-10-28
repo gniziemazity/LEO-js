@@ -1,40 +1,29 @@
 "use strict";
 
 function parseStudentRows(remarksBuf) {
-	const wbR = XLSX.read(remarksBuf, { type: "array", cellStyles: true });
-	const sheetName = wbR.Sheets["Remarks"] ? "Remarks" : wbR.SheetNames[0];
-	const wsR = wbR.Sheets[sheetName];
-	const rowsR = XLSX.utils.sheet_to_json(wsR, {
-		header: 1,
-		defval: "",
-	});
-	const hdrR = (rowsR[0] || []).map((h) => String(h || "").trim());
+	const {
+		wb: wbR,
+		sheetName,
+		ws: wsR,
+		rows: rowsR,
+		hdr: hdrR,
+	} = readRemarksSheet(remarksBuf, { cellStyles: true });
 
 	const iName = findCol(hdrR, /^(student|name|student.?name)$/i);
 	const iId = findCol(hdrR, /^(student.?id|id)$/i);
 	const iNum = findCol(hdrR, /^(number|no\.?|phone|tel|student.?no\.?)$/i);
-	let iFollowPct = hdrR.indexOf("Follow (E)");
-	let iFollowDesc = hdrR.indexOf("Follow (E) Desc");
-	const iSimilarity = iFollowPct === -1 ? hdrR.indexOf("Similarity") : -1;
-	if (iSimilarity !== -1) {
-		iFollowPct = iSimilarity;
-		iFollowDesc = hdrR.indexOf("Similarity Desc");
-	}
-	const isSimilarity = iSimilarity !== -1;
+	const {
+		pct: iFollowPct,
+		desc: iFollowDesc,
+		isSimilarity,
+	} = remarksScoreCols(hdrR);
 	let iCommentDesc = hdrR.indexOf("Follow (C) Desc");
 	if (iCommentDesc === -1) iCommentDesc = hdrR.indexOf("Sim (C) Desc");
 	const iRemarksDesc = findCol(hdrR, /^remarks?\s*desc/i);
 
 	const iInteractions = findCol(hdrR, /^interactions?$/i);
 	const iExcluded = hdrR.indexOf("Category");
-	const langIdx = {};
-	const langDescIdx = {};
-	for (const def of LANG_COL_DEFS) {
-		const i = hdrR.indexOf(def.header);
-		if (i !== -1) langIdx[def.key] = i;
-		const di = hdrR.indexOf(def.descHeader);
-		if (di !== -1) langDescIdx[def.key] = di;
-	}
+	const langCols = remarksLangCols(hdrR);
 	const specialSet = new Set(
 		[
 			iName,
@@ -44,8 +33,7 @@ function parseStudentRows(remarksBuf) {
 			iFollowDesc,
 			iRemarksDesc,
 			iInteractions,
-			...Object.values(langIdx),
-			...Object.values(langDescIdx),
+			...langCols.flatMap((c) => [c.pct, c.desc]),
 		].filter((i) => i !== -1),
 	);
 
@@ -137,27 +125,20 @@ function parseStudentRows(remarksBuf) {
 		const langParser = isSimilarity
 			? parseSimilarityEvents
 			: parseFollowEvents;
-		for (const def of LANG_COL_DEFS) {
-			if (langIdx[def.key] != null) {
-				const v = parseFloat(row[langIdx[def.key]]);
-				if (!isNaN(v)) langPcts[def.key] = v;
+		for (const col of langCols) {
+			if (col.pct !== -1) {
+				const v = parseFloat(row[col.pct]);
+				if (!isNaN(v)) langPcts[col.key] = v;
 			}
-			if (langDescIdx[def.key] != null) {
-				const descText = String(row[langDescIdx[def.key]] ?? "");
+			if (col.desc !== -1) {
+				const descText = String(row[col.desc] ?? "");
 				for (const ev of langParser(descText)) {
-					ev.lang = def.key;
+					ev.lang = col.key;
 					langEvents.push(ev);
 				}
 			}
 		}
-		const _evLangOf = new Map();
-		for (const ev of langEvents) {
-			_evLangOf.set(`${ev.kind}|${ev.token}|${ev.ts}`, ev.lang);
-		}
-		for (const ev of followEvents) {
-			const _lang = _evLangOf.get(`${ev.kind}|${ev.token}|${ev.ts}`);
-			if (_lang) ev.lang = _lang;
-		}
+		tagEventLangs(followEvents, langEvents);
 		const commentDescText =
 			iCommentDesc !== -1 ? String(row[iCommentDesc] ?? "") : "";
 		const commentParser =

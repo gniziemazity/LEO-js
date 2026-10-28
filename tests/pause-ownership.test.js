@@ -94,7 +94,7 @@ test("a phone that vanishes without closing its picker still releases the pause"
 	assert.equal(
 		state.isPaused,
 		false,
-		"typing hotkeys would stay dead for the rest of the session",
+		"auto-typing hotkeys would stay dead for the rest of the session",
 	);
 	state.pauseReasons.clear();
 });

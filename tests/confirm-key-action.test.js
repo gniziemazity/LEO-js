@@ -39,8 +39,8 @@ function harness(settings = {}) {
 			hotkeyManager: {
 				registerConfirmPopup: (cb) => (confirmKey = cb),
 				unregisterConfirmPopup: () => (confirmKey = null),
-				releaseTypingHotkeysFor: () => [],
-				restoreTypingHotkeys() {},
+				releaseAutoTypingHotkeysFor: () => [],
+				restoreAutoTypingHotkeys() {},
 			},
 		},
 		"./state": {
@@ -61,7 +61,7 @@ function harness(settings = {}) {
 
 test("Ctrl+Enter on a snippet with Paste pastes it, then carries on", async () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "let a;", paste: true });
+	h.popups.enterPopup("snippet", { text: "let a;", paste: true });
 	await h.press();
 
 	assert.deepEqual(
@@ -69,13 +69,13 @@ test("Ctrl+Enter on a snippet with Paste pastes it, then carries on", async () =
 		[["keys", ["Ctrl", "V"], "let a;"]],
 		"the snippet, not what was copied before, is on the clipboard at the press",
 	);
-	assert.deepEqual(h.sends(), ["code-insert-confirmed"]);
-	assert.equal(h.popups.openPopupKind(), null);
+	assert.deepEqual(h.sends(), ["snippet-confirmed"]);
+	assert.equal(h.popups.openPopupType(), null);
 });
 
 test("the paste settles before the clipboard is handed back", async () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "let a;", paste: true });
+	h.popups.enterPopup("snippet", { text: "let a;", paste: true });
 	const started = Date.now();
 	await h.press();
 	assert.ok(
@@ -87,18 +87,18 @@ test("the paste settles before the clipboard is handed back", async () => {
 
 test("Ctrl+Enter on a log-only snippet just confirms it", () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "let a;", paste: false });
+	h.popups.enterPopup("snippet", { text: "let a;", paste: false });
 	h.press();
 	assert.deepEqual(h.keys(), [], "nothing was held, so nothing is pasted");
-	assert.deepEqual(h.sends(), ["code-insert-confirmed"]);
+	assert.deepEqual(h.sends(), ["snippet-confirmed"]);
 });
 
 test("the phone's Paste closes the popup the same way", async () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "x", paste: true });
+	h.popups.enterPopup("snippet", { text: "x", paste: true });
 	await h.popups.pasteAndConfirm();
 	assert.equal(h.keys().length, 1);
-	assert.deepEqual(h.sends(), ["code-insert-confirmed"]);
+	assert.deepEqual(h.sends(), ["snippet-confirmed"]);
 
 	await h.popups.pasteAndConfirm();
 	assert.equal(h.keys().length, 1, "no popup, no paste");
@@ -106,26 +106,26 @@ test("the phone's Paste closes the popup the same way", async () => {
 
 test("a popup that changed while the paste settled is left alone", async () => {
 	const h = harness();
-	h.popups.enterPopup("code-insert", { text: "x", paste: true });
+	h.popups.enterPopup("snippet", { text: "x", paste: true });
 	const pending = h.popups.pasteAndConfirm();
-	h.popups.endPopup("code-insert");
-	h.popups.enterPopup("code-insert", { text: "y", paste: true });
+	h.popups.endPopup("snippet");
+	h.popups.enterPopup("snippet", { text: "y", paste: true });
 	await pending;
 	assert.deepEqual(h.sends(), [], "the next snippet is not confirmed unseen");
-	assert.equal(h.popups.openPopupKind(), "code-insert");
+	assert.equal(h.popups.openPopupType(), "snippet");
 });
 
-test("Ctrl+Enter on a move-to that creates a file starts typing its name", async () => {
+test("Ctrl+Enter on a go-to that creates a file starts typing its name", async () => {
 	const h = harness();
 	const progress = [];
 	h.popups.setNameProgressHandler((p) => progress.push(p));
-	h.popups.enterPopup("move-to", {
+	h.popups.enterPopup("go-to", {
 		mode: "file",
 		target: "app.js",
 		typeName: true,
 	});
 	h.press();
-	assert.equal(h.popups.hasPendingName(), true, "same as pressing Auto-type");
+	assert.equal(h.popups.hasPendingName(), true, "same as pressing Type name");
 	assert.deepEqual(h.sends(), [], "and it does not skip the name");
 	assert.deepEqual(
 		h.keys(),
@@ -146,13 +146,13 @@ test("Ctrl+Enter on a move-to that creates a file starts typing its name", async
 	for (let i = 1; i < "app.js".length; i++) await h.popups.typeNextNameChar();
 	assert.deepEqual(
 		h.sends(),
-		["move-to-confirmed"],
-		"the typing keys finish the name, and the last one confirms",
+		["go-to-confirmed"],
+		"the auto-typing keys finish the name, and the last one confirms",
 	);
 });
 
 const armName = (h) => {
-	h.popups.enterPopup("move-to", {
+	h.popups.enterPopup("go-to", {
 		mode: "file",
 		target: "app.js",
 		typeName: true,
@@ -166,8 +166,8 @@ const settle = async (done) => {
 	}
 };
 
-test("in Single Key mode each typing key types one letter of the name", async () => {
-	const h = harness({ hotkeyMode: "single-key", autoTypingSpeed: 1 });
+test("in Single Key mode each auto-typing key types one letter of the name", async () => {
+	const h = harness({ hotkeyMode: "single-key", autoRunSpeed: 1 });
 	armName(h);
 	h.popups.typeNameOnKey();
 	await pause(30);
@@ -175,28 +175,28 @@ test("in Single Key mode each typing key types one letter of the name", async ()
 		h.keys().map((k) => k[1][0]),
 		["a"],
 	);
-	assert.equal(h.popups.openPopupKind(), "move-to");
+	assert.equal(h.popups.openPopupType(), "go-to");
 });
 
-test("in Entire Block mode one key types the whole name, Enter, and confirms", async () => {
-	const h = harness({ hotkeyMode: "auto-run", autoTypingSpeed: 1 });
+test("in Auto-Run mode one key types the whole name, Enter, and confirms", async () => {
+	const h = harness({ hotkeyMode: "auto-run", autoRunSpeed: 1 });
 	armName(h);
 	h.popups.typeNameOnKey();
 	h.popups.typeNameOnKey();
-	await settle(() => h.popups.openPopupKind() === null);
+	await settle(() => h.popups.openPopupType() === null);
 	assert.deepEqual(
 		h.keys().map((k) => k[1][0]),
 		["a", "p", "p", ".", "j", "s", "Enter"],
 		"a second press during the run neither restarts nor doubles it",
 	);
-	assert.deepEqual(h.sends(), ["move-to-confirmed"]);
+	assert.deepEqual(h.sends(), ["go-to-confirmed"]);
 });
 
-test("closing the move-to stops a name that is running", async () => {
-	const h = harness({ hotkeyMode: "auto-run", autoTypingSpeed: 1 });
+test("closing the go-to stops a name that is running", async () => {
+	const h = harness({ hotkeyMode: "auto-run", autoRunSpeed: 1 });
 	armName(h);
 	h.popups.typeNameOnKey();
-	h.popups.endPopup("move-to");
+	h.popups.endPopup("go-to");
 	await pause(30);
 	assert.deepEqual(
 		h.keys().map((k) => k[1][0]),
@@ -206,19 +206,19 @@ test("closing the move-to stops a name that is running", async () => {
 	assert.deepEqual(h.sends(), []);
 });
 
-test("Ctrl+Left/Right move within a name being typed, never out of the move-to", async () => {
+test("Ctrl+Left/Right move within a name being typed, never out of the go-to", async () => {
 	const h = harness();
 	const progress = [];
 	h.popups.setNameProgressHandler((p) => progress.push(p.typed));
-	assert.equal(h.popups.stepMoveToName(-1), false, "no popup: the plan steps");
+	assert.equal(h.popups.stepGoToName(-1), false, "no popup: the plan steps");
 
-	h.popups.enterPopup("move-to", {
+	h.popups.enterPopup("go-to", {
 		mode: "file",
 		target: "app.js",
 		typeName: true,
 	});
 	assert.equal(
-		h.popups.stepMoveToName(-1),
+		h.popups.stepGoToName(-1),
 		false,
 		"a name that is only offered, not being typed, leaves the step to the plan",
 	);
@@ -228,12 +228,12 @@ test("Ctrl+Left/Right move within a name being typed, never out of the move-to",
 	await h.popups.typeNextNameChar();
 	assert.deepEqual(progress, [0, 1, 2]);
 
-	assert.equal(h.popups.stepMoveToName(-1), true);
+	assert.equal(h.popups.stepGoToName(-1), true);
 	assert.equal(progress.at(-1), 1, "back one letter");
-	h.popups.stepMoveToName(-1);
-	h.popups.stepMoveToName(-1);
+	h.popups.stepGoToName(-1);
+	h.popups.stepGoToName(-1);
 	assert.equal(progress.at(-1), 0, "and never before the first");
-	assert.equal(h.popups.openPopupKind(), "move-to", "still in the move-to");
+	assert.equal(h.popups.openPopupType(), "go-to", "still in the go-to");
 
 	await h.popups.typeNextNameChar();
 	assert.deepEqual(
@@ -243,7 +243,7 @@ test("Ctrl+Left/Right move within a name being typed, never out of the move-to",
 	);
 	assert.deepEqual(h.keys().at(-1)[1], ["a"]);
 
-	for (let i = 0; i < 10; i++) h.popups.stepMoveToName(1);
+	for (let i = 0; i < 10; i++) h.popups.stepGoToName(1);
 	assert.equal(
 		progress.at(-1),
 		"app.js".length - 1,
@@ -259,37 +259,29 @@ test("Ctrl+Left/Right move within a name being typed, never out of the move-to",
 			.map((k) => k[1][0]),
 		["s", "Enter"],
 	);
-	assert.deepEqual(h.sends(), ["move-to-confirmed"]);
-	assert.equal(
-		h.popups.stepMoveToName(1),
-		false,
-		"done: the plan steps again",
-	);
+	assert.deepEqual(h.sends(), ["go-to-confirmed"]);
+	assert.equal(h.popups.stepGoToName(1), false, "done: the plan steps again");
 });
 
-test("Ctrl+Enter on any other move-to is OK", () => {
+test("Ctrl+Enter on any other go-to is OK", () => {
 	for (const payload of [
 		{ mode: "file", target: "app.js", typeName: false },
 		{ mode: "anchor", target: "⚓3⚓", typeName: true },
 		{ mode: "main", target: "MAIN" },
 	]) {
 		const h = harness();
-		h.popups.enterPopup("move-to", payload);
+		h.popups.enterPopup("go-to", payload);
 		h.press();
-		assert.deepEqual(
-			h.sends(),
-			["move-to-confirmed"],
-			JSON.stringify(payload),
-		);
+		assert.deepEqual(h.sends(), ["go-to-confirmed"], JSON.stringify(payload));
 	}
 });
 
 test("Ctrl+Enter on a note, image or web page is OK", () => {
-	for (const kind of ["note", "image", "web"]) {
+	for (const type of ["note", "image", "web"]) {
 		const h = harness();
-		h.popups.enterPopup(kind, {});
+		h.popups.enterPopup(type, {});
 		h.press();
-		assert.deepEqual(h.sends(), [`${kind}-confirmed`]);
+		assert.deepEqual(h.sends(), [`${type}-confirmed`]);
 	}
 });
 
@@ -297,18 +289,18 @@ test("the phone's Paste and a settings save both use the same key action", () =>
 	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
 	assert.match(
 		main,
-		/"client-code-insert-paste", \(\) => pasteAndConfirm\(\)/,
+		/"client-snippet-paste", \(\) => pasteAndConfirm\(\)/,
 		"Paste closes the popup, however it was pressed",
 	);
 	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(main)[0];
 	assert.match(
 		reapply,
-		/registerConfirmPopup\(confirmKeyFor\(kind\)\)/,
-		"re-arming with a bare confirm would lose Paste and Auto-type after a save",
+		/registerConfirmPopup\(confirmKeyFor\(type\)\)/,
+		"re-arming with a bare confirm would lose Paste and Type name after a save",
 	);
 	const popups = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const enter = /function enterPopup\(kind, payload\)[\s\S]*?\n\}/.exec(
+	const enter = /function enterPopup\(type, payload\)[\s\S]*?\n\}/.exec(
 		popups,
 	)[0];
-	assert.match(enter, /registerConfirmPopup\(confirmKeyFor\(kind\)\)/);
+	assert.match(enter, /registerConfirmPopup\(confirmKeyFor\(type\)\)/);
 });

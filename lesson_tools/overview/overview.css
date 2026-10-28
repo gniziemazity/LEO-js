@@ -13,21 +13,21 @@ html.autoload #loading {
 #toolbar {
 	display: none;
 	gap: 6px;
-	border-bottom-color: var(--clr-border-strong);
+	border-bottom-color: var(--clr-border);
 }
 #toolbar.show {
 	display: flex;
 }
 #toolbar button {
 	padding: 2px 10px;
-	border: 1px solid var(--clr-border-strong);
+	border: 1px solid var(--clr-border);
 	border-radius: 3px;
 	background: var(--clr-bg);
 	color: var(--clr-label);
 	cursor: pointer;
 	font-size: 11px;
 	font-family: inherit;
-	transition: 0.12s;
+	transition: var(--t-hover);
 }
 #toolbar button.active {
 	background: var(--clr-accent);
@@ -94,10 +94,7 @@ html.autoload #loading {
 	color: var(--clr-mark-extra);
 }
 #basis-select option[value="leo_star"],
-#basis-select option[value="leo"],
-#basis-select option[value="lcs_star"],
 #basis-select option[value="lcs"],
-#basis-select option[value="git_star"],
 #basis-select option[value="git"] {
 	color: var(--clr-accent);
 }
@@ -135,19 +132,19 @@ td {
 }
 th {
 	background: var(--clr-surface);
-	border-bottom: 2px solid var(--clr-border-strong);
+	border-bottom: 2px solid var(--clr-border);
 	position: sticky;
 	top: 0;
 	z-index: 10;
 	font-size: 11px;
 	font-weight: 700;
-	color: var(--clr-text-soft);
+	color: var(--clr-text);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 }
 th.grp {
 	background: var(--clr-toolbar);
-	color: var(--clr-text-soft);
+	color: var(--clr-text);
 	font-size: 10px;
 	border-bottom: none;
 }
@@ -159,7 +156,7 @@ th.grp.clickable:hover {
 	text-decoration: underline;
 }
 th.lhd {
-	color: var(--clr-text-soft);
+	color: var(--clr-text);
 }
 td.asn-col {
 	background: transparent;
@@ -336,7 +333,7 @@ table.hide-num .col-num {
 
 th.asn-sep,
 td.asn-sep {
-	border-left: 2px solid var(--clr-text-soft) !important;
+	border-left: 2px solid var(--clr-text) !important;
 }
 
 th.asn-div,
@@ -411,7 +408,7 @@ td.asn-div {
 .st-tbl td,
 .st-tbl th {
 	padding: 3px 8px;
-	border-bottom: 1px solid var(--clr-border-mid);
+	border-bottom: 1px solid var(--clr-border);
 	text-align: right;
 }
 .st-tbl th {
@@ -429,7 +426,7 @@ td.asn-div {
 	margin: 1px 2px 1px 0;
 	border-radius: 8px;
 	background: var(--clr-surface);
-	border: 1px solid var(--clr-border-mid);
+	border: 1px solid var(--clr-border);
 	font-size: 10px;
 	color: var(--clr-text);
 	text-decoration: none;
@@ -598,7 +595,7 @@ td.asn-div {
 	justify-content: space-between;
 	font-size: 12px;
 	padding: 2px 0;
-	border-bottom: 1px solid var(--clr-border-mid);
+	border-bottom: 1px solid var(--clr-border);
 }
 .art-hdr-code {
 	display: inline-block;

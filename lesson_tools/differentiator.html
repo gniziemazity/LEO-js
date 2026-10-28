@@ -45,7 +45,7 @@
 			#header-student {
 				position: sticky;
 				top: 0;
-				z-index: 10000;
+				z-index: var(--z-float);
 				grid-row: 1;
 			}
 			#header-teacher {
@@ -111,9 +111,6 @@
 				min-width: 0;
 				overflow-x: auto;
 				overflow-y: hidden;
-				/* native scrollbar hidden; the .tab-hscroll proxy below is the
-				   visible slider, floating over the tabs so it never grows the
-				   header or pushes the tabs up. */
 				scrollbar-width: none;
 			}
 			.tab-bar::-webkit-scrollbar {
@@ -144,7 +141,7 @@
 				height: 6px;
 			}
 			.tab-hscroll::-webkit-scrollbar-thumb {
-				background: var(--clr-border-strong);
+				background: var(--clr-border);
 				border-radius: 3px;
 			}
 			.tab-hscroll::-webkit-scrollbar-thumb:hover {
@@ -179,7 +176,7 @@
 				height: 14px;
 			}
 			.hscroll-proxy::-webkit-scrollbar-thumb {
-				background: var(--clr-border-strong);
+				background: var(--clr-border);
 				border-radius: 6px;
 			}
 			.hscroll-proxy::-webkit-scrollbar-thumb:hover {
@@ -203,7 +200,7 @@
 			}
 			.file-pair-caret:hover {
 				opacity: 1;
-				background: var(--clr-tab-hover);
+				background: var(--clr-surface);
 			}
 			.file-pair-caret.is-paired {
 				color: var(--clr-accent);
@@ -216,7 +213,7 @@
 			}
 
 			.file-pair-menu {
-				z-index: 10001;
+				z-index: var(--z-menu);
 				background: var(--clr-bg);
 				border: 1px solid var(--clr-border);
 				border-radius: 4px;
@@ -234,7 +231,7 @@
 				background: transparent;
 				color: var(--clr-text);
 				font-size: 11px;
-				font-family: Consolas, monospace;
+				font-family: var(--font-mono);
 				text-align: left;
 				cursor: pointer;
 				border-radius: 2px;
@@ -258,7 +255,7 @@
 			}
 			.code-pane pre {
 				padding: 8px;
-				font-family: Consolas, "Courier New", monospace;
+				font-family: var(--font-mono);
 				font-size: 12px;
 				line-height: 1.5;
 				color: var(--clr-code-muted);
@@ -271,7 +268,7 @@
 
 			.code-aligned {
 				padding: 8px;
-				font-family: Consolas, "Courier New", monospace;
+				font-family: var(--font-mono);
 				font-size: 12px;
 				line-height: 1.5;
 				color: var(--clr-code-muted);
@@ -350,7 +347,7 @@
 				position: fixed;
 				bottom: 14px;
 				right: 14px;
-				z-index: 9997;
+				z-index: var(--z-bottom-bar);
 				display: none;
 				flex-direction: column;
 				gap: 6px;
@@ -463,7 +460,7 @@
 
 			.nav-btn {
 				padding: 0 6px;
-				border: 1px solid var(--clr-border-strong);
+				border: 1px solid var(--clr-border);
 				border-radius: 3px;
 				background: var(--clr-bg);
 				cursor: pointer;
@@ -474,7 +471,7 @@
 			}
 			.nav-counter {
 				font-size: 11px;
-				font-family: Consolas, monospace;
+				font-family: var(--font-mono);
 				color: var(--clr-muted);
 				min-width: 44px;
 				text-align: center;
@@ -499,7 +496,7 @@
 				position: fixed;
 				display: none;
 				flex-direction: column;
-				z-index: 10002;
+				z-index: var(--z-viewer);
 				width: 660px;
 				max-width: 92vw;
 				max-height: 84vh;
@@ -548,11 +545,7 @@
 			#docx-viewer-body {
 				padding: 14px 18px;
 				overflow: auto;
-				font-family:
-					system-ui,
-					-apple-system,
-					Segoe UI,
-					sans-serif;
+				font-family: var(--font-ui);
 				font-size: 13px;
 				line-height: 1.55;
 				color: var(--clr-text);
@@ -688,7 +681,7 @@
 			}
 
 			#leo-tooltip {
-				z-index: 9999;
+				z-index: var(--z-float-tip);
 				max-width: 500px;
 				max-height: 80vh;
 				line-height: 1.45;
@@ -714,17 +707,14 @@
 				white-space: nowrap;
 				padding: 1px 2px;
 			}
-			#leo-tooltip .leo-row.leo-this {
+			#leo-tooltip .leo-row.leo-this,
+			#leo-tooltip .leo-pair.leo-this {
 				outline: 2px solid var(--clr-black);
 				box-shadow: inset 4px 0 0 var(--clr-black);
 			}
 			#leo-tooltip .leo-pair {
 				outline: 1px solid var(--clr-black);
 				margin: 2px 0;
-			}
-			#leo-tooltip .leo-pair.leo-this {
-				outline: 2px solid var(--clr-black);
-				box-shadow: inset 4px 0 0 var(--clr-black);
 			}
 			#leo-tooltip .leo-row.leo-row-ghost {
 				font-style: italic;
@@ -821,10 +811,7 @@
 				box-sizing: border-box;
 				pointer-events: none;
 			}
-			.curated-bg-rect.is-missing {
-				background: var(--clr-mark-extra-soft-bg);
-				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
-			}
+			.curated-bg-rect.is-missing,
 			.curated-bg-rect.is-extra {
 				background: var(--clr-mark-extra-soft-bg);
 				box-shadow: 0 0 6px 2px var(--clr-mark-extra-soft-bg);
@@ -870,7 +857,7 @@
 				width: 100vw;
 				height: 100vh;
 				pointer-events: none;
-				z-index: 9996;
+				z-index: var(--z-pair-svg);
 			}
 
 			.leo-mark.curated-pair-target {
@@ -885,7 +872,7 @@
 				position: fixed;
 				display: none;
 				pointer-events: none;
-				z-index: 9998;
+				z-index: var(--z-controls);
 				box-sizing: border-box;
 				background-color: rgba(0, 0, 0, 0.07);
 				border-bottom: 1.5px dotted var(--clr-mark-missing);
@@ -901,7 +888,7 @@
 				position: fixed;
 				display: none;
 				pointer-events: none;
-				z-index: 9999;
+				z-index: var(--z-float-tip);
 				font-size: 9px;
 				font-weight: 700;
 				line-height: 1;
@@ -922,7 +909,7 @@
 				position: fixed;
 				display: none;
 				pointer-events: none;
-				z-index: 9999;
+				z-index: var(--z-float-tip);
 				color: var(--clr-mark-missing);
 				font-size: 14px;
 				font-weight: bold;
@@ -960,7 +947,7 @@
 			#curated-controls {
 				position: absolute;
 				display: none;
-				z-index: 9998;
+				z-index: var(--z-controls);
 				font-size: 12px;
 				background: var(--clr-bg);
 				border: 1px solid var(--clr-border);
@@ -979,7 +966,7 @@
 				padding: 3px 8px;
 				border: 1px solid var(--clr-diff-btn-border);
 				border-radius: 3px;
-				background: var(--clr-btn-bg-soft);
+				background: var(--clr-surface);
 				color: var(--clr-text);
 				cursor: pointer;
 				appearance: none;
@@ -1006,7 +993,7 @@
 			#curated-controls .tc-row button.tc-btn-missing {
 				background: var(--clr-mark-missing);
 				color: var(--clr-bg);
-				border-color: var(--clr-danger-dark);
+				border-color: var(--clr-danger);
 				font-weight: 700;
 			}
 			#curated-controls .tc-row button.tc-btn-missing:hover {
@@ -1054,19 +1041,19 @@
 			}
 
 			.curated-float-win#curated-float-win {
-				z-index: 10000;
+				z-index: var(--z-float);
 				max-width: 90vw;
 				max-height: 90vh;
 				min-width: 360px;
 			}
 			.curated-float-win .tw-pre {
-				background: var(--clr-surface-soft);
-				border: 1px solid var(--clr-border-mid);
+				background: var(--clr-surface);
+				border: 1px solid var(--clr-border);
 				padding: 6px;
 				white-space: pre;
 				word-wrap: normal;
 				overflow-x: auto;
-				font-family: ui-monospace, Consolas, monospace;
+				font-family: var(--font-mono);
 				font-size: 11px;
 				tab-size: 4;
 				-moz-tab-size: 4;
@@ -1268,12 +1255,12 @@
 			}
 
 			.curated-float-win#curated-parity-win {
-				z-index: 10000;
+				z-index: var(--z-float);
 				width: 480px;
 				max-width: 90vw;
 				max-height: 60vh;
 			}
-			#curated-parity-win .float-win__body {
+			#curated-parity-win .float-win-body {
 				display: flex;
 				flex-direction: column;
 				gap: 10px;
@@ -1331,7 +1318,7 @@
 				font: inherit;
 				font-size: 10px;
 				padding: 0 5px;
-				border: 1px solid var(--clr-border-mid);
+				border: 1px solid var(--clr-border);
 				border-radius: 4px;
 				background: var(--clr-surface);
 				color: var(--clr-text);

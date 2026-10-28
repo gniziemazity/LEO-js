@@ -76,10 +76,7 @@ function remarksFileRe(basis) {
 
 function remarksStampOf(name) {
 	const m = String(name).match(
-		new RegExp(
-			String.raw`^remarks_[a-z0-9_]+?(${REMARKS_STAMP})\.xlsx$`,
-			"i",
-		),
+		new RegExp(String.raw`^remarks.*?(${REMARKS_STAMP})\.xlsx$`, "i"),
 	);
 	return m ? m[1] : "";
 }
@@ -94,11 +91,140 @@ function remarksBasisOf(name) {
 	return m ? m[1].toLowerCase() : null;
 }
 
-const INTERACTION_KINDS = {
-	"teacher-question": { icon: "❓", label: "Teacher Question" },
-	"student-question": { icon: "🙋", label: "Student Question" },
-	"providing-help": { icon: "🤝", label: "Provided Help" },
-};
+const WORKING_REMARKS_RE = new RegExp(
+	String.raw`^remarks${REMARKS_STAMP}\.xlsx$`,
+	"i",
+);
+
+function remarksNewestFirst(a, b) {
+	const sa = remarksStampOf(a.name);
+	const sb = remarksStampOf(b.name);
+	if (sa !== sb) return sa < sb ? 1 : -1;
+	return (b.lastModified || 0) - (a.lastModified || 0);
+}
+
+function _newestRemarks(files, re) {
+	return (
+		files.filter((f) => re.test(f.name)).sort(remarksNewestFirst)[0] || null
+	);
+}
+
+function pickRemarksFiles(files, { lessonName } = {}) {
+	const xlsx = files.filter((f) => /\.xlsx$/i.test(f.name));
+	const basisFiles = new Map();
+	for (const { key } of REMARKS_BASES) {
+		const f = _newestRemarks(xlsx, remarksFileRe(key));
+		if (f) basisFiles.set(key, f);
+	}
+	let fallback = _newestRemarks(xlsx, WORKING_REMARKS_RE);
+	if (!fallback && lessonName) {
+		const lesson = String(lessonName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		fallback = _newestRemarks(xlsx, remarksFileRe(lesson));
+	}
+	if (!fallback && !basisFiles.size) {
+		fallback = _newestRemarks(xlsx, /remarks/i);
+	}
+	return { basisFiles, fallback };
+}
+
+function defaultBasis(basisFiles, wanted = null) {
+	if (wanted && basisFiles.has(wanted)) return wanted;
+	for (const key of DIFF_MARKS_PRIORITY) if (basisFiles.has(key)) return key;
+	for (const { key } of REMARKS_BASES) if (basisFiles.has(key)) return key;
+	return null;
+}
+
+function renderBasisSelect(container, basisFiles, active, onChange, opts = {}) {
+	container.innerHTML = "";
+	const options = REMARKS_BASES.filter(({ key }) => basisFiles.has(key));
+	if (!options.length) return null;
+	const label = document.createElement("label");
+	if (opts.labelClass) label.className = opts.labelClass;
+	label.appendChild(document.createTextNode("Basis:"));
+	const select = document.createElement("select");
+	select.id = "basis-select";
+	if (opts.selectClass) select.className = opts.selectClass;
+	for (const { key, label: text } of options) {
+		const opt = document.createElement("option");
+		opt.value = key;
+		opt.textContent = text;
+		select.appendChild(opt);
+	}
+	select.value = basisFiles.has(active) ? active : options[0].key;
+	const syncCurated = () =>
+		select.classList.toggle("is-curated", CURATED_MODES.has(select.value));
+	syncCurated();
+	select.addEventListener("change", () => {
+		syncCurated();
+		onChange(select.value);
+	});
+	label.appendChild(select);
+	container.appendChild(label);
+	return select.value;
+}
+
+const LANG_COL_DEFS = [
+	{
+		key: "html",
+		label: "HTML",
+		header: "HTML (E)",
+		descHeader: "HTML (E) Desc",
+	},
+	{ key: "css", label: "CSS", header: "CSS (E)", descHeader: "CSS (E) Desc" },
+	{ key: "js", label: "JS", header: "JS (E)", descHeader: "JS (E) Desc" },
+	{ key: "py", label: "Py", header: "Py (E)", descHeader: "Py (E) Desc" },
+];
+
+function readRemarksSheet(buf, opts = {}) {
+	const wb = XLSX.read(buf, { type: "array", ...opts });
+	const sheetName = wb.Sheets["Remarks"] ? "Remarks" : wb.SheetNames[0];
+	const ws = wb.Sheets[sheetName];
+	return { wb, sheetName, ws, ...remarksSheetTable(ws) };
+}
+
+function remarksSheetTable(ws) {
+	const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+	const hdr = (rows[0] || []).map((h) => String(h || "").trim());
+	return { rows, hdr };
+}
+
+function remarksScoreCols(hdr) {
+	const follow = hdr.indexOf("Follow (E)");
+	if (follow !== -1) {
+		return {
+			pct: follow,
+			desc: hdr.indexOf("Follow (E) Desc"),
+			isSimilarity: false,
+		};
+	}
+	const sim = hdr.indexOf("Similarity");
+	return {
+		pct: sim,
+		desc: sim === -1 ? -1 : hdr.indexOf("Similarity Desc"),
+		isSimilarity: sim !== -1,
+	};
+}
+
+function remarksLangCols(hdr) {
+	return LANG_COL_DEFS.map((def) => ({
+		...def,
+		pct: hdr.indexOf(def.header),
+		desc: hdr.indexOf(def.descHeader),
+	})).filter((c) => c.pct !== -1 || c.desc !== -1);
+}
+
+function followEventKey(ev) {
+	return `${ev.kind}|${ev.token}|${ev.ts}`;
+}
+
+function tagEventLangs(events, langEvents) {
+	const langOf = new Map();
+	for (const ev of langEvents) langOf.set(followEventKey(ev), ev.lang);
+	for (const ev of events) {
+		const lang = langOf.get(followEventKey(ev));
+		if (lang) ev.lang = lang;
+	}
+}
 
 function basisToDiffMode(basisKey) {
 	if (!basisKey) return null;
@@ -135,7 +261,7 @@ const THEME = {
 	barTrack: _cssVar("--clr-bar-track"),
 	paleRed: _cssVar("--clr-pale-red"),
 	neg: _cssVar("--clr-neg"),
-	textStrong: _cssVar("--clr-text-strong"),
+	textStrong: _cssVar("--clr-text"),
 	textFaint: _cssVar("--clr-text-faint"),
 	codeMuted: _cssVar("--clr-code-muted"),
 	black: _cssVar("--clr-black"),
@@ -155,6 +281,20 @@ const THEME = {
 	tipBgBlue: _cssVar("--clr-tip-bg-blue"),
 	tipBgOrange: _cssVar("--clr-tip-bg-orange"),
 	tipBgGreen: _cssVar("--clr-tip-bg-green"),
+};
+
+const INTERACTION_KINDS = {
+	"teacher-question": {
+		icon: "❓",
+		label: "Teacher Question",
+		color: THEME.blue,
+	},
+	"student-question": {
+		icon: "🙋",
+		label: "Student Question",
+		color: THEME.orange,
+	},
+	"providing-help": { icon: "🤝", label: "Provided Help", color: THEME.green },
 };
 
 const LANG_COLORS = {
@@ -519,9 +659,7 @@ function diffModeFromFilename(filename) {
 function defaultDiffModeKey(allMarks, requestedMode = null) {
 	const has = (k) => Object.prototype.hasOwnProperty.call(allMarks, k);
 	if (requestedMode != null && has(requestedMode)) return requestedMode;
-	if (has("ideal")) return "ideal";
-	if (has("minimal")) return "minimal";
-	if (has("leo_star")) return "leo_star";
+	for (const key of DIFF_MARKS_PRIORITY) if (has(key)) return key;
 	return Object.keys(allMarks)[0] ?? null;
 }
 
@@ -576,20 +714,48 @@ function downloadBlob(data, filename, mime) {
 
 const _sharedHtmlTip = new Tooltip({
 	createId: "shared-html-tip",
-	inlineStyle:
-		"position:fixed;display:none;background:" +
-		THEME.bg +
-		";color:" +
-		THEME.textStrong +
-		";font-size:11px;font-family:Consolas,monospace;padding:6px 10px;" +
-		"border:1px solid " +
-		THEME.muted +
-		";border-radius:4px;pointer-events:none;z-index:10000;" +
-		"max-width:640px;box-shadow:0 2px 8px rgba(0,0,0,0.25);line-height:1.45;",
+	className: "leo-tip",
 });
 
 function attachHtmlTip(el, htmlOrFn) {
 	_sharedHtmlTip.attachHtml(el, htmlOrFn);
+}
+
+function copyText(text) {
+	if (navigator.clipboard && navigator.clipboard.writeText) {
+		return navigator.clipboard.writeText(text).then(
+			() => true,
+			() => false,
+		);
+	}
+	const ta = document.createElement("textarea");
+	ta.value = text;
+	ta.style.position = "fixed";
+	ta.style.left = "-9999px";
+	document.body.appendChild(ta);
+	ta.focus();
+	ta.select();
+	let ok = false;
+	try {
+		ok = document.execCommand("copy");
+	} catch {}
+	ta.remove();
+	return Promise.resolve(ok);
+}
+
+const _buttonFlashes = new WeakMap();
+
+function flashButton(btn, label, ms = 900) {
+	if (!btn) return;
+	const prev = _buttonFlashes.get(btn);
+	if (prev) clearTimeout(prev.timer);
+	const original = prev ? prev.original : btn.textContent;
+	btn.textContent = label;
+	const timer = setTimeout(() => {
+		btn.textContent = original;
+		_buttonFlashes.delete(btn);
+	}, ms);
+	_buttonFlashes.set(btn, { original, timer });
 }
 
 function readFileText(file) {

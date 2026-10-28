@@ -7,7 +7,7 @@ const {
 	computeSkipRegions,
 	PAUSE_CAP_MS,
 	visibleFileTabs,
-} = require("../lesson_tools/simulator/visualizer.js");
+} = require("../lesson_tools/simulator/simulator.js");
 
 const f = (text) => ({ text });
 

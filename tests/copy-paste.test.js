@@ -63,7 +63,7 @@ test("only authored blocks can be copied", () => {
 		{
 			type: "comment",
 			text: "📋 file",
-			fromInclude: true,
+			fromStart: true,
 			startFile: "a.js",
 		},
 		{ type: "comment", text: "mine" },
@@ -113,7 +113,7 @@ test("the clipboard is shared, so a block can move to another lesson", () => {
 test("a pasted copy gets fresh anchors, never a duplicate id", () => {
 	const lm = manager([
 		{ type: "code", text: "a⚓0⚓b\nc⚓1⚓" },
-		{ type: "move-to", target: "⚓0⚓" },
+		{ type: "go-to", target: "⚓0⚓" },
 	]);
 	const at = lm.insertBlockCopy(lm.data[1], 2);
 	assert.equal(at, 3);
@@ -126,7 +126,7 @@ test("a pasted copy gets fresh anchors, never a duplicate id", () => {
 	assert.equal(
 		lm.data[2].target,
 		"⚓0⚓",
-		"a move-to still points at the original anchor",
+		"a go-to still points at the original anchor",
 	);
 	lm.insertBlockCopy(lm.data[1], 3);
 	const ids = lm.data
@@ -140,7 +140,7 @@ test("start-folder bookkeeping never rides along in a copy", () => {
 	const copy = {
 		type: "comment",
 		text: "📋 y",
-		fromInclude: true,
+		fromStart: true,
 		startFile: "a",
 		startText: "y",
 	};
@@ -163,17 +163,16 @@ test("the paste button exists only while something is copied", () => {
 
 test("while auto-typing, every part of a block is transparent to clicks", () => {
 	const css = read("shared/styles.css");
-	const rule = /body\.typing-active \.block-kind,[\s\S]*?\{[\s\S]*?\}/.exec(
-		css,
-	)[0];
+	const rule =
+		/body\.auto-typing-active \.block-type,[\s\S]*?\{[\s\S]*?\}/.exec(css)[0];
 	for (const part of [
-		".block-kind",
+		".block-type",
 		".block-opt",
-		".move-to-select",
-		".move-to-note",
-		".move-to-new-file-input",
+		".go-to-select",
+		".go-to-note",
+		".go-to-new-file-input",
 	]) {
-		assert.ok(rule.includes(`body.typing-active ${part}`), part);
+		assert.ok(rule.includes(`body.auto-typing-active ${part}`), part);
 	}
 	assert.match(
 		rule,
@@ -212,7 +211,7 @@ test("the sidebar keys work in a snippet, but format stays code-only", () => {
 		[false, false],
 	]);
 	assert.deepEqual(
-		sidebarFor({ type: "comment", text: "📋 x", fromInclude: true }),
+		sidebarFor({ type: "comment", text: "📋 x", fromStart: true }),
 		[[false, false]],
 		"an inherited snippet is context",
 	);

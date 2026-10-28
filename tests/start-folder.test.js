@@ -8,9 +8,9 @@ const path = require("node:path");
 
 const LessonManager = require("../src/renderer/lesson-manager");
 const {
-	extractAnchorSnippet,
+	extractGoToExcerpt,
 	replayPlan,
-} = require("../src/renderer/anchor-snippet");
+} = require("../src/renderer/plan-replay");
 const {
 	embedAnchors,
 	readAnchors,
@@ -68,7 +68,7 @@ test("without a folder named like the plan there is no start at all", async () =
 	const blocks = lm.getAllBlocks();
 	assert.equal(blocks[0].type, "include", "the slot is still block 0");
 	assert.equal(blocks[0].dir, null, "and says there is nothing to start from");
-	assert.equal(blocks.filter((b) => b.fromInclude).length, 0);
+	assert.equal(blocks.filter((b) => b.fromStart).length, 0);
 
 	await save(lm);
 	assert.deepEqual(JSON.parse(fs.readFileSync(p, "utf8")), authored);
@@ -83,7 +83,7 @@ test("a sibling plan's own folder is not this plan's start", async () => {
 	assert.equal(lm.getAllBlocks()[0].dir, null);
 });
 
-test("every file in the folder becomes a move-to and a paste, in order", async () => {
+test("every file in the folder becomes a go-to and a paste, in order", async () => {
 	const dir = courseDir();
 	startFolder(dir, "part_2", {
 		"index.html": INDEX,
@@ -97,7 +97,7 @@ test("every file in the folder becomes a move-to and a paste, in order", async (
 	assert.equal(blocks[0].dir, "part_2_start");
 	assert.equal(blocks[0].files, 3);
 	assert.deepEqual(
-		blocks.slice(1, 7).map((b) => (b.type === "move-to" ? b.target : b.text)),
+		blocks.slice(1, 7).map((b) => (b.type === "go-to" ? b.target : b.text)),
 		[
 			"app.js",
 			`📋 ${APP}`,
@@ -107,7 +107,7 @@ test("every file in the folder becomes a move-to and a paste, in order", async (
 			"📋 export const x = 1;\n",
 		],
 	);
-	assert.ok(blocks.slice(1, 7).every((b) => b.fromInclude));
+	assert.ok(blocks.slice(1, 7).every((b) => b.fromStart));
 	assert.equal(blocks[7].text, "Go", "the authored plan follows");
 	assert.equal(lm.firstAuthoredIndex(), 7);
 });
@@ -122,6 +122,17 @@ test("tooling folders, binaries and line endings are not the lesson's code", () 
 	assert.deepEqual(listStartFiles(dir), [
 		{ name: "app.js", text: "a();\nb();\n" },
 	]);
+});
+
+test("a byte-order mark is not part of a start file's code", () => {
+	const dir = courseDir();
+	writeFile(
+		dir,
+		"app.js",
+		Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("a();\n")]),
+	);
+
+	assert.deepEqual(listStartFiles(dir), [{ name: "app.js", text: "a();\n" }]);
 });
 
 test("stored anchors land at their line and column", async () => {
@@ -245,12 +256,12 @@ test("a start folder with no anchors saves no include at all", async () => {
 	]);
 });
 
-test("a stored anchor resolves as a move-to target", async () => {
+test("a stored anchor resolves as a go-to target", async () => {
 	const dir = courseDir();
 	startFolder(dir, "part_2", { "index.html": INDEX, "app.js": APP });
 	const p = writePlan(dir, "part_2.leo", [
 		{ type: "include", anchors: { "app.js": { 0: [1, 18] } } },
-		{ type: "move-to", target: "⚓0⚓" },
+		{ type: "go-to", target: "⚓0⚓" },
 	]);
 
 	const lm = await load(p);
@@ -258,7 +269,7 @@ test("a stored anchor resolves as a move-to target", async () => {
 	const idx = blocks.findIndex((b) => b.target === "⚓0⚓");
 	assert.deepEqual(lm.anchorIdsBefore(idx), ["0"]);
 
-	const snip = extractAnchorSnippet("⚓0⚓", idx, blocks);
+	const snip = extractGoToExcerpt("⚓0⚓", idx, blocks);
 	assert.ok(snip);
 	assert.match(snip.lines[snip.arrowIdx], /function main/);
 	assert.equal(snip.switchTo, "app.js", "index.html was the file left open");
@@ -298,20 +309,20 @@ test("replaying the start rebuilds every file byte for byte", async () => {
 	assert.deepEqual(Object.keys(editors["style.css"].anchors), ["0"]);
 });
 
-test("the first authored move-to into a start file does not create it", async () => {
+test("the first authored go-to into a start file does not create it", async () => {
 	const dir = courseDir();
 	startFolder(dir, "part_2", { "index.html": INDEX });
 	const p = writePlan(dir, "part_2.leo", [
-		{ type: "move-to", target: "index.html" },
-		{ type: "move-to", target: "app.js" },
+		{ type: "go-to", target: "index.html" },
+		{ type: "go-to", target: "app.js" },
 	]);
 
 	const lm = await load(p);
 	const blocks = lm.getAllBlocks();
 	const authored = (t) =>
-		blocks.findIndex((b) => !b.fromInclude && b.target === t);
-	assert.equal(lm.isFirstMoveToFile(authored("index.html")), false);
-	assert.equal(lm.isFirstMoveToFile(authored("app.js")), true);
+		blocks.findIndex((b) => !b.fromStart && b.target === t);
+	assert.equal(lm.isFirstGoToFile(authored("index.html")), false);
+	assert.equal(lm.isFirstGoToFile(authored("app.js")), true);
 });
 
 test("start files are context: they can be neither moved nor re-kinded", async () => {
@@ -322,7 +333,7 @@ test("start files are context: they can be neither moved nor re-kinded", async (
 	const lm = await load(p);
 	assert.equal(lm.canMoveBlock(2, 1), false);
 	assert.equal(lm.canMoveBlock(3, -1), false);
-	assert.equal(lm.canSetBlockKind(2, "code"), false);
+	assert.equal(lm.canSetBlockType(2, "code"), false);
 });
 
 function cursorWith(steps) {
@@ -353,14 +364,14 @@ test("start steps are skipped by the cursor, and logged as it passes", () => {
 	const { cm, logged, ipc } = cursorWith([
 		{
 			type: "block",
-			fromInclude: true,
-			kind: "move-to",
+			fromStart: true,
+			blockType: "go-to",
 			target: "a.js",
 			globalIndex: 0,
 		},
 		{
 			type: "block",
-			fromInclude: true,
+			fromStart: true,
 			text: "📋 const x = 1;⚓0⚓",
 			globalIndex: 1,
 		},
@@ -379,14 +390,14 @@ test("start steps are skipped by the cursor, and logged as it passes", () => {
 		"the starting state, anchors included, still reaches the log",
 	);
 	assert.ok(
-		!ipc.sent.some((m) => m.ch === "enter-code-insert-block"),
+		!ipc.sent.some((m) => m.ch === "enter-snippet-block"),
 		"and no paste popup is opened for it",
 	);
 });
 
 test("passing a start step twice does not log it twice", () => {
 	const { cm, logged } = cursorWith([
-		{ type: "block", fromInclude: true, text: "📋 x", globalIndex: 0 },
+		{ type: "block", fromStart: true, text: "📋 x", globalIndex: 0 },
 		{ type: "block", text: "real", globalIndex: 1 },
 	]);
 

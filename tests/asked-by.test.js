@@ -138,7 +138,7 @@ test("helping someone keeps its one-tap picker and Done", () => {
 	assert.equal(ctx.nodes.iShowBtn.style.display, "none");
 	ctx.nodes.iGrid.children[0].onclick();
 	assert.equal(ctx.nodes.iTitle.textContent, "🤝 Helping Ada");
-	assert.deepEqual(gridLabels(ctx.nodes.iGrid), ["✓ Done — close"]);
+	assert.deepEqual(gridLabels(ctx.nodes.iGrid), ["Done — close"]);
 });
 
 test("a planned question on the phone shows no asker row", () => {

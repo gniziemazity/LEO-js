@@ -1,5 +1,5 @@
 const { ipcRenderer } = require("electron");
-const { buildSettingsCSS } = require("../shared/blocks");
+const { applySettingsCSS } = require("../shared/blocks");
 const {
 	COLOR_SETTINGS,
 	HOTKEY_SETTINGS,
@@ -71,7 +71,7 @@ class SettingsUI {
 			});
 		}
 
-		const speedSlider = document.getElementById("autoTypingSpeed");
+		const speedSlider = document.getElementById("autoRunSpeed");
 		if (speedSlider) {
 			speedSlider.addEventListener("input", (e) => {
 				document.getElementById("speedValue").textContent = e.target.value;
@@ -111,10 +111,8 @@ class SettingsUI {
 
 		document.getElementById("hotkeyMode").value =
 			settings.hotkeyMode || "single-key";
-		document.getElementById("autoTypingSpeed").value =
-			settings.autoTypingSpeed;
-		document.getElementById("speedValue").textContent =
-			settings.autoTypingSpeed;
+		document.getElementById("autoRunSpeed").value = settings.autoRunSpeed;
+		document.getElementById("speedValue").textContent = settings.autoRunSpeed;
 
 		document.getElementById("touchpadSensitivity").value =
 			settings.touchpadSensitivity || 3;
@@ -203,9 +201,7 @@ class SettingsUI {
 			colors: this._fieldValues(COLOR_FIELDS),
 			fontSize: parseInt(document.getElementById("fontSize").value),
 			hotkeyMode: document.getElementById("hotkeyMode").value,
-			autoTypingSpeed: parseInt(
-				document.getElementById("autoTypingSpeed").value,
-			),
+			autoRunSpeed: parseInt(document.getElementById("autoRunSpeed").value),
 			touchpadSensitivity: parseFloat(
 				document.getElementById("touchpadSensitivity").value,
 			),
@@ -226,17 +222,7 @@ class SettingsUI {
 		if (!settings) return;
 
 		this.currentSettings = settings;
-
-		const styleId = "dynamic-settings-styles";
-		let styleEl = document.getElementById(styleId);
-
-		if (!styleEl) {
-			styleEl = document.createElement("style");
-			styleEl.id = styleId;
-			document.head.appendChild(styleEl);
-		}
-
-		styleEl.textContent = buildSettingsCSS(settings);
+		applySettingsCSS(settings);
 	}
 }
 

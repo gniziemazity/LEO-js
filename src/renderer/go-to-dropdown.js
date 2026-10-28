@@ -67,8 +67,8 @@ function openDropdown({
 	options,
 	value,
 	onPick,
-	listClass = "mt-options",
-	itemClass = "mt-option",
+	listClass = "gt-options",
+	itemClass = "gt-option",
 }) {
 	closeDropdown();
 

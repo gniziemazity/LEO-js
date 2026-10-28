@@ -8,7 +8,7 @@
 
 	function makeCursorSpan() {
 		const cursor = document.createElement("span");
-		cursor.className = "mt-modal-anchor-cursor";
+		cursor.className = "excerpt-anchor-cursor";
 		cursor.textContent = " ";
 		return cursor;
 	}
@@ -42,15 +42,15 @@
 		return [{ text: lines[i] || "", color: null }];
 	}
 
-	function renderSnippet(container, snippet) {
+	function renderExcerpt(container, excerpt) {
 		container.innerHTML = "";
-		if (!snippet || !snippet.lines || !snippet.lines.length) return false;
-		const col = Math.max(0, snippet.anchorCol || 0);
-		snippet.lines.forEach((line, i) => {
+		if (!excerpt || !excerpt.lines || !excerpt.lines.length) return false;
+		const col = Math.max(0, excerpt.anchorCol || 0);
+		excerpt.lines.forEach((line, i) => {
 			const row = document.createElement("div");
-			row.className = "mt-modal-line";
-			const segs = segsFor(snippet.colored, snippet.lines, i);
-			if (i === snippet.arrowIdx) renderLineWithArrow(row, segs, col);
+			row.className = "excerpt-line";
+			const segs = segsFor(excerpt.colored, excerpt.lines, i);
+			if (i === excerpt.arrowIdx) renderLineWithArrow(row, segs, col);
 			else renderLine(row, segs);
 			container.appendChild(row);
 		});
@@ -81,7 +81,7 @@
 
 	function makeCaretSpan() {
 		const caret = document.createElement("span");
-		caret.className = "snippet-caret";
+		caret.className = "excerpt-caret";
 		return caret;
 	}
 
@@ -103,13 +103,13 @@
 			}
 			if (!piece.text) continue;
 			const span = makeSegSpan(piece.text, piece.color);
-			if (inMark(piece.at)) span.className = "snippet-mark";
+			if (inMark(piece.at)) span.className = "excerpt-mark";
 			row.appendChild(span);
 		}
 		if (!caretDone) row.appendChild(makeCaretSpan());
 		if (inMark(lineEnd)) {
 			const eol = makeSegSpan(" ", null);
-			eol.className = "snippet-mark";
+			eol.className = "excerpt-mark";
 			row.appendChild(eol);
 		}
 	}
@@ -120,7 +120,7 @@
 		let lineStart = 0;
 		lines.forEach((line, i) => {
 			const row = document.createElement("div");
-			row.className = "mt-modal-line";
+			row.className = "excerpt-line";
 			const segs = segsFor(colored, lines, i);
 			const lineEnd = lineStart + line.length;
 			if (marks) renderMarkedLine(row, segs, lineStart, lineEnd, marks);
@@ -141,14 +141,14 @@
 		chars.forEach((ch, i) => {
 			const span = document.createElement("span");
 			span.textContent = ch;
-			if (i === typed) span.className = "mt-modal-anchor-cursor";
-			else if (i < typed) span.className = "mto-name-typed";
+			if (i === typed) span.className = "excerpt-anchor-cursor";
+			else if (i < typed) span.className = "gto-name-typed";
 			container.appendChild(span);
 		});
 	}
 
 	const api = {
-		renderSnippet,
+		renderExcerpt,
 		renderLines,
 		renderTypedName,
 	};
@@ -156,5 +156,5 @@
 	if (typeof module !== "undefined" && module.exports) {
 		module.exports = api;
 	}
-	root.SnippetView = api;
+	root.ExcerptView = api;
 })(typeof window !== "undefined" ? window : this);

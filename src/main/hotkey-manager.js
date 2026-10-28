@@ -17,12 +17,12 @@ class HotkeyManager {
 		const hotkeyMode = this.settingsManager.get("hotkeyMode");
 
 		if (hotkeyMode === "auto-run") {
-			if (state.isAutoTyping) return;
+			if (state.isAutoRunning) return;
 
 			state.lock();
-			state.startAutoTyping();
-			this.registerEscapeForAutoTyping();
-			state.send("start-auto-typing");
+			state.startAutoRun();
+			this.registerEscapeForAutoRun();
+			state.send("start-auto-run");
 		} else {
 			if (state.isLocked) {
 				state.queueAdvance(letter);
@@ -68,17 +68,17 @@ class HotkeyManager {
 		});
 	}
 
-	registerTypingHotkeys() {
+	registerAutoTypingHotkeys() {
 		const hotkeys = this.settingsManager.get("hotkeys.typing");
 		hotkeys.forEach((letter) => this.registerKey(letter));
 	}
 
-	unregisterTypingHotkeys() {
+	unregisterAutoTypingHotkeys() {
 		const hotkeys = this.settingsManager.get("hotkeys.typing");
 		hotkeys.forEach((letter) => globalShortcut.unregister(letter));
 	}
 
-	typingHotkeysEnabled() {
+	autoTypingHotkeysEnabled() {
 		if (!this.remoteConnected) return true;
 		return this.settingsManager.get("typingHotkeysOffWithRemote") !== true;
 	}
@@ -86,38 +86,38 @@ class HotkeyManager {
 	setRemoteConnected(connected) {
 		this.remoteConnected = !!connected;
 		if (!state.isActive) return;
-		if (this.typingHotkeysEnabled()) this.registerTypingHotkeys();
-		else this.unregisterTypingHotkeys();
+		if (this.autoTypingHotkeysEnabled()) this.registerAutoTypingHotkeys();
+		else this.unregisterAutoTypingHotkeys();
 	}
 
-	typingHotkeysFor(ch) {
-		if (!this.typingHotkeysEnabled()) return [];
+	autoTypingHotkeysFor(ch) {
+		if (!this.autoTypingHotkeysEnabled()) return [];
 		if (typeof ch !== "string" || !ch) return [];
 		const hotkeys = this.settingsManager.get("hotkeys.typing") || [];
 		const lower = ch.toLowerCase();
 		return hotkeys.filter((k) => String(k).toLowerCase() === lower);
 	}
 
-	releaseTypingHotkeysFor(ch) {
-		const keys = this.typingHotkeysFor(ch);
+	releaseAutoTypingHotkeysFor(ch) {
+		const keys = this.autoTypingHotkeysFor(ch);
 		keys.forEach((letter) => globalShortcut.unregister(letter));
 		return keys;
 	}
 
-	restoreTypingHotkeys(keys) {
+	restoreAutoTypingHotkeys(keys) {
 		(keys || []).forEach((letter) => this.registerKey(letter));
 	}
 
 	registerKey(letter) {
-		if (!this.typingHotkeysEnabled()) return;
+		if (!this.autoTypingHotkeysEnabled()) return;
 		if (globalShortcut.isRegistered(letter)) return;
 		globalShortcut.register(letter, () => this.handleKey(letter));
 	}
 
-	registerEscapeForAutoTyping() {
+	registerEscapeForAutoRun() {
 		if (!globalShortcut.isRegistered("Escape")) {
 			globalShortcut.register("Escape", () => {
-				state.mainWindow.webContents.send("stop-auto-typing");
+				state.mainWindow.webContents.send("stop-auto-run");
 			});
 		}
 	}

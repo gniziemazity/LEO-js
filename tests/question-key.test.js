@@ -39,7 +39,7 @@ function harness({ lesson = true, alive = true, paused = true } = {}) {
 			},
 			send: (ch) => events.push(["send", ch]),
 		},
-		"./float-windows": {
+		"./floating-window-manager": {
 			floatState,
 			_questionFloat: { isAlive: () => alive },
 			animateQuestionWindowOnScreen: () => events.push(["animate"]),
@@ -167,7 +167,7 @@ test("main.js routes every entry and every exit through the one module", () => {
 	assert.match(enter, /openQuestionWindow\([\s\S]*armQuestionShow\(\)/);
 	assert.match(
 		main,
-		/if \(kind\) hotkeyManager\.registerConfirmPopup\(confirmKeyFor\(kind\)\);\n\telse rearmQuestionShow\(\);/,
+		/if \(type\) hotkeyManager\.registerConfirmPopup\(confirmKeyFor\(type\)\);\n\telse rearmQuestionShow\(\);/,
 		"a settings save calls unregisterAll",
 	);
 	assert.equal(
@@ -178,7 +178,7 @@ test("main.js routes every entry and every exit through the one module", () => {
 });
 
 test("the question window forgets it was shown when the next one opens", () => {
-	const fw = read("main/float-windows.js");
+	const fw = read("main/floating-window-manager.js");
 	assert.match(fw, /questionShown: false,/);
 	assert.match(
 		/function openQuestionWindow[\s\S]*?\n\}/.exec(fw)[0],

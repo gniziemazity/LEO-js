@@ -3,6 +3,7 @@ const { keyboard, Key } = require("@computer-use/nut-js");
 const { libnut } = require("@computer-use/libnut/dist/import_libnut");
 const { NUTJS_KEY_MAPPING } = require("../shared/constants");
 const state = require("./state");
+const { sleep, isMacOS, primaryModifier } = require("./platform");
 
 const SHIFTED_CHAR_TO_KEY = {
 	"!": Key.Num1,
@@ -84,8 +85,6 @@ const LAYOUT_NATIVE_CHAINS = {
 	">": [["<", ["shift"]]],
 };
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 function tapLayoutChar(char, modifiers) {
 	try {
 		libnut.keyTap(char, modifiers);
@@ -113,16 +112,11 @@ class KeyboardHandler {
 	}
 
 	updatePlatformSettings() {
-		const platform = this.settingsManager.get("platform") || "windows";
-		if (platform === "macos") {
-			keyboard.config.autoDelayMs = 50;
-		} else {
-			keyboard.config.autoDelayMs = 0;
-		}
+		keyboard.config.autoDelayMs = this.isMacOS() ? 50 : 0;
 	}
 
 	isMacOS() {
-		return this.settingsManager.get("platform") === "macos";
+		return isMacOS(this.settingsManager);
 	}
 
 	async typeCharacter(char) {
@@ -139,23 +133,12 @@ class KeyboardHandler {
 
 		this.isProcessing = true;
 
-		const charLower = char.toLowerCase();
-		const typingHotkeys = this.settingsManager.get("hotkeys.typing");
-		const isInterceptorKey =
-			this.hotkeyManager.typingHotkeysEnabled() &&
-			typingHotkeys.includes(charLower);
-
 		try {
-			await this.typeCharWithHotkeyManagement(
-				char,
-				charLower,
-				isInterceptorKey,
-			);
+			await this.typeCharWithHotkeyManagement(char);
 
 			this.processQueue();
 		} catch (error) {
 			console.error("[LEO] type failed:", error);
-			this.ensureHotkeyRegistered(charLower, isInterceptorKey);
 			state.unlock();
 			state.clearQueue();
 		} finally {
@@ -168,61 +151,34 @@ class KeyboardHandler {
 		}
 	}
 
-	async typeCharWithHotkeyManagement(char, charLower, isInterceptorKey) {
-		if (isInterceptorKey) {
-			this.hotkeyManager.unregisterKey(charLower);
-			// macOS fix: wait for unregister to take effect
-			if (this.isMacOS()) {
-				await sleep(20);
-			}
-		}
-
-		await this.typeWithNutJs(char);
-
-		if (isInterceptorKey) {
-			// macOS fix: wait before re-registering
-			if (this.isMacOS()) {
-				await sleep(20);
-			}
-			this.hotkeyManager.registerKey(charLower);
+	async typeCharWithHotkeyManagement(char) {
+		const released = this.hotkeyManager.releaseAutoTypingHotkeysFor(char);
+		const settle = released.length > 0 && this.isMacOS();
+		if (settle) await sleep(20);
+		try {
+			await this.typeWithNutJs(char);
+		} finally {
+			if (settle) await sleep(20);
+			this.hotkeyManager.restoreAutoTypingHotkeys(released);
 		}
 	}
 
-	ensureHotkeyRegistered(charLower, isInterceptorKey) {
-		if (isInterceptorKey) {
-			this.hotkeyManager.registerKey(charLower);
-		}
-	}
-
-	async autoTypeBlock(steps, startIndex, speed) {
-		const typingHotkeys = this.settingsManager.get("hotkeys.typing");
-
+	async autoRunBlock(steps, startIndex, speed) {
 		for (let i = startIndex; i < steps.length; i++) {
-			if (!state.isAutoTyping) {
+			if (!state.isAutoRunning) {
 				break;
 			}
 
 			if (steps[i].type === "block") break;
 			if (steps[i].type === "char") {
-				const char = steps[i].char;
-				const charLower = char.toLowerCase();
-				const isInterceptorKey =
-					this.hotkeyManager.typingHotkeysEnabled() &&
-					typingHotkeys.includes(charLower);
-
 				try {
-					await this.typeCharWithHotkeyManagement(
-						char,
-						charLower,
-						isInterceptorKey,
-					);
+					await this.typeCharWithHotkeyManagement(steps[i].char);
 
-					state.send("auto-type-step-complete", steps[i].index);
+					state.send("auto-run-step-complete", steps[i].index);
 
 					await sleep(speed);
 				} catch (error) {
-					console.error("[LEO] auto-type failed:", error);
-					this.ensureHotkeyRegistered(charLower, isInterceptorKey);
+					console.error("[LEO] auto-run failed:", error);
 					break;
 				}
 			}
@@ -239,10 +195,13 @@ class KeyboardHandler {
 				state.unpause("pause-key");
 				return;
 			}
-			if (mapping.modifier && mapping.shift) {
-				await keyboard.type(mapping.modifier, Key.LeftShift, mapping.key);
-			} else if (mapping.modifier) {
-				await keyboard.type(mapping.modifier, mapping.key);
+			const modifier = mapping.primary
+				? primaryModifier(this.settingsManager, Key)
+				: mapping.modifier;
+			if (modifier && mapping.shift) {
+				await keyboard.type(modifier, Key.LeftShift, mapping.key);
+			} else if (modifier) {
+				await keyboard.type(modifier, mapping.key);
 			} else if (mapping.shift) {
 				await keyboard.type(Key.LeftShift, mapping.key);
 			} else {

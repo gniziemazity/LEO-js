@@ -56,19 +56,19 @@ global.document = {
 };
 global.window = { innerWidth: 1200, innerHeight: 800 };
 
-const AnchorPreview = require("../src/renderer/anchor-preview");
+const GoToPreview = require("../src/renderer/go-to-preview");
 
 const PLAN = [
-	{ type: "move-to", target: "app.js" },
+	{ type: "go-to", target: "app.js" },
 	{ type: "code", text: "const a = 1;\nconst b = 2;⚓7⚓\nconst c = 3;" },
 	{ type: "code", text: "↩const d = 4;" },
-	{ type: "move-to", target: "⚓7⚓" },
+	{ type: "go-to", target: "⚓7⚓" },
 ];
 
-function build({ typing = false, blocks = PLAN } = {}) {
-	return new AnchorPreview(
+function build({ autoTyping = false, blocks = PLAN } = {}) {
+	return new GoToPreview(
 		{ getAllBlocks: () => blocks },
-		{ isActive: () => typing },
+		{ isActive: () => autoTyping },
 	);
 }
 
@@ -88,8 +88,8 @@ function optionOf(blockIdx, value) {
 	const opt = makeEl("div");
 	opt.dataset.value = value;
 	opt.closest = (sel) => {
-		if (sel === ".mt-option") return opt;
-		if (sel === ".mt-options") return list;
+		if (sel === ".gt-option") return opt;
+		if (sel === ".gt-options") return list;
 		return null;
 	};
 	list.appendChild(opt);
@@ -130,7 +130,7 @@ test("the anchor line carries the cursor block", () => {
 	const { opt } = optionOf(3, "⚓7⚓");
 	p._show(p._hoverTarget({ target: opt }));
 	const cursors = p.el.children.flatMap((row) =>
-		row.children.filter((c) => c.className === "mt-modal-anchor-cursor"),
+		row.children.filter((c) => c.className === "excerpt-anchor-cursor"),
 	);
 	assert.equal(cursors.length, 1);
 });
@@ -142,7 +142,7 @@ test("the preview sits beside the dropdown, not on top of it", () => {
 	assert.equal(p.el.style.left, `${list.getBoundingClientRect().right + 8}px`);
 });
 
-test("hovering the move-to block itself still previews its target", () => {
+test("hovering the go-to block itself still previews its target", () => {
 	const p = build();
 	const el = blockAt(3, "⚓7⚓");
 	p._onOver({ target: el });
@@ -165,8 +165,8 @@ test("an anchor that does not exist shows nothing", () => {
 	assert.equal(p.el, null);
 });
 
-test("hovering does nothing while typing is active", () => {
-	const p = build({ typing: true });
+test("hovering does nothing while auto-typing is active", () => {
+	const p = build({ autoTyping: true });
 	const { opt } = optionOf(3, "⚓7⚓");
 	p._onOver({ target: opt });
 	assert.equal(p.timer, null);
@@ -204,7 +204,7 @@ test("hovering a plain block is not an anchor hover", () => {
 
 function header(p) {
 	const first = p.el.children[0];
-	return first && first.className === "anchor-preview-file"
+	return first && first.className === "go-to-preview-file"
 		? first.textContent
 		: null;
 }
@@ -215,24 +215,26 @@ test("the preview names the file above the code", () => {
 	p._show(p._hoverTarget({ target: opt }));
 	assert.equal(header(p), "📄 app.js");
 	assert.equal(
-		p.el.children.filter((c) => c.className === "anchor-preview-file").length,
+		p.el.children.filter((c) => c.className === "go-to-preview-file")
+			.length,
 		1,
 		"one header, even after the tooltip is reused",
 	);
 	p._show(p._hoverTarget({ target: opt }));
 	assert.equal(
-		p.el.children.filter((c) => c.className === "anchor-preview-file").length,
+		p.el.children.filter((c) => c.className === "go-to-preview-file")
+			.length,
 		1,
 	);
 });
 
 test("an anchor in another file is named by its own file, not the open one", () => {
 	const blocks = [
-		{ type: "move-to", target: "app.js" },
+		{ type: "go-to", target: "app.js" },
 		{ type: "code", text: "const a = 1;⚓7⚓" },
-		{ type: "move-to", target: "style.css" },
+		{ type: "go-to", target: "style.css" },
 		{ type: "code", text: "body {}" },
-		{ type: "move-to", target: "⚓7⚓" },
+		{ type: "go-to", target: "⚓7⚓" },
 	];
 	const p = build({ blocks });
 	const { opt } = optionOf(4, "⚓7⚓");
@@ -249,7 +251,7 @@ test("a file target and the main editor are named too", () => {
 	const main = build({
 		blocks: [
 			{ type: "code", text: "let x = 1;⚓3⚓" },
-			{ type: "move-to", target: "⚓3⚓" },
+			{ type: "go-to", target: "⚓3⚓" },
 		],
 	});
 	const item = optionOf(1, "⚓3⚓").opt;
@@ -276,7 +278,7 @@ test("the preview attaches after the DOM elements are cached", () => {
 		"utf-8",
 	);
 	const cached = src.indexOf("uiManager.cacheElements()");
-	const attached = src.indexOf("anchorPreview.attach(");
+	const attached = src.indexOf("goToPreview.attach(");
 	assert.ok(cached >= 0, "cacheElements is called somewhere");
 	assert.ok(attached >= 0, "the preview is attached somewhere");
 	assert.ok(

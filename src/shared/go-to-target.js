@@ -13,11 +13,15 @@
 		return `${ANCHOR_WRAP}${id}${ANCHOR_WRAP}`;
 	}
 
+	function anchorIdPattern() {
+		return /⚓(\d+)⚓/g;
+	}
+
 	function isFileName(name) {
 		return typeof name === "string" && FILE_RE.test(name);
 	}
 
-	function classifyMoveToTarget(target) {
+	function classifyGoToTarget(target) {
 		const raw = typeof target === "string" && target ? target : "MAIN";
 		if (raw === "MAIN") {
 			return { mode: "main", target: raw, inner: raw, wrapped: false };
@@ -35,13 +39,13 @@
 		return { mode: "main", target: raw, inner, wrapped };
 	}
 
-	function moveToFileName(target) {
-		const t = classifyMoveToTarget(target);
+	function goToFileName(target) {
+		const t = classifyGoToTarget(target);
 		return t.mode === "file" ? t.target : null;
 	}
 
-	function moveToDisplayName(target) {
-		const t = classifyMoveToTarget(target);
+	function goToDisplayName(target) {
+		const t = classifyGoToTarget(target);
 		if (t.mode === "main")
 			return t.target === "MAIN" ? "Main Editor" : t.target;
 		if (t.mode === "dev") return "Dev Tools";
@@ -49,30 +53,31 @@
 		return wrapAnchor(t.inner);
 	}
 
-	function moveToTargetLabel(target) {
-		const t = classifyMoveToTarget(target);
-		const name = moveToDisplayName(target);
+	function goToTargetLabel(target) {
+		const t = classifyGoToTarget(target);
+		const name = goToDisplayName(target);
 		return t.mode === "file" ? `📄 ${name}` : name;
 	}
 
-	function moveToPopupTitle({ mode, snippet, typeName }) {
+	function goToPopupTitle({ mode, excerpt, typeName }) {
 		if (mode === "file" && !!typeName) return "Create file:";
-		const switchTo = mode === "anchor" && snippet ? snippet.switchTo : null;
-		return switchTo ? `Go to (${moveToDisplayName(switchTo)}):` : "Go to:";
+		const switchTo = mode === "anchor" && excerpt ? excerpt.switchTo : null;
+		return switchTo ? `Go to (${goToDisplayName(switchTo)}):` : "Go to:";
 	}
 
 	const api = {
 		wrapAnchor,
+		anchorIdPattern,
 		isFileName,
-		classifyMoveToTarget,
-		moveToFileName,
-		moveToDisplayName,
-		moveToTargetLabel,
-		moveToPopupTitle,
+		classifyGoToTarget,
+		goToFileName,
+		goToDisplayName,
+		goToTargetLabel,
+		goToPopupTitle,
 	};
 
 	if (typeof module !== "undefined" && module.exports) {
 		module.exports = api;
 	}
-	root.MoveToTarget = api;
+	root.GoToTarget = api;
 })(typeof window !== "undefined" ? window : this);

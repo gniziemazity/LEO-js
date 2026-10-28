@@ -5,7 +5,7 @@ class AppState {
 		this.isActive = false;
 		this.autoPilot = false;
 		this.pauseReasons = new Set();
-		this.isAutoTyping = false;
+		this.isAutoRunning = false;
 		this.advanceQueue = [];
 		this.typeQueue = [];
 	}
@@ -14,7 +14,7 @@ class AppState {
 		this.isLocked = false;
 		this.isActive = false;
 		this.pauseReasons.clear();
-		this.isAutoTyping = false;
+		this.isAutoRunning = false;
 		this.clearQueue();
 	}
 
@@ -45,12 +45,12 @@ class AppState {
 		return this.pauseReasons.size > 0;
 	}
 
-	startAutoTyping() {
-		this.isAutoTyping = true;
+	startAutoRun() {
+		this.isAutoRunning = true;
 	}
 
-	stopAutoTyping() {
-		this.isAutoTyping = false;
+	stopAutoRun() {
+		this.isAutoRunning = false;
 	}
 
 	queueAdvance(key) {

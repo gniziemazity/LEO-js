@@ -114,21 +114,21 @@ def _build_plans_zip(course: Path) -> Path | None:
     lessons_dir = course / "lessons"
     if not lessons_dir.is_dir():
         return None
-    plans = []
+    keylogs = []
     for lesson_dir in sorted(lessons_dir.iterdir()):
         if not lesson_dir.is_dir():
             continue
-        plan_file = lesson_dir / f"{lesson_dir.name}.log"
-        if not plan_file.is_file():
-            plan_file = lesson_dir / f"{lesson_dir.name}.json"
-        if plan_file.is_file():
-            plans.append(plan_file)
-    if not plans:
+        keylog = lesson_dir / f"{lesson_dir.name}.log"
+        if not keylog.is_file():
+            keylog = lesson_dir / f"{lesson_dir.name}.json"
+        if keylog.is_file():
+            keylogs.append(keylog)
+    if not keylogs:
         return None
     out_path = course / "plans.zip"
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for plan in plans:
-            zf.write(plan, arcname=plan.name)
+        for keylog in keylogs:
+            zf.write(keylog, arcname=keylog.name)
     return out_path
 
 

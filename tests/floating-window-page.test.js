@@ -7,7 +7,7 @@ const path = require("node:path");
 
 const SRC_DIR = path.resolve(__dirname, "..", "src");
 const SHARED = fs.readFileSync(
-	path.join(SRC_DIR, "shared/float-window.js"),
+	path.join(SRC_DIR, "shared/floating-window-page.js"),
 	"utf-8",
 );
 
@@ -303,7 +303,7 @@ test("every floating window loads the shared chrome and declares both channels",
 		const html = fs.readFileSync(path.join(SRC_DIR, file), "utf-8");
 		assert.match(
 			html,
-			/<script src="\.\/shared\/float-window\.js"><\/script>/,
+			/<script src="\.\/shared\/floating-window-page\.js"><\/script>/,
 			file + " must load the shared chrome",
 		);
 		assert.match(html, /initFloatWindow\(\{/, file + " must call it");
@@ -319,6 +319,16 @@ test("every floating window loads the shared chrome and declares both channels",
 				file + " must not claim a pin channel",
 			);
 	}
+});
+
+test("a web page with no background of its own is not see-through", () => {
+	const html = fs.readFileSync(path.join(SRC_DIR, "web-window.html"), "utf-8");
+	const prefs = html.match(/webpreferences="([^"]*)"/);
+	assert.ok(prefs, "the webview declares its preferences");
+	assert.ok(
+		prefs[1].split(",").includes("transparent=no"),
+		"a guest page is transparent by default, and the window under it is too",
+	);
 });
 
 test("no window keeps a private copy of the chrome any more", () => {

@@ -1,4 +1,6 @@
 const { readCodeText } = require("../shared/code-text");
+const UIManager = require("./ui-manager");
+const { wrapAnchor } = require("../shared/go-to-target");
 
 class SpecialKeys {
 	constructor(uiManager, blockEditor, lessonManager) {
@@ -44,14 +46,13 @@ class SpecialKeys {
 	insertSpecialChar(char) {
 		const insertText =
 			char === "⚓" && this.lessonManager
-				? `⚓${this.lessonManager.getNextAnchorId()}⚓`
+				? wrapAnchor(this.lessonManager.getNextAnchorId())
 				: char;
 		document.execCommand("insertText", false, insertText);
 		const selectedBlockIndex = this.uiManager.getSelectedBlockIndex();
 
 		if (selectedBlockIndex !== null) {
-			const activeDiv =
-				document.querySelectorAll(".block")[selectedBlockIndex];
+			const activeDiv = UIManager.blockElement(selectedBlockIndex);
 			if (!activeDiv || !activeDiv.contains(document.activeElement)) return;
 			this.blockEditor.updateBlockContent(
 				selectedBlockIndex,

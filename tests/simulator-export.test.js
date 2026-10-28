@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const {
 	exportFileEntries,
 	mainExportName,
-} = require("../lesson_tools/simulator/visualizer.js");
+} = require("../lesson_tools/simulator/simulator.js");
 
 const f = (text) => ({ text });
 const paths = (entries) => entries.map((e) => e.path);

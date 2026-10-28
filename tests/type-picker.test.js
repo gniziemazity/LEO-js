@@ -13,12 +13,12 @@ const LessonManager = require("../src/renderer/lesson-manager");
 const BlockEditor = require("../src/renderer/block-editor");
 const LessonRenderer = require("../src/renderer/lesson-renderer");
 const UIManager = require("../src/renderer/ui-manager");
-const { KIND_PLACEHOLDERS, kindGlyph } = require("../src/renderer/block-types");
+const { TYPE_PLACEHOLDERS, typeGlyph } = require("../src/renderer/block-types");
 const {
-	BLOCK_KINDS,
-	getBlockKind,
+	BLOCK_TYPES,
+	getBlockType,
 	stripBlockPrefix,
-	withKindPrefix,
+	withTypePrefix,
 } = require("../src/shared/blocks");
 
 function manager(blocks) {
@@ -28,8 +28,8 @@ function manager(blocks) {
 	return lm;
 }
 
-test("withKindPrefix and stripBlockPrefix are inverses for every kind", () => {
-	for (const [, kind] of BLOCK_KINDS) {
+test("withTypePrefix and stripBlockPrefix are inverses for every type", () => {
+	for (const [, type] of BLOCK_TYPES) {
 		for (const body of [
 			"x",
 			"",
@@ -37,21 +37,21 @@ test("withKindPrefix and stripBlockPrefix are inverses for every kind", () => {
 			"  indented",
 			"\nfirst line blank",
 		]) {
-			const text = withKindPrefix(kind, body);
-			assert.equal(getBlockKind(text), kind, `${kind} keeps its kind`);
+			const text = withTypePrefix(type, body);
+			assert.equal(getBlockType(text), type, `${type} keeps its type`);
 			assert.equal(
 				stripBlockPrefix(text),
 				body,
-				`${kind}: ${JSON.stringify(body)}`,
+				`${type}: ${JSON.stringify(body)}`,
 			);
 		}
 	}
 	assert.equal(
-		withKindPrefix("note", "plain"),
+		withTypePrefix("note", "plain"),
 		"plain",
 		"a note has no prefix",
 	);
-	assert.equal(withKindPrefix("code", "plain"), "plain");
+	assert.equal(withTypePrefix("code", "plain"), "plain");
 });
 
 test("editing a body writes it back behind the block's own prefix", () => {
@@ -71,13 +71,13 @@ test("editing a body writes it back behind the block's own prefix", () => {
 	assert.equal(lm.data[4].text, "y = 2");
 	lm.updateBlockBody(1, "");
 	assert.equal(
-		getBlockKind(lm.data[1].text),
+		getBlockType(lm.data[1].text),
 		"snippet",
 		"emptying the body must not turn a snippet into a note",
 	);
 });
 
-test("a special key typed into a block keeps its kind", () => {
+test("a special key typed into a block keeps its type", () => {
 	const lm = manager([{ type: "comment", text: "📋 abc" }]);
 	const ui = { getSelectedBlockIndex: () => 1 };
 	const editor = new BlockEditor(lm, ui, {}, null);
@@ -118,18 +118,18 @@ test("the symbol is a sealed button that leads the block", () => {
 		};
 		const clicked = [];
 		const ui = new UIManager();
-		const picker = ui.attachKindPicker(block, {
+		const picker = ui.attachTypePicker(block, {
 			glyph: "📋",
 			title: "Change block type",
 			disabled: false,
 			onClick: () => clicked.push("open"),
 		});
 		assert.equal(block.children[0], picker, "first child, before the text");
-		assert.equal(picker.className, "block-kind");
+		assert.equal(picker.className, "block-type");
 		assert.equal(picker.textContent, "📋");
 		assert.equal(picker.dataset.blockOpt, "1", "readCodeText skips it");
 		assert.equal(picker.contentEditable, "false");
-		assert.equal(classes.has("has-kind"), true);
+		assert.equal(classes.has("has-type"), true);
 		picker.listeners.click.at(-1)();
 		assert.deepEqual(clicked, ["open"]);
 		for (const type of ["mousedown", "click", "input", "keydown"]) {
@@ -140,7 +140,7 @@ test("the symbol is a sealed button that leads the block", () => {
 			);
 		}
 
-		const off = ui.attachKindPicker(block, {
+		const off = ui.attachTypePicker(block, {
 			glyph: "⌨",
 			title: "t",
 			disabled: true,
@@ -165,24 +165,24 @@ function fakeDiv() {
 	};
 }
 
-function renderText(block, { typing = false } = {}) {
+function renderText(block, { autoTyping = false } = {}) {
 	const lm = manager([block]);
 	const renderer = new LessonRenderer(
 		lm,
 		{
-			isActive: () => typing,
+			isActive: () => autoTyping,
 			getSelectedBlockIndex: () => null,
 			attachBlockIsland: () => null,
-			attachKindPicker: () => {},
+			attachTypePicker: () => {},
 		},
 		{},
 	);
 	const div = fakeDiv();
-	renderer.renderKindBlock({
+	renderer.renderCommentBlock({
 		blockDiv: div,
 		block: lm.data[1],
 		blockIdx: 1,
-		isTypingActive: typing,
+		isAutoTypingActive: autoTyping,
 		stepIndex: 0,
 		steps: [],
 	});
@@ -209,10 +209,10 @@ test("an authored text block shows its body; the symbol is the widget", () => {
 		"a collapsed multi-line snippet labels itself with its first body line",
 	);
 	assert.equal(
-		renderText({ type: "comment", text: "📋 x" }, { typing: true })
+		renderText({ type: "comment", text: "📋 x" }, { autoTyping: true })
 			.textContent,
 		"x",
-		"typing must not move the text",
+		"auto-typing must not move the text",
 	);
 });
 
@@ -220,27 +220,27 @@ test("an inherited block keeps its emoji as text, and gets no symbol widget", ()
 	const div = renderText({
 		type: "comment",
 		text: "📋 file body",
-		fromInclude: true,
+		fromStart: true,
 	});
 	assert.equal(div.textContent, "📋 file body");
 });
 
-test("every kind has a symbol, and an empty one says what to type", () => {
-	for (const kind of [
+test("every type has a symbol, and an empty one says what to type", () => {
+	for (const type of [
 		"note",
 		"code",
 		"question",
 		"image",
 		"web",
 		"snippet",
-		"move-to",
+		"go-to",
 	]) {
-		assert.ok(kindGlyph(kind), `${kind} has a symbol`);
+		assert.ok(typeGlyph(type), `${type} has a symbol`);
 	}
-	assert.equal(kindGlyph("note"), "💬");
-	assert.equal(kindGlyph("code"), "⌨");
-	for (const kind of ["note", "code", "question", "image", "web", "snippet"]) {
-		assert.ok(KIND_PLACEHOLDERS[kind], `${kind} has a placeholder`);
+	assert.equal(typeGlyph("note"), "💬");
+	assert.equal(typeGlyph("code"), "⌨");
+	for (const type of ["note", "code", "question", "image", "web", "snippet"]) {
+		assert.ok(TYPE_PLACEHOLDERS[type], `${type} has a placeholder`);
 	}
 });
 
@@ -252,7 +252,7 @@ test("a missing symbol is put back after an edit", () => {
 		classList: { contains: () => false },
 		querySelector: (sel) => (parts.some((p) => sel.includes(p)) ? {} : null),
 	});
-	renderer._keepIsland(withParts(["block-opt-below", "block-kind"]), 3);
+	renderer._keepIsland(withParts(["block-opt-below", "block-type"]), 3);
 	assert.deepEqual(refreshed, [], "nothing missing, nothing to do");
 	renderer._keepIsland(withParts(["block-opt-below"]), 3);
 	assert.deepEqual(
@@ -260,7 +260,7 @@ test("a missing symbol is put back after an edit", () => {
 		[3],
 		"Chromium removed the symbol with the text",
 	);
-	renderer._keepIsland(withParts(["block-kind"]), 4);
+	renderer._keepIsland(withParts(["block-type"]), 4);
 	assert.deepEqual(refreshed, [3, 4], "or the chips");
 });
 
@@ -290,39 +290,39 @@ test("an emptied block keeps its placeholder br after the widgets", () => {
 
 test("the symbol sits in its own gutter and shows a ▾ without moving text", () => {
 	const css = read("shared/styles.css");
-	assert.match(css, /--kind-w: 38px;/);
+	assert.match(css, /--type-w: 38px;/);
 	assert.match(
 		css,
-		/\.block\.has-kind \{\n\tpadding-left: calc\(15px \+ var\(--kind-w\)\);\n\tmin-height: calc\(1\.5em \+ 20px\);/,
+		/\.block\.has-type \{\n\tpadding-left: calc\(15px \+ var\(--type-w\)\);\n\tmin-height: calc\(1\.5em \+ 20px\);/,
 		"one shared text column, and no block shorter than the symbol",
 	);
-	const rule = /\n\.block-kind \{[\s\S]*?\n\}/.exec(css)[0];
+	const rule = /\n\.block-type \{[\s\S]*?\n\}/.exec(css)[0];
 	assert.match(rule, /position: absolute;/);
 	assert.match(rule, /height: 1\.5em;/, "one line, following the font size");
 	assert.match(
 		css,
-		/\.block-kind::after \{\n\tcontent: "▾";[\s\S]*?visibility: hidden;/,
+		/\.block-type::after \{\n\tcontent: "▾";[\s\S]*?visibility: hidden;/,
 		"the arrow has its room reserved, so revealing it moves nothing",
 	);
 	assert.match(
 		css,
-		/:where\(body:not\(\.mobile-view\)\)\n\t\.block:hover\n\t> \.block-kind:not\(:disabled\)::after \{\n\tvisibility: visible;/,
+		/:where\(body:not\(\.mobile-view\)\)\n\t\.block:hover\n\t> \.block-type:not\(:disabled\)::after \{\n\tvisibility: visible;/,
 	);
 	assert.match(
 		css,
-		/\.move-to-block > \.block-kind \{\n\ttop: 50%;\n\ttransform: translateY\(-50%\);/,
+		/\.go-to-block > \.block-type \{\n\ttop: 50%;\n\ttransform: translateY\(-50%\);/,
 	);
 });
 
 test("the empty image block says where the images go", () => {
-	assert.match(KIND_PLACEHOLDERS.image, /^Image file name/);
+	assert.match(TYPE_PLACEHOLDERS.image, /^Image file name/);
 	assert.match(
-		KIND_PLACEHOLDERS.image,
+		TYPE_PLACEHOLDERS.image,
 		/images folder/,
 		"the file is looked up in the images folder beside the lesson, so say so",
 	);
 });
 
-test("an unknown kind still gets the note symbol, whatever heads the list", () => {
-	assert.equal(kindGlyph("nonsense"), "💬");
+test("an unknown type still gets the note symbol, whatever heads the list", () => {
+	assert.equal(typeGlyph("nonsense"), "💬");
 });

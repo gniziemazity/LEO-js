@@ -22,10 +22,10 @@ function harness() {
 		"./context": {
 			settingsManager: { get: () => undefined },
 			broadcastServer: {
-				broadcastCodeInsertStarted() {},
-				broadcastCodeInsertEnded() {},
-				broadcastMoveToStarted() {},
-				broadcastMoveToEnded() {},
+				broadcastSnippetStarted() {},
+				broadcastSnippetEnded() {},
+				broadcastGoToStarted() {},
+				broadcastGoToEnded() {},
 			},
 			hotkeyManager: {
 				registerConfirmPopup() {},
@@ -40,7 +40,7 @@ function harness() {
 
 function held(text) {
 	const { popups, written } = harness();
-	popups.enterPopup("code-insert", { text, paste: true });
+	popups.enterPopup("snippet", { text, paste: true });
 	return written[0];
 }
 
@@ -85,7 +85,7 @@ test("the renderer hands over the body with only anchors removed", () => {
 		path.join(__dirname, "..", "src", "renderer", "cursor-manager.js"),
 		"utf-8",
 	);
-	const fn = /_enterCodeInsertBlock\(step\) \{[\s\S]*?\n\t\}/.exec(src)[0];
+	const fn = /_enterSnippetBlock\(step\) \{[\s\S]*?\n\t\}/.exec(src)[0];
 	assert.match(fn, /const pasted = stripAnchors\(text\)/);
 	assert.match(
 		fn,
@@ -101,6 +101,6 @@ test("the renderer hands over the body with only anchors removed", () => {
 
 test("a block that opts out of Paste still hijacks no clipboard", () => {
 	const { popups, written } = harness();
-	popups.enterPopup("code-insert", { text: "a();\n   b();", paste: false });
+	popups.enterPopup("snippet", { text: "a();\n   b();", paste: false });
 	assert.deepEqual(written, []);
 });

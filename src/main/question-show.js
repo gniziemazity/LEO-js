@@ -4,7 +4,7 @@ const {
 	floatState,
 	_questionFloat,
 	animateQuestionWindowOnScreen,
-} = require("./float-windows");
+} = require("./floating-window-manager");
 
 function questionAwaitingShow() {
 	return (

@@ -48,7 +48,7 @@
 			for (const child of node.childNodes) {
 				if (child.nodeType === 3) {
 					text += child.data;
-				} else if (child.dataset && child.dataset.blockOpt) {
+				} else if (isIslandNode(child)) {
 					continue;
 				} else if (child.nodeName === "BR") {
 					text += "\n";

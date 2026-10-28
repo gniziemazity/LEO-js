@@ -6,10 +6,11 @@ const {
 } = require("../../lesson_tools/shared/simulator-model");
 const { initProfiles } = require("../../lesson_tools/languages/profiles");
 const {
-	classifyMoveToTarget,
-	moveToDisplayName,
-} = require("../shared/move-to-target");
-const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
+	classifyGoToTarget,
+	goToDisplayName,
+	anchorIdPattern,
+} = require("../shared/go-to-target");
+const { getBlockType, stripBlockPrefix } = require("../shared/blocks");
 const {
 	HL_COLORS,
 	buildHighlightSpans,
@@ -49,8 +50,8 @@ function applyBlock(editors, active, block, tag = 0) {
 		);
 		return active;
 	}
-	if (block.type === "move-to") {
-		const t = classifyMoveToTarget(block.target || "");
+	if (block.type === "go-to") {
+		const t = classifyGoToTarget(block.target || "");
 		if (t.mode !== "anchor") {
 			const name = t.mode === "file" ? t.target : t.mode;
 			openEditor(editors, name);
@@ -64,7 +65,7 @@ function applyBlock(editors, active, block, tag = 0) {
 		}
 		return active;
 	}
-	if (block.type === "comment" && getBlockKind(block.text) === "snippet") {
+	if (block.type === "comment" && getBlockType(block.text) === "snippet") {
 		openEditor(editors, active);
 		applyAtomicText(
 			editors[active],
@@ -91,14 +92,14 @@ function filesOf(editors) {
 		.filter(([, state]) => state.text)
 		.map(([name, state]) => ({
 			name,
-			label: moveToDisplayName(editorTarget(name)),
+			label: goToDisplayName(editorTarget(name)),
 			text: state.text,
 		}));
 }
 
 function typedPrefix(text, caret) {
 	let cut = Math.max(0, Math.min(caret, text.length));
-	for (const m of text.matchAll(/⚓\d*⚓/g)) {
+	for (const m of text.matchAll(anchorIdPattern())) {
 		if (m.index < cut && cut < m.index + m[0].length) cut = m.index;
 	}
 	return text.slice(0, cut);
@@ -243,7 +244,7 @@ function buildColoredLines(
 	return result;
 }
 
-function snippetAt(name, state, pos, before, after) {
+function excerptAt(name, state, pos, before, after) {
 	const beforeText = state.text.slice(0, pos);
 	const lineIdx = (beforeText.match(/\n/g) || []).length;
 	const lineStart = beforeText.lastIndexOf("\n") + 1;
@@ -266,15 +267,15 @@ function snippetAt(name, state, pos, before, after) {
 	};
 }
 
-function computeSnippetFor(target, editors, active, before, after) {
-	const t = classifyMoveToTarget(target);
+function computeExcerptFor(target, editors, active, before, after) {
+	const t = classifyGoToTarget(target);
 
 	if (t.mode !== "anchor") {
 		const name = t.mode === "file" ? t.target : t.mode;
 		const state = editors[name];
 		if (!state || !state.text) return null;
 		return {
-			...snippetAt(name, state, state.cursor, before, after),
+			...excerptAt(name, state, state.cursor, before, after),
 			file: editorTarget(name),
 			switchTo: null,
 		};
@@ -295,13 +296,13 @@ function computeSnippetFor(target, editors, active, before, after) {
 	if (found === null) return null;
 	const state = editors[found];
 	return {
-		...snippetAt(found, state, state.anchors[id], before, after),
+		...excerptAt(found, state, state.anchors[id], before, after),
 		file: editorTarget(found),
 		switchTo: found === active ? null : editorTarget(found),
 	};
 }
 
-function extractAnchorSnippet(
+function extractGoToExcerpt(
 	target,
 	currentBlockIdx,
 	blocks,
@@ -309,10 +310,10 @@ function extractAnchorSnippet(
 	after = 5,
 ) {
 	const { editors, active } = replayPlan(blocks, currentBlockIdx);
-	return computeSnippetFor(target, editors, active, before, after);
+	return computeExcerptFor(target, editors, active, before, after);
 }
 
-function computeMoveToSnippets(blocks, before = 5, after = 5) {
+function computeGoToExcerpts(blocks, before = 5, after = 5) {
 	const editors = { main: new TextState() };
 	let active = "main";
 	const snippets = new Map();
@@ -320,10 +321,10 @@ function computeMoveToSnippets(blocks, before = 5, after = 5) {
 	for (let i = 0; i < blocks.length; i++) {
 		const block = blocks[i];
 		if (!block) continue;
-		if (block.type === "move-to") {
+		if (block.type === "go-to") {
 			snippets.set(
 				i,
-				computeSnippetFor(
+				computeExcerptFor(
 					block.target || "MAIN",
 					editors,
 					active,
@@ -338,8 +339,8 @@ function computeMoveToSnippets(blocks, before = 5, after = 5) {
 }
 
 module.exports = {
-	extractAnchorSnippet,
-	computeMoveToSnippets,
+	extractGoToExcerpt,
+	computeGoToExcerpts,
 	buildColoredLines,
 	replayPlan,
 	replayMarked,

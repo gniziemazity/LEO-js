@@ -7,7 +7,7 @@ const { buildRemote } = require("./helpers/remote-dom");
 function padOpen() {
 	const h = buildRemote();
 	h.api.initTouchpad();
-	h.api.setSessionActive(true);
+	h.api.setAutoTypingActive(true);
 	h.api.setTouchpadMode("mouse");
 	return h;
 }

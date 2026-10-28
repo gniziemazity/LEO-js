@@ -3,7 +3,7 @@ const path = require("path");
 const { broadcastServer } = require("./context");
 const state = require("./state");
 const FloatingWindow = require("./floating-window");
-const { closeToolWindows } = require("./lesson-tools");
+const { closeToolWindows, isDevToolsShortcut } = require("./lesson-tools");
 
 const floatState = {
 	questionWindowIsLesson: false,
@@ -19,13 +19,7 @@ let _activeFloat = null;
 
 function _activeFloatInstance() {
 	if (_activeFloat && _activeFloat.isAlive()) return _activeFloat;
-	for (const f of [
-		_questionFloat,
-		_imageFloat,
-		_webFloat,
-		_randomizerFloat,
-		_optionsFloat,
-	]) {
+	for (const f of ALL_FLOATS) {
 		if (f && f.isAlive()) return f;
 	}
 	return null;
@@ -38,7 +32,7 @@ function _onFloatShown(f) {
 
 const ANIMATION_FRAME_INTERVAL_MS = 16;
 const FLOATING_WINDOW_LERP_FACTOR = 0.5;
-const FLOATING_WINDOW_MIN_WIDTH = 200;
+const FLOATING_WINDOW_MIN_WIDTH = 220;
 const FLOATING_WINDOW_MIN_HEIGHT = 150;
 
 let floatAnim = {
@@ -231,7 +225,7 @@ function _broadcastPinned() {
 }
 
 function unpinWindows() {
-	for (const f of [_imageFloat, _webFloat]) {
+	for (const f of Object.values(MEDIA_FLOATS)) {
 		if (f.pinned) f.setPinned(false);
 	}
 }
@@ -302,14 +296,8 @@ const _webFloat = makeFloat({
 		});
 		win.webContents.on("did-attach-webview", (event, guest) => {
 			guest.on("before-input-event", (e, input) => {
-				if (
-					input.type === "keyDown" &&
-					input.control &&
-					(input.key === "i" || input.key === "I")
-				) {
-					if (!win.isDestroyed()) {
-						win.webContents.openDevTools({ mode: "detach" });
-					}
+				if (isDevToolsShortcut(input) && !win.isDestroyed()) {
+					win.webContents.openDevTools({ mode: "detach" });
 				}
 			});
 		});
@@ -347,12 +335,17 @@ const _optionsFloat = makeFloat({
 	},
 });
 
+const ALL_FLOATS = [
+	_questionFloat,
+	_imageFloat,
+	_webFloat,
+	_randomizerFloat,
+	_optionsFloat,
+];
+const MEDIA_FLOATS = { image: _imageFloat, web: _webFloat };
+
 function closeAllChildWindows() {
-	_questionFloat.close({ force: true });
-	_imageFloat.close({ force: true });
-	_webFloat.close({ force: true });
-	_randomizerFloat.close({ force: true });
-	_optionsFloat.close({ force: true });
+	for (const f of ALL_FLOATS) f.close({ force: true });
 	closeToolWindows();
 }
 
@@ -434,6 +427,9 @@ function animateQuestionWindowOnScreen() {
 }
 
 module.exports = {
+	MEDIA_FLOATS,
+	FLOATING_WINDOW_MIN_WIDTH,
+	FLOATING_WINDOW_MIN_HEIGHT,
 	floatState,
 	openQuestionWindow,
 	closeAllChildWindows,

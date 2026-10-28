@@ -14,12 +14,12 @@ const BlockEditor = require("../src/renderer/block-editor");
 const LessonRenderer = require("../src/renderer/lesson-renderer");
 const UIManager = require("../src/renderer/ui-manager");
 const {
-	KIND_CHOICES,
-	kindChoices,
+	TYPE_CHOICES,
+	typeChoices,
 	addChoices,
-	kindGlyph,
+	typeGlyph,
 } = require("../src/renderer/block-types");
-const { BLOCK_KINDS, getBlockKind } = require("../src/shared/blocks");
+const { BLOCK_TYPES, getBlockType } = require("../src/shared/blocks");
 
 const INCLUDE = { type: "include", path: "" };
 
@@ -31,16 +31,16 @@ function manager(blocks) {
 	return lm;
 }
 
-const PREFIX = Object.fromEntries(BLOCK_KINDS.map(([p, s]) => [s, p]));
+const PREFIX = Object.fromEntries(BLOCK_TYPES.map(([p, s]) => [s, p]));
 
 test("changing type rewrites only the prefix", () => {
 	const lm = manager([{ type: "comment", text: "What is UTF-8 for?" }]);
 	for (const subtype of Object.keys(PREFIX)) {
-		assert.equal(lm.setBlockKind(1, subtype), true);
+		assert.equal(lm.setBlockType(1, subtype), true);
 		assert.equal(lm.data[1].text, `${PREFIX[subtype]} What is UTF-8 for?`);
-		assert.equal(getBlockKind(lm.data[1].text), subtype);
+		assert.equal(getBlockType(lm.data[1].text), subtype);
 	}
-	assert.equal(lm.setBlockKind(1, "note"), true);
+	assert.equal(lm.setBlockType(1, "note"), true);
 	assert.equal(
 		lm.data[1].text,
 		"What is UTF-8 for?",
@@ -51,9 +51,9 @@ test("changing type rewrites only the prefix", () => {
 test("a multi-line body survives a type change untouched", () => {
 	const body = "const a = 1;\n\tconst b = 2;\n";
 	const lm = manager([{ type: "comment", text: `📋 ${body}` }]);
-	lm.setBlockKind(1, "question");
+	lm.setBlockType(1, "question");
 	assert.equal(lm.data[1].text, `❓ ${body}`);
-	lm.setBlockKind(1, "snippet");
+	lm.setBlockType(1, "snippet");
 	assert.equal(
 		lm.data[1].text,
 		`📋 ${body}`,
@@ -63,13 +63,13 @@ test("a multi-line body survives a type change untouched", () => {
 
 test("leaving 📋 drops paste, which nothing else would ever read", () => {
 	const lm = manager([{ type: "comment", text: "📋 x", paste: false }]);
-	lm.setBlockKind(1, "snippet");
+	lm.setBlockType(1, "snippet");
 	assert.equal(
 		lm.data[1].paste,
 		false,
 		"staying 📋 keeps the teacher's choice",
 	);
-	lm.setBlockKind(1, "question");
+	lm.setBlockType(1, "question");
 	assert.equal(
 		"paste" in lm.data[1],
 		false,
@@ -79,28 +79,28 @@ test("leaving 📋 drops paste, which nothing else would ever read", () => {
 
 test("leaving 🖼️/🌐 drops pin, but 🖼️↔🌐 keeps it", () => {
 	const lm = manager([{ type: "comment", text: "🖼️ flex.webp", pin: true }]);
-	lm.setBlockKind(1, "web");
+	lm.setBlockType(1, "web");
 	assert.equal(
 		lm.data[1].pin,
 		true,
 		"same checkbox on both, so it still means it",
 	);
-	lm.setBlockKind(1, "image");
+	lm.setBlockType(1, "image");
 	assert.equal(lm.data[1].pin, true);
 	for (const next of ["question", "snippet", "note"]) {
 		const one = manager([{ type: "comment", text: "🌐 x", pin: true }]);
-		one.setBlockKind(1, next);
+		one.setBlockType(1, next);
 		assert.equal(
 			"pin" in one.data[1],
 			false,
-			`pin survived a move to ${next}`,
+			`pin survived a change to ${next}`,
 		);
 	}
 });
 
 test("a stray pin word in the body is not absorbed into the flag", () => {
 	const lm = manager([{ type: "comment", text: "❓ do you pin notes?" }]);
-	lm.setBlockKind(1, "image");
+	lm.setBlockType(1, "image");
 	assert.equal(
 		"pin" in lm.data[1],
 		false,
@@ -109,44 +109,44 @@ test("a stray pin word in the body is not absorbed into the flag", () => {
 	assert.equal(lm.data[1].text, "🖼️ do you pin notes?");
 });
 
-test("Start with and inherited blocks cannot change kind", () => {
+test("Start with and inherited blocks cannot change type", () => {
 	const lm = manager([
 		{ type: "code", text: "let x;" },
-		{ type: "comment", text: "📋 x", fromInclude: true },
+		{ type: "comment", text: "📋 x", fromStart: true },
 		{ type: "comment", text: "plain" },
 	]);
-	assert.equal(lm.setBlockKind(0, "question"), false, "Start with");
-	assert.equal(lm.setBlockKind(2, "question"), false, "inherited");
-	assert.equal(lm.setBlockKind(3, "no-such-kind"), false, "unknown kind");
-	assert.equal(lm.setBlockKind(99, "question"), false, "out of range");
+	assert.equal(lm.setBlockType(0, "question"), false, "Start with");
+	assert.equal(lm.setBlockType(2, "question"), false, "inherited");
+	assert.equal(lm.setBlockType(3, "no-such-type"), false, "unknown type");
+	assert.equal(lm.setBlockType(99, "question"), false, "out of range");
 	assert.equal(lm.data[1].text, "let x;");
 	assert.equal(lm.data[3].text, "plain");
 	assert.equal(lm.changes, 0, "a refused change must not mark the plan dirty");
 });
 
-test("a code block changes kind like any other, and back", () => {
+test("a code block changes type like any other, and back", () => {
 	const lm = manager([{ type: "code", text: "let a = 1;\nlet b = 2;" }]);
 
-	assert.equal(lm.setBlockKind(1, "snippet"), true);
+	assert.equal(lm.setBlockType(1, "snippet"), true);
 	assert.deepEqual(lm.data[1], {
 		type: "comment",
 		text: "📋 let a = 1;\nlet b = 2;",
 	});
 
-	assert.equal(lm.setBlockKind(1, "code"), true);
+	assert.equal(lm.setBlockType(1, "code"), true);
 	assert.deepEqual(
 		lm.data[1],
 		{ type: "code", text: "let a = 1;\nlet b = 2;" },
 		"the prefix comes off and the block types again",
 	);
 
-	assert.equal(lm.setBlockKind(1, "move-to"), true);
+	assert.equal(lm.setBlockType(1, "go-to"), true);
 	assert.deepEqual(lm.data[1], {
-		type: "move-to",
+		type: "go-to",
 		target: "MAIN",
 		note: "let a = 1; let b = 2;",
 	});
-	assert.equal(lm.setBlockKind(1, "code"), true);
+	assert.equal(lm.setBlockType(1, "code"), true);
 	assert.deepEqual(lm.data[1], {
 		type: "code",
 		text: "let a = 1; let b = 2;",
@@ -155,7 +155,7 @@ test("a code block changes kind like any other, and back", () => {
 
 test("a snippet that becomes code drops the flag that was only its own", () => {
 	const lm = manager([{ type: "comment", text: "📋 paste me", paste: false }]);
-	assert.equal(lm.setBlockKind(1, "code"), true);
+	assert.equal(lm.setBlockType(1, "code"), true);
 	assert.deepEqual(
 		lm.data[1],
 		{ type: "code", text: "paste me" },
@@ -165,7 +165,7 @@ test("a snippet that becomes code drops the flag that was only its own", () => {
 
 test("text that becomes code is normalised like typed code", () => {
 	const lm = manager([{ type: "comment", text: "\nstarts on a new line" }]);
-	assert.equal(lm.setBlockKind(1, "code"), true);
+	assert.equal(lm.setBlockType(1, "code"), true);
 	assert.equal(
 		lm.data[1].text,
 		"↩starts on a new line",
@@ -173,36 +173,36 @@ test("text that becomes code is normalised like typed code", () => {
 	);
 });
 
-test("a note becomes a move-to, carrying its words into the note", () => {
+test("a note becomes a go-to, carrying its words into the note", () => {
 	const lm = manager([{ type: "comment", text: "❓ check the header" }]);
-	assert.equal(lm.setBlockKind(1, "move-to"), true);
+	assert.equal(lm.setBlockType(1, "go-to"), true);
 	assert.deepEqual(lm.data[1], {
-		type: "move-to",
+		type: "go-to",
 		target: "MAIN",
 		note: "check the header",
 	});
 	assert.equal(
 		"text" in lm.data[1],
 		false,
-		"a move-to holds a target and a note, never block text",
+		"a go-to holds a target and a note, never block text",
 	);
 });
 
-test("a move-to becomes a note, carrying its note back into the text", () => {
+test("a go-to becomes a note, carrying its note back into the text", () => {
 	const lm = manager([
 		{
-			type: "move-to",
+			type: "go-to",
 			target: "app.js",
 			note: "why go here",
 			typeName: false,
 		},
 	]);
-	assert.equal(lm.setBlockKind(1, "snippet"), true);
+	assert.equal(lm.setBlockType(1, "snippet"), true);
 	assert.deepEqual(lm.data[1], { type: "comment", text: "📋 why go here" });
 	assert.equal(
 		"target" in lm.data[1] || "typeName" in lm.data[1],
 		false,
-		"the target and its Auto-type choice mean nothing on a note",
+		"the target and its Type name choice mean nothing on a note",
 	);
 });
 
@@ -210,34 +210,34 @@ test("multi-line text flattens into the one-line note, keeping every word", () =
 	const lm = manager([
 		{ type: "comment", text: "first line\n\tsecond   line\n" },
 	]);
-	lm.setBlockKind(1, "move-to");
+	lm.setBlockType(1, "go-to");
 	assert.equal(lm.data[1].note, "first line second line");
 });
 
 test("an empty note leaves no key behind either way", () => {
 	const lm = manager([{ type: "comment", text: "   " }]);
-	lm.setBlockKind(1, "move-to");
+	lm.setBlockType(1, "go-to");
 	assert.equal("note" in lm.data[1], false);
-	lm.setBlockKind(1, "note");
+	lm.setBlockType(1, "note");
 	assert.equal(lm.data[1].text, "");
 });
 
-test("switching to a move-to drops the options that were a note's", () => {
+test("switching to a go-to drops the options that were a note's", () => {
 	const lm = manager([{ type: "comment", text: "🖼️ flex.webp", pin: true }]);
-	lm.setBlockKind(1, "move-to");
+	lm.setBlockType(1, "go-to");
 	assert.equal("pin" in lm.data[1], false);
 	assert.equal("paste" in lm.data[1], false);
 });
 
-test("a move-to keeps its target when it is already one", () => {
-	const lm = manager([{ type: "move-to", target: "app.js", note: "here" }]);
-	assert.equal(lm.setBlockKind(1, "move-to"), true);
+test("a go-to keeps its target when it is already one", () => {
+	const lm = manager([{ type: "go-to", target: "app.js", note: "here" }]);
+	assert.equal(lm.setBlockType(1, "go-to"), true);
 	assert.equal(lm.data[1].target, "app.js", "re-picking must not reset it");
 });
 
 test("a type change marks the plan as changed", () => {
 	const lm = manager([{ type: "comment", text: "x" }]);
-	lm.setBlockKind(1, "question");
+	lm.setBlockType(1, "question");
 	assert.equal(lm.changes, 1);
 });
 
@@ -258,8 +258,8 @@ test("the first authored block sits after Start with and its inherited blocks", 
 		1,
 	);
 	const lm = manager([
-		{ type: "move-to", target: "index.html", fromInclude: true },
-		{ type: "comment", text: "📋 x", fromInclude: true },
+		{ type: "go-to", target: "index.html", fromStart: true },
+		{ type: "comment", text: "📋 x", fromStart: true },
 		{ type: "comment", text: "mine" },
 	]);
 	assert.equal(lm.firstAuthoredIndex(), 3);
@@ -287,7 +287,7 @@ test("moveBlock swaps neighbours and keeps everything else in place", () => {
 
 test("moveBlock never crosses Start with, the inherited blocks, or the end", () => {
 	const lm = manager([
-		{ type: "comment", text: "📋 x", fromInclude: true },
+		{ type: "comment", text: "📋 x", fromStart: true },
 		{ type: "comment", text: "first" },
 		{ type: "comment", text: "last" },
 	]);
@@ -366,11 +366,11 @@ test("a move saves undo first and the selection follows the block", () => {
 });
 
 test("a refused move or type change leaves undo alone", () => {
-	const lm = manager([{ type: "comment", text: "x", fromInclude: true }]);
+	const lm = manager([{ type: "comment", text: "x", fromStart: true }]);
 	const { editor, log } = editorFor(lm, 1);
 	editor.moveBlock(1, -1);
 	editor.moveBlock(1, 1);
-	editor.setKind(1, "question");
+	editor.setType(1, "question");
 	assert.deepEqual(
 		log,
 		[],
@@ -407,7 +407,7 @@ function fakeBlockDiv() {
 function renderIsland(
 	blocks,
 	blockIdx,
-	{ selected = blockIdx, typing = false } = {},
+	{ selected = blockIdx, autoTyping = false } = {},
 ) {
 	const lm = manager(blocks);
 	const islands = [];
@@ -415,10 +415,10 @@ function renderIsland(
 	const renderer = new LessonRenderer(
 		lm,
 		{
-			isActive: () => typing,
+			isActive: () => autoTyping,
 			getSelectedBlockIndex: () => selected,
 			attachBlockIsland: (el, island) => islands.push(island),
-			attachKindPicker: (el, picker) => pickers.push(picker),
+			attachTypePicker: (el, picker) => pickers.push(picker),
 		},
 		{},
 	);
@@ -428,11 +428,11 @@ function renderIsland(
 		blockDiv,
 		block,
 		blockIdx,
-		isTypingActive: typing,
+		isAutoTypingActive: autoTyping,
 		stepIndex: 0,
 		steps: [],
 	};
-	if (block.type === "comment") renderer.renderKindBlock(ctx);
+	if (block.type === "comment") renderer.renderCommentBlock(ctx);
 	else if (block.type === "code") {
 		renderer.makeCodeBlockEditable = () => {};
 		renderer.renderCodeBlock(ctx);
@@ -554,21 +554,21 @@ test("an unselected block still carries its one-click actions", () => {
 	assert.equal(
 		island.picker.glyph,
 		"💬",
-		"and the kind is on show whether or not the block is selected",
+		"and the type is on show whether or not the block is selected",
 	);
 });
 
-test("nothing is offered while typing, or on a block you may not touch", () => {
+test("nothing is offered while auto-typing, or on a block you may not touch", () => {
 	const blocks = [{ type: "comment", text: "a" }];
-	const typing = renderIsland(blocks, 1, { typing: true });
-	assert.deepEqual([typing.tools, ...rowGlyphs(typing)], [[], [], []]);
+	const autoTyping = renderIsland(blocks, 1, { autoTyping: true });
+	assert.deepEqual([autoTyping.tools, ...rowGlyphs(autoTyping)], [[], [], []]);
 	assert.equal(
-		typing.picker.disabled,
+		autoTyping.picker.disabled,
 		true,
-		"the symbol stays, so nothing shifts when typing starts, but it is inert",
+		"the symbol stays, so nothing shifts when auto-typing starts, but it is inert",
 	);
 	const inherited = renderIsland(
-		[{ type: "comment", text: "x", fromInclude: true }],
+		[{ type: "comment", text: "x", fromStart: true }],
 		1,
 	);
 	assert.deepEqual(
@@ -612,7 +612,7 @@ test("add above and add below land on the right side of the block", () => {
 	assert.deepEqual(
 		[above.map((t) => t.glyph), below.map((t) => t.glyph)],
 		[ABOVE, BELOW],
-		"a note and a code block are the two kinds a lesson alternates, and " +
+		"a note and a code block are the two types a lesson alternates, and " +
 			"each row ends with the move that goes the same way",
 	);
 });
@@ -909,27 +909,27 @@ test("the chips are white whatever the block, and never dimmed by it", () => {
 		"inheriting made the controls grey, blue or dark with the block",
 	);
 	assert.equal(
-		/\.move-to-block \.block-(opt|tool) \{/.test(css),
+		/\.go-to-block \.block-(opt|tool) \{/.test(css),
 		false,
 		"a dark block used to recolour its controls; they are white everywhere",
 	);
-	for (const kind of ["snippet-block", "move-to-block"]) {
-		const rule = new RegExp(`\\n\\.${kind} \\{[\\s\\S]*?\\n\\}`).exec(css)[0];
+	for (const type of ["snippet-block", "go-to-block"]) {
+		const rule = new RegExp(`\\n\\.${type} \\{[\\s\\S]*?\\n\\}`).exec(css)[0];
 		assert.equal(
 			/opacity/.test(rule),
 			false,
-			`${kind} is dimmed by an overlay: opacity would dim the chips inside it`,
+			`${type} is dimmed by an overlay: opacity would dim the chips inside it`,
 		);
 	}
 	assert.match(
 		css,
-		/body:not\(\.mobile-view\) \.snippet-block::after,\nbody:not\(\.mobile-view\) \.move-to-block::after \{[\s\S]*?opacity: 0\.25;[\s\S]*?pointer-events: none;\n\tz-index: 1;/,
+		/body:not\(\.mobile-view\) \.snippet-block::after,\nbody:not\(\.mobile-view\) \.go-to-block::after \{[\s\S]*?opacity: 0\.25;[\s\S]*?pointer-events: none;\n\tz-index: 1;/,
 		"25% white over the block is what opacity: 0.75 over white gave, " +
 			"and z-index 1 keeps it under the chips (2)",
 	);
 	assert.match(
 		css,
-		/\.mobile-view \.snippet-block,\n\.mobile-view \.move-to-block \{\n\topacity: 0\.75;/,
+		/\.mobile-view \.snippet-block,\n\.mobile-view \.go-to-block \{\n\topacity: 0\.75;/,
 		"the phone has no chips, so it keeps the plain rule",
 	);
 });
@@ -938,53 +938,45 @@ test("an inherited block has no overlay: it scrolls, and opacity already dims it
 	const css = read("shared/styles.css");
 	assert.match(
 		css,
-		/\nbody:not\(\.mobile-view\) \.block\.from-include::after \{\n\tcontent: none;\n\}/,
+		/\nbody:not\(\.mobile-view\) \.block\.from-start::after \{\n\tcontent: none;\n\}/,
 		"an expanded start file scrolls, and an inset: 0 overlay covers only " +
 			"its first screenful, so its edge shows when scrolling down",
 	);
-	assert.match(css, /\n\.block\.from-include \{\n\topacity: 0\.6;/);
+	assert.match(css, /\n\.block\.from-start \{\n\topacity: 0\.6;/);
 	assert.match(
 		css,
-		/\n\.block\.from-include\.snippet-block:not\(\.collapsed\) \{\n\topacity: 0\.85;[\s\S]*?overflow-y: auto;/,
+		/\n\.block\.from-start\.snippet-block:not\(\.collapsed\) \{\n\topacity: 0\.85;[\s\S]*?overflow-y: auto;/,
 	);
 });
 
-test("every kind is offered, derived from the one prefix table", () => {
+test("every type is offered, derived from the one prefix table", () => {
 	assert.deepEqual(
-		KIND_CHOICES.map((c) => c.kind),
-		["code", "note", ...BLOCK_KINDS.map(([, kind]) => kind), "move-to"],
-		"a move-to is a note with a target, so it belongs in the same picker, " +
-			"and code is a kind like the rest: the picker converts both ways",
+		TYPE_CHOICES.map((c) => c.type),
+		["code", "note", ...BLOCK_TYPES.map(([, type]) => type), "go-to"],
+		"a go-to is a note with a target, so it belongs in the same picker, " +
+			"and code is a type like the rest: the picker converts both ways",
 	);
-	for (const [glyph, kind] of BLOCK_KINDS) {
-		assert.equal(kindGlyph(kind), glyph);
+	for (const [glyph, type] of BLOCK_TYPES) {
+		assert.equal(typeGlyph(type), glyph);
 	}
-	assert.equal(kindGlyph("note"), "💬");
-	assert.equal(kindGlyph("code"), "⌨");
-	assert.equal(kindGlyph("move-to"), "➡️");
+	assert.equal(typeGlyph("note"), "💬");
+	assert.equal(typeGlyph("code"), "⌨");
+	assert.equal(typeGlyph("go-to"), "➡️");
 });
 
-test("every kind is offered, always: there are no modes any more", () => {
+test("every type is offered, always: there are no modes any more", () => {
 	assert.deepEqual(
-		kindChoices().map((c) => c.kind),
-		["code", "note", "question", "image", "web", "snippet", "move-to"],
-	);
-	assert.deepEqual(
-		addChoices().map((c) => c.kind),
-		kindChoices().map((c) => c.kind),
-		"every type is offered between blocks, in the picker's order",
+		typeChoices().map((c) => c.type),
+		["code", "note", "question", "image", "web", "snippet", "go-to"],
 	);
 	assert.deepEqual(
 		addChoices().map((c) => c.type),
-		[
-			"code",
-			"comment",
-			"comment",
-			"comment",
-			"comment",
-			"comment",
-			"move-to",
-		],
+		typeChoices().map((c) => c.type),
+		"every type is offered between blocks, in the picker's order",
+	);
+	assert.deepEqual(
+		addChoices().map((c) => c.storedType),
+		["code", "comment", "comment", "comment", "comment", "comment", "go-to"],
 	);
 	assert.deepEqual(
 		addChoices().map((c) => c.initialText),
@@ -1005,18 +997,18 @@ test("every kind is offered, always: there are no modes any more", () => {
 	);
 });
 
-test("the picker shows the block's own kind as its glyph", () => {
+test("the picker shows the block's own type as its glyph", () => {
 	const lm = manager([
 		{ type: "comment", text: "📋 x" },
-		{ type: "move-to", target: "MAIN" },
+		{ type: "go-to", target: "MAIN" },
 	]);
 	const renderer = new LessonRenderer(lm, {}, {});
-	assert.equal(renderer._kindPicker(lm.data[1], 1, false).glyph, "📋");
-	assert.equal(renderer._kindPicker(lm.data[2], 2, false).glyph, "➡️");
+	assert.equal(renderer._typePicker(lm.data[1], 1, false).glyph, "📋");
+	assert.equal(renderer._typePicker(lm.data[2], 2, false).glyph, "➡️");
 	assert.equal(
-		renderer._kindPicker(lm.data[1], 1, true).disabled,
+		renderer._typePicker(lm.data[1], 1, true).disabled,
 		true,
-		"typing starts the auto-typer; the symbol must not open a menu then",
+		"while auto-typing, a press starts the auto-run; the symbol must not open a menu then",
 	);
 });
 
@@ -1029,7 +1021,7 @@ test("the toolbar is gone and nothing still points at it", () => {
 		"addImageCommentBtn",
 		"addWebCommentBtn",
 		"addCodeInsertBlockBtn",
-		"addMoveToBlockBtn",
+		"addGoToBlockBtn",
 		"removeBlockBtn",
 		"formatBlockBtn",
 	];
@@ -1059,50 +1051,50 @@ test("the new controls wear the Settings colours", () => {
 		return css.slice(at, css.indexOf("}", at));
 	};
 	assert.match(
-		rule('.bt-option[data-value="question"]'),
+		rule('.type-option[data-value="question"]'),
 		new RegExp(s.colors.questionColor),
 	);
 	assert.match(
-		rule('.bt-option[data-value="snippet"]'),
+		rule('.type-option[data-value="snippet"]'),
 		new RegExp(s.colors.snippetColor),
 	);
-	const add = (kind) => rule(`.block-tool-add[data-add-kind="${kind}"]`);
+	const add = (type) => rule(`.block-tool-add[data-add-type="${type}"]`);
 	const expected = {
 		note: s.colors.noteColor,
-		code: s.colors.codeBlockColor,
+		code: s.colors.codeColor,
 		question: s.colors.questionColor,
-		image: s.colors.imageBlockColor,
-		web: s.colors.imageBlockColor,
+		image: s.colors.imageColor,
+		web: s.colors.imageColor,
 		snippet: s.colors.snippetColor,
-		"move-to": s.colors.moveToBlockColor,
+		"go-to": s.colors.goToColor,
 	};
-	for (const [kind, color] of Object.entries(expected)) {
+	for (const [type, color] of Object.entries(expected)) {
 		assert.match(
-			add(kind),
+			add(type),
 			new RegExp(color),
-			`${kind} button wears its colour`,
+			`${type} button wears its colour`,
 		);
 	}
-	assert.match(add("move-to"), new RegExp(s.colors.moveToTextColor));
+	assert.match(add("go-to"), new RegExp(s.colors.goToTextColor));
 	assert.ok(
 		css.includes(
-			'.block-tool-add[data-add-kind="note"]:hover:not(:disabled)',
+			'.block-tool-add[data-add-type="note"]:hover:not(:disabled)',
 		),
 		"the generic hover would replace the colour with translucent black",
 	);
 });
 
-test("the type list is not a move-to list, so the anchor preview ignores it", () => {
+test("the type list is not a go-to list, so the anchor preview ignores it", () => {
 	const src = read("renderer/lesson-renderer.js");
 	const tool =
-		/_kindPicker\(block, blockIdx, isTypingActive\) \{[\s\S]*?\n\t\}/.exec(
+		/_typePicker\(block, blockIdx, isAutoTypingActive\) \{[\s\S]*?\n\t\}/.exec(
 			src,
 		)[0];
-	assert.match(tool, /listClass: "bt-options"/);
+	assert.match(tool, /listClass: "type-options"/);
 	assert.match(
 		tool,
-		/itemClass: "bt-option"/,
-		"anchor-preview keys on .mt-option; a type is not a jump target",
+		/itemClass: "type-option"/,
+		"go-to-preview keys on .gt-option; a type is not a jump target",
 	);
 });
 
@@ -1117,7 +1109,7 @@ function sidebarFor({ blocks, selected, expanded = [], startShown = true }) {
 		},
 		{},
 	);
-	for (const i of expanded) renderer.expandedIncludes.add(i);
+	for (const i of expanded) renderer.expandedStartFiles.add(i);
 	renderer.startCollapsed = !startShown;
 	renderer._syncSidebar();
 	return calls;
@@ -1140,7 +1132,7 @@ test("the sidebar tools are enabled only while a code block is selected", () => 
 });
 
 test("an open start file keeps the keys, but not format", () => {
-	const start = { type: "comment", text: "📋 a\n\tb", fromInclude: true };
+	const start = { type: "comment", text: "📋 a\n\tb", fromStart: true };
 	assert.deepEqual(
 		sidebarFor({ blocks: [start], selected: null, expanded: [1] }),
 		[[true, false]],
@@ -1202,7 +1194,7 @@ test("a structural edit closes the typing burst before saving undo", () => {
 	const editor = new BlockEditor(lm, ui, renderer, undo);
 	editor.focusNewBlock = () => {};
 	editor.moveBlock(1, 1);
-	editor.setKind(1, "question");
+	editor.setType(1, "question");
 	editor.addBlock("comment", null, 1);
 	editor.removeBlock(1);
 	assert.deepEqual(
@@ -1335,7 +1327,7 @@ test("opening a plan forgets the old plan's selection and expansions", () => {
 		},
 		{},
 	);
-	renderer.expandedIncludes.add(2);
+	renderer.expandedStartFiles.add(2);
 	renderer.startCollapsed = false;
 	renderer.lastEditedBlockIndex = 5;
 	renderer.resetView();
@@ -1350,7 +1342,7 @@ test("opening a plan forgets the old plan's selection and expansions", () => {
 		"index 5 of the old plan is some unrelated block of the new one, and " +
 			"it would render selected, tools and all",
 	);
-	assert.equal(renderer.expandedIncludes.size, 0);
+	assert.equal(renderer.expandedStartFiles.size, 0);
 	assert.equal(renderer.lastEditedBlockIndex, null);
 
 	const src = read("renderer/file-operations.js");
@@ -1386,6 +1378,10 @@ test("a renamed colour keeps the value the teacher chose", () => {
 		commentActive: "#0f0",
 		commentActiveText: "#000",
 		commentSelected: "#ccc",
+		codeBlockColor: "#fff",
+		imageBlockColor: "#00f",
+		moveToBlockColor: "#444",
+		moveToTextColor: "#fff",
 		cursor: "#f00",
 	});
 	assert.deepEqual(migrated, {
@@ -1395,6 +1391,10 @@ test("a renamed colour keeps the value the teacher chose", () => {
 		activeBlockColor: "#0f0",
 		activeBlockTextColor: "#000",
 		selectedBlockColor: "#ccc",
+		codeColor: "#fff",
+		imageColor: "#00f",
+		goToColor: "#444",
+		goToTextColor: "#fff",
 		cursor: "#f00",
 	});
 });
@@ -1484,7 +1484,7 @@ test("an empty editable block keeps a place to type when it gets tools", () => {
 		assert.equal(
 			readOnly.children.filter((c) => c.tagName === "BR").length,
 			0,
-			"a move-to is not editable, so a br would just be stray markup",
+			"a go-to is not editable, so a br would just be stray markup",
 		);
 	} finally {
 		delete global.document;
@@ -1522,7 +1522,7 @@ test("editing a block back to empty does not cost it its tools", () => {
 		"the last chip attached: if Chromium took the children, it went too",
 	);
 	assert.match(keep, /this\.refreshIsland\(blockIdx\)/);
-	for (const handler of ["makeCodeBlockEditable", "renderKindBlock"]) {
+	for (const handler of ["makeCodeBlockEditable", "renderCommentBlock"]) {
 		const body = new RegExp(
 			`\\n\\t${handler}\\([^)]*\\) \\{[\\s\\S]*?\\n\\t\\}`,
 		).exec(src)[0];
@@ -1549,7 +1549,7 @@ test("an unselected code block gets the same one-click actions", () => {
 				isActive: () => false,
 				getSelectedBlockIndex: () => null,
 				attachBlockIsland: (el, island) => islands.push(island),
-				attachKindPicker: () => {},
+				attachTypePicker: () => {},
 			},
 			{},
 		);
@@ -1558,7 +1558,7 @@ test("an unselected code block gets the same one-click actions", () => {
 			blockDiv,
 			block: lm.data[1],
 			blockIdx: 1,
-			isTypingActive: false,
+			isAutoTypingActive: false,
 			stepIndex: 0,
 			steps: [],
 		});
@@ -1589,7 +1589,7 @@ test("a hovered block outranks a selected one, and the sidebar outranks both", (
 
 test("z-index is never animated on a support block", () => {
 	const css = read("shared/styles.css");
-	const rule = /\.move-to-block \{[^}]*?transition:([^;]*);/.exec(css);
+	const rule = /\.go-to-block \{[^}]*?transition:([^;]*);/.exec(css);
 	assert.ok(rule, "the support blocks share one transition");
 	assert.match(
 		rule[1],
@@ -1613,14 +1613,14 @@ test("a collapsed snippet clips its text sideways but not its chips vertically",
 });
 
 test("the block-tool dropdown marks the live choice with an outline, not a fill", () => {
-	const rule = /\.bt-option\.active \{[\s\S]*?\n\}/.exec(
+	const rule = /\.type-option\.active \{[\s\S]*?\n\}/.exec(
 		read("shared/styles.css"),
 	)[0];
 	assert.match(rule, /outline: 2px solid var\(--clr-accent\)/);
 	assert.equal(
 		/background/.test(rule),
 		false,
-		"blocks.js generates a per-value .bt-option[data-value] background at runtime; " +
+		"blocks.js generates a per-value .type-option[data-value] background at runtime; " +
 			"a fill here would paint over the colour the row is naming",
 	);
 });

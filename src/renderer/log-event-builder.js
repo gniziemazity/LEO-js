@@ -1,16 +1,16 @@
-const { getBlockKind, stripBlockPrefix } = require("../shared/blocks");
+const { getBlockType, stripBlockPrefix } = require("../shared/blocks");
 
 function stepToLogEvents(step) {
 	if (!step) return [];
-	if (step.kind === "move-to") {
+	if (step.blockType === "go-to") {
 		const out = [];
-		const switchTo = step.snippet && step.snippet.switchTo;
+		const switchTo = step.excerpt && step.excerpt.switchTo;
 		if (switchTo) out.push({ move_to: switchTo });
 		out.push({ move_to: step.target || "MAIN" });
 		return out;
 	}
 	const raw = String(step.text || "");
-	if (getBlockKind(raw) === "snippet") {
+	if (getBlockType(raw) === "snippet") {
 		return [{ code_insert: stripBlockPrefix(raw) }];
 	}
 	return [];

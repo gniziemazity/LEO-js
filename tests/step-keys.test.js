@@ -80,10 +80,7 @@ test("main relays them onto the exact channels the desktop's own Ctrl+Left/Right
 		main,
 		/"client-step-forward", \(\) => hotkeyManager\.step\(1\)\)/,
 	);
-	assert.match(
-		main,
-		/state\.onStepKey = \(delta\) => stepMoveToName\(delta\);/,
-	);
+	assert.match(main, /state\.onStepKey = \(delta\) => stepGoToName\(delta\);/);
 });
 
 function hotkeys() {
@@ -156,12 +153,12 @@ test("stepping back and forward is refused while a blocking overlay or an unstar
 		"nothing is open yet",
 	);
 
-	ctx.api.setSessionActive(false);
+	ctx.api.setAutoTypingActive(false);
 	await ctx.api.setTouchpadMode("keyboard");
 	assert.equal(
 		ctx.api.padMode(),
 		null,
-		"the keyboard pad itself refuses to open before typing starts, so its " +
+		"the keyboard pad itself refuses to open before auto-typing starts, so its " +
 			"step buttons never appear for a lesson that has not begun",
 	);
 });

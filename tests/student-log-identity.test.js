@@ -110,7 +110,7 @@ test("a question the teacher asked looks like a planned one in the window", () =
 	assert.match(body, /teacherAsked = isQuestion && isTeacher\(studentName\)/);
 	assert.match(body, /settingsManager\.get\("colors\.questionColor"\)/);
 	const fw = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/main/float-windows.js"),
+		path.resolve(__dirname, "..", "src/main/floating-window-manager.js"),
 		"utf-8",
 	);
 	assert.match(

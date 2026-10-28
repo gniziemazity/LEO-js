@@ -118,11 +118,8 @@ class InteractionOverlay extends RemoteOverlay {
 		this.startWaiting(idx, type, null);
 		const grid = document.getElementById("iGrid");
 		grid.innerHTML = "";
-		const done = this.makeStudentBtn(
-			InteractionView.DONE_LABEL,
-			() => this.closeOverlay(),
-			"width:100%;margin-top:8px;padding:14px;font-size:1rem;" +
-				"background:var(--clr-done-bg);border-color:var(--clr-done-border);color:rgba(0,0,0,0.75);",
+		const done = this.makeStudentBtn(InteractionView.DONE_LABEL, () =>
+			this.closeOverlay(),
 		);
 		done.classList.add("popup-done-btn");
 		grid.appendChild(done);
@@ -130,12 +127,8 @@ class InteractionOverlay extends RemoteOverlay {
 
 	startWaiting(idx, type, questionText) {
 		this.stopDictation();
-		const isTeacher = idx === InteractionView.TEACHER_ASKER;
-		const studentId =
-			isTeacher || (idx != null && idx >= 0)
-				? InteractionView.participantId(idx)
-				: null;
-		const name = isTeacher ? null : (currentStudents[idx] ?? "");
+		const studentId = InteractionView.answererId(idx);
+		const name = InteractionView.waitingName(idx, currentStudents);
 		const msgData = {
 			interactionType: type,
 			studentName: studentId,

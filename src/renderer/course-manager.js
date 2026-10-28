@@ -3,6 +3,7 @@ const path = require("path");
 const LessonManager = require("./lesson-manager");
 const { assignAlterEgos, ALTER_EGO_POOL } = require("../shared/alter-egos");
 const { readTextFileSync } = require("../shared/encoding");
+const { PLAN_EXT_RE, planName } = require("../shared/plan-name");
 
 const COURSE_META_FILE = ".leo-course";
 const STUDENTS_CSV = "students.csv";
@@ -10,17 +11,12 @@ const ALTER_EGO_FILE = "alter-egos.txt";
 const STUDENTS_HEADER = "Student ID;Student Name;Student Number;Alter Ego";
 const COURSE_DIRS = ["plans", "lessons", "assignments"];
 const INVALID_FS_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
-const PLAN_EXT_RE = /\.(leo|json)$/i;
 
 class CourseManager {
 	constructor() {
 		this.rootPath = "";
 		this.name = "";
 		this.lastPlan = "";
-	}
-
-	static planName(file) {
-		return path.basename(file).replace(PLAN_EXT_RE, "");
 	}
 
 	isOpen() {
@@ -188,7 +184,7 @@ class CourseManager {
 			.filter((f) => PLAN_EXT_RE.test(f))
 			.sort((a, b) => a.localeCompare(b))
 			.map((f) => ({
-				name: CourseManager.planName(f),
+				name: planName(f),
 				path: path.join(dir, f),
 			}));
 	}

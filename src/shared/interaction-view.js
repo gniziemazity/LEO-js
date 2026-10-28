@@ -1,7 +1,8 @@
 (function (root) {
 	const TEACHER_ID = 0;
-	const DONE_LABEL = "✓ Done — close";
+	const DONE_LABEL = "Done — close";
 	const ASKED_BY_LABEL = "Asked by";
+	const ANSWERED_LABEL = "Answered";
 	const TEACHER_ASKER = "teacher";
 
 	function isQuestion(type) {
@@ -24,6 +25,16 @@
 
 	function participantId(idx) {
 		return idx === TEACHER_ASKER ? TEACHER_ID : idx + 1;
+	}
+
+	function answererId(idx) {
+		return idx === TEACHER_ASKER || (idx != null && idx >= 0)
+			? participantId(idx)
+			: null;
+	}
+
+	function waitingName(idx, students) {
+		return idx === TEACHER_ASKER ? null : (students[idx] ?? "");
 	}
 
 	function sortedStudentIndexes(students) {
@@ -106,12 +117,15 @@
 
 	const api = {
 		DONE_LABEL,
+		ANSWERED_LABEL,
 		TEACHER_ASKER,
 		isQuestion,
 		interactionTitle,
 		waitingTitle,
 		isTeacher,
 		participantId,
+		answererId,
+		waitingName,
 		sortedStudentIndexes,
 		askerChoices,
 		askerFromValue,

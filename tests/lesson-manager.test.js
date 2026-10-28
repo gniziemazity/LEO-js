@@ -37,8 +37,8 @@ test("removeBlocks removes at index and returns true", () => {
 
 test("_migrateBlocks touches only code blocks", () => {
 	const blocks = [
-		{ type: "move-to", target: "⚓5⚓" },
-		{ type: "move-to", target: "MAIN" },
+		{ type: "go-to", target: "⚓5⚓" },
+		{ type: "go-to", target: "MAIN" },
 		{ type: "comment", text: "➡️ ⚓app.js⚓" },
 	];
 	const migrated = LessonManager._migrateBlocks(blocks);
@@ -51,14 +51,14 @@ test("_migrateBlocks touches only code blocks", () => {
 	);
 });
 
-test("getAllMoveToFiles: collects file targets, dedups, ignores anchors/MAIN", () => {
+test("getAllGoToFiles: collects file targets, dedups, ignores anchors/MAIN", () => {
 	const lm = new LessonManager();
-	lm.addBlock("move-to", null, "a.js");
-	lm.addBlock("move-to", null, "b.css");
-	lm.addBlock("move-to", null, "a.js");
-	lm.addBlock("move-to", null, "⚓7⚓");
-	lm.addBlock("move-to", null, "MAIN");
-	assert.deepEqual(lm.getAllMoveToFiles(), ["a.js", "b.css"]);
+	lm.addBlock("go-to", null, "a.js");
+	lm.addBlock("go-to", null, "b.css");
+	lm.addBlock("go-to", null, "a.js");
+	lm.addBlock("go-to", null, "⚓7⚓");
+	lm.addBlock("go-to", null, "MAIN");
+	assert.deepEqual(lm.getAllGoToFiles(), ["a.js", "b.css"]);
 });
 
 test("removeBlocks on out-of-range index returns false", () => {
@@ -130,12 +130,12 @@ test("loading a plan migrates edge newlines in code blocks", () => {
 		{ type: "code", text: "\nconst x = 1;" },
 		{ type: "comment", text: "\njust a note\n" },
 		{ type: "code", text: "a\nb" },
-		{ type: "move-to", target: "⚓3⚓" },
+		{ type: "go-to", target: "⚓3⚓" },
 	]);
 	assert.deepEqual(migrated, [
 		{ type: "code", text: "↩const x = 1;" },
 		{ type: "comment", text: "\njust a note\n" },
 		{ type: "code", text: "a\nb" },
-		{ type: "move-to", target: "⚓3⚓" },
+		{ type: "go-to", target: "⚓3⚓" },
 	]);
 });

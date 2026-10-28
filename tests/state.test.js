@@ -20,11 +20,11 @@ test("pause and unpause toggle isPaused", () => {
 	assert.equal(state.isPaused, false);
 });
 
-test("startAutoTyping and stopAutoTyping toggle isAutoTyping", () => {
-	state.startAutoTyping();
-	assert.equal(state.isAutoTyping, true);
-	state.stopAutoTyping();
-	assert.equal(state.isAutoTyping, false);
+test("startAutoRun and stopAutoRun toggle isAutoRunning", () => {
+	state.startAutoRun();
+	assert.equal(state.isAutoRunning, true);
+	state.stopAutoRun();
+	assert.equal(state.isAutoRunning, false);
 });
 
 test("queueAdvance adds to advanceQueue and hasQueuedAdvances reflects it", () => {
@@ -78,14 +78,14 @@ test("reset clears flags and queues but preserves mainWindow", () => {
 	state.mainWindow = { id: "window" };
 	state.lock();
 	state.pause();
-	state.startAutoTyping();
+	state.startAutoRun();
 	state.queueAdvance("a");
 	state.queueChar("x");
 
 	state.reset();
 	assert.equal(state.isLocked, false);
 	assert.equal(state.isPaused, false);
-	assert.equal(state.isAutoTyping, false);
+	assert.equal(state.isAutoRunning, false);
 	assert.equal(state.hasQueuedAdvances(), false);
 	assert.equal(state.hasQueuedChars(), false);
 	assert.deepEqual(state.mainWindow, { id: "window" });

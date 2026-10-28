@@ -91,8 +91,8 @@ test("every pausing popup is torn down in one place, so the key cannot outlive i
 	const src = mainSrc();
 
 	for (const call of [
-		"broadcastMoveToEnded",
-		"broadcastCodeInsertEnded",
+		"broadcastGoToEnded",
+		"broadcastSnippetEnded",
 		"broadcastNoteEnded",
 		"broadcastMediaEnded",
 	]) {
@@ -103,22 +103,22 @@ test("every pausing popup is torn down in one place, so the key cannot outlive i
 		);
 	}
 
-	const teardown = /function endPopup\(kind\)[\s\S]*?\n\}/.exec(src)[0];
+	const teardown = /function endPopup\(type\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(teardown, /unregisterConfirmPopup\(\)/);
 	assert.match(teardown, /state\.unpause\("popup"\)/);
 	assert.match(teardown, /popup\.ended\(\)/);
 	assert.match(
 		teardown,
 		/if \(popup\.onExit\) popup\.onExit\(\)/,
-		"the code-insert popup hands the clipboard back through this hook",
+		"the snippet popup hands the clipboard back through this hook",
 	);
 
-	const confirm = /function confirmPopup\(kind\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(confirm, /endPopup\(kind\)/);
+	const confirm = /function confirmPopup\(type\)[\s\S]*?\n\}/.exec(src)[0];
+	assert.match(confirm, /endPopup\(type\)/);
 	assert.match(
 		confirm,
-		/state\.send\(PAUSING_POPUPS\[kind\]\.confirmChannel\)/,
-		"the renderer resumes auto-typing off this message",
+		/state\.send\(PAUSING_POPUPS\[type\]\.confirmChannel\)/,
+		"the renderer resumes auto-run off this message",
 	);
 
 	const popupsSrc = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
@@ -153,8 +153,8 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	const src = mainSrc();
 
 	for (const channel of [
-		"enter-move-to-block",
-		"enter-code-insert-block",
+		"enter-go-to-block",
+		"enter-snippet-block",
 		"enter-note-block",
 		"enter-image-block",
 		"enter-web-block",
@@ -166,15 +166,15 @@ test("both popups arm the same key and answer to the same confirm", () => {
 		);
 	}
 
-	const enter = /function enterPopup\(kind, payload\)[\s\S]*?\n\}/.exec(
+	const enter = /function enterPopup\(type, payload\)[\s\S]*?\n\}/.exec(
 		src,
 	)[0];
 	assert.match(enter, /state\.pause\("popup"\)/);
 	assert.match(enter, /hotkeyManager\.registerConfirmPopup\(/);
 
 	for (const client of [
-		"client-move-to-confirmed",
-		"client-code-insert-confirmed",
+		"client-go-to-confirmed",
+		"client-snippet-confirmed",
 		"client-note-confirmed",
 	]) {
 		assert.match(
@@ -187,7 +187,7 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(
 		reapply,
-		/openPopupKind\(\)/,
+		/openPopupType\(\)/,
 		"saving settings with a popup open must not disarm the key",
 	);
 	assert.match(
