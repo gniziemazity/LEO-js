@@ -584,7 +584,7 @@ class Simulator {
 				).href
 			: tsStr;
 		copyText(text).then((ok) =>
-			flashButton(this.elCopyTs, ok ? "✓" : "✖", 1200),
+			flashButton(this.elCopyTs, ok ? "Copied" : "Failed", 1200),
 		);
 	}
 

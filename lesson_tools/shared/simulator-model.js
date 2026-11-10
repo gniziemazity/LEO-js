@@ -656,7 +656,7 @@ function replayStep(ctx, act, hooks = {}) {
 			log(ts, `→  ${name}`, CLR.move);
 			if (hooks.flashAnchor) hooks.flashAnchor();
 		} else {
-			log(ts, `⚠  Unknown anchor: ${name}`, CLR.red);
+			log(ts, `Unknown anchor: ${name}`, CLR.red);
 		}
 		return delay;
 	}

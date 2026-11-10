@@ -8,8 +8,10 @@ const { loadModule } = require("./helpers/load-module");
 
 const MAIN = path.resolve(__dirname, "..", "src/main");
 const SettingsManager = require(path.join(MAIN, "settings-manager.js"));
+const state = require(path.join(MAIN, "state.js"));
 
-function harness(hotkeys) {
+function harness(hotkeys, { active = true } = {}) {
+	state.isActive = active;
 	const registered = new Map();
 	const globalShortcut = {
 		register: (accel, cb) => {
@@ -69,6 +71,36 @@ test("no accelerator configured means nothing is registered", () => {
 	h.manager.registerConfirmPopup(() => {});
 	assert.equal(h.registered.size, 0);
 	h.manager.unregisterConfirmPopup();
+});
+
+test("while auto-typing is off the key is not taken, because no popup is on screen", () => {
+	const h = harness(
+		{ "hotkeys.confirmPopup": "CommandOrControl+Enter" },
+		{ active: false },
+	);
+	h.manager.registerConfirmPopup(() => {});
+	assert.equal(
+		h.registered.size,
+		0,
+		"a hidden popup must not swallow Ctrl+Enter in the editor",
+	);
+	state.isActive = true;
+});
+
+test("switching auto-typing off releases the key, and on re-arms the open popup's", () => {
+	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
+	const handler =
+		/ipcMain\.on\("set-active", \(event, isActive\) => \{[\s\S]*?\n\}\);/.exec(
+			main,
+		)[0];
+	assert.match(
+		handler,
+		/if \(isActive\) \{[\s\S]*?armConfirmKey\(\);[\s\S]*?\} else \{/,
+	);
+	assert.match(
+		handler,
+		/\} else \{[\s\S]*?hotkeyManager\.unregisterConfirmPopup\(\);/,
+	);
 });
 
 test("registering twice does not stack callbacks", () => {
@@ -185,13 +217,15 @@ test("both popups arm the same key and answer to the same confirm", () => {
 	}
 
 	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(src)[0];
+	assert.match(reapply, /armConfirmKey\(\)/);
+	const arm = /function armConfirmKey\(\)[\s\S]*?\n\}/.exec(src)[0];
 	assert.match(
-		reapply,
+		arm,
 		/openPopupType\(\)/,
 		"saving settings with a popup open must not disarm the key",
 	);
 	assert.match(
-		reapply,
+		arm,
 		/registerConfirmPopup\(/,
 		"and it must re-arm the key it just dropped",
 	);

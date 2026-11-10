@@ -14,6 +14,7 @@ const {
 const {
 	PICKABLE_TYPES,
 	GO_TO_TYPE,
+	GO_TO_IN_FILE,
 	CODE_TYPE,
 	getBlockType,
 	withTypePrefix,
@@ -31,7 +32,6 @@ const {
 
 const AUTOSAVE_EXT = ".autosave";
 const AUTOSAVE_DEBOUNCE_MS = 2000;
-const GO_TO_IN_FILE = "move-to";
 
 class LessonManager {
 	constructor() {
@@ -150,15 +150,17 @@ class LessonManager {
 		slot.dir = path.basename(dir);
 		slot.files = files.length;
 		const generated = [];
-		for (const { name, text } of files) {
+		for (const { name, text, bom } of files) {
 			generated.push({ type: "go-to", target: name, fromStart: true });
-			generated.push({
+			const paste = {
 				type: "comment",
-				text: `📋 ${embedAnchors(text, (slot.anchors || {})[name])}`,
+				text: `📋 ${embedAnchors(text, (slot.anchors || {})[name], bom)}`,
 				fromStart: true,
 				startFile: name,
 				startText: text,
-			});
+			};
+			if (bom) paste.startBom = true;
+			generated.push(paste);
 		}
 		return [slot, ...generated, ...blocks.slice(1)];
 	}
@@ -166,7 +168,7 @@ class LessonManager {
 	_readStartBody(index, body) {
 		const block = this.data[index];
 		if (!block || !block.startFile) return null;
-		const { clean, anchors } = readAnchors(body);
+		const { clean, anchors } = readAnchors(body, block.startBom);
 		return clean === block.startText ? { block, anchors } : null;
 	}
 
@@ -183,7 +185,7 @@ class LessonManager {
 		const before = JSON.stringify(slot.anchors[block.startFile] || {});
 		if (Object.keys(anchors).length) slot.anchors[block.startFile] = anchors;
 		else delete slot.anchors[block.startFile];
-		block.text = `📋 ${embedAnchors(block.startText, anchors)}`;
+		block.text = `📋 ${embedAnchors(block.startText, anchors, block.startBom)}`;
 		if (JSON.stringify(anchors) !== before) this.markAsChanged();
 		return true;
 	}
@@ -255,7 +257,7 @@ class LessonManager {
 
 	insertBlockCopy(block, afterIndex) {
 		const copy = JSON.parse(JSON.stringify(block));
-		for (const key of ["fromStart", "startFile", "startText"]) {
+		for (const key of ["fromStart", "startFile", "startText", "startBom"]) {
 			delete copy[key];
 		}
 		if (typeof copy.text === "string") {

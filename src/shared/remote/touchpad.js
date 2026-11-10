@@ -521,11 +521,17 @@ function syncKeyInputGate() {
 function setAutoTypingActive(active) {
 	autoTypingActive = !!active;
 	syncAutoPilotBtn();
+	if (typeof syncOverlaysToAutoTyping === "function")
+		syncOverlaysToAutoTyping(autoTypingActive);
 	syncKeyInputGate();
 }
 
 function initTouchpad() {
 	const overlay = document.getElementById("touchpadOverlay");
+	const modes = document.getElementById("modeSideBtns");
+	if (modes && typeof ResizeObserver === "function") {
+		new ResizeObserver(publishModesExtent).observe(modes);
+	}
 
 	for (const handler of Object.values(touchpadModeHandlers)) {
 		if (handler.init) handler.init();

@@ -11,6 +11,8 @@
 	--c-gray-2: #888;
 	--c-gray-3: #222;
 	--c-gray-4: #595959;
+	--c-gray-5: #ddd;
+	--c-gray-6: #aaa;
 
 	--c-blue-1: #007acc;
 	--c-blue-2: #005a9e;
@@ -23,12 +25,6 @@
 	--c-yellow-1: #ffdc00;
 	--c-yellow-2: #c79a00;
 	--c-purple-1: #8e44ad;
-	--c-blue-3: #3498db;
-	--c-green-3: #27ae60;
-	--c-green-4: #2ecc71;
-	--c-red-3: #e74c3c;
-	--c-orange-3: #f39c12;
-	--c-orange-4: #d35400;
 
 	--clr-bg: var(--c-white);
 	--clr-black: var(--c-black);
@@ -61,24 +57,24 @@
 
 	--clr-ask-bg: rgb(255, 224, 178);
 	--clr-help-bg: rgb(200, 230, 201);
-	--clr-popup-bg: #ecf0f1;
-	--clr-done-bg: color-mix(in srgb, var(--c-red-3) 15%, transparent);
-	--clr-done-border: color-mix(in srgb, var(--c-red-3) 40%, transparent);
+	--clr-popup-bg: var(--c-gray-1);
+	--clr-done-bg: color-mix(in srgb, var(--c-red-1) 15%, transparent);
+	--clr-done-border: color-mix(in srgb, var(--c-red-1) 40%, transparent);
 
-	--clr-border-light: #ddd;
+	--clr-border-light: var(--c-gray-5);
 	--clr-selected-bg: #f0f8ff;
 	--clr-note-bg: #fff9c4;
-	--clr-note-text: #333;
+	--clr-note-text: var(--c-gray-3);
 	--clr-question-bg: #facaca;
 	--clr-snippet-bg: #e0e0e0;
 	--clr-go-to-bg: #424242;
-	--clr-placeholder: #aaa;
-	--clr-info-bg: #f8f9fa;
+	--clr-placeholder: var(--c-gray-6);
+	--clr-info-bg: var(--c-white);
 	--clr-image-bg: #bbdefb;
-	--clr-image-active: #0d47a1;
-	--clr-answered-text: #1b7a3d;
-	--clr-excerpt-bg: #fefefe;
-	--clr-excerpt-text: #1c1c1c;
+	--clr-image-active: var(--c-blue-2);
+	--clr-answered-text: var(--c-green-2);
+	--clr-excerpt-bg: var(--c-white);
+	--clr-excerpt-text: var(--c-gray-3);
 
 	--shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.18);
 	--shadow-raised: 0 2px 5px rgba(0, 0, 0, 0.2);
@@ -98,24 +94,24 @@
 	--header-h: 62px;
 	--pad-header-gap: 74px;
 
-	--clr-pad-tint: color-mix(in srgb, var(--c-blue-3) 35%, transparent);
+	--clr-pad-tint: color-mix(in srgb, var(--c-blue-1) 35%, transparent);
 	--clr-pad-tint-kb: rgba(27, 94, 32, 0.4);
-	--clr-pad-mouse: var(--c-blue-3);
-	--clr-pad-keyboard: var(--c-green-3);
-	--clr-pin: var(--c-red-3);
+	--clr-pad-mouse: var(--c-blue-1);
+	--clr-pad-keyboard: var(--c-green-1);
+	--clr-pin: var(--c-red-1);
 
-	--clr-ink: rgba(0, 0, 0, 0.82);
-	--clr-ink-soft: rgba(0, 0, 0, 0.7);
-	--clr-ink-strong: rgba(0, 0, 0, 0.9);
-	--clr-ink-faint: rgba(0, 0, 0, 0.35);
-	--clr-ctl-bg: rgba(0, 0, 0, 0.07);
-	--clr-ctl-bg-active: rgba(0, 0, 0, 0.14);
-	--clr-ctl-border: rgba(0, 0, 0, 0.18);
-	--clr-ctl-border-strong: rgba(0, 0, 0, 0.35);
-	--clr-veil: rgba(255, 255, 255, 0.5);
-	--clr-veil-strong: rgba(255, 255, 255, 0.85);
-	--clr-side-btn-bg: rgba(60, 60, 60, 0.82);
-	--clr-side-btn-press: rgba(30, 30, 30, 0.95);
+	--clr-ink: color-mix(in srgb, var(--c-black) 82%, transparent);
+	--clr-ink-soft: color-mix(in srgb, var(--c-black) 70%, transparent);
+	--clr-ink-strong: color-mix(in srgb, var(--c-black) 90%, transparent);
+	--clr-ink-faint: color-mix(in srgb, var(--c-black) 35%, transparent);
+	--clr-ctl-bg: color-mix(in srgb, var(--c-black) 7%, transparent);
+	--clr-ctl-bg-active: color-mix(in srgb, var(--c-black) 14%, transparent);
+	--clr-ctl-border: color-mix(in srgb, var(--c-black) 18%, transparent);
+	--clr-ctl-border-strong: color-mix(in srgb, var(--c-black) 35%, transparent);
+	--clr-veil: color-mix(in srgb, var(--c-white) 50%, transparent);
+	--clr-veil-strong: color-mix(in srgb, var(--c-white) 85%, transparent);
+	--clr-side-btn-bg: color-mix(in srgb, var(--c-gray-3) 82%, transparent);
+	--clr-side-btn-press: color-mix(in srgb, var(--c-gray-3) 95%, transparent);
 }
 
 html:has(body.question-view),
@@ -270,8 +266,9 @@ body.auto-typing-active #main-layout {
 }
 
 .block {
+	--block-separator: inset 0 -1px 0 var(--clr-border-light);
 	padding: 10px 15px;
-	border-bottom: 1px solid var(--clr-border-light);
+	box-shadow: var(--block-separator);
 	position: relative;
 	border-left: 5px solid transparent;
 	outline: none;
@@ -285,7 +282,9 @@ body.auto-typing-active #main-layout {
 .block.multi-selected {
 	background-color: var(--clr-selected-bg);
 	border-left-color: var(--clr-accent);
-	box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+	box-shadow:
+		var(--block-separator),
+		inset 0 0 5px rgba(0, 0, 0, 0.05);
 }
 
 .block.selected {
@@ -622,7 +621,9 @@ button.go-to-select:disabled {
 .go-to-block.active-block {
 	background: var(--clr-text);
 	color: var(--clr-yellow);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	box-shadow:
+		var(--block-separator),
+		0 4px 12px rgba(0, 0, 0, 0.2);
 	transform: scale(1.01);
 	z-index: 10;
 }
@@ -1433,7 +1434,7 @@ body.side-left #interactionSideBtns {
 }
 #modeBtnPin {
 	--side-bg: color-mix(in srgb, var(--c-orange-1) 90%, transparent);
-	--side-bg-press: color-mix(in srgb, var(--c-orange-4) 95%, transparent);
+	--side-bg-press: color-mix(in srgb, var(--c-orange-2) 95%, transparent);
 }
 #modeSideBtns #modeBtnPin:not(.pin-visible) {
 	display: none;
@@ -1834,8 +1835,8 @@ body.side-left .popup-modal {
 .popup-student-btn-picked,
 .popup-student-btn-picked:hover,
 .popup-student-btn-picked:active {
-	background: color-mix(in srgb, var(--c-green-4) 22%, transparent);
-	border-color: color-mix(in srgb, var(--c-green-3) 70%, transparent);
+	background: color-mix(in srgb, var(--c-green-1) 22%, transparent);
+	border-color: color-mix(in srgb, var(--c-green-1) 70%, transparent);
 	color: var(--clr-answered-text);
 	font-weight: 600;
 	animation: pickedPulse 0.5s ease-in-out 2;
@@ -1847,7 +1848,7 @@ body.side-left .popup-modal {
 	}
 	50% {
 		box-shadow: 0 0 0 3px
-			color-mix(in srgb, var(--c-green-3) 40%, transparent);
+			color-mix(in srgb, var(--c-green-1) 40%, transparent);
 	}
 }
 
@@ -1983,19 +1984,22 @@ body.side-left .overlay-chrome-close {
 	display: none;
 	position: fixed;
 	z-index: 1100;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: min(760px, calc(100vw - 32px));
-	max-height: calc(100vh - 48px);
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-height: 40vh;
 	overflow-y: auto;
-	padding: 16px 18px;
+	padding: 14px 18px;
 	background: var(--clr-popup-bg);
 	color: var(--clr-text);
-	border: 1px solid var(--clr-border);
-	border-radius: 10px;
-	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+	border-top: 1px solid var(--clr-border);
+	box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.25);
 	font-family: var(--font-ui);
+}
+
+body.auto-typing-active .desk-popup.open,
+.desk-popup.open.interaction-card {
+	display: block;
 }
 
 .desk-popup-title {
@@ -2006,7 +2010,7 @@ body.side-left .overlay-chrome-close {
 }
 
 .desk-popup-body {
-	max-height: 45vh;
+	max-height: 26vh;
 }
 
 .desk-popup-body.desk-popup-plain {

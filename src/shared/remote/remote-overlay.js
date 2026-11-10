@@ -19,6 +19,15 @@ function closeActiveOverlay() {
 	if (overlay) overlay.chromeClose();
 }
 
+function syncOverlaysToAutoTyping(active) {
+	for (const overlay of remoteOverlays) {
+		if (!overlay.hidesWhileIdle()) continue;
+		const el = overlay.el;
+		if (!active && el && el.classList.contains("active")) overlay.open();
+		else if (active && overlay.held) overlay.open();
+	}
+}
+
 function activePadOverlay() {
 	for (const overlay of remoteOverlays) {
 		const el = overlay.el;
@@ -36,7 +45,12 @@ class RemoteOverlay {
 	constructor(overlayId, confirmMessage = null) {
 		this.overlayId = overlayId;
 		this.confirmMessage = confirmMessage;
+		this.held = false;
 		remoteOverlays.push(this);
+	}
+
+	hidesWhileIdle() {
+		return true;
 	}
 
 	get el() {
@@ -82,6 +96,11 @@ class RemoteOverlay {
 		const overlay = this.el;
 		if (!overlay) return;
 		if (bg) overlay.style.background = bg;
+		this.held = this.hidesWhileIdle() && !autoTypingActive;
+		if (this.held) {
+			this._hide();
+			return;
+		}
 		overlay.classList.add("active");
 		if (!this.keepsInteractionBtns()) setInteractionBtnsVisible(false);
 		syncOverlayChrome();
@@ -89,6 +108,11 @@ class RemoteOverlay {
 	}
 
 	close() {
+		this.held = false;
+		this._hide();
+	}
+
+	_hide() {
 		const overlay = this.el;
 		if (overlay) overlay.classList.remove("active", "pad-lifted");
 		setInteractionBtnsVisible(true);

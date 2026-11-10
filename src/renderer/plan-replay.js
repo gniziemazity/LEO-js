@@ -8,9 +8,13 @@ const { initProfiles } = require("../../lesson_tools/languages/profiles");
 const {
 	classifyGoToTarget,
 	goToDisplayName,
-	anchorIdPattern,
 } = require("../shared/go-to-target");
-const { getBlockType, stripBlockPrefix } = require("../shared/blocks");
+const {
+	GO_TO_TYPE,
+	blockTypeOf,
+	getBlockType,
+	stripBlockPrefix,
+} = require("../shared/blocks");
 const {
 	HL_COLORS,
 	buildHighlightSpans,
@@ -50,7 +54,7 @@ function applyBlock(editors, active, block, tag = 0) {
 		);
 		return active;
 	}
-	if (block.type === "go-to") {
+	if (blockTypeOf(block) === GO_TO_TYPE) {
 		const t = classifyGoToTarget(block.target || "");
 		if (t.mode !== "anchor") {
 			const name = t.mode === "file" ? t.target : t.mode;
@@ -99,7 +103,7 @@ function filesOf(editors) {
 
 function typedPrefix(text, caret) {
 	let cut = Math.max(0, Math.min(caret, text.length));
-	for (const m of text.matchAll(anchorIdPattern())) {
+	for (const m of text.matchAll(/⚓[^⚓]*⚓/g)) {
 		if (m.index < cut && cut < m.index + m[0].length) cut = m.index;
 	}
 	return text.slice(0, cut);
@@ -321,7 +325,7 @@ function computeGoToExcerpts(blocks, before = 5, after = 5) {
 	for (let i = 0; i < blocks.length; i++) {
 		const block = blocks[i];
 		if (!block) continue;
-		if (block.type === "go-to") {
+		if (blockTypeOf(block) === GO_TO_TYPE) {
 			snippets.set(
 				i,
 				computeExcerptFor(

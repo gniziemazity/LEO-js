@@ -13,6 +13,7 @@ const hidden = (ctx) => ctx.interactionBtns.map((b) => b.style.display);
 
 test("a note popup leaves the question and help buttons on screen", () => {
 	const ctx = build();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showNoteOverlay({ text: "Remember to save" });
 
 	assert.deepEqual(hidden(ctx), [undefined, undefined]);
@@ -20,6 +21,7 @@ test("a note popup leaves the question and help buttons on screen", () => {
 
 test("so do the other pausing popups: media, go-to and code snippet", () => {
 	const ctx = build();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showMediaOverlay({ type: "image", name: "cat.png" });
 	ctx.api.showGoToOverlay({ mode: "main", target: "MAIN" });
 	ctx.api.showSnippetOverlay({ code: "let a = 1;", paste: true });
@@ -29,6 +31,7 @@ test("so do the other pausing popups: media, go-to and code snippet", () => {
 
 test("a lesson question still hides them: the picker would replace its window", () => {
 	const ctx = build();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
 	assert.deepEqual(hidden(ctx), ["none", "none"]);
 
@@ -160,6 +163,7 @@ test("the picker stacks above the popups it can open over, and below the chrome"
 
 test("the close button dismisses the picker before the popup beneath it", () => {
 	const ctx = build();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.setStudents(["Ada"]);
 	ctx.api.showNoteOverlay({ text: "Remember to save" });
 	ctx.api.handleInteractionBtn("student-question");

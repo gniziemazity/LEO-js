@@ -244,6 +244,7 @@ function build(opts = {}) {
 			return 0;
 		},
 		cancelAnimationFrame() {},
+		ResizeObserver: opts.ResizeObserver,
 		console,
 		LeoBlocks: require(path.join(BASE, "shared/blocks.js")),
 		GoToTarget: require(path.join(BASE, "shared/go-to-target.js")),

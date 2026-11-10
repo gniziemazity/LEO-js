@@ -799,22 +799,6 @@ function _curatedMarkedToLineHtml(marked, nums, opBase) {
 		.join("");
 }
 
-function _curatedColors() {
-	const cv = (n, fb) => _cssVar(n) || fb;
-	return {
-		bg: cv("--clr-bg", "#fff"),
-		text: cv("--clr-code-muted", "#aaa"),
-		ins: cv("--clr-mark-missing", "#cc2222"),
-		del: cv("--clr-mark-extra", "#000"),
-		label: cv("--clr-muted", "#888"),
-		file: cv("--clr-label", "#595959"),
-		border: cv("--clr-border", "#888"),
-		same: cv("--clr-green", "#66bb6a"),
-		reordered: cv("--clr-orange", "#e07020"),
-		changed: cv("--clr-red", "#cc2222"),
-	};
-}
-
 function _curatedRenderBlocksToImage(blocks, filename) {
 	if (!blocks.length) return;
 	const fontSize = 12;
@@ -823,7 +807,6 @@ function _curatedRenderBlocksToImage(blocks, filename) {
 	const boxPad = 6;
 	const gap = Math.round(lineH * 0.5);
 	const font = fontSize + "px Consolas, 'Courier New', monospace";
-	const colors = _curatedColors();
 	const meas = document.createElement("canvas").getContext("2d");
 	meas.font = font;
 	const segW = (seg) => {
@@ -864,27 +847,27 @@ function _curatedRenderBlocksToImage(blocks, filename) {
 	canvas.height = H * dpr;
 	const ctx = canvas.getContext("2d");
 	ctx.scale(dpr, dpr);
-	ctx.fillStyle = colors.bg;
+	ctx.fillStyle = THEME.bg;
 	ctx.fillRect(0, 0, W, H);
 	ctx.textBaseline = "top";
 	let y = pad;
 	for (const it of items) {
 		if (it.kind === "file") {
 			ctx.font = "bold " + font;
-			ctx.fillStyle = colors.file;
+			ctx.fillStyle = THEME.label;
 			ctx.fillText(it.text, pad, y);
 			y += lineH;
 			continue;
 		}
 		if (it.kind === "label") {
 			ctx.font = font;
-			ctx.fillStyle = colors.label;
+			ctx.fillStyle = THEME.muted;
 			ctx.fillText(it.text, pad, y);
 			y += lineH;
 			continue;
 		}
 		const boxH = it.segLines.length * lineH + boxPad * 2;
-		ctx.strokeStyle = colors.border;
+		ctx.strokeStyle = THEME.border;
 		ctx.lineWidth = 1;
 		ctx.strokeRect(pad + 0.5, y + 0.5, it.boxW - 1, boxH - 1);
 		ctx.font = font;
@@ -896,13 +879,13 @@ function _curatedRenderBlocksToImage(blocks, filename) {
 				ctx.font = seg.style === "del" ? "bold " + font : font;
 				ctx.fillStyle =
 					seg.style === "ins"
-						? colors.ins
+						? MARK_COLORS.missing
 						: seg.style === "del"
-							? colors.del
-							: colors.text;
+							? MARK_COLORS.extra
+							: THEME.codeMuted;
 				ctx.fillText(seg.text, x, ly);
 				if (seg.style === "del") {
-					ctx.strokeStyle = colors.del;
+					ctx.strokeStyle = MARK_COLORS.extra;
 					ctx.lineWidth = 1;
 					ctx.beginPath();
 					ctx.moveTo(x, ly + lineH / 2);
@@ -954,13 +937,12 @@ function _curatedCorrectionsHtml() {
 	const blocks = _curatedCorrectionsData();
 	if (!blocks.length) return "";
 	const {
-		text: cMuted,
-		ins: cIns,
-		del: cDel,
-		label: cLabel,
-		file: cFile,
+		codeMuted: cMuted,
+		muted: cLabel,
+		label: cFile,
 		border: cBorder,
-	} = _curatedColors();
+	} = THEME;
+	const { missing: cIns, extra: cDel } = MARK_COLORS;
 	const mono = "ui-monospace, Consolas, monospace";
 	const segHtml = (marked) =>
 		_curatedMarkedToSegLines(marked)
@@ -1251,7 +1233,7 @@ function _curatedParityLocateInStudent(oSpans, items) {
 function _curatedParityInfo(p) {
 	if (p.sameOrder)
 		return {
-			clr: _curatedColors().same,
+			clr: THEME.green,
 			text: "Same tokens",
 			title:
 				"Applying these corrections reproduces the teacher's non-comment " +
@@ -1259,7 +1241,7 @@ function _curatedParityInfo(p) {
 		};
 	if (p.sameSet)
 		return {
-			clr: _curatedColors().reordered,
+			clr: THEME.orange,
 			text: "Different order",
 			title:
 				"Applying these corrections reproduces the same set of teacher " +
@@ -1269,7 +1251,7 @@ function _curatedParityInfo(p) {
 	if (p.extra) parts.push(`+${p.extra}`);
 	if (p.missing) parts.push(`−${p.missing}`);
 	return {
-		clr: _curatedColors().changed,
+		clr: THEME.red,
 		text: `Δ ${parts.join(" · ")}`,
 		title:
 			"Applying these corrections does not reproduce the teacher's tokens: " +

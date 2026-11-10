@@ -156,6 +156,7 @@ test("colour spans line up with the stripped text, not the authored text", () =>
 });
 
 function openPopup(ctx, text = CODE) {
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showSnippetOverlay({
 		text,
 		colored: null,
@@ -190,10 +191,7 @@ test("Paste is the popup's one action: it pastes and closes", () => {
 		["snippet-paste"],
 		"the host confirms after the paste; a confirm from here would race it",
 	);
-	assert.equal(
-		ctx.nodes.snippetOverlay.classList.contains("active"),
-		false,
-	);
+	assert.equal(ctx.nodes.snippetOverlay.classList.contains("active"), false);
 });
 
 test("with Paste off, OK is the way on", () => {
@@ -207,10 +205,7 @@ test("with Paste off, OK is the way on", () => {
 		ctx.sent.map((m) => m.type),
 		["snippet-confirmed"],
 	);
-	assert.equal(
-		ctx.nodes.snippetOverlay.classList.contains("active"),
-		false,
-	);
+	assert.equal(ctx.nodes.snippetOverlay.classList.contains("active"), false);
 
 	openPopup(ctx);
 	assert.equal(
@@ -226,10 +221,7 @@ test("the host ending the block closes the popup without confirming again", () =
 
 	ctx.api.closeSnippetOverlayUI();
 
-	assert.equal(
-		ctx.nodes.snippetOverlay.classList.contains("active"),
-		false,
-	);
+	assert.equal(ctx.nodes.snippetOverlay.classList.contains("active"), false);
 	assert.deepEqual(
 		ctx.sent.map((m) => m.type),
 		[],

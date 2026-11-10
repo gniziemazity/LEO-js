@@ -195,3 +195,34 @@ test("extractGoToExcerpt: a second file switch back makes the anchor local again
 	const away = extractGoToExcerpt("⚓2⚓", 4, blocks, 1, 1);
 	assert.equal(away.switchTo, "other.js", "but from main.css it is a switch");
 });
+
+const {
+	replayPlan,
+	replayMarked,
+	computeGoToExcerpts,
+} = require("../src/renderer/plan-replay");
+
+test("a plan read straight from its file replays its go-tos", () => {
+	const fromFile = [
+		{ type: "move-to", target: "app.js" },
+		{ type: "code", text: "let a = 1;⚓0⚓" },
+		{ type: "move-to", target: "MAIN" },
+		{ type: "code", text: "<p>" },
+		{ type: "move-to", target: "⚓0⚓" },
+		{ type: "code", text: "\nlet b = 2;" },
+	];
+	const { editors, active } = replayPlan(fromFile);
+	assert.equal(active, "app.js", "the anchor jump crossed back into app.js");
+	assert.equal(editors["app.js"].text, "let a = 1;\nlet b = 2;");
+	assert.equal(editors.main.text, "<p>");
+	assert.ok(
+		computeGoToExcerpts(fromFile).get(4),
+		"and its go-to excerpts are computed too",
+	);
+});
+
+test("a caret inside an empty anchor pair does not split the token", () => {
+	const blocks = [{ type: "code", text: "ab⚓⚓cd" }];
+	const { files } = replayMarked(blocks, { index: 0, caret: 3 });
+	assert.equal(files[0].text, "abcd", "no stray ⚓ is typed into the file");
+});

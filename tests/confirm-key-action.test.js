@@ -293,8 +293,10 @@ test("the phone's Paste and a settings save both use the same key action", () =>
 		"Paste closes the popup, however it was pressed",
 	);
 	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(main)[0];
+	assert.match(reapply, /armConfirmKey\(\)/);
+	const arm = /function armConfirmKey\(\)[\s\S]*?\n\}/.exec(main)[0];
 	assert.match(
-		reapply,
+		arm,
 		/registerConfirmPopup\(confirmKeyFor\(type\)\)/,
 		"re-arming with a bare confirm would lose Paste and Type name after a save",
 	);

@@ -524,7 +524,7 @@ class LogVisualizer:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as exc:
-            self._set_status(f"⚠  Could not load file: {exc}", TK_CLR["red"])
+            self._set_status(f"Could not load file: {exc}", TK_CLR["red"])
             return
 
         self.vscode = VSCodeSettings.load(path)
@@ -554,9 +554,9 @@ class LogVisualizer:
         if src == "defaults":
             label, fg = "⚙ VS Code: defaults", TK_CLR["blue"]
         elif src.startswith("parse error:"):
-            label, fg = "⚙ VS Code: parse error ⚠", TK_CLR["red"]
+            label, fg = "⚙ VS Code: parse error", TK_CLR["red"]
         else:
-            label, fg = "⚙ VS Code: settings.json ✓", TK_CLR["green"]
+            label, fg = "⚙ VS Code: settings.json", TK_CLR["green"]
         self.btn_settings.config(text=label, fg=fg)
 
 
@@ -652,7 +652,7 @@ class LogVisualizer:
         if self.micro_idx >= len(self.micro):
             self.playing = False
             self.btn_play.config(text="▶   Play", bg="#2d8f2d")
-            self._set_status("  ✓  Playback complete")
+            self._set_status("  Playback complete")
             return
         act = self.micro[self.micro_idx]
         self.micro_idx += 1
@@ -843,7 +843,7 @@ class LogVisualizer:
                 self._flash_anchor(self.text, pos)
                 self._log(ts, f"→  move_to {name} (now {pos})", TK_CLR["move"])
             else:
-                self._log(ts, f"⚠  unknown anchor: {name}", TK_CLR["red"])
+                self._log(ts, f"unknown anchor: {name}", TK_CLR["red"])
             return delay
 
         return DELAY_OPS
@@ -1390,7 +1390,7 @@ class LogVisualizer:
 
         if not self._seeking:
             if target_idx >= len(self.micro):
-                self._set_status("  ✓  Playback complete")
+                self._set_status("  Playback complete")
             else:
                 self._set_status(f"  ⏸  Seeked to {target_idx} / {len(self.micro)}")
 

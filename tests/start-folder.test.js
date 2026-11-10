@@ -132,7 +132,38 @@ test("a byte-order mark is not part of a start file's code", () => {
 		Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("a();\n")]),
 	);
 
-	assert.deepEqual(listStartFiles(dir), [{ name: "app.js", text: "a();\n" }]);
+	assert.deepEqual(listStartFiles(dir), [
+		{ name: "app.js", text: "a();\n", bom: true },
+	]);
+});
+
+test("a byte-order mark still counts in line 1's columns, as 2.1.0 saved them", async () => {
+	const dir = courseDir();
+	const BOM = Buffer.from([0xef, 0xbb, 0xbf]);
+	startFolder(dir, "part_2", {
+		"app.js": Buffer.concat([BOM, Buffer.from("let a = 1;\nlet b = 2;\n")]),
+	});
+	const saved = { "app.js": { 0: [1, 5], 1: [2, 5] } };
+	const p = writePlan(dir, "part_2.leo", [
+		{ type: "include", anchors: saved },
+		{ type: "comment", text: "Go" },
+	]);
+
+	const lm = await load(p);
+	const paste = startPastes(lm)[0];
+	assert.equal(
+		paste.text,
+		"📋 let⚓0⚓ a = 1;\nlet ⚓1⚓b = 2;\n",
+		"line 1's column counted the mark, so the anchor stays after 'let'",
+	);
+
+	const at = lm.getAllBlocks().indexOf(paste);
+	assert.equal(lm.setStartAnchors(at, paste.text.slice(3)), true);
+	assert.equal(lm.hasChanges(), false, "reading them back changes nothing");
+
+	lm.markAsChanged();
+	await save(lm);
+	assert.deepEqual(JSON.parse(fs.readFileSync(p, "utf8"))[0].anchors, saved);
 });
 
 test("stored anchors land at their line and column", async () => {

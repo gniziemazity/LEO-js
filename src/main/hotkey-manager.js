@@ -105,6 +105,7 @@ class HotkeyManager {
 	}
 
 	restoreAutoTypingHotkeys(keys) {
+		if (!state.isActive) return;
 		(keys || []).forEach((letter) => this.registerKey(letter));
 	}
 
@@ -123,6 +124,7 @@ class HotkeyManager {
 	}
 
 	registerConfirmPopup(callback) {
+		if (!state.isActive) return;
 		const accelerator = this.settingsManager.get("hotkeys.confirmPopup");
 		if (!accelerator) return;
 		this.confirmPopupKey = accelerator;

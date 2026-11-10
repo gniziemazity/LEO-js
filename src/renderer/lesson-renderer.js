@@ -895,22 +895,26 @@ class LessonRenderer {
 		this.uiManager.selectBlock(blockIdx);
 		this._syncSidebar();
 
-		const blocks = document.querySelectorAll(".block");
+		const previousEl =
+			previousSelectedIndex !== null
+				? UIManager.blockElement(previousSelectedIndex)
+				: null;
+		const targetEl = UIManager.blockElement(blockIdx);
 
 		if (hasSelection) {
-			if (previousSelectedIndex !== null && blocks[previousSelectedIndex]) {
-				blocks[previousSelectedIndex].classList.remove("selected");
+			if (previousEl) {
+				previousEl.classList.remove("selected");
 				this.refreshIsland(previousSelectedIndex);
 			}
-			if (blocks[blockIdx]) {
-				blocks[blockIdx].classList.add("selected");
+			if (targetEl) {
+				targetEl.classList.add("selected");
 
 				if (block.type === "code") {
-					this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
+					this.makeCodeBlockEditable(targetEl, block, blockIdx);
 				}
 				this.refreshIsland(blockIdx);
 
-				blocks[blockIdx].focus();
+				targetEl.focus();
 			}
 
 			return;
@@ -919,15 +923,12 @@ class LessonRenderer {
 		const clickX = e.clientX;
 		const clickY = e.clientY;
 
-		if (previousSelectedIndex !== null && blocks[previousSelectedIndex]) {
-			blocks[previousSelectedIndex].classList.remove("selected");
-			if (blocks[previousSelectedIndex].classList.contains("code-block")) {
+		if (previousEl) {
+			previousEl.classList.remove("selected");
+			if (previousEl.classList.contains("code-block")) {
 				const prevBlock =
 					this.lessonManager.getAllBlocks()[previousSelectedIndex];
-				if (
-					prevBlock &&
-					blocks[previousSelectedIndex].contentEditable === "true"
-				) {
+				if (prevBlock && previousEl.contentEditable === "true") {
 					this._rerenderAndFocus(blockIdx, clickX, clickY);
 					return;
 				}
@@ -938,11 +939,11 @@ class LessonRenderer {
 			this.refreshIsland(previousSelectedIndex);
 		}
 
-		if (blocks[blockIdx]) {
-			blocks[blockIdx].classList.add("selected");
+		if (targetEl) {
+			targetEl.classList.add("selected");
 
 			if (block.type === "code") {
-				this.makeCodeBlockEditable(blocks[blockIdx], block, blockIdx);
+				this.makeCodeBlockEditable(targetEl, block, blockIdx);
 			} else if (this.isMultilineSnippet(blockIdx)) {
 				this._rerenderAndFocus(blockIdx, clickX, clickY);
 				return;

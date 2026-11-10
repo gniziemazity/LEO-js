@@ -61,27 +61,29 @@ async function _overviewDetectBasisFiles() {
 	if (!_overviewDs || typeof REMARKS_BASES === "undefined") {
 		return;
 	}
-	const byTopic = new Map();
-	const add = (topic, file) => {
+	const groups = ["lessons", "assignments"];
+	const found = new Map(groups.map((grp) => [grp, new Map()]));
+	const add = (grp, topic, file) => {
 		if (!topic) return;
+		const byTopic = found.get(grp);
 		if (!byTopic.has(topic)) byTopic.set(topic, []);
 		byTopic.get(topic).push(file);
 	};
 
 	if (_overviewDs.files) {
-		for (const grp of ["lessons", "assignments"]) {
+		for (const grp of groups) {
 			const re = new RegExp(
 				String.raw`^${grp}/([^/]+)/(?:excels/)?remarks_[^/]*\.xlsx$`,
 			);
 			for (const [path, file] of _overviewDs.files) {
 				const m = path.match(re);
-				if (m) add(m[1], file);
+				if (m) add(grp, m[1], file);
 			}
 		}
 	}
 
 	if (typeof listServerDir === "function") {
-		for (const grp of ["lessons", "assignments"]) {
+		for (const grp of groups) {
 			let topics;
 			try {
 				topics = await listServerDir(`/grades-data/${grp}/`);
@@ -107,17 +109,20 @@ async function _overviewDetectBasisFiles() {
 							`/grades-data/${sub}${e.name}`,
 							location.href,
 						).href;
-						add(t.name.toLowerCase(), new HttpFileLike(url, e.name));
+						add(grp, t.name.toLowerCase(), new HttpFileLike(url, e.name));
 					}
 				}
 			}
 		}
 	}
 
-	for (const [topic, files] of byTopic) {
-		for (const [key, file] of pickRemarksFiles(files).basisFiles) {
-			if (!_basisFiles.has(key)) _basisFiles.set(key, new Map());
-			_basisFiles.get(key).set(topic, file);
+	for (const byTopic of found.values()) {
+		for (const [topic, files] of byTopic) {
+			for (const [key, file] of pickRemarksFiles(files).basisFiles) {
+				if (!_basisFiles.has(key)) _basisFiles.set(key, new Map());
+				const topics = _basisFiles.get(key);
+				if (!topics.has(topic)) topics.set(topic, file);
+			}
 		}
 	}
 }

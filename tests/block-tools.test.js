@@ -667,6 +667,25 @@ test("the controls are revealed by hover, not by a mousemove handler", () => {
 		"and add-below the seam under it, by half its own height so the shift " +
 			"follows the font size",
 	);
+	const block = /\n\.block \{[\s\S]*?\n\}/.exec(css)[0];
+	assert.doesNotMatch(
+		block,
+		/border-bottom/,
+		"a bottom border puts a line between the two rows' anchors: `bottom: 0` " +
+			"is the padding edge above it, the next block's `top: 0` is below it, " +
+			"so moving to the neighbour shifted the row by one device pixel",
+	);
+	assert.match(block, /box-shadow: var\(--block-separator\);/);
+	for (const rule of [
+		/\.block\.multi-selected \{[\s\S]*?\n\}/,
+		/\.go-to-block\.active-block \{[\s\S]*?\n\}/,
+	]) {
+		assert.match(
+			rule.exec(css)[0],
+			/box-shadow:\n\t\tvar\(--block-separator\),/,
+			"a block with a shadow of its own keeps the separator in it",
+		);
+	}
 	assert.match(
 		css,
 		/\.block-opt \{[\s\S]*?\n\ttop: 50%;[\s\S]*?\n\ttransform: translateY\(-50%\);/,

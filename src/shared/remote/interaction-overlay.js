@@ -18,6 +18,10 @@ class InteractionOverlay extends RemoteOverlay {
 		return false;
 	}
 
+	hidesWhileIdle() {
+		return false;
+	}
+
 	handleBtn(interactionType) {
 		if (currentStudents.length > 0) {
 			this.openedAt = Date.now();

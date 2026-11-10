@@ -469,6 +469,34 @@ test("with the setting on, a remote takes the letters back to the keyboard", () 
 	}
 });
 
+test("a letter released for typing is not taken back once auto-typing is off", () => {
+	const state = require("../src/main/state");
+	state.isActive = true;
+	try {
+		const h = hotkeys({});
+		h.manager.registerAutoTypingHotkeys();
+		const released = h.manager.releaseAutoTypingHotkeysFor("a");
+		assert.deepEqual(released, ["a"]);
+
+		state.isActive = false;
+		h.manager.unregisterAutoTypingHotkeys();
+		h.manager.restoreAutoTypingHotkeys(released);
+		assert.equal(
+			h.registered.size,
+			0,
+			"stopping auto-typing mid-character must not leave 'a' grabbed system-wide",
+		);
+
+		state.isActive = true;
+		h.manager.registerAutoTypingHotkeys();
+		const again = h.manager.releaseAutoTypingHotkeysFor("b");
+		h.manager.restoreAutoTypingHotkeys(again);
+		assert.deepEqual([...h.registered.keys()].sort(), ["a", "b", "c"]);
+	} finally {
+		state.isActive = false;
+	}
+});
+
 test("a remote connecting while auto-typing is off leaves the letters alone", () => {
 	const state = require("../src/main/state");
 	state.isActive = false;
@@ -489,10 +517,16 @@ test("only the auto-typing hotkeys are gated: the other shortcuts keep working",
 	});
 	h.manager.setRemoteConnected(true);
 
-	h.manager.registerConfirmPopup(() => {});
-	h.manager.registerEscapeForAutoRun();
-	assert.ok(h.registered.has("CommandOrControl+Enter"));
-	assert.ok(h.registered.has("Escape"));
+	const state = require("../src/main/state");
+	state.isActive = true;
+	try {
+		h.manager.registerConfirmPopup(() => {});
+		h.manager.registerEscapeForAutoRun();
+		assert.ok(h.registered.has("CommandOrControl+Enter"));
+		assert.ok(h.registered.has("Escape"));
+	} finally {
+		state.isActive = false;
+	}
 });
 
 test("the keyboard handler skips the per-letter release when the letters are not held", () => {

@@ -12,19 +12,18 @@ const CHART_FONT = {
 };
 
 const CHART_COLOR = {
-	axisText: _cssVar("--clr-chart-axis-text") || "#555",
-	grid: _cssVar("--clr-chart-grid") || "#e8e8e8",
-	gridFaint: _cssVar("--clr-chart-grid-faint") || "#f0f0f0",
-	axisLine: _cssVar("--clr-chart-axis-line") || "#ccc",
-	white: _cssVar("--clr-white") || "#fff",
-	border: _cssVar("--clr-chart-border") || "#ddd",
-	text: _cssVar("--clr-chart-text") || "#333",
-	barBorder: _cssVar("--clr-chart-bar-border") || "#999",
-	muted: _cssVar("--clr-chart-axis-text") || "#555",
-	faint: _cssVar("--clr-muted") || "#888",
-	rightAxis: _cssVar("--clr-accent") || "#007acc",
-	datasetFill:
-		_cssVar("--clr-chart-dataset-fill") || "rgba(100, 100, 100, 0.4)",
+	axisText: THEME.chartAxisText,
+	grid: THEME.chartGrid,
+	gridFaint: THEME.chartGridFaint,
+	axisLine: THEME.chartAxisLine,
+	white: THEME.white,
+	border: THEME.chartBorder,
+	text: THEME.chartText,
+	barBorder: THEME.chartBarBorder,
+	muted: THEME.chartAxisText,
+	faint: THEME.muted,
+	rightAxis: THEME.blue,
+	datasetFill: THEME.chartDatasetFill,
 };
 
 function niceStep(range, targetSteps) {

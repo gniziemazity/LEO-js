@@ -1,6 +1,7 @@
 (function (root) {
 	const NOTE_TYPE = "note";
 	const GO_TO_TYPE = "go-to";
+	const GO_TO_IN_FILE = "move-to";
 	const CODE_TYPE = "code";
 
 	const BLOCK_TYPES = [
@@ -48,7 +49,7 @@
 
 	function blockTypeOf(block) {
 		if (block.type === "comment") return getBlockType(block.text);
-		if (block.type === GO_TO_TYPE) return GO_TO_TYPE;
+		if (block.type === GO_TO_IN_FILE) return GO_TO_TYPE;
 		return block.type;
 	}
 
@@ -166,6 +167,7 @@
 		PICKABLE_TYPES,
 		NOTE_TYPE,
 		GO_TO_TYPE,
+		GO_TO_IN_FILE,
 		CODE_TYPE,
 		POPUP_TITLES,
 		typeClass,

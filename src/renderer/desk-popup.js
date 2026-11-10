@@ -59,7 +59,7 @@ class DeskPopup {
 		this.goToBody = null;
 		if (this.el) {
 			this.el.innerHTML = "";
-			this.el.style.display = "none";
+			this.el.className = "desk-popup";
 		}
 	}
 
@@ -79,7 +79,10 @@ class DeskPopup {
 	_open(type, bgColor) {
 		const el = this._host();
 		el.innerHTML = "";
-		el.style.display = "block";
+		el.className =
+			type === "interaction"
+				? "desk-popup open interaction-card"
+				: "desk-popup open";
 		el.style.background = bgColor || "";
 		this.type = type;
 		return el;

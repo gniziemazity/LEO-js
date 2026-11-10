@@ -39,6 +39,15 @@ function looksBinary(buffer) {
 	return buffer.includes(0);
 }
 
+function startsWithBom(buffer) {
+	return (
+		buffer.length >= 3 &&
+		buffer[0] === 0xef &&
+		buffer[1] === 0xbb &&
+		buffer[2] === 0xbf
+	);
+}
+
 function listStartFiles(dir) {
 	const out = [];
 	const walk = (abs, rel) => {
@@ -55,10 +64,12 @@ function listStartFiles(dir) {
 			if (!entry.isFile()) continue;
 			const buffer = fs.readFileSync(childAbs);
 			if (looksBinary(buffer)) continue;
-			out.push({
+			const file = {
 				name: childRel,
 				text: decodeBuffer(buffer).replace(/\r\n?/g, "\n"),
-			});
+			};
+			if (startsWithBom(buffer)) file.bom = true;
+			out.push(file);
 		}
 	};
 	walk(dir, "");
@@ -73,24 +84,29 @@ function lineStarts(text) {
 	return starts;
 }
 
-function offsetOf(text, starts, [line, col]) {
+function bomColumns(bom, line) {
+	return bom && line === 1 ? 1 : 0;
+}
+
+function offsetOf(text, starts, [line, col], bom) {
 	if (!Number.isInteger(line) || !Number.isInteger(col)) return null;
 	if (line < 1 || line > starts.length || col < 1) return null;
 	const start = starts[line - 1];
 	const end = line < starts.length ? starts[line] - 1 : text.length;
-	return Math.min(start + col - 1, end);
+	const at = start + col - 1 - bomColumns(bom, line);
+	return Math.min(Math.max(at, start), end);
 }
 
-function positionOf(starts, offset) {
+function positionOf(starts, offset, bom) {
 	let line = 0;
 	while (line + 1 < starts.length && starts[line + 1] <= offset) line++;
-	return [line + 1, offset - starts[line] + 1];
+	return [line + 1, offset - starts[line] + 1 + bomColumns(bom, line + 1)];
 }
 
-function embedAnchors(text, anchors) {
+function embedAnchors(text, anchors, bom = false) {
 	const starts = lineStarts(text);
 	const placed = Object.entries(anchors || {})
-		.map(([id, pos]) => [id, offsetOf(text, starts, pos)])
+		.map(([id, pos]) => [id, offsetOf(text, starts, pos, bom)])
 		.filter(([, offset]) => offset !== null)
 		.sort((a, b) => b[1] - a[1] || Number(b[0]) - Number(a[0]));
 	let out = text;
@@ -100,7 +116,7 @@ function embedAnchors(text, anchors) {
 	return out;
 }
 
-function readAnchors(body) {
+function readAnchors(body, bom = false) {
 	const found = [];
 	let clean = "";
 	let last = 0;
@@ -115,7 +131,9 @@ function readAnchors(body) {
 	clean += source.slice(last).replace(STRAY_RE, "");
 	const starts = lineStarts(clean);
 	const anchors = {};
-	for (const [id, offset] of found) anchors[id] = positionOf(starts, offset);
+	for (const [id, offset] of found) {
+		anchors[id] = positionOf(starts, offset, bom);
+	}
 	return { clean, anchors };
 }
 

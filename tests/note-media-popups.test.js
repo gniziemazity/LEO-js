@@ -509,6 +509,7 @@ test("OK never closes the window: it only carries on", () => {
 
 test("the phone's note popup shows the text, and OK confirms it", () => {
 	const ctx = buildRemote();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showNoteOverlay({ text: "Slow down here" });
 	assert.equal(ctx.nodes.noteOverlay.classList.contains("active"), true);
 	assert.equal(ctx.nodes.ntTitle.textContent, "Note:");
@@ -529,6 +530,7 @@ test("the host ending a note closes it without echoing a confirm", () => {
 
 test("the media popup names what is shown and offers a bare 📌 in the OK's colour", () => {
 	const ctx = buildRemote();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showMediaOverlay({ type: "web", name: "https://example.com" });
 	assert.equal(ctx.nodes.mediaOverlay.classList.contains("active"), true);
 	assert.equal(ctx.nodes.mdTitle.textContent, "Web page:");
@@ -580,6 +582,7 @@ test("the media popup names what is shown and offers a bare 📌 in the OK's col
 
 test("unpinning from the top while the popup is still up brings the pin back", () => {
 	const ctx = buildRemote();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	ctx.api.setPinnedWindows({ image: true, web: false });
 	assert.equal(ctx.nodes.mdPin.style.visibility, "hidden");
@@ -599,6 +602,7 @@ test("unpinning from the top while the popup is still up brings the pin back", (
 
 test("the phone's ✕ on a media popup dismisses it; OK still only confirms", () => {
 	const ctx = buildRemote();
+	ctx.api.setAutoTypingActive(true);
 	ctx.api.showMediaOverlay({ type: "image", name: "a.png" });
 	ctx.api.closeActiveOverlay();
 	assert.deepEqual(ctx.sent, [{ type: "media-dismissed", data: {} }]);

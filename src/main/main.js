@@ -535,8 +535,10 @@ ipcMain.on("set-active", (event, isActive) => {
 		state.clearQueue();
 		state.send("stop-auto-run");
 		hotkeyManager.registerAutoTypingHotkeys();
+		armConfirmKey();
 	} else {
 		hotkeyManager.unregisterAutoTypingHotkeys();
+		hotkeyManager.unregisterConfirmPopup();
 	}
 });
 ipcMain.on("set-active", () => autoPilot.onActiveChanged());
@@ -656,10 +658,14 @@ function reapplySettings() {
 	if (state.isAutoRunning) {
 		hotkeyManager.registerEscapeForAutoRun();
 	}
+	armConfirmKey();
+	keyboardHandler.updatePlatformSettings();
+}
+
+function armConfirmKey() {
 	const type = openPopupType();
 	if (type) hotkeyManager.registerConfirmPopup(confirmKeyFor(type));
 	else rearmQuestionShow();
-	keyboardHandler.updatePlatformSettings();
 }
 
 function cleanup() {
