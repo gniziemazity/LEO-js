@@ -16,6 +16,8 @@ let _activeTheme = null;
 let _start = 0;
 let _palette = null;
 let _solidColor = null;
+let _frameEl = null;
+let _frameBox = null;
 
 function _resolveBackground(setting) {
 	if (!setting || setting === "solid") return "solid";
@@ -69,9 +71,20 @@ function _frame(now) {
 	const w = window.innerWidth;
 	const h = window.innerHeight;
 	_ctx.clearRect(0, 0, w, h);
-	_activeTheme.draw(_ctx, now - _start, w, h);
-	_applyMask(_ctx, _activeTheme.shape || "rect", w, h);
+	if (_frameBox && _activeTheme.drawFrame) {
+		_activeTheme.drawFrame(_ctx, now - _start, w, h, _frameBox);
+	} else {
+		_activeTheme.draw(_ctx, now - _start, w, h);
+	}
+	_applyMask(_ctx, getActiveShape(), w, h);
 	_raf = requestAnimationFrame(_frame);
+}
+
+function _measureFrame() {
+	if (!_frameEl) return null;
+	const b = _frameEl.getBoundingClientRect();
+	const r = parseFloat(getComputedStyle(_frameEl).borderTopLeftRadius) || 0;
+	return { x: b.left, y: b.top, w: b.width, h: b.height, r };
 }
 
 function _sizeCanvas() {
@@ -82,6 +95,7 @@ function _sizeCanvas() {
 	_canvas.width = Math.max(1, Math.round(w * dpr));
 	_canvas.height = Math.max(1, Math.round(h * dpr));
 	_ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+	_frameBox = _measureFrame();
 	if (_mode === "solid") {
 		_drawSolid();
 	} else if (_activeTheme && _activeTheme.init) {
@@ -137,11 +151,14 @@ function stopBackground() {
 	_ctx = null;
 	_activeTheme = null;
 	_mode = null;
+	_frameEl = null;
+	_frameBox = null;
 }
 
-function initBackground(setting, color) {
+function initBackground(setting, color, frameEl) {
 	stopBackground();
 	if (color) _solidColor = color;
+	_frameEl = frameEl || null;
 	const resolved = _resolveBackground(setting);
 	if (resolved === "solid") {
 		_mode = "solid";
@@ -153,8 +170,9 @@ function initBackground(setting, color) {
 	_mode = resolved;
 	_activeTheme = theme;
 	_start = performance.now();
+	if (color && theme.setColor) theme.setColor(color);
 	document.body.classList.add("leo-themed");
-	document.body.classList.toggle("bg-circle", theme.shape === "circle");
+	document.body.classList.toggle("bg-circle", getActiveShape() === "circle");
 	if (theme.palette) {
 		_palette = theme.palette;
 		for (const k of Object.keys(_palette)) {
@@ -180,6 +198,6 @@ function setBackgroundColor(bgColor) {
 }
 
 function getActiveShape() {
-	if (_mode === "solid" || !_activeTheme) return "rect";
+	if (_frameEl || _mode === "solid" || !_activeTheme) return "rect";
 	return _activeTheme.shape || "rect";
 }

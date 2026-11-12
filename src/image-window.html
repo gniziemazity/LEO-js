@@ -12,6 +12,8 @@
 			<div id="errorMsg">Image could not be loaded.</div>
 		</div>
 
+		<script src="./shared/themes/theme-runtime.js"></script>
+		<script src="./shared/themes/dragonball.js"></script>
 		<script src="./shared/floating-window-page.js"></script>
 		<script>
 			const { ipcRenderer } = require("electron");
@@ -20,6 +22,15 @@
 				close: "force-close-image-window",
 				devtools: "open-image-devtools",
 				pin: "pin-image-window",
+			});
+
+			ipcRenderer.invoke("get-settings").then((s) => {
+				if (s)
+					initBackground(
+						s.floatingTheme,
+						s.colors.imageColor,
+						document.querySelector(".neon-frame"),
+					);
 			});
 
 			document

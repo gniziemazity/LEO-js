@@ -32,6 +32,46 @@
 	}
 
 	const DEFAULT_BALL = { r: 93, g: 173, b: 226 };
+	const FRAME_RAYS = "rgba(255,255,255,0.8)";
+	const FRAME_SPARK_GAP = 22;
+
+	function cornerRadius(box) {
+		return Math.max(0, Math.min(box.r || 0, box.w / 2, box.h / 2));
+	}
+
+	function perimeterLength(box) {
+		const r = cornerRadius(box);
+		return 2 * (box.w + box.h) - 8 * r + 2 * Math.PI * r;
+	}
+
+	function perimeterPoint(box, p, out) {
+		const r = cornerRadius(box);
+		const arc = (Math.PI / 2) * r;
+		const corners = [
+			[box.x + box.w - r, box.y + r],
+			[box.x + box.w - r, box.y + box.h - r],
+			[box.x + r, box.y + box.h - r],
+			[box.x + r, box.y + r],
+		];
+		for (let i = 0; i < 4; i++) {
+			const side = i % 2 ? box.h - 2 * r : box.w - 2 * r;
+			const a = ((i - 1) * Math.PI) / 2;
+			const [cx, cy] = corners[i];
+			if (p <= side) {
+				const back = side - p;
+				return [
+					cx + (r + out) * Math.cos(a) + Math.sin(a) * back,
+					cy + (r + out) * Math.sin(a) - Math.cos(a) * back,
+				];
+			}
+			p -= side;
+			if (p <= arc || i === 3) {
+				const t = r > 0 ? a + Math.min(p, arc) / r : a;
+				return [cx + (r + out) * Math.cos(t), cy + (r + out) * Math.sin(t)];
+			}
+			p -= arc;
+		}
+	}
 
 	function parseRGB(str) {
 		if (!str) return null;
@@ -72,7 +112,7 @@
 			this._rgb = rgb;
 			this._ballGrad = null;
 		},
-		_rays(ctx, cx, cy, size, w, h) {
+		_raysPath(ctx, cx, cy, w, h) {
 			const angleOffset = this.frame / 25;
 			const reach = Math.max(w, h) * 2;
 			const step = Math.PI / 24;
@@ -87,6 +127,9 @@
 				else ctx.lineTo(x, y);
 				intStep++;
 			}
+		},
+		_rays(ctx, cx, cy, size, w, h) {
+			this._raysPath(ctx, cx, cy, w, h);
 			if (!this._raysGrad) {
 				const grad = ctx.createRadialGradient(
 					cx,
@@ -148,6 +191,60 @@
 			this._rays(ctx, cx, cy, size, w, h);
 			this._ball(ctx, cx, cy, size);
 			this._electricity(ctx, cx, cy, size);
+
+			this.frame++;
+		},
+		_frameGlow(ctx, box, band) {
+			const c = this._rgb || DEFAULT_BALL;
+			const color = `rgb(${c.r},${c.g},${c.b})`;
+			const grow = band / 4;
+			ctx.save();
+			ctx.fillStyle = color;
+			ctx.shadowColor = color;
+			ctx.shadowBlur = band;
+			ctx.beginPath();
+			ctx.roundRect(
+				box.x - grow,
+				box.y - grow,
+				box.w + grow * 2,
+				box.h + grow * 2,
+				cornerRadius(box) + grow,
+			);
+			ctx.fill();
+			ctx.restore();
+		},
+		_frameElectricity(ctx, box, band) {
+			const perimeter = perimeterLength(box);
+			const count = Math.max(24, Math.round(perimeter / FRAME_SPARK_GAP));
+			const offsets = [];
+			for (let i = 0; i < count; i++)
+				offsets.push(Math.random() * perimeter);
+			offsets.sort((a, b) => a - b);
+			const nodes = offsets.map((p) =>
+				perimeterPoint(box, p, Math.random() * band * 0.7),
+			);
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = "white";
+			ctx.beginPath();
+			for (let i = 0; i < count; i++) {
+				for (let k = 1; k <= 2; k++) {
+					const next = nodes[(i + k) % count];
+					ctx.moveTo(nodes[i][0], nodes[i][1]);
+					ctx.lineTo(next[0], next[1]);
+				}
+			}
+			ctx.stroke();
+		},
+		drawFrame(ctx, t, w, h, box) {
+			const band = Math.max(
+				1,
+				Math.min(box.x, box.y, w - box.x - box.w, h - box.y - box.h),
+			);
+			this._raysPath(ctx, w / 2, h / 2, w, h);
+			ctx.fillStyle = FRAME_RAYS;
+			ctx.fill();
+			this._frameGlow(ctx, box, band);
+			this._frameElectricity(ctx, box, band);
 
 			this.frame++;
 		},

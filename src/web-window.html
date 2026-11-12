@@ -18,6 +18,8 @@
 			></webview>
 		</div>
 
+		<script src="./shared/themes/theme-runtime.js"></script>
+		<script src="./shared/themes/dragonball.js"></script>
 		<script src="./shared/floating-window-page.js"></script>
 		<script>
 			const { ipcRenderer } = require("electron");
@@ -26,6 +28,15 @@
 				close: "force-close-web-window",
 				devtools: "open-web-devtools",
 				pin: "pin-web-window",
+			});
+
+			ipcRenderer.invoke("get-settings").then((s) => {
+				if (s)
+					initBackground(
+						s.floatingTheme,
+						s.colors.imageColor,
+						document.querySelector(".neon-frame"),
+					);
 			});
 
 			const webview = document.getElementById("webview");

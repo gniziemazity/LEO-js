@@ -499,6 +499,21 @@ test("the popups live in LEO's own window, with no second client shape", () => {
 	}
 });
 
+test("the card is as tall as what it holds; only the window caps it", () => {
+	const css = fs.readFileSync(
+		path.resolve(__dirname, "..", "src/shared/styles.css"),
+		"utf-8",
+	);
+	const rule = css.match(/\n\.desk-popup \{([^}]*)\}/);
+	assert.ok(rule, "the card has its rule");
+	const cap = rule[1].match(/max-height:\s*([^;]+);/);
+	assert.equal(
+		cap && cap[1].trim(),
+		"100vh",
+		"a lower cap scrolls the whole card once a code excerpt or a roster fills it",
+	);
+});
+
 test("every desk action is a message the server already knows", () => {
 	const { CLIENT_MESSAGE_TYPES } = require("../src/main/websocket-server.js");
 	const mainSrc = fs.readFileSync(
