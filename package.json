@@ -1,6 +1,6 @@
 {
 	"name": "leo",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"description": "Live-coding Assistant for Teachers",
 	"author": "Radu Mariescu-Istodor <gniziemazity@gmail.com>",
 	"main": "src/main/main.js",
@@ -47,7 +47,7 @@
 			"!tests",
 			"!.venv",
 			"!.claude",
-			"!CLAUDE.md",
+			"!**/CLAUDE.md",
 			"!settings/yt_settings.json",
 			"!lesson_tools/.grades_session.json",
 			"!lesson_tools/.last_*",
