@@ -69,6 +69,50 @@ test("every hotkey round trips too", () => {
 	});
 });
 
+test("a space in the auto-typing hotkeys field is the Space bar, shown as ␣", () => {
+	const {
+		typingHotkeysToText,
+		typingHotkeysFromText,
+	} = require("../src/shared/settings-schema");
+
+	assert.deepEqual(
+		typingHotkeysFromText("abc "),
+		["a", "b", "c", " "],
+		"the field used to drop every space, so Space could not be a hotkey",
+	);
+	assert.equal(
+		typingHotkeysToText(["a", "b", "c", " "]),
+		"abc␣",
+		"a trailing space in a text box cannot be seen, or found to delete",
+	);
+	assert.deepEqual(
+		typingHotkeysFromText("a␣b ␣"),
+		["a", " ", "b"],
+		"either spelling is the bar, and it is listed once",
+	);
+	assert.deepEqual(
+		typingHotkeysFromText("a\tb"),
+		["a", "b"],
+		"other white space is still nothing",
+	);
+
+	const letters = new SettingsManager().defaultSettings.hotkeys.typing;
+	assert.deepEqual(
+		typingHotkeysFromText(typingHotkeysToText(letters)),
+		letters,
+	);
+
+	const ui = fs.readFileSync(
+		path.resolve(__dirname, "..", "src/renderer/settings-ui.js"),
+		"utf-8",
+	);
+	assert.match(ui, /typingHotkeysToText\(\s*settings\.hotkeys\.typing/);
+	assert.match(
+		ui,
+		/typingHotkeysFromText\(\s*document\.getElementById\("typingHotkeys"\)\.value/,
+	);
+});
+
 test("no colour in the defaults is missing from the modal", () => {
 	const defaults = new SettingsManager().defaultSettings.colors;
 	const covered = new Set(COLOR_FIELDS.map(([, key]) => key));

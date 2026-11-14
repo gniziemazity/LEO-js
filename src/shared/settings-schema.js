@@ -61,6 +61,17 @@ const HOTKEY_SETTINGS = [
 	},
 ];
 
+const SPACE_KEY_SHOWN_AS = "␣";
+
+function typingHotkeysToText(keys) {
+	return keys.join("").replaceAll(" ", SPACE_KEY_SHOWN_AS);
+}
+
+function typingHotkeysFromText(text) {
+	const keys = text.replaceAll(SPACE_KEY_SHOWN_AS, " ").split("");
+	return [...new Set(keys)].filter((key) => key === " " || key.trim());
+}
+
 function defaultsFrom(settings) {
 	const out = {};
 	for (const s of settings) out[s.key] = s.value;
@@ -76,4 +87,6 @@ module.exports = {
 	HOTKEY_SETTINGS,
 	defaultsFrom,
 	domFieldsFor,
+	typingHotkeysToText,
+	typingHotkeysFromText,
 };

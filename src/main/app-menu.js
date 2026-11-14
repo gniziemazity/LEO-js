@@ -136,6 +136,17 @@ function createApplicationMenu() {
 				openSimulator: () => openSimulator(send),
 			}),
 		},
+		{
+			label: "Help",
+			submenu: [
+				{
+					label: "About LEO",
+					click: () => {
+						if (state.onShowAbout) state.onShowAbout();
+					},
+				},
+			],
+		},
 	];
 
 	if (courseMenuState.open) {

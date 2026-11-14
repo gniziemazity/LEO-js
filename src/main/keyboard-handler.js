@@ -3,7 +3,29 @@ const { keyboard, Key } = require("@computer-use/nut-js");
 const { libnut } = require("@computer-use/libnut/dist/import_libnut");
 const { NUTJS_KEY_MAPPING } = require("../shared/constants");
 const state = require("./state");
-const { sleep, isMacOS, primaryModifier } = require("./platform");
+const {
+	sleep,
+	isMacOS,
+	primaryModifier,
+	typesInOneStep,
+} = require("./platform");
+
+const CHORD_MODIFIERS = new Map([
+	[Key.LeftControl, "Control"],
+	[Key.LeftAlt, "Alt"],
+]);
+
+const ENTER_SETTLE_MS = 30;
+
+function typedAsItself(char) {
+	return !NUTJS_KEY_MAPPING[char] && char !== "\n" && char !== "\t";
+}
+
+function pressesEnter(char) {
+	if (char === "\n") return true;
+	const mapping = NUTJS_KEY_MAPPING[char];
+	return !!mapping && mapping.key === Key.Enter && !mapping.modifier;
+}
 
 const SHIFTED_CHAR_TO_KEY = {
 	"!": Key.Num1,
@@ -151,7 +173,68 @@ class KeyboardHandler {
 		}
 	}
 
+	typesInOneStep() {
+		return typesInOneStep(this.settingsManager);
+	}
+
+	typeInOneStep(char) {
+		const key = char.toLowerCase();
+		const letter = /^[a-z]$/.test(key);
+		const mayHoldShift = letter ? char !== key : char !== " ";
+		const unguard = mayHoldShift
+			? this.hotkeyManager.guardChord("Shift", key)
+			: () => {};
+		const released =
+			letter && mayHoldShift
+				? []
+				: this.hotkeyManager.releaseAutoTypingHotkeysFor(char);
+		const restore = () => {
+			this.hotkeyManager.restoreAutoTypingHotkeys(released);
+			unguard();
+		};
+		if (letter) {
+			this.pressInTwoSteps(key, mayHoldShift ? ["shift"] : [], restore);
+			return;
+		}
+		if (char === " " && released.length) {
+			this.pressInTwoSteps("space", [], restore);
+			return;
+		}
+		try {
+			libnut.typeString(char);
+		} finally {
+			restore();
+		}
+	}
+
+	pressInTwoSteps(key, modifiers, afterKeyDown) {
+		try {
+			try {
+				libnut.keyToggle(key, "down", modifiers);
+			} finally {
+				afterKeyDown();
+			}
+		} finally {
+			libnut.keyToggle(key, "up", modifiers);
+		}
+	}
+
+	guardedModifiers(modifier, mapping) {
+		if (!this.typesInOneStep()) return [];
+		const held = [];
+		if (modifier !== undefined) {
+			if (!CHORD_MODIFIERS.has(modifier)) return [];
+			held.push(CHORD_MODIFIERS.get(modifier));
+		}
+		if (mapping.shift) held.push("Shift");
+		return held;
+	}
+
 	async typeCharWithHotkeyManagement(char) {
+		if (typedAsItself(char) && this.typesInOneStep()) {
+			this.typeInOneStep(char);
+			return;
+		}
 		const released = this.hotkeyManager.releaseAutoTypingHotkeysFor(char);
 		const settle = released.length > 0 && this.isMacOS();
 		if (settle) await sleep(20);
@@ -161,6 +244,7 @@ class KeyboardHandler {
 			if (settle) await sleep(20);
 			this.hotkeyManager.restoreAutoTypingHotkeys(released);
 		}
+		if (pressesEnter(char)) await sleep(ENTER_SETTLE_MS);
 	}
 
 	async autoRunBlock(steps, startIndex, speed) {
@@ -198,14 +282,28 @@ class KeyboardHandler {
 			const modifier = mapping.primary
 				? primaryModifier(this.settingsManager, Key)
 				: mapping.modifier;
-			if (modifier && mapping.shift) {
-				await keyboard.type(modifier, Key.LeftShift, mapping.key);
-			} else if (modifier) {
-				await keyboard.type(modifier, mapping.key);
-			} else if (mapping.shift) {
-				await keyboard.type(Key.LeftShift, mapping.key);
-			} else {
-				await keyboard.type(mapping.key);
+			const held = this.guardedModifiers(modifier, mapping);
+			const key = String(Key[mapping.key]).toLowerCase();
+			const unguard = held.length
+				? this.hotkeyManager.guardChord(held.join("+"), key)
+				: () => {};
+			if (held.length && /^[a-z]$/.test(key)) {
+				const modifiers = held.map((name) => name.toLowerCase());
+				this.pressInTwoSteps(key, modifiers, unguard);
+				return;
+			}
+			try {
+				if (modifier && mapping.shift) {
+					await keyboard.type(modifier, Key.LeftShift, mapping.key);
+				} else if (modifier) {
+					await keyboard.type(modifier, mapping.key);
+				} else if (mapping.shift) {
+					await keyboard.type(Key.LeftShift, mapping.key);
+				} else {
+					await keyboard.type(mapping.key);
+				}
+			} finally {
+				unguard();
 			}
 			return;
 		}
@@ -274,6 +372,11 @@ class KeyboardHandler {
 	}
 
 	processQueue() {
+		if (state.isPaused) {
+			state.unlock();
+			state.clearQueue();
+			return;
+		}
 		if (state.hasQueuedAdvances()) {
 			state.dequeueAdvance();
 			state.send("advance-cursor");

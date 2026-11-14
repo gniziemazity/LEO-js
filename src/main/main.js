@@ -266,6 +266,7 @@ broadcastServer.on("client-timer-adjust", (minutes) => {
 // IPC handlers
 
 state.onToggleWindow = toggleMainWindow;
+state.onShowAbout = () => showEditorTip(true);
 
 let toolsMenuSync = null;
 function syncToolsMenu() {
@@ -698,24 +699,36 @@ const EDITOR_SETTINGS_FILE = path.join(
 	"../../settings/vscode_settings.json",
 );
 
+const EDITOR_TIP =
+	"Autocomplete, bracket closing and suggestion popups " +
+	"may interfere with your plans. I recommend you switch to the settings provided in:\n" +
+	"settings/vscode_settings.json before you get used to LEO (paste it into your VS Code settings.json)";
+
+async function showEditorTip(about) {
+	const canShow = fs.existsSync(EDITOR_SETTINGS_FILE);
+	if (!canShow && !about) return;
+	const { response } = await dialog.showMessageBox(state.mainWindow, {
+		type: "info",
+		title: about ? "About LEO" : "Recommended editor settings",
+		message: about
+			? `LEO ${app.getVersion()}`
+			: "LEO types into your editor as if you were typing.",
+		detail: about
+			? `LEO types into your editor as if you were typing.\n\n${EDITOR_TIP}`
+			: `${EDITOR_TIP}\n\nThis message is shown only once.`,
+		buttons: canShow
+			? ["Show me the settings", about ? "Close" : "Later"]
+			: ["Close"],
+		defaultId: 0,
+		cancelId: canShow ? 1 : 0,
+	});
+	if (canShow && response === 0) shell.showItemInFolder(EDITOR_SETTINGS_FILE);
+}
+
 async function showEditorTipOnce() {
 	if (settingsManager.get("editorTipSeen")) return;
 	settingsManager.set("editorTipSeen", true);
-	if (!fs.existsSync(EDITOR_SETTINGS_FILE)) return;
-	const { response } = await dialog.showMessageBox(state.mainWindow, {
-		type: "info",
-		title: "Recommended editor settings",
-		message: "LEO types into your editor as if you were typing.",
-		detail:
-			"Autocomplete, bracket closing and suggestion popups " +
-			"may interfere with your plans. I recommend you switch to the settings provided in:\n" +
-			"settings/vscode_settings.json before you get used to LEO (paste it into your VS Code settings.json)\n\n" +
-			"This message is shown only once.",
-		buttons: ["Show me the settings", "Later"],
-		defaultId: 0,
-		cancelId: 1,
-	});
-	if (response === 0) shell.showItemInFolder(EDITOR_SETTINGS_FILE);
+	await showEditorTip(false);
 }
 
 async function createWindow() {

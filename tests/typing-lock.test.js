@@ -169,13 +169,19 @@ test("advanceCursor answers on every path, including past the end", () => {
 	);
 	assert.match(
 		fn,
-		/\} else \{\s*this\.currentStepIndex\+\+;\s*ipcRenderer\.send\("input-complete"\)/,
-		"an unknown step type must answer too, rather than silently stalling",
+		/\} finally \{\s*if \(!typesACharacter\) ipcRenderer\.send\("input-complete"\)/,
+		"every step that types nothing answers, an unknown type included, " +
+			"and even if moving the cursor throws",
+	);
+	assert.ok(
+		fn.indexOf("this.updateCursor()") < fn.lastIndexOf("input-complete"),
+		"after the cursor has moved: main answers with the next queued press, " +
+			"so a block's pause has to be sent first",
 	);
 	assert.equal(
 		(fn.match(/ipcRenderer\.send\(/g) || []).length,
-		5,
-		"one reply per branch: past-the-end, char, anchor, block, unknown",
+		3,
+		"past-the-end, the character, and the one reply for everything else",
 	);
 });
 

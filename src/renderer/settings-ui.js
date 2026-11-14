@@ -4,6 +4,8 @@ const {
 	COLOR_SETTINGS,
 	HOTKEY_SETTINGS,
 	domFieldsFor,
+	typingHotkeysToText,
+	typingHotkeysFromText,
 } = require("../shared/settings-schema");
 
 const COLOR_FIELDS = domFieldsFor(COLOR_SETTINGS);
@@ -102,8 +104,9 @@ class SettingsUI {
 		document.getElementById("platformSelect").value =
 			settings.platform || "windows";
 
-		document.getElementById("typingHotkeys").value =
-			settings.hotkeys.typing.join("");
+		document.getElementById("typingHotkeys").value = typingHotkeysToText(
+			settings.hotkeys.typing,
+		);
 		this._applyFields(HOTKEY_FIELDS, settings.hotkeys);
 		this._applyFields(COLOR_FIELDS, settings.colors);
 
@@ -189,8 +192,9 @@ class SettingsUI {
 	}
 
 	save() {
-		const typingHotkeysStr = document.getElementById("typingHotkeys").value;
-		const typingHotkeys = typingHotkeysStr.split("").filter((c) => c.trim());
+		const typingHotkeys = typingHotkeysFromText(
+			document.getElementById("typingHotkeys").value,
+		);
 
 		const settings = {
 			platform: document.getElementById("platformSelect").value,

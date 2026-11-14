@@ -2,11 +2,50 @@ const { globalShortcut } = require("electron");
 const state = require("./state");
 const { HOTKEY_SETTINGS } = require("../shared/settings-schema");
 
+const CHORD_GUARD_MS = 150;
+const TOGGLE_REPEAT_MS = 1000;
+const MODIFIER_ORDER = ["Control", "Alt", "Shift"];
+const MODIFIER_ALIASES = {
+	commandorcontrol: "Control",
+	cmdorctrl: "Control",
+	control: "Control",
+	ctrl: "Control",
+	alt: "Alt",
+	option: "Alt",
+	shift: "Shift",
+};
+
+const SPACE = " ";
+
+const swallow = () => {};
+
+function acceleratorFor(key) {
+	return key === SPACE ? "Space" : key;
+}
+
+function keyNamed(name) {
+	const key = String(name).toLowerCase();
+	return key === "space" ? SPACE : key;
+}
+
+function takesGuards(key) {
+	return key === SPACE || /^[a-z]$/i.test(String(key));
+}
+
+function guardedChordModifiers(accelerator) {
+	const parts = String(accelerator).split("+");
+	if (!takesGuards(keyNamed(parts.pop()))) return null;
+	const held = parts.map((part) => MODIFIER_ALIASES[part.toLowerCase()]);
+	if (held.includes(undefined)) return null;
+	return MODIFIER_ORDER.filter((name) => held.includes(name)).join("+");
+}
+
 class HotkeyManager {
 	constructor(settingsManager) {
 		this.settingsManager = settingsManager;
 		this.confirmPopupKey = null;
 		this.remoteConnected = false;
+		this.chordLayers = new Map();
 	}
 
 	handleKey(letter) {
@@ -41,31 +80,113 @@ class HotkeyManager {
 
 	registerSystemShortcuts() {
 		const shortcuts = this.settingsManager.get("hotkeys");
+		const hold = (accelerator, callback, toggle = false) => {
+			const modifiers = guardedChordModifiers(accelerator);
+			let lastFired = -Infinity;
+			globalShortcut.register(accelerator, () => {
+				if (modifiers && this.chordLayers.has(modifiers)) return;
+				if (toggle) {
+					const now = Date.now();
+					const repeat = now - lastFired < TOGGLE_REPEAT_MS;
+					lastFired = now;
+					if (repeat) return;
+				}
+				callback();
+			});
+		};
 
 		for (const h of HOTKEY_SETTINGS) {
 			if (!h.channel) continue;
-			globalShortcut.register(shortcuts[h.key], () => {
-				if (h.step) this.step(h.step);
-				else state.send(h.channel);
-			});
+			hold(
+				shortcuts[h.key],
+				() => {
+					if (h.step) this.step(h.step);
+					else state.send(h.channel);
+				},
+				!h.step,
+			);
 		}
 
-		globalShortcut.register(shortcuts.alwaysOnTop, () => {
-			if (!state.mainWindow || state.mainWindow.isDestroyed()) return;
-			const isTop = state.mainWindow.isAlwaysOnTop();
-			state.mainWindow.setAlwaysOnTop(!isTop);
-		});
+		hold(
+			shortcuts.alwaysOnTop,
+			() => {
+				if (!state.mainWindow || state.mainWindow.isDestroyed()) return;
+				const isTop = state.mainWindow.isAlwaysOnTop();
+				state.mainWindow.setAlwaysOnTop(!isTop);
+			},
+			true,
+		);
 
-		globalShortcut.register(shortcuts.toggleTransparency, () => {
-			if (!state.mainWindow) return;
-			const current = state.mainWindow.getOpacity();
-			state.mainWindow.setOpacity(current < 0.9 ? 1.0 : 0.5);
-		});
+		hold(
+			shortcuts.toggleTransparency,
+			() => {
+				if (!state.mainWindow) return;
+				const current = state.mainWindow.getOpacity();
+				state.mainWindow.setOpacity(current < 0.9 ? 1.0 : 0.5);
+			},
+			true,
+		);
 
-		const toggleWindowKey = shortcuts.toggleWindow;
-		globalShortcut.register(toggleWindowKey, () => {
-			if (state.onToggleWindow) state.onToggleWindow();
-		});
+		hold(
+			shortcuts.toggleWindow,
+			() => {
+				if (state.onToggleWindow) state.onToggleWindow();
+			},
+			true,
+		);
+	}
+
+	guardChord(modifiers, chordKey) {
+		if (!state.isActive || !this.autoTypingHotkeysEnabled()) return () => {};
+		const layer =
+			this.chordLayers.get(modifiers) || this.armChordLayer(modifiers);
+		clearTimeout(layer.timer);
+		const own = layer.guards.get(keyNamed(chordKey));
+		if (own) globalShortcut.unregister(own);
+		return () => {
+			if (own) globalShortcut.register(own, swallow);
+			this.lingerChordLayer(modifiers, layer);
+		};
+	}
+
+	armChordLayer(modifiers) {
+		const guards = new Map();
+		for (const key of this.settingsManager.get("hotkeys.typing") || []) {
+			if (!takesGuards(key)) continue;
+			const accelerator = `${modifiers}+${acceleratorFor(key)}`;
+			if (globalShortcut.isRegistered(accelerator)) continue;
+			if (globalShortcut.register(accelerator, swallow)) {
+				guards.set(String(key).toLowerCase(), accelerator);
+			}
+		}
+		const layer = { guards, timer: null };
+		this.chordLayers.set(modifiers, layer);
+		return layer;
+	}
+
+	lingerChordLayer(modifiers, layer) {
+		const due = Date.now() + CHORD_GUARD_MS;
+		layer.timer = setTimeout(() => {
+			const loopWasBlocked = Date.now() - due > CHORD_GUARD_MS / 2;
+			if (loopWasBlocked) this.lingerChordLayer(modifiers, layer);
+			else this.disarmChordLayer(modifiers);
+		}, CHORD_GUARD_MS);
+	}
+
+	disarmChordLayer(modifiers) {
+		const layer = this.chordLayers.get(modifiers);
+		if (!layer) return;
+		clearTimeout(layer.timer);
+		layer.guards.forEach((accelerator) =>
+			globalShortcut.unregister(accelerator),
+		);
+		this.chordLayers.delete(modifiers);
+	}
+
+	disarmChordLayers() {
+		[...this.chordLayers.keys()].forEach((modifiers) =>
+			this.disarmChordLayer(modifiers),
+		);
 	}
 
 	registerAutoTypingHotkeys() {
@@ -75,7 +196,8 @@ class HotkeyManager {
 
 	unregisterAutoTypingHotkeys() {
 		const hotkeys = this.settingsManager.get("hotkeys.typing");
-		hotkeys.forEach((letter) => globalShortcut.unregister(letter));
+		hotkeys.forEach((letter) => this.unregisterKey(letter));
+		this.disarmChordLayers();
 	}
 
 	autoTypingHotkeysEnabled() {
@@ -100,7 +222,7 @@ class HotkeyManager {
 
 	releaseAutoTypingHotkeysFor(ch) {
 		const keys = this.autoTypingHotkeysFor(ch);
-		keys.forEach((letter) => globalShortcut.unregister(letter));
+		keys.forEach((letter) => this.unregisterKey(letter));
 		return keys;
 	}
 
@@ -111,8 +233,9 @@ class HotkeyManager {
 
 	registerKey(letter) {
 		if (!this.autoTypingHotkeysEnabled()) return;
-		if (globalShortcut.isRegistered(letter)) return;
-		globalShortcut.register(letter, () => this.handleKey(letter));
+		const accelerator = acceleratorFor(letter);
+		if (globalShortcut.isRegistered(accelerator)) return;
+		globalShortcut.register(accelerator, () => this.handleKey(letter));
 	}
 
 	registerEscapeForAutoRun() {
@@ -147,11 +270,13 @@ class HotkeyManager {
 	}
 
 	unregisterKey(letter) {
-		globalShortcut.unregister(letter);
+		globalShortcut.unregister(acceleratorFor(letter));
 	}
 
 	unregisterAll() {
 		globalShortcut.unregisterAll();
+		this.chordLayers.forEach((layer) => clearTimeout(layer.timer));
+		this.chordLayers.clear();
 	}
 }
 

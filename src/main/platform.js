@@ -8,4 +8,8 @@ function primaryModifier(settingsManager, Key) {
 	return isMacOS(settingsManager) ? Key.LeftCmd : Key.LeftControl;
 }
 
-module.exports = { sleep, isMacOS, primaryModifier };
+function typesInOneStep(settingsManager) {
+	return process.platform === "win32" && !isMacOS(settingsManager);
+}
+
+module.exports = { sleep, isMacOS, primaryModifier, typesInOneStep };

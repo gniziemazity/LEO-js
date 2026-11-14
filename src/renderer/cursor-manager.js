@@ -407,8 +407,9 @@ class CursorManager {
 			return;
 		}
 		const currentStep = this.executionSteps[this.currentStepIndex];
+		const typesACharacter = currentStep.type === "char";
 
-		if (currentStep.type === "char") {
+		if (typesACharacter) {
 			currentStep.element.classList.add("consumed");
 			this.logManager.addEntry({ char: currentStep.char });
 			ipcRenderer.send("type-character", currentStep.char);
@@ -417,17 +418,18 @@ class CursorManager {
 			currentStep.element.classList.add("consumed");
 			this._logAnchor(currentStep);
 			this.currentStepIndex++;
-			ipcRenderer.send("input-complete");
 		} else if (currentStep.type === "block") {
 			currentStep.element.classList.add("consumed");
 			this.currentStepIndex++;
-			ipcRenderer.send("input-complete");
 		} else {
 			this.currentStepIndex++;
-			ipcRenderer.send("input-complete");
 		}
 
-		this.updateCursor();
+		try {
+			this.updateCursor();
+		} finally {
+			if (!typesACharacter) ipcRenderer.send("input-complete");
+		}
 	}
 
 	async startAutoRun() {

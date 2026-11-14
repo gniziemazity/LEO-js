@@ -4,6 +4,7 @@ const {
 	settingsManager,
 	broadcastServer,
 	hotkeyManager,
+	keyboardHandler,
 } = require("./context");
 const state = require("./state");
 const { sleep, isMacOS, primaryModifier } = require("./platform");
@@ -174,13 +175,16 @@ async function typeNextNameChar() {
 	if (!pendingName || pendingName.busy) return !!pendingName;
 	const ch = pendingName.chars[pendingName.index];
 	pendingName.busy = true;
+	const inOneStep = keyboardHandler.typesInOneStep();
 	const macOS = isMacOS(settingsManager);
-	const released = state.isActive
-		? hotkeyManager.releaseAutoTypingHotkeysFor(ch)
-		: [];
+	const released =
+		state.isActive && !inOneStep
+			? hotkeyManager.releaseAutoTypingHotkeysFor(ch)
+			: [];
 	if (released.length && macOS) await sleep(20);
 	try {
-		await keyboard.type(ch);
+		if (inOneStep) keyboardHandler.typeInOneStep(ch);
+		else await keyboard.type(ch);
 	} catch (e) {
 		warnRemoteInput("type file name", e);
 	} finally {

@@ -8,7 +8,7 @@ const { loadModule } = require("./helpers/load-module");
 
 const MAIN = path.resolve(__dirname, "..", "src/main");
 
-function harness(settings = {}) {
+function harness(settings = {}, { oneStep = false } = {}) {
 	const events = [];
 	let clip = "";
 	let confirmKey = null;
@@ -39,14 +39,22 @@ function harness(settings = {}) {
 			hotkeyManager: {
 				registerConfirmPopup: (cb) => (confirmKey = cb),
 				unregisterConfirmPopup: () => (confirmKey = null),
-				releaseAutoTypingHotkeysFor: () => [],
+				releaseAutoTypingHotkeysFor: (ch) => {
+					events.push(["released", ch]);
+					return [];
+				},
 				restoreAutoTypingHotkeys() {},
+			},
+			keyboardHandler: {
+				typesInOneStep: () => oneStep,
+				typeInOneStep: (ch) => events.push(["one-step", ch]),
 			},
 		},
 		"./state": {
 			pause() {},
 			unpause() {},
 			send: (ch) => events.push(["send", ch]),
+			isActive: true,
 		},
 		"./remote-input": { warnRemoteInput() {} },
 	});
@@ -261,6 +269,45 @@ test("Ctrl+Left/Right move within a name being typed, never out of the go-to", a
 	);
 	assert.deepEqual(h.sends(), ["go-to-confirmed"]);
 	assert.equal(h.popups.stepGoToName(1), false, "done: the plan steps again");
+});
+
+test("where a key and its hotkey change go out in one step, the name is typed that way", async () => {
+	const h = harness({}, { oneStep: true });
+	armName(h);
+	for (let i = 0; i < "app.js".length; i++) await h.popups.typeNextNameChar();
+
+	assert.deepEqual(
+		h.events.filter((e) => e[0] === "one-step").map((e) => e[1]),
+		["a", "p", "p", ".", "j", "s"],
+		"every letter goes through the keyboard handler's one-step path",
+	);
+	assert.deepEqual(
+		h.events.filter((e) => e[0] === "released"),
+		[],
+		"which releases the letter itself: a second release here would reopen the gap",
+	);
+	assert.deepEqual(
+		h.keys().map((k) => k[1][0]),
+		["Enter"],
+		"only the closing Enter still goes through nut-js",
+	);
+	assert.deepEqual(h.sends(), ["go-to-confirmed"]);
+});
+
+test("elsewhere the name still releases its letter around an awaited keystroke", async () => {
+	const h = harness();
+	armName(h);
+	await h.popups.typeNextNameChar();
+	assert.deepEqual(
+		h.events
+			.filter((e) => e[0] === "released" || e[0] === "keys")
+			.map((e) => e[0]),
+		["released", "keys"],
+	);
+	assert.deepEqual(
+		h.events.filter((e) => e[0] === "one-step"),
+		[],
+	);
 });
 
 test("Ctrl+Enter on any other go-to is OK", () => {
