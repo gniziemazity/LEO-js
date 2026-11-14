@@ -3,6 +3,7 @@ import os
 import re
 import random
 import tempfile
+import unicodedata
 import unittest
 from unittest import mock
 from collections import Counter
@@ -1937,6 +1938,46 @@ class TestNameRedaction(unittest.TestCase):
         self.assertEqual(parts, ['Radu', 'Mariescu', 'Istodor'])
         self.assertEqual(short, [])
         self.assertEqual(name_parts('Li Wu'), ([], ['Li', 'Wu']))
+
+
+class TestFolderMatching(unittest.TestCase):
+
+    def _students(self, *names):
+        rows = ['Student ID;Student Name;Student Number']
+        rows += [f'{i};{name};{100000 + i}' for i, name in enumerate(names, 1)]
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        path = os.path.join(tmp, 'students.csv')
+        with open(path, 'w', encoding='utf-8', newline='') as fh:
+            fh.write('\n'.join(rows) + '\n')
+        from utils.anonymize import load_students
+        return load_students(path)
+
+    def _match(self, folder, students):
+        from utils.anonymize import match_folder_to_student
+        found = match_folder_to_student(folder, students)
+        return found and found['name']
+
+    def test_unlisted_student_sharing_a_first_name_is_not_matched(self):
+        students = self._students('Maria Ionescu')
+        self.assertIsNone(self._match('Maria Popescu', students))
+        self.assertEqual(self._match('Maria Ionescu', students), 'Maria Ionescu')
+
+    def test_no_partial_name_match(self):
+        students = self._students('Ana Popescu')
+        self.assertIsNone(self._match('Ana Pop', students))
+        self.assertIsNone(self._match('Ana Popescu Ionescu', students))
+
+    def test_word_order_must_match(self):
+        students = self._students('Maria Popescu')
+        self.assertIsNone(self._match('Popescu Maria', students))
+
+    def test_decomposed_folder_name_matches_composed_csv_name(self):
+        composed = unicodedata.normalize('NFC', 'Ștefan Pop')
+        decomposed = unicodedata.normalize('NFD', 'Ștefan Pop')
+        self.assertNotEqual(composed, decomposed)
+        students = self._students(composed)
+        self.assertEqual(self._match(decomposed, students), composed)
 
 
 if __name__ == '__main__':

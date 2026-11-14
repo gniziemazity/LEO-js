@@ -5,6 +5,7 @@ import re
 import shutil
 import zipfile
 import tempfile
+import unicodedata
 from functools import lru_cache
 
 from .folder_utils import CODE_EXTS
@@ -29,6 +30,10 @@ _INVALID_FS_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 def _safe_folder_name(name):
     cleaned = _INVALID_FS_CHARS.sub("", name).strip().rstrip(".")
     return cleaned
+
+
+def _nfc(text):
+    return unicodedata.normalize("NFC", text)
 
 
 def is_llm_category(value) -> bool:
@@ -88,7 +93,7 @@ def load_students(csv_path):
         alter = (row.get("Alter Ego") or "").strip()
         is_excluded, _is_llm = classify_student_row(row)
         included = not is_excluded
-        students[name] = {
+        students[_nfc(name)] = {
             "id": sid,
             "name": name,
             "number": number,
@@ -110,28 +115,7 @@ def load_students(csv_path):
     return students
 
 def match_folder_to_student(folder_name, students):
-    if folder_name in students:
-        return students[folder_name]
-
-    folder_lower = folder_name.lower()
-    for name, data in students.items():
-        if name.lower() == folder_lower:
-            return data
-
-    for name, data in students.items():
-        name_lower = name.lower()
-        if folder_lower in name_lower or name_lower in folder_lower:
-            return data
-
-    folder_parts = set(folder_lower.split())
-    for name, data in students.items():
-        name_parts = set(name.lower().split())
-        overlap = folder_parts & name_parts
-        if len(overlap) >= max(1, min(len(folder_parts), len(name_parts)) - 1):
-            if len(overlap) >= 1 and len(folder_parts) <= 4:
-                return data
-
-    return None
+    return students.get(_nfc(folder_name.strip()))
 
 def redacting_names() -> bool:
     return os.environ.get("STUDENT_ANALYTICS_USE_ALTER_EGO") == "1"
