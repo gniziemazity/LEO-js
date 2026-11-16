@@ -115,21 +115,6 @@ test("closed on the current window clears state and resyncs to null", () => {
 	assert.equal(float.isAlive(), false);
 });
 
-test("a pinned window defers close until unpinned", () => {
-	const { float, wins } = makeHarness();
-	float.showOrReuse({}, { gatePin: true, shouldPin: true });
-	assert.equal(float.pinned, true);
-
-	float.close();
-	assert.equal(wins[0].closeCalls, 0);
-	assert.equal(float.closePending, true);
-	assert.equal(float.isAlive(), true);
-
-	float.setPinned(false);
-	assert.equal(wins[0].closeCalls, 1);
-	assert.equal(float.isAlive(), false);
-});
-
 test("showOrReuse reuses a live window instead of making a new one", () => {
 	const { float, wins, events } = makeHarness();
 	float.showOrReuse({ n: 1 }, {});

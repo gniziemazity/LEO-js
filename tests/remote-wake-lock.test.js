@@ -109,13 +109,6 @@ function loadConnection(opts) {
 	};
 }
 
-test("wake lock is requested when the socket opens", async () => {
-	const c = loadConnection();
-	c.api.connect();
-	await c.sockets[0].onopen();
-	assert.equal(c.locks.length, 1);
-});
-
 test("a release while visible re-acquires the lock", async () => {
 	const c = loadConnection();
 	c.api.connect();

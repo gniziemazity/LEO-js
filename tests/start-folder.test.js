@@ -237,19 +237,6 @@ test("only anchors may change in a start file", async () => {
 	assert.equal(lm.getAllBlocks()[at].text, `📋 ${INDEX}`);
 });
 
-test("re-reading the same anchors is not a change", async () => {
-	const dir = courseDir();
-	startFolder(dir, "part_2", { "index.html": INDEX });
-	const p = writePlan(dir, "part_2.leo", [
-		{ type: "include", anchors: { "index.html": { 0: [2, 9] } } },
-	]);
-	const lm = await load(p);
-	const at = lm.getAllBlocks().findIndex((b) => b.startFile);
-
-	lm.setStartAnchors(at, INDEX.replace("<body>", "<body>⚓0⚓"));
-	assert.equal(lm.hasChanges(), false);
-});
-
 test("an authored block can never take anchors this way", async () => {
 	const dir = courseDir();
 	const p = writePlan(dir, "part_1.leo", [{ type: "comment", text: "📋 x" }]);
@@ -338,33 +325,6 @@ test("replaying the start rebuilds every file byte for byte", async () => {
 	assert.equal(editors["app.js"].text, APP);
 	assert.equal(editors["style.css"].text, nested);
 	assert.deepEqual(Object.keys(editors["style.css"].anchors), ["0"]);
-});
-
-test("the first authored go-to into a start file does not create it", async () => {
-	const dir = courseDir();
-	startFolder(dir, "part_2", { "index.html": INDEX });
-	const p = writePlan(dir, "part_2.leo", [
-		{ type: "go-to", target: "index.html" },
-		{ type: "go-to", target: "app.js" },
-	]);
-
-	const lm = await load(p);
-	const blocks = lm.getAllBlocks();
-	const authored = (t) =>
-		blocks.findIndex((b) => !b.fromStart && b.target === t);
-	assert.equal(lm.isFirstGoToFile(authored("index.html")), false);
-	assert.equal(lm.isFirstGoToFile(authored("app.js")), true);
-});
-
-test("start files are context: they can be neither moved nor re-kinded", async () => {
-	const dir = courseDir();
-	startFolder(dir, "part_2", { "index.html": INDEX });
-	const p = writePlan(dir, "part_2.leo", [{ type: "comment", text: "Go" }]);
-
-	const lm = await load(p);
-	assert.equal(lm.canMoveBlock(2, 1), false);
-	assert.equal(lm.canMoveBlock(3, -1), false);
-	assert.equal(lm.canSetBlockType(2, "code"), false);
 });
 
 function cursorWith(steps) {

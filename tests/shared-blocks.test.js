@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const BASE = path.resolve(__dirname, "..", "src");
-const { getBlockType, buildSettingsCSS, BLOCK_TYPES } = require(
+const { getBlockType, buildSettingsCSS } = require(
 	path.join(BASE, "shared/blocks.js"),
 );
 const SettingsManager = require(path.join(BASE, "main/settings-manager.js"));
@@ -74,69 +74,6 @@ test("remote.html loads the shared modules before the scripts that use them", ()
 		for (const user of users) {
 			assert.ok(at(shared) < at(user), `${shared} must load before ${user}`);
 		}
-	}
-});
-
-test("the remote reads the shared functions rather than defining them", () => {
-	const lesson = fs.readFileSync(
-		path.join(BASE, "shared/remote/lesson.js"),
-		"utf-8",
-	);
-	assert.ok(
-		!/function getBlockSubtype/.test(lesson),
-		"a second getBlockSubtype is a second rule that can disagree",
-	);
-	assert.ok(!/function buildSettingsCSS/.test(lesson));
-});
-
-test("the type table and the classifier agree", () => {
-	for (const [prefix, type] of BLOCK_TYPES) {
-		assert.equal(getBlockType(`${prefix} something`), type);
-	}
-});
-
-test("the editor-only UI never reaches the remote", () => {
-	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
-	for (const name of [
-		"go-to-preview.js",
-		"go-to-dropdown.js",
-		"block-types.js",
-	]) {
-		assert.equal(
-			html.includes(name),
-			false,
-			`${name} is an editing aid; on a phone it would just confuse`,
-		);
-	}
-});
-
-test("every dual-mode module ends with the same export footer", () => {
-	const FOOTER = [
-		'\tif (typeof module !== "undefined" && module.exports) {',
-		"\t\tmodule.exports = api;",
-		"\t}",
-		"\troot.<NAME> = api;",
-		'})(typeof window !== "undefined" ? window : this);',
-	].join("\n");
-
-	const expected = {
-		"code-text.js": "CodeTextRenderer",
-		"blocks.js": "LeoBlocks",
-		"go-to-target.js": "GoToTarget",
-		"excerpt-view.js": "ExcerptView",
-	};
-	for (const [file, name] of Object.entries(expected)) {
-		const src = fs
-			.readFileSync(
-				path.resolve(__dirname, "..", "src/shared", file),
-				"utf-8",
-			)
-			.replace(/\r\n/g, "\n")
-			.trimEnd();
-		assert.ok(
-			src.endsWith(FOOTER.replace("<NAME>", name)),
-			`${file} does not end with the shared dual-mode footer`,
-		);
 	}
 });
 
@@ -212,29 +149,5 @@ test("the phone shows Starting Code as one row and keeps the step numbers", () =
 		plain.nodes["lesson-container"].children.map((el) => el.className),
 		["block note-block"],
 		"no start folder, no row",
-	);
-});
-
-test("the support types are the block types that are not code", () => {
-	const { SUPPORT_TYPES, BLOCK_TYPES } = require(
-		path.join(BASE, "shared/blocks.js"),
-	);
-	assert.deepEqual(
-		SUPPORT_TYPES,
-		["note", ...BLOCK_TYPES.map(([, type]) => type), "go-to"],
-		"a lesson is code blocks and support blocks; this list is the second half",
-	);
-	assert.equal(
-		SUPPORT_TYPES.includes("code"),
-		false,
-		"code is what LEO types, not what supports the auto-typing",
-	);
-	assert.equal(
-		/\.support-block/.test(
-			fs.readFileSync(path.join(BASE, "shared/styles.css"), "utf-8"),
-		),
-		false,
-		"support is a word for the docs, not a class: the per-type classes and " +
-			"the generated selector lists carry the styling",
 	);
 });

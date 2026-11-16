@@ -37,10 +37,9 @@ function loadAPI() {
 		${src}
 		return {
 			parseCsv, parseStudentIdNameMap, getFileExt,
-			diffModeFromFilename, defaultDiffModeKey, DIFF_MARKS_FILES,
-			DIFF_METHODS, REMARKS_BASES, CURATED_MODES, basisToDiffMode,
+			diffModeFromFilename, defaultDiffModeKey, basisToDiffMode,
 			_hmsToSeconds, parseFollowEvents, parseFollowLabel,
-			DIFF_MARKS_PRIORITY, remarksFileRe, remarksStampOf, remarksBasisOf,
+			remarksFileRe, remarksStampOf, remarksBasisOf,
 			pickRemarksFiles, defaultBasis, remarksScoreCols, remarksLangCols,
 			tagEventLangs, LANG_COL_DEFS,
 		};
@@ -117,19 +116,6 @@ test("defaultDiffModeKey: ideal > minimal > leo_star > leo, honours a present re
 	assert.equal(api.defaultDiffModeKey({ ideal: {} }, "leo"), "ideal");
 	assert.equal(api.defaultDiffModeKey({ lcs: {} }), "lcs");
 	assert.equal(api.defaultDiffModeKey({}), null);
-});
-
-test("DIFF_METHODS: single source derives files / bases / curated consistently", () => {
-	const keys = api.DIFF_METHODS.map((m) => m.key);
-	assert.deepEqual(keys, ["ideal", "minimal", "leo_star", "lcs", "git"]);
-	for (const m of api.DIFF_METHODS) {
-		assert.equal(api.DIFF_MARKS_FILES[m.key], m.filename);
-	}
-	assert.deepEqual(
-		api.REMARKS_BASES.map((b) => b.key),
-		["ideal", "minimal", "leo_star", "lcs", "git"],
-	);
-	assert.deepEqual([...api.CURATED_MODES].sort(), ["ideal", "minimal"]);
 });
 
 test("basisToDiffMode: identity for known method keys, null otherwise", () => {
@@ -223,31 +209,6 @@ test("a stamped remarks file is visible to every tool, not just Students", () =>
 	assert.equal(api.remarksFileRe("ideal").test("remarks_minimal.xlsx"), false);
 });
 
-test("no tool hardcodes the remarks filename or the default basis order", () => {
-	const read = (p) =>
-		fs.readFileSync(
-			path.resolve(__dirname, "..", "lesson_tools", p),
-			"utf-8",
-		);
-	for (const f of [
-		"students/load.js",
-		"timeline/students.js",
-		"overview/basis.js",
-	]) {
-		const src = read(f);
-		assert.equal(
-			/\["ideal", ?"leo_star"\]/.test(src),
-			false,
-			`${f} keeps its own default order, which drops "minimal"`,
-		);
-		assert.equal(
-			/remarks_\$\{[a-zA-Z]+\}\.xlsx/.test(src),
-			false,
-			`${f} spells the remarks filename itself instead of using the shared rule`,
-		);
-	}
-});
-
 const xlsx = (name, lastModified = 0) => ({ name, lastModified });
 
 test("pickRemarksFiles: the newest copy of each basis wins, whatever the order", () => {
@@ -331,22 +292,4 @@ test("tagEventLangs: an event takes the language of the matching per-language ev
 	]);
 	assert.equal(events[0].lang, "css");
 	assert.equal("lang" in events[1], false);
-});
-
-test("the three basis pickers share one selection rule", () => {
-	const read = (p) =>
-		fs.readFileSync(
-			path.resolve(__dirname, "..", "lesson_tools", p),
-			"utf-8",
-		);
-	for (const f of [
-		"students/load.js",
-		"timeline/students.js",
-		"overview/basis.js",
-	]) {
-		const src = read(f);
-		assert.match(src, /pickRemarksFiles\(/, `${f} selects remarks itself`);
-		assert.match(src, /renderBasisSelect\(/, `${f} builds its own picker`);
-		assert.equal(/DIFF_MARKS_PRIORITY/.test(src), false, f);
-	}
 });

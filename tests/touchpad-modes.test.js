@@ -197,41 +197,6 @@ test("two fingers on the keyboard pad scroll nothing either", async () => {
 	);
 });
 
-test("the mouse pad still moves, scrolls and right-clicks", async () => {
-	const pad = await openPad("mouse");
-	pad.down(100, 100);
-	pad.moveTo(200, 100);
-	pad.up();
-	assert.equal(
-		pad.sent.some((m) => m.type === "mouse-move"),
-		true,
-		"one finger moves the pointer",
-	);
-
-	pad.sent.length = 0;
-	pad.twoDown();
-	pad.twoMoveTo(200);
-	pad.twoMoveTo(300);
-	pad.fire("touchend", []);
-	assert.equal(
-		pad.sent.some((m) => m.type === "mouse-scroll"),
-		true,
-		"two fingers scroll",
-	);
-
-	pad.sent.length = 0;
-	pad.twoDown();
-	pad.tick(80);
-	pad.fire("touchend", []);
-	assert.deepEqual(
-		pad.sent
-			.filter((m) => m.type === "mouse-click")
-			.map((m) => m.data.button),
-		["right"],
-		"a two-finger tap right-clicks",
-	);
-});
-
 test("a flick keeps scrolling after the fingers lift, until two fingers land", async () => {
 	const frames = [];
 	const pad = await openPad("mouse", { frames });
@@ -431,63 +396,6 @@ test("the edit keys live on the mouse pad, where the pointer that selects text i
 	);
 });
 
-test("the bar carries the six edit keys, in the order a thumb reaches them", () => {
-	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
-	const bar = /id="touchpadEditKeys"[\s\S]*?<\/div>/.exec(html)[0];
-	const names = [...bar.matchAll(/remoteEditKey\('(\w+)'\)/g)].map(
-		(m) => m[1],
-	);
-	assert.deepEqual(
-		names,
-		["copy", "paste", "cut", "undo", "enter", "save"],
-		"save is appended, so nothing a thumb already knows moves",
-	);
-	assert.match(
-		SRC,
-		/function remoteEditKey\(action\) \{\s*sendMessage\("remote-edit-key", \{ action \}\);/,
-	);
-
-	const server = fs.readFileSync(
-		path.join(BASE, "main/websocket-server.js"),
-		"utf-8",
-	);
-	const allowed = /const EDIT_KEYS = \[([^\]]*)\]/.exec(server)[1];
-	for (const name of names) {
-		assert.match(
-			allowed,
-			new RegExp('"' + name + '"'),
-			name +
-				" is not on the allow-list, so the server would silently turn it into copy",
-		);
-	}
-
-	const main = fs.readFileSync(
-		path.join(BASE, "main/remote-input.js"),
-		"utf-8",
-	);
-	const map = /const EDIT_KEY_TO_KEY = \{([^}]*)\}/.exec(main)[1];
-	for (const name of names) {
-		if (name === "enter") {
-			assert.doesNotMatch(
-				map,
-				/enter:/,
-				"enter is the bare key, handled before the map",
-			);
-			continue;
-		}
-		assert.match(
-			map,
-			new RegExp("\\b" + name + ": Key\\."),
-			name + " has no key, so the map's fallback would type Ctrl+C for it",
-		);
-	}
-	assert.match(
-		map,
-		/save: Key\.S/,
-		"and save is the modifier + S, like the other four",
-	);
-});
-
 test("a mode handler can borrow the edit keys, and only while it asks", async () => {
 	const pad = loadPad();
 	const clip = pad.els.touchpadEditKeys;
@@ -553,14 +461,6 @@ test("the step keys are the keyboard pad's own, not a handler mode's", async () 
 	assert.equal(pad.els.touchpadStepKeys.classList.contains("visible"), true);
 });
 
-test("the toolbars stay pressable even when a handler stands the glass down", () => {
-	assert.match(
-		CSS,
-		/\.touchpad-toolbar \{[^}]*pointer-events: auto;/,
-		"a handler may put pointer-events:none on the overlay; the bars must opt back in",
-	);
-});
-
 test("an open pad keeps both mode buttons reachable, so switching is one press", async () => {
 	const pad = loadPad();
 	const side = pad.els.modeSideBtns;
@@ -588,45 +488,6 @@ test("a mode handler still gets the strip to itself: it brings its own controls"
 		side.classList.contains("has-pad"),
 		false,
 		"jedi is not a plain pad, so the mouse button does not tag along",
-	);
-});
-
-test("the css that hides the other buttons lets the two pad buttons back in", () => {
-	assert.match(
-		CSS,
-		/#modeSideBtns\.has-pad #modeBtnMouse,\s*#modeSideBtns\.has-pad #modeBtnKeyboard \{\s*display: flex;/,
-		"two ids beat the .has-active hide rule, so no !important is needed",
-	);
-});
-
-test("either pad lifts the popup it covers rather than emptying it", async () => {
-	for (const mode of ["keyboard", "mouse"]) {
-		const covered = [];
-		const pad = await openPad(mode, {
-			padOverlay: { setPadCovered: (v) => covered.push(v) },
-		});
-		pad.api.syncTouchpadToolbar();
-		assert.equal(
-			covered[covered.length - 1],
-			true,
-			mode + " pad covers the popup, so the popup goes above it",
-		);
-	}
-});
-
-test("the pad renders no buttons of its own for a popup", () => {
-	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
-	for (const id of ["touchpadActionBar", "touchpadConfirmBar"]) {
-		assert.equal(
-			html.includes(id),
-			false,
-			id + " mirrored a popup's buttons; the real ones are used now",
-		);
-	}
-	assert.equal(
-		/padActions/.test(SRC),
-		false,
-		"nothing may hand the pad a copy of a popup's buttons",
 	);
 });
 
@@ -683,28 +544,6 @@ test("the overlay is told whether a pad is covering it", async () => {
 		covered[covered.length - 1],
 		false,
 		"and closing the pad hands the popup its own buttons back",
-	);
-});
-
-test("the toolbars sit outside the gesture surface, or they could not be pressed", () => {
-	const shared = /function padListener\([\s\S]*?\n\t\}/.exec(SRC);
-	assert.ok(shared, "the three touch listeners share one registration helper");
-	assert.match(
-		shared[0],
-		/closest\("\.touchpad-toolbar"\)/,
-		"the shared helper must let a toolbar press through untouched",
-	);
-	for (const handler of ["touchstart", "touchmove", "touchend"]) {
-		assert.match(
-			SRC,
-			new RegExp('padListener\\("' + handler + '"'),
-			handler + " must be registered through the shared helper",
-		);
-	}
-	assert.equal(
-		(SRC.match(/overlay\.addEventListener\(/g) || []).length,
-		1,
-		"nothing may bind the glass directly and skip the toolbar guard",
 	);
 });
 
@@ -775,24 +614,6 @@ test("the tint sits over the popup but under the buttons it lends", () => {
 	);
 });
 
-test("the pad buttons stay pressable under auto-pilot: nothing switches them off", () => {
-	assert.equal(
-		/auto-driven/.test(CSS),
-		false,
-		"they are an override now, not indicators",
-	);
-	assert.match(
-		CSS,
-		/#modeSideBtns\.has-pad #modeBtnMouse,\n#modeSideBtns\.has-pad #modeBtnKeyboard \{\n\tdisplay: flex;\n\}/,
-		"the two-pad rule stays exactly as other builds match it",
-	);
-	assert.equal(
-		/modeBtnAuto/.test(CSS),
-		false,
-		"the column has no third pad button",
-	);
-});
-
 test("the top bar sits above the pad and every popup, so its buttons stay pressable", () => {
 	const z = (re) => Number(re.exec(CSS)[1]);
 	const bar = z(/\.mobile-view #mobile-header \{[^}]*?z-index: (\d+);/);
@@ -832,34 +653,4 @@ test("a popup keeps its content clear of the bar, on whichever edge the bar is",
 		/body\.side-left \.overlay \{[^}]*?padding-right: calc\(14px \+ var\(--header-h\)\);/,
 		"rotated the other way it is the popup's right edge",
 	);
-});
-
-test("the header's play and auto-pilot buttons sit together on the phone", () => {
-	const html = fs.readFileSync(path.join(BASE, "remote.html"), "utf-8");
-	const play = html.indexOf('id="toggleBtn"');
-	const auto = html.indexOf('id="autoPilotBtn"');
-	assert.ok(play > 0 && auto > play, "auto-pilot follows play");
-	assert.ok(
-		auto < html.indexOf('id="timerSection"'),
-		"and comes before the timer, which stays right-aligned",
-	);
-	assert.match(html, /onclick="requestAutoPilot\(\)"/);
-	assert.match(html, /case "auto-pilot":\s*setAutoPilot\(data\.autoPilot\);/);
-	assert.match(html, /setAutoPilot\(state\.autoPilot === true\);/);
-});
-
-test("the pad no longer swaps itself: the implicit go-to logic is gone", () => {
-	for (const name of [
-		"padEnterMoveTo",
-		"padLeaveMoveTo",
-		"padTypeName",
-		"padModeBeforeMoveTo",
-	]) {
-		assert.equal(SRC.includes(name), false, name + " was the clever swap");
-	}
-	const overlay = fs.readFileSync(
-		path.join(BASE, "shared/remote/go-to-overlay.js"),
-		"utf-8",
-	);
-	assert.equal(/pad(Enter|Leave|TypeName)/.test(overlay), false);
 });

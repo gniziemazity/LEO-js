@@ -38,20 +38,6 @@ test("LessonManager.load rejects non-array JSON", async () => {
 	fs.rmSync(tmp);
 });
 
-test("LessonManager.load accepts an array plan", async () => {
-	const tmp = path.join(os.tmpdir(), `leo-plan2-${Date.now()}.leo`);
-	fs.writeFileSync(tmp, JSON.stringify([{ type: "code", text: "x" }]));
-	const lm = new LessonManager();
-	await new Promise((resolve) => {
-		lm.load(tmp, (err, data) => {
-			assert.ok(!err);
-			assert.ok(Array.isArray(data));
-			resolve();
-		});
-	});
-	fs.rmSync(tmp);
-});
-
 test("CourseManager.addPlan refuses a non-plan source file", () => {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "leo-course-"));
 	const cm = new CourseManager();

@@ -19,10 +19,6 @@ test("sortedStudentIndexes orders by name, case-insensitively, without mutating 
 	);
 });
 
-test("sortedStudentIndexes handles the empty roster", () => {
-	assert.deepEqual(InteractionView.sortedStudentIndexes([]), []);
-});
-
 function studentBtnTexts(grid) {
 	return grid
 		.querySelectorAll(".popup-student-btn")

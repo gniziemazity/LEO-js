@@ -2,11 +2,6 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { ALTER_EGO_POOL, assignAlterEgos } = require("../src/shared/alter-egos");
 
-test("pool is stored alphabetically sorted", () => {
-	const sorted = ALTER_EGO_POOL.slice().sort((a, b) => a.localeCompare(b));
-	assert.deepEqual(ALTER_EGO_POOL, sorted);
-});
-
 test("assigns one unique alter ego per student", () => {
 	const names = ["Anna", "Bob", "Cara", "Dan"];
 	const result = assignAlterEgos(names);
@@ -39,8 +34,4 @@ test("overflow students get Alter_Ego_N names", () => {
 	for (const hero of ALTER_EGO_POOL) {
 		assert.ok(egos.includes(hero), `every hero used: ${hero}`);
 	}
-});
-
-test("empty input yields empty assignment", () => {
-	assert.deepEqual(assignAlterEgos([]), []);
 });

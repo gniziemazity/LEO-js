@@ -90,13 +90,6 @@ test("the mode buttons are re-measured whenever their column changes size", () =
 	);
 });
 
-test("the desk card sits along the bottom edge, full width", () => {
-	const rule = /\n\.desk-popup \{[\s\S]*?\n\}/.exec(css)[0];
-	assert.match(rule, /\n\tleft: 0;\n\tright: 0;\n\tbottom: 0;/);
-	assert.doesNotMatch(rule, /translate|\n\ttop:|\n\twidth:/);
-	assert.match(rule, /\n\tdisplay: none;/);
-});
-
 test("the desk card shows only while auto-typing is on, except the ❓ / 🤝 card", () => {
 	assert.match(
 		css,

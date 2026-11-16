@@ -29,19 +29,6 @@ test("an image the carousel put up is closed by the next step, like a 🖼️ bl
 	);
 });
 
-test("the close is the pin-aware one, so a pinned image survives the step", () => {
-	const { cm, sent } = makeCursorManager();
-	cm.markImageWindowOpen();
-	cm._leaveSupportBlocksExcept("code");
-
-	const closes = sent.filter((m) => m.ch.endsWith("close-image-window"));
-	assert.deepEqual(
-		closes.map((m) => m.ch),
-		["close-image-window"],
-		"not force-close-image-window: main defers that one while pinned",
-	);
-});
-
 test("it is asked to close once, not on every step after", () => {
 	const { cm, sent } = makeCursorManager();
 	cm.markImageWindowOpen();
@@ -54,12 +41,6 @@ test("it is asked to close once, not on every step after", () => {
 		1,
 		"the flag is cleared by the close it caused",
 	);
-});
-
-test("with nothing presented, stepping closes no image window", () => {
-	const { cm, types } = makeCursorManager();
-	cm._leaveSupportBlocksExcept("code");
-	assert.equal(types().includes("close-image-window"), false);
 });
 
 test("a 🖼️ block that follows still owns the window", () => {

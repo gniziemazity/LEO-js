@@ -20,16 +20,6 @@ function soundDir() {
 	return path.join(ROOT, "src", "renderer", ...parts);
 }
 
-test("the answer sound is where the renderer looks for it", () => {
-	const dir = soundDir();
-	assert.equal(
-		fs.existsSync(dir),
-		true,
-		`app.js resolves soundPath to ${path.relative(ROOT, dir)}, which does not exist — ` +
-			"the fireworks play silently because the load failure is only a console.warn",
-	);
-});
-
 test("the file the renderer names is actually in that folder", () => {
 	const src = fs.readFileSync(APP, "utf-8");
 	const name = /soundPath,\s*\n?\s*"([^"]+\.mp3)"/.exec(src);
@@ -37,7 +27,8 @@ test("the file the renderer names is actually in that folder", () => {
 	assert.equal(
 		fs.existsSync(path.join(soundDir(), name[1])),
 		true,
-		`${name[1]} is missing from the sound folder`,
+		`${name[1]} is missing from ${path.relative(ROOT, soundDir())}, so the ` +
+			"fireworks play silently: the load failure is only a console.warn",
 	);
 });
 

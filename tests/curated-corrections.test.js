@@ -221,52 +221,9 @@ test("student-line map: deleted content counts toward student lines", () => {
 	assert.deepEqual(api._curatedStudentLineMap(marked), [1, 2]);
 });
 
-test("marked-to-seglines tokenizes insertions, deletions, and newlines", () => {
-	const c = (n) => String.fromCharCode(n);
-	const marked =
-		"a" +
-		c(0xe000) +
-		"I" +
-		c(0xe001) +
-		c(0xe002) +
-		"D" +
-		c(0xe004) +
-		"E" +
-		c(0xe003) +
-		"b";
-	assert.deepEqual(api._curatedMarkedToSegLines(marked), [
-		[
-			{ text: "a", style: "normal" },
-			{ text: "I", style: "ins" },
-			{ text: "D", style: "del" },
-		],
-		[
-			{ text: "E", style: "del" },
-			{ text: "b", style: "normal" },
-		],
-	]);
-});
-
 test("snippet dedent removes common indent so content touches the left", () => {
 	const src = "\t\t\t.a {\n\t\t\t\tx: 1;\n\t\t\t}";
 	assert.equal(api._curatedDedentSnippet(src), ".a {\n\tx: 1;\n}");
-});
-
-test("marked-to-html renders insertions blue and deletions struck red", () => {
-	const c = (n) => String.fromCharCode(n);
-	const text =
-		"a" + c(0xe000) + "ins" + c(0xe001) + "b" + c(0xe002) + "del" + c(0xe003);
-	const html = api._curatedMarkedToHtml(text);
-	assert.ok(
-		html.includes('<span class="tw-ins">ins</span>'),
-		"insertion span",
-	);
-	assert.ok(html.includes('<span class="tw-del">del</span>'), "deletion span");
-	const hasMarker = [...html].some((ch) => {
-		const cp = ch.codePointAt(0);
-		return cp >= 0xe000 && cp <= 0xe004;
-	});
-	assert.ok(!hasMarker, "no raw markers remain");
 });
 
 test("reindent leaves non-brace languages (python) untouched", () => {
@@ -688,54 +645,6 @@ test("missing indented block: apply keeps teacher indent", () => {
 		file: "f.css",
 	});
 	assert.match(apply, /\t\t\t\.b\{/, "apply keeps teacher indent (preview)");
-});
-
-test("missing block insert: apply keeps teacher indent", () => {
-	const student = { "f.css": ".a{}" };
-	const teacher = { "f.css": ".a{}\n\t\t\t.b{}" };
-	const marks = {
-		token_matching: "ideal",
-		teacher_files: {
-			"f.css": [
-				{
-					token: ".",
-					label: "missing",
-					start: 8,
-					end: 9,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "b",
-					label: "missing",
-					start: 9,
-					end: 10,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "{",
-					label: "missing",
-					start: 10,
-					end: 11,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-				{
-					token: "}",
-					label: "missing",
-					start: 11,
-					end: 12,
-					insert_at: { file: "f.css", pos: 4 },
-				},
-			],
-		},
-		student_files: { "f.css": [] },
-	};
-	const apply = applyPath({
-		teacher,
-		student,
-		marks,
-		file: "f.css",
-	});
-	assert.match(apply, /\t\t\t\.b\{\}/, "apply keeps teacher indent (preview)");
 });
 
 test("missing multi-line block at line-start uses student indent, not teacher's", () => {

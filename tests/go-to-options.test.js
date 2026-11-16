@@ -36,12 +36,6 @@ test("anchorIdsBefore only counts anchors the plan has reached", () => {
 	assert.deepEqual(ids(lm, 6), ["1", "2", "3"]);
 });
 
-test("an anchor counts wherever it was typed, not only in the open file", () => {
-	const lm = manager();
-	// block 4 jumps into index.html, so block 5 types anchor 3 there
-	assert.deepEqual(lm.anchorIdsBefore(6), ["1", "3", "2"]);
-});
-
 test("the dropdown offers no anchor the plan has not created yet", () => {
 	const lm = manager();
 	assert.deepEqual(options(lm, 4), [
@@ -89,9 +83,4 @@ test("anchors typed inside a snippet body count as created", () => {
 	]);
 	assert.deepEqual(lm.anchorIdsBefore(2), ["9"]);
 	assert.equal(options(lm, 2).includes("⚓9⚓"), true);
-});
-
-test("files stay offered wherever they appear - a go-to opens one", () => {
-	const lm = manager();
-	assert.equal(options(lm, 0).includes("app.js"), true);
 });

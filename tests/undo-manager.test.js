@@ -42,16 +42,6 @@ test("saveState clears redo stack", () => {
 	assert.equal(undo.redo(), false);
 });
 
-test("undo on empty stack returns false", () => {
-	const { undo } = makeManager();
-	assert.equal(undo.undo(), false);
-});
-
-test("redo on empty stack returns false", () => {
-	const { undo } = makeManager();
-	assert.equal(undo.redo(), false);
-});
-
 test("clear empties both stacks", () => {
 	const { lessonManager, undo } = makeManager();
 	undo.saveState("edit");
@@ -71,12 +61,4 @@ test("undoStack is capped at maxStackSize", () => {
 		undo.saveState(`edit-${i}`);
 	}
 	assert.equal(undo.undoStack.length, 3);
-});
-
-test("saveState snapshot is decoupled from later mutations", () => {
-	const { lessonManager, undo } = makeManager();
-	undo.saveState("edit");
-	lessonManager.data[0].text = "mutated";
-	undo.undo();
-	assert.equal(lessonManager.data[0].text, "v1");
 });

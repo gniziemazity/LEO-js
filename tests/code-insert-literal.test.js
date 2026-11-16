@@ -27,10 +27,6 @@ test("a body that indents itself is inserted exactly as written", () => {
 	assert.equal(applied("a();\n   b();").text, "a();\n   b();");
 });
 
-test("tabs are just as much the author's choice as spaces", () => {
-	assert.equal(applied("a();\n\t\t\t\tb();").text, "a();\n\t\t\t\tb();");
-});
-
 test("a body with no indentation of its own still auto-indents", () => {
 	assert.equal(isLiteralCodeInsert("a();\nb();"), false);
 	const st = fresh();

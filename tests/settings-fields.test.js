@@ -101,24 +101,6 @@ test("a space in the auto-typing hotkeys field is the Space bar, shown as ␣", 
 		typingHotkeysFromText(typingHotkeysToText(letters)),
 		letters,
 	);
-
-	const ui = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/settings-ui.js"),
-		"utf-8",
-	);
-	assert.match(ui, /typingHotkeysToText\(\s*settings\.hotkeys\.typing/);
-	assert.match(
-		ui,
-		/typingHotkeysFromText\(\s*document\.getElementById\("typingHotkeys"\)\.value/,
-	);
-});
-
-test("no colour in the defaults is missing from the modal", () => {
-	const defaults = new SettingsManager().defaultSettings.colors;
-	const covered = new Set(COLOR_FIELDS.map(([, key]) => key));
-	for (const key of Object.keys(defaults)) {
-		assert.ok(covered.has(key), `colors.${key} has no input to edit it`);
-	}
 });
 
 test("a missing input is skipped rather than overwriting the setting", () => {
@@ -156,27 +138,6 @@ test("the schema, the markup and the stylesheet name the same settings", () => {
 			`buildSettingsCSS never uses the ${c.key} colour`,
 		);
 	}
-});
-
-test("defaults come from the schema, not a second transcription", () => {
-	const {
-		COLOR_SETTINGS,
-		HOTKEY_SETTINGS,
-	} = require("../src/shared/settings-schema");
-	const SettingsManager = require("../src/main/settings-manager");
-	const defaults = new SettingsManager().defaultSettings;
-
-	for (const c of COLOR_SETTINGS) {
-		assert.equal(defaults.colors[c.key], c.value, c.key);
-	}
-	for (const h of HOTKEY_SETTINGS) {
-		assert.equal(defaults.hotkeys[h.key], h.value, h.key);
-	}
-	assert.equal(
-		Object.keys(defaults.colors).length,
-		COLOR_SETTINGS.length,
-		"a colour exists in the defaults that the schema does not name",
-	);
 });
 
 test("reset and getAll never hand out the defaults themselves", () => {

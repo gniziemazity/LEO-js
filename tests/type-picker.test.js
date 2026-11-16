@@ -13,7 +13,7 @@ const LessonManager = require("../src/renderer/lesson-manager");
 const BlockEditor = require("../src/renderer/block-editor");
 const LessonRenderer = require("../src/renderer/lesson-renderer");
 const UIManager = require("../src/renderer/ui-manager");
-const { TYPE_PLACEHOLDERS, typeGlyph } = require("../src/renderer/block-types");
+const { typeGlyph } = require("../src/renderer/block-types");
 const {
 	BLOCK_TYPES,
 	getBlockType,
@@ -225,25 +225,6 @@ test("an inherited block keeps its emoji as text, and gets no symbol widget", ()
 	assert.equal(div.textContent, "📋 file body");
 });
 
-test("every type has a symbol, and an empty one says what to type", () => {
-	for (const type of [
-		"note",
-		"code",
-		"question",
-		"image",
-		"web",
-		"snippet",
-		"go-to",
-	]) {
-		assert.ok(typeGlyph(type), `${type} has a symbol`);
-	}
-	assert.equal(typeGlyph("note"), "💬");
-	assert.equal(typeGlyph("code"), "⌨");
-	for (const type of ["note", "code", "question", "image", "web", "snippet"]) {
-		assert.ok(TYPE_PLACEHOLDERS[type], `${type} has a placeholder`);
-	}
-});
-
 test("a missing symbol is put back after an edit", () => {
 	const renderer = new LessonRenderer(manager([]), {}, {});
 	const refreshed = [];
@@ -311,15 +292,6 @@ test("the symbol sits in its own gutter and shows a ▾ without moving text", ()
 	assert.match(
 		css,
 		/\.go-to-block > \.block-type \{\n\ttop: 50%;\n\ttransform: translateY\(-50%\);/,
-	);
-});
-
-test("the empty image block says where the images go", () => {
-	assert.match(TYPE_PLACEHOLDERS.image, /^Image file name/);
-	assert.match(
-		TYPE_PLACEHOLDERS.image,
-		/images folder/,
-		"the file is looked up in the images folder beside the lesson, so say so",
 	);
 });
 

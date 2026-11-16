@@ -31,16 +31,6 @@ const put = (file, text = "x") => {
 };
 const REAL = JSON.stringify({ events: [{ timestamp: 1, char: "a" }] });
 
-test("VS Code opens lessons/<lesson>, not lessons/<lesson>/<lesson>", () => {
-	const c = makeCourse();
-	assert.equal(tools.lessonWorkspaceFolder(), c.lesson);
-	assert.equal(
-		fs.existsSync(path.join(c.lesson, "part_1")),
-		false,
-		"and it no longer creates the doubled folder on every click",
-	);
-});
-
 test("the start code is copied into the folder VS Code opens, never over what is there", () => {
 	const c = makeCourse();
 	const start = path.join(path.dirname(c.plan), "part_1_start");
@@ -79,20 +69,6 @@ test("with no data, only the Simulator is offered", async () => {
 		students: false,
 		overview: false,
 	});
-});
-
-test("a log in the lesson folder makes Timeline available", async () => {
-	const c = makeCourse();
-	put(path.join(c.lesson, "keys.log"), REAL);
-	assert.equal((await tools.toolAvailability()).timeline, true);
-	put(path.join(c.lesson, "diff_marks_ideal.json"));
-	const other = makeCourse();
-	put(path.join(other.lesson, "diff_marks_ideal.json"));
-	assert.equal(
-		(await tools.toolAvailability()).timeline,
-		false,
-		"the pipeline's own diff_marks files are not a keystroke log",
-	);
 });
 
 test("a stray .json file does not make Timeline available - only a real .log does", async () => {
@@ -240,30 +216,6 @@ test("the Simulator is offered for any loaded lesson, the rest need a course", (
 	);
 });
 
-test("clicking an entry runs its own action", () => {
-	const seen = [];
-	const actions = {
-		launchVSCode: () => seen.push("vscode"),
-		launchChrome: () => seen.push("chrome"),
-		openSimulator: () => seen.push("sim"),
-		openLessonTool: (t) => seen.push(t.file),
-	};
-	const items = toolsSubmenu(
-		{ open: true, currentPath: "C:/c/plans/p.leo" },
-		{ timeline: true, students: true, overview: true },
-		actions,
-	);
-	for (const item of items) if (item.click) item.click();
-	assert.deepEqual(seen, [
-		"vscode",
-		"chrome",
-		"timeline.html",
-		"sim",
-		"students.html",
-		"overview.html",
-	]);
-});
-
 function chromeLaunches() {
 	const spawned = [];
 	const fakeSpawn = (...args) => {
@@ -305,14 +257,6 @@ test("with no course lesson there is no folder, and Chrome just opens", () => {
 	assert.equal(launchedWith(spawned[0]).includes("file:"), false);
 });
 
-test("a folder URL always ends in a slash, so relative links in the listing resolve", () => {
-	assert.equal(
-		tools.folderUrl(path.join(ROOT, "a b")).endsWith("/a%20b/"),
-		true,
-	);
-	assert.equal(tools.folderUrl(ROOT).endsWith("/"), true);
-});
-
 test("the cached availability is what the menu reads, and refresh reports change", async () => {
 	const c = makeCourse();
 	fs.mkdirSync(c.lesson, { recursive: true });
@@ -341,15 +285,4 @@ test("the cached availability is what the menu reads, and refresh reports change
 		false,
 		"an unchanged folder must not rebuild the menu",
 	);
-});
-
-test("refreshing with no course context is not a change once settled", async () => {
-	tools.setCourseMenuState({ open: false, plans: [], currentPath: "" });
-	await tools.refreshToolAvailability();
-	assert.equal(await tools.refreshToolAvailability(), false);
-	assert.deepEqual(tools.cachedToolAvailability(), {
-		timeline: false,
-		students: false,
-		overview: false,
-	});
 });

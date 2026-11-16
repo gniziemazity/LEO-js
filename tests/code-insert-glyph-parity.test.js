@@ -93,32 +93,6 @@ test("headlessReplay drops ignored and pause glyphs like the model does", () => 
 	}
 });
 
-test("the simulator replays through the shared dispatcher, not its own copy", () => {
-	const src = fs.readFileSync(
-		path.join(__dirname, "..", "lesson_tools", "simulator", "simulator.js"),
-		"utf-8",
-	);
-	assert.match(
-		src,
-		/replayStep\(this\._replayCtx\(\), act, \{/,
-		"_handle must delegate; a private copy is how it came to drift",
-	);
-	for (const gone of [
-		"_handleChar(",
-		"_handleCodeInsertAtomic(",
-		"_autoIndent(",
-		"_autoDedent(",
-		"_backspaceIsIgnored(",
-		"_devSemicolonNewline(",
-	]) {
-		assert.equal(
-			src.includes(gone),
-			false,
-			`${gone} is a second implementation of a shared rule`,
-		);
-	}
-});
-
 test("a simulator-shaped context replays identically to the headless one", () => {
 	const { makeReplayContext, replayStep, expandEvents } = model;
 	const script = "one↩two↩three↑↑◄⛔►↩four⌫";

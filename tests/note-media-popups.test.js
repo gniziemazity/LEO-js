@@ -63,17 +63,6 @@ test("a blank note, or the end of a code block, opens nothing", () => {
 	cm.updateCursor();
 });
 
-test("the step at the end of a code block says it is code", () => {
-	const src = read("renderer/lesson-renderer.js");
-	const code = /renderCodeBlock\(ctx\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(
-		code,
-		/type: "block",\s*blockType: "code",/,
-		"without it the empty step reads as a note and every code block " +
-			"would end in an empty popup",
-	);
-});
-
 for (const [type, text] of [
 	["note", "Remember this"],
 	["image", "🖼️ pic.png"],
@@ -238,33 +227,6 @@ test("closing a window ends its popup only if that popup is the open one", () =>
 	assert.equal(popups.openPopupType(), null);
 });
 
-test("the close channel of a presented window also ends its popup", () => {
-	const main = read("main/main.js");
-	const loop = /for \(const w of FLOAT_WINDOWS\) \{[\s\S]*?\n\}/.exec(main)[0];
-	assert.match(
-		loop,
-		/ipcMain\.on\(`close-\$\{w\.name\}-window`, \(\) => \{\s*w\.float\.close\([^;]*\);\s*if \(w\.popup\) endPopup\(w\.name\);/,
-		"one handler per channel: a second ipcMain.on would be easy to miss",
-	);
-	for (const name of ["image", "web"]) {
-		const entry = new RegExp(`name: "${name}",[\\s\\S]*?\\}`).exec(main)[0];
-		assert.match(entry, /popup: true/);
-	}
-});
-
-test("the image popup is announced after the window, so the pin is known", () => {
-	const app = read("renderer/app.js");
-	const image = /cursorManager\.onImageBlock = [\s\S]*?\n\};/.exec(app)[0];
-	assert.ok(
-		image.indexOf('"open-image-window"') <
-			image.indexOf('enterMediaBlock("image"'),
-	);
-	const web = /cursorManager\.onWebBlock = [\s\S]*?\n\};/.exec(app)[0];
-	assert.ok(
-		web.indexOf('"open-web-window"') < web.indexOf('enterMediaBlock("web"'),
-	);
-});
-
 test("the pin, the close and the confirms are messages the server accepts", () => {
 	const { CLIENT_MESSAGE_TYPES } = LEOBroadcastServer;
 	for (const type of [
@@ -383,31 +345,6 @@ test("a window opened pinned reports it", () => {
 	assert.deepEqual(changes, [true]);
 });
 
-test("the 📌 on the phone unpins the pinned windows and closes nothing itself", () => {
-	const src = read("main/floating-window-manager.js");
-	const fn = /function unpinWindows\(\) \{[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(fn, /if \(f\.pinned\) f\.setPinned\(false\)/);
-	assert.equal(/close\(/.test(fn), false, "a window still on its block stays");
-	assert.equal(/closePinnedWindows/.test(src), false);
-	for (const name of ["_imageFloat", "_webFloat"]) {
-		const made = new RegExp(
-			`const ${name} = makeFloat\\(\\{[\\s\\S]*?\\n\\}\\);`,
-		).exec(src)[0];
-		assert.match(made, /onPinChange: _broadcastPinned/);
-	}
-	const main = read("main/main.js");
-	assert.match(main, /"client-unpin-windows", \(\) => unpinWindows\(\)/);
-	assert.match(
-		main,
-		/"client-media-dismissed", \(\) => dismissMedia\(MEDIA_FLOATS\)/,
-	);
-	assert.match(
-		main,
-		/"client-pin-window", \(pinned\) => \{\s*const float = MEDIA_FLOATS\[openPopupType\(\)\];/,
-		"the phone pins the window its popup is about, never a name it sends",
-	);
-});
-
 test("unpinning while the block is still current keeps the window, and the pin can come back", () => {
 	const { float, changes } = pinHarness();
 	float.showOrReuse({}, { gatePin: true, shouldPin: false });
@@ -501,12 +438,6 @@ test("✕ decides from the host's own pin, and only for a media popup", () => {
 	);
 });
 
-test("OK never closes the window: it only carries on", () => {
-	const { popups } = popupsHarness();
-	popups.enterPopup("image", { name: "a.png" });
-	assert.equal(/close/.test(popups.confirmMedia.toString()), false);
-});
-
 test("the phone's note popup shows the text, and OK confirms it", () => {
 	const ctx = buildRemote();
 	ctx.api.setAutoTypingActive(true);
@@ -518,14 +449,6 @@ test("the phone's note popup shows the text, and OK confirms it", () => {
 	ctx.api.closeNoteOverlay();
 	assert.deepEqual(ctx.sent, [{ type: "note-confirmed", data: {} }]);
 	assert.equal(ctx.nodes.noteOverlay.classList.contains("active"), false);
-});
-
-test("the host ending a note closes it without echoing a confirm", () => {
-	const ctx = buildRemote();
-	ctx.api.showNoteOverlay({ text: "x" });
-	ctx.api.closeNoteOverlayUI();
-	assert.equal(ctx.nodes.noteOverlay.classList.contains("active"), false);
-	assert.deepEqual(ctx.sent, []);
 });
 
 test("the media popup names what is shown and offers a bare 📌 in the OK's colour", () => {

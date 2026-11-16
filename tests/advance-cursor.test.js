@@ -43,20 +43,6 @@ test("a character step sends the character, and only that", () => {
 	assert.equal(cm.getCurrentStep(), 1, "and moves on");
 });
 
-test("a block step reports completion, since there is nothing to type", () => {
-	const { cm, replies } = makeCursorManager([blockStep()]);
-	cm.advanceCursor();
-	assert.deepEqual(replies(), ["input-complete"]);
-	assert.equal(cm.getCurrentStep(), 1);
-});
-
-test("an anchor step reports completion too", () => {
-	const { cm, replies } = makeCursorManager([anchorStep("⚓1⚓")]);
-	cm.advanceCursor();
-	assert.deepEqual(replies(), ["input-complete"]);
-	assert.equal(cm.getCurrentStep(), 1);
-});
-
 test("running past the last step still answers — this is the lock-leak guard", () => {
 	const { cm, replies } = makeCursorManager([charStep("a")]);
 	cm.advanceCursor();

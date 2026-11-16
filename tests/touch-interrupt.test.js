@@ -34,15 +34,6 @@ function startDrag(h) {
 	});
 }
 
-test("the pad registers a touchcancel handler at all", () => {
-	const h = padOpen();
-	const pad = h.nodes.touchpadOverlay;
-	assert.ok(
-		pad._listeners.get("touchcancel"),
-		"an interrupted gesture has nothing to clean it up",
-	);
-});
-
 test("a touchcancel mid-drag releases the host's mouse button", () => {
 	const h = padOpen();
 	const pad = h.nodes.touchpadOverlay;

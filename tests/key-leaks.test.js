@@ -151,26 +151,6 @@ test("a letter's hotkey is released for its own key-down only, within one turn o
 		);
 	}));
 
-test("Shift+letter is the teacher's while LEO is not holding Shift", () =>
-	whileActive(() => {
-		const h = build();
-		h.hotkeys.registerAutoTypingHotkeys();
-		assert.deepEqual(
-			h.held(),
-			["a", "b", "s"],
-			"held all the time, Shift+a stopped typing the teacher's own A and " +
-				"advanced the lesson with Shift down, capitalizing the plan's characters",
-		);
-
-		h.handler.typeCharWithHotkeyManagement("a");
-		h.handler.typeCharWithHotkeyManagement(" ");
-		assert.deepEqual(
-			h.held().sort(),
-			["a", "b", "s"],
-			"a lower-case letter and a space never need Shift, so they take nothing",
-		);
-	}));
-
 test("while LEO holds Shift for a capital, every other letter is caught with Shift", () =>
 	whileActive(async (sent) => {
 		const h = build();

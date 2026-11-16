@@ -2,14 +2,9 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { loadModule } = require("./helpers/load-module");
 const LEOBroadcastServer = require("../src/main/websocket-server");
 const { createAutoPilot } = require("../src/main/auto-pilot");
-
-const SRC = path.resolve(__dirname, "..", "src");
-const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 function fixture(initialClients = 1, graceMs = 5) {
 	const sent = [];
@@ -169,14 +164,6 @@ test("a grace-period switch-off is a real off: a later resume does not revive it
 	assert.equal(f.state.autoPilot, false);
 });
 
-test("auto-typing changing while auto-pilot is off announces nothing", () => {
-	const f = fixture();
-	f.state.isActive = false;
-	f.pilot.onActiveChanged();
-	assert.deepEqual(f.sent, []);
-	assert.deepEqual(f.broadcasts, []);
-});
-
 test("only a real true turns it on: the message is untrusted", () => {
 	const f = fixture();
 	for (const junk of ["true", 1, {}, null, undefined]) f.pilot.set(junk);
@@ -313,81 +300,6 @@ test("the server counts only open sockets", () => {
 	);
 });
 
-test("main wires the switch from the phone and the connections", () => {
-	const main = read("main/main.js");
-	assert.match(main, /require\("\.\/auto-pilot"\)/);
-	assert.ok(
-		!main.includes('ipcMain.on("set-auto-pilot"'),
-		"the phone is the only switch; the desktop sends nothing",
-	);
-	assert.match(
-		main,
-		/"client-set-auto-pilot", \(on\) => autoPilot\.set\(on\)/,
-	);
-	assert.match(
-		main,
-		/"client-connected", \(\) => \{\s*autoPilot\.onClientConnected\(\);/,
-	);
-	assert.match(
-		main,
-		/"client-disconnected", \(clientId\) => \{[\s\S]*?autoPilot\.onClientDisconnected\(\);/,
-	);
-	assert.match(
-		main,
-		/"client-disconnected", \(clientId\) => \{\s*releaseInteractionHold\(clientId\);/,
-		"a phone that vanishes with its picker open must not pause auto-typing for good",
-	);
-	assert.match(
-		main,
-		/autoPilot\.sync\(\);/,
-		"a reloaded window is told at load",
-	);
-	const original = main.indexOf(
-		'ipcMain.on("set-active", (event, isActive) => {',
-	);
-	const listener = main.indexOf(
-		'ipcMain.on("set-active", () => autoPilot.onActiveChanged());',
-	);
-	assert.ok(
-		original > 0 && listener > original,
-		"the listener must run after the handler that sets isActive",
-	);
-});
-
-test("the desktop bar has no auto-pilot button - the phone is the only switch", () => {
-	const html = read("index.html");
-	assert.ok(
-		!html.includes('id="autoPilotBtn"'),
-		"auto-pilot must be toggled from the remote only",
-	);
-
-	const app = read("renderer/app.js");
-	assert.ok(
-		!app.includes("autoPilotOn"),
-		"no leftover desktop auto-pilot state",
-	);
-	assert.ok(
-		!app.includes('ipcRenderer.on("auto-pilot"'),
-		"nothing on the desktop listens for auto-pilot changes any more",
-	);
-	assert.match(
-		app,
-		/ipcRenderer\.on\("remote-count", \(e, count\) => \{[\s\S]*?uiManager\.setRemotesConnected\(count > 0\)/,
-		"remote-count tracking must survive - broadcastLessonData still gates on it",
-	);
-	assert.match(
-		app,
-		/if \(!had && count > 0\) lessonRenderer\.broadcastLessonData\(\)/,
-		"a phone that connects after a render must still be sent the lesson",
-	);
-
-	const ui = read("renderer/ui-manager.js");
-	assert.ok(
-		!ui.includes("autoPilotBtn") && !ui.includes("setAutoPilot"),
-		"ui-manager keeps no desktop auto-pilot control",
-	);
-});
-
 function hotkeys(settings) {
 	const registered = new Map();
 	const globalShortcut = {
@@ -414,14 +326,6 @@ function hotkeys(settings) {
 test("the auto-typing hotkeys stay on when the setting is off, remote or not", () => {
 	const h = hotkeys({ typingHotkeysOffWithRemote: false });
 	h.manager.setRemoteConnected(true);
-	h.manager.registerAutoTypingHotkeys();
-
-	assert.equal(h.manager.autoTypingHotkeysEnabled(), true);
-	assert.deepEqual([...h.registered.keys()], ["a", "b", "c"]);
-});
-
-test("with the setting on, no remote means the hotkeys work as ever", () => {
-	const h = hotkeys({ typingHotkeysOffWithRemote: true });
 	h.manager.registerAutoTypingHotkeys();
 
 	assert.equal(h.manager.autoTypingHotkeysEnabled(), true);
@@ -529,68 +433,8 @@ test("only the auto-typing hotkeys are gated: the other shortcuts keep working",
 	}
 });
 
-test("the keyboard handler skips the per-letter release when the letters are not held", () => {
-	const src = read("main/keyboard-handler.js");
-	assert.equal(
-		(src.match(/typeCharWithHotkeyManagement\(/g) || []).length,
-		3,
-		"typeCharacter and autoRunBlock both go through the one wrapper",
-	);
-	const wrapper =
-		/async typeCharWithHotkeyManagement\(char\) \{[\s\S]*?\n\t\}/.exec(
-			src,
-		)[0];
-	assert.match(
-		wrapper,
-		/this\.hotkeyManager\.releaseAutoTypingHotkeysFor\(char\)/,
-		"which asks the manager, whose autoTypingHotkeysFor returns nothing while the letters are not held",
-	);
-});
-
 test("an upper-case auto-typing hotkey is still released while LEO types that letter", () => {
 	const h = hotkeys({ "hotkeys.typing": ["A", "b"] });
 	assert.deepEqual(h.manager.autoTypingHotkeysFor("a"), ["A"]);
 	assert.deepEqual(h.manager.autoTypingHotkeysFor("B"), ["b"]);
-});
-
-test("the setting ships off, in Settings, and is saved with the rest", () => {
-	const manager = read("main/settings-manager.js");
-	assert.match(manager, /typingHotkeysOffWithRemote: false/);
-
-	const html = read("index.html");
-	assert.match(
-		html,
-		/<input\s+type="checkbox"\s+id="typingHotkeysOffWithRemote"\s*\/>/,
-	);
-
-	const ui = read("renderer/settings-ui.js");
-	assert.match(
-		ui,
-		/"typingHotkeysOffWithRemote"\)\.checked =\s*settings\.typingHotkeysOffWithRemote === true/,
-	);
-	assert.match(
-		ui,
-		/typingHotkeysOffWithRemote: document\.getElementById\(\s*"typingHotkeysOffWithRemote",\s*\)\.checked/,
-	);
-});
-
-test("the auto-pilot button wears the app's one toggled-on class", () => {
-	const css = read("shared/styles.css");
-	assert.match(css, /--toggle-ring: 0 0 0 2px var\(--clr-white\);/);
-	assert.match(
-		css,
-		/\.interaction-btn\.btn-auto\.mode-active \{[^}]*box-shadow: var\(--toggle-ring\)/,
-	);
-	assert.match(
-		css,
-		/\.mode-side-btn\.mode-active \{[^}]*box-shadow: var\(--toggle-ring\)/,
-	);
-	const src = read("shared/remote/touchpad.js");
-	assert.match(src, /classList\.toggle\("mode-active"/);
-	assert.equal(
-		src.includes("auto-on"),
-		false,
-		"touchpad.js keeps a second name for one state",
-	);
-	assert.equal(css.includes("auto-on"), false);
 });

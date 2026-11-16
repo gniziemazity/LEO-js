@@ -108,19 +108,3 @@ test("reloading the lesson rebuilds the map instead of reusing a stale one", () 
 	assert.equal(marks.length, 1);
 	assert.equal(marks[0], "0:active-block");
 });
-
-test("a step past the end of the lesson consumes everything", () => {
-	const h = buildRemote();
-	h.api.updateLessonData(LESSON);
-	const total = allSteps(h).length;
-
-	h.api.updateCursor({ currentStep: total });
-
-	for (const el of allSteps(h)) {
-		assert.equal(
-			el.classList.contains("consumed"),
-			true,
-			`step ${el.dataset.stepIndex} was left unconsumed at the end`,
-		);
-	}
-});

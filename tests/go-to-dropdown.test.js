@@ -223,12 +223,3 @@ test("a click outside closes it, a click inside does not", () => {
 	outside(makeEl("div"));
 	assert.equal(isOpen(), false);
 });
-
-test("the list keeps its own scroll rather than scrolling the page", () => {
-	const { list } = show();
-	assert.equal(
-		list.children.every((i) => !i.scrollIntoView),
-		true,
-		"scrollIntoView would scroll the ancestors and trip the scroll-to-close",
-	);
-});

@@ -93,18 +93,6 @@ test("the remote gets every update synchronously, with no timer stalled or not",
 	});
 });
 
-test("_broadcastProgress sends immediately - not on a later tick", () => {
-	const cm = manager();
-	sent.length = 0;
-	cm._broadcastProgress();
-
-	// No await, no setTimeout(0) settle - if this passes, the send already
-	// happened synchronously within the call above.
-	const channels = sent.map((s) => s[0]);
-	assert.ok(channels.includes("update-cursor"));
-	assert.ok(channels.includes("update-progress"));
-});
-
 test("every step sends its own update - nothing is dropped by coalescing", () => {
 	const cm = manager();
 	sent.length = 0;

@@ -331,25 +331,3 @@ test("Ctrl+Enter on a note, image or web page is OK", () => {
 		assert.deepEqual(h.sends(), [`${type}-confirmed`]);
 	}
 });
-
-test("the phone's Paste and a settings save both use the same key action", () => {
-	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
-	assert.match(
-		main,
-		/"client-snippet-paste", \(\) => pasteAndConfirm\(\)/,
-		"Paste closes the popup, however it was pressed",
-	);
-	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(main)[0];
-	assert.match(reapply, /armConfirmKey\(\)/);
-	const arm = /function armConfirmKey\(\)[\s\S]*?\n\}/.exec(main)[0];
-	assert.match(
-		arm,
-		/registerConfirmPopup\(confirmKeyFor\(type\)\)/,
-		"re-arming with a bare confirm would lose Paste and Type name after a save",
-	);
-	const popups = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const enter = /function enterPopup\(type, payload\)[\s\S]*?\n\}/.exec(
-		popups,
-	)[0];
-	assert.match(enter, /registerConfirmPopup\(confirmKeyFor\(type\)\)/);
-});

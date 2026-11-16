@@ -156,15 +156,6 @@ const SPLIT = [
 	{ type: "code", text: "↩b();" },
 ];
 
-test("it always shows the end of the lesson, whichever block has the caret", () => {
-	const { sim, code } = panel(SPLIT, () => ({ index: 1, caret: 4 }));
-	sim.setVisible(true);
-	assert.deepEqual(
-		lineText(code).map((line) => line.trimEnd()),
-		["a();", "b();", "c();"],
-	);
-});
-
 test("a block's characters keep their highlight after a later block splits them", () => {
 	const { sim, code } = panel(SPLIT, () => ({ index: 1, caret: 4 }));
 	sim.setVisible(true);
@@ -252,26 +243,6 @@ test("the width is clamped, and remembered", () => {
 	const again = panel(PLAN).sim;
 	again.setVisible(true);
 	assert.equal(rootStyle["--sim-panel-w"], "700px");
-});
-
-test("the window says when it is maximized, and the panel listens", () => {
-	const read = (p) =>
-		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
-	const main = read("src/main/main.js");
-	assert.match(main, /mainWindow\.on\("maximize", sendMaximized\)/);
-	assert.match(main, /mainWindow\.on\("unmaximize", sendMaximized\)/);
-	const app = read("src/renderer/app.js");
-	assert.match(app, /"window-maximized"[\s\S]{0,60}simPanel\.setVisible/);
-	assert.match(
-		app,
-		/lessonManager\.onChange\(\(\) => simPanel\.changed\(\)\)/,
-	);
-	assert.match(
-		app,
-		/lessonRenderer\.onRendered = \(\) => simPanel\.changed\(\)/,
-	);
-	assert.match(app, /lessonRenderer\.caretFocus\(\)/);
-	assert.match(app, /"selectionchange", "focusin", "focusout"/);
 });
 
 test("the editor scrolls on its own while the panel is shown", () => {

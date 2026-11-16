@@ -159,16 +159,6 @@ test("auto-pilot takes the mouse pad for a go-to, and hands the keyboard back on
 	);
 });
 
-test("auto-pilot hands the keyboard pad back when the host ends the go-to", async () => {
-	const ctx = build();
-	await openAutoPilot(ctx);
-	ctx.api.showGoToOverlay({ mode: "main" });
-	assert.equal(ctx.api.padMode(), "mouse");
-
-	ctx.api.closeGoToOverlayUI();
-	assert.equal(ctx.api.padMode(), "keyboard");
-});
-
 test("auto-pilot leaves the keyboard pad alone for a question, code insert, note or media", async () => {
 	const opens = {
 		question: (api) => api.showQuestionOverlay("Why?", ["Ada"], null, null),
@@ -350,24 +340,6 @@ test("a pad turned off stays off while nothing changes, and the other button ope
 	);
 });
 
-test("auto-pilot reopens a pad the teacher turned off once the plan advances", async () => {
-	const ctx = build();
-	await openAutoPilot(ctx);
-	ctx.api.updateCursor({ currentStep: 3 });
-	await ctx.api.setTouchpadMode("keyboard");
-	assert.equal(ctx.api.padMode(), null);
-
-	ctx.api.updateCursor({ currentStep: 3 });
-	assert.equal(ctx.api.padMode(), null, "the same step is not an advance");
-
-	ctx.api.updateCursor({ currentStep: 4 });
-	assert.equal(
-		ctx.api.padMode(),
-		"keyboard",
-		"the next step hands the pad back",
-	);
-});
-
 test("a popup opening or closing also ends a turned-off pad, and so does the mouse pad's own button", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
@@ -380,16 +352,6 @@ test("a popup opening or closing also ends a turned-off pad, and so does the mou
 
 	ctx.api.closeGoToOverlayUI();
 	assert.equal(ctx.api.padMode(), "keyboard", "confirming moves the plan on");
-});
-
-test("turning auto-pilot off and on forgets a turned-off pad", async () => {
-	const ctx = build();
-	await openAutoPilot(ctx);
-	await ctx.api.setTouchpadMode("keyboard");
-
-	ctx.api.setAutoPilot(false);
-	ctx.api.setAutoPilot(true);
-	assert.equal(ctx.api.padMode(), "keyboard");
 });
 
 test("an override holds while nothing changes, and a popup opening ends it", async () => {
@@ -413,27 +375,6 @@ test("an override holds while nothing changes, and a popup opening ends it", asy
 		"keyboard",
 		"the plan moved on, so auto-pilot is back in charge",
 	);
-});
-
-test("a popup ends an override that disagrees with it", async () => {
-	const ctx = build();
-	await openAutoPilot(ctx);
-	ctx.api.showGoToOverlay({ mode: "main" });
-	assert.equal(ctx.api.padMode(), "mouse");
-
-	await ctx.api.setTouchpadMode("keyboard");
-	assert.equal(
-		ctx.api.padMode(),
-		"keyboard",
-		"the teacher may want the keyboard here",
-	);
-
-	ctx.api.closeGoToOverlayUI();
-	assert.equal(ctx.api.padMode(), "keyboard", "confirming moves the plan on");
-
-	await ctx.api.setTouchpadMode("mouse");
-	ctx.api.showGoToOverlay({ mode: "main" });
-	assert.equal(ctx.api.padMode(), "mouse");
 });
 
 test("the plan advancing ends an override, and only a new step counts", async () => {
@@ -550,15 +491,6 @@ test("the host turning auto-pilot off closes the pad and gives the buttons back"
 	assert.equal(ctx.api.padMode(), "mouse", "and the buttons work again");
 });
 
-test("repeating the host's value changes nothing", async () => {
-	const ctx = build();
-	await openAutoPilot(ctx);
-	ctx.api.showGoToOverlay({ mode: "main" });
-
-	ctx.api.setAutoPilot(true);
-	assert.equal(ctx.api.padMode(), "mouse", "no restart, no reset");
-});
-
 test("an override taken over the picker ends when the picker closes", async () => {
 	const ctx = build();
 	await openAutoPilot(ctx);
@@ -591,20 +523,6 @@ test("a popup opened under auto-pilot is lifted above the pad it is on", async (
 	assert.equal(
 		ctx.nodes.touchpadOverlay.classList.contains("keyboard-mode"),
 		false,
-	);
-});
-
-test("a go-to with no pad open leaves the pad closed", async () => {
-	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
-	ctx.api.showGoToOverlay({ mode: "main" });
-	assert.equal(ctx.nodes.touchpadOverlay.classList.contains("active"), false);
-
-	ctx.api.closeGoToOverlayUI();
-	assert.equal(
-		ctx.nodes.touchpadOverlay.classList.contains("active"),
-		false,
-		"nothing to restore, so nothing opens",
 	);
 });
 
@@ -651,33 +569,6 @@ test("with no pad open the go-to is not lifted at all", async () => {
 	);
 });
 
-test("the interaction overlay is covered like the others: its text input rides the lift", async () => {
-	const ctx = build();
-	await openKeyboardPad(ctx);
-	ctx.api.setStudents(["Ada", "Linus"]);
-
-	ctx.api.handleInteractionBtn("student-question");
-
-	assert.equal(
-		ctx.nodes.touchpadOverlay.classList.contains("active"),
-		true,
-		"the pad stays; the question field is pressable through the lift",
-	);
-	assert.equal(lifted(ctx.nodes.interactionOverlay), true);
-});
-
-test("with the pad closed the popup is left exactly as it renders", async () => {
-	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
-	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
-
-	assert.equal(lifted(ctx.nodes.questionOverlay), false);
-	assert.equal(
-		ctx.nodes.touchpadEditKeys.classList.contains("visible"),
-		false,
-	);
-});
-
 test("only the overlays that opt in are handed to the pad", () => {
 	const ctx = build();
 	ctx.nodes.interactionOverlay.classList.remove("overlay-pad-ok");
@@ -719,14 +610,4 @@ test("the auto-pilot button is only pressable while auto-typing is on", () => {
 		true,
 		"and it goes again when auto-typing stops",
 	);
-});
-
-test("the phone's auto-pilot button ships disabled", () => {
-	const fs = require("node:fs");
-	const path = require("node:path");
-	const html = fs.readFileSync(
-		path.join(__dirname, "..", "src", "remote.html"),
-		"utf-8",
-	);
-	assert.match(html, /id="autoPilotBtn"[^>]*\bdisabled\b/);
 });

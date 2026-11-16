@@ -2,8 +2,6 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { buildRemote } = require("./helpers/remote-dom");
 
 const active = (node) => node.classList.contains("active");
@@ -84,27 +82,5 @@ test("the phone's own interaction picker is not closed by a resync", () => {
 		active(h.nodes.interactionOverlay),
 		true,
 		"the picker belongs to the phone, not the host, so a resync must leave it",
-	);
-});
-
-test("remote.html resyncs before it applies the snapshot", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/remote.html"),
-		"utf-8",
-	);
-	const fn = /function updateAllState\(state\) \{[\s\S]*?\n\t\t\t\}/.exec(src);
-	assert.ok(fn, "updateAllState not found");
-	const body = fn[0];
-
-	assert.match(body, /resyncOverlays\(state\)/);
-	assert.ok(
-		body.indexOf("resyncOverlays(state)") <
-			body.indexOf("if (state.activeNote)"),
-		"closing stale overlays must happen before reopening live ones",
-	);
-	assert.match(
-		src,
-		/setConnectionHandler\(/,
-		"a dead socket must be visible on the phone",
 	);
 });

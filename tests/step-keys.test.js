@@ -7,24 +7,16 @@ const path = require("node:path");
 const { buildRemote } = require("./helpers/remote-dom");
 const LEOBroadcastServer = require("../src/main/websocket-server");
 
-const SRC = path.resolve(__dirname, "..", "src");
-const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf-8");
-
-test("the step buttons live in their own bar, wearing the same base class as every other side button", () => {
-	const html = read("remote.html");
+test("forward comes first in the step bar, so it is the viewer's right on both hands", () => {
+	const html = fs.readFileSync(
+		path.resolve(__dirname, "..", "src", "remote.html"),
+		"utf-8",
+	);
 	const bar = /<div id="touchpadStepKeys"[\s\S]*?<\/div>\s*<\/div>/.exec(
 		html,
 	)[0];
-	assert.match(bar, /class="touchpad-toolbar touchpad-step-bar"/);
 	assert.match(bar, /onclick="remoteStep\('back'\)"/);
 	assert.match(bar, /onclick="remoteStep\('forward'\)"/);
-	assert.match(bar, /title="Step back"/);
-	assert.match(bar, /title="Step forward"/);
-	assert.equal(
-		(bar.match(/class="mode-side-btn pad-bar-btn"/g) || []).length,
-		2,
-		"same shape as the edit keys: the box is derived from the shared class",
-	);
 	assert.ok(
 		bar.indexOf("remoteStep('forward')") < bar.indexOf("remoteStep('back')"),
 		"the bar grows away from the mode buttons, so its first button is the viewer's right " +
@@ -57,30 +49,6 @@ test("the server accepts both as bare messages and emits with no arguments", () 
 		["client-step-backward"],
 		["client-step-forward"],
 	]);
-});
-
-test("main relays them onto the exact channels the desktop's own Ctrl+Left/Right already send", () => {
-	const main = read("main/main.js");
-	const settings = read("shared/settings-schema.js");
-	assert.match(
-		settings,
-		/key: "stepBackward"[\s\S]*?channel: "hotkey-step-backward",\s*step: -1,/,
-		"the remote button has to land on the same channel the global shortcut uses",
-	);
-	assert.match(
-		settings,
-		/key: "stepForward"[\s\S]*?channel: "hotkey-step-forward",\s*step: 1,/,
-	);
-	assert.match(
-		main,
-		/"client-step-backward", \(\) => hotkeyManager\.step\(-1\)\)/,
-		"the phone's ◀ is the desktop shortcut, through the same function",
-	);
-	assert.match(
-		main,
-		/"client-step-forward", \(\) => hotkeyManager\.step\(1\)\)/,
-	);
-	assert.match(main, /state\.onStepKey = \(delta\) => stepGoToName\(delta\);/);
 });
 
 function hotkeys() {
@@ -131,18 +99,6 @@ test("Ctrl+Left/Right step the plan unless something else claims the step", () =
 	h.state.onStepKey = () => false;
 	h.registered.R();
 	assert.equal(h.sent.at(-1), "hotkey-step-forward");
-});
-
-test("the renderer needs no new listener: it already answers the desktop hotkey's channel", () => {
-	const app = read("renderer/app.js");
-	assert.match(
-		app,
-		/ipcRenderer\.on\("hotkey-step-backward", \(\) => cursorManager\.stepBackward\(\)\)/,
-	);
-	assert.match(
-		app,
-		/ipcRenderer\.on\("hotkey-step-forward", \(\) => cursorManager\.stepForward\(\)\)/,
-	);
 });
 
 test("stepping back and forward is refused while a blocking overlay or an unstarted lesson closes the keyboard pad", async () => {

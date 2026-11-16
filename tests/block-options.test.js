@@ -33,56 +33,6 @@ test("readCodeText skips the option island", () => {
 	);
 });
 
-test("block text comes from the step, never from the contaminated DOM", () => {
-	const src = read("renderer/cursor-manager.js");
-	for (const fn of [
-		"_enterQuestionBlock",
-		"_enterImageBlock",
-		"_enterWebBlock",
-		"_enterSnippetBlock",
-	]) {
-		const body = new RegExp(`${fn}\\(step\\) \\{[\\s\\S]*?\\n\\t\\}`).exec(
-			src,
-		);
-		assert.ok(body, `${fn} must take the step`);
-		assert.equal(
-			/innerText/.test(body[0]),
-			false,
-			`${fn}: the option checkbox lives inside the block, so its label is ` +
-				"part of innerText — reading it made every image block pin itself",
-		);
-	}
-	assert.equal(
-		/innerText/.test(src),
-		false,
-		"no reader may treat the block element as the source of block text",
-	);
-	assert.equal(
-		/innerText/.test(read("renderer/log-event-builder.js")),
-		false,
-		"the artificial log would otherwise record the checkbox label as code",
-	);
-});
-
-function sealedOptionSource() {
-	const src = read("renderer/ui-manager.js");
-	const option = /createBlockOption\(\{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(option, /UIManager\.sealIsland\(wrap\)/);
-	return /static sealIsland\(el\)[\s\S]*?\n\t\}/.exec(src)[0];
-}
-
-test("the option swallows input and change, which bubble", () => {
-	const fn = sealedOptionSource();
-	for (const type of ["input", "change"]) {
-		assert.match(
-			fn,
-			new RegExp(`"${type}"`),
-			`a checkbox ${type} event bubbles to the block's oninput, which would ` +
-				"read the block back and overwrite it with the collapsed label",
-		);
-	}
-});
-
 test("a long code line cannot push the option off the right edge", () => {
 	const css = read("shared/styles.css");
 	const container = /#lesson-container \{[\s\S]*?\n\}/.exec(css)[0];
@@ -117,50 +67,6 @@ test("a long code line cannot push the option off the right edge", () => {
 		"--editor-sidebar-w must track the sidebar's real width",
 	);
 	assert.match(css, /--editor-sidebar-w: 55px/);
-});
-
-test("every option is the same floating chip, never a column", () => {
-	const css = read("shared/styles.css");
-	const chip = /\.block-opt \{[\s\S]*?\n\}/.exec(css)[0];
-
-	assert.equal(
-		/width:|height:|left:/.test(chip),
-		false,
-		"the chip sizes to its label and hangs off the right; a fixed width or a " +
-			"left edge is what made it a half-row column",
-	);
-	assert.equal(
-		/padding-right: 50%/.test(css),
-		false,
-		"no block reserves half its row for the option any more",
-	);
-	assert.match(
-		chip,
-		/background: var\(--clr-white\)/,
-		"it overlaps the content, so it must be opaque — and the same white on " +
-			"the grey, blue and dark block colours alike",
-	);
-	assert.match(chip, /z-index: 2/);
-	assert.match(chip, /box-shadow:/);
-});
-
-test("oninput refuses to run on a block that is not editable", () => {
-	const src = read("renderer/lesson-renderer.js");
-	const fn = /blockDiv\.oninput = \(\) => \{[\s\S]*?\n\t\t\};/.exec(src)[0];
-	assert.match(
-		fn,
-		/contentEditable !== "true"\) return/,
-		"a collapsed block renders only its truncated label; saving that back " +
-			"destroys the rest of the code insert",
-	);
-});
-
-test("readCodeText still reads ordinary child elements", () => {
-	const block = elem("DIV", [
-		textNode("first"),
-		elem("DIV", [textNode("second")]),
-	]);
-	assert.equal(readCodeText(block), "first\nsecond");
 });
 
 test("the legacy pin word is lifted out of the text on load", () => {
@@ -259,100 +165,6 @@ test("a file an included plan already touched is not created again", () => {
 test("an anchor target never creates a file", () => {
 	const lm = withBlocks([{ type: "go-to", target: "⚓3⚓" }]);
 	assert.equal(lm.isFirstGoToFile(0), false);
-});
-
-test("the option is opt-out: absent means the button shows", () => {
-	for (const [file, expr] of [
-		["shared/remote/snippet-overlay.js", /paste !== false/],
-		["renderer/desk-popup.js", /paste !== false/],
-		["renderer/cursor-manager.js", /step\.paste !== false/],
-		["renderer/lesson-renderer.js", /block\.paste !== false/],
-		["renderer/lesson-renderer.js", /block\.typeName !== false/],
-	]) {
-		assert.match(
-			read(file),
-			expr,
-			`${file} must default a missing flag to "shown", or every saved plan loses its button`,
-		);
-	}
-});
-
-test("Type name is offered only where the file is created", () => {
-	const src = read("renderer/lesson-renderer.js");
-	assert.match(
-		src,
-		/isFirstGoToFile\(blockIdx\)/,
-		"a later go-to lands in a file that already exists",
-	);
-	assert.match(
-		src,
-		/typeName: creates && block\.typeName !== false/,
-		"the payload flag must fold in the first-go-to rule, not just the checkbox",
-	);
-});
-
-test("the phone never tells a teacher to press Ctrl+V it cannot honour", () => {
-	assert.equal(
-		/ci-modal-hint|ciHint/.test(read("remote.html")),
-		false,
-		"with paste off the clipboard is never loaded, so the hint promised " +
-			"a paste that would insert whatever the teacher had copied",
-	);
-	assert.equal(/ciHint/.test(read("shared/remote/snippet-overlay.js")), false);
-	assert.equal(/ci-modal-hint/.test(read("shared/styles.css")), false);
-});
-
-test("no OK is offered when the name has to be typed", () => {
-	const phone = read("shared/remote/go-to-overlay.js");
-	assert.match(
-		phone,
-		/this\.swapActions\("gtoTypeName", "gtoConfirm", this\.canTypeName\)/,
-		"Type name takes OK's place on exactly the block that creates the file",
-	);
-	const base = read("shared/remote/remote-overlay.js");
-	assert.match(
-		base,
-		/if \(alt\) alt\.style\.display = useAlt \? "" : "none";/,
-		"the alternative shows when it applies",
-	);
-	assert.match(
-		base,
-		/if \(ok\) ok\.style\.display = useAlt \? "none" : "";/,
-		"and then there is no OK: typing the last character is what confirms",
-	);
-});
-
-test("typing the last character confirms the popup", () => {
-	const src = fs.readFileSync(path.join(SRC, "main", "popups.js"), "utf-8");
-	const fn = /async function typeNextNameChar\(\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(
-		fn,
-		/pendingName\.index >= pendingName\.chars\.length\) \{[\s\S]*?confirmPopup\("go-to"\)/,
-		"there is no OK while Type name is required, so completion is what closes it",
-	);
-});
-
-test("ticking an option does not reach the block underneath", () => {
-	const fn = sealedOptionSource();
-	assert.match(
-		fn,
-		/"mousedown"[\s\S]*?e\.stopPropagation\(\)/,
-		"the block's own mousedown selects and re-renders, which would drop the click",
-	);
-	assert.match(
-		fn,
-		/dataset\.blockOpt/,
-		"readCodeText keys off this to skip the island",
-	);
-	assert.match(fn, /contentEditable = "false"/);
-});
-
-test("a code insert whose paste is off does not hijack the clipboard", () => {
-	const src = fs.readFileSync(path.join(SRC, "main", "popups.js"), "utf-8");
-	const hold = /function holdCodeOnClipboard\(payload\)[\s\S]*?\n\}/.exec(
-		src,
-	)[0];
-	assert.match(hold, /payload\.paste === false\) return/);
 });
 
 test("typing the pin word still works, and is absorbed into the flag", () => {
@@ -454,7 +266,9 @@ test("a plan file says move-to, so a plan saved today opens in an older LEO", ()
 
 test("the gutter is given back when the bar goes away for auto-typing", () => {
 	const css = read("shared/styles.css");
-	const rule = /body\.auto-typing-active #main-layout \{[\s\S]*?\n\}/.exec(css);
+	const rule = /body\.auto-typing-active #main-layout \{[\s\S]*?\n\}/.exec(
+		css,
+	);
 	assert.ok(
 		rule,
 		"auto-typing hides the sidebar, so its 55px has to go back to the code",

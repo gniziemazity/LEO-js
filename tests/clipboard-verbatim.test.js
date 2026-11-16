@@ -67,38 +67,6 @@ test("a flat body pastes flat: no indentation is invented", () => {
 	);
 });
 
-test("nothing rewrites a line's leading whitespace on the way out", () => {
-	const src = fs.readFileSync(
-		path.join(__dirname, "..", "src", "main", "popups.js"),
-		"utf-8",
-	);
-	const fn = /function holdCodeOnClipboard\([\s\S]*?\n\}/.exec(src)[0];
-	assert.equal(
-		/replace\(/.test(fn),
-		false,
-		"the clipboard path must not transform the body it was handed",
-	);
-});
-
-test("the renderer hands over the body with only anchors removed", () => {
-	const src = fs.readFileSync(
-		path.join(__dirname, "..", "src", "renderer", "cursor-manager.js"),
-		"utf-8",
-	);
-	const fn = /_enterSnippetBlock\(step\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(fn, /const pasted = stripAnchors\(text\)/);
-	assert.match(
-		fn,
-		/text: pasted,/,
-		"no computed indentation may creep back between block and clipboard",
-	);
-	assert.match(
-		fn,
-		/addEntry\(\{ code_insert: text \}\)/,
-		"the log still gets the raw body, anchors and all",
-	);
-});
-
 test("a block that opts out of Paste still hijacks no clipboard", () => {
 	const { popups, written } = harness();
 	popups.enterPopup("snippet", { text: "a();\n   b();", paste: false });

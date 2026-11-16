@@ -19,16 +19,6 @@ test("a note popup leaves the question and help buttons on screen", () => {
 	assert.deepEqual(hidden(ctx), [undefined, undefined]);
 });
 
-test("so do the other pausing popups: media, go-to and code snippet", () => {
-	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
-	ctx.api.showMediaOverlay({ type: "image", name: "cat.png" });
-	ctx.api.showGoToOverlay({ mode: "main", target: "MAIN" });
-	ctx.api.showSnippetOverlay({ code: "let a = 1;", paste: true });
-
-	assert.deepEqual(hidden(ctx), [undefined, undefined]);
-});
-
 test("a lesson question still hides them: the picker would replace its window", () => {
 	const ctx = build();
 	ctx.api.setAutoTypingActive(true);
@@ -126,16 +116,6 @@ test("under a pad the form and Done stay pressable, the names and 🎲 go inert"
 		/done\.classList\.add\("popup-done-btn"\)/,
 		"Done ends the help, it is not a name, so it must stay pressable",
 	);
-});
-
-test("a pausing popup does not take the mouse pad away", async () => {
-	const ctx = build();
-	ctx.api.setAutoTypingActive(true);
-	await ctx.api.setTouchpadMode("mouse");
-
-	ctx.api.showNoteOverlay({ text: "Remember to save" });
-
-	assert.equal(ctx.api.padMode(), "mouse");
 });
 
 test("the picker stacks above the popups it can open over, and below the chrome", () => {

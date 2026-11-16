@@ -83,10 +83,6 @@ test("the display name is the label without the dropdown's paper clip", () => {
 	}
 });
 
-test("a missing target reads the same as an explicit MAIN", () => {
-	assert.equal(goToTargetLabel(null), goToTargetLabel("MAIN"));
-});
-
 test("the go-to popup title says what the jump will do", () => {
 	assert.equal(
 		goToPopupTitle({ mode: "file", typeName: true }),

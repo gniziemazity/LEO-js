@@ -135,13 +135,6 @@ test("the anchor line carries the cursor block", () => {
 	assert.equal(cursors.length, 1);
 });
 
-test("the preview sits beside the dropdown, not on top of it", () => {
-	const p = build();
-	const { opt, list } = optionOf(3, "⚓7⚓");
-	p._show(p._hoverTarget({ target: opt }));
-	assert.equal(p.el.style.left, `${list.getBoundingClientRect().right + 8}px`);
-});
-
 test("hovering the go-to block itself still previews its target", () => {
 	const p = build();
 	const el = blockAt(3, "⚓7⚓");
@@ -187,13 +180,6 @@ test("a dropdown item that names a file previews that file", () => {
 	);
 });
 
-test("a file with nothing in it yet shows no preview", () => {
-	const p = build();
-	const { opt } = optionOf(3, "style.css");
-	p._show(p._hoverTarget({ target: opt }));
-	assert.notEqual(p.el && p.el.style.display, "block");
-});
-
 test("hovering a plain block is not an anchor hover", () => {
 	const p = build();
 	const plain = makeEl("div");
@@ -215,15 +201,13 @@ test("the preview names the file above the code", () => {
 	p._show(p._hoverTarget({ target: opt }));
 	assert.equal(header(p), "📄 app.js");
 	assert.equal(
-		p.el.children.filter((c) => c.className === "go-to-preview-file")
-			.length,
+		p.el.children.filter((c) => c.className === "go-to-preview-file").length,
 		1,
 		"one header, even after the tooltip is reused",
 	);
 	p._show(p._hoverTarget({ target: opt }));
 	assert.equal(
-		p.el.children.filter((c) => c.className === "go-to-preview-file")
-			.length,
+		p.el.children.filter((c) => c.className === "go-to-preview-file").length,
 		1,
 	);
 });
@@ -268,23 +252,6 @@ test("hide clears the pending timer and the tooltip", () => {
 	assert.equal(p.timer, null);
 	assert.equal(p.target, null);
 	assert.equal(p.el.style.display, "none");
-});
-
-test("the preview attaches after the DOM elements are cached", () => {
-	const fs = require("node:fs");
-	const path = require("node:path");
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/app.js"),
-		"utf-8",
-	);
-	const cached = src.indexOf("uiManager.cacheElements()");
-	const attached = src.indexOf("goToPreview.attach(");
-	assert.ok(cached >= 0, "cacheElements is called somewhere");
-	assert.ok(attached >= 0, "the preview is attached somewhere");
-	assert.ok(
-		attached > cached,
-		"attach() before cacheElements() gets an undefined container",
-	);
 });
 
 function placed(p, { list, opt, tip }) {

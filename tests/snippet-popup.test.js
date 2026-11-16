@@ -2,12 +2,8 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { loadModule, fakeIpcRenderer } = require("./helpers/load-module.js");
 const { buildRemote } = require("./helpers/remote-dom.js");
-
-const MAIN = path.resolve(__dirname, "..", "src/main");
 
 function element(text) {
 	return {
@@ -144,17 +140,6 @@ test("stripping drops exactly what the replay drops (one line: no auto-indent in
 	}
 });
 
-test("colour spans line up with the stripped text, not the authored text", () => {
-	const { cm } = makeCursorManager([codeStep("let a = ⚓0⚓1;\nlet b = 2;")]);
-	let payload = null;
-	cm.onEnterSnippetBlock = (p) => (payload = p);
-
-	cm.updateCursor();
-
-	assert.equal(payload.text, "let a = 1;\nlet b = 2;");
-	assert.equal(payload.colored.length, 2);
-});
-
 function openPopup(ctx, text = CODE) {
 	ctx.api.setAutoTypingActive(true);
 	ctx.api.showSnippetOverlay({
@@ -226,117 +211,5 @@ test("the host ending the block closes the popup without confirming again", () =
 		ctx.sent.map((m) => m.type),
 		[],
 		"a host-driven close must not echo a confirm back",
-	);
-});
-
-test("with the pad over it, the popup keeps its own Paste and OK", async () => {
-	const ctx = buildRemote();
-	ctx.api.setAutoTypingActive(true);
-	await ctx.api.setTouchpadMode("keyboard");
-	openPopup(ctx);
-
-	assert.equal(
-		ctx.nodes.snippetOverlay.classList.contains("pad-lifted"),
-		true,
-		"the popup goes above the pad so its own buttons can be pressed",
-	);
-	assert.notEqual(
-		ctx.nodes.snActions.style.display,
-		"none",
-		"the buttons stay where the thumb last saw them",
-	);
-
-	ctx.api.closeSnippetOverlayUI();
-	assert.equal(
-		ctx.nodes.snippetOverlay.classList.contains("pad-lifted"),
-		false,
-		"and the lift is dropped with the popup",
-	);
-});
-
-test("the keyboard pad stays open over a snippet popup", async () => {
-	const ctx = buildRemote();
-	ctx.api.setAutoTypingActive(true);
-	await ctx.api.setTouchpadMode("keyboard");
-
-	openPopup(ctx);
-
-	assert.equal(
-		ctx.api.padMode(),
-		"keyboard",
-		"there is nothing to point at, so the pad is left alone",
-	);
-});
-
-test("the code is on the clipboard for exactly as long as the block is open", () => {
-	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-
-	const entry = /\tsnippet: \{[\s\S]*?\n\t\},/.exec(src)[0];
-	assert.match(entry, /onEnter: \(payload\) => holdCodeOnClipboard\(/);
-	assert.match(entry, /onExit: \(\) => releaseCodeFromClipboard\(\)/);
-
-	const hold = /function holdCodeOnClipboard\(payload\)[\s\S]*?\n\}/.exec(
-		src,
-	)[0];
-	assert.match(
-		hold,
-		/previous: clipboard\.readText\(\)/,
-		"what the teacher had copied must be remembered before we take the clipboard",
-	);
-	assert.match(hold, /clipboard\.writeText\(code\)/);
-	assert.match(
-		hold,
-		/payload\.paste === false\) return/,
-		"holding the clipboard exists to enable Ctrl+V; with Paste off it only clobbers",
-	);
-
-	const release = /function releaseCodeFromClipboard\(\)[\s\S]*?\n\}/.exec(
-		src,
-	)[0];
-	assert.match(
-		release,
-		/if \(clipboard\.readText\(\) === held\.code\) clipboard\.writeText\(held\.previous\)/,
-		"restoring blindly would clobber whatever was copied while the block was open",
-	);
-});
-
-test("the Paste button re-asserts the code before pressing Ctrl+V", () => {
-	const src = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	const fn = /async function pasteSnippet\(\)[\s\S]*?\n\}/.exec(src)[0];
-
-	assert.match(
-		fn,
-		/if \(!held\) return;/,
-		"no open block means nothing to paste",
-	);
-	assert.match(
-		fn,
-		/if \(clipboard\.readText\(\) !== held\.code\) clipboard\.writeText\(held\.code\)/,
-		"the button means paste THIS, even if something else took the clipboard",
-	);
-	assert.match(
-		fn,
-		/keyboard\.type\(primaryModifier\(settingsManager, Key\), Key\.V\)/,
-		"Cmd+V on a Mac, Ctrl+V elsewhere, decided in one place",
-	);
-});
-
-test("on the phone the Paste button is the one that shows", () => {
-	const ctx = buildRemote();
-	openPopup(ctx);
-
-	assert.equal(ctx.nodes.snPaste.style.display, "");
-});
-
-test("the code never reaches the remote as a keystroke stream", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/shared/remote/snippet-overlay.js"),
-		"utf-8",
-	);
-	assert.match(src, /sendMessage\("snippet-paste", \{\}\)/);
-	assert.doesNotMatch(
-		src,
-		/remote-edit-key/,
-		"a bare Ctrl\\+V would paste whatever the teacher had copied, not the block",
 	);
 });

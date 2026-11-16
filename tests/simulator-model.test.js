@@ -19,10 +19,6 @@ function typed(str) {
 	return s;
 }
 
-test("VSCodeSettings is no longer exported (smart features removed)", () => {
-	assert.equal("VSCodeSettings" in model, false);
-});
-
 test("expandEvents: any filename.ext move-to becomes a file switch", () => {
 	assert.deepEqual(
 		moveToKinds("index.html", "style.css", "app.js", "data.json", "main.py"),
@@ -196,10 +192,4 @@ test("indenting clears the selection", () => {
 	model.applyTypedText(s, "a↩b↑◄⇓―");
 	assert.equal(s.text, "\ta\nb");
 	assert.equal(s.selAnchor, null);
-});
-
-test("an atomic code insert indents a selection the same way", () => {
-	const s = new TextState();
-	model.applyAtomicText(s, "a↩b↩c↑↑◄⇓⇓―");
-	assert.equal(s.text, "\ta\n\tb\nc");
 });

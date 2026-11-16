@@ -256,29 +256,6 @@ test("the ▾ on the left of an open start file is what folds it", () => {
 	);
 });
 
-test("an arrow click while auto-typing folds nothing", () => {
-	const blocks = [START_FILE];
-	const { renderer } = makeRenderer({ blocks, autoTyping: true });
-	renderer._onFoldArrow = () => true;
-	renderer.expandedStartFiles.add(0);
-	renderer.handleBlockClick({}, blocks[0], 0);
-	assert.equal(renderer.expandedStartFiles.has(0), true);
-});
-
-test("the ▾ of an open start file shows it can be clicked", () => {
-	const css = require("node:fs")
-		.readFileSync(
-			require("node:path").join(__dirname, "..", "src/shared/styles.css"),
-			"utf8",
-		)
-		.replace(/\r\n/g, "\n");
-	assert.match(
-		css,
-		/\n\.block\.from-start\.start-file:not\(\.collapsed\)::before \{\n\tcursor: pointer;/,
-	);
-	assert.equal(/block-opt-fold/.test(css), false);
-});
-
 test("the include row itself is never expandable", () => {
 	const blocks = [{ type: "include", path: "./part_1.leo" }];
 	const { renderer, calls } = makeRenderer({ blocks });

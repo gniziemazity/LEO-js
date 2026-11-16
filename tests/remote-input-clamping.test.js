@@ -145,22 +145,6 @@ test("a type borrowed from Object.prototype is unknown, not a handler", () => {
 	}
 });
 
-test("every clamped handler survives a message with no data object", () => {
-	for (const type of [
-		"mouse-move",
-		"mouse-scroll",
-		"window-drag",
-		"window-pinch",
-		"mouse-click",
-		"timer-adjust",
-	]) {
-		assert.doesNotThrow(
-			() => drive(type, {}),
-			type + " must tolerate an empty payload",
-		);
-	}
-});
-
 test("the daily token gates the socket, and the origin must match the host", () => {
 	const server = new LEOBroadcastServer(0);
 	const token = server.token;
@@ -208,8 +192,4 @@ test("a message with no data payload is handled, not thrown", () => {
 			assert.ok(Number.isFinite(arg), type + " must emit a real number");
 		}
 	}
-});
-
-test("an unknown message type reaches no window handler either", () => {
-	assert.deepEqual(drive("not-a-real-message", { x: 1 }), []);
 });

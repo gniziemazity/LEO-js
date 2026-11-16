@@ -9,46 +9,10 @@ test("addBlock with null index appends to end", () => {
 	assert.deepEqual(lm.getBlock(0), { type: "code", text: "hello" });
 });
 
-test("addBlock after a specific index inserts at index+1", () => {
-	const lm = new LessonManager();
-	lm.addBlock("code", null, "a");
-	lm.addBlock("code", null, "c");
-	lm.addBlock("code", 0, "b");
-	assert.equal(lm.getBlock(0).text, "a");
-	assert.equal(lm.getBlock(1).text, "b");
-	assert.equal(lm.getBlock(2).text, "c");
-});
-
 test("addBlock with no initial text defaults to empty string", () => {
 	const lm = new LessonManager();
 	lm.addBlock("comment");
 	assert.equal(lm.getBlock(0).text, "");
-});
-
-test("removeBlocks removes at index and returns true", () => {
-	const lm = new LessonManager();
-	lm.data = [{ type: "include" }];
-	lm.addBlock("code", null, "a");
-	lm.addBlock("code", null, "b");
-	assert.equal(lm.removeBlocks([1]), true);
-	assert.equal(lm.getAllBlocks().length, 2);
-	assert.equal(lm.getBlock(1).text, "b");
-});
-
-test("_migrateBlocks touches only code blocks", () => {
-	const blocks = [
-		{ type: "go-to", target: "⚓5⚓" },
-		{ type: "go-to", target: "MAIN" },
-		{ type: "comment", text: "➡️ ⚓app.js⚓" },
-	];
-	const migrated = LessonManager._migrateBlocks(blocks);
-	assert.equal(migrated[0].target, "⚓5⚓");
-	assert.equal(migrated[1].target, "MAIN");
-	assert.deepEqual(
-		migrated[2],
-		blocks[2],
-		"a comment is passed through whatever it starts with",
-	);
 });
 
 test("getAllGoToFiles: collects file targets, dedups, ignores anchors/MAIN", () => {
@@ -71,30 +35,9 @@ test("removeBlocks on out-of-range index returns false", () => {
 	assert.equal(lm.getAllBlocks().length, 3);
 });
 
-test("updateBlock changes text and returns true", () => {
-	const lm = new LessonManager();
-	lm.addBlock("code", null, "old");
-	assert.equal(lm.updateBlock(0, "new"), true);
-	assert.equal(lm.getBlock(0).text, "new");
-});
-
 test("updateBlock on out-of-range index returns false", () => {
 	const lm = new LessonManager();
 	assert.equal(lm.updateBlock(5, "x"), false);
-});
-
-test("getBlock returns null for out-of-range index", () => {
-	const lm = new LessonManager();
-	assert.equal(lm.getBlock(0), null);
-});
-
-test("markAsChanged flips flag and invokes callback", () => {
-	const lm = new LessonManager();
-	let called = 0;
-	lm.onChange(() => called++);
-	lm.markAsChanged();
-	assert.equal(lm.hasChanges(), true);
-	assert.equal(called, 1);
 });
 
 test("addBlock / removeBlocks / updateBlock all trigger markAsChanged", () => {

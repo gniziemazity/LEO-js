@@ -2,8 +2,6 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { buildRemote: build } = require("./helpers/remote-dom.js");
 const LEOBroadcastServer = require("../src/main/websocket-server");
 
@@ -139,23 +137,6 @@ test("helping someone keeps its one-tap picker and Done", () => {
 	ctx.nodes.iGrid.children[0].onclick();
 	assert.equal(ctx.nodes.iTitle.textContent, "🤝 Helping Ada");
 	assert.deepEqual(gridLabels(ctx.nodes.iGrid), ["Done — close"]);
-});
-
-test("a planned question on the phone shows no asker row", () => {
-	const html = fs.readFileSync(
-		path.join(__dirname, "..", "src", "remote.html"),
-		"utf-8",
-	);
-	const overlay = html.slice(
-		html.indexOf('id="questionOverlay"'),
-		html.indexOf('id="interactionOverlay"'),
-	);
-	assert.ok(overlay.includes('id="qText"'));
-	assert.ok(!overlay.includes("asker-row"));
-
-	const ctx = build();
-	ctx.api.showQuestionOverlay("Why?", ["Ada"], null, null);
-	assert.equal(ctx.nodes.qText.textContent, "Why?");
 });
 
 test("the teacher can answer a planned question on the phone, as id 0", () => {

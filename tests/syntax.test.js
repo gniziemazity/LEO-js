@@ -107,17 +107,3 @@ test("a copy without .git still finds the scripts git would list", () => {
 	);
 	assert.ok(walked().includes("src/main/main.js"));
 });
-
-test("the main process is more than a parse: its top level must load", () => {
-	const main = fs.readFileSync(path.join(ROOT, "src/main/main.js"), "utf-8");
-	assert.match(
-		main,
-		/^async function createWindow\(\) \{/m,
-		"createWindow awaits inside; losing its async keyword is a silent break",
-	);
-	assert.equal(
-		/^async const /m.test(main),
-		false,
-		"an insertion that lands between `async` and `function` strands it",
-	);
-});

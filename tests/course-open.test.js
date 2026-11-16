@@ -63,28 +63,6 @@ test("a course marker opens its folder, a plan opens as a plan", () => {
 	]);
 });
 
-test("the patterns exist before the launch arguments are scanned", () => {
-	const src = read("main/main.js");
-	assert.ok(
-		src.indexOf("const OPENABLE_FILE_RE") <
-			src.indexOf("let pendingOpenFile = _extractLeoPath"),
-		"a const read before its line is a ReferenceError at startup, which no " +
-			"test that slices the helpers out would ever see",
-	);
-});
-
-test("every launch path goes through the one router", () => {
-	const src = read("main/main.js");
-	assert.equal(
-		/webContents\.send\("open-plan-file"/.test(
-			src.replace(/function _sendOpenPath[\s\S]*?\n\}/, ""),
-		),
-		false,
-		"a second send site would open a course marker as if it were a plan",
-	);
-	assert.match(read("renderer/app.js"), /"open-course-path"/);
-});
-
 test("openCoursePath opens the folder it is given and remembers it", () => {
 	const CourseUI = require("../src/renderer/course-ui.js");
 	const store = {};

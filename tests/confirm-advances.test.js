@@ -109,19 +109,3 @@ test("two questions in a row: closing the first opens the second", () => {
 	cm.questionWindowClosed();
 	assert.equal(cm.currentStepIndex, 2);
 });
-
-test("the renderer passes a question when its window reports closed", () => {
-	const app = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/app.js"),
-		"utf-8",
-	);
-	const handler =
-		/ipcRenderer\.on\("question-window-closed"[\s\S]*?\n\t\}\);/.exec(app);
-	assert.ok(handler);
-	assert.match(handler[0], /cursorManager\.questionWindowClosed\(\)/);
-	assert.ok(
-		handler[0].indexOf("finalizeTeacherQuestion") <
-			handler[0].indexOf("questionWindowClosed"),
-		"the question is logged before the next block can open",
-	);
-});

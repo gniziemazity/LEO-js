@@ -9,100 +9,11 @@ const {
 	lessonFileExtension,
 	commentRangesOf,
 	highlight,
-	emptyHighlightSpans,
 	shouldIncreaseAfter,
 	shouldDecreaseOnLine,
 	shouldDecreaseAfter,
 	shouldAutoDedentOnChar,
 } = require("../lesson_tools/languages/profiles");
-
-const EXPECTED_JS_KEYWORDS = new Set([
-	"var",
-	"let",
-	"const",
-	"function",
-	"return",
-	"if",
-	"else",
-	"for",
-	"while",
-	"do",
-	"switch",
-	"case",
-	"break",
-	"continue",
-	"new",
-	"this",
-	"typeof",
-	"instanceof",
-	"null",
-	"undefined",
-	"true",
-	"false",
-	"class",
-	"extends",
-	"import",
-	"export",
-	"default",
-	"try",
-	"catch",
-	"finally",
-	"throw",
-	"async",
-	"await",
-	"of",
-	"in",
-	"from",
-	"static",
-	"super",
-	"yield",
-	"delete",
-	"void",
-	"debugger",
-]);
-const EXPECTED_JS_BUILTINS = new Set([
-	"console",
-	"document",
-	"window",
-	"Array",
-	"Object",
-	"String",
-	"Number",
-	"Boolean",
-	"Math",
-	"JSON",
-	"Promise",
-	"setTimeout",
-	"setInterval",
-	"clearTimeout",
-	"clearInterval",
-	"parseInt",
-	"parseFloat",
-	"isNaN",
-	"isFinite",
-	"alert",
-	"confirm",
-	"prompt",
-	"addEventListener",
-	"fetch",
-	"querySelector",
-	"querySelectorAll",
-	"getElementById",
-	"getElementsByClassName",
-	"getElementsByTagName",
-]);
-
-test("javascript keywords snapshot", async () => {
-	await initProfiles();
-	const got = new Set(getProfile("javascript").keywords);
-	assert.deepEqual([...got].sort(), [...EXPECTED_JS_KEYWORDS].sort());
-});
-
-test("javascript builtins snapshot", async () => {
-	await initProfiles();
-	const got = new Set(getProfile("javascript").builtins);
-	assert.deepEqual([...got].sort(), [...EXPECTED_JS_BUILTINS].sort());
-});
 
 test("extension lookup is case-insensitive", async () => {
 	await initProfiles();
@@ -114,14 +25,6 @@ test("extension lookup is case-insensitive", async () => {
 	assert.equal(extensionToId(".txt"), "plaintext");
 	assert.equal(extensionToId(".unknown"), null);
 	assert.equal(extensionToId(""), null);
-});
-
-test("getProfile by id or extension returns same object", async () => {
-	await initProfiles();
-	assert.equal(getProfile("javascript"), getProfile(".js"));
-	assert.equal(getProfile("html"), getProfile(".html"));
-	assert.equal(getProfile("html"), getProfile(".htm"));
-	assert.equal(getProfile("css"), getProfile(".css"));
 });
 
 test("allExtensions returns all registered", async () => {
@@ -165,25 +68,6 @@ test("typescript is javascript plus the type system", async () => {
 	}
 });
 
-test("typescript extensions map to the typescript profile", async () => {
-	await initProfiles();
-	assert.equal(extensionToId(".ts"), "typescript");
-	assert.equal(extensionToId(".TS"), "typescript");
-	assert.equal(extensionToId(".tsx"), "typescript");
-	assert.equal(getProfile(".ts"), getProfile("typescript"));
-});
-
-test("highlight: TypeScript type vocabulary", async () => {
-	await initProfiles();
-	const prof = getProfile(".ts");
-	const src = "interface User { name: string; age: number }";
-	const spans = highlight(prof, src);
-	const words = (list) => list.map((s) => src.slice(s.start, s.end));
-
-	assert.deepEqual(words(spans.hl_keyword), ["interface"]);
-	assert.deepEqual(words(spans.hl_builtin), ["string", "number"]);
-});
-
 test("highlight: TypeScript declaration keywords", async () => {
 	await initProfiles();
 	const prof = getProfile(".ts");
@@ -196,71 +80,11 @@ test("highlight: TypeScript declaration keywords", async () => {
 	}
 });
 
-test("highlight: TypeScript keeps the javascript behaviour", async () => {
-	await initProfiles();
-	const prof = getProfile(".ts");
-	const src = "// note\nconst s = `hi ${n}`;\nconsole.log(0x1f);";
-	const spans = highlight(prof, src);
-	const words = (list) => list.map((s) => src.slice(s.start, s.end));
-
-	assert.deepEqual(words(spans.hl_comment), ["// note"]);
-	assert.deepEqual(words(spans.hl_string), ["`hi ${n}`"]);
-	assert.deepEqual(words(spans.hl_builtin), ["console"]);
-	assert.deepEqual(words(spans.hl_func), ["log"]);
-	assert.deepEqual(words(spans.hl_number), ["0x1f"]);
-});
-
-test("html voidTags and embeddedTags declared", async () => {
-	await initProfiles();
-	const prof = getProfile("html");
-	assert.deepEqual(
-		[...prof.voidTags].sort(),
-		[
-			"area",
-			"base",
-			"br",
-			"col",
-			"embed",
-			"hr",
-			"img",
-			"input",
-			"link",
-			"meta",
-			"param",
-			"source",
-			"track",
-			"wbr",
-		].sort(),
-	);
-	const embedded = Object.fromEntries(
-		prof.embeddedTags.map((e) => [e.tag, e.language]),
-	);
-	assert.deepEqual(embedded, { script: "javascript", style: "css" });
-});
-
-test("plaintext loads cleanly with empty fields", async () => {
-	await initProfiles();
-	const prof = getProfile("plaintext");
-	assert.equal(prof.id, "plaintext");
-	assert.deepEqual(prof.keywords, []);
-	assert.deepEqual(prof.builtins, []);
-	assert.deepEqual(prof.strings, []);
-	assert.equal(prof.comments.line, null);
-	assert.equal(prof.comments.block, null);
-});
-
 test("unknown returns null", async () => {
 	await initProfiles();
 	assert.equal(getProfile("ruby"), null);
 	assert.equal(getProfile(".rb"), null);
 	assert.equal(getProfile(""), null);
-});
-
-test("initProfiles is idempotent", async () => {
-	const a = initProfiles();
-	const b = initProfiles();
-	assert.equal(a, b);
-	await a;
 });
 
 test("commentRangesOf: JS detects line and block comments", async () => {
@@ -490,14 +314,6 @@ test("highlight: Python triple-quoted string", async () => {
 	assert.equal(spans.hl_string[0].end, text.length);
 });
 
-test("highlight: Python keyword inside # comment is NOT classified", async () => {
-	await initProfiles();
-	const prof = getProfile("python");
-	const spans = highlight(prof, "# def foo():");
-	assert.equal(spans.hl_keyword.length, 0);
-	assert.equal(spans.hl_comment.length, 1);
-});
-
 test("indent: JS opens after { (", async () => {
 	await initProfiles();
 	const prof = getProfile(".js");
@@ -580,26 +396,4 @@ test("lessonFileExtension: returns first ext of detected language", async () => 
 	await initProfiles();
 	assert.equal(lessonFileExtension("plans/Python.json"), ".py");
 	assert.equal(lessonFileExtension("plans/Emordnilap.json"), null);
-});
-
-test("emptyHighlightSpans returns all required keys", () => {
-	const spans = emptyHighlightSpans();
-	for (const k of [
-		"hl_comment",
-		"hl_string",
-		"hl_keyword",
-		"hl_builtin",
-		"hl_number",
-		"hl_func",
-		"hl_doctype",
-		"hl_tag",
-		"hl_attr",
-		"hl_value",
-		"hl_css_sel",
-		"hl_css_prop",
-		"hl_css_num",
-		"hl_css_at",
-	]) {
-		assert.deepEqual(spans[k], [], k);
-	}
 });

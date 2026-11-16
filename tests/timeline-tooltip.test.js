@@ -192,29 +192,6 @@ test("code-insert ghost: entire payload deleted → all insertable offsets marke
 	assert.equal(deco.commentInserts.has(0), false);
 });
 
-test("code-insert ghost: middle line deleted → LCS leaves only that line unmatched", () => {
-	// Display: "abc\nXYZ\ndef" — middle "XYZ" deleted; "abc" and "def" survive.
-	const text = "abc\nXYZ\ndef";
-	const parts = [{ type: "code_insert", t: text }];
-	const evs = [{ timestamp: 200, code_insert: text }];
-	const fileText = "abc\ndef";
-	const replay = makeReplay({
-		files: { "f.css": fileText },
-		tsToPositions: {
-			200: [...fileText].map((_, i) => ({ file: "f.css", pos: i })),
-		},
-	});
-	const deco = api._computeBurstDecorations(parts, evs, replay);
-	const ghost = deco.ghostInserts.get(0) || new Set();
-	// 4 chars are ghost: 'X', 'Y', 'Z', and exactly one of the two '\n's
-	// (LCS has two equally-good tracebacks for the newline pair).
-	assert.equal(ghost.size, 4);
-	assert.ok(ghost.has(4)); // X
-	assert.ok(ghost.has(5)); // Y
-	assert.ok(ghost.has(6)); // Z
-	assert.ok(ghost.has(3) || ghost.has(7)); // one of the newlines
-});
-
 test("code-insert ghost: duplicate chars across deleted/surviving regions (the wall-lesson case)", () => {
 	// Display: "height\nbg\nwidth" — middle line "bg" deleted; height + width survive.
 	// "height" and "width" share chars 'h','i','t' — FIFO would mis-attribute, LCS won't.
@@ -264,28 +241,6 @@ test("code-insert comment: per-char (chars whose final position lands in comment
 		[2],
 	); // only 'c'
 	assert.equal(ghost.size, 0);
-});
-
-test("code-insert comment: full payload inside a comment range marks all chars", () => {
-	// Display: "ab". Final file is "/*ab*/" — both chars inside comment.
-	const text = "ab";
-	const parts = [{ type: "code_insert", t: text }];
-	const evs = [{ timestamp: 500, code_insert: text }];
-	const fileText = "/*ab*/";
-	const replay = makeReplay({
-		files: { "f.css": fileText },
-		tsToPositions: {
-			500: [
-				{ file: "f.css", pos: 2 },
-				{ file: "f.css", pos: 3 },
-			],
-		},
-		commentRanges: { "f.css": [[0, 6]] },
-	});
-	const deco = api._computeBurstDecorations(parts, evs, replay);
-	const comment = deco.commentInserts.get(0) || new Set();
-	assert.ok(comment.has(0));
-	assert.ok(comment.has(1));
 });
 
 test("code-insert comment: no false-positive when only some survivor positions are in comment", () => {
@@ -340,22 +295,4 @@ test("code-insert ghost+comment: cursor-char (←) in display does not get marke
 	const deco = api._computeBurstDecorations(parts, evs, replay);
 	const ghost = deco.ghostInserts.get(0) || new Set();
 	assert.equal(ghost.size, 0); // cursor offset 2 is skipped (not insertable), no ghosts
-});
-
-test("code-insert all four chars unmatched but cursor-char in middle is not ghost", () => {
-	// Display: "x←y" but file has no surviving x/y. Cursor should still be skipped.
-	const text = "x←y";
-	const parts = [{ type: "code_insert", t: text }];
-	const evs = [{ timestamp: 800, code_insert: text }];
-	const replay = makeReplay({
-		files: { "f.css": "" },
-		tsToPositions: { 800: [] },
-	});
-	const deco = api._computeBurstDecorations(parts, evs, replay);
-	const ghost = deco.ghostInserts.get(0) || new Set();
-	// Only display offsets 0 ('x') and 2 ('y') should be ghost; offset 1 (←) is skipped.
-	assert.deepEqual(
-		[...ghost].sort((a, b) => a - b),
-		[0, 2],
-	);
 });

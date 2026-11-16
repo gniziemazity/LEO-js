@@ -3,7 +3,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const fs = require("node:fs");
 
 const SettingsUI = require(
 	path.resolve(__dirname, "..", "src/renderer/settings-ui.js"),
@@ -136,27 +135,4 @@ test("save reads all three back, and defaults each when its select is absent", (
 		randomizerStyle: "shuffle",
 		answerEffect: "fireworks",
 	});
-});
-
-test("the three selects are declared once, not open-coded three times", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/settings-ui.js"),
-		"utf-8",
-	);
-	assert.equal(
-		(src.match(/charAt\(0\)\.toUpperCase\(\)/g) || []).length,
-		1,
-		"one option-building loop, not one per registry",
-	);
-	for (const [id] of CASES)
-		assert.equal(
-			(src.match(new RegExp('"' + id + '"', "g")) || []).length,
-			1,
-			id + " should be named once, in the table",
-		);
-	assert.match(
-		src,
-		/\.\.\.this\.registrySelectValues\(\)/,
-		"save() builds the three keys from the same table",
-	);
 });

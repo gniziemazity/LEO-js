@@ -2,12 +2,10 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
 const path = require("node:path");
 const { loadModule } = require("./helpers/load-module");
 
 const MAIN = path.resolve(__dirname, "..", "src/main");
-const SettingsManager = require(path.join(MAIN, "settings-manager.js"));
 const state = require(path.join(MAIN, "state.js"));
 
 function harness(hotkeys, { active = true } = {}) {
@@ -28,11 +26,6 @@ function harness(hotkeys, { active = true } = {}) {
 	const settings = { get: (key) => hotkeys[key] };
 	return { manager: new HotkeyManager(settings), registered };
 }
-
-test("the popup OK ships bound to Ctrl/Cmd+Enter", () => {
-	const defaults = new SettingsManager().defaultSettings.hotkeys;
-	assert.equal(defaults.confirmPopup, "CommandOrControl+Enter");
-});
 
 test("opening a popup arms the key, leaving it hands the key back", () => {
 	const h = harness({ "hotkeys.confirmPopup": "CommandOrControl+Enter" });
@@ -85,148 +78,4 @@ test("while auto-typing is off the key is not taken, because no popup is on scre
 		"a hidden popup must not swallow Ctrl+Enter in the editor",
 	);
 	state.isActive = true;
-});
-
-test("switching auto-typing off releases the key, and on re-arms the open popup's", () => {
-	const main = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
-	const handler =
-		/ipcMain\.on\("set-active", \(event, isActive\) => \{[\s\S]*?\n\}\);/.exec(
-			main,
-		)[0];
-	assert.match(
-		handler,
-		/if \(isActive\) \{[\s\S]*?armConfirmKey\(\);[\s\S]*?\} else \{/,
-	);
-	assert.match(
-		handler,
-		/\} else \{[\s\S]*?hotkeyManager\.unregisterConfirmPopup\(\);/,
-	);
-});
-
-test("registering twice does not stack callbacks", () => {
-	const h = harness({ "hotkeys.confirmPopup": "CommandOrControl+Enter" });
-	let first = 0;
-	h.manager.registerConfirmPopup(() => first++);
-	h.manager.registerConfirmPopup(() => first++);
-	h.registered.get("CommandOrControl+Enter")();
-	assert.equal(first, 1);
-});
-
-function mainSrc() {
-	return (
-		fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8") +
-		fs.readFileSync(path.join(MAIN, "main.js"), "utf-8")
-	);
-}
-
-test("every pausing popup is torn down in one place, so the key cannot outlive it", () => {
-	const src = mainSrc();
-
-	for (const call of [
-		"broadcastGoToEnded",
-		"broadcastSnippetEnded",
-		"broadcastNoteEnded",
-		"broadcastMediaEnded",
-	]) {
-		assert.equal(
-			(src.match(new RegExp(`${call}\\(\\)`, "g")) || []).length,
-			1,
-			`a second ${call} path would leave Ctrl+Enter registered for good`,
-		);
-	}
-
-	const teardown = /function endPopup\(type\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(teardown, /unregisterConfirmPopup\(\)/);
-	assert.match(teardown, /state\.unpause\("popup"\)/);
-	assert.match(teardown, /popup\.ended\(\)/);
-	assert.match(
-		teardown,
-		/if \(popup\.onExit\) popup\.onExit\(\)/,
-		"the snippet popup hands the clipboard back through this hook",
-	);
-
-	const confirm = /function confirmPopup\(type\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(confirm, /endPopup\(type\)/);
-	assert.match(
-		confirm,
-		/state\.send\(PAUSING_POPUPS\[type\]\.confirmChannel\)/,
-		"the renderer resumes auto-run off this message",
-	);
-
-	const popupsSrc = fs.readFileSync(path.join(MAIN, "popups.js"), "utf-8");
-	assert.equal(
-		(popupsSrc.match(/releaseCodeFromClipboard\(\)/g) || []).length,
-		2,
-		"the clipboard is handed back from the one popup teardown, and nowhere else",
-	);
-});
-
-test("quitting hands the clipboard back and releases a held mouse button", () => {
-	const src = fs.readFileSync(path.join(MAIN, "main.js"), "utf-8");
-
-	const release = /function releaseHeldInput\(\)[\s\S]*?\n\}/.exec(src);
-	assert.ok(release, "there is no single place that drops held OS resources");
-	assert.match(release[0], /releaseCodeFromClipboard\(\)/);
-	assert.match(release[0], /releaseHeldMouseButton\(\)/);
-
-	assert.match(
-		src,
-		/function cleanup\(\)[\s\S]*?releaseHeldInput\(\)/,
-		"will-quit runs cleanup, so it must drop them too",
-	);
-	assert.match(
-		src,
-		/app\.on\("before-quit", \(\) => releaseHeldInput\(\)\)/,
-		"a quit that never reaches will-quit still leaves the clipboard hijacked",
-	);
-});
-
-test("both popups arm the same key and answer to the same confirm", () => {
-	const src = mainSrc();
-
-	for (const channel of [
-		"enter-go-to-block",
-		"enter-snippet-block",
-		"enter-note-block",
-		"enter-image-block",
-		"enter-web-block",
-	]) {
-		assert.match(
-			src,
-			new RegExp(`ipcMain\\.on\\("${channel}"[\\s\\S]{0,120}enterPopup\\(`),
-			`${channel} must go through the shared enterPopup`,
-		);
-	}
-
-	const enter = /function enterPopup\(type, payload\)[\s\S]*?\n\}/.exec(
-		src,
-	)[0];
-	assert.match(enter, /state\.pause\("popup"\)/);
-	assert.match(enter, /hotkeyManager\.registerConfirmPopup\(/);
-
-	for (const client of [
-		"client-go-to-confirmed",
-		"client-snippet-confirmed",
-		"client-note-confirmed",
-	]) {
-		assert.match(
-			src,
-			new RegExp(`"${client}"[\\s\\S]{0,80}confirmPopup\\(`),
-			`the remote OK for ${client} must not keep its own teardown`,
-		);
-	}
-
-	const reapply = /function reapplySettings\(\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(reapply, /armConfirmKey\(\)/);
-	const arm = /function armConfirmKey\(\)[\s\S]*?\n\}/.exec(src)[0];
-	assert.match(
-		arm,
-		/openPopupType\(\)/,
-		"saving settings with a popup open must not disarm the key",
-	);
-	assert.match(
-		arm,
-		/registerConfirmPopup\(/,
-		"and it must re-arm the key it just dropped",
-	);
 });

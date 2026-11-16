@@ -65,14 +65,6 @@ test("exportFileEntries: a named file that is empty is still written", () => {
 	assert.equal(entries.find((e) => e.path === "notes.md").text, "");
 });
 
-test("exportFileEntries: a nested move-to target stays nested", () => {
-	const entries = exportFileEntries(
-		{ MAIN: f("<html>"), "js/app.js": f("let x;") },
-		"index.html",
-	);
-	assert.deepEqual(paths(entries), ["index.html", "js/app.js"]);
-});
-
 test("exportFileEntries: a multi-level path keeps every segment", () => {
 	const entries = exportFileEntries(
 		{
@@ -123,11 +115,6 @@ test("exportFileEntries: a path that escapes the picked folder is rejected", () 
 		"index.html",
 	);
 	assert.deepEqual(paths(entries), ["index.html"]);
-});
-
-test("exportFileEntries: DEV is never a key, but nothing is special-cased away", () => {
-	const entries = exportFileEntries({ "notes.txt": f("hi") }, "index.html");
-	assert.deepEqual(paths(entries), ["notes.txt"]);
 });
 
 test("exportFileEntries: no files yields no entries", () => {

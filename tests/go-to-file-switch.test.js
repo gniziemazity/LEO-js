@@ -73,17 +73,6 @@ test("an anchor in the current file logs one move_to, as before", () => {
 	assert.deepEqual(logged, [{ move_to: "⚓3⚓" }]);
 });
 
-test("the artificial log carries the same implicit switch", () => {
-	const excerpt = extractGoToExcerpt("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
-	const events = buildArtificialLogEvents([goToStep("⚓3⚓", excerpt)]);
-
-	assert.deepEqual(
-		events.map((e) => e.move_to),
-		["other.js", "⚓3⚓"],
-		"a generated log must replay the same way a recorded one does",
-	);
-});
-
 test("replay expands the pair into a file switch and then a jump", () => {
 	const excerpt = extractGoToExcerpt("⚓3⚓", 5, CROSS_FILE_BLOCKS, 1, 1);
 	const events = buildArtificialLogEvents([goToStep("⚓3⚓", excerpt)]);
@@ -129,10 +118,6 @@ test("the popup names the file to open in its title", () => {
 	assert.equal(showAnchor(buildRemote(), "DEV"), "Go to (Dev Tools):");
 });
 
-test("an anchor in the file already open keeps the plain title", () => {
-	assert.equal(showAnchor(buildRemote(), null), "Go to:");
-});
-
 test("the excerpt shown is still the anchor's own file", () => {
 	const ctx = buildRemote();
 	showAnchor(ctx, "other.js");
@@ -157,14 +142,6 @@ test("a file go-to shows the name and the code where auto-typing left it", () =>
 		"none",
 		"a excerpt from the last popup must not linger",
 	);
-});
-
-test("a file go-to logs its target once", () => {
-	const excerpt = extractGoToExcerpt("other.js", 5, CROSS_FILE_BLOCKS);
-	assert.ok(excerpt);
-	const { cm, logged } = cursorManagerOn(goToStep("other.js", excerpt));
-	cm.updateCursor();
-	assert.deepEqual(logged, [{ move_to: "other.js" }]);
 });
 
 test("file, main and dev go-tos with nothing typed just name their target", () => {

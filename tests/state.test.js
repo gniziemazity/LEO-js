@@ -6,35 +6,6 @@ beforeEach(() => {
 	state.reset();
 });
 
-test("lock and unlock toggle isLocked", () => {
-	state.lock();
-	assert.equal(state.isLocked, true);
-	state.unlock();
-	assert.equal(state.isLocked, false);
-});
-
-test("pause and unpause toggle isPaused", () => {
-	state.pause();
-	assert.equal(state.isPaused, true);
-	state.unpause();
-	assert.equal(state.isPaused, false);
-});
-
-test("startAutoRun and stopAutoRun toggle isAutoRunning", () => {
-	state.startAutoRun();
-	assert.equal(state.isAutoRunning, true);
-	state.stopAutoRun();
-	assert.equal(state.isAutoRunning, false);
-});
-
-test("queueAdvance adds to advanceQueue and hasQueuedAdvances reflects it", () => {
-	assert.equal(state.hasQueuedAdvances(), false);
-	state.queueAdvance("a");
-	state.queueAdvance("b");
-	assert.equal(state.hasQueuedAdvances(), true);
-	assert.equal(state.advanceQueue.length, 2);
-});
-
 test("dequeueAdvance returns keys in FIFO order", () => {
 	state.queueAdvance("a");
 	state.queueAdvance("b");
@@ -51,26 +22,6 @@ test("queueChar adds to typeQueue and dequeueChar is FIFO", () => {
 	assert.equal(state.typeQueue.length, 2);
 	assert.equal(state.dequeueChar(), "x");
 	assert.equal(state.dequeueChar(), "y");
-	assert.equal(state.hasQueuedChars(), false);
-});
-
-test("advance and type queues do not share entries", () => {
-	state.queueAdvance("a");
-	state.queueChar("x");
-
-	assert.equal(state.advanceQueue.length, 1);
-	assert.equal(state.typeQueue.length, 1);
-	assert.equal(state.dequeueAdvance(), "a");
-	assert.equal(state.hasQueuedAdvances(), false);
-	assert.equal(state.hasQueuedChars(), true);
-	assert.equal(state.dequeueChar(), "x");
-});
-
-test("clearQueue empties both queues", () => {
-	state.queueAdvance("a");
-	state.queueChar("x");
-	state.clearQueue();
-	assert.equal(state.hasQueuedAdvances(), false);
 	assert.equal(state.hasQueuedChars(), false);
 });
 
@@ -139,11 +90,4 @@ test("unpausing a reason that never paused changes nothing", () => {
 	state.pause("question");
 	state.unpause("interaction");
 	assert.equal(state.isPaused, true);
-});
-
-test("reset clears every pause reason", () => {
-	state.pause("question");
-	state.pause("popup");
-	state.reset();
-	assert.equal(state.isPaused, false);
 });

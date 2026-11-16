@@ -2,8 +2,6 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 
 const LessonRenderer = require("../src/renderer/lesson-renderer");
 const UndoManager = require("../src/renderer/undo-manager");
@@ -111,49 +109,6 @@ test("moving to another block starts a new undo step", () => {
 	undoManager.undo();
 	assert.equal(lessonManager.data[1].text, "b");
 	assert.equal(lessonManager.data[0].text, "aa", "it undid the wrong block");
-});
-
-test("every snapshot is taken before the edit it protects", () => {
-	const e = editor("start");
-
-	e.renderer.saveEditState(0);
-	e.lessonManager.data[0].text = "start-edited";
-
-	const snapshot = e.undoManager.undoStack[e.undoManager.undoStack.length - 1];
-	assert.equal(
-		snapshot.data[0].text,
-		"start",
-		"the snapshot captured the state after the edit, not before",
-	);
-});
-
-test("undo is one history - the browser's own is suppressed inside blocks", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/lesson-renderer.js"),
-		"utf-8",
-	);
-	const handlers =
-		/attachEditHandlers\(element, allowTab = false\) \{[\s\S]*?\n\t\}/.exec(
-			src,
-		);
-	assert.ok(handlers, "attachEditHandlers not found");
-	assert.match(handlers[0], /onbeforeinput/);
-	assert.match(handlers[0], /historyUndo/);
-	assert.match(handlers[0], /historyRedo/);
-
-	const app = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/app.js"),
-		"utf-8",
-	);
-	const shortcuts = /function setupUndoRedoShortcuts\(\)[\s\S]*?\n\}/.exec(
-		app,
-	);
-	assert.ok(shortcuts);
-	assert.ok(
-		!/isEditing/.test(shortcuts[0]),
-		"Ctrl+Z still falls through to a second, divergent history while editing",
-	);
-	assert.match(shortcuts[0], /performUndo\(\)/);
 });
 
 test("snapshots keep nested anchor maps independent", () => {

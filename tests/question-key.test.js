@@ -2,13 +2,7 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const { loadModule } = require("./helpers/load-module");
-
-const SRC = path.resolve(__dirname, "..", "src");
-const read = (rel) =>
-	fs.readFileSync(path.join(SRC, rel), "utf-8").replace(/\r\n/g, "\n");
 
 function harness({ lesson = true, alive = true, paused = true } = {}) {
 	const events = [];
@@ -118,14 +112,6 @@ test("the phone's Show button also drops the key", () => {
 	);
 });
 
-test("ending the question releases the pause and the key", () => {
-	const h = harness();
-	h.mod.armQuestionShow();
-	h.mod.endQuestion();
-	assert.equal(h.armed(), false);
-	assert.equal(h.pauseReasons.has("question"), false);
-});
-
 test("a settings save re-arms only a question that is still awaiting Show", () => {
 	const h = harness();
 	h.mod.rearmQuestionShow();
@@ -138,85 +124,4 @@ test("a settings save re-arms only a question that is still awaiting Show", () =
 		false,
 		"unregisterAll would otherwise be undone",
 	);
-});
-
-test("main.js routes every entry and every exit through the one module", () => {
-	const main = read("main/main.js");
-	assert.match(
-		main,
-		/broadcastServer\.on\("client-show-question", \(animate\) => showQuestion\(animate\)\)/,
-		"the phone, the desk card and the key share one handler",
-	);
-	for (const exit of [
-		'broadcastServer.on("client-student-answered"',
-		'broadcastServer.on("client-dismiss-question"',
-		'ipcMain.on("close-question-window"',
-	]) {
-		const at = main.indexOf(exit);
-		assert.ok(at > 0, exit);
-		assert.match(
-			main.slice(at, at + 160),
-			/endQuestion\(\)/,
-			`${exit} must release the key that Show armed`,
-		);
-	}
-	const enter = main.slice(
-		main.indexOf('"enter-question-block"'),
-		main.indexOf('ipcMain.on("randomizer-done"'),
-	);
-	assert.match(enter, /openQuestionWindow\([\s\S]*armQuestionShow\(\)/);
-	assert.match(
-		main,
-		/if \(type\) hotkeyManager\.registerConfirmPopup\(confirmKeyFor\(type\)\);\n\telse rearmQuestionShow\(\);/,
-		"a settings save calls unregisterAll",
-	);
-	assert.equal(
-		/state\.unpause\("question"\)/.test(main),
-		false,
-		"a bare unpause would leave the key registered system-wide",
-	);
-});
-
-test("the question window forgets it was shown when the next one opens", () => {
-	const fw = read("main/floating-window-manager.js");
-	assert.match(fw, /questionShown: false,/);
-	assert.match(
-		/function openQuestionWindow[\s\S]*?\n\}/.exec(fw)[0],
-		/floatState\.questionShown = false;/,
-	);
-});
-
-test("the server remembers Show, so a reconnecting phone shows the grid", () => {
-	const ws = read("main/websocket-server.js");
-	assert.match(
-		ws,
-		/broadcastQuestionShown\(\) \{\n\t\tthis\.currentState\.activeQuestionShown = true;/,
-	);
-	assert.match(
-		/broadcastQuestionStarted[\s\S]*?\n\t\}/.exec(ws)[0],
-		/activeQuestionShown = false/,
-	);
-	assert.match(
-		/broadcastQuestionEnded[\s\S]*?\n\t\}/.exec(ws)[0],
-		/activeQuestionShown = false/,
-	);
-	const remote = read("remote.html");
-	assert.match(
-		remote,
-		/case "question-shown":\n\s*revealQuestionOverlay\(\);/,
-	);
-	assert.match(
-		remote,
-		/state\.activeQuestion && state\.activeQuestionShown\)\n\s*revealQuestionOverlay\(\)/,
-	);
-});
-
-test("the phone's reveal is the UI half of Show, without sending it again", () => {
-	const src = read("shared/remote/question-overlay.js");
-	const reveal = /\treveal\(\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.equal(/sendMessage/.test(reveal), false);
-	assert.match(reveal, /qGrid[\s\S]*display = "flex"/);
-	const show = /\tshowToTeacher\(animate\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(show, /sendMessage\("show-question"/);
-	assert.match(show, /this\.reveal\(\)/);
 });

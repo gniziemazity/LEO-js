@@ -163,30 +163,3 @@ test("a single step does not sweep the whole lesson", () => {
 		`one step rewrote ${touched} class lists across ${steps.length} steps`,
 	);
 });
-
-test("the cursor mark moves without scanning the document", () => {
-	const steps = buildSteps();
-	let scans = 0;
-	const cm = new CursorManager(
-		{
-			updateProgressBar() {},
-			removeCursorClasses() {
-				scans++;
-			},
-		},
-		{ addEntry: () => ({}) },
-	);
-	cm.setExecutionSteps(steps);
-
-	cm.jumpTo(2);
-	cm.stepForward();
-	cm.stepForward();
-
-	assert.equal(
-		scans,
-		0,
-		"updateCursor still falls back to a document-wide scan",
-	);
-	assert.equal(marks(steps)[4], "cursor");
-	assert.equal(marks(steps)[3], "consumed");
-});

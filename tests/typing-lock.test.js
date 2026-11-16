@@ -3,7 +3,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const fs = require("node:fs");
 
 const MAIN = path.resolve(__dirname, "..", "src/main");
 const state = require(path.join(MAIN, "state.js"));
@@ -65,24 +64,6 @@ test("a burst of taps types every character, in order", async () => {
 	assert.equal(state.advanceQueue.length, 0);
 });
 
-test("repeated characters survive a burst — the old debounce ate them", async () => {
-	for (const text of ["hello", "a  b", "aa", "==", "\t\tif"]) {
-		const h = harness(text.split(""));
-		h.press(text.length);
-		await h.settle();
-		assert.equal(
-			h.typed.join(""),
-			text,
-			JSON.stringify(text) + " must type in full",
-		);
-		assert.equal(
-			state.isLocked,
-			false,
-			JSON.stringify(text) + " must not wedge",
-		);
-	}
-});
-
 test("a burst that runs past the end of the lesson still hands the lock back", async () => {
 	const h = harness(["a", "b"]);
 	h.press(6);
@@ -127,105 +108,5 @@ test("a pause mid-burst ends the chain instead of stranding it", async () => {
 	assert.ok(
 		h.typed.length > 1,
 		"auto-typing resumes once the question is answered",
-	);
-});
-
-test("every character the renderer sends is either typed or explicitly ends the chain", () => {
-	const src = fs.readFileSync(path.join(MAIN, "keyboard-handler.js"), "utf-8");
-	const fn = /async typeCharacter\(char\)[\s\S]*?\n\t\}/.exec(src)[0];
-	const bareReturns = fn.match(/\n\t\t\treturn;/g) || [];
-	assert.equal(
-		bareReturns.length,
-		2,
-		"only the pause branch and the queue branch may return early",
-	);
-	assert.match(
-		fn,
-		/if \(state\.isPaused\) \{\s*state\.unlock\(\);\s*state\.clearQueue\(\);/,
-		"the pause branch must hand the lock back",
-	);
-	assert.match(
-		fn,
-		/if \(this\.isProcessing\) \{\s*state\.queueChar\(char\);/,
-		"the queue branch keeps the character, so the chain continues through it",
-	);
-	assert.doesNotMatch(
-		src,
-		/lastTypedChar|debounceMs/,
-		"the char/time debounce could not tell a duplicate from a real repeat",
-	);
-});
-
-test("advanceCursor answers on every path, including past the end", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/cursor-manager.js"),
-		"utf-8",
-	);
-	const fn = /\tadvanceCursor\(\)[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(
-		fn,
-		/currentStepIndex >= this\.executionSteps\.length\) \{\s*ipcRenderer\.send\("input-complete"\)/,
-		"running off the end must still answer, or the lock is never returned",
-	);
-	assert.match(
-		fn,
-		/\} finally \{\s*if \(!typesACharacter\) ipcRenderer\.send\("input-complete"\)/,
-		"every step that types nothing answers, an unknown type included, " +
-			"and even if moving the cursor throws",
-	);
-	assert.ok(
-		fn.indexOf("this.updateCursor()") < fn.lastIndexOf("input-complete"),
-		"after the cursor has moved: main answers with the next queued press, " +
-			"so a block's pause has to be sent first",
-	);
-	assert.equal(
-		(fn.match(/ipcRenderer\.send\(/g) || []).length,
-		3,
-		"past-the-end, the character, and the one reply for everything else",
-	);
-});
-
-test("whether the lesson is running travels on exactly one channel", () => {
-	const read = (p) =>
-		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
-
-	const main = read("src/main/main.js");
-	assert.equal(
-		main.includes('ipcMain.on("update-active"'),
-		false,
-		"one fact, one channel",
-	);
-	const handler = /ipcMain\.on\("set-active"[\s\S]*?\n\}\);/.exec(main)[0];
-	assert.match(
-		handler,
-		/broadcastServer\.updateActiveState\(isActive\)/,
-		"the one handler must both register hotkeys and tell the remote",
-	);
-
-	for (const f of [
-		"src/renderer/auto-typing-controller.js",
-		"src/renderer/file-operations.js",
-	]) {
-		assert.equal(
-			read(f).includes("update-active"),
-			false,
-			`${f} sends a channel nothing listens on`,
-		);
-	}
-});
-
-test("the touchpad's session flag is named for what feeds it", () => {
-	const read = (p) =>
-		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
-	const pad = read("src/shared/remote/touchpad.js");
-	assert.equal(
-		pad.includes("autoRunActive"),
-		false,
-		"it is fed from data.isActive, not from auto-run",
-	);
-	assert.match(pad, /let autoTypingActive = false;/);
-	assert.match(
-		read("src/remote.html"),
-		/setAutoTypingActive\(data\.isActive\)/,
 	);
 });

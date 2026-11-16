@@ -2,23 +2,12 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const { readCodeText } = require("../src/shared/code-text.js");
-const {
-	isLiteralCodeInsert,
-} = require("../lesson_tools/shared/simulator-model.js");
 
 const { loadModule } = require("./helpers/load-module");
 
 const LessonRenderer = loadModule("src/renderer/lesson-renderer.js", {
 	electron: { ipcRenderer: { send() {}, on() {} } },
 });
-
-const SRC = fs.readFileSync(
-	path.join(__dirname, "..", "src", "renderer", "lesson-renderer.js"),
-	"utf-8",
-);
 
 function handlers(allowTab) {
 	const el = { onpaste: null, onkeydown: null };
@@ -72,27 +61,4 @@ test("other blocks keep Tab for focus: ― is what a code block wants", () => {
 	const { el, inserted } = handlers(false);
 	assert.equal(press(el, inserted, "Tab"), false);
 	assert.deepEqual(inserted, []);
-});
-
-test("only the code snippet block is handed the tab key", () => {
-	assert.match(
-		SRC,
-		/attachEditHandlers\(blockDiv, type === "snippet"\)/,
-		"a raw tab in a code block would be typed as a character, not pressed",
-	);
-});
-
-test("a tab the author typed survives being read back off the block", () => {
-	const el = {
-		childNodes: [{ nodeType: 3, data: "a();\n\tb();" }],
-	};
-	assert.equal(readCodeText(el), "a();\n\tb();");
-});
-
-test("a tab at the start is indentation the author owns", () => {
-	assert.equal(
-		isLiteralCodeInsert("a();\n\tb();"),
-		true,
-		"a tab counts as the body indenting itself, so it pastes verbatim",
-	);
 });

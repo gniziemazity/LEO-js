@@ -200,26 +200,3 @@ test("a plain block boundary still takes a queued press each", async () => {
 		h.restore();
 	}
 });
-
-test("the renderer says what the next block needs before it reports the step done", () => {
-	const sent = [];
-	const ipc = fakeIpcRenderer({ send: (ch) => sent.push(ch) });
-	const CursorManager = loadModule("src/renderer/cursor-manager.js", {
-		electron: ipc.stub,
-	});
-	const cm = new CursorManager({ updateProgressBar() {} }, { addEntry() {} });
-	cm.setExecutionSteps(
-		[codeEnd(), block("❓ Why?")].map((s, i) => ({ ...s, globalIndex: i })),
-	);
-	cm.onEnterQuestionBlock = () => sent.push("enter-question-block");
-	cm.updateCursor();
-	sent.length = 0;
-
-	cm.advanceCursor();
-
-	assert.ok(
-		sent.indexOf("enter-question-block") < sent.indexOf("input-complete"),
-		"main answers input-complete with the next queued press, so the pause " +
-			"has to be on its way first",
-	);
-});

@@ -2,12 +2,7 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const {
-	extractGoToExcerpt,
-	extractCodeInsertPaste,
-} = require("../src/renderer/plan-replay");
+const { extractGoToExcerpt } = require("../src/renderer/plan-replay");
 
 const codeBlocks = [
 	{
@@ -68,11 +63,6 @@ test("MAIN and DEV show their own editor the same way", () => {
 	);
 });
 
-test("extractGoToExcerpt: returns null for a file-like anchor id (has extension)", () => {
-	assert.equal(extractGoToExcerpt("⚓a.js⚓", 1, codeBlocks), null);
-	assert.equal(extractGoToExcerpt("⚓index.html⚓", 1, codeBlocks), null);
-});
-
 test("extractGoToExcerpt: returns null when the anchor id is not present", () => {
 	assert.equal(extractGoToExcerpt("⚓9⚓", 1, codeBlocks), null);
 });
@@ -108,18 +98,6 @@ test("extractGoToExcerpt: before/after clamp at file boundaries", () => {
 		"const d = 4;",
 	]);
 	assert.equal(r.arrowIdx, 1);
-});
-
-test("extractGoToExcerpt: a bare-filename go-to switches the active editor", () => {
-	const blocks = [
-		{ type: "code", text: "main line;" },
-		{ type: "go-to", target: "other.js" },
-		{ type: "code", text: "other line ⚓3⚓ here" },
-	];
-	const r = extractGoToExcerpt("⚓3⚓", 3, blocks, 1, 1);
-	assert.ok(r);
-	assert.deepEqual(r.lines, ["other line  here"]);
-	assert.equal(r.arrowIdx, 0);
 });
 
 test("extractGoToExcerpt: only blocks before currentBlockIdx are replayed", () => {

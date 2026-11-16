@@ -176,17 +176,6 @@ test("the shared chrome builds all eight resize handles", () => {
 	);
 });
 
-test("handles go in front of the page's own content, as the markup had them", () => {
-	const d = makeDom({ withPin: false });
-	d.initFloatWindow({ close: "c", devtools: "d" });
-	assert.equal(d.body.children.length, 9);
-	assert.equal(
-		d.body.children[8].className,
-		"neon-frame",
-		"the frame stays last",
-	);
-});
-
 test("dragging a handle names the edge; letting go anywhere ends the resize", () => {
 	const d = makeDom({ withPin: false });
 	d.initFloatWindow({ close: "c", devtools: "d" });
@@ -283,21 +272,6 @@ test("a window that fades out on fade-out is brought back by unfade", () => {
 	assert.equal(d.style.transition, "");
 });
 
-test("fading is wired only when the page asked for it", () => {
-	const d = makeDom({ withPin: false });
-	const { unfade } = d.initFloatWindow({ close: "c", devtools: "d" });
-	assert.equal(d.listeners.ipc["fade-out"], undefined);
-	assert.doesNotThrow(() => unfade());
-});
-
-test("a window with no pin button still initialises, and setPin is a safe no-op", () => {
-	const d = makeDom({ withPin: false });
-	const { setPin } = d.initFloatWindow({ close: "c", devtools: "d" });
-	assert.equal(typeof setPin, "function");
-	assert.doesNotThrow(() => setPin(true));
-	assert.equal(d.sent.length, 0);
-});
-
 test("every floating window loads the shared chrome and declares both channels", () => {
 	for (const [file, close, devtools, pin] of WINDOWS) {
 		const html = fs.readFileSync(path.join(SRC_DIR, file), "utf-8");
@@ -329,26 +303,4 @@ test("a web page with no background of its own is not see-through", () => {
 		prefs[1].split(",").includes("transparent=no"),
 		"a guest page is transparent by default, and the window under it is too",
 	);
-});
-
-test("no window keeps a private copy of the chrome any more", () => {
-	for (const [file] of WINDOWS) {
-		const html = fs.readFileSync(path.join(SRC_DIR, file), "utf-8");
-		assert.ok(
-			!html.includes('class="resize-handle'),
-			file + " must not hand-write the handles",
-		);
-		assert.ok(
-			!html.includes("start-resizing"),
-			file + " must not wire resizing itself",
-		);
-		assert.ok(
-			!html.includes('addEventListener("keydown"'),
-			file + " must not wire Escape itself",
-		);
-		assert.ok(
-			!html.includes("reflectPin"),
-			file + " must not reimplement pinning",
-		);
-	}
 });

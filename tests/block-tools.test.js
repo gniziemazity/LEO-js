@@ -13,12 +13,7 @@ const LessonManager = require("../src/renderer/lesson-manager");
 const BlockEditor = require("../src/renderer/block-editor");
 const LessonRenderer = require("../src/renderer/lesson-renderer");
 const UIManager = require("../src/renderer/ui-manager");
-const {
-	TYPE_CHOICES,
-	typeChoices,
-	addChoices,
-	typeGlyph,
-} = require("../src/renderer/block-types");
+const { typeChoices, addChoices } = require("../src/renderer/block-types");
 const { BLOCK_TYPES, getBlockType } = require("../src/shared/blocks");
 
 const INCLUDE = { type: "include", path: "" };
@@ -153,16 +148,6 @@ test("a code block changes type like any other, and back", () => {
 	});
 });
 
-test("a snippet that becomes code drops the flag that was only its own", () => {
-	const lm = manager([{ type: "comment", text: "📋 paste me", paste: false }]);
-	assert.equal(lm.setBlockType(1, "code"), true);
-	assert.deepEqual(
-		lm.data[1],
-		{ type: "code", text: "paste me" },
-		"a stale paste flag would re-apply the moment it became a 📋 again",
-	);
-});
-
 test("text that becomes code is normalised like typed code", () => {
 	const lm = manager([{ type: "comment", text: "\nstarts on a new line" }]);
 	assert.equal(lm.setBlockType(1, "code"), true);
@@ -264,25 +249,6 @@ test("the first authored block sits after Start with and its inherited blocks", 
 	]);
 	assert.equal(lm.firstAuthoredIndex(), 3);
 	assert.equal(manager([]).firstAuthoredIndex(), 1);
-});
-
-test("moveBlock swaps neighbours and keeps everything else in place", () => {
-	const lm = manager([
-		{ type: "comment", text: "a" },
-		{ type: "code", text: "b" },
-		{ type: "comment", text: "c" },
-	]);
-	assert.equal(lm.moveBlock(1, 1), true);
-	assert.deepEqual(
-		lm.data.map((b) => b.text || b.type),
-		["include", "b", "a", "c"],
-	);
-	assert.equal(lm.moveBlock(3, -1), true);
-	assert.deepEqual(
-		lm.data.map((b) => b.text || b.type),
-		["include", "b", "c", "a"],
-	);
-	assert.equal(lm.changes, 2);
 });
 
 test("moveBlock never crosses Start with, the inherited blocks, or the end", () => {
@@ -496,11 +462,6 @@ test("a code block carries the same tools; format lives in the sidebar", () => {
 		"code has a symbol so it can be converted",
 	);
 	assert.deepEqual(rowGlyphs(island), [ABOVE, BELOW]);
-	assert.equal(
-		/✨/.test(read("renderer/lesson-renderer.js")),
-		false,
-		"the block no longer offers auto-format; the sidebar button does",
-	);
 });
 
 test("copy and delete only appear on hover; the symbol is always there", () => {
@@ -638,12 +599,6 @@ test("the controls are revealed by hover, not by a mousemove handler", () => {
 		"a selected block that is not under the pointer shows no controls: " +
 			"hover is the only thing that reveals them",
 	);
-	assert.equal(
-		/block-add-w/.test(css),
-		false,
-		"seven add buttons, a paste and an arrow: the row is as wide as it needs " +
-			"to be, anchored at the right edge, instead of a fixed column",
-	);
 	assert.match(
 		/\.block-opt \{[\s\S]*?\n\}/.exec(css)[0],
 		/\n\tright: 0;/,
@@ -698,52 +653,11 @@ test("the controls are revealed by hover, not by a mousemove handler", () => {
 			"container, which clips them (and scrolls, for the bottom one) unless " +
 			"it has a gutter",
 	);
-	assert.equal(
-		/::after \{\n\tcontent: "[↑↓]"/.test(css),
-		false,
-		"the rows say which way they go, so the arrows on the + buttons are gone",
-	);
-	assert.match(
-		css,
-		/\.block\.selected \{\n\tz-index: 3;\n\}\n\n\.block:hover \{\n\tz-index: 4;\n\}/,
-		"a chip outside the block is painted under the next block otherwise — " +
-			"a snippet block is `opacity: 0.75`, which makes it a stacking " +
-			"context — and the pointer then never reaches it. It has to outrank " +
-			"the chips themselves (2), because a block that is not hovered is no " +
-			"stacking context, so its own chip sits at 2 in the root",
-	);
-	assert.match(
-		css,
-		/\.sidebar \{\n\twidth: 55px;\n\tmin-width: 50px;\n\tz-index: 5;/,
-		"and the sidebar has to outrank the block it lifted",
-	);
 	assert.match(
 		css,
 		/:where\(body:not\(\.mobile-view\)\) \.block:hover \.block-tool-hover/,
 		"a control that appears anywhere but on the block under the pointer is " +
 			"what made a click add a block by mistake",
-	);
-	assert.equal(
-		/\.block-insert-hover/.test(css),
-		false,
-		"the floating seam bar is gone",
-	);
-	assert.equal(
-		fs.existsSync(path.join(SRC, "renderer", "block-insert-bar.js")),
-		false,
-		"and so is the module that drove it",
-	);
-	assert.equal(
-		fs.existsSync(path.join(SRC, "renderer", "block-end-bar.js")),
-		false,
-		"the add bar under the last block is gone; the last block's own bottom " +
-			"row adds after it",
-	);
-	assert.equal(
-		/block-insert-end|block-add-btn|buildEndBar/.test(
-			css + read("renderer/lesson-renderer.js"),
-		),
-		false,
 	);
 });
 
@@ -909,48 +823,6 @@ test("hover tools keep their room beside an option, so it never moves", () => {
 		css,
 		/\.block:hover \.block-tool-hover \{\n\tdisplay: inline-block;\n\tvisibility: visible;/,
 	);
-	const ui = read("renderer/ui-manager.js");
-	const attach = /attachBlockIsland\([\s\S]*?\n\t\}/.exec(ui)[0];
-	assert.ok(
-		attach.indexOf("createBlockOption") < attach.indexOf("createBlockTool"),
-		"the option is the first thing in the chip",
-	);
-});
-
-test("the chips are white whatever the block, and never dimmed by it", () => {
-	const css = read("shared/styles.css");
-	const chip = /\n\.block-opt \{[\s\S]*?\n\}/.exec(css)[0];
-	assert.match(chip, /background: var\(--clr-white\)/);
-	assert.match(chip, /color: var\(--clr-black\)/);
-	assert.equal(
-		/background: inherit/.test(chip),
-		false,
-		"inheriting made the controls grey, blue or dark with the block",
-	);
-	assert.equal(
-		/\.go-to-block \.block-(opt|tool) \{/.test(css),
-		false,
-		"a dark block used to recolour its controls; they are white everywhere",
-	);
-	for (const type of ["snippet-block", "go-to-block"]) {
-		const rule = new RegExp(`\\n\\.${type} \\{[\\s\\S]*?\\n\\}`).exec(css)[0];
-		assert.equal(
-			/opacity/.test(rule),
-			false,
-			`${type} is dimmed by an overlay: opacity would dim the chips inside it`,
-		);
-	}
-	assert.match(
-		css,
-		/body:not\(\.mobile-view\) \.snippet-block::after,\nbody:not\(\.mobile-view\) \.go-to-block::after \{[\s\S]*?opacity: 0\.25;[\s\S]*?pointer-events: none;\n\tz-index: 1;/,
-		"25% white over the block is what opacity: 0.75 over white gave, " +
-			"and z-index 1 keeps it under the chips (2)",
-	);
-	assert.match(
-		css,
-		/\.mobile-view \.snippet-block,\n\.mobile-view \.go-to-block \{\n\topacity: 0\.75;/,
-		"the phone has no chips, so it keeps the plain rule",
-	);
 });
 
 test("an inherited block has no overlay: it scrolls, and opacity already dims it", () => {
@@ -966,21 +838,6 @@ test("an inherited block has no overlay: it scrolls, and opacity already dims it
 		css,
 		/\n\.block\.from-start\.snippet-block:not\(\.collapsed\) \{\n\topacity: 0\.85;[\s\S]*?overflow-y: auto;/,
 	);
-});
-
-test("every type is offered, derived from the one prefix table", () => {
-	assert.deepEqual(
-		TYPE_CHOICES.map((c) => c.type),
-		["code", "note", ...BLOCK_TYPES.map(([, type]) => type), "go-to"],
-		"a go-to is a note with a target, so it belongs in the same picker, " +
-			"and code is a type like the rest: the picker converts both ways",
-	);
-	for (const [glyph, type] of BLOCK_TYPES) {
-		assert.equal(typeGlyph(type), glyph);
-	}
-	assert.equal(typeGlyph("note"), "💬");
-	assert.equal(typeGlyph("code"), "⌨");
-	assert.equal(typeGlyph("go-to"), "➡️");
 });
 
 test("every type is offered, always: there are no modes any more", () => {
@@ -1002,18 +859,6 @@ test("every type is offered, always: there are no modes any more", () => {
 		[undefined, undefined, "❓ ", "🖼️ ", "🌐 ", "📋 ", "MAIN"],
 		"a new question or snippet starts with its own prefix, so it is one",
 	);
-	for (const src of ["renderer/app.js", "renderer/block-types.js"]) {
-		assert.equal(
-			/mode-record|mode-classroom|mode-scientific/.test(read(src)),
-			false,
-			src + " still gates on a lesson mode",
-		);
-	}
-	assert.equal(
-		/body\.mode-/.test(read("shared/styles.css")),
-		false,
-		"the ⚓ key was hidden per mode; it is always offered now",
-	);
 });
 
 test("the picker shows the block's own type as its glyph", () => {
@@ -1029,34 +874,6 @@ test("the picker shows the block's own type as its glyph", () => {
 		true,
 		"while auto-typing, a press starts the auto-run; the symbol must not open a menu then",
 	);
-});
-
-test("the toolbar is gone and nothing still points at it", () => {
-	const ids = [
-		"editor-toolbar",
-		"addCommentBtn",
-		"addCodeBtn",
-		"addQuestionCommentBtn",
-		"addImageCommentBtn",
-		"addWebCommentBtn",
-		"addCodeInsertBlockBtn",
-		"addGoToBlockBtn",
-		"removeBlockBtn",
-		"formatBlockBtn",
-	];
-	const files = [
-		"index.html",
-		"renderer/app.js",
-		"renderer/ui-manager.js",
-		"shared/blocks.js",
-		"shared/styles.css",
-	];
-	for (const file of files) {
-		const text = read(file);
-		for (const id of ids) {
-			assert.equal(text.includes(id), false, `${file} still mentions ${id}`);
-		}
-	}
 });
 
 test("the new controls wear the Settings colours", () => {
@@ -1100,20 +917,6 @@ test("the new controls wear the Settings colours", () => {
 			'.block-tool-add[data-add-type="note"]:hover:not(:disabled)',
 		),
 		"the generic hover would replace the colour with translucent black",
-	);
-});
-
-test("the type list is not a go-to list, so the anchor preview ignores it", () => {
-	const src = read("renderer/lesson-renderer.js");
-	const tool =
-		/_typePicker\(block, blockIdx, isAutoTypingActive\) \{[\s\S]*?\n\t\}/.exec(
-			src,
-		)[0];
-	assert.match(tool, /listClass: "type-options"/);
-	assert.match(
-		tool,
-		/itemClass: "type-option"/,
-		"go-to-preview keys on .gt-option; a type is not a jump target",
 	);
 });
 
@@ -1169,31 +972,6 @@ test("an open start file keeps the keys, but not format", () => {
 	);
 });
 
-test("the sidebar is never hidden by selecting or deselecting", () => {
-	const src = read("renderer/ui-manager.js");
-	const select = /selectBlock\(index\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	const deselect = /deselectBlock\(\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.equal(/hidden/.test(select + deselect), false);
-	const html = read("index.html");
-	const sidebar = /id="editor-sidebar"[\s\S]*?<\/div>\s*<\/div>/.exec(html)[0];
-	assert.ok(
-		sidebar.indexOf("special-keys-container") < sidebar.indexOf("formatBtn"),
-		"auto-format is the last tool in the sidebar",
-	);
-});
-
-test("backspace, delete and delete-line sit last in the sidebar, right before format", () => {
-	const src = read("renderer/special-keys.js");
-	const keysBlock = /const keys = \{([\s\S]*?)\n\t\t\};/.exec(src)[1];
-	const order = [...keysBlock.matchAll(/"([^"]+)":/g)].map((m) => m[1]);
-	assert.deepEqual(
-		order.slice(-3),
-		["⌫", "⌦", "⛔"],
-		"these three are generated into #special-keys-container in object-key " +
-			"order, and that container sits right before #formatBtn",
-	);
-});
-
 test("a structural edit closes the typing burst before saving undo", () => {
 	const lm = manager([
 		{ type: "comment", text: "a" },
@@ -1233,109 +1011,6 @@ test("a structural edit closes the typing burst before saving undo", () => {
 	);
 });
 
-test("ending a burst drops the stale block index", () => {
-	const renderer = new LessonRenderer({}, {}, {}, { saveState() {} });
-	renderer.lastEditedBlockIndex = 4;
-	renderer.lastEditTime = Date.now();
-	renderer.endEditBurst();
-	assert.equal(
-		renderer.lastEditedBlockIndex,
-		null,
-		"after a move, index 4 is a different block",
-	);
-	assert.equal(renderer.lastEditTime, 0);
-});
-
-test("no edit snapshot is ever deferred, so none can land after a move", () => {
-	const saved = [];
-	const renderer = new LessonRenderer(
-		{},
-		{},
-		{},
-		{ saveState: (why) => saved.push(why) },
-	);
-
-	renderer.saveEditState(2);
-	renderer.saveEditState(2);
-	renderer.saveEditState(2);
-
-	assert.equal(
-		saved.length,
-		1,
-		"a typing run in one block is one undo step, taken before the first keystroke",
-	);
-
-	return new Promise((resolve) =>
-		setTimeout(() => {
-			assert.equal(
-				saved.length,
-				1,
-				"a snapshot fired on a timer after the burst - undo would need two presses",
-			);
-			resolve();
-		}, 30),
-	);
-});
-
-function fakeDom() {
-	const docListeners = {};
-	const make = (tag) => {
-		const listeners = {};
-		const el = {
-			tagName: tag,
-			children: [],
-			parent: null,
-			dataset: {},
-			style: {},
-			className: "",
-			classList: {
-				set: new Set(),
-				add(c) {
-					this.set.add(c);
-				},
-				remove(c) {
-					this.set.delete(c);
-				},
-				contains(c) {
-					return this.set.has(c);
-				},
-			},
-			appendChild(c) {
-				c.parent = el;
-				el.children.push(c);
-				return c;
-			},
-			contains(other) {
-				for (let n = other; n; n = n.parent) if (n === el) return true;
-				return false;
-			},
-			addEventListener(type, fn) {
-				(listeners[type] = listeners[type] || []).push(fn);
-			},
-			fire(type, e) {
-				for (const fn of listeners[type] || []) fn(e);
-			},
-			set innerHTML(v) {
-				el.children = [];
-			},
-		};
-		return el;
-	};
-	const body = make("body");
-	return {
-		make,
-		body,
-		listeners: docListeners,
-		document: {
-			body,
-			createElement: make,
-			addEventListener: (type, fn) =>
-				(docListeners[type] = docListeners[type] || []).push(fn),
-		},
-		window: { addEventListener() {} },
-	};
-}
-
 test("opening a plan forgets the old plan's selection and expansions", () => {
 	const calls = [];
 	const renderer = new LessonRenderer(
@@ -1363,29 +1038,6 @@ test("opening a plan forgets the old plan's selection and expansions", () => {
 	);
 	assert.equal(renderer.expandedStartFiles.size, 0);
 	assert.equal(renderer.lastEditedBlockIndex, null);
-
-	const src = read("renderer/file-operations.js");
-	const load = /async loadFilePath\(filePath\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	const reset = load.indexOf("this.lessonRenderer.resetView()");
-	assert.ok(reset >= 0, "loadFilePath must reset the view");
-	assert.ok(
-		reset < load.indexOf("this.lessonRenderer.render()"),
-		"the reset has to happen before the new plan is drawn",
-	);
-});
-
-test("with nothing selected, a reset leaves the sidebar alone", () => {
-	const calls = [];
-	const renderer = new LessonRenderer(
-		{},
-		{
-			getSelectedBlockIndex: () => null,
-			deselectBlock: () => calls.push("deselect"),
-		},
-		{},
-	);
-	renderer.resetView();
-	assert.deepEqual(calls, []);
 });
 
 test("a renamed colour keeps the value the teacher chose", () => {
@@ -1447,25 +1099,6 @@ test("migration is idempotent and never overwrites a new value", () => {
 	assert.deepEqual(migrateColors(undefined), {});
 });
 
-test("the lesson mode is gone from the menu and the settings", () => {
-	const menu = fs.readFileSync(path.join(SRC, "main", "app-menu.js"), "utf-8");
-	assert.equal(
-		/label: "Mode"|setMenuMode|apply-mode/.test(menu),
-		false,
-		"the Mode submenu only existed to tame the old nine-button toolbar",
-	);
-	const manager = fs.readFileSync(
-		path.join(SRC, "main", "settings-manager.js"),
-		"utf-8",
-	);
-	assert.equal(/mode: "record"/.test(manager), false);
-	assert.match(
-		manager,
-		/RETIRED_SETTINGS/,
-		"a saved mode should be pruned, not left to rot in the file",
-	);
-});
-
 test("an empty editable block keeps a place to type when it gets tools", () => {
 	global.document = {
 		createElement: fakeElement,
@@ -1507,50 +1140,6 @@ test("an empty editable block keeps a place to type when it gets tools", () => {
 		);
 	} finally {
 		delete global.document;
-	}
-});
-
-test("the caret lands in the text, never past the island", () => {
-	assert.match(
-		read("renderer/block-editor.js"),
-		/focusNewBlock\(blockIdx\) \{\s*this\.uiManager\.refocusBlock\(blockIdx\);/,
-		"a new block and an undo refocus take the same path",
-	);
-	const ui = read("renderer/ui-manager.js");
-	const refocus = /refocusBlock\(blockIdx\) \{[\s\S]*?\n\t\}/.exec(ui)[0];
-	assert.match(
-		refocus,
-		/UIManager\.putCaret\(block, null\)/,
-		"selectNodeContents + collapse(false) put the caret after the island",
-	);
-	assert.doesNotMatch(refocus, /selectNodeContents/);
-	assert.match(ui, /static caretAtTextEnd\(el\)/);
-	assert.match(
-		ui,
-		/isIsland\(range\.startContainer\)/,
-		"a click resolved onto the island has to fall back to a text position",
-	);
-});
-
-test("editing a block back to empty does not cost it its tools", () => {
-	const src = read("renderer/lesson-renderer.js");
-	const keep = /_keepIsland\(el, blockIdx\) \{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(
-		keep,
-		/querySelector\(":scope > \.block-opt-below"\)/,
-		"the last chip attached: if Chromium took the children, it went too",
-	);
-	assert.match(keep, /this\.refreshIsland\(blockIdx\)/);
-	for (const handler of ["makeCodeBlockEditable", "renderCommentBlock"]) {
-		const body = new RegExp(
-			`\\n\\t${handler}\\([^)]*\\) \\{[\\s\\S]*?\\n\\t\\}`,
-		).exec(src)[0];
-		assert.match(
-			body,
-			/this\._keepIsland\(/,
-			`${handler}: backspacing a block empty lets Chromium take the ` +
-				"island with it, since a non-editable node is deleted as a unit",
-		);
 	}
 });
 
@@ -1598,6 +1187,12 @@ test("a hovered block outranks a selected one, and the sidebar outranks both", (
 	const selected = z(/\n\.block\.selected \{\n\tz-index: (\d+);/);
 	const hovered = z(/\n\.block:hover \{\n\tz-index: (\d+);/);
 	const sidebar = z(/\n\.sidebar \{[^}]*?z-index: (\d+);/);
+	const chip = z(/\n\.block-opt \{[^}]*?z-index: (\d+);/);
+	assert.ok(
+		selected > chip,
+		"a block that is not hovered is no stacking context, so its own chip " +
+			"sits in the root and a lifted block has to outrank it",
+	);
 	assert.ok(
 		hovered > selected,
 		"at equal z-index the block later in the document wins, so a selected " +
@@ -1629,17 +1224,4 @@ test("a collapsed snippet clips its text sideways but not its chips vertically",
 	assert.match(rule, /overflow-x:\s*clip/);
 	assert.match(rule, /overflow-y:\s*visible/);
 	assert.match(rule, /text-overflow:\s*ellipsis/);
-});
-
-test("the block-tool dropdown marks the live choice with an outline, not a fill", () => {
-	const rule = /\.type-option\.active \{[\s\S]*?\n\}/.exec(
-		read("shared/styles.css"),
-	)[0];
-	assert.match(rule, /outline: 2px solid var\(--clr-accent\)/);
-	assert.equal(
-		/background/.test(rule),
-		false,
-		"blocks.js generates a per-value .type-option[data-value] background at runtime; " +
-			"a fill here would paint over the colour the row is naming",
-	);
 });

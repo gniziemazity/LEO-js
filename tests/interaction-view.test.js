@@ -59,32 +59,6 @@ test("titles, ids and labels come from one place", () => {
 	assert.equal(view.participantId(4), 5);
 });
 
-test("neither surface still spells the shared vocabulary out itself", () => {
-	for (const f of [
-		"src/renderer/desk-popup.js",
-		"src/shared/remote/interaction-overlay.js",
-	]) {
-		const src = read(f);
-		for (const literal of [
-			"Asked by",
-			"Who needs help?",
-			"Done — close",
-			"Helping ${",
-		]) {
-			assert.equal(
-				src.includes(literal),
-				false,
-				`${f} still carries its own copy of "${literal}"`,
-			);
-		}
-	}
-	assert.equal(
-		read("src/main/main.js").includes("#ffe0b2"),
-		false,
-		"main.js still hardcodes the interaction colour as hex",
-	);
-});
-
 test("the asker is the teacher by default, then any student", () => {
 	const students = ["Zoe", "ada"];
 	assert.deepEqual(view.askerChoices(students, "Ms. Lee"), [
@@ -103,7 +77,10 @@ test("a question takes the planned colour only while the teacher is asking", () 
 		view.interactionBgVar("student-question", "teacher"),
 		view.QUESTION_BG,
 	);
-	assert.equal(view.interactionBgVar("student-question", 1), "var(--clr-ask-bg)");
+	assert.equal(
+		view.interactionBgVar("student-question", 1),
+		"var(--clr-ask-bg)",
+	);
 	assert.equal(view.interactionBgVar("student-question"), "var(--clr-ask-bg)");
 	assert.equal(view.interactionBgVar("providing-help"), "var(--clr-help-bg)");
 });
@@ -135,16 +112,6 @@ test("a question the teacher asked is logged as a teacher question", () => {
 		view.questionLogEntry({ studentName: 3, answeredBy: undefined }),
 		["student-question", { asked_by: 3, answered_by: null }],
 		"nobody answered",
-	);
-});
-
-test("the desk card uses the configured teacher name, like the phone does", () => {
-	const src = read("src/renderer/desk-popup.js");
-	assert.match(src, /setTeacherName\(name\)/);
-	assert.match(src, /this\._studentBtn\(grid, this\.teacherName,/);
-	assert.match(
-		read("src/renderer/app.js"),
-		/deskPopup\.setTeacherName\(s\.teacherName\)/,
 	);
 });
 

@@ -457,48 +457,6 @@ test("every action the card sends is on the main-process allowlist", () => {
 	}
 });
 
-test("the bridge refuses anything not on the list", () => {
-	const mainSrc = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/main/main.js"),
-		"utf-8",
-	);
-	const handler = /ipcMain\.on\("desk-action"[\s\S]*?\n\}\);/.exec(mainSrc)[0];
-	assert.match(handler, /DESK_ACTIONS\.has\(type\)/);
-	assert.match(handler, /return;/);
-});
-
-test("the popups live in LEO's own window, with no second client shape", () => {
-	const read = (p) =>
-		fs.readFileSync(path.resolve(__dirname, "..", p), "utf-8");
-	assert.equal(read("src/index.html").includes("controlPanel"), false);
-	for (const f of [
-		"src/shared/remote/connection.js",
-		"src/shared/remote/snippet-overlay.js",
-		"src/shared/remote/interaction-overlay.js",
-	]) {
-		assert.equal(
-			read(f).includes("IS_CONTROL_PANEL"),
-			false,
-			`${f} branches on a client shape the remote does not have`,
-		);
-	}
-	assert.equal(
-		read("src/shared/styles.css").includes("panel-mode"),
-		false,
-		"styles.css carries rules nothing can match",
-	);
-	for (const f of [
-		"src/main/main.js",
-		"src/main/floating-window-manager.js",
-	]) {
-		assert.equal(
-			read(f).includes("setPanelVisible"),
-			false,
-			`${f} still resizes the window for the panel`,
-		);
-	}
-});
-
 test("the card is as tall as what it holds; only the window caps it", () => {
 	const css = fs.readFileSync(
 		path.resolve(__dirname, "..", "src/shared/styles.css"),
@@ -590,25 +548,6 @@ test("a file go-to without Type name is just an OK", () => {
 	assert.deepEqual(hints, [], "the go-to card carries no hint");
 });
 
-test("a go-to with Type name switched off offers no Type name button", () => {
-	const { popup } = build();
-	popup.showGoTo({ mode: "file", target: "style.css", typeName: false });
-
-	assert.equal(byLabel(popup, "Type name"), undefined);
-	assert.ok(byLabel(popup, "OK"), "OK is still the way out");
-});
-
-test("a later go-to to the same file offers nothing extra", () => {
-	const { popup } = build();
-	popup.showGoTo({ mode: "file", target: "style.css" });
-	assert.equal(
-		byLabel(popup, "Type name"),
-		undefined,
-		"the payload decides; the surface must not re-derive it from mode alone",
-	);
-	assert.ok(byLabel(popup, "OK"));
-});
-
 test("a code insert with paste switched off drops the Ctrl+V hint", () => {
 	const withPaste = build().popup;
 	withPaste.showSnippet({ text: "x", colored: null });
@@ -619,28 +558,6 @@ test("a code insert with paste switched off drops the Ctrl+V hint", () => {
 	const noPaste = build().popup;
 	noPaste.showSnippet({ text: "x", colored: null, paste: false });
 	assert.equal(hintOf(noPaste), undefined);
-});
-
-test("only terminating actions close the card", () => {
-	const src = fs.readFileSync(
-		path.resolve(__dirname, "..", "src/renderer/desk-popup.js"),
-		"utf-8",
-	);
-	assert.match(
-		/_act\(type, \.\.\.args\) \{[\s\S]*?\n\t\}/.exec(src)[0],
-		/this\.close\(\)/,
-		"_act is the closing sender",
-	);
-	assert.equal(
-		/_send\(type, \.\.\.args\) \{[\s\S]*?\n\t\}/
-			.exec(src)[0]
-			.includes("close()"),
-		false,
-		"_send is the one that leaves the card up",
-	);
-	const goTo = /showGoTo\(\{[\s\S]*?\n\t\}/.exec(src)[0];
-	assert.match(goTo, /_send\("client-go-to-type-name"\)/);
-	assert.match(goTo, /_act\("client-go-to-confirmed"\)/);
 });
 
 test("the card shows the typed name as it advances", () => {

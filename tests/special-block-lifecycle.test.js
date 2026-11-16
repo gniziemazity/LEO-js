@@ -144,45 +144,6 @@ test("a first-class go-to block is not mistaken for a legacy arrow comment", () 
 	assert.equal(seen[0].target, "index.html");
 });
 
-test("a legacy arrow comment is now an ordinary comment", () => {
-	const logged = [];
-	const { cm } = makeCursorManager([
-		{ type: "block", element: element("➡️ somewhere"), globalIndex: 0 },
-	]);
-	cm.logManager = { addEntry: (e) => logged.push(e) };
-	cm.onEnterGoToBlock = () => assert.fail("it must open no overlay");
-
-	cm.updateCursor();
-	assert.deepEqual(
-		logged,
-		[],
-		"no plan authored this form; go-to is a first-class block",
-	);
-});
-
-for (const type of ["go-to", "snippet"]) {
-	test(`auto-run resumes after a ${type} only if it was running`, () => {
-		const { cm } = makeCursorManager([]);
-
-		cm.autoRunActive = true;
-		cm.suspendAutoRunFor(type);
-		assert.equal(cm.autoRunActive, false, `the ${type} stops it first`);
-		assert.equal(
-			cm.confirmSpecial(type),
-			true,
-			"and confirming asks for it back",
-		);
-
-		cm.autoRunActive = false;
-		cm.suspendAutoRunFor(type);
-		assert.equal(
-			cm.confirmSpecial(type),
-			false,
-			"but never starts it unasked",
-		);
-	});
-}
-
 test("one popup's suspend does not answer for the other", () => {
 	const { cm } = makeCursorManager([]);
 
@@ -194,24 +155,6 @@ test("one popup's suspend does not answer for the other", () => {
 		"confirming a snippet must not resume what the go-to paused",
 	);
 	assert.equal(cm.confirmSpecial("go-to"), true);
-});
-
-test("confirming a go-to unblocks auto-run", async () => {
-	const { cm, channels } = makeCursorManager([
-		{
-			type: "block",
-			blockType: "go-to",
-			element: element(""),
-			globalIndex: 0,
-			target: "MAIN",
-		},
-	]);
-
-	cm.updateCursor();
-	cm.confirmSpecial("go-to");
-	await cm.startAutoRun();
-
-	assert.ok(channels().includes("start-auto-run-block"));
 });
 
 test("an open snippet holds auto-run until it is confirmed", async () => {

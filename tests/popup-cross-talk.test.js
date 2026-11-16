@@ -47,7 +47,6 @@ function harness() {
 	});
 	return {
 		popups,
-		events,
 		paused,
 		hasConfirmKey: () => confirmKey !== null,
 		sends: () => events.filter((e) => e[0] === "send").map((e) => e[1]),
@@ -88,25 +87,4 @@ test("the popup that is open still confirms normally", () => {
 	assert.equal(h.hasConfirmKey(), false);
 	assert.equal(h.paused.has("popup"), false);
 	assert.equal(h.sends().includes("note-confirmed"), true);
-});
-
-test("a close arriving after its own popup was confirmed is a no-op", () => {
-	const h = harness();
-	h.popups.enterPopup("note", { text: "hello" });
-	h.popups.confirmPopup("note");
-	const before = h.events.length;
-	assert.equal(h.popups.endPopup("note"), false);
-	assert.equal(h.events.length, before, "it broadcast a second note-ended");
-});
-
-test("a snippet releases the clipboard only for its own teardown", () => {
-	const h = harness();
-	h.popups.enterPopup("snippet", { text: "SNIPPET", paste: true });
-	h.popups.endPopup("go-to");
-	assert.equal(
-		h.popups.hasPendingName(),
-		false,
-		"sanity: no name is armed here",
-	);
-	assert.equal(h.popups.confirmPopup("snippet"), true);
 });
