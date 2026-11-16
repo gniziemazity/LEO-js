@@ -69,7 +69,7 @@ test("only authored blocks can be copied", () => {
 		{ type: "comment", text: "mine" },
 	]);
 	const { editor } = editorFor(lm);
-	assert.equal(editor.copyBlock(0), false, "the Start with slot");
+	assert.equal(editor.copyBlock(0), false, "the Starting Code slot");
 	assert.equal(editor.copyBlock(1), false, "an inherited start file");
 	assert.equal(editor.copyBlock(99), false, "out of range");
 	assert.equal(editor.copyBlock(2), true);

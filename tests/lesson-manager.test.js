@@ -60,7 +60,7 @@ test("a code block cannot start or end with a bare newline", () => {
 	assert.equal(lm.getBlock(0).text, "↩↩bar");
 });
 
-test("comment blocks keep their newlines - a ↩ there would paste literally", () => {
+test("support blocks keep their newlines - a ↩ there would paste literally", () => {
 	const lm = new LessonManager();
 	lm.addBlock("comment", null, "\n📋 code\n");
 	assert.equal(lm.getBlock(0).text, "\n📋 code\n");

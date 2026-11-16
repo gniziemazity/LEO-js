@@ -99,7 +99,7 @@ function build({
 	const KeyboardHandler = loadModule("src/main/keyboard-handler.js", {
 		"@computer-use/nut-js": { keyboard, Key },
 		"@computer-use/libnut/dist/import_libnut": { libnut },
-		"./platform": { ...platform, typesInOneStep: () => oneStep },
+		"./platform": { ...platform, canTypeInOneStep: () => oneStep },
 	});
 	const handler = new KeyboardHandler(hotkeys, settingsManager);
 
@@ -745,8 +745,8 @@ test("only Enter waits", () =>
 
 test("one step is Windows only, and never while the platform is set to macOS", () => {
 	assert.equal(
-		platform.typesInOneStep({ get: () => "windows" }),
+		platform.canTypeInOneStep({ get: () => "windows" }),
 		process.platform === "win32",
 	);
-	assert.equal(platform.typesInOneStep({ get: () => "macos" }), false);
+	assert.equal(platform.canTypeInOneStep({ get: () => "macos" }), false);
 });

@@ -22,7 +22,7 @@ function _topicShowMap() {
 	return m;
 }
 
-function _overviewAssignmentSeps(hasFollow, ng) {
+function _overviewAssignmentSeps(hasFollow, shown) {
 	let lead = hasFollow ? "asn-div" : "asn-sep";
 	const take = () => {
 		const c = lead;
@@ -30,8 +30,8 @@ function _overviewAssignmentSeps(hasFollow, ng) {
 		return c;
 	};
 	const seps = {};
-	if (ng.grade) seps.grade = take();
-	if (ng.status) seps.status = take();
+	if (shown.grade) seps.grade = take();
+	if (shown.status) seps.status = take();
 	seps.obs = take();
 	return seps;
 }
@@ -107,10 +107,10 @@ function renderTable() {
 
 	const topicShow = _topicShowMap();
 	for (const a of ASSIGNMENTS) {
-		const ng = topicShow[a.name] || { grade: false, status: false };
-		const asnExtra = (ng.grade ? 1 : 0) + (ng.status ? 1 : 0);
+		const shown = topicShow[a.name] || { grade: false, status: false };
+		const asnExtra = (shown.grade ? 1 : 0) + (shown.status ? 1 : 0);
 		const lessonTopic = a.follow != null;
-		const seps = _overviewAssignmentSeps(lessonTopic, ng);
+		const seps = _overviewAssignmentSeps(lessonTopic, shown);
 		if (lessonTopic) {
 			_attachStudentsLink(
 				grp(`${a.name} Lesson`, 2, true),
@@ -131,8 +131,8 @@ function renderTable() {
 				"assignments",
 			);
 		}
-		if (ng.grade) col("Grade", ("num " + seps.grade).trim());
-		if (ng.status) col("Status", seps.status);
+		if (shown.grade) col("Grade", ("num " + seps.grade).trim());
+		if (shown.status) col("Status", seps.status);
 		obsHeader(a, seps.obs);
 	}
 	grp("Totals", 3, true);
@@ -216,17 +216,17 @@ function renderTable() {
 		};
 
 		for (const entry of s.lessons) {
-			const ng = topicShow[entry.name] || { grade: false, status: false };
+			const shown = topicShow[entry.name] || { grade: false, status: false };
 			const gradeText = entry.grade == null ? "" : String(entry.grade);
-			const seps = _overviewAssignmentSeps(entry.hasFollowCol, ng);
+			const seps = _overviewAssignmentSeps(entry.hasFollowCol, shown);
 			if (entry.hasFollowCol) {
-				const fc = document.createElement("td");
-				fc.className = "follow asn-sep";
+				const followCell = document.createElement("td");
+				followCell.className = "follow asn-sep";
 				if (entry.follow != null) {
-					fc.appendChild(_followBarFrag(entry.follow));
+					followCell.appendChild(_followBarFrag(entry.follow));
 				}
-				makeLessonClickable(fc, entry);
-				tr.appendChild(fc);
+				makeLessonClickable(followCell, entry);
+				tr.appendChild(followCell);
 
 				const _lo = (entry.lesson_obs || "").trim();
 				const lobs = cell(
@@ -240,27 +240,27 @@ function renderTable() {
 				makeLessonClickable(lobs, entry);
 				tr.appendChild(lobs);
 			}
-			if (ng.grade) {
-				const gc = cell(gradeText, ("num " + seps.grade).trim());
-				makeAssignClickable(gc, entry);
-				tr.appendChild(gc);
+			if (shown.grade) {
+				const gradeCell = cell(gradeText, ("num " + seps.grade).trim());
+				makeAssignClickable(gradeCell, entry);
+				tr.appendChild(gradeCell);
 			}
-			if (ng.status) {
-				const sc = cell(entry.status || "", seps.status);
-				makeAssignClickable(sc, entry);
-				tr.appendChild(sc);
+			if (shown.status) {
+				const statusCell = cell(entry.status || "", seps.status);
+				makeAssignClickable(statusCell, entry);
+				tr.appendChild(statusCell);
 			}
 			const aobs = obsCell(entry, ("asn-col " + seps.obs).trim());
 			makeAssignClickable(aobs, entry);
 			tr.appendChild(aobs);
 		}
 
-		const pc = document.createElement("td");
-		pc.className = "num asn-sep";
+		const participationCell = document.createElement("td");
+		participationCell.className = "num asn-sep";
 		if (s.participation != null) {
-			pc.appendChild(_followBarFrag(s.participation));
+			participationCell.appendChild(_followBarFrag(s.participation));
 		}
-		tr.appendChild(pc);
+		tr.appendChild(participationCell);
 
 		const intTd = document.createElement("td");
 		intTd.className = "col-int";
@@ -356,7 +356,7 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax) {
 
 	for (const a of ASSIGNMENTS) {
 		const hasFollow = a.follow != null;
-		const ng = (topicShow && topicShow[a.name]) || {
+		const shown = (topicShow && topicShow[a.name]) || {
 			grade: false,
 			status: false,
 		};
@@ -366,14 +366,15 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax) {
 
 		if (hasFollow) {
 			const followAvg = mean(entries.map((e) => e.follow));
-			const fc = addCell(null, "follow asn-sep");
-			if (followAvg != null) fc.appendChild(_followBarFrag(followAvg));
-			tr.appendChild(fc);
+			const followCell = addCell(null, "follow asn-sep");
+			if (followAvg != null)
+				followCell.appendChild(_followBarFrag(followAvg));
+			tr.appendChild(followCell);
 			tr.appendChild(addCell(null));
 		}
 
-		const seps = _overviewAssignmentSeps(hasFollow, ng);
-		if (ng.grade) {
+		const seps = _overviewAssignmentSeps(hasFollow, shown);
+		if (shown.grade) {
 			tr.appendChild(
 				addCell(
 					fmtAvg(mean(entries.map((e) => e.grade)), 1),
@@ -381,7 +382,7 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax) {
 				),
 			);
 		}
-		if (ng.status) {
+		if (shown.status) {
 			tr.appendChild(addCell(null, seps.status));
 		}
 
@@ -396,9 +397,9 @@ function _appendOverviewTotalsRow(tbody, rows, topicShow, cdiffMin, cdiffMax) {
 	}
 
 	const partAvg = mean(cohort.map((s) => s.participation));
-	const pc = addCell(null, "num asn-sep");
-	if (partAvg != null) pc.appendChild(_followBarFrag(partAvg));
-	tr.appendChild(pc);
+	const participationCell = addCell(null, "num asn-sep");
+	if (partAvg != null) participationCell.appendChild(_followBarFrag(partAvg));
+	tr.appendChild(participationCell);
 
 	const intTd = document.createElement("td");
 	intTd.className = "col-int";

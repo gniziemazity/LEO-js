@@ -306,7 +306,7 @@ function setupGlobalIpcListeners() {
 	for (const type of PAUSING_TYPES) {
 		ipcRenderer.on(`${type}-confirmed`, () => {
 			deskPopup.closeIf(type);
-			if (cursorManager.confirmSpecial(type)) cursorManager.startAutoRun();
+			if (cursorManager.confirmPopup(type)) cursorManager.startAutoRun();
 		});
 	}
 

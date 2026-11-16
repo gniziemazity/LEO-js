@@ -159,16 +159,16 @@ test("auto-pilot takes the mouse pad for a go-to, and hands the keyboard back on
 	);
 });
 
-test("auto-pilot leaves the keyboard pad alone for a question, code insert, note or media", async () => {
+test("auto-pilot leaves the keyboard pad alone for a question, snippet, note or media", async () => {
 	const opens = {
 		question: (api) => api.showQuestionOverlay("Why?", ["Ada"], null, null),
-		"code insert": (api) => api.showSnippetOverlay({ text: "x" }),
+		snippet: (api) => api.showSnippetOverlay({ text: "x" }),
 		note: (api) => api.showNoteOverlay({ text: "Slow down" }),
 		media: (api) => api.showMediaOverlay({ type: "image", name: "a.png" }),
 	};
 	const closes = {
 		question: (api) => api.closeQuestionOverlayUI(),
-		"code insert": (api) => api.closeSnippetOverlayUI(),
+		snippet: (api) => api.closeSnippetOverlayUI(),
 		note: (api) => api.closeNoteOverlayUI(),
 		media: (api) => api.closeMediaOverlayUI(),
 	};

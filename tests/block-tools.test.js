@@ -26,20 +26,22 @@ function manager(blocks) {
 	return lm;
 }
 
-const PREFIX = Object.fromEntries(BLOCK_TYPES.map(([p, s]) => [s, p]));
+const PREFIX = Object.fromEntries(
+	BLOCK_TYPES.map(([prefix, type]) => [type, prefix]),
+);
 
 test("changing type rewrites only the prefix", () => {
 	const lm = manager([{ type: "comment", text: "What is UTF-8 for?" }]);
-	for (const subtype of Object.keys(PREFIX)) {
-		assert.equal(lm.setBlockType(1, subtype), true);
-		assert.equal(lm.data[1].text, `${PREFIX[subtype]} What is UTF-8 for?`);
-		assert.equal(getBlockType(lm.data[1].text), subtype);
+	for (const type of Object.keys(PREFIX)) {
+		assert.equal(lm.setBlockType(1, type), true);
+		assert.equal(lm.data[1].text, `${PREFIX[type]} What is UTF-8 for?`);
+		assert.equal(getBlockType(lm.data[1].text), type);
 	}
 	assert.equal(lm.setBlockType(1, "note"), true);
 	assert.equal(
 		lm.data[1].text,
 		"What is UTF-8 for?",
-		"going back to a plain comment must not leave a stray space or glyph",
+		"going back to a plain note must not leave a stray space or glyph",
 	);
 });
 
@@ -52,7 +54,7 @@ test("a multi-line body survives a type change untouched", () => {
 	assert.equal(
 		lm.data[1].text,
 		`📋 ${body}`,
-		"comment text keeps raw newlines and tabs: a ↩ in a 📋 body pastes literally",
+		"support-block text keeps raw newlines and tabs: a ↩ in a 📋 body pastes literally",
 	);
 });
 
@@ -104,13 +106,13 @@ test("a stray pin word in the body is not absorbed into the flag", () => {
 	assert.equal(lm.data[1].text, "🖼️ do you pin notes?");
 });
 
-test("Start with and inherited blocks cannot change type", () => {
+test("Starting Code and inherited blocks cannot change type", () => {
 	const lm = manager([
 		{ type: "code", text: "let x;" },
 		{ type: "comment", text: "📋 x", fromStart: true },
 		{ type: "comment", text: "plain" },
 	]);
-	assert.equal(lm.setBlockType(0, "question"), false, "Start with");
+	assert.equal(lm.setBlockType(0, "question"), false, "Starting Code");
 	assert.equal(lm.setBlockType(2, "question"), false, "inherited");
 	assert.equal(lm.setBlockType(3, "no-such-type"), false, "unknown type");
 	assert.equal(lm.setBlockType(99, "question"), false, "out of range");
@@ -237,7 +239,7 @@ test("addBlock reports where the block actually went", () => {
 	assert.equal(lm.data[4].text, "end");
 });
 
-test("the first authored block sits after Start with and its inherited blocks", () => {
+test("the first authored block sits after Starting Code and its inherited blocks", () => {
 	assert.equal(
 		manager([{ type: "comment", text: "a" }]).firstAuthoredIndex(),
 		1,
@@ -251,7 +253,7 @@ test("the first authored block sits after Start with and its inherited blocks", 
 	assert.equal(manager([]).firstAuthoredIndex(), 1);
 });
 
-test("moveBlock never crosses Start with, the inherited blocks, or the end", () => {
+test("moveBlock never crosses Starting Code, the inherited blocks, or the end", () => {
 	const lm = manager([
 		{ type: "comment", text: "📋 x", fromStart: true },
 		{ type: "comment", text: "first" },
@@ -259,7 +261,7 @@ test("moveBlock never crosses Start with, the inherited blocks, or the end", () 
 	]);
 	assert.equal(lm.canMoveBlock(2, -1), false, "into the inherited run");
 	assert.equal(lm.canMoveBlock(1, 1), false, "an inherited block cannot move");
-	assert.equal(lm.canMoveBlock(0, 1), false, "Start with cannot move");
+	assert.equal(lm.canMoveBlock(0, 1), false, "Starting Code cannot move");
 	assert.equal(lm.canMoveBlock(3, 1), false, "past the end");
 	assert.equal(lm.canMoveBlock(2, 1), true);
 	assert.equal(lm.moveBlock(2, -1), false);
@@ -313,7 +315,7 @@ test("adding with nothing selected selects the block it appended", () => {
 	assert.equal(
 		ui.sel,
 		2,
-		"it used to select index 0, which is the Start with row",
+		"it used to select index 0, which is the Starting Code row",
 	);
 });
 
@@ -398,7 +400,7 @@ function renderIsland(
 		stepIndex: 0,
 		steps: [],
 	};
-	if (block.type === "comment") renderer.renderCommentBlock(ctx);
+	if (block.type === "comment") renderer.renderTextSupportBlock(ctx);
 	else if (block.type === "code") {
 		renderer.makeCodeBlockEditable = () => {};
 		renderer.renderCodeBlock(ctx);
@@ -426,7 +428,7 @@ const rowGlyphs = (island) => [
 	island.below.map((t) => t.glyph),
 ];
 
-test("a comment carries up, down and delete, and its symbol is the type picker", () => {
+test("a support block carries up, down and delete, and its symbol is the type picker", () => {
 	const island = renderIsland(
 		[
 			{ type: "comment", text: "a" },
@@ -489,7 +491,7 @@ test("the last authored block cannot be deleted", () => {
 	);
 	assert.equal(two.tools[1].disabled, false);
 	const lm = manager([{ type: "comment", text: "a" }]);
-	assert.equal(lm.canRemoveBlock(0), false, "Start with is not deletable");
+	assert.equal(lm.canRemoveBlock(0), false, "Starting Code is not deletable");
 	assert.equal(lm.canRemoveBlock(1), false);
 	const { editor } = editorFor(lm, 1);
 	editor.removeBlock(1);
@@ -500,7 +502,7 @@ test("the arrows are disabled where the block cannot go", () => {
 	const island = renderIsland([{ type: "comment", text: "only" }], 1);
 	const up = island.above.find((x) => x.glyph === "▲");
 	const down = island.below.find((x) => x.glyph === "▼");
-	assert.equal(up.disabled, true, "nothing may go above Start with");
+	assert.equal(up.disabled, true, "nothing may go above Starting Code");
 	assert.equal(down.disabled, true);
 });
 

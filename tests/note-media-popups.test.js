@@ -77,7 +77,7 @@ for (const [type, text] of [
 			false,
 			`auto-typing must not run past a ${type} that is still open`,
 		);
-		cm.confirmSpecial(type);
+		cm.confirmPopup(type);
 		await cm.startAutoRun();
 		assert.ok(channels().includes("start-auto-run-block"));
 	});
@@ -87,9 +87,9 @@ for (const [type, text] of [
 		cm.autoRunActive = true;
 		cm.suspendAutoRunFor(type);
 		assert.equal(cm.autoRunActive, false);
-		assert.equal(cm.confirmSpecial(type), true);
+		assert.equal(cm.confirmPopup(type), true);
 		cm.suspendAutoRunFor(type);
-		assert.equal(cm.confirmSpecial(type), false);
+		assert.equal(cm.confirmPopup(type), false);
 	});
 }
 
@@ -104,7 +104,7 @@ for (const [type, text] of [
 			charStep(),
 		]);
 		cm.updateCursor();
-		cm.confirmSpecial(type);
+		cm.confirmPopup(type);
 		assert.equal(cm.currentStepIndex, 1, "OK passes the block");
 		assert.deepEqual(
 			channels().filter((c) => c === `close-${type}-window`),
@@ -127,7 +127,7 @@ test("confirming a note forgets it, like the other transient popups", () => {
 		charStep(),
 	]);
 	cm.updateCursor();
-	cm.confirmSpecial("note");
+	cm.confirmPopup("note");
 	cm.currentStepIndex = 1;
 	cm.updateCursor();
 	assert.equal(

@@ -11,7 +11,7 @@ const { getBlockType, buildSettingsCSS } = require(
 );
 const SettingsManager = require(path.join(BASE, "main/settings-manager.js"));
 
-test("each special prefix names its type", () => {
+test("each prefix names its type", () => {
 	assert.equal(getBlockType("❓ why"), "question");
 	assert.equal(getBlockType("🖼️ pic.png"), "image");
 	assert.equal(getBlockType("🌐 http://x"), "web");

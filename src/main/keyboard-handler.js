@@ -7,7 +7,7 @@ const {
 	sleep,
 	isMacOS,
 	primaryModifier,
-	typesInOneStep,
+	canTypeInOneStep,
 } = require("./platform");
 
 const CHORD_MODIFIERS = new Map([
@@ -173,8 +173,8 @@ class KeyboardHandler {
 		}
 	}
 
-	typesInOneStep() {
-		return typesInOneStep(this.settingsManager);
+	canTypeInOneStep() {
+		return canTypeInOneStep(this.settingsManager);
 	}
 
 	typeInOneStep(char) {
@@ -220,7 +220,7 @@ class KeyboardHandler {
 	}
 
 	guardedModifiers(modifier, mapping) {
-		if (!this.typesInOneStep()) return [];
+		if (!this.canTypeInOneStep()) return [];
 		const held = [];
 		if (modifier !== undefined) {
 			if (!CHORD_MODIFIERS.has(modifier)) return [];
@@ -231,7 +231,7 @@ class KeyboardHandler {
 	}
 
 	async typeCharWithHotkeyManagement(char) {
-		if (typedAsItself(char) && this.typesInOneStep()) {
+		if (typedAsItself(char) && this.canTypeInOneStep()) {
 			this.typeInOneStep(char);
 			return;
 		}

@@ -178,7 +178,7 @@ function renderText(block, { autoTyping = false } = {}) {
 		{},
 	);
 	const div = fakeDiv();
-	renderer.renderCommentBlock({
+	renderer.renderTextSupportBlock({
 		blockDiv: div,
 		block: lm.data[1],
 		blockIdx: 1,

@@ -34,7 +34,7 @@ const { addChoices, typeChoices, typeGlyph } = require("./block-types");
 const EDIT_BURST_IDLE_MS = 1000;
 
 const BLOCK_RENDERERS = {
-	comment: "renderCommentBlock",
+	comment: "renderTextSupportBlock",
 	code: "renderCodeBlock",
 	"go-to": "renderGoToBlock",
 	include: "renderIncludeBlock",
@@ -540,7 +540,7 @@ class LessonRenderer {
 		else el.classList.add("is-empty");
 	}
 
-	renderCommentBlock(ctx) {
+	renderTextSupportBlock(ctx) {
 		const {
 			blockDiv,
 			block,

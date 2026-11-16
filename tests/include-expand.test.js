@@ -70,9 +70,9 @@ function makeRenderer({ blocks, selected = null, autoTyping = false }) {
 	return { renderer, calls };
 }
 
-function renderComment(renderer, blocks, blockIdx, autoTyping = false) {
+function renderBlock(renderer, blocks, blockIdx, autoTyping = false) {
 	const blockDiv = fakeBlockDiv();
-	renderer.renderCommentBlock({
+	renderer.renderTextSupportBlock({
 		blockDiv,
 		block: blocks[blockIdx],
 		blockIdx,
@@ -86,7 +86,7 @@ function renderComment(renderer, blocks, blockIdx, autoTyping = false) {
 test("an inherited paste starts collapsed to its first line", () => {
 	const blocks = [INHERITED];
 	const { renderer } = makeRenderer({ blocks });
-	const div = renderComment(renderer, blocks, 0);
+	const div = renderBlock(renderer, blocks, 0);
 	assert.equal(div.classList.contains("collapsed"), true);
 	assert.equal(div.textContent, "📋 <!DOCTYPE html>...");
 	assert.equal(div.title, undefined, "no native tooltip on a collapsed paste");
@@ -102,7 +102,7 @@ test("clicking an inherited paste expands it without selecting it", () => {
 	assert.equal(calls.renders, 1);
 	assert.equal(renderer.expandedStartFiles.has(0), true);
 
-	const div = renderComment(renderer, blocks, 0);
+	const div = renderBlock(renderer, blocks, 0);
 	assert.equal(div.classList.contains("collapsed"), false);
 	assert.equal(div.textContent, INHERITED.text);
 });
@@ -111,7 +111,7 @@ test("an expanded inherited paste is still read-only", () => {
 	const blocks = [INHERITED];
 	const { renderer } = makeRenderer({ blocks });
 	renderer.toggleStartFile(0);
-	const div = renderComment(renderer, blocks, 0);
+	const div = renderBlock(renderer, blocks, 0);
 	assert.equal(div.contentEditable, false);
 });
 
@@ -124,7 +124,7 @@ test("clicking an expanded inherited paste collapses it again", () => {
 
 	assert.equal(renderer.expandedStartFiles.has(0), false);
 	assert.equal(
-		renderComment(renderer, blocks, 0).classList.contains("collapsed"),
+		renderBlock(renderer, blocks, 0).classList.contains("collapsed"),
 		true,
 	);
 });
@@ -133,7 +133,7 @@ test("selecting a block never expands an inherited one", () => {
 	const blocks = [INHERITED];
 	const { renderer } = makeRenderer({ blocks, selected: 0 });
 	assert.equal(
-		renderComment(renderer, blocks, 0).classList.contains("collapsed"),
+		renderBlock(renderer, blocks, 0).classList.contains("collapsed"),
 		true,
 	);
 });
@@ -142,14 +142,14 @@ test("an authored paste still expands by selection, not by the include set", () 
 	const blocks = [AUTHORED];
 	const collapsed = makeRenderer({ blocks });
 	assert.equal(
-		renderComment(collapsed.renderer, blocks, 0).classList.contains(
+		renderBlock(collapsed.renderer, blocks, 0).classList.contains(
 			"collapsed",
 		),
 		true,
 	);
 
 	const open = makeRenderer({ blocks, selected: 0 });
-	const div = renderComment(open.renderer, blocks, 0);
+	const div = renderBlock(open.renderer, blocks, 0);
 	assert.equal(div.classList.contains("collapsed"), false);
 	assert.equal(div.contentEditable, true);
 });
@@ -170,7 +170,7 @@ test("an expanded inherited paste stays collapsed once auto-typing starts", () =
 	const { renderer } = makeRenderer({ blocks });
 	renderer.toggleStartFile(0);
 	assert.equal(
-		renderComment(renderer, blocks, 0, true).classList.contains("collapsed"),
+		renderBlock(renderer, blocks, 0, true).classList.contains("collapsed"),
 		true,
 	);
 });
@@ -200,11 +200,11 @@ test("an open start file is editable, so anchors can be placed in it", () => {
 	const blocks = [START_FILE];
 	const { renderer } = makeRenderer({ blocks });
 	renderer.toggleStartFile(0);
-	const div = renderComment(renderer, blocks, 0);
+	const div = renderBlock(renderer, blocks, 0);
 	assert.equal(div.contentEditable, true);
 	assert.equal(div.classList.contains("start-file"), true);
 	assert.equal(
-		renderComment(renderer, blocks, 0, true).contentEditable,
+		renderBlock(renderer, blocks, 0, true).contentEditable,
 		"false",
 		"but never while auto-typing: it is rendered collapsed and inert then",
 	);
@@ -246,9 +246,9 @@ test("the ▾ on the left of an open start file is what folds it", () => {
 	);
 	assert.deepEqual(calls.selected, []);
 
-	renderComment(renderer, blocks, 0);
+	renderBlock(renderer, blocks, 0);
 	renderer.toggleStartFile(0);
-	renderComment(renderer, blocks, 0);
+	renderBlock(renderer, blocks, 0);
 	assert.equal(
 		calls.islands.some((i) => (i.tools || []).some((t) => t.glyph === "▴")),
 		false,

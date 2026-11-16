@@ -150,11 +150,11 @@ test("one popup's suspend does not answer for the other", () => {
 	cm.autoRunActive = true;
 	cm.suspendAutoRunFor("go-to");
 	assert.equal(
-		cm.confirmSpecial("snippet"),
+		cm.confirmPopup("snippet"),
 		false,
 		"confirming a snippet must not resume what the go-to paused",
 	);
-	assert.equal(cm.confirmSpecial("go-to"), true);
+	assert.equal(cm.confirmPopup("go-to"), true);
 });
 
 test("an open snippet holds auto-run until it is confirmed", async () => {
@@ -168,7 +168,7 @@ test("an open snippet holds auto-run until it is confirmed", async () => {
 		"auto-typing must not run past a snippet that is still open",
 	);
 
-	cm.confirmSpecial("snippet");
+	cm.confirmPopup("snippet");
 	await cm.startAutoRun();
 	assert.ok(channels().includes("start-auto-run-block"));
 });

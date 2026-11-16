@@ -265,7 +265,7 @@ class CursorManager {
 		if (this.autoRunActive) this.stopAutoRun();
 	}
 
-	confirmSpecial(type) {
+	confirmPopup(type) {
 		const b = this._block(type);
 		const at = b.at;
 		b.waiting = false;

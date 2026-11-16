@@ -43,7 +43,7 @@ for (const [type, step] of PAUSING) {
 	test(`OK on a ${type} moves on, so the next key types`, () => {
 		const { cm, sent } = makeCursorManager([step, char("x")]);
 		cm.updateCursor();
-		cm.confirmSpecial(type);
+		cm.confirmPopup(type);
 		assert.equal(cm.currentStepIndex, 1, "the block is passed on OK");
 
 		sent.length = 0;
@@ -65,7 +65,7 @@ test("the popup after the one confirmed opens straight away", () => {
 	const notes = [];
 	cm.onEnterNoteBlock = (p) => notes.push(p.text);
 	cm.updateCursor();
-	cm.confirmSpecial("go-to");
+	cm.confirmPopup("go-to");
 	assert.deepEqual(notes, ["Now explain it"]);
 	assert.equal(cm.currentStepIndex, 1);
 });
@@ -75,7 +75,7 @@ test("a confirm that arrives after the cursor left moves nothing", () => {
 	cm.updateCursor();
 	cm.currentStepIndex = 1;
 	cm.updateCursor();
-	cm.confirmSpecial("note");
+	cm.confirmPopup("note");
 	assert.equal(cm.currentStepIndex, 1);
 });
 

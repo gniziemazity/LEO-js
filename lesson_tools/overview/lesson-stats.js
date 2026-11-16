@@ -68,7 +68,6 @@ function renderLessonStats(body) {
 		cc.register(chart);
 	}
 
-	const tQun = numFor("teacher_q_unanswered");
 	const _cohortLessonSum = (lessonName, key) => {
 		let sum = 0;
 		for (const s of _students || []) {
@@ -78,11 +77,18 @@ function renderLessonStats(body) {
 		}
 		return sum;
 	};
-	const tQAns = lessonNames.map((n) => _cohortLessonSum(n, "a"));
-	const tQUna = lessonNames.map((_, i) => tQun[i] ?? 0);
-	const sQ = lessonNames.map((n) => _cohortLessonSum(n, "q"));
-	const hG = lessonNames.map((n) => _cohortLessonSum(n, "h"));
-	if (anyPos(tQAns) || anyPos(tQUna) || anyPos(sQ) || anyPos(hG)) {
+	const answeredQuestions = lessonNames.map((n) => _cohortLessonSum(n, "a"));
+	const unansweredQuestions = numFor("teacher_q_unanswered").map(
+		(v) => v ?? 0,
+	);
+	const studentQuestions = lessonNames.map((n) => _cohortLessonSum(n, "q"));
+	const helpGiven = lessonNames.map((n) => _cohortLessonSum(n, "h"));
+	if (
+		anyPos(answeredQuestions) ||
+		anyPos(unansweredQuestions) ||
+		anyPos(studentQuestions) ||
+		anyPos(helpGiven)
+	) {
 		const cc = new ChartCard(body, "Interactions", {
 			legend: [
 				{ label: "Answered", color: THEME.blue },
@@ -90,8 +96,10 @@ function renderLessonStats(body) {
 				{ label: "Got Help", color: THEME.green },
 			],
 		});
-		const teacherTot = tQAns.map((v, i) => v + (tQUna[i] ?? 0));
-		const all = [...teacherTot, ...sQ, ...hG];
+		const teacherQuestions = answeredQuestions.map(
+			(v, i) => v + unansweredQuestions[i],
+		);
+		const all = [...teacherQuestions, ...studentQuestions, ...helpGiven];
 		const colors = [THEME.blue, THEME.orange, THEME.green];
 		const chart = new BarChart(cc.box, {
 			yMin: 0,
@@ -99,9 +107,9 @@ function renderLessonStats(body) {
 			unifiedTooltip: true,
 			tooltipCallback: (_l, val, si, gi) => {
 				if (si === 0 || si === 1) {
-					const a = tQAns[gi] ?? 0;
-					const b = a + (tQUna[gi] ?? 0);
-					return [`Answered Questions: ${a}/${b}`];
+					const answered = answeredQuestions[gi] ?? 0;
+					const asked = answered + (unansweredQuestions[gi] ?? 0);
+					return [`Answered Questions: ${answered}/${asked}`];
 				}
 				return [
 					["", "", "Asked Questions", "Provided Help"][si] +
@@ -112,25 +120,25 @@ function renderLessonStats(body) {
 		});
 		chart.setData(lessonNames, [
 			{
-				data: tQAns,
+				data: answeredQuestions,
 				stack: "answer",
 				backgroundColor: colors[0],
 				borderColor: colors[0],
 			},
 			{
-				data: tQUna,
+				data: unansweredQuestions,
 				stack: "answer",
 				backgroundColor: colors[0],
 				borderColor: colors[0],
 				pattern: "stripes",
 			},
 			{
-				data: sQ.map((v) => v ?? 0),
+				data: studentQuestions.map((v) => v ?? 0),
 				backgroundColor: colors[1],
 				borderColor: colors[1],
 			},
 			{
-				data: hG.map((v) => v ?? 0),
+				data: helpGiven.map((v) => v ?? 0),
 				backgroundColor: colors[2],
 				borderColor: colors[2],
 			},

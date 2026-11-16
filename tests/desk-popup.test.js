@@ -548,7 +548,7 @@ test("a file go-to without Type name is just an OK", () => {
 	assert.deepEqual(hints, [], "the go-to card carries no hint");
 });
 
-test("a code insert with paste switched off drops the Ctrl+V hint", () => {
+test("a snippet with Paste switched off drops the Ctrl+V hint", () => {
 	const withPaste = build().popup;
 	withPaste.showSnippet({ text: "x", colored: null });
 	const hintOf = (p) =>

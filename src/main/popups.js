@@ -175,7 +175,7 @@ async function typeNextNameChar() {
 	if (!pendingName || pendingName.busy) return !!pendingName;
 	const ch = pendingName.chars[pendingName.index];
 	pendingName.busy = true;
-	const inOneStep = keyboardHandler.typesInOneStep();
+	const inOneStep = keyboardHandler.canTypeInOneStep();
 	const macOS = isMacOS(settingsManager);
 	const released =
 		state.isActive && !inOneStep

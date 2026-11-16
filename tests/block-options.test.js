@@ -156,7 +156,7 @@ test("a file an included plan already touched is not created again", () => {
 	assert.equal(
 		lm.isFirstGoToFile(2),
 		false,
-		"under Start with, the inherited go-to means the file is already there — " +
+		"under Starting Code, the inherited go-to means the file is already there — " +
 			"this is exactly why 'create on first appearance' was rejected before",
 	);
 	assert.equal(lm.isFirstGoToFile(0), true);

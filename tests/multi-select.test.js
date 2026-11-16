@@ -208,7 +208,7 @@ test("group delete keeps at least one authored block", () => {
 	assert.equal(
 		lm.canRemoveBlocks([0, 1]),
 		false,
-		"Start with is not deletable",
+		"Starting Code is not deletable",
 	);
 	assert.equal(lm.canRemoveBlocks([1, 3]), true);
 	assert.equal(lm.removeBlocks([3, 1, 1]), true);

@@ -46,7 +46,7 @@ function harness(settings = {}, { oneStep = false } = {}) {
 				restoreAutoTypingHotkeys() {},
 			},
 			keyboardHandler: {
-				typesInOneStep: () => oneStep,
+				canTypeInOneStep: () => oneStep,
 				typeInOneStep: (ch) => events.push(["one-step", ch]),
 			},
 		},
