@@ -747,16 +747,11 @@ async function createWindow() {
 	}
 	broadcastServer.updateSettings(settingsManager.getAll());
 	hotkeyManager.registerSystemShortcuts();
-	const sendMaximized = () =>
-		state.send("window-maximized", state.mainWindow.isMaximized());
-	state.mainWindow.on("maximize", sendMaximized);
-	state.mainWindow.on("unmaximize", sendMaximized);
 	state.mainWindow.webContents.on("did-finish-load", () => {
 		state.mainWindow.webContents.send(
 			"settings-loaded",
 			settingsManager.getAll(),
 		);
-		sendMaximized();
 		autoPilot.sync();
 		showEditorTipOnce();
 		if (pendingOpenFile) {

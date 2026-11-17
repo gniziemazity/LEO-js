@@ -4,6 +4,7 @@ const { renderLines } = require("../shared/excerpt-view");
 const REGENERATE_DELAY_MS = 200;
 const MIN_PANEL_W = 260;
 const MIN_EDITOR_W = 420;
+const MIN_WINDOW_W = 1000;
 const WIDTH_KEY = "simPanelWidth";
 
 function readStoredWidth() {
@@ -46,9 +47,14 @@ class SimPanel {
 		const resizer = root.querySelector(".sim-panel-resizer");
 		if (resizer) this._attachResizer(resizer);
 		this.width = readStoredWidth();
-		window.addEventListener("resize", () => {
-			if (this.visible && this.width) this.setWidth(this.width);
-		});
+		window.addEventListener("resize", () => this.fit());
+		this.fit();
+	}
+
+	fit() {
+		const wide = window.innerWidth >= MIN_WINDOW_W;
+		if (wide !== this.visible) this.setVisible(wide);
+		else if (this.visible && this.width) this.setWidth(this.width);
 	}
 
 	_editorScroller(visible) {

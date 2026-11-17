@@ -54,7 +54,17 @@ global.document = {
 		style: { setProperty: (k, v) => (rootStyle[k] = v) },
 	},
 };
-global.window = { innerWidth: 1500, addEventListener() {} };
+const NARROW = 900;
+const WIDE = 1500;
+const resizeHandlers = [];
+global.window = {
+	innerWidth: NARROW,
+	addEventListener: (type, fn) => type === "resize" && resizeHandlers.push(fn),
+};
+function resizeTo(width) {
+	window.innerWidth = width;
+	resizeHandlers.at(-1)();
+}
 const stored = new Map();
 global.localStorage = {
 	getItem: (k) => (stored.has(k) ? stored.get(k) : null),
@@ -139,7 +149,25 @@ test("an edit is picked up, and the tab being read stays open", () => {
 	assert.equal(code.scrollTop, 40, "reading position survives a regenerate");
 });
 
-test("going un-maximized hides it and cancels a pending regenerate", () => {
+test("it shows only while the window is wide, whether maximized or not", () => {
+	const { sim, tabs, code } = panel(PLAN);
+	assert.equal(sim.visible, false, "a narrow window starts without it");
+	resizeTo(WIDE);
+	assert.equal(document.body.classList.contains("sim-panel-on"), true);
+	assert.deepEqual(lineText(code), ["let a = 1;", "let b = 2;"]);
+	const first = code.children[0];
+	resizeTo(WIDE + 100);
+	assert.equal(code.children[0], first, "widening further re-renders nothing");
+	assert.equal(tabs.children.length, 2);
+	resizeTo(NARROW);
+	assert.equal(sim.visible, false);
+	assert.equal(document.body.classList.contains("sim-panel-on"), false);
+	window.innerWidth = WIDE;
+	assert.equal(panel(PLAN).sim.visible, true, "a wide window starts with it");
+	window.innerWidth = NARROW;
+});
+
+test("narrowing the window hides it and cancels a pending regenerate", () => {
 	const { sim } = panel(PLAN);
 	sim.setVisible(true);
 	sim.schedule();
@@ -210,7 +238,7 @@ test("a caret that did not move re-renders nothing", () => {
 	assert.notEqual(code.children[0], first, "an edit still does");
 });
 
-test("maximizing and restoring keep the editor's place", () => {
+test("showing and hiding it keep the editor's place", () => {
 	const page = { scrollTop: 300 };
 	document.scrollingElement = page;
 	const editor = { scrollTop: 0 };
@@ -231,18 +259,22 @@ test("maximizing and restoring keep the editor's place", () => {
 });
 
 test("the width is clamped, and remembered", () => {
-	const { sim } = panel(PLAN);
-	assert.equal(sim.setWidth(100), 260, "never narrower than a tab strip");
-	assert.equal(
-		sim.setWidth(5000),
-		1500 - 420,
-		"never so wide the editor disappears",
-	);
-	assert.equal(rootStyle["--sim-panel-w"], "1080px");
-	stored.set("simPanelWidth", "700");
-	const again = panel(PLAN).sim;
-	again.setVisible(true);
-	assert.equal(rootStyle["--sim-panel-w"], "700px");
+	window.innerWidth = WIDE;
+	try {
+		const { sim } = panel(PLAN);
+		assert.equal(sim.setWidth(100), 260, "never narrower than a tab strip");
+		assert.equal(
+			sim.setWidth(5000),
+			WIDE - 420,
+			"never so wide the editor disappears",
+		);
+		assert.equal(rootStyle["--sim-panel-w"], "1080px");
+		stored.set("simPanelWidth", "700");
+		panel(PLAN);
+		assert.equal(rootStyle["--sim-panel-w"], "700px");
+	} finally {
+		window.innerWidth = NARROW;
+	}
 });
 
 test("the editor scrolls on its own while the panel is shown", () => {

@@ -258,9 +258,6 @@ function setupGlobalIpcListeners() {
 	ipcRenderer.on("hotkey-step-backward", () => cursorManager.stepBackward());
 	ipcRenderer.on("hotkey-step-forward", () => cursorManager.stepForward());
 	ipcRenderer.on("advance-cursor", () => cursorManager.advanceCursor());
-	ipcRenderer.on("window-maximized", (e, maximized) =>
-		simPanel.setVisible(maximized),
-	);
 	ipcRenderer.on("go-to-typing", (e, p) => deskPopup.setGoToTyped(p));
 	const syncDesk = (s) => {
 		deskPopup.setTeacherName(s.teacherName);
